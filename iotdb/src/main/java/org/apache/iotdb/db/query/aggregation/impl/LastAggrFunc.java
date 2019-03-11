@@ -87,8 +87,8 @@ public class LastAggrFunc extends AggregateFunction {
 
     if (resultData.length() == 0) {
       if (time != -1) {
-        resultData.setTime(0, time);
-        resultData.setAnObject(0, (Comparable<?>) lastVal);
+        resultData.putTime(time);
+        resultData.putAnObject(lastVal);
       }
     } else {
       //has set value
@@ -108,8 +108,8 @@ public class LastAggrFunc extends AggregateFunction {
     }
     if (resultData.length() == 0) {
       if (pair != null) {
-        resultData.setAnObject(0, (Comparable<?>) pair.getValue().getValue());
-        resultData.setTime(0, pair.getTimestamp());
+        resultData.putAnObject(pair.getValue().getValue());
+        resultData.putTime( pair.getTimestamp());
       }
     } else {
       if (pair != null && pair.getTimestamp() >= resultData.currentTime()) {

@@ -51,7 +51,7 @@ public class MinValueAggrFunc extends AggregateFunction {
     Comparable<Object> minVal = (Comparable<Object>) pageHeader.getStatistics().getMin();
     if (resultData.length() == 0) {
       resultData.putTime(0);
-      resultData.setAnObject(0, minVal);
+      resultData.putAnObject(minVal);
     } else {
       if (minVal.compareTo(resultData.currentValue()) < 0) {
         resultData.setAnObject(0, minVal);
@@ -87,8 +87,8 @@ public class MinValueAggrFunc extends AggregateFunction {
 
     while (dataInThisPage.hasNext()) {
       if (minVal == null
-          || minVal.compareTo(unsequenceReader.current().getValue().getValue()) > 0) {
-        minVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
+          || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
+        minVal = (Comparable<Object>) dataInThisPage.currentValue();
       }
       dataInThisPage.next();
     }
@@ -113,7 +113,7 @@ public class MinValueAggrFunc extends AggregateFunction {
     if (resultData.length() == 0) {
       if (minVal != null) {
         resultData.putTime(0);
-        resultData.setAnObject(0, minVal);
+        resultData.putAnObject( minVal);
       }
     } else {
       if (minVal != null && minVal.compareTo(resultData.currentValue()) < 0) {

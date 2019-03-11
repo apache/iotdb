@@ -64,7 +64,7 @@ public class AggregateEngineExecutor {
   public AggregateDataSet executeWithOutTimeGenerator(QueryContext context)
       throws FileNodeManagerException, IOException, PathErrorException, ProcessorException {
     Filter timeFilter = null;
-    if(timeFilter!=null){
+    if(expression!=null){
       timeFilter = ((GlobalTimeExpression)expression).getFilter();
     }
     QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
@@ -99,10 +99,10 @@ public class AggregateEngineExecutor {
 
   private BatchData aggregateWithOutTimeGenerator(AggregateFunction function, IAggregateReader sequenceReader, IPointReader unSequenceReader)
       throws IOException, ProcessorException {
-    if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc){
-      //TODO Optimization
-      return function.getResult();
-    }
+//    if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc){
+//      //TODO Optimization
+//      return function.getResult();
+//    }
 
     while (sequenceReader.hasNext()){
       PageHeader pageHeader = sequenceReader.nextPageHeader();

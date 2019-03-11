@@ -46,7 +46,7 @@ public class MeanAggrFunc extends AggregateFunction {
   public BatchData getResult() {
     if (cnt > 0) {
       resultData.putTime(0);
-      resultData.setDouble(0, sum / cnt);
+      resultData.putDouble( sum / cnt);
     }
     return resultData;
   }

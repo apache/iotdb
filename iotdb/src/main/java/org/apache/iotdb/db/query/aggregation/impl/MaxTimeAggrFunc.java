@@ -81,8 +81,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
     if (resultData.length() == 0) {
       if (time != -1) {
-        resultData.setTime(0, 0);
-        resultData.setAnObject(0, time);
+        resultData.putTime( 0);
+        resultData.putAnObject(time);
       }
     } else {
       //has set value
@@ -101,8 +101,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
     if (resultData.length() == 0) {
       if (pair != null) {
-        resultData.setTime(0, 0);
-        resultData.setAnObject(0, pair.getTimestamp());
+        resultData.putTime(0);
+        resultData.putAnObject( pair.getTimestamp());
       }
     } else {
       //has set value

@@ -79,7 +79,7 @@ public class CountAggrFunc extends AggregateFunction {
 
     if (dataInThisPage.hasNext()) {
       long preValue = resultData.getLong();
-      preValue += (resultData.length() - resultData.getCurIdx());
+      preValue += (dataInThisPage.length() - dataInThisPage.getCurIdx());
       resultData.setLong(0, preValue);
     }
   }

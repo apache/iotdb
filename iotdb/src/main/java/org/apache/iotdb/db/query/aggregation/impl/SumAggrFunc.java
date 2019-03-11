@@ -46,7 +46,8 @@ public class SumAggrFunc extends AggregateFunction {
 
   @Override
   public BatchData getResult() {
-    resultData.setDouble(0, sum);
+    resultData.putDouble( sum);
+    resultData.putTime(0);
     return resultData;
   }
 

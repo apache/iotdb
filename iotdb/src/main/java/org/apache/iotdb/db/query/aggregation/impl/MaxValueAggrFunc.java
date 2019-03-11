@@ -51,7 +51,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
     Comparable<Object> maxVal = (Comparable<Object>) pageHeader.getStatistics().getMax();
     if (resultData.length() == 0) {
       resultData.putTime(0);
-      resultData.setAnObject(0, maxVal);
+      resultData.putAnObject( maxVal);
     } else {
       if (maxVal.compareTo(resultData.currentValue()) > 0) {
         resultData.setAnObject(0, maxVal);
@@ -86,9 +86,8 @@ public class MaxValueAggrFunc extends AggregateFunction {
     }
 
     while (dataInThisPage.hasNext()) {
-      if (maxVal == null
-          || maxVal.compareTo(unsequenceReader.current().getValue().getValue()) < 0) {
-        maxVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
+      if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
+        maxVal = (Comparable<Object>) dataInThisPage.currentValue();
       }
       dataInThisPage.next();
     }
@@ -113,11 +112,11 @@ public class MaxValueAggrFunc extends AggregateFunction {
     if (resultData.length() == 0) {
       if (maxVal != null) {
         resultData.putTime(0);
-        resultData.setAnObject(0, maxVal);
+        resultData.putAnObject( maxVal);
       }
     } else {
       if (maxVal != null && maxVal.compareTo(resultData.currentValue()) > 0) {
-        resultData.setAnObject(0, maxVal);
+        resultData.setAnObject( 0, maxVal);
       }
     }
   }

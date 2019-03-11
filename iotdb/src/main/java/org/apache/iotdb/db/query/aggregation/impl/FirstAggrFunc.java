@@ -56,7 +56,7 @@ public class FirstAggrFunc extends AggregateFunction {
     if (firstVal == null) {
       throw new ProcessorException("PageHeader contains no FIRST value");
     }
-    resultData.setTime(0, 0);
+    resultData.putTime(0);
     resultData.putAnObject(firstVal);
   }
 
@@ -68,19 +68,19 @@ public class FirstAggrFunc extends AggregateFunction {
     }
     if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
-        resultData.setTime(0, 0);
+        resultData.putTime( 0);
         resultData.putAnObject(unsequenceReader.current().getValue().getValue());
         unsequenceReader.next();
         return;
       } else {
-        resultData.setTime(0, 0);
+        resultData.putTime( 0);
         resultData.putAnObject(dataInThisPage.currentValue());
         return;
       }
     }
 
     if (dataInThisPage.hasNext()) {
-      resultData.setTime(0, 0);
+      resultData.putTime( 0);
       resultData.putAnObject(dataInThisPage.currentValue());
       return;
     }
@@ -93,7 +93,7 @@ public class FirstAggrFunc extends AggregateFunction {
       return;
     }
     if (unsequenceReader.hasNext()) {
-      resultData.setTime(0, 0);
+      resultData.putTime( 0);
       resultData.putAnObject(unsequenceReader.current().getValue().getValue());
       return;
     }
