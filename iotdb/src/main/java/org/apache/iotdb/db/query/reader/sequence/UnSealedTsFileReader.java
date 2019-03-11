@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.UnsealedTsFile;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -45,21 +48,27 @@ public class UnSealedTsFileReader implements IBatchReader, IAggregateReader {
    *
    * @param unsealedTsFile -param to initial
    * @param filter -filter
+   * @param isReverse true-traverse chunks from behind forward; false-traverse chunks from front to
+   *        back;
    */
-  public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile, Filter filter) throws IOException {
+  public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile, Filter filter, boolean isReverse)
+      throws IOException {
 
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
         .get(unsealedTsFile.getFilePath(),
             false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
+    List<ChunkMetaData> metaDataList = unsealedTsFile.getChunkMetaDataList();
+    //reverse chunk metadata list if traversing chunks from behind forward
+    if (isReverse && metaDataList != null && !metaDataList.isEmpty()) {
+      Collections.reverse(metaDataList);
+    }
+
     if (filter == null) {
-      unSealedReader = new FileSeriesReaderWithoutFilter(chunkLoader,
-          unsealedTsFile.getChunkMetaDataList());
+      unSealedReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
     } else {
-      unSealedReader = new FileSeriesReaderWithFilter(chunkLoader,
-          unsealedTsFile.getChunkMetaDataList(),
-          filter);
+      unSealedReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
     }
   }
 

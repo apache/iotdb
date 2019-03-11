@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -50,27 +51,37 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
   private FileSeriesReader seriesReader;
   private Filter filter;
   private QueryContext context;
+  private boolean isReverse;
 
   /**
    * init with seriesPath, sealedTsFiles, filter, context.
+   *
+   * @param seriesPath path
+   * @param sealedTsFiles sealed file list
+   * @param filter null if no filter
+   * @param isReverse true-traverse chunks from behind forward, false-traverse chunks from front to
+   *        back.
    */
   public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles, Filter filter,
-      QueryContext context) {
-    this(seriesPath, sealedTsFiles, context);
+      QueryContext context, boolean isReverse) {
+    this(seriesPath, sealedTsFiles, context, isReverse);
     this.filter = filter;
-
   }
 
   /**
    * init with seriesPath and sealedTsFiles.
    */
   public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
-      QueryContext context) {
+      QueryContext context, boolean isReverse) {
+    if (isReverse) {
+      Collections.reverse(sealedTsFiles);
+    }
     this.seriesPath = seriesPath;
     this.sealedTsFiles = sealedTsFiles;
     this.usedIntervalFileIndex = 0;
     this.seriesReader = null;
     this.context = context;
+    this.isReverse = isReverse;
   }
 
   /**
@@ -136,6 +147,10 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
     }
 
     ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
+
+    if (isReverse) {
+      Collections.reverse(metaDataList);
+    }
 
     if (filter == null) {
       seriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);

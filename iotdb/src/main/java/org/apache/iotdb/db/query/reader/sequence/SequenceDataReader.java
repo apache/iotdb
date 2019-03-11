@@ -45,32 +45,64 @@ public class SequenceDataReader implements IBatchReader, IAggregateReader {
   private IAggregateReader currentSeriesReader;
 
   /**
-   * init with globalSortedSeriesDataSource and filter.
+   * init with globalSortedSeriesDataSource, filter, context and isReverse.
+   *
+   * @param sources data source
+   * @param filter null if no filter
+   * @param context query context
+   * @param isReverse true-traverse chunks from behind forward, false-traverse chunks from front to
+   *        back.
    */
   public SequenceDataReader(GlobalSortedSeriesDataSource sources, Filter filter,
-      QueryContext context)
-      throws IOException {
+      QueryContext context, boolean isReverse) throws IOException {
     seriesReaders = new ArrayList<>();
 
     curReaderInitialized = false;
     nextSeriesReaderIndex = 0;
 
-    // add reader for sealed TsFiles
-    if (sources.hasSealedTsFiles()) {
-      seriesReaders.add(
-          new SealedTsFilesReader(sources.getSeriesPath(), sources.getSealedTsFiles(), filter,
-              context));
-    }
+    if (isReverse) {
+      // add data in memTable
+      if (sources.hasRawSeriesChunk()) {
+        seriesReaders.add(new MemChunkReader(sources.getReadableChunk(), filter));
+      }
 
-    // add reader for unSealed TsFile
-    if (sources.hasUnsealedTsFile()) {
-      seriesReaders.add(new UnSealedTsFileReader(sources.getUnsealedTsFile(), filter));
-    }
+      // add reader for unSealed TsFile
+      if (sources.hasUnsealedTsFile()) {
+        seriesReaders.add(new UnSealedTsFileReader(sources.getUnsealedTsFile(), filter, isReverse));
+      }
 
-    // add data in memTable
-    if (sources.hasRawSeriesChunk()) {
-      seriesReaders.add(new MemChunkReader(sources.getReadableChunk(), filter));
+      // add reader for sealed TsFiles
+      if (sources.hasSealedTsFiles()) {
+        seriesReaders.add(
+            new SealedTsFilesReader(sources.getSeriesPath(), sources.getSealedTsFiles(), filter,
+                context, isReverse));
+      }
+    } else {
+      // add reader for sealed TsFiles
+      if (sources.hasSealedTsFiles()) {
+        seriesReaders.add(
+            new SealedTsFilesReader(sources.getSeriesPath(), sources.getSealedTsFiles(), filter,
+                context, isReverse));
+      }
+
+      // add reader for unSealed TsFile
+      if (sources.hasUnsealedTsFile()) {
+        seriesReaders.add(new UnSealedTsFileReader(sources.getUnsealedTsFile(), filter, isReverse));
+      }
+
+      // add data in memTable
+      if (sources.hasRawSeriesChunk()) {
+        seriesReaders.add(new MemChunkReader(sources.getReadableChunk(), filter));
+      }
     }
+  }
+
+  /**
+   * init with globalSortedSeriesDataSource, filter, context and isReverse.
+   */
+  public SequenceDataReader(GlobalSortedSeriesDataSource sources, Filter filter,
+      QueryContext context) throws IOException {
+    this(sources, filter, context, false);
   }
 
   @Override
