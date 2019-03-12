@@ -206,21 +206,9 @@ License Version 2.0:
 
 commons-cli:commons-cli
 commons-io:commons-io
-joda-time:joda-time
 org.apache.commons:commons-collections4
 org.apache.commons:commons-lang3
-org.apache.maven.wagon:wagon-provider-api
-org.apache.maven:maven-artifact
-org.apache.maven:maven-artifact-manager
-org.apache.maven:maven-model
-org.apache.maven:maven-plugin-api
-org.apache.maven:maven-profile
-org.apache.maven:maven-project
-org.apache.maven:Maven-repository-metadata
-org.apache.thrift:Libthrift
-org.codehaus.plexus:plexus-compiler-api
-org.codehaus.plexus:plexus-container-default
-org.codehaus.plexus:plexus-utils
+org.apache.thrift:libthrift
 org.xerial.snappy:snappy-java
 classworlds:classworlds
 
@@ -234,13 +222,11 @@ BSD 2-Clause
 ------------
 jline:jline
 org.hamcrest:hamcrest-core
+org.hamcrest:hamcrest-library
 
 BSD 3-Clause
 ------------
-org.antlr:antlr
 org.antlr:antlr-runtime
-org.antlr:ST4
-org.antlr:antlr3-maven-plugin
 
 MIT License
 -----------
