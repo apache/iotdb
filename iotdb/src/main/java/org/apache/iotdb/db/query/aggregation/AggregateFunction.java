@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.aggregation;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
@@ -36,6 +37,12 @@ public abstract class AggregateFunction {
   public TSDataType dataType;
   public boolean hasSetValue;
 
+  /**
+   * construct.
+   *
+   * @param name aggregate function name.
+   * @param dataType series data type.
+   */
   public AggregateFunction(String name, TSDataType dataType) {
     this.name = name;
     this.dataType = dataType;
@@ -83,9 +90,8 @@ public abstract class AggregateFunction {
    * @throws IOException TsFile data read error
    * @throws ProcessorException wrong aggregation method parameter
    */
-  public abstract boolean calcAggregationUsingTimestamps(EngineTimeGenerator timeGenerator,
-      EngineReaderByTimeStamp sequenceReader, EngineReaderByTimeStamp unsequenceReader)
-      throws IOException, ProcessorException;
+  public abstract void calcAggregationUsingTimestamps(List<Long> timestamps,
+      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException;
 
   /**
    * <p>

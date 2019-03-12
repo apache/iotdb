@@ -275,6 +275,7 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void lastAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,22222,55555"
@@ -307,6 +308,7 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void firstAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,99,180"
@@ -339,9 +341,10 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void sumAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
-        "0,99.0,379.0,28.88"
+        "0,22321.0,55934.0,1029"
     };
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
@@ -355,7 +358,7 @@ public class IoTDBAggregationSmallDataTestIT {
       int cnt = 0;
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
-            + "," + resultSet.getString(sum(d0s1)) + "," + resultSet.getString(sum(d0s2));
+            + "," + resultSet.getString(sum(d0s1)) + "," + Math.round(resultSet.getDouble(sum(d0s2)));
         //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
@@ -372,9 +375,10 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void meanAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
-        "0,99.0,189.5,7.22"
+        "0,11160.5,18645,206"
     };
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
@@ -388,7 +392,7 @@ public class IoTDBAggregationSmallDataTestIT {
       int cnt = 0;
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(mean(d0s0))
-            + "," + resultSet.getString(mean(d0s1)) + "," + resultSet.getString(mean(d0s2));
+            + "," + Math.round(resultSet.getDouble(mean(d0s1))) + "," + Math.round(resultSet.getDouble(mean(d0s2)));
         //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
@@ -405,9 +409,10 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void countAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
-        "0,1,2,4,1,0"
+        "0,2,3,5,1,0"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -440,6 +445,7 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void minTimeAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,104,1,2,101,100"
@@ -476,6 +482,7 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void maxTimeAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,105,105,105,102,100"
@@ -512,6 +519,7 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void minValueAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,90,180,2.22,ddddd,true"
@@ -549,6 +557,7 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void maxValueAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,99,50000,11.11,fffff,true"
@@ -585,6 +594,7 @@ public class IoTDBAggregationSmallDataTestIT {
     }
   }
 
+  @Test
   public void countAggreWithMultiMultiFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,2",

@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -68,19 +69,19 @@ public class FirstAggrFunc extends AggregateFunction {
     }
     if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
-        resultData.putTime( 0);
+        resultData.putTime(0);
         resultData.putAnObject(unsequenceReader.current().getValue().getValue());
         unsequenceReader.next();
         return;
       } else {
-        resultData.putTime( 0);
+        resultData.putTime(0);
         resultData.putAnObject(dataInThisPage.currentValue());
         return;
       }
     }
 
     if (dataInThisPage.hasNext()) {
-      resultData.putTime( 0);
+      resultData.putTime(0);
       resultData.putAnObject(dataInThisPage.currentValue());
       return;
     }
@@ -93,17 +94,27 @@ public class FirstAggrFunc extends AggregateFunction {
       return;
     }
     if (unsequenceReader.hasNext()) {
-      resultData.putTime( 0);
+      resultData.putTime(0);
       resultData.putAnObject(unsequenceReader.current().getValue().getValue());
       return;
     }
   }
 
   @Override
-  public boolean calcAggregationUsingTimestamps(EngineTimeGenerator timeGenerator,
-      EngineReaderByTimeStamp sequenceReader, EngineReaderByTimeStamp unsequenceReader)
-      throws IOException, ProcessorException {
-    return false;
+  public void calcAggregationUsingTimestamps(List<Long> timestamps,
+      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+    if (resultData.length() != 0) {
+      return;
+    }
+
+    for (long time : timestamps) {
+      TsPrimitiveType value = dataReader.getValueInTimestamp(time);
+      if (value != null) {
+        resultData.putTime(0);
+        resultData.putAnObject(value.getValue());
+        break;
+      }
+    }
   }
 
   @Override

@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -53,14 +54,7 @@ public class LastAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
     Object lastVal = pageHeader.getStatistics().getLast();
-    if (resultData.length() == 0) {
-      resultData.putTime(pageHeader.getMaxTimestamp());
-      resultData.putAnObject(lastVal);
-    } else {
-      if (resultData.currentTime() < pageHeader.getMaxTimestamp()) {
-        resultData.setAnObject(0, (Comparable<?>) lastVal);
-      }
-    }
+    updateLastResult(pageHeader.getMaxTimestamp(), lastVal);
   }
 
   @Override
@@ -85,17 +79,9 @@ public class LastAggrFunc extends AggregateFunction {
       }
     }
 
-    if (resultData.length() == 0) {
-      if (time != -1) {
-        resultData.putTime(time);
-        resultData.putAnObject(lastVal);
-      }
-    } else {
-      //has set value
-      if (time != -1 && time > resultData.currentTime()) {
-        resultData.setTime(0, time);
-        resultData.setAnObject(0, (Comparable<?>) lastVal);
-      }
+    //has inited lastVal and time in the batch(dataInThisPage).
+    if (time != -1) {
+      updateLastResult(time, lastVal);
     }
   }
 
@@ -106,25 +92,29 @@ public class LastAggrFunc extends AggregateFunction {
     while (unsequenceReader.hasNext()) {
       pair = unsequenceReader.next();
     }
-    if (resultData.length() == 0) {
-      if (pair != null) {
-        resultData.putAnObject(pair.getValue().getValue());
-        resultData.putTime( pair.getTimestamp());
-      }
-    } else {
-      if (pair != null && pair.getTimestamp() >= resultData.currentTime()) {
-        resultData.setAnObject(0, (Comparable<?>) pair.getValue().getValue());
-        resultData.setTime(0, pair.getTimestamp());
-      }
+
+    if (pair != null) {
+      updateLastResult(pair.getTimestamp(), pair.getValue().getValue());
     }
 
   }
 
   @Override
-  public boolean calcAggregationUsingTimestamps(EngineTimeGenerator timeGenerator,
-      EngineReaderByTimeStamp sequenceReader, EngineReaderByTimeStamp unsequenceReader)
-      throws IOException, ProcessorException {
-    return false;
+  public void calcAggregationUsingTimestamps(List<Long> timestamps,
+      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+
+    long time = -1;
+    Object lastVal = null;
+    for (int i = 0; i < timestamps.size(); i++) {
+      TsPrimitiveType value = dataReader.getValueInTimestamp(timestamps.get(i));
+      if (value != null) {
+        time = timestamps.get(i);
+        lastVal = value.getValue();
+      }
+    }
+    if(time != -1){
+      updateLastResult(-1, lastVal);
+    }
   }
 
   @Override
@@ -132,4 +122,17 @@ public class LastAggrFunc extends AggregateFunction {
       long intervalEnd, BatchData data) throws ProcessorException {
 
   }
+
+  private void updateLastResult(long time, Object value) {
+    if (resultData.length() == 0) {
+      resultData.putAnObject(value);
+      resultData.putTime(time);
+    } else {
+      if (time >= resultData.currentTime()) {
+        resultData.setAnObject(0, (Comparable<?>) value);
+        resultData.setTime(0, time);
+      }
+    }
+  }
+
 }

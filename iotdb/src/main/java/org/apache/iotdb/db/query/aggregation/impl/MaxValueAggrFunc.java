@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -108,6 +110,22 @@ public class MaxValueAggrFunc extends AggregateFunction {
     updateResult(maxVal);
   }
 
+  @Override
+  public void calcAggregationUsingTimestamps(List<Long> timestamps,
+      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+    Comparable<Object> maxVal = null;
+    for (long time : timestamps){
+      TsPrimitiveType value = dataReader.getValueInTimestamp(time);
+      if(value == null){
+        continue;
+      }
+      if(maxVal == null || maxVal.compareTo(value.getValue())<0){
+        maxVal = (Comparable<Object>) value.getValue();
+      }
+    }
+    updateResult(maxVal);
+  }
+
   private void updateResult(Comparable<Object> maxVal) {
     if (resultData.length() == 0) {
       if (maxVal != null) {
@@ -119,13 +137,6 @@ public class MaxValueAggrFunc extends AggregateFunction {
         resultData.setAnObject( 0, maxVal);
       }
     }
-  }
-
-  @Override
-  public boolean calcAggregationUsingTimestamps(EngineTimeGenerator timeGenerator,
-      EngineReaderByTimeStamp sequenceReader, EngineReaderByTimeStamp unsequenceReader)
-      throws IOException, ProcessorException {
-    return false;
   }
 
   @Override

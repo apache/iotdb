@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -34,9 +35,11 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class SumAggrFunc extends AggregateFunction {
 
   private double sum = 0.0;
+  private TSDataType seriesDataType;
 
-  public SumAggrFunc() {
+  public SumAggrFunc(TSDataType seriesDataType) {
     super(AggregationConstant.SUM, TSDataType.DOUBLE);
+    this.seriesDataType = seriesDataType;
   }
 
   @Override
@@ -46,7 +49,7 @@ public class SumAggrFunc extends AggregateFunction {
 
   @Override
   public BatchData getResult() {
-    resultData.putDouble( sum);
+    resultData.putDouble(sum);
     resultData.putTime(0);
     return resultData;
   }
@@ -59,7 +62,6 @@ public class SumAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException, ProcessorException {
-    TSDataType type = dataInThisPage.getDataType();
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       Object sumVal = null;
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
@@ -73,11 +75,11 @@ public class SumAggrFunc extends AggregateFunction {
         sumVal = unsequenceReader.current().getValue().getValue();
         unsequenceReader.next();
       }
-      updateSum(type, sumVal);
+      updateSum(seriesDataType, sumVal);
     }
 
     while (dataInThisPage.hasNext()) {
-      updateSum(type, dataInThisPage.currentValue());
+      updateSum(seriesDataType, dataInThisPage.currentValue());
       dataInThisPage.next();
     }
   }
@@ -106,21 +108,21 @@ public class SumAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
       throws IOException, ProcessorException {
-    TSDataType type = null;
-    if (unsequenceReader.hasNext()) {
-      type = unsequenceReader.current().getValue().getDataType();
-    }
     while (unsequenceReader.hasNext()) {
       TimeValuePair pair = unsequenceReader.next();
-      updateSum(type, pair.getValue().getValue());
+      updateSum(seriesDataType, pair.getValue().getValue());
     }
   }
 
   @Override
-  public boolean calcAggregationUsingTimestamps(EngineTimeGenerator timeGenerator,
-      EngineReaderByTimeStamp sequenceReader, EngineReaderByTimeStamp unsequenceReader)
-      throws IOException, ProcessorException {
-    return false;
+  public void calcAggregationUsingTimestamps(List<Long> timestamps,
+      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+    for (long time : timestamps) {
+      TsPrimitiveType value = dataReader.getValueInTimestamp(time);
+      if (value != null) {
+        updateSum(seriesDataType, value.getValue());
+      }
+    }
   }
 
   @Override

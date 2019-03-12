@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -36,9 +37,13 @@ import org.apache.iotdb.db.query.control.QueryDataSourceManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.dataset.AggregateDataSet;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
+import org.apache.iotdb.db.query.reader.AllDataReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
+import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -46,6 +51,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class AggregateEngineExecutor {
 
@@ -53,6 +59,11 @@ public class AggregateEngineExecutor {
   private List<Path> selectedSeries;
   private List<String> aggres;
   private IExpression expression;
+
+  /**
+   * aggregation batch calculation size.
+   **/
+  private int aggregateFetchSize = 10 * IoTDBDescriptor.getInstance().getConfig().fetchSize;
 
   /**
    * constructor.
@@ -67,12 +78,8 @@ public class AggregateEngineExecutor {
 
   /**
    * execute aggregate function with only time filter or no filter.
+   *
    * @param context query context
-   * @return
-   * @throws FileNodeManagerException
-   * @throws IOException
-   * @throws PathErrorException
-   * @throws ProcessorException
    */
   public AggregateDataSet executeWithOutTimeGenerator(QueryContext context)
       throws FileNodeManagerException, IOException, PathErrorException, ProcessorException {
@@ -219,8 +226,96 @@ public class AggregateEngineExecutor {
   }
 
 
-  public AggregateDataSet executeWithTimeGenerator(QueryContext context) {
-    return null;
+  /**
+   * execute aggregate function with value filter.
+   * @param context query context.
+   */
+  public AggregateDataSet executeWithTimeGenerator(QueryContext context)
+      throws FileNodeManagerException, PathErrorException, IOException, ProcessorException {
+    QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
+    QueryTokenManager.getInstance().beginQueryOfGivenExpression(jobId, expression);
+
+    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(jobId, expression, context);
+    List<EngineReaderByTimeStamp> readersOfSelectedSeries = getReadersOfSelectedPaths(
+        selectedSeries, context);
+
+    List<AggregateFunction> aggregateFunctions = new ArrayList<>();
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      TSDataType type = MManager.getInstance().getSeriesType(selectedSeries.get(i).getFullPath());
+      AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), type);
+      function.init();
+      aggregateFunctions.add(function);
+    }
+    List<BatchData> batchDatas = aggregateWithTimeGenerator(aggregateFunctions, timestampGenerator,
+        readersOfSelectedSeries);
+    return constructDataSet(batchDatas);
+  }
+
+  private List<BatchData> aggregateWithTimeGenerator(List<AggregateFunction> aggregateFunctions,
+      EngineTimeGenerator timestampGenerator,
+      List<EngineReaderByTimeStamp> readersOfSelectedSeries)
+      throws IOException, ProcessorException {
+
+    while (timestampGenerator.hasNext()) {
+
+      //generate timestamps for aggregate
+      List<Long> timestamps = new ArrayList<>(aggregateFetchSize);
+      for (int cnt = 0; cnt < aggregateFetchSize; cnt++) {
+        if (!timestampGenerator.hasNext()) {
+          break;
+        }
+        timestamps.add(timestampGenerator.next());
+      }
+
+      //cal part of aggregate result
+      for (int i = 0; i < readersOfSelectedSeries.size(); i++) {
+        aggregateFunctions.get(i)
+            .calcAggregationUsingTimestamps(timestamps, readersOfSelectedSeries.get(i));
+      }
+
+    }
+
+    List<BatchData> batchDataList = new ArrayList<>();
+    for (AggregateFunction function : aggregateFunctions) {
+      batchDataList.add(function.getResult());
+    }
+    return batchDataList;
+  }
+
+  private List<EngineReaderByTimeStamp> getReadersOfSelectedPaths(List<Path> paths,
+      QueryContext context)
+      throws IOException, FileNodeManagerException {
+
+    List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
+
+    for (Path path : paths) {
+
+      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
+          context);
+
+      PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
+
+      // reader for sequence data
+      SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
+          null, context);
+
+      // reader for unSequence data
+      PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
+          .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
+
+      if (tsFilesReader == null || !tsFilesReader.hasNext()) {
+        mergeReaderByTimestamp
+            .addReaderWithPriority(unSeqMergeReader, PriorityMergeReader.HIGH_PRIORITY);
+      } else {
+        mergeReaderByTimestamp
+            .addReaderWithPriority(new AllDataReader(tsFilesReader, unSeqMergeReader),
+                PriorityMergeReader.HIGH_PRIORITY);
+      }
+
+      readersOfSelectedSeries.add(mergeReaderByTimestamp);
+    }
+
+    return readersOfSelectedSeries;
   }
 
   private AggregateDataSet constructDataSet(List<BatchData> batchDataList) throws IOException {

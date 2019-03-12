@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -109,24 +110,33 @@ public class MinValueAggrFunc extends AggregateFunction {
     updateResult(minVal);
   }
 
+  @Override
+  public void calcAggregationUsingTimestamps(List<Long> timestamps,
+      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+    Comparable<Object> minVal = null;
+    for (long time : timestamps) {
+      TsPrimitiveType value = dataReader.getValueInTimestamp(time);
+      if(value == null){
+        continue;
+      }
+      if (minVal == null || minVal.compareTo(value.getValue()) > 0) {
+        minVal = (Comparable<Object>) value.getValue();
+      }
+    }
+    updateResult(minVal);
+  }
+
   private void updateResult(Comparable<Object> minVal) {
     if (resultData.length() == 0) {
       if (minVal != null) {
         resultData.putTime(0);
-        resultData.putAnObject( minVal);
+        resultData.putAnObject(minVal);
       }
     } else {
       if (minVal != null && minVal.compareTo(resultData.currentValue()) < 0) {
         resultData.setAnObject(0, minVal);
       }
     }
-  }
-
-  @Override
-  public boolean calcAggregationUsingTimestamps(EngineTimeGenerator timeGenerator,
-      EngineReaderByTimeStamp sequenceReader, EngineReaderByTimeStamp unsequenceReader)
-      throws IOException, ProcessorException {
-    return false;
   }
 
   @Override

@@ -20,13 +20,14 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -81,7 +82,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
     if (resultData.length() == 0) {
       if (time != -1) {
-        resultData.putTime( 0);
+        resultData.putTime(0);
         resultData.putAnObject(time);
       }
     } else {
@@ -102,7 +103,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     if (resultData.length() == 0) {
       if (pair != null) {
         resultData.putTime(0);
-        resultData.putAnObject( pair.getTimestamp());
+        resultData.putAnObject(pair.getTimestamp());
       }
     } else {
       //has set value
@@ -113,10 +114,28 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public boolean calcAggregationUsingTimestamps(EngineTimeGenerator timeGenerator,
-      EngineReaderByTimeStamp sequenceReader, EngineReaderByTimeStamp unsequenceReader)
-      throws IOException, ProcessorException {
-    return false;
+  public void calcAggregationUsingTimestamps(List<Long> timestamps,
+      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+    long time = -1;
+    for (int i = 0; i < timestamps.size(); i++) {
+      TsPrimitiveType value = dataReader.getValueInTimestamp(timestamps.get(i));
+      if (value != null) {
+        time = timestamps.get(i);
+      }
+    }
+
+    if(time == -1){
+      return;
+    }
+
+    if (resultData.length() == 0) {
+      resultData.putTime(0);
+      resultData.putLong(time);
+    } else {
+      if(resultData.getLong() < time){
+        resultData.setLong(0, time);
+      }
+    }
   }
 
   @Override
