@@ -227,8 +227,8 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
     long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();
     long middleOffsetOfChunkGroup = (startOffsetOfChunkGroup + endOffsetOfChunkGroup) / 2;
-    if (partitionStartOffset < middleOffsetOfChunkGroup
-        && middleOffsetOfChunkGroup <= partitionEndOffset) {
+    if (partitionStartOffset <= middleOffsetOfChunkGroup
+        && middleOffsetOfChunkGroup < partitionEndOffset) {
       return true;
     } else {
       return false;
