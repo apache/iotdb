@@ -218,3 +218,49 @@ iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseDriver.java
 iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseError.java
 iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseException.java
 iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseUtils.java
+
+
+------------------------------------------------------------------------------------
+This project bundles some components that are also licensed under the Apache
+License Version 2.0:
+
+commons-cli:commons-cli
+commons-io:commons-io
+org.apache.commons:commons-collections4
+org.apache.commons:commons-lang3
+org.apache.thrift:libthrift
+org.xerial.snappy:snappy-java
+classworlds:classworlds
+
+------------------------------------------------------------------------------------
+This product bundles various third-party components under other open source licenses.
+This section summarizes those components and their licenses. See licenses/
+for text of these licenses.
+
+
+BSD 2-Clause
+------------
+jline:jline
+org.hamcrest:hamcrest-core
+org.hamcrest:hamcrest-library
+
+BSD 3-Clause
+------------
+org.antlr:antlr-runtime
+
+MIT License
+-----------
+org.slf4j:slf4j-api
+
+JSON License
+-----------
+org.json:json http://www.JSON.org/
+
+EPL 1.0 / LGPL 2.1
+-----------
+ch.qio.logback:logback-classic
+ch.qio.logback:logback-core
+
+EPL 2.0
+-----------
+junit:junit
