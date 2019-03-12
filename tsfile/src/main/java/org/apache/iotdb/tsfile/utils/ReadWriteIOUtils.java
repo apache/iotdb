@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.CharacterCodingException;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSFreqType;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 /**
  * ConverterUtils is a utility class. It provide conversion between normal datatype and byte array.
@@ -540,14 +540,14 @@ public class ReadWriteIOUtils {
   /**
    * read bytes from buffer with offset position to the end of buffer.
    */
-  public static int readAsPossible(FileChannel channel, long position, ByteBuffer buffer)
+  public static int readAsPossible(TsFileInput input, long position, ByteBuffer buffer)
       throws IOException {
     int length = 0;
     int read;
-    while (buffer.hasRemaining() && (read = channel.read(buffer, position)) != -1) {
+    while (buffer.hasRemaining() && (read = input.read(buffer, position)) != -1) {
       length += read;
       position += read;
-      channel.read(buffer, position);
+      input.read(buffer, position);
     }
     return length;
   }
@@ -555,37 +555,19 @@ public class ReadWriteIOUtils {
   /**
    * read util to the end of buffer.
    */
-  public static int readAsPossible(FileChannel channel, ByteBuffer buffer) throws IOException {
+  public static int readAsPossible(TsFileInput input, ByteBuffer buffer) throws IOException {
     int length = 0;
     int read;
-    while (buffer.hasRemaining() && (read = channel.read(buffer)) != -1) {
+    while (buffer.hasRemaining() && (read = input.read(buffer)) != -1) {
       length += read;
     }
-    return length;
-  }
-
-  /**
-   * read util to the end of buffer or up to len.
-   */
-  public static int readAsPossible(FileChannel channel, ByteBuffer buffer, int len)
-      throws IOException {
-    int length = 0;
-    int limit = buffer.limit();
-    if (buffer.remaining() > len) {
-      buffer.limit(buffer.position() + len);
-    }
-    int read;
-    while (length < len && buffer.hasRemaining() && (read = channel.read(buffer)) != -1) {
-      length += read;
-    }
-    buffer.limit(limit);
     return length;
   }
 
   /**
    * read bytes from buffer with offset position to the end of buffer or up to len.
    */
-  public static int readAsPossible(FileChannel channel, ByteBuffer target, long offset, int len)
+  public static int readAsPossible(TsFileInput input, ByteBuffer target, long offset, int len)
       throws IOException {
     int length = 0;
     int limit = target.limit();
@@ -593,7 +575,7 @@ public class ReadWriteIOUtils {
       target.limit(target.position() + len);
     }
     int read;
-    while (length < len && target.hasRemaining() && (read = channel.read(target, offset)) != -1) {
+    while (length < len && target.hasRemaining() && (read = input.read(target, offset)) != -1) {
       length += read;
       offset += read;
     }

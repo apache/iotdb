@@ -136,7 +136,7 @@
         <module>iotdb-cli</module>
         <module>example</module>
         <!-- <module>hadoop</module> -->
-        <!-- <module>spark</module> -->
+        <module>spark</module>
     </modules>
     <build>
         <pluginManagement>

@@ -69,6 +69,11 @@
             <version>3.0.0</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+            <version>4.1.17.Final</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

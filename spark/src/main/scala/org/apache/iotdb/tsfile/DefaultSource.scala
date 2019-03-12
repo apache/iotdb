@@ -1,28 +1,45 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
+  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+  *
+  * Licensed to the Apache Software Foundation (ASF) under one
+  * or more contributor license agreements.  See the NOTICE file
+  * distributed with this work for additional information
+  * regarding copyright ownership.  The ASF licenses this file
+  * to you under the Apache License, Version 2.0 (the
+  * "License"); you may not use this file except in compliance
+  * with the License.  You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 
 package org.apache.iotdb.tsfile
 
 import java.io.{ObjectInputStream, ObjectOutputStream, _}
 import java.net.URI
-import java.util
 
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileStatus, Path}
+import org.apache.hadoop.mapreduce.Job
+import org.apache.iotdb.tsfile.DefaultSource.SerializableConfiguration
+import org.apache.iotdb.tsfile.common.constant.QueryConstant
+import org.apache.iotdb.tsfile.io.HDFSInput
+import org.apache.iotdb.tsfile.read.common.Field
+import org.apache.iotdb.tsfile.read.{ReadOnlyTsFile, TsFileSequenceReader}
+import org.apache.spark.TaskContext
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
+import org.apache.spark.sql.catalyst.expressions.GenericRow
+import org.apache.spark.sql.execution.datasources.{FileFormat, OutputWriterFactory, PartitionedFile}
+import org.apache.spark.sql.sources.{DataSourceRegister, Filter}
+import org.apache.spark.sql.types._
+import org.slf4j.LoggerFactory
 
 private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
@@ -43,26 +60,13 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
     //get union series in TsFile
     val tsfileSchema = Converter.getUnionSeries(files, conf)
 
-    DefaultSource.columnNames.clear()
-
-    //unfold delta_object
-    if (options.contains(SQLConstant.DELTA_OBJECT_NAME)) {
-      val columns = options(SQLConstant.DELTA_OBJECT_NAME).split(SQLConstant.REGEX_PATH_SEPARATOR)
-      columns.foreach(f => {
-        DefaultSource.columnNames += f
-      })
-    } else {
-      //using delta_object
-      DefaultSource.columnNames += SQLConstant.RESERVED_DELTA_OBJECT
-    }
-
-    Converter.toSqlSchema(tsfileSchema, DefaultSource.columnNames)
+    Converter.toSqlSchema(tsfileSchema)
   }
 
   override def isSplitable(
                             sparkSession: SparkSession,
                             options: Map[String, String],
-                            path: Path): Boolean = {
+                            path: org.apache.hadoop.fs.Path): Boolean = {
     true
   }
 
@@ -77,12 +81,14 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
     val broadcastedConf =
       sparkSession.sparkContext.broadcast(new SerializableConfiguration(hadoopConf))
 
-    (file: PartitionedFile) => {
+    (file: PartitionedFile) => { // TODO files priority queue
       val log = LoggerFactory.getLogger(classOf[DefaultSource])
       log.info(file.toString())
 
       val conf = broadcastedConf.value.value
-      val in = new HDFSInputStream(new Path(new URI(file.filePath)), conf)
+      val in = new HDFSInput(new Path(new URI(file.filePath)), conf)
+
+      val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
 
       Option(TaskContext.get()).foreach { taskContext => {
         taskContext.addTaskCompletionListener { _ => in.close() }
@@ -90,44 +96,40 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
       }
 
-      val parameters = new util.HashMap[java.lang.String, java.lang.Long]()
-      parameters.put(QueryConstant.PARTITION_START_OFFSET, file.start.asInstanceOf[java.lang.Long])
-      parameters.put(QueryConstant.PARTITION_END_OFFSET, (file.start + file.length).asInstanceOf[java.lang.Long])
+      val params = new java.util.HashMap[java.lang.String, java.lang.Long]()
+      params.put(QueryConstant.PARTITION_START_OFFSET, file.start.asInstanceOf[java.lang.Long])
+      params.put(QueryConstant.PARTITION_END_OFFSET, (file.start + file.length).asInstanceOf[java.lang.Long])
 
-      //convert tsfile query to QueryConfigs
-      val queryConfigs = Converter.toQueryConfigs(in, requiredSchema, filters, DefaultSource.columnNames,
-        file.start.asInstanceOf[java.lang.Long], (file.start + file.length).asInstanceOf[java.lang.Long])
+      val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader, params)
 
-      //use QueryConfigs to query data in tsfile
-      val dataSets = Executor.query(in, queryConfigs.toList, parameters)
-
-      case class Record(record: RowRecord, index: Int)
-
-      implicit object RowRecordOrdering extends Ordering[Record] {
-        override def compare(r1: Record, r2: Record): Int = {
-          if (r1.record.timestamp == r2.record.timestamp) {
-            r1.record.getFields.get(0).deltaObjectId.compareTo(r2.record.getFields.get(0).deltaObjectId)
-          } else if (r1.record.timestamp < r2.record.timestamp) {
-            1
-          } else {
-            -1
+      // get queriedSchema from requiredSchema
+      var queriedSchema: StructType = new StructType()
+      val tsFileMetaData = reader.readFileMetadata
+      if (requiredSchema.isEmpty
+        || (requiredSchema.size == 1 && requiredSchema.iterator.next().name == QueryConstant.RESERVED_TIME)) {
+        /*
+          e.g., select count(*) from table; select time from table
+         */
+        val fileSchema = Converter.getSeries(tsFileMetaData)
+        queriedSchema = Converter.toQueriedSchema(fileSchema)
+      } else {
+        // remove nonexistent schema according to the current file's metadata
+        val devices = tsFileMetaData.getDeviceMap.keySet()
+        val measurementIds = tsFileMetaData.getMeasurementSchema.keySet()
+        requiredSchema.foreach(f => {
+          if (!QueryConstant.RESERVED_TIME.equals(f.name)) {
+            val path = new org.apache.iotdb.tsfile.read.common.Path(f.name)
+            if (devices.contains(path.getDevice) && measurementIds.contains(path.getMeasurement)) {
+              queriedSchema = queriedSchema.add(f)
+            }
           }
-        }
+        })
       }
 
-      val priorityQueue = new mutable.PriorityQueue[Record]()
+      //convert filters to queryExpression
+      val queryExpression = Converter.toQueryExpression(queriedSchema, filters)
 
-      //init priorityQueue with first record of each dataSet
-      var queryDataSet: QueryDataSet = null
-      for (i <- 0 until dataSets.size()) {
-        queryDataSet = dataSets(i)
-        if (queryDataSet.hasNextRecord) {
-          val rowRecord = queryDataSet.getNextRecord
-          priorityQueue.enqueue(Record(rowRecord, i))
-        }
-      }
-
-      var curRecord: Record = null
+      val queryDataSet = readTsFile.query(queryExpression)
 
       new Iterator[InternalRow] {
         private val rowBuffer = Array.fill[Any](requiredSchema.length)(null)
@@ -137,49 +139,25 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
         // Used to convert `Row`s containing data columns into `InternalRow`s.
         private val encoderForDataColumns = RowEncoder(requiredSchema)
 
-        private var deltaObjectId = "null"
-
         override def hasNext: Boolean = {
-          var hasNext = false
-
-          while (priorityQueue.nonEmpty && !hasNext) {
-            //get a record from priorityQueue
-            val tmpRecord = priorityQueue.dequeue()
-            //insert a record to priorityQueue
-            if (dataSets(tmpRecord.index).hasNextRecord) {
-              priorityQueue.enqueue(Record(dataSets(tmpRecord.index).getNextRecord, tmpRecord.index))
-            }
-
-            if (curRecord == null || tmpRecord.record.timestamp != curRecord.record.timestamp ||
-              !tmpRecord.record.getFields.get(0).deltaObjectId.equals(curRecord.record.getFields.get(0).deltaObjectId)) {
-              curRecord = tmpRecord
-              deltaObjectId = curRecord.record.getFields.get(0).deltaObjectId
-              hasNext = true
-            }
-          }
-
+          val hasNext = queryDataSet.hasNext
           hasNext
         }
 
         override def next(): InternalRow = {
 
+          val curRecord = queryDataSet.next()
           val fields = new scala.collection.mutable.HashMap[String, Field]()
-          for (i <- 0 until curRecord.record.fields.size()) {
-            val field = curRecord.record.fields.get(i)
-            fields.put(field.measurementId, field)
+          for (i <- 0 until curRecord.getFields.size()) {
+            val field = curRecord.getFields.get(i)
+            fields.put(queryDataSet.getPaths.get(i).getFullPath, field)
           }
 
           //index in one required row
           var index = 0
           requiredSchema.foreach((field: StructField) => {
-            if (field.name == SQLConstant.RESERVED_TIME) {
-              rowBuffer(index) = curRecord.record.timestamp
-            } else if (field.name == SQLConstant.RESERVED_DELTA_OBJECT) {
-              rowBuffer(index) = deltaObjectId
-            } else if (DefaultSource.columnNames.contains(field.name)) {
-              val columnIndex = DefaultSource.columnNames.indexOf(field.name)
-              val columns = deltaObjectId.split(SQLConstant.REGEX_PATH_SEPARATOR)
-              rowBuffer(index) = columns(columnIndex)
+            if (field.name == QueryConstant.RESERVED_TIME) {
+              rowBuffer(index) = curRecord.getTimestamp
             } else {
               rowBuffer(index) = Converter.toSqlValue(fields.getOrElse(field.name, null))
             }
@@ -198,20 +176,8 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
                             job: Job,
                             options: Map[String, String],
                             dataSchema: StructType): OutputWriterFactory = {
-    DefaultSource.columnNames.clear()
 
-    //unfold delta_object
-    if (options.contains(SQLConstant.DELTA_OBJECT_NAME)) {
-      val columns = options(SQLConstant.DELTA_OBJECT_NAME).split(SQLConstant.REGEX_PATH_SEPARATOR)
-      columns.foreach(f => {
-        DefaultSource.columnNames += f
-      })
-    } else {
-      //using delta_object
-      DefaultSource.columnNames += SQLConstant.RESERVED_DELTA_OBJECT
-    }
-
-    new TsFileWriterFactory(options, DefaultSource.columnNames)
+    new TsFileWriterFactory(options)
   }
 
   class TSFileDataSourceException(message: String, cause: Throwable)
@@ -224,7 +190,6 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
 private[tsfile] object DefaultSource {
   val path = "path"
-  val columnNames = new ArrayBuffer[String]()
 
   class SerializableConfiguration(@transient var value: Configuration) extends Serializable {
     private def writeObject(out: ObjectOutputStream): Unit = {

@@ -72,6 +72,30 @@ public class TsFileSequenceReader {
   }
 
   /**
+   * Create a file reader of the given file. The reader will read the tail of the file to get the
+   * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.length() bytes
+   * of the file for preparing reading real data.
+   *
+   * @param input given input
+   */
+  public TsFileSequenceReader(TsFileInput input) throws IOException {
+    this(input, true);
+  }
+
+  /**
+   * construct function for TsFileSequenceReader.
+   *
+   * @param input -given input
+   * @param loadMetadataSize -load meta data size
+   */
+  public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize) throws IOException {
+    this.tsFileInput = input;
+    if (loadMetadataSize) {
+      loadMetadataSize();
+    }
+  }
+
+  /**
    * construct function for TsFileSequenceReader.
    *
    * @param input the input of a tsfile. The current position should be a markder and then a chunk
@@ -178,7 +202,7 @@ public class TsFileSequenceReader {
    */
   public ChunkGroupFooter readChunkGroupFooter(long position, boolean markerRead)
       throws IOException {
-    return ChunkGroupFooter.deserializeFrom(tsFileInput.wrapAsFileChannel(), position, markerRead);
+    return ChunkGroupFooter.deserializeFrom(tsFileInput, position, markerRead);
   }
 
   /**
@@ -211,7 +235,7 @@ public class TsFileSequenceReader {
    * @param markerRead true if the offset does not contains the marker , otherwise false
    */
   private ChunkHeader readChunkHeader(long position, boolean markerRead) throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsFileChannel(), position, markerRead);
+    return ChunkHeader.deserializeFrom(tsFileInput, position, markerRead);
   }
 
   /**
@@ -275,7 +299,7 @@ public class TsFileSequenceReader {
    * @param markerRead true if the offset does not contains the marker , otherwise false
    */
   private PageHeader readPageHeader(TSDataType dataType, long position, boolean markerRead) throws IOException {
-    return PageHeader.deserializeFrom(dataType, tsFileInput.wrapAsFileChannel(), position, markerRead);
+    return PageHeader.deserializeFrom(dataType, tsFileInput, position, markerRead);
   }
 
   public long position() throws IOException {
@@ -324,7 +348,7 @@ public class TsFileSequenceReader {
    */
   public byte readMarker() throws IOException {
     markerBuffer.clear();
-    if (ReadWriteIOUtils.readAsPossible(tsFileInput.wrapAsFileChannel(), markerBuffer) == 0) {
+    if (ReadWriteIOUtils.readAsPossible(tsFileInput, markerBuffer) == 0) {
       throw new IOException("reach the end of the file.");
     }
     markerBuffer.flip();
@@ -361,11 +385,11 @@ public class TsFileSequenceReader {
   private ByteBuffer readData(long position, int size) throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(size);
     if (position == -1) {
-      if (ReadWriteIOUtils.readAsPossible(tsFileInput.wrapAsFileChannel(), buffer) != size) {
+      if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) != size) {
         throw new IOException("reach the end of the data");
       }
     } else {
-      if (ReadWriteIOUtils.readAsPossible(tsFileInput.wrapAsFileChannel(), buffer, position, size) != size) {
+      if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer, position, size) != size) {
         throw new IOException("reach the end of the data");
       }
     }
@@ -378,7 +402,7 @@ public class TsFileSequenceReader {
    */
   public int readRaw(long position, int length, ByteBuffer target) throws IOException {
     return ReadWriteIOUtils
-        .readAsPossible(tsFileInput.wrapAsFileChannel(), target, position, length);
+        .readAsPossible(tsFileInput, target, position, length);
   }
 
 }
