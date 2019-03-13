@@ -256,10 +256,10 @@ org.slf4j:slf4j-api
 org.mockito:mockito-all:1.10.19
 
 
-EPL 1.0 / LGPL 2.1
+EPL 1.0
 -----------
-ch.qio.logback:logback-classic:1.1.11
-ch.qio.logback:logback-core:1.1.11
+ch.qos.logback:logback-classic:1.1.11
+ch.qos.logback:logback-core:1.1.11
 
 
 EPL 2.0
