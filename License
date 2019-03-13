@@ -252,10 +252,6 @@ MIT License
 -----------
 org.slf4j:slf4j-api
 
-JSON License
------------
-org.json:json http://www.JSON.org/
-
 EPL 1.0 / LGPL 2.1
 -----------
 ch.qio.logback:logback-classic
