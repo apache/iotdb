@@ -51,17 +51,10 @@
             <artifactId>snappy-java</artifactId>
             <version>1.0.5-M1</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>${common.io.version}</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/io.netty/netty-buffer -->
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-buffer</artifactId>
-            <version>4.1.25.Final</version>
         </dependency>
     </dependencies>
     <build>
