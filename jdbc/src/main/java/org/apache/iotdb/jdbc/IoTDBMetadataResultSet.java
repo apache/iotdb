@@ -75,11 +75,6 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   @Override
-  public void close() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED);
-  }
-
-  @Override
   public int findColumn(String columnName) throws SQLException {
     throw new SQLException(METHOD_NOT_SUPPORTED);
   }
