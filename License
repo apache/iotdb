@@ -201,10 +201,14 @@
    limitations under the License.
 
 
-------------------------------------------------------------------------------------
-This product bundles various third-party components under other open source licenses.
-This section summarizes those components and their licenses.
+================================================================
+APACHE IOTDB SUBCOMPONENTS:
 
+Apache IoTDB project includes a number of submodules with separate copyright notices
+and license terms. Your use of these submodules is subject to the terms and
+conditions of the following licenses.
+
+================================================================
 
 Apache Software Foundation License 2.0
 --------------------------------------
@@ -218,22 +222,20 @@ iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseError.java
 iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseException.java
 iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseUtils.java
 
+================================================================
 
-------------------------------------------------------------------------------------
-This project bundles some components that are also licensed under the Apache
-License Version 2.0:
+The binary distribution of this product bundles these dependencies under the
+following license. See licenses/ for text of these licenses.:
 
-commons-cli:commons-cli
-commons-io:commons-io
-org.apache.commons:commons-collections4
-org.apache.commons:commons-lang3
-org.apache.thrift:libthrift
-org.xerial.snappy:snappy-java
-
-------------------------------------------------------------------------------------
-This product bundles various third-party components under other open source licenses.
-This section summarizes those components and their licenses. See licenses-binary/
-for text of these licenses.
+Apache Software Foundation License 2.0
+--------------------------------------
+commons-cli:commons-cli:1.3.1
+commons-io:commons-io:2.5
+org.apache.commons:commons-collections4:4.0
+org.apache.commons:commons-lang3:3.1
+org.apache.thrift:libthrift:0.9.3
+org.xerial.snappy:snappy-java:1.0.5-M1
+com.alibaba:fastjson:1.2.31
 
 
 BSD 2-Clause
@@ -242,18 +244,22 @@ jline:jline
 org.hamcrest:hamcrest-core
 org.hamcrest:hamcrest-library
 
+
 BSD 3-Clause
 ------------
 org.antlr:antlr-runtime
+
 
 MIT License
 -----------
 org.slf4j:slf4j-api
 
+
 EPL 1.0 / LGPL 2.1
 -----------
 ch.qio.logback:logback-classic
 ch.qio.logback:logback-core
+
 
 EPL 2.0
 -----------
