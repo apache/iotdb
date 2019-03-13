@@ -61,7 +61,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private List<byte[]> logCache = new ArrayList<>(config.flushWalThreshold);
+  private List<byte[]> logCache = new ArrayList<>(config.getFlushWalThreshold());
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -77,7 +77,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public ExclusiveWriteLogNode(String identifier, String restoreFilePath,
                                String processorStoreFilePath) {
     this.identifier = identifier;
-    this.logDirectory = config.walFolder + File.separator + this.identifier;
+    this.logDirectory = config.getWalFolder() + File.separator + this.identifier;
     new File(logDirectory).mkdirs();
 
     recoverPerformer = new ExclusiveLogRecoverPerformer(restoreFilePath, processorStoreFilePath,
@@ -99,7 +99,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       byte[] logBytes = PhysicalPlanLogTransfer.operatorToLog(plan);
       logCache.add(logBytes);
 
-      if (logCache.size() >= config.flushWalThreshold) {
+      if (logCache.size() >= config.getFlushWalThreshold()) {
         sync();
       }
     } finally {

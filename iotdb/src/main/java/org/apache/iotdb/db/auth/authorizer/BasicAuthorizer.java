@@ -101,10 +101,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (IoTDBConstant.ADMIN_NAME.equals(username)) {
       throw new AuthException("Invalid operation, administrator must have all privileges");
     }
+    String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      path = IoTDBConstant.PATH_ROOT;
+      p = IoTDBConstant.PATH_ROOT;
     }
-    return userManager.revokePrivilegeFromUser(username, path, privilegeId);
+    return userManager.revokePrivilegeFromUser(username, p, privilegeId);
   }
 
   @Override
@@ -136,19 +137,21 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean grantPrivilegeToRole(String roleName, String path, int privilegeId)
       throws AuthException {
+    String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      path = IoTDBConstant.PATH_ROOT;
+      p = IoTDBConstant.PATH_ROOT;
     }
-    return roleManager.grantPrivilegeToRole(roleName, path, privilegeId);
+    return roleManager.grantPrivilegeToRole(roleName, p, privilegeId);
   }
 
   @Override
   public boolean revokePrivilegeFromRole(String roleName, String path, int privilegeId)
       throws AuthException {
+    String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      path = IoTDBConstant.PATH_ROOT;
+      p = IoTDBConstant.PATH_ROOT;
     }
-    return roleManager.revokePrivilegeFromRole(roleName, path, privilegeId);
+    return roleManager.revokePrivilegeFromRole(roleName, p, privilegeId);
   }
 
   @Override

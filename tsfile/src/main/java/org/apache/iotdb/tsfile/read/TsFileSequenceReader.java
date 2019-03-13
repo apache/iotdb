@@ -122,8 +122,23 @@ public class TsFileSequenceReader {
    * this function does not modify the position of the file reader.
    */
   public String readHeadMagic() throws IOException {
+    return readHeadMagic(false);
+  }
+
+  /**
+   * this function does not modify the position of the file reader.
+   *
+   * @param movePosition whether move the position of the file reader after reading the magic header
+   * to the end of the magic head string.
+   */
+  public String readHeadMagic(boolean movePosition) throws IOException {
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
-    tsFileInput.read(magicStringBytes, 0);
+    if (movePosition) {
+      tsFileInput.position(0);
+      tsFileInput.read(magicStringBytes);
+    } else {
+      tsFileInput.read(magicStringBytes, 0);
+    }
     magicStringBytes.flip();
     return new String(magicStringBytes.array());
   }
@@ -267,6 +282,22 @@ public class TsFileSequenceReader {
     return tsFileInput.position();
   }
 
+  public void skipPageData(PageHeader header) throws IOException {
+    tsFileInput.position(tsFileInput.position() + header.getCompressedSize());
+  }
+
+  /**
+   *
+   * @param header
+   * @param position
+   * @return
+   * @throws IOException
+   */
+  public long skipPageData(PageHeader header, long position) throws IOException {
+    return position + header.getCompressedSize();
+  }
+
+
   public ByteBuffer readPage(PageHeader header, CompressionType type) throws IOException {
     return readPage(header, type, -1);
   }
@@ -293,7 +324,9 @@ public class TsFileSequenceReader {
    */
   public byte readMarker() throws IOException {
     markerBuffer.clear();
-    ReadWriteIOUtils.readAsPossible(tsFileInput.wrapAsFileChannel(), markerBuffer);
+    if (ReadWriteIOUtils.readAsPossible(tsFileInput.wrapAsFileChannel(), markerBuffer) == 0) {
+      throw new IOException("reach the end of the file.");
+    }
     markerBuffer.flip();
     return markerBuffer.get();
   }
@@ -310,6 +343,10 @@ public class TsFileSequenceReader {
     return this.file;
   }
 
+  public long fileSize() throws IOException {
+    return tsFileInput.size();
+  }
+
   /**
    * read data from tsFileInput, from the current position (if position = -1), or the given
    * position. <br> if position = -1, the tsFileInput's position will be changed to the current
@@ -324,9 +361,13 @@ public class TsFileSequenceReader {
   private ByteBuffer readData(long position, int size) throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(size);
     if (position == -1) {
-      ReadWriteIOUtils.readAsPossible(tsFileInput.wrapAsFileChannel(), buffer);
+      if (ReadWriteIOUtils.readAsPossible(tsFileInput.wrapAsFileChannel(), buffer) != size) {
+        throw new IOException("reach the end of the data");
+      }
     } else {
-      ReadWriteIOUtils.readAsPossible(tsFileInput.wrapAsFileChannel(), buffer, position, size);
+      if (ReadWriteIOUtils.readAsPossible(tsFileInput.wrapAsFileChannel(), buffer, position, size) != size) {
+        throw new IOException("reach the end of the data");
+      }
     }
     buffer.flip();
     return buffer;
@@ -339,4 +380,5 @@ public class TsFileSequenceReader {
     return ReadWriteIOUtils
         .readAsPossible(tsFileInput.wrapAsFileChannel(), target, position, length);
   }
+
 }

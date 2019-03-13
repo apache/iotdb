@@ -73,8 +73,8 @@ public class OverflowProcessor extends Processor {
   private OverflowResource workResource;
   private OverflowResource mergeResource;
 
-  private OverflowSupport workSupport;
-  private OverflowSupport flushSupport;
+  private OverflowMemtable workSupport;
+  private OverflowMemtable flushSupport;
 
   private volatile Future<Boolean> flushFuture = new ImmediateFuture<>(true);
   private volatile boolean isMerge;
@@ -100,7 +100,7 @@ public class OverflowProcessor extends Processor {
     super(processorName);
     this.fileSchema = fileSchema;
     this.versionController = versionController;
-    String overflowDirPath = TsFileDBConf.overflowDataDir;
+    String overflowDirPath = TsFileDBConf.getOverflowDataDir();
     if (overflowDirPath.length() > 0
         && overflowDirPath.charAt(overflowDirPath.length() - 1) != File.separatorChar) {
       overflowDirPath = overflowDirPath + File.separatorChar;
@@ -113,12 +113,12 @@ public class OverflowProcessor extends Processor {
     // recover file
     recovery(processorDataDir);
     // memory
-    workSupport = new OverflowSupport();
+    workSupport = new OverflowMemtable();
     overflowFlushAction = parameters.get(FileNodeConstants.OVERFLOW_FLUSH_ACTION);
     filenodeFlushAction = parameters
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
 
-    if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       logNode = MultiFileLogNodeManager.getInstance().getNode(
           processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX,
           getOverflowRestoreFile(),
@@ -380,7 +380,7 @@ public class OverflowProcessor extends Processor {
     queryFlushLock.lock();
     try {
       flushSupport = workSupport;
-      workSupport = new OverflowSupport();
+      workSupport = new OverflowMemtable();
     } finally {
       queryFlushLock.unlock();
     }
@@ -438,7 +438,7 @@ public class OverflowProcessor extends Processor {
               getProcessorName());
       filenodeFlushAction.act();
       // write-ahead log
-      if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode.notifyEndFlush(null);
       }
       result = true;
@@ -504,7 +504,7 @@ public class OverflowProcessor extends Processor {
         throw new IOException(e);
       }
 
-      if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
           logNode.notifyStartFlush();
         } catch (IOException e) {
@@ -605,15 +605,15 @@ public class OverflowProcessor extends Processor {
         "The overflow processor {}, the size of metadata reaches {},"
             + " the size of file reaches {}.",
         getProcessorName(), MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
-    if (metaSize >= config.overflowMetaSizeThreshold
-        || fileSize >= config.overflowFileSizeThreshold) {
+    if (metaSize >= config.getOverflowMetaSizeThreshold()
+        || fileSize >= config.getOverflowFileSizeThreshold()) {
       LOGGER.info(
           "The overflow processor {}, size({}) of the file {} reaches threshold {},"
               + " size({}) of metadata reaches threshold {}.",
           getProcessorName(), MemUtils.bytesCntToStr(fileSize), workResource.getInsertFilePath(),
-          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold),
+          MemUtils.bytesCntToStr(config.getOverflowMetaSizeThreshold()),
           MemUtils.bytesCntToStr(metaSize),
-          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold));
+          MemUtils.bytesCntToStr(config.getOverflowMetaSizeThreshold()));
       return true;
     } else {
       return false;
@@ -656,8 +656,7 @@ public class OverflowProcessor extends Processor {
             Objects.equals(filenodeFlushAction, that.filenodeFlushAction) &&
             Objects.equals(fileSchema, that.fileSchema) &&
             Objects.equals(memSize, that.memSize) &&
-            Objects.equals(logNode, that.logNode) &&
-            Objects.equals(flushFuture, that.flushFuture);
+            Objects.equals(logNode, that.logNode);
   }
 
   @Override

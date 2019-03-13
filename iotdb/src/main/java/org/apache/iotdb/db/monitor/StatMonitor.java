@@ -75,10 +75,10 @@ public class StatMonitor implements IService {
     MManager mmanager = MManager.getInstance();
     statisticMap = new HashMap<>();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    statMonitorDetectFreqSec = config.statMonitorDetectFreqSec;
-    statMonitorRetainIntervalSec = config.statMonitorRetainIntervalSec;
-    backLoopPeriod = config.backLoopPeriodSec;
-    if (config.enableStatMonitor) {
+    statMonitorDetectFreqSec = config.getStatMonitorDetectFreqSec();
+    statMonitorRetainIntervalSec = config.getStatMonitorRetainIntervalSec();
+    backLoopPeriod = config.getBackLoopPeriodSec();
+    if (config.isEnableStatMonitor()) {
       try {
         String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
         if (!mmanager.pathExist(prefix)) {
@@ -289,7 +289,7 @@ public class StatMonitor implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().enableStatMonitor) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         activate();
       }
     } catch (Exception e) {
@@ -302,7 +302,7 @@ public class StatMonitor implements IService {
 
   @Override
   public void stop() {
-    if (IoTDBDescriptor.getInstance().getConfig().enableStatMonitor) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
       close();
     }
   }

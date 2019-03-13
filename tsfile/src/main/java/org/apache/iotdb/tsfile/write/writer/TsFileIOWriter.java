@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +68,7 @@ public class TsFileIOWriter {
   protected List<ChunkGroupMetaData> chunkGroupMetaDataList = new ArrayList<>();
   private ChunkGroupMetaData currentChunkGroupMetaData;
   private ChunkMetaData currentChunkMetaData;
+  protected boolean canWrite = true;
 
   /**
    * empty construct function.
@@ -236,6 +238,7 @@ public class TsFileIOWriter {
 
     // close file
     out.close();
+    canWrite = false;
     LOG.info("output stream is closed");
   }
 
@@ -315,4 +318,29 @@ public class TsFileIOWriter {
     return chunkGroupMetaDataList;
   }
 
+  public boolean canWrite() {
+    return canWrite;
+  }
+
+  /**
+   * close the inputstream or file channel in force. This is just used for Testing.
+   */
+  void forceClose() throws IOException {
+    out.close();
+  }
+
+  void writeSeparatorMaskForTest() throws IOException {
+    out.write(new byte[]{MetaMarker.SEPARATOR});
+  }
+  void writeChunkMaskForTest() throws IOException {
+    out.write(new byte[]{MetaMarker.CHUNK_HEADER});
+  }
+
+  /**
+   * @return all Schema that this ioWriter know. By default implementation (TsFileIOWriter.class),
+   * it is empty
+   */
+  public Map<String, MeasurementSchema> getKnownSchema() {
+    return Collections.emptyMap();
+  }
 }

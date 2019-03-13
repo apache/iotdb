@@ -20,12 +20,17 @@ package org.apache.iotdb.db.writelog.io;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Iterator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-public interface ILogReader extends Iterator<PhysicalPlan> {
+public interface ILogReader {
 
   void open(File file) throws FileNotFoundException;
 
   void close();
+
+  boolean hasNext() throws IOException;
+
+  PhysicalPlan next() throws IOException;
 }

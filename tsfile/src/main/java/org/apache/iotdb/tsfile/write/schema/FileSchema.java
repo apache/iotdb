@@ -104,7 +104,7 @@ public class FileSchema {
   /**
    * register all measurementSchemas in measurements.
    */
-  private void registerMeasurements(Map<String, MeasurementSchema> measurements) {
+  public void registerMeasurements(Map<String, MeasurementSchema> measurements) {
     measurements.forEach((id, md) -> registerMeasurement(md));
   }
 

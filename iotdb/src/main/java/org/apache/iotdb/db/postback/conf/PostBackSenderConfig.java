@@ -31,13 +31,13 @@ public class PostBackSenderConfig {
   private String[] iotdbBufferwriteDirectory = IoTDBDescriptor.getInstance().getConfig()
       .getBufferWriteDirs();
   private String dataDirectory =
-      new File(IoTDBDescriptor.getInstance().getConfig().dataDir).getAbsolutePath()
+      new File(IoTDBDescriptor.getInstance().getConfig().getDataDir()).getAbsolutePath()
           + File.separator;
   private String uuidPath;
   private String lastFileInfo;
   private String[] snapshotPaths;
   private String schemaPath =
-      new File(IoTDBDescriptor.getInstance().getConfig().metadataDir).getAbsolutePath()
+      new File(IoTDBDescriptor.getInstance().getConfig().getMetadataDir()).getAbsolutePath()
           + File.separator + "mlog.txt";
   private String serverIp = "127.0.0.1";
   private int serverPort = 5555;

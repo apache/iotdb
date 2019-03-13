@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -46,7 +46,7 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
 
   private Path seriesPath;
-  private List<IntervalFileNode> sealedTsFiles;
+  private List<TsFileResource> sealedTsFiles;
   private int usedIntervalFileIndex;
   private FileSeriesReader seriesReader;
   private Filter filter;
@@ -62,7 +62,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
    * @param isReverse true-traverse chunks from behind forward, false-traverse chunks from front to
    *        back.
    */
-  public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles, Filter filter,
+  public SealedTsFilesReader(Path seriesPath, List<TsFileResource> sealedTsFiles, Filter filter,
       QueryContext context, boolean isReverse) {
     this(seriesPath, sealedTsFiles, context, isReverse);
     this.filter = filter;
@@ -71,7 +71,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
   /**
    * init with seriesPath and sealedTsFiles.
    */
-  public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
+  public SealedTsFilesReader(Path seriesPath, List<TsFileResource> sealedTsFiles,
       QueryContext context, boolean isReverse) {
     if (isReverse) {
       Collections.reverse(sealedTsFiles);
@@ -104,7 +104,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
     // init until reach a satisfied reader
     while (usedIntervalFileIndex < sealedTsFiles.size()) {
       // try to get next batch data from next reader
-      IntervalFileNode fileNode = sealedTsFiles.get(usedIntervalFileIndex++);
+      TsFileResource fileNode = sealedTsFiles.get(usedIntervalFileIndex++);
       if (singleTsFileSatisfied(fileNode)) {
         initSingleTsFileReader(fileNode, context);
       } else {
@@ -119,7 +119,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
     return false;
   }
 
-  private boolean singleTsFileSatisfied(IntervalFileNode fileNode) {
+  private boolean singleTsFileSatisfied(TsFileResource fileNode) {
 
     if (filter == null) {
       return true;
@@ -130,7 +130,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
     return filter.satisfyStartEndTime(startTime, endTime);
   }
 
-  private void initSingleTsFileReader(IntervalFileNode fileNode, QueryContext context)
+  private void initSingleTsFileReader(TsFileResource fileNode, QueryContext context)
       throws IOException {
 
     // to avoid too many opened files

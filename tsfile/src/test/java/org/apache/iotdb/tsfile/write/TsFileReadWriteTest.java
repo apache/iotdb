@@ -50,28 +50,27 @@ public class TsFileReadWriteTest {
   private final double delta = 0.0000001;
   private String path = "read_write_rle.tsfile";
   private File f;
-  private TsFileWriter tsFileWriter;
 
   @Before
   public void setUp() throws Exception {
     f = new File(path);
     if (f.exists()) {
-      f.delete();
+      assertTrue(f.delete());
     }
-    tsFileWriter = new TsFileWriter(f);
   }
 
   @After
   public void tearDown() throws Exception {
     f = new File(path);
     if (f.exists()) {
-      f.delete();
+      assertTrue(f.delete());;
     }
   }
 
   @Test
   public void intTest() throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
     // add measurements into file schema
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
@@ -110,6 +109,7 @@ public class TsFileReadWriteTest {
   public void longTest() throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
     for (long i = 1; i < floatCount; i++) {
@@ -147,6 +147,7 @@ public class TsFileReadWriteTest {
   public void floatTest() throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
     for (long i = 1; i < floatCount; i++) {
@@ -185,6 +186,7 @@ public class TsFileReadWriteTest {
   public void doubleTest() throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.DOUBLE, TSEncoding.RLE));
     for (long i = 1; i < floatCount; i++) {
@@ -220,13 +222,7 @@ public class TsFileReadWriteTest {
 
   @Test
   public void readEmptyMeasurementTest() throws IOException, WriteProcessException {
-    String path = "test.tsfile";
-    File f = new File(path);
-    if (f.exists()) {
-      assertTrue(f.delete());
-    }
     TsFileWriter tsFileWriter = new TsFileWriter(f);
-
     // add measurements into file schema
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));

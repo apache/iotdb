@@ -17,21 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.version;
+package org.apache.iotdb.db.exception;
 
-import org.junit.Test;
+public class SysCheckException extends Exception {
 
-import static org.junit.Assert.assertTrue;
+  public SysCheckException() {
+  }
 
-public class SysTimeVersionControllerTest {
+  public SysCheckException(String message) {
+    super(message);
+  }
 
-  @Test
-  public void test() {
-    VersionController versionController = SysTimeVersionController.INSTANCE;
-    long diff = versionController.currVersion() - System.currentTimeMillis();
-    // TODO these comparisons can fail in very rare conditions, how to fix?
-    assertTrue(diff >= -2 && diff <= 2);
-    diff = versionController.nextVersion() - System.currentTimeMillis();
-    assertTrue(diff >= -2 && diff <= 2);
+  public SysCheckException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public SysCheckException(Throwable cause) {
+    super(cause);
   }
 }

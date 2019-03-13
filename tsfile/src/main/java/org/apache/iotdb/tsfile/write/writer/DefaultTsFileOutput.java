@@ -31,10 +31,14 @@ import java.nio.ByteBuffer;
  */
 public class DefaultTsFileOutput implements TsFileOutput {
 
-  FileOutputStream outputStream;
+  private FileOutputStream outputStream;
 
   public DefaultTsFileOutput(File file) throws FileNotFoundException {
     this.outputStream = new FileOutputStream(file);
+  }
+
+  public DefaultTsFileOutput(File file, boolean append) throws FileNotFoundException {
+    this.outputStream = new FileOutputStream(file, append);
   }
 
   public DefaultTsFileOutput(FileOutputStream outputStream) {

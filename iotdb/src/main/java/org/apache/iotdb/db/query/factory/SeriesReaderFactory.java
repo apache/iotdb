@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.factory;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
@@ -127,7 +127,7 @@ public class SeriesReaderFactory {
    * This method is used to construct reader for merge process in IoTDB. To merge only one TsFile
    * data and one UnSeqFile data.
    */
-  public IReader createSeriesReaderForMerge(IntervalFileNode intervalFileNode,
+  public IReader createSeriesReaderForMerge(TsFileResource tsFileResource,
       OverflowSeriesDataSource overflowSeriesDataSource,
       SingleSeriesExpression singleSeriesExpression,
       QueryContext context)
@@ -135,10 +135,10 @@ public class SeriesReaderFactory {
 
     logger.debug("Create seriesReaders for merge. SeriesFilter = {}. TsFilePath = {}",
         singleSeriesExpression,
-        intervalFileNode.getFilePath());
+        tsFileResource.getFilePath());
 
     // Sequence reader
-    IBatchReader seriesInTsFileReader = createSealedTsFileReaderForMerge(intervalFileNode,
+    IBatchReader seriesInTsFileReader = createSealedTsFileReaderForMerge(tsFileResource,
         singleSeriesExpression, context);
 
     // UnSequence merge reader
@@ -154,7 +154,7 @@ public class SeriesReaderFactory {
 
   }
 
-  private IBatchReader createSealedTsFileReaderForMerge(IntervalFileNode fileNode,
+  private IBatchReader createSealedTsFileReaderForMerge(TsFileResource fileNode,
       SingleSeriesExpression singleSeriesExpression,
       QueryContext context)
       throws IOException {

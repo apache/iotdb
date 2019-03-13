@@ -27,7 +27,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -95,7 +94,7 @@ public class IoTDB implements IoTDBMBean {
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored
     // Warn: registMonitor() method should be called after systemDataRecovery()
-    if (IoTDBDescriptor.getInstance().getConfig().enableStatMonitor) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
       StatMonitor.getInstance().recovery();
     }
 
@@ -164,10 +163,10 @@ public class IoTDB implements IoTDBMBean {
       }
     }
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    boolean enableWal = config.enableWal;
-    config.enableWal = false;
+    boolean enableWal = config.isEnableWal();
+    config.setEnableWal(false);
     writeLogManager.recover();
-    config.enableWal = enableWal;
+    config.setEnableWal(enableWal);
   }
 
   private static class IoTDBHolder {

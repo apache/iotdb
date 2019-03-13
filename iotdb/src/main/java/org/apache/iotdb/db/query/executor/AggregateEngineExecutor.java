@@ -63,7 +63,7 @@ public class AggregateEngineExecutor {
   /**
    * aggregation batch calculation size.
    **/
-  private int aggregateFetchSize = 10 * IoTDBDescriptor.getInstance().getConfig().fetchSize;
+  private int aggregateFetchSize;
 
   /**
    * constructor.
@@ -74,6 +74,7 @@ public class AggregateEngineExecutor {
     this.selectedSeries = selectedSeries;
     this.aggres = aggres;
     this.expression = expression;
+    this.aggregateFetchSize = 10 * IoTDBDescriptor.getInstance().getConfig().getFetchSize();
   }
 
   /**

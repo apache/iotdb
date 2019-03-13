@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 /**
  * This class is used to store one bufferwrite file status.<br>
  */
-public class IntervalFileNode implements Serializable {
+public class TsFileResource implements Serializable {
 
   private static final long serialVersionUID = -4309683416067212549L;
 
@@ -45,7 +45,7 @@ public class IntervalFileNode implements Serializable {
 
   private transient ModificationFile modFile;
 
-  public IntervalFileNode(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
+  public TsFileResource(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
                           OverflowChangeType type, int baseDirIndex, String relativePath) {
 
     this.overflowChangeType = type;
@@ -65,7 +65,7 @@ public class IntervalFileNode implements Serializable {
    * @param type         whether this file is affected by overflow and how it is affected.
    * @param relativePath the path of the file relative to the FileNode.
    */
-  public IntervalFileNode(OverflowChangeType type, int baseDirIndex, String relativePath) {
+  public TsFileResource(OverflowChangeType type, int baseDirIndex, String relativePath) {
 
     this.overflowChangeType = type;
     this.baseDirIndex = baseDirIndex;
@@ -78,7 +78,7 @@ public class IntervalFileNode implements Serializable {
             + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
-  public IntervalFileNode(OverflowChangeType type, String baseDir, String relativePath) {
+  public TsFileResource(OverflowChangeType type, String baseDir, String relativePath) {
 
     this.overflowChangeType = type;
     this.baseDirIndex = Directories.getInstance().getTsFileFolderIndex(baseDir);
@@ -91,7 +91,7 @@ public class IntervalFileNode implements Serializable {
             + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
-  public IntervalFileNode(OverflowChangeType type, String relativePath) {
+  public TsFileResource(OverflowChangeType type, String relativePath) {
 
     this(type, 0, relativePath);
   }
@@ -220,11 +220,11 @@ public class IntervalFileNode implements Serializable {
 
   }
 
-  public IntervalFileNode backUp() {
+  public TsFileResource backUp() {
 
     Map<String, Long> startTimeMapCopy = new HashMap<>(this.startTimeMap);
     Map<String, Long> endTimeMapCopy = new HashMap<>(this.endTimeMap);
-    return new IntervalFileNode(startTimeMapCopy, endTimeMapCopy, overflowChangeType,
+    return new TsFileResource(startTimeMapCopy, endTimeMapCopy, overflowChangeType,
             baseDirIndex, relativePath);
   }
 
@@ -244,7 +244,7 @@ public class IntervalFileNode implements Serializable {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    IntervalFileNode fileNode = (IntervalFileNode) o;
+    TsFileResource fileNode = (TsFileResource) o;
     return baseDirIndex == fileNode.baseDirIndex &&
             overflowChangeType == fileNode.overflowChangeType &&
             Objects.equals(relativePath, fileNode.relativePath) &&
@@ -257,7 +257,7 @@ public class IntervalFileNode implements Serializable {
   public String toString() {
 
     return String.format(
-            "IntervalFileNode [relativePath=%s,overflowChangeType=%s, startTimeMap=%s,"
+            "TsFileResource [relativePath=%s,overflowChangeType=%s, startTimeMap=%s,"
                     + " endTimeMap=%s, mergeChanged=%s]",
             relativePath, overflowChangeType, startTimeMap, endTimeMap, mergeChanged);
   }
