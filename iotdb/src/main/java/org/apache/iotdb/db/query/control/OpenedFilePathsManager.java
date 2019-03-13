@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.control;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 
@@ -66,8 +66,8 @@ public class OpenedFilePathsManager {
    * Add the unique file paths to closedFilePathsMap and unclosedFilePathsMap.
    */
   public void addUsedFilesForCurrentRequestThread(long jobId, QueryDataSource dataSource) {
-    for (IntervalFileNode intervalFileNode : dataSource.getSeqDataSource().getSealedTsFiles()) {
-      String sealedFilePath = intervalFileNode.getFilePath();
+    for (TsFileResource tsFileResource : dataSource.getSeqDataSource().getSealedTsFiles()) {
+      String sealedFilePath = tsFileResource.getFilePath();
       addFilePathToMap(jobId, sealedFilePath, true);
     }
 

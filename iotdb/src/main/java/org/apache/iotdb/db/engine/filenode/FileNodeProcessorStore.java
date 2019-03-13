@@ -26,7 +26,7 @@ import java.util.Map;
 /**
  * FileNodeProcessorStore is used to store information about FileNodeProcessor's status.
  * lastUpdateTime is changed and stored by BufferWrite flush or BufferWrite close.
- * emptyIntervalFileNode and newFileNodes are changed and stored by Overflow flush and
+ * emptyTsFileResource and newFileNodes are changed and stored by Overflow flush and
  * Overflow close. fileNodeProcessorState is changed and stored by the change of FileNodeProcessor's
  * status such as "work->merge merge->wait wait->work". numOfMergeFile is changed
  * and stored when FileNodeProcessor's status changes from work to merge.
@@ -39,8 +39,8 @@ public class FileNodeProcessorStore implements Serializable {
 
   private boolean isOverflowed;
   private Map<String, Long> lastUpdateTimeMap;
-  private IntervalFileNode emptyIntervalFileNode;
-  private List<IntervalFileNode> newFileNodes;
+  private TsFileResource emptyTsFileResource;
+  private List<TsFileResource> newFileNodes;
   private int numOfMergeFile;
   private FileNodeProcessorStatus fileNodeProcessorStatus;
 
@@ -48,19 +48,19 @@ public class FileNodeProcessorStore implements Serializable {
    * Constructor of FileNodeProcessorStore.
    * @param isOverflowed whether this FileNode contains unmerged Overflow operations.
    * @param lastUpdateTimeMap the timestamp of last data point of each device in this FileNode.
-   * @param emptyIntervalFileNode a place holder when the FileNode contains no TsFile.
+   * @param emptyTsFileResource a place holder when the FileNode contains no TsFile.
    * @param newFileNodes TsFiles in the FileNode.
    * @param fileNodeProcessorStatus the status of the FileNode.
    * @param numOfMergeFile the number of files already merged in one merge operation.
    */
   public FileNodeProcessorStore(boolean isOverflowed, Map<String, Long> lastUpdateTimeMap,
-      IntervalFileNode emptyIntervalFileNode,
-      List<IntervalFileNode> newFileNodes,
+      TsFileResource emptyTsFileResource,
+      List<TsFileResource> newFileNodes,
       FileNodeProcessorStatus fileNodeProcessorStatus,
       int numOfMergeFile) {
     this.isOverflowed = isOverflowed;
     this.lastUpdateTimeMap = lastUpdateTimeMap;
-    this.emptyIntervalFileNode = emptyIntervalFileNode;
+    this.emptyTsFileResource = emptyTsFileResource;
     this.newFileNodes = newFileNodes;
     this.fileNodeProcessorStatus = fileNodeProcessorStatus;
     this.numOfMergeFile = numOfMergeFile;
@@ -90,19 +90,19 @@ public class FileNodeProcessorStore implements Serializable {
     this.lastUpdateTimeMap = lastUpdateTimeMap;
   }
 
-  public IntervalFileNode getEmptyIntervalFileNode() {
-    return emptyIntervalFileNode;
+  public TsFileResource getEmptyTsFileResource() {
+    return emptyTsFileResource;
   }
 
-  public void setEmptyIntervalFileNode(IntervalFileNode emptyIntervalFileNode) {
-    this.emptyIntervalFileNode = emptyIntervalFileNode;
+  public void setEmptyTsFileResource(TsFileResource emptyTsFileResource) {
+    this.emptyTsFileResource = emptyTsFileResource;
   }
 
-  public List<IntervalFileNode> getNewFileNodes() {
+  public List<TsFileResource> getNewFileNodes() {
     return newFileNodes;
   }
 
-  public void setNewFileNodes(List<IntervalFileNode> newFileNodes) {
+  public void setNewFileNodes(List<TsFileResource> newFileNodes) {
     this.newFileNodes = newFileNodes;
   }
 

@@ -28,9 +28,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class OverflowSupportTest {
+public class OverflowMemtableTest {
 
-  private OverflowSupport support = new OverflowSupport();
+  private OverflowMemtable support = new OverflowMemtable();
   private String deviceId1 = "d1";
   private String deviceId2 = "d2";
   private String measurementId1 = "s1";
