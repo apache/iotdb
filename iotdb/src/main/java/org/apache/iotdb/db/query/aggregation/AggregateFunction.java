@@ -35,7 +35,6 @@ public abstract class AggregateFunction {
   public String name;
   public BatchData resultData;
   public TSDataType dataType;
-  public boolean hasSetValue;
 
   /**
    * construct.
@@ -46,7 +45,6 @@ public abstract class AggregateFunction {
   public AggregateFunction(String name, TSDataType dataType) {
     this.name = name;
     this.dataType = dataType;
-    this.hasSetValue = false;
     resultData = new BatchData(dataType, true, true);
   }
 
