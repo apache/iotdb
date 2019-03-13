@@ -23,6 +23,9 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -32,8 +35,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -203,13 +204,13 @@ public class FileGenerator {
     s7.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
 
     JSONArray measureGroup1 = new JSONArray();
-    measureGroup1.put(s1);
-    measureGroup1.put(s2);
-    measureGroup1.put(s3);
-    measureGroup1.put(s4);
-    measureGroup1.put(s5);
-    measureGroup1.put(s6);
-    measureGroup1.put(s7);
+    measureGroup1.add(s1);
+    measureGroup1.add(s2);
+    measureGroup1.add(s3);
+    measureGroup1.add(s4);
+    measureGroup1.add(s5);
+    measureGroup1.add(s6);
+    measureGroup1.add(s7);
 
     JSONObject jsonSchema = new JSONObject();
     jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");

@@ -203,8 +203,7 @@
 
 ------------------------------------------------------------------------------------
 This product bundles various third-party components under other open source licenses.
-This section summarizes those components and their licenses. See licenses/
-for text of these licenses.
+This section summarizes those components and their licenses.
 
 
 Apache Software Foundation License 2.0
@@ -230,7 +229,6 @@ org.apache.commons:commons-collections4
 org.apache.commons:commons-lang3
 org.apache.thrift:libthrift
 org.xerial.snappy:snappy-java
-classworlds:classworlds
 
 ------------------------------------------------------------------------------------
 This product bundles various third-party components under other open source licenses.

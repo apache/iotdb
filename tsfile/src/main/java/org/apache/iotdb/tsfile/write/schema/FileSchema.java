@@ -20,9 +20,10 @@ package org.apache.iotdb.tsfile.write.schema;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.exception.write.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.json.JSONObject;
 
 /**
  * FileSchema stores the schema of the measurements and devices that exist in this file. All
