@@ -288,8 +288,8 @@ public class TimeRange implements Comparable<TimeRange> {
 
   // NOTE the primitive timeRange is always a closed interval [min,max] and
   // only in getRemains functions do we consider leftClose and rightClose.
-  private boolean leftClose = true;
-  private boolean rightClose = false;
+  private boolean leftClose = true; // default true
+  private boolean rightClose = true; // default true
 
   public void setLeftClose(boolean leftClose) {
     this.leftClose = leftClose;
