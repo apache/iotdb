@@ -225,7 +225,7 @@ iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseUtils.java
 ================================================================
 
 The binary distribution of this product bundles these dependencies under the
-following license. See licenses-binary/ for text of these licenses.
+following license. See licenses/ for text of these licenses.
 
 Apache Software Foundation License 2.0
 --------------------------------------
