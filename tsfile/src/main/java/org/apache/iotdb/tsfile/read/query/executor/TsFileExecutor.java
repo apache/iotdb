@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.read.query.executor;
@@ -26,10 +22,13 @@ import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
+import org.apache.iotdb.tsfile.read.controller.MetadataQuerier.LoadMode;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator;
@@ -51,8 +50,69 @@ public class TsFileExecutor implements QueryExecutor {
 
   @Override
   public QueryDataSet execute(QueryExpression queryExpression) throws IOException {
+    LoadMode mode = metadataQuerier.getLoadMode();
+    if (mode == LoadMode.PrevPartition) {
+      throw new IOException("BeforePartition mode should not appear herein.");
+    }
 
-    metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
+    if (metadataQuerier.getLoadMode() == LoadMode.InPartition) {
+
+      // get the sorted union covered time ranges of chunkGroups in the current partition
+      ArrayList<TimeRange> timeRangesIn = metadataQuerier
+          .getTimeRangeInOrPrev(queryExpression.getSelectedSeries(), LoadMode.InPartition);
+
+      // check if null
+      if (timeRangesIn.size() == 0) {
+        return new DataSetWithoutTimeGenerator(new ArrayList<Path>(), new ArrayList<TSDataType>(),
+            new ArrayList<FileSeriesReader>()); //TODO how to return empty QueryDataSet
+      }
+
+      // get the sorted union covered time ranges of chunkGroups before the current partition
+      ArrayList<TimeRange> timeRangesPrev = metadataQuerier
+          .getTimeRangeInOrPrev(queryExpression.getSelectedSeries(), LoadMode.PrevPartition);
+
+      // calculate remaining time range
+      // Note that the primitive timeRange produced by getTimeRangeInOrPrev are all closed intervals.
+      ArrayList<TimeRange> timeRangesRemains = new ArrayList<>();
+      for (TimeRange in : timeRangesIn) {
+        ArrayList<TimeRange> remains = in.getRemains(timeRangesPrev);
+        timeRangesRemains.addAll(remains);
+      }
+
+      // check if null
+      //TODO
+      if (timeRangesRemains.size() == 0) {
+        return new DataSetWithoutTimeGenerator(new ArrayList<Path>(), new ArrayList<TSDataType>(),
+            new ArrayList<FileSeriesReader>()); //TODO how to return empty QueryDataSet
+      }
+
+      // add an additional global time filter based on the left time range
+      // TODO get global time filter from timeRangesRemains
+      IExpression timeBound = timeRangesRemains.get(0).getExpression();
+      for (int i = 1; i < timeRangesRemains.size(); i++) {
+        timeBound = BinaryExpression
+            .and(timeBound, timeRangesRemains.get(i).getExpression()); // TODO 检查正确性
+      }
+
+      if (queryExpression.hasQueryFilter()) {
+        IExpression timeBoundExpression = BinaryExpression
+            .and(queryExpression.getExpression(), timeBound); //TODO
+        queryExpression.setExpression(timeBoundExpression);
+      } else {
+        queryExpression.setExpression(timeBound);
+      }
+
+      // without partition constraints, get all chunkMetaData which overlap with the left time range
+      // TODO 如果这里用的是所有的 而不限制在一定要与left time range有交集会怎么样？这和一开始就知道全部的metadata和全部的时间段查询有区别吗
+      // TODO 如果我知道全部的metadata信息和partition处理局限过的时间过滤信息，tsfile会优化查询吗？
+      // TODO 也就是说时间过滤条件能不能影响到查询的效率，更小的时间范围会不会查询的时候更快
+      metadataQuerier.setLoadMode(LoadMode.NoPartition); //TODO
+      metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
+
+
+    } else { // NoPartition mode
+      metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
+    }
 
     if (queryExpression.hasQueryFilter()) {
       try {
@@ -104,14 +164,12 @@ public class TsFileExecutor implements QueryExecutor {
   }
 
   /**
-   *
    * @param selectedPathList completed path
    * @param timeFilter a GlobalTimeExpression or null
    * @return DataSetWithoutTimeGenerator
-   * @throws IOException
-   * @throws NoMeasurementException
    */
-  private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList, GlobalTimeExpression timeFilter)
+  private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList,
+      GlobalTimeExpression timeFilter)
       throws IOException, NoMeasurementException {
     List<FileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();

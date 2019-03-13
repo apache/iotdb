@@ -1,27 +1,25 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class MetadataQuerierByFileImpl implements MetadataQuerier {
@@ -49,9 +48,18 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
   private TsFileSequenceReader tsFileReader;
 
-  private boolean partitionMode = false;
-  private long partitionStartOffset;
-  private long partitionEndOffset;
+  private LoadMode mode;
+
+  private long partitionStartOffset = 0L;
+  private long partitionEndOffset = 0L;
+
+  public LoadMode getLoadMode() {
+    return mode;
+  }
+
+  public void setLoadMode(LoadMode mode) {
+    this.mode = mode;
+  }
 
   /**
    * Constructor of MetadataQuerierByFileImpl.
@@ -59,7 +67,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader) throws IOException {
     this.tsFileReader = tsFileReader;
     this.fileMetaData = tsFileReader.readFileMetadata();
-    this.partitionMode = false;
+    this.mode = LoadMode.NoPartition;
     chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
       @Override
       public List<ChunkMetaData> loadObjectByKey(Path key) throws IOException {
@@ -81,7 +89,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
       throw new IllegalArgumentException(
           "Input parameters miss partition_start_offset or partition_end_offset");
     }
-    this.partitionMode = true;
+    this.mode = LoadMode.InPartition;
     this.partitionStartOffset = params.get(QueryConstant.PARTITION_START_OFFSET);
     this.partitionEndOffset = params.get(QueryConstant.PARTITION_END_OFFSET);
     chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
@@ -95,6 +103,18 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   @Override
   public List<ChunkMetaData> getChunkMetaDataList(Path path) throws IOException {
     return chunkMetaDataCache.get(path);
+  }
+
+  @Override
+  public Map<Path, List<ChunkMetaData>> getChunkMetaDataMap(List<Path> paths) throws IOException {
+    Map<Path, List<ChunkMetaData>> chunkMetaDatas = new HashMap<>();
+    for (Path path : paths) {
+      if (!chunkMetaDatas.containsKey(path)) {
+        chunkMetaDatas.put(path, new ArrayList<>());
+      }
+      chunkMetaDatas.get(path).addAll(getChunkMetaDataList(path));
+    }
+    return chunkMetaDatas;
   }
 
   @Override
@@ -137,7 +157,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
       // d1
       for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata
-          .getChunkGroupMetaDataList()) { // TODO make this function
+          .getChunkGroupMetaDataList()) {
         // better
 
         if (enough) {
@@ -182,9 +202,9 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   }
 
   @Override
-  public TSDataType getDataType(String measurement) throws NoMeasurementException  {
+  public TSDataType getDataType(String measurement) throws NoMeasurementException {
     MeasurementSchema measurementSchema = fileMetaData.getMeasurementSchema().get(measurement);
-    if(measurementSchema != null) {
+    if (measurementSchema != null) {
       return measurementSchema.getType();
     }
     throw new NoMeasurementException(String.format("%s not found.", measurement));
@@ -220,19 +240,70 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     return chunkMetaDataList;
   }
 
-  private boolean checkAccess(ChunkGroupMetaData chunkGroupMetaData) {
-    if (!partitionMode) {
-      return true; // always true
+  public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode)
+      throws IOException {
+    if (mode == LoadMode.NoPartition) {
+      throw new IOException(
+          "Wrong use of getTimeRangeInOrPrev: should not be in NoPartition mode");
     }
+    this.mode = targetMode; // change mode temporarily for loadChunkMetadata's checkAccess function
+
+    ArrayList<TimeRange> timeRangeUnion = new ArrayList<>();
+    for (Path path : paths) {
+      List<ChunkMetaData> chunkMetaDataList = loadChunkMetadata(path);
+      for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
+        timeRangeUnion.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+      }
+    }
+    Collections.sort(timeRangeUnion);
+
+    // union procedure
+    Iterator<TimeRange> iterator = timeRangeUnion.iterator();
+    boolean isSplit = false; // the split point of union
+    TimeRange range_curr = null;
+    if (iterator.hasNext()) {
+      range_curr = iterator.next();
+    }
+    while (iterator.hasNext()) {
+      TimeRange range_next = iterator.next();
+      if (range_curr.intersects(range_next)) { // intersect
+        range_curr.set(Math.min(range_curr.getMin(), range_next.getMin()),
+            Math.max(range_curr.getMax(), range_next.getMax())); // union
+        iterator.remove(); // union merged to the last one
+      } else {
+        range_curr.set(range_next.getMin(), range_next.getMax());
+      }
+
+    }
+
+    this.mode = LoadMode.InPartition; // restore mode to InPartition
+    return timeRangeUnion;
+
+  }
+
+  private boolean checkAccess(ChunkGroupMetaData chunkGroupMetaData) throws IOException {
     long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
     long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();
     long middleOffsetOfChunkGroup = (startOffsetOfChunkGroup + endOffsetOfChunkGroup) / 2;
-    if (partitionStartOffset <= middleOffsetOfChunkGroup
-        && middleOffsetOfChunkGroup < partitionEndOffset) {
-      return true;
-    } else {
-      return false;
+    switch (mode) {
+      case NoPartition:
+        return true; // always true
+      case InPartition:
+        if (partitionStartOffset <= middleOffsetOfChunkGroup
+            && middleOffsetOfChunkGroup < partitionEndOffset) {
+          return true;
+        } else {
+          return false;
+        }
+      case PrevPartition:
+        if (middleOffsetOfChunkGroup < partitionStartOffset) {
+          return true;
+        } else {
+          return false;
+        }
+      default:
+        throw new IOException(
+            "unexpected mode! It should be one of {NoPartition, InPartition, BeforePartition}");
     }
   }
-
 }
