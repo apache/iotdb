@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.tsfile.read;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -31,12 +35,22 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.writer.IncompleteFileTestUtil;
+import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TsFileSequenceReaderTest {
 
@@ -97,5 +111,30 @@ public class TsFileSequenceReaderTest {
       }
     }
     reader.close();
+  }
+
+  @Test
+  public void testToReadDamagedFileAndRepair() throws IOException {
+    File file = new File(FILE_PATH);
+
+    IncompleteFileTestUtil.writeFileWithOneIncompleteChunkHeader(file);
+
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH, true, true);
+    String tailMagic = reader.readTailMagic();
+    reader.close();
+
+    // Check if the file was repaired
+    assertEquals(TSFileConfig.MAGIC_STRING, tailMagic);
+    assertTrue(file.delete());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testToReadDamagedFileNoRepair() throws IOException {
+    File file = new File(FILE_PATH);
+
+    IncompleteFileTestUtil.writeFileWithOneIncompleteChunkHeader(file);
+
+    // This should throw an Illegal Argument Exception
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH, true, false);
   }
 }

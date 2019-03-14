@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
+@SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
 public class NativeRestorableIOWriterTest {
 
   private static final String FILE_NAME = "test.ts";
@@ -99,19 +100,11 @@ public class NativeRestorableIOWriterTest {
   @Test
   public void testOnlyOneIncompleteChunkHeader() throws Exception {
     File file = new File(FILE_NAME);
-    TsFileWriter writer = new TsFileWriter(file);
 
-    ChunkHeader header = new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY,
-        TSEncoding.PLAIN, 5);
-    ByteBuffer buffer = ByteBuffer.allocate(header.getSerializedSize());
-    header.serializeTo(buffer);
-    buffer.flip();
-    byte[] data = new byte[3];
-    buffer.get(data, 0, 3);
-    writer.getIOWriter().out.write(data);
-    writer.getIOWriter().forceClose();
+    IncompleteFileTestUtil.writeFileWithOneIncompleteChunkHeader(file);
+
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
-    writer = new TsFileWriter(rWriter);
+    TsFileWriter writer = new TsFileWriter(rWriter);
     writer.close();
     assertEquals(TsFileIOWriter.magicStringBytes.length, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
