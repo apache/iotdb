@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 /**
  * This class is used to store one bufferwrite file status.<br>
  */
-public class TsFileResource{
+public class TsFileResource {
 
   private OverflowChangeType overflowChangeType;
   private int baseDirIndex;
@@ -100,7 +100,10 @@ public class TsFileResource{
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(this.overflowChangeType.serialize(), outputStream);
     ReadWriteIOUtils.write(this.baseDirIndex, outputStream);
-    ReadWriteIOUtils.write(this.relativePath, outputStream);
+    if (this.relativePath != null) {
+      ReadWriteIOUtils.writeIsNull(this.relativePath, outputStream);
+      ReadWriteIOUtils.write(this.relativePath, outputStream);
+    }
     ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
     for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
@@ -121,7 +124,11 @@ public class TsFileResource{
     OverflowChangeType overflowChangeType = OverflowChangeType
         .deserialize(ReadWriteIOUtils.readShort(inputStream));
     int baseDirIndex = ReadWriteIOUtils.readInt(inputStream);
-    String relativePath = ReadWriteIOUtils.readString(inputStream);
+    boolean hasRelativePath = ReadWriteIOUtils.readIsNull(inputStream);
+    String relativePath = null;
+    if (hasRelativePath) {
+      relativePath = ReadWriteIOUtils.readString(inputStream);
+    }
     int size = ReadWriteIOUtils.readInt(inputStream);
     Map<String, Long> startTimes = new HashMap<>();
     for (int i = 0; i < size; i++) {

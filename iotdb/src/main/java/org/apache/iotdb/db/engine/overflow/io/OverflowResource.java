@@ -127,7 +127,7 @@ public class OverflowResource {
       if (insertTempFile.exists()) {
         left = insertTempFile.length();
       }
-      LOGGER.warn("Cannot read position info, returning a default value", e);
+      LOGGER.warn("Cannot read position info, because of {}, returning a default value", e.getMessage());
       return new Pair<>(left, right);
     }
   }
