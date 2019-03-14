@@ -83,17 +83,4 @@ public class TsFileResourceTest {
     assertEquals(tsFileResource.getEndTimeMap(), deTsfileResource.getEndTimeMap());
     assertEquals(tsFileResource.getMergeChanged(), deTsfileResource.getMergeChanged());
   }
-//  private static void assertMap(Map<String, Long> excepted, Map<String, Long> actual) {
-//    assertEquals(excepted.size(), actual.size());
-//    for (Entry<String, Long> entry : excepted.entrySet()) {
-//      assertEquals(entry.getValue(), actual.get(entry.getKey()));
-//    }
-//  }
-//
-//  private void assertSet(Set<String> excepted, Set<String> actual) {
-//    assertEquals(excepted.size(), actual.size());
-//    for (String s : excepted) {
-//      assertTrue(actual.contains(s));
-//    }
-//  }
 }
