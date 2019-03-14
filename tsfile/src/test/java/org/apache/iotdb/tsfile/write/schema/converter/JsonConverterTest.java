@@ -49,8 +49,7 @@ public class JsonConverterTest {
   public void testJsonConverter() throws WriteProcessException {
     String path = "src/test/resources/test_schema.json";
     JSONObject obj = null;
-    try {
-      InputStream inputStream = new FileInputStream(path);
+    try (InputStream inputStream = new FileInputStream(path)) {
       String jsonStr = IOUtils.toString(inputStream, "utf8");
       obj = JSON.parseObject(jsonStr);
     } catch (JSONException | IOException e) {
@@ -76,8 +75,7 @@ public class JsonConverterTest {
   public void testConvertInJsonAndFileSchema() throws InvalidJsonSchemaException {
     String path = "src/test/resources/test_schema.json";
     JSONObject srcObj = null;
-    try {
-      InputStream inputStream = new FileInputStream(path);
+    try (InputStream inputStream = new FileInputStream(path)){
       String jsonStr = IOUtils.toString(inputStream, "utf8");
       srcObj = JSON.parseObject(jsonStr);
     } catch (JSONException | IOException e) {

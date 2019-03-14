@@ -100,9 +100,10 @@ public class WriteTest {
 
     JSONObject emptySchema = JSON.parseObject("{\"delta_type\": \"test_type\",\"properties\": {\n"
         + "\"key1\": \"value1\",\n" + "\"key2\": \"value2\"\n" + "},\"schema\": [],}");
-    InputStream inputStream = new FileInputStream(schemaFile);
-    String jsonStr = IOUtils.toString(inputStream, "utf8");
-    measurementArray = JSON.parseObject(jsonStr).getJSONArray(JsonFormatConstant.JSON_SCHEMA);
+    try (InputStream inputStream = new FileInputStream(schemaFile)){
+      String jsonStr = IOUtils.toString(inputStream, "utf8");
+      measurementArray = JSON.parseObject(jsonStr).getJSONArray(JsonFormatConstant.JSON_SCHEMA);
+    }
     schema = new FileSchema(emptySchema);
     LOG.info(schema.toString());
     tsFileWriter = new TsFileWriter(file, schema, conf);
