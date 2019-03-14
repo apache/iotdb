@@ -102,8 +102,7 @@ public class TsFileSequenceReader {
     // Check if file is damaged
     if (!TSFileConfig.MAGIC_STRING.equals(readTailMagic())) {
       // Try to close it
-      LOGGER.info(String.format("File %s has no correct tail magic, try to repair...",
-              path.toAbsolutePath()));
+      LOGGER.info("File {} has no correct tail magic, try to repair...", path.toAbsolutePath());
       NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(new File(file));
       TsFileWriter writer = new TsFileWriter(rWriter);
       // This writes the right magic string
