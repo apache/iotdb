@@ -83,7 +83,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private boolean isNewResource = false;
 
-  RestorableTsFileIOWriter(String processorName, String insertFilePath) throws IOException {
+  public RestorableTsFileIOWriter(String processorName, String insertFilePath) throws IOException {
     super();
     this.insertFilePath = insertFilePath;
     this.restoreFilePath = insertFilePath + RESTORE_SUFFIX;
@@ -222,7 +222,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @param dataType the value type
    * @return chunks' metadata
    */
-  List<ChunkMetaData> getMetadatas(String deviceId, String measurementId, TSDataType dataType) {
+  public List<ChunkMetaData> getMetadatas(String deviceId, String measurementId, TSDataType dataType) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
     if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
       for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
@@ -241,7 +241,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return insertFilePath;
   }
 
-  String getRestoreFilePath() {
+  public String getRestoreFilePath() {
     return restoreFilePath;
   }
 
@@ -261,7 +261,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * add all appendChunkGroupMetadatas into memory. After calling this method, other classes can
    * read these metadata.
    */
-  void appendMetadata() {
+  public void appendMetadata() {
     if (!append.isEmpty()) {
       for (ChunkGroupMetaData rowGroupMetaData : append) {
         for (ChunkMetaData chunkMetaData : rowGroupMetaData.getChunkMetaDataList()) {

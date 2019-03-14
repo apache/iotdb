@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -70,6 +71,13 @@ public abstract class AbstractMemTable implements IMemTable {
       String insertValue) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
     memSeries.write(insertTime, insertValue);
+  }
+
+  @Override
+  public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
+      Object value) {
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
+    memSeries.write(insertTime, value);
   }
 
   @Override

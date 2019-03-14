@@ -439,7 +439,7 @@ public class FileNodeManager implements IStatistic, IService {
             "The filenode processor {} will close the bufferwrite processor, "
                 + "because the size[{}] of tsfile {} reaches the threshold {}",
             filenodeName, MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize()),
-            bufferWriteProcessor.getFileName(), MemUtils.bytesCntToStr(
+            bufferWriteProcessor.getInsertFilePath(), MemUtils.bytesCntToStr(
                 IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold()));
       }
 

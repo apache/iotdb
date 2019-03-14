@@ -105,7 +105,7 @@ public class BufferWriteProcessorNewTest {
         processorName, filename,
         parameters, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(processorName));
-    assertEquals(filename, bufferwrite.getFileName());
+    assertEquals(filename, bufferwrite.getInsertFilePath());//TODO FIXME
     assertEquals(processorName + File.separator + filename, bufferwrite.getFileRelativePath());
     assertTrue(bufferwrite.isNewProcessor());
     bufferwrite.setNewProcessor(false);
