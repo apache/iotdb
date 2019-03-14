@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,10 +18,17 @@
  */
 package org.apache.iotdb.db.engine.filenode;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * FileNodeProcessorStore is used to store information about FileNodeProcessor's status.
@@ -30,8 +37,6 @@ import java.util.Map;
  * Overflow close. fileNodeProcessorState is changed and stored by the change of FileNodeProcessor's
  * status such as "work->merge merge->wait wait->work". numOfMergeFile is changed
  * and stored when FileNodeProcessor's status changes from work to merge.
- *
- * @author liukun
  */
 public class FileNodeProcessorStore implements Serializable {
 
@@ -46,6 +51,7 @@ public class FileNodeProcessorStore implements Serializable {
 
   /**
    * Constructor of FileNodeProcessorStore.
+   *
    * @param isOverflowed whether this FileNode contains unmerged Overflow operations.
    * @param lastUpdateTimeMap the timestamp of last data point of each device in this FileNode.
    * @param emptyTsFileResource a place holder when the FileNode contains no TsFile.
@@ -64,6 +70,49 @@ public class FileNodeProcessorStore implements Serializable {
     this.newFileNodes = newFileNodes;
     this.fileNodeProcessorStatus = fileNodeProcessorStatus;
     this.numOfMergeFile = numOfMergeFile;
+  }
+
+  public void serialize(OutputStream outputStream) throws IOException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    ReadWriteIOUtils.write(this.isOverflowed, byteArrayOutputStream);
+    // lastUpdateTimeMap
+    ReadWriteIOUtils.write(lastUpdateTimeMap.size(), byteArrayOutputStream);
+    for (Entry<String, Long> entry : lastUpdateTimeMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), byteArrayOutputStream);
+      ReadWriteIOUtils.write(entry.getValue(), byteArrayOutputStream);
+    }
+    this.emptyTsFileResource.serialize(byteArrayOutputStream);
+    ReadWriteIOUtils.write(this.newFileNodes.size(), byteArrayOutputStream);
+    for (TsFileResource tsFileResource : this.newFileNodes) {
+      tsFileResource.serialize(byteArrayOutputStream);
+    }
+    ReadWriteIOUtils.write(this.numOfMergeFile, byteArrayOutputStream);
+    ReadWriteIOUtils.write(this.fileNodeProcessorStatus.serialize(), byteArrayOutputStream);
+    // buffer array to outputstream
+    byteArrayOutputStream.writeTo(outputStream);
+  }
+
+  public static FileNodeProcessorStore deSerialize(InputStream inputStream) throws IOException {
+    boolean isOverflowed = ReadWriteIOUtils.readBool(inputStream);
+    Map<String, Long> lastUpdateTimeMap = new HashMap<>();
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; i++) {
+      String path = ReadWriteIOUtils.readString(inputStream);
+      long time = ReadWriteIOUtils.readLong(inputStream);
+      lastUpdateTimeMap.put(path, time);
+    }
+    TsFileResource emptyTsFileResource = TsFileResource.deSerialize(inputStream);
+    size = ReadWriteIOUtils.readInt(inputStream);
+    List<TsFileResource> newFileNodes = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      newFileNodes.add(TsFileResource.deSerialize(inputStream));
+    }
+    int numOfMergeFile = ReadWriteIOUtils.readInt(inputStream);
+    FileNodeProcessorStatus fileNodeProcessorStatus = FileNodeProcessorStatus
+        .deserialize(ReadWriteIOUtils.readShort(inputStream));
+
+    return new FileNodeProcessorStore(isOverflowed, lastUpdateTimeMap, emptyTsFileResource,
+        newFileNodes, fileNodeProcessorStatus, numOfMergeFile);
   }
 
   public boolean isOverflowed() {

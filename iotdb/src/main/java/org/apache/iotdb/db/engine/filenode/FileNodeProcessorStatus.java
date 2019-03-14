@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -19,5 +19,33 @@
 package org.apache.iotdb.db.engine.filenode;
 
 public enum FileNodeProcessorStatus {
-  NONE, MERGING_WRITE, WAITING
+  NONE, MERGING_WRITE, WAITING;
+
+  public static FileNodeProcessorStatus deserialize(short i) {
+    switch (i) {
+      case 0:
+        return NONE;
+      case 1:
+        return MERGING_WRITE;
+      case 2:
+        return WAITING;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid input %d for FileNodeProcessorStatus", i));
+    }
+  }
+
+  public short serialize() {
+    switch (this) {
+      case NONE:
+        return 0;
+      case MERGING_WRITE:
+        return 1;
+      case WAITING:
+        return 2;
+      default:
+        throw new IllegalStateException("Unsupported type");
+    }
+
+  }
 }
