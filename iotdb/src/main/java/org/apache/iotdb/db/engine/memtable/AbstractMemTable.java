@@ -115,15 +115,19 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void delete(String deviceId, String measurementId, long timestamp) {
+  public boolean delete(String deviceId, String measurementId, long timestamp) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
     if (deviceMap != null) {
       IWritableMemChunk chunk = deviceMap.get(measurementId);
+      //TODO: if the memtable is thread safe, then we do not need to copy data again,
+      // otherwise current implementation is error.
       IWritableMemChunk newChunk = filterChunk(chunk, timestamp);
       if (newChunk != null) {
         deviceMap.put(measurementId, newChunk);
+        return newChunk.count() == chunk.count();
       }
     }
+    return false;
   }
 
   /**
