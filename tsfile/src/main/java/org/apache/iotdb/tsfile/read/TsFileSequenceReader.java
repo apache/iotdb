@@ -151,6 +151,13 @@ public class TsFileSequenceReader {
    */
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
+
+    // CHeck if the file is large enough to contain a tail magic
+    // If the file only contains a header magic, this could also be assumed to be the tail magic
+    if (totalSize <= TSFileConfig.MAGIC_STRING.length()) {
+      throw new IOException("This file has no tail magic!");
+    }
+
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
     tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.length());
     magicStringBytes.flip();
