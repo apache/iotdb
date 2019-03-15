@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.After;
@@ -66,12 +67,21 @@ public class TsFileResourceTest {
   }
 
   @Test
-  public void testSerdeialize() throws Exception {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+  public void testSerDeialize() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream(0);
     tsFileResource.serialize(outputStream);
     ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     TsFileResource deTsfileResource = TsFileResource.deSerialize(inputStream);
     assertTsfileRecource(tsFileResource, deTsfileResource);
+  }
+  @Test
+  public void testSerdeializeCornerCase() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream(0);
+    tsFileResource.setRelativePath(null);
+    tsFileResource.serialize(outputStream);
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    TsFileResource deTsfileResource = TsFileResource.deSerialize(inputStream);
+    assertTsfileRecource(tsFileResource,deTsfileResource);
   }
 
   public static void assertTsfileRecource(TsFileResource tsFileResource,
