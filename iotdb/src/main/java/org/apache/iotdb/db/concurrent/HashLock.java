@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.concurrent;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -29,8 +26,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * can be prevented while the number of locks remain controlled.
  */
 public class HashLock {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(HashLock.class);
 
   private static final int DEFAULT_LOCK_NUM = 100;
 
@@ -67,18 +62,21 @@ public class HashLock {
 
   /**
    * This method will unlock all locks. Only for test convenience.
+   *
+   * The exceptions are ignored because they do not provide any useful information.
    */
+  @SuppressWarnings("squid:S1166")
   public void reset() {
     for (int i = 0; i < lockSize; i++) {
       try {
         locks[i].readLock().unlock();
-      } catch (Exception e) {
-        LOGGER.debug("Cannot unlock because, ", e);
+      } catch (Exception ignored) {
+        // not useful exception
       }
       try {
         locks[i].writeLock().unlock();
-      } catch (Exception e) {
-        LOGGER.debug("Cannot unlock because, ", e);
+      } catch (Exception ignored) {
+        // not useful exception
       }
     }
   }
