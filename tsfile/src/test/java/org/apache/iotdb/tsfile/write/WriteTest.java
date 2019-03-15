@@ -21,11 +21,13 @@ package org.apache.iotdb.tsfile.write;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.Random;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import org.apache.commons.io.IOUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -36,9 +38,6 @@ import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -98,10 +97,13 @@ public class WriteTest {
     if (errorFile.exists()) {
       errorFile.delete();
     }
-    JSONObject emptySchema = new JSONObject("{\"delta_type\": \"test_type\",\"properties\": {\n"
+
+    JSONObject emptySchema = JSON.parseObject("{\"delta_type\": \"test_type\",\"properties\": {\n"
         + "\"key1\": \"value1\",\n" + "\"key2\": \"value2\"\n" + "},\"schema\": [],}");
-    measurementArray = new JSONObject(new JSONTokener(new FileReader(new File(schemaFile))))
-        .getJSONArray(JsonFormatConstant.JSON_SCHEMA);
+    try (InputStream inputStream = new FileInputStream(schemaFile)){
+      String jsonStr = IOUtils.toString(inputStream, "utf8");
+      measurementArray = JSON.parseObject(jsonStr).getJSONArray(JsonFormatConstant.JSON_SCHEMA);
+    }
     schema = new FileSchema(emptySchema);
     LOG.info(schema.toString());
     tsFileWriter = new TsFileWriter(file, schema, conf);
@@ -194,7 +196,7 @@ public class WriteTest {
     long startTime = System.currentTimeMillis();
     String[] strings;
     // add all measurement except the last one at before writing
-    for (int i = 0; i < measurementArray.length() - 1; i++) {
+    for (int i = 0; i < measurementArray.size() - 1; i++) {
       tsFileWriter.addMeasurementByJson((JSONObject) measurementArray.get(i));
     }
     while (true) {
@@ -209,7 +211,7 @@ public class WriteTest {
       }
       if (lineCount == ROW_COUNT / 2) {
         tsFileWriter
-            .addMeasurementByJson((JSONObject) measurementArray.get(measurementArray.length() - 1));
+            .addMeasurementByJson((JSONObject) measurementArray.get(measurementArray.size() - 1));
       }
       strings = getNextRecord(lineCount, stageState);
       for (String str : strings) {
@@ -220,7 +222,7 @@ public class WriteTest {
       lineCount++;
     }
     // test duplicate measurement adding
-    JSONObject dupMeasure = (JSONObject) measurementArray.get(measurementArray.length() - 1);
+    JSONObject dupMeasure = (JSONObject) measurementArray.get(measurementArray.size() - 1);
     try {
       tsFileWriter.addMeasurementByJson(dupMeasure);
     } catch (WriteProcessException e) {
