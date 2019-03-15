@@ -97,12 +97,12 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
 
       val params = new java.util.HashMap[java.lang.String, java.lang.Long]()
-//      params.put(QueryConstant.PARTITION_START_OFFSET, file.start.asInstanceOf[java.lang.Long])
+      params.put(QueryConstant.PARTITION_START_OFFSET, file.start.asInstanceOf[java.lang.Long])
 //      params.put(QueryConstant.PARTITION_START_OFFSET, 430L)
-      params.put(QueryConstant.PARTITION_START_OFFSET, 0L)
-//      params.put(QueryConstant.PARTITION_END_OFFSET, (file.start + file.length).asInstanceOf[java.lang.Long])
+//      params.put(QueryConstant.PARTITION_START_OFFSET, 0L)
+      params.put(QueryConstant.PARTITION_END_OFFSET, (file.start + file.length).asInstanceOf[java.lang.Long])
 //      params.put(QueryConstant.PARTITION_END_OFFSET, 800L)
-      params.put(QueryConstant.PARTITION_END_OFFSET, 400L)
+//      params.put(QueryConstant.PARTITION_END_OFFSET, 400L)
 
       val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader, params)
 

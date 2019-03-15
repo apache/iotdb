@@ -49,12 +49,13 @@ public interface MetadataQuerier {
    */
   TSDataType getDataType(String measurement) throws NoMeasurementException;
 
-
   /**
+   * get time ranges of chunkGroups in or before the current partition and return the union result in ascending order
    *
    * @param paths timeseries paths
-   * @return sorted union covered time ranges of chunkGroups in or before the current partition
-   * @throws IOException Wrong use of getTimeRangeBefore
+   * @param targetMode InPartition or PrevPartition
+   * @return time ranges union in ascending order
+   * @throws IOException
    */
   public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode)
       throws IOException;

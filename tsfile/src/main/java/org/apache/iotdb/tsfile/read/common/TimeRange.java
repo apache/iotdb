@@ -52,18 +52,6 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * @return <code>true</code> if the intersection exists
-   */
-  public boolean intersection(TimeRange r, TimeRange dest) {
-    if (intersects(r)) {
-      dest.set(Math.max(min, r.min), Math.min(max, r.max));
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
    * @return true if the value lies between the min and max values, inclusively
    */
   public boolean contains(long value) {
@@ -143,27 +131,30 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * Limits a value to lie within this range
-   *
-   * @param v The value to limit
-   * @return min if v < min, max if v > max, otherwise v
+   * @return <code>true</code> if the intersection exists
    */
-  public long limit(long v) {
-    return limit(v, min, max);
+  public boolean intersection(TimeRange r, TimeRange dest) {
+    if (intersects(r)) {
+      dest.set(Math.max(min, r.min), Math.min(max, r.max));
+      return true;
+    }
+
+    return false;
   }
 
   /**
-   * @return The proportion of the distance between min and max that value lies from min
+   * @return The size of the intersection of the two ranges
    */
-  public float toRatio(long value) {
-    return toRatio(value, min, max);
-  }
+  public static long intersection(long minA, long maxA, long minB,
+                                  long maxB) {
+    long highMin = Math.max(minA, minB);
+    long lowMax = Math.min(maxA, maxB);
 
-  /**
-   * @return min + ratio * ( max - min )
-   */
-  public long toValue(float ratio) {
-    return toValue(ratio, min, max);
+    if (lowMax > highMin) {
+      return lowMax - highMin;
+    }
+
+    return 0;
   }
 
   /**
@@ -173,25 +164,6 @@ public class TimeRange implements Comparable<TimeRange> {
     return overlaps(min, max, r.min, r.max);
   }
 
-  /**
-   * Alters this range such that {@link #contains(long)} returns <code>true</code> for f
-   */
-  public void encompass(long f) {
-    if (f < min) {
-      min = f;
-    } else if (f > max) {
-      max = f;
-    }
-  }
-
-  /**
-   * Alters this range such that {@link #contains(long)} returns <code>true</code> for all values
-   * in r
-   */
-  public void encompass(TimeRange r) {
-    encompass(r.min);
-    encompass(r.max);
-  }
 
   @Override
   public String toString() {
@@ -213,29 +185,6 @@ public class TimeRange implements Comparable<TimeRange> {
     return v;
   }
 
-  /**
-   * @return The proportion of the distance between min and max that v lies from min
-   */
-  public static float toRatio(long v, long min, long max) {
-    long d = v - min;
-    long e = max - min;
-
-    return d / e;
-  }
-
-  /**
-   * @return min + ratio * ( max - min )
-   */
-  public static long toValue(float ratio, long min, long max) {
-    return (long) (min + ratio * (max - min));
-  }
-
-  /**
-   * @return <code>true</code> if value lies within min and max, inclusively
-   */
-  public static boolean inRange(long value, long min, long max) {
-    return value >= min && value <= max;
-  }
 
   /**
    * @return <code>true</code> if the ranges overlap
@@ -247,47 +196,9 @@ public class TimeRange implements Comparable<TimeRange> {
     return !(minA > maxB || maxA < minB);
   }
 
-  /**
-   * @return <code>true</code> if rangeA contains rangeB
-   */
-  public static boolean contains(long minA, long maxA, long minB, long maxB) {
-    return minA <= minB && maxA >= maxB;
-  }
-
-  /**
-   * @return The size of the intersection of the two ranges
-   */
-  public static long intersection(long minA, long maxA, long minB,
-      long maxB) {
-    long highMin = Math.max(minA, minB);
-    long lowMax = Math.min(maxA, maxB);
-
-    if (lowMax > highMin) {
-      return lowMax - highMin;
-    }
-
-    return 0;
-  }
-
-
-  /**
-   * Shifts the range
-   */
-  public void translate(long d) {
-    min += d;
-    max += d;
-  }
-
-  /**
-   * Scales the range around the origin
-   */
-  public void scale(int s) {
-    min *= s;
-    max *= s;
-  }
 
   // NOTE the primitive timeRange is always a closed interval [min,max] and
-  // only in getRemains functions do we consider leftClose and rightClose.
+  // only in getRemains functions are leftClose and rightClose considered.
   private boolean leftClose = true; // default true
   private boolean rightClose = true; // default true
 
@@ -308,13 +219,13 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * calculate remaining time range
+   * Get the remaining time ranges in the current ranges but not in timeRangesPrev.
    *
-   * NOTE the primitive timeRange is always a closed interval [min,max] and only in getRemains
-   * functions do we consider leftClose and rightClose.
+   * NOTE the primitive timeRange is always a closed interval [min,max] and only in this function
+   * are leftClose and rightClose changed.
    *
-   * @param timeRangesPrev sorted union time ranges to be excluded.
-   * @return remaining time ranges
+   * @param timeRangesPrev time ranges union in ascending order
+   * @return the remaining time ranges
    */
   public ArrayList<TimeRange> getRemains(ArrayList<TimeRange> timeRangesPrev) {
     ArrayList<TimeRange> remains = new ArrayList<>();
@@ -326,14 +237,14 @@ public class TimeRange implements Comparable<TimeRange> {
 
       if (intersects(prev)) {
         if (prev.contains(this)) {
-          break;
+          return remains;
         } else if (this.contains(prev)) {
           if (prev.min > this.min && prev.max == this.max) {
             TimeRange r = new TimeRange(this.min, prev.min);
             r.setLeftClose(this.leftClose);
             r.setRightClose(false);
             remains.add(r);
-            break; // because timeRangesPrev is sorted
+            return remains; // because timeRangesPrev is sorted
           } else if (prev.min == this.min) { // && prev.max < this.max
             min = prev.max;
             leftClose = false;
@@ -355,7 +266,7 @@ public class TimeRange implements Comparable<TimeRange> {
             r.setLeftClose(this.leftClose);
             r.setRightClose(false);
             remains.add(r);
-            break;
+            return remains;
           }
         }
       }
