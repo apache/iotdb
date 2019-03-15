@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.hadoop;
 
 import java.io.IOException;
+
+import com.alibaba.fastjson.JSONObject;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
@@ -29,7 +31,6 @@ import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
 import org.apache.iotdb.tsfile.write.exception.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.write.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
