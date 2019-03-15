@@ -30,8 +30,12 @@ import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CountAggrFunc extends AggregateFunction {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(CountAggrFunc.class);
 
   public CountAggrFunc() {
     super(AggregationConstant.COUNT, TSDataType.INT64);
@@ -52,9 +56,8 @@ public class CountAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    System.out.println("PageHeader>>>>>>>>>>>>" + pageHeader.getNumOfValues() + " " + pageHeader
-        .getMinTimestamp()
-        + "," + pageHeader.getMaxTimestamp());
+    LOGGER.debug("PageHeader>>>>>>>>>>>>num of rows:{}, minTimeStamp:{}, maxTimeStamp{}",
+        pageHeader.getNumOfValues(), pageHeader.getMinTimestamp(), pageHeader.getMaxTimestamp());
     long preValue = resultData.getLong();
     preValue += pageHeader.getNumOfValues();
     resultData.setLong(0, preValue);
@@ -99,6 +102,19 @@ public class CountAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
+      throws IOException {
+    int cnt = 0;
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
+      unsequenceReader.next();
+      cnt++;
+    }
+    long preValue = resultData.getLong();
+    preValue += cnt;
+    resultData.setLong(0, preValue);
+  }
+
+  @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
       EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
     int cnt = 0;
@@ -112,6 +128,11 @@ public class CountAggrFunc extends AggregateFunction {
     long preValue = resultData.getLong();
     preValue += cnt;
     resultData.setLong(0, preValue);
+  }
+
+  @Override
+  public boolean isCalculatedAggregationResult() {
+    return false;
   }
 
   @Override

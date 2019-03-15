@@ -100,6 +100,19 @@ public class LastAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
+      throws IOException {
+    TimeValuePair pair = null;
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
+      pair = unsequenceReader.next();
+    }
+
+    if (pair != null) {
+      updateLastResult(pair.getTimestamp(), pair.getValue().getValue());
+    }
+  }
+
+  @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
       EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
 
@@ -112,9 +125,14 @@ public class LastAggrFunc extends AggregateFunction {
         lastVal = value.getValue();
       }
     }
-    if(time != -1){
-      updateLastResult(-1, lastVal);
+    if (time != -1) {
+      updateLastResult(time, lastVal);
     }
+  }
+
+  @Override
+  public boolean isCalculatedAggregationResult() {
+    return false;
   }
 
   @Override

@@ -173,7 +173,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
 
   @Override
   public PageHeader nextPageHeader() throws IOException {
-    return null;
+    return seriesReader.nextPageHeader();
   }
 
   @Override

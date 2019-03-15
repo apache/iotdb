@@ -73,13 +73,6 @@ public class MaxTimeAggrFunc extends AggregateFunction {
       return;
     }
     time = dataInThisPage.getTimeByIndex(maxIndex);
-    while (unsequenceReader.hasNext()) {
-      if (unsequenceReader.current().getTimestamp() <= time) {
-        unsequenceReader.next();
-      } else {
-        break;
-      }
-    }
     if (resultData.length() == 0) {
       if (time != -1) {
         resultData.putTime(0);
@@ -87,7 +80,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
       }
     } else {
       //has set value
-      if (time != -1 && time > resultData.currentTime()) {
+      if (time != -1 && time > resultData.getLong()) {
         resultData.setAnObject(0, time);
       }
     }
@@ -107,12 +100,33 @@ public class MaxTimeAggrFunc extends AggregateFunction {
       }
     } else {
       //has set value
-      if (pair != null && pair.getTimestamp() > resultData.currentTime()) {
+      if (pair != null && pair.getTimestamp() > resultData.getLong()) {
         resultData.setAnObject(0, pair.getTimestamp());
       }
     }
   }
 
+  @Override
+  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
+      throws IOException {
+    TimeValuePair pair = null;
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
+      pair = unsequenceReader.next();
+    }
+    if (resultData.length() == 0) {
+      if (pair != null) {
+        resultData.putTime(0);
+        resultData.putAnObject(pair.getTimestamp());
+      }
+    } else {
+      //has set value
+      if (pair != null && pair.getTimestamp() > resultData.getLong()) {
+        resultData.setAnObject(0, pair.getTimestamp());
+      }
+    }
+  }
+
+  //TODO Consider how to reverse order in dataReader(EngineReaderByTimeStamp)
   @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
       EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
@@ -124,7 +138,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
       }
     }
 
-    if(time == -1){
+    if (time == -1) {
       return;
     }
 
@@ -132,10 +146,15 @@ public class MaxTimeAggrFunc extends AggregateFunction {
       resultData.putTime(0);
       resultData.putLong(time);
     } else {
-      if(resultData.getLong() < time){
+      if (resultData.getLong() < time) {
         resultData.setLong(0, time);
       }
     }
+  }
+
+  @Override
+  public boolean isCalculatedAggregationResult() {
+    return false;
   }
 
   @Override

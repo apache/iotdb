@@ -26,7 +26,6 @@ import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -53,7 +52,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
     Comparable<Object> maxVal = (Comparable<Object>) pageHeader.getStatistics().getMax();
     if (resultData.length() == 0) {
       resultData.putTime(0);
-      resultData.putAnObject( maxVal);
+      resultData.putAnObject(maxVal);
     } else {
       if (maxVal.compareTo(resultData.currentValue()) > 0) {
         resultData.setAnObject(0, maxVal);
@@ -111,30 +110,49 @@ public class MaxValueAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
+      throws IOException {
+    Comparable<Object> maxVal = null;
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
+      if (maxVal == null
+          || maxVal.compareTo(unsequenceReader.current().getValue().getValue()) < 0) {
+        maxVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
+      }
+      unsequenceReader.next();
+    }
+    updateResult(maxVal);
+  }
+
+  @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
       EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
     Comparable<Object> maxVal = null;
-    for (long time : timestamps){
+    for (long time : timestamps) {
       TsPrimitiveType value = dataReader.getValueInTimestamp(time);
-      if(value == null){
+      if (value == null) {
         continue;
       }
-      if(maxVal == null || maxVal.compareTo(value.getValue())<0){
+      if (maxVal == null || maxVal.compareTo(value.getValue()) < 0) {
         maxVal = (Comparable<Object>) value.getValue();
       }
     }
     updateResult(maxVal);
   }
 
+  @Override
+  public boolean isCalculatedAggregationResult() {
+    return false;
+  }
+
   private void updateResult(Comparable<Object> maxVal) {
     if (resultData.length() == 0) {
       if (maxVal != null) {
         resultData.putTime(0);
-        resultData.putAnObject( maxVal);
+        resultData.putAnObject(maxVal);
       }
     } else {
       if (maxVal != null && maxVal.compareTo(resultData.currentValue()) > 0) {
-        resultData.setAnObject( 0, maxVal);
+        resultData.setAnObject(0, maxVal);
       }
     }
   }

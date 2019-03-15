@@ -84,7 +84,8 @@ public class IoTDBAggregationTestIT {
   @Test
   public void countTest() throws SQLException {
     String[] retArray = new String[]{
-        "0,2001,2001,2001,2001"
+        "0,2001,2001,2001,2001",
+        "0,7500,7500,7500,7500"
     };
     Connection connection = null;
     try {
@@ -105,6 +106,23 @@ public class IoTDBAggregationTestIT {
       }
       Assert.assertEquals(1, cnt);
       statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3) " +
+          "from root.vehicle.d0");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+            + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+            + "," + resultSet.getString(count(d0s3));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      statement.close();
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -118,7 +136,8 @@ public class IoTDBAggregationTestIT {
   @Test
   public void firstTest() throws SQLException {
     String[] retArray = new String[]{
-        "0,2000,2000,2000.0,2000"
+        "0,2000,2000,2000.0,2000",
+        "0,500,500,500.0,500"
     };
     Connection connection = null;
     try {
@@ -139,6 +158,23 @@ public class IoTDBAggregationTestIT {
       }
       Assert.assertEquals(1, cnt);
       statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select first(s0),first(s1),first(s2),first(s3) " +
+          "from root.vehicle.d0");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0))
+            + "," + resultSet.getString(first(d0s1)) + "," + resultSet.getString(first(d0s2))
+            + "," + resultSet.getString(first(d0s3));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      statement.close();
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -152,7 +188,9 @@ public class IoTDBAggregationTestIT {
   @Test
   public void lastTest() throws SQLException {
     String[] retArray = new String[]{
-        "0,8499,8499.0"
+        "0,8499,8499.0",
+        "0,1499,1499.0",
+        "0,2200,2200.0"
     };
     Connection connection = null;
     try {
@@ -172,6 +210,37 @@ public class IoTDBAggregationTestIT {
       }
       Assert.assertEquals(1, cnt);
       statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select last(s0),last(s2) " +
+          "from root.vehicle.d0 where time <= 1600");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0))
+            + "," + resultSet.getString(last(d0s2));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select last(s0),last(s2) " +
+          "from root.vehicle.d0 where time <= 2200");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0))
+            + "," + resultSet.getString(last(d0s2));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(3, cnt);
+      statement.close();
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -185,7 +254,8 @@ public class IoTDBAggregationTestIT {
   @Test
   public void maxminTimeTest() throws SQLException {
     String[] retArray = new String[]{
-        "0,8499,500"
+        "0,8499,500",
+        "0,2499,2000"
     };
     Connection connection = null;
     try {
@@ -205,6 +275,21 @@ public class IoTDBAggregationTestIT {
       }
       Assert.assertEquals(1, cnt);
       statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select max_time(s0),min_time(s2) " +
+          "from root.vehicle.d0 where time <= 2500 and time > 1800");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
+            + "," + resultSet.getString(min_time(d0s2));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -218,7 +303,8 @@ public class IoTDBAggregationTestIT {
   @Test
   public void maxminValueTest() throws SQLException {
     String[] retArray = new String[]{
-        "0,8499,500.0"
+        "0,8499,500.0",
+        "0,2499,500.0"
     };
     Connection connection = null;
     try {
@@ -238,6 +324,21 @@ public class IoTDBAggregationTestIT {
       }
       Assert.assertEquals(1, cnt);
       statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select max_value(s0),min_value(s2) " +
+          "from root.vehicle.d0 where time < 2500");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
+            + "," + resultSet.getString(min_value(d0s2));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -251,7 +352,8 @@ public class IoTDBAggregationTestIT {
   @Test
   public void meanSumTest() throws SQLException {
     String[] retArray = new String[]{
-        "0,1.4508E7,7250.374812593703"
+        "0,1.4508E7,7250.374812593703",
+        "0,626750.0,1250.998003992016"
     };
     Connection connection = null;
     try {
@@ -270,6 +372,21 @@ public class IoTDBAggregationTestIT {
         cnt++;
       }
       Assert.assertEquals(1, cnt);
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select sum(s0),mean(s2)" +
+          "from root.vehicle.d0 where time >= 1000 and time <= 2000");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
+            + "," + resultSet.getString(mean(d0s2));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
       statement.close();
     } catch (Exception e) {
       e.printStackTrace();

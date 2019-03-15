@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import static org.junit.Assert.*;
-
 import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.junit.Assert;

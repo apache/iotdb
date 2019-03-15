@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -34,12 +33,12 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class MeanAggrFunc extends AggregateFunction {
 
-  private double sum = 0.0;
+  protected double sum = 0.0;
   private int cnt = 0;
   private TSDataType seriesDataType;
 
-  public MeanAggrFunc(TSDataType seriesDataType) {
-    super(AggregationConstant.MEAN, TSDataType.DOUBLE);
+  public MeanAggrFunc(String name, TSDataType seriesDataType) {
+    super(name, TSDataType.DOUBLE);
     this.seriesDataType = seriesDataType;
   }
 
@@ -119,6 +118,15 @@ public class MeanAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
+      throws IOException, ProcessorException {
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
+      TimeValuePair pair = unsequenceReader.next();
+      updateMean(seriesDataType, pair.getValue().getValue());
+    }
+  }
+
+  @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
       EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
     for (long time : timestamps) {
@@ -127,6 +135,11 @@ public class MeanAggrFunc extends AggregateFunction {
         updateMean(seriesDataType, value.getValue());
       }
     }
+  }
+
+  @Override
+  public boolean isCalculatedAggregationResult() {
+    return false;
   }
 
 

@@ -24,17 +24,15 @@ import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AggregateFunction {
 
-  public String name;
-  public BatchData resultData;
-  public TSDataType dataType;
+  protected String name;
+  protected BatchData resultData;
+  protected TSDataType dataType;
 
   /**
    * construct.
@@ -76,9 +74,28 @@ public abstract class AggregateFunction {
   public abstract void calculateValueFromPageData(BatchData dataInThisPage,
       IPointReader unsequenceReader) throws IOException, ProcessorException;
 
+
+  /**
+   * <p>
+   *  Calculate the aggregation with data in unsequenceReader.
+   * </p>
+   *
+   * @param unsequenceReader unsequence data reader
+   */
   public abstract void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
       throws IOException, ProcessorException;
 
+  /**
+   * <p>
+   *  Calculate the aggregation with data whose timestamp is less than bound in unsequenceReader.
+   * </p>
+   *
+   * @param unsequenceReader unsequence data reader
+   * @param bound the time upper bounder of data in unsequence data reader
+   * @throws IOException TsFile data read exception
+   */
+  public abstract void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
+      throws IOException, ProcessorException;
 
   /**
    * <p>
@@ -92,6 +109,12 @@ public abstract class AggregateFunction {
       EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException;
 
   /**
+   * Judge if aggregation results have been calculated.
+   * @return If the aggregation result has been calculated return true, else return false.
+   */
+  public abstract boolean isCalculatedAggregationResult();
+
+  /**
    * <p>
    * This method is calculate the group by function.
    * </p>
@@ -100,35 +123,4 @@ public abstract class AggregateFunction {
       long intervalStart, long intervalEnd,
       BatchData data) throws ProcessorException;
 
-  /**
-   * Convert a value from string to its real data type and put into return data.
-   */
-  public void putValueFromStr(String valueStr) throws ProcessorException {
-    try {
-      switch (dataType) {
-        case INT32:
-          resultData.putInt(Integer.parseInt(valueStr));
-          break;
-        case INT64:
-          resultData.putLong(Long.parseLong(valueStr));
-          break;
-        case BOOLEAN:
-          resultData.putBoolean(Boolean.parseBoolean(valueStr));
-          break;
-        case TEXT:
-          resultData.putBinary(new Binary(valueStr));
-          break;
-        case DOUBLE:
-          resultData.putDouble(Double.parseDouble(valueStr));
-          break;
-        case FLOAT:
-          resultData.putFloat(Float.parseFloat(valueStr));
-          break;
-        default:
-          throw new ProcessorException("Unsupported type " + dataType);
-      }
-    } catch (Exception e) {
-      throw new ProcessorException(e.getMessage());
-    }
-  }
 }

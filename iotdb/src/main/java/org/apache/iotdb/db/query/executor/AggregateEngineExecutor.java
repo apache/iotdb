@@ -35,7 +35,8 @@ import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryDataSourceManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
-import org.apache.iotdb.db.query.dataset.AggregateDataSet;
+import org.apache.iotdb.db.query.dataset.BatchDataPointReader;
+import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.AllDataReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -82,7 +83,7 @@ public class AggregateEngineExecutor {
    *
    * @param context query context
    */
-  public AggregateDataSet executeWithOutTimeGenerator(QueryContext context)
+  public QueryDataSet executeWithOutTimeGenerator(QueryContext context)
       throws FileNodeManagerException, IOException, PathErrorException, ProcessorException {
     Filter timeFilter = null;
     if (expression != null) {
@@ -141,13 +142,17 @@ public class AggregateEngineExecutor {
     while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       //judge if overlap with unsequence data
-      if (canUseHeader(pageHeader, unSequenceReader)) {
+      if (canUseHeader(function, pageHeader, unSequenceReader)) {
         //cal by pageHeader
         function.calculateValueFromPageHeader(pageHeader);
         sequenceReader.skipPageData();
       } else {
         //cal by pageData
         function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
+      }
+
+      if (function.isCalculatedAggregationResult()) {
+        return function.getResult();
       }
     }
 
@@ -158,8 +163,9 @@ public class AggregateEngineExecutor {
     return function.getResult();
   }
 
-  private boolean canUseHeader(PageHeader pageHeader, IPointReader unSequenceReader)
-      throws IOException {
+  private boolean canUseHeader(AggregateFunction function, PageHeader pageHeader,
+      IPointReader unSequenceReader)
+      throws IOException, ProcessorException {
     //if page data is memory data.
     if (pageHeader == null) {
       return false;
@@ -167,11 +173,12 @@ public class AggregateEngineExecutor {
 
     long minTime = pageHeader.getMinTimestamp();
     long maxTime = pageHeader.getMaxTimestamp();
-    while (unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= maxTime) {
-      if (minTime <= unSequenceReader.current().getTimestamp()) {
-        return false;
-      }
-      unSequenceReader.next();
+
+    //cal unsequence data with timestamps between pages.
+    function.calculateValueFromUnsequenceReader(unSequenceReader, minTime);
+
+    if (unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= maxTime) {
+      return false;
     }
     return true;
   }
@@ -192,7 +199,7 @@ public class AggregateEngineExecutor {
     while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       //judge if overlap with unsequence data
-      if (canUseHeader(pageHeader, unSequenceReader)) {
+      if (canUseHeader(function, pageHeader, unSequenceReader)) {
         //cal by pageHeader
         function.calculateValueFromPageHeader(pageHeader);
         sequenceReader.skipPageData();
@@ -229,9 +236,10 @@ public class AggregateEngineExecutor {
 
   /**
    * execute aggregate function with value filter.
+   *
    * @param context query context.
    */
-  public AggregateDataSet executeWithTimeGenerator(QueryContext context)
+  public QueryDataSet executeWithTimeGenerator(QueryContext context)
       throws FileNodeManagerException, PathErrorException, IOException, ProcessorException {
     QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
     QueryTokenManager.getInstance().beginQueryOfGivenExpression(jobId, expression);
@@ -319,12 +327,14 @@ public class AggregateEngineExecutor {
     return readersOfSelectedSeries;
   }
 
-  private AggregateDataSet constructDataSet(List<BatchData> batchDataList) throws IOException {
+  private QueryDataSet constructDataSet(List<BatchData> batchDataList) throws IOException {
     List<TSDataType> dataTypes = new ArrayList<>();
+    List<IPointReader> batchDataPointReaders = new ArrayList<>();
     for (BatchData batchData : batchDataList) {
       dataTypes.add(batchData.getDataType());
+      batchDataPointReaders.add(new BatchDataPointReader(batchData));
     }
-    return new AggregateDataSet(selectedSeries, aggres, dataTypes, batchDataList);
+    return new EngineDataSetWithoutTimeGenerator(selectedSeries, dataTypes, batchDataPointReaders);
   }
 
 }

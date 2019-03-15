@@ -72,7 +72,7 @@ public class AllDataReader implements IPointReader {
   public TimeValuePair next() throws IOException {
     //construct batchData, and compare with value in pointReader
     while (hasCachedBatchData || batchReader.hasNext()) {
-      //if batchData isn't initialization, then initialize it
+      //if batchData isn't initialized, then initialize it
       if (!hasCachedBatchData) {
         if (batchReader.hasNext()) {
           batchData = batchReader.nextBatch();

@@ -94,6 +94,18 @@ public class MinTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
+      throws IOException, ProcessorException {
+    if (resultData.length() > 0) {
+      return;
+    }
+    if (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
+      resultData.putTime(0);
+      resultData.putLong(unsequenceReader.current().getTimestamp());
+    }
+  }
+
+  @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
       EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
     if (resultData.length() > 0) {
@@ -107,6 +119,11 @@ public class MinTimeAggrFunc extends AggregateFunction {
         return;
       }
     }
+  }
+
+  @Override
+  public boolean isCalculatedAggregationResult() {
+    return resultData.length() > 0;
   }
 
   @Override

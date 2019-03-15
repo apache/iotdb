@@ -101,6 +101,19 @@ public class FirstAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
+      throws IOException {
+    if (resultData.length() != 0) {
+      return;
+    }
+    if (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
+      resultData.putTime(0);
+      resultData.putAnObject(unsequenceReader.current().getValue().getValue());
+      return;
+    }
+  }
+
+  @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
       EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
     if (resultData.length() != 0) {
@@ -115,6 +128,11 @@ public class FirstAggrFunc extends AggregateFunction {
         break;
       }
     }
+  }
+
+  @Override
+  public boolean isCalculatedAggregationResult() {
+    return resultData.length() != 0;
   }
 
   @Override

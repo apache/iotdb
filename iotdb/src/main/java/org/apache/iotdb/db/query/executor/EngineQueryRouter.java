@@ -30,7 +30,6 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
-import org.apache.iotdb.db.query.dataset.AggregateDataSet;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -96,7 +95,7 @@ public class EngineQueryRouter {
   /**
    * execute aggregation query.
    */
-  public AggregateDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
+  public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression)
       throws QueryFilterOptimizationException, FileNodeManagerException, IOException, PathErrorException, ProcessorException {
 

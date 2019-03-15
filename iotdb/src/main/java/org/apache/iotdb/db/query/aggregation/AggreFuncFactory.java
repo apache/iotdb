@@ -61,11 +61,11 @@ public class AggreFuncFactory {
       case AggregationConstant.COUNT:
         return new CountAggrFunc();
       case AggregationConstant.MEAN:
-        return new MeanAggrFunc(dataType);
+        return new MeanAggrFunc(AggregationConstant.MEAN, dataType);
       case AggregationConstant.FIRST:
         return new FirstAggrFunc(dataType);
       case AggregationConstant.SUM:
-        return new SumAggrFunc(dataType);
+        return new SumAggrFunc(AggregationConstant.SUM, dataType);
       case AggregationConstant.LAST:
         return new LastAggrFunc(dataType);
       default:

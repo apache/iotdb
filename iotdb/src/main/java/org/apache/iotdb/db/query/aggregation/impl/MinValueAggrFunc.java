@@ -111,12 +111,26 @@ public class MinValueAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
+      throws IOException, ProcessorException {
+    Comparable<Object> minVal = null;
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
+      if (minVal == null
+          || minVal.compareTo(unsequenceReader.current().getValue().getValue()) > 0) {
+        minVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
+      }
+      unsequenceReader.next();
+    }
+    updateResult(minVal);
+  }
+
+  @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
       EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
     Comparable<Object> minVal = null;
     for (long time : timestamps) {
       TsPrimitiveType value = dataReader.getValueInTimestamp(time);
-      if(value == null){
+      if (value == null) {
         continue;
       }
       if (minVal == null || minVal.compareTo(value.getValue()) > 0) {
@@ -124,6 +138,11 @@ public class MinValueAggrFunc extends AggregateFunction {
       }
     }
     updateResult(minVal);
+  }
+
+  @Override
+  public boolean isCalculatedAggregationResult() {
+    return false;
   }
 
   private void updateResult(Comparable<Object> minVal) {
