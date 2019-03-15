@@ -38,7 +38,9 @@ public class TsFileResource implements Serializable {
   private static final long serialVersionUID = -4309683416067212549L;
 
   private OverflowChangeType overflowChangeType;
+
   private int baseDirIndex;
+  //the file name in the baseDir
   private String relativePath;
   private Map<String, Long> startTimeMap;
   private Map<String, Long> endTimeMap;
