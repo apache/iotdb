@@ -18,16 +18,23 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import static org.apache.iotdb.tsfile.write.writer.TsFileIOWriter.magicStringBytes;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
@@ -39,11 +46,12 @@ import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TsFileSequenceReader {
+public class TsFileSequenceReader implements AutoCloseable{
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSequenceReader.class);
 
@@ -426,5 +434,160 @@ public class TsFileSequenceReader {
     return ReadWriteIOUtils
         .readAsPossible(tsFileInput.wrapAsFileChannel(), target, position, length);
   }
+
+  /**
+   * Self Check the file and return the position before where the data is safe.
+   *
+   * @param newMetaData @OUT can not be null, the chunk group metadta in the file will be added into
+   * this parameter.  If the file is complete, then this parameter will be not modified.
+   * @return the position of the file that is fine. All data after the position in the file should
+   * be truncated.
+   */
+  public long selfCheck(List<ChunkGroupMetaData> newMetaData) throws IOException {
+    return selfCheck(null, newMetaData);
+  }
+
+  /**
+   * Self Check the file and return the position before where the data is safe.
+   *
+   * @param newSchema @OUT.  the measurement schema in the file will be added into
+   * this parameter. If the file is complete, then this parameter will be not modified.
+   * @param newMetaData @OUT can not be null, the chunk group metadta in the file will be added into
+   * this parameter.  If the file is complete, then this parameter will be not modified.
+   * @return the position of the file that is fine. All data after the position in the file should
+   * be truncated.
+   */
+  public long selfCheck(Map<String, MeasurementSchema> newSchema,
+      List<ChunkGroupMetaData> newMetaData) throws IOException {
+    File checkFile = new File(this.file);
+    long fileSize;
+    if (!checkFile.exists()) {
+      return TsFileCheckStatus.FILE_NOT_FOUND;
+    } else {
+      fileSize = checkFile.length();
+    }
+    ChunkMetaData currentChunk;
+    String measurementID;
+    TSDataType dataType;
+    long fileOffsetOfChunk;
+    long startTimeOfChunk = 0;
+    long endTimeOfChunk = 0;
+    long numOfPoints = 0;
+
+    ChunkGroupMetaData currentChunkGroup;
+    List<ChunkMetaData> chunks = null;
+    String deviceID;
+    long startOffsetOfChunkGroup = 0;
+    long endOffsetOfChunkGroup;
+    long versionOfChunkGroup = 0;
+    boolean haveReadAnUnverifiedGroupFooter = false;
+    boolean newGroup = true;
+
+    if (fileSize < TSFileConfig.MAGIC_STRING.length()) {
+      return TsFileCheckStatus.INCOMPATIBLE_FILE;
+    }
+    String magic = readHeadMagic(true);
+    if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
+      return TsFileCheckStatus.INCOMPATIBLE_FILE;
+    }
+
+    if (fileSize == TSFileConfig.MAGIC_STRING.length()) {
+      return TsFileCheckStatus.ONLY_MAGIC_HEAD;
+    } else if (readTailMagic().equals(magic)) {
+      return TsFileCheckStatus.COMPLETE_FILE;
+    }
+
+    // not a complete file, we will recover it...
+    long truncatedPosition = magicStringBytes.length;
+    boolean goon = true;
+    byte marker;
+    try {
+      while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
+        switch (marker) {
+          case MetaMarker.CHUNK_HEADER:
+            //this is a chunk.
+            if (haveReadAnUnverifiedGroupFooter) {
+              //now we are sure that the last ChunkGroupFooter is complete.
+              haveReadAnUnverifiedGroupFooter = false;
+              truncatedPosition = this.position() - 1;
+              newGroup = true;
+            }
+            if (newGroup) {
+              chunks = new ArrayList<>();
+              startOffsetOfChunkGroup = this.position() - 1;
+              newGroup = false;
+            }
+            //if there is something wrong with a chunk, we will drop this part of data
+            // (the whole ChunkGroup)
+            ChunkHeader header = this.readChunkHeader();
+            measurementID = header.getMeasurementID();
+            if (newSchema != null) {
+              newSchema.putIfAbsent(measurementID,
+                  new MeasurementSchema(measurementID, header.getDataType(),
+                      header.getEncodingType(), header.getCompressionType()));
+            }
+            dataType = header.getDataType();
+            fileOffsetOfChunk = this.position() - 1;
+            if (header.getNumOfPages() > 0) {
+              PageHeader pageHeader = this.readPageHeader(header.getDataType());
+              numOfPoints += pageHeader.getNumOfValues();
+              startTimeOfChunk = pageHeader.getMinTimestamp();
+              endTimeOfChunk = pageHeader.getMaxTimestamp();
+              this.skipPageData(pageHeader);
+            }
+            for (int j = 1; j < header.getNumOfPages() - 1; j++) {
+              //a new Page
+              PageHeader pageHeader = this.readPageHeader(header.getDataType());
+              this.skipPageData(pageHeader);
+            }
+            if (header.getNumOfPages() > 1) {
+              PageHeader pageHeader = this.readPageHeader(header.getDataType());
+              endTimeOfChunk = pageHeader.getMaxTimestamp();
+              this.skipPageData(pageHeader);
+            }
+            currentChunk = new ChunkMetaData(measurementID, dataType, fileOffsetOfChunk,
+                startTimeOfChunk, endTimeOfChunk);
+            currentChunk.setNumOfPoints(numOfPoints);
+            chunks.add(currentChunk);
+            numOfPoints = 0;
+            break;
+          case MetaMarker.CHUNK_GROUP_FOOTER:
+            //this is a chunk group
+            //if there is something wrong with the chunkGroup Footer, we will drop this part of data
+            //because we can not guarantee the correction of the deviceId.
+            ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
+            deviceID = chunkGroupFooter.getDeviceID();
+            endOffsetOfChunkGroup = this.position();
+            currentChunkGroup = new ChunkGroupMetaData(deviceID, chunks, startOffsetOfChunkGroup);
+            currentChunkGroup.setEndOffsetOfChunkGroup(endOffsetOfChunkGroup);
+            currentChunkGroup.setVersion(versionOfChunkGroup++);
+            newMetaData.add(currentChunkGroup);
+            // though we have read the current ChunkMetaData from Disk, it may be incomplete.
+            // because if the file only loses one byte, the ChunkMetaData.deserialize() returns ok,
+            // while the last filed of the ChunkMetaData is incorrect.
+            // So, only reading the next MASK, can make sure that this ChunkMetaData is complete.
+            haveReadAnUnverifiedGroupFooter = true;
+            break;
+
+          default:
+            // it is impossible that we read an incorrect data.
+            MetaMarker.handleUnexpectedMarker(marker);
+            goon = false;
+        }
+      }
+      //now we read the tail of the file, so we are sure that the last ChunkGroupFooter is complete.
+      truncatedPosition = this.position() - 1;
+    } catch (IOException e2) {
+      //if it is the end of the file, and we read an unverifiedGroupFooter, we must remove this ChunkGroup
+      if (haveReadAnUnverifiedGroupFooter && !newMetaData.isEmpty()) {
+        newMetaData.remove(newMetaData.size() - 1);
+      }
+    } finally {
+      //something wrong or all data is complete. We will discard current FileMetadata
+      // so that we can continue to write data into this tsfile.
+      return truncatedPosition;
+    }
+  }
+
 
 }
