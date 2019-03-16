@@ -53,7 +53,6 @@ public class TsFileRestorableReaderTest {
     File file = new File(FILE_PATH);
 
     IncompleteFileTestUtil.writeFileWithOneIncompleteChunkHeader(file);
-
     // This should throw an Illegal Argument Exception
     TsFileSequenceReader reader = new TsFileRestorableReader(FILE_PATH, false);
   }

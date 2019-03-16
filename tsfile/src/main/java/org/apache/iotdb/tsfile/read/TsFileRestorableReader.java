@@ -43,7 +43,12 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
     // Exception when reading broken data. Therefore, we set loadMetadata as true in this case.
     super(file, !autoRepair);
     if (autoRepair) {
-      checkAndRepair();
+      try {
+        checkAndRepair();
+      } catch (Throwable e) {
+        close();
+        throw e;
+      }
       loadMetadataSize();
     }
   }
