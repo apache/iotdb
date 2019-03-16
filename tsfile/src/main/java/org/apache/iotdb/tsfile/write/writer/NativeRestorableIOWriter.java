@@ -57,27 +57,31 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
   public NativeRestorableIOWriter(File file, boolean append) throws IOException {
     super();
     this.out = new DefaultTsFileOutput(file, true);
-
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)){
-      truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetaDataList);
-      if (truncatedPosition == TsFileCheckStatus.FILE_NOT_FOUND) {
-        //it is ok.. because this is a new file.
-      } else if (truncatedPosition == TsFileCheckStatus.COMPLETE_FILE) {
-        if (!append) {
-          this.canWrite = false;
+    if (file.length() == 0) {
+      //this is a new file
+      return;
+    }
+    if (file.exists()) {
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+        if (reader.isComplete() && !append) {
+          canWrite = false;
           out.close();
+          return;
+        }
+        truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetaDataList, !append);
+        if (truncatedPosition == TsFileCheckStatus.COMPLETE_FILE && !append) {
+            this.canWrite = false;
+            out.close();
+        } else if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
+          out.close();
+          throw new IOException(
+              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+        } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
+          out.truncate(TSFileConfig.MAGIC_STRING.length());
         } else {
-          truncatedPosition = reader.getPositionOfFirstDeviceMetaIndex();
+          //remove broken data
           out.truncate(truncatedPosition);
         }
-      } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
-          out.truncate(TSFileConfig.MAGIC_STRING.length());
-      } else if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
-        out.close();
-        throw new IOException(String.format("%s is not in TsFile format.", file.getAbsolutePath()));
-      } else {
-        //remove broken data
-        out.truncate(truncatedPosition);
       }
     }
   }

@@ -52,8 +52,6 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
    * Checks if the file is incomplete, and if so, tries to repair it.
    */
   private void checkAndRepair(String file) throws IOException {
-    long position = selfCheck(new ArrayList<>());
-
     // Check if file is damaged
     if (!TSFileConfig.MAGIC_STRING.equals(readTailMagic())) {
       // Try to close it

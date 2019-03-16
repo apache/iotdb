@@ -30,7 +30,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalLong;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -48,9 +47,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,14 +132,24 @@ public class TsFileSequenceReader implements AutoCloseable{
 
     // CHeck if the file is large enough to contain a tail magic
     // If the file only contains a header magic, this could also be assumed to be the tail magic
-    if (totalSize <= TSFileConfig.MAGIC_STRING.length()) {
-      throw new IOException("This file has no tail magic!");
-    }
+//    if (totalSize <= TSFileConfig.MAGIC_STRING.length()) {
+//      throw new IOException("This file has no tail magic!");
+//    }
 
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
     tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.length());
     magicStringBytes.flip();
     return new String(magicStringBytes.array());
+  }
+
+  /**
+   * whether the file is a complete TsFile: only if the head magic and tail magic string exists.
+   * @return
+   * @throws IOException
+   */
+  public boolean isComplete() throws IOException {
+    return tsFileInput.size() == TSFileConfig.MAGIC_STRING.length() * 2 && readTailMagic()
+        .equals(readHeadMagic());
   }
 
   /**
@@ -426,27 +433,17 @@ public class TsFileSequenceReader implements AutoCloseable{
   /**
    * Self Check the file and return the position before where the data is safe.
    *
-   * @param newMetaData @OUT can not be null, the chunk group metadta in the file will be added into
-   * this parameter.  If the file is complete, then this parameter will be not modified.
-   * @return the position of the file that is fine. All data after the position in the file should
-   * be truncated.
-   */
-  public long selfCheck(List<ChunkGroupMetaData> newMetaData) throws IOException {
-    return selfCheck(null, newMetaData);
-  }
-
-  /**
-   * Self Check the file and return the position before where the data is safe.
-   *
    * @param newSchema @OUT.  the measurement schema in the file will be added into
-   * this parameter. If the file is complete, then this parameter will be not modified.
+   * this parameter.
    * @param newMetaData @OUT can not be null, the chunk group metadta in the file will be added into
-   * this parameter.  If the file is complete, then this parameter will be not modified.
+   * this parameter.
+   * @param fastFinish if true and the file is complete, then newSchema and newMetaData parameter
+   * will be not modified.
    * @return the position of the file that is fine. All data after the position in the file should
    * be truncated.
    */
   public long selfCheck(Map<String, MeasurementSchema> newSchema,
-      List<ChunkGroupMetaData> newMetaData) throws IOException {
+      List<ChunkGroupMetaData> newMetaData, boolean fastFinish) throws IOException {
     File checkFile = new File(this.file);
     long fileSize;
     if (!checkFile.exists()) {
@@ -483,7 +480,9 @@ public class TsFileSequenceReader implements AutoCloseable{
       return TsFileCheckStatus.ONLY_MAGIC_HEAD;
     } else if (readTailMagic().equals(magic)) {
       loadMetadataSize();
-      return TsFileCheckStatus.COMPLETE_FILE;
+      if (fastFinish) {
+        return TsFileCheckStatus.COMPLETE_FILE;
+      }
     }
 
     // not a complete file, we will recover it...

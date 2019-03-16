@@ -306,6 +306,10 @@ public class NativeRestorableIOWriterTest {
     writer.write(new TSRecord(4, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.close();
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
+    TsDeviceMetadataIndex index = reader.readFileMetadata().getDeviceMap().get("d1");
+    assertEquals(2, reader.readTsDeviceMetaData(index).getChunkGroupMetaDataList().size());
+    reader.close();
     assertTrue(file.delete());
   }
 }
