@@ -91,7 +91,7 @@ public class TsFileExecutor implements QueryExecutor {
       IExpression timeBound = timeRangesRemains.get(0).getExpression();
       for (int i = 1; i < timeRangesRemains.size(); i++) {
         timeBound = BinaryExpression
-            .and(timeBound, timeRangesRemains.get(i).getExpression()); // TODO 检查正确性
+            .or(timeBound, timeRangesRemains.get(i).getExpression()); // TODO 检查正确性
       }
 
       if (queryExpression.hasQueryFilter()) {
