@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -36,8 +38,14 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TsFileSequenceReader {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSequenceReader.class);
 
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -54,7 +62,7 @@ public class TsFileSequenceReader {
    * @throws IOException If some I/O error occurs
    */
   public TsFileSequenceReader(String file) throws IOException {
-    this(file, true);
+    this(file, true, false);
   }
 
   /**
@@ -64,10 +72,41 @@ public class TsFileSequenceReader {
    * @param loadMetadataSize -load meta data size
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
+    this(file, loadMetadataSize, false);
+  }
+
+  /**
+   * construct function for TsFileSequenceReader.
+   *
+   * @param file -given file name
+   * @param loadMetadataSize -load meta data size
+   * @param autoRepair if true it tries to automatically repair a damaged file (by changing it!)
+   *                   before reading
+   */
+  public TsFileSequenceReader(String file, boolean loadMetadataSize, boolean autoRepair) throws IOException {
     this.file = file;
-    tsFileInput = new DefaultTsFileInput(Paths.get(file));
+    final Path path = Paths.get(file);
+    tsFileInput = new DefaultTsFileInput(path);
+    if (autoRepair) {
+      checkAndRepair(file, path);
+    }
     if (loadMetadataSize) {
       loadMetadataSize();
+    }
+  }
+
+  /**
+   * Checks if the file is incomplete, and if so, tries to repair it.
+   */
+  private void checkAndRepair(String file, Path path) throws IOException {
+    // Check if file is damaged
+    if (!TSFileConfig.MAGIC_STRING.equals(readTailMagic())) {
+      // Try to close it
+      LOGGER.info("File {} has no correct tail magic, try to repair...", path.toAbsolutePath());
+      NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(new File(file));
+      TsFileWriter writer = new TsFileWriter(rWriter);
+      // This writes the right magic string
+      writer.close();
     }
   }
 
@@ -112,6 +151,13 @@ public class TsFileSequenceReader {
    */
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
+
+    // CHeck if the file is large enough to contain a tail magic
+    // If the file only contains a header magic, this could also be assumed to be the tail magic
+    if (totalSize <= TSFileConfig.MAGIC_STRING.length()) {
+      throw new IOException("This file has no tail magic!");
+    }
+
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
     tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.length());
     magicStringBytes.flip();
