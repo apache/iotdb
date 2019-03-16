@@ -21,6 +21,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   private val outputPath2 = "src/test/resources/output2"
   private val outputPathFile2 = outputPath2 + "/part-m-00000"
   private val outputHDFSPath = "hdfs://localhost:9000/usr/hadoop/output"
+  private val outputHDFSPathFile = outputHDFSPath + "/part-m-00000"
   private var spark: SparkSession = _
 
   override protected def beforeAll(): Unit = {
@@ -78,6 +79,15 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     newDf.show()
     Assert.assertEquals(newDf.collectAsList(), df.collectAsList())
   }
+
+//  test("test write to HDFS") {
+//    val df = spark.read.tsfile(tsfile2)
+//    df.show()
+//    df.write.tsfile(outputHDFSPath)
+//    val newDf = spark.read.tsfile(outputHDFSPathFile)
+//    newDf.show()
+//    Assert.assertEquals(newDf.collectAsList(), df.collectAsList())
+//  }
 
   test("testSelect * from tsfile1") {
     val df = spark.read.tsfile(tsfile1)
