@@ -58,7 +58,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private static final int TS_METADATA_BYTE_SIZE = 4;
   private static final int TS_POSITION_BYTE_SIZE = 8;
 
-  private static final String RESTORE_SUFFIX = ".restore";
+  public static final String RESTORE_SUFFIX = ".restore";
   private static final String DEFAULT_MODE = "rw";
 
   private int lastFlushedChunkGroupIndex = 0;

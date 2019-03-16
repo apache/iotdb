@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.tsfiledata;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,6 +30,10 @@ import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.filenode.FileNodeProcessorStatus;
 import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
  * This class is used to store one bufferwrite file status.<br>
@@ -53,10 +58,22 @@ public class TsFileResource implements Serializable {
    * @param file
    * @param autoRead whether read the file to initialize startTimeMap and endTimeMap
    */
-  public TsFileResource(File file, boolean autoRead) {
+  public TsFileResource(File file, boolean autoRead) throws IOException {
     this(new HashMap<>(), new HashMap<>(), OverflowChangeType.NO_CHANGE, Directories.getInstance().getTsFileFolderIndex(file.getParent()), file.getName());
     if (autoRead) {
       //init startTime and endTime
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
+        if (reader.readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
+          //this is a complete tsfile, and we can read the metadata directly.
+          for (Map.Entry<String, TsDeviceMetadataIndex> deviceEntry : reader.readFileMetadata().getDeviceMap().entrySet()){
+            startTimeMap.put(deviceEntry.getKey(), deviceEntry.getValue().getStartTime());
+            endTimeMap.put(deviceEntry.getKey(), deviceEntry.getValue().getEndTime());
+          }
+        } else {
+          //sadly, this is not a complete tsfile. we have to repair it bytes by bytes
+          
+        }
+      }
     }
   }
 
@@ -244,6 +261,10 @@ public class TsFileResource implements Serializable {
     Map<String, Long> endTimeMapCopy = new HashMap<>(this.endTimeMap);
     return new TsFileResource(startTimeMapCopy, endTimeMapCopy, overflowChangeType,
             baseDirIndex, relativePath);
+  }
+
+  public Set<String> getDevices() {
+    return this.startTimeMap.keySet();
   }
 
   @Override

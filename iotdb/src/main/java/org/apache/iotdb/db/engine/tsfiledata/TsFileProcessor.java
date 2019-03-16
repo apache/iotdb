@@ -121,16 +121,31 @@ public class TsFileProcessor extends Processor {
     workMemTable = new PrimitiveMemTable();
     tsFileResources = new ArrayList<>();
     inverseIndexOfResource = new HashMap<>();
+    lastFlushedTime = new HashMap<>();
+    for (String folderPath : Directories.getInstance().getAllTsFileFolders()) {
+      File dataFolder = new File(folderPath, processorName);
+      if(dataFolder.exists()) {
+        for(File tsfile : dataFolder.listFiles(x -> !x.getName().contains(RestorableTsFileIOWriter.RESTORE_SUFFIX))) {
+          //TODO we'd better define a file suffix for TsFile, e.g., .ts
+          TsFileResource resource = new TsFileResource(tsfile, true);
+          tsFileResources.add(resource);
+          //maintain the inverse index and lastFlushTime
+          for (String device : resource.getDevices()) {
+            inverseIndexOfResource.computeIfAbsent(device, k -> new ArrayList<>()).add(resource);
+            lastFlushedTime.merge(device, resource.getEndTime(device), (x, y) -> x > y ? x : y);
+          }
+        }
+      }
+    }
 
-    init();
+    initNewTsFile();
 
     this.versionController = versionController;
     // we need to know  the last flushed timestamps of all devices
-
   }
 
 
-  private void init() throws BufferWriteProcessorException {
+  private void initNewTsFile() throws BufferWriteProcessorException {
     String dataDir = Directories.getInstance().getNextFolderForTsfile();
     File dataFolder = new File(dataDir, processorName);
     if (!dataFolder.exists()) {
@@ -161,7 +176,7 @@ public class TsFileProcessor extends Processor {
         throw new BufferWriteProcessorException(e);
       }
     }
-    lastFlushedTime = new HashMap<>();
+
   }
 
   /**
@@ -350,20 +365,23 @@ public class TsFileProcessor extends Processor {
             version);
         // write restore information
         writer.flush();
-        for (Map.Entry<String, Pair<Long, Long>> entry : minMaxTimeInMemTable.entrySet()) {
-
-        }
-        // //TODO record it in the modification file
-        //      String fullPath = deviceId +
-        //          IoTDBConstant.PATH_SEPARATOR + measurementId;
-        //      Deletion deletion = new Deletion(fullPath, versionController.nextVersion(), timestamp);
-        //      currentResource.getModFile().write(deletion);
       }
 
       afterFlushAction.act();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode.notifyEndFlush(null);
       }
+      //we update the index of currentTsResource.
+      for (Map.Entry<String, Pair<Long, Long>> timePair : minMaxTimeInMemTable.entrySet()) {
+        lastFlushedTime.put(timePair.getKey(), timePair.getValue().right);
+        if (!currentResource.containsDevice(timePair.getKey())) {
+          //the start time has not been set.
+          currentResource.setStartTime(timePair.getKey(), timePair.getValue().left);
+        }
+        // new end time must be larger than the old one.
+        currentResource.setEndTime(timePair.getKey(), timePair.getValue().right);
+      }
+
       result = true;
     } catch (Exception e) {
       LOGGER.error(
@@ -371,7 +389,7 @@ public class TsFileProcessor extends Processor {
           getProcessorName(), displayMessage, e);
       result = false;
     } finally {
-      switchFlushToWork(minMaxTimeInMemTable);
+      switchFlushToWork();
       LOGGER.info("The bufferwrite processor {} ends flushing {}.", getProcessorName(),
           displayMessage);
     }
@@ -400,23 +418,12 @@ public class TsFileProcessor extends Processor {
     }
   }
 
-  private void switchFlushToWork(Map <String, Pair<Long, Long>> minMaxTimeInMemtable) {
+  private void switchFlushToWork() {
     flushQueryLock.lock();
     try {
       flushMemTable.clear();
       flushMemTable = null;
       writer.appendMetadata();
-      //we update the index of currentTsResource.
-      for (Map.Entry<String, Pair<Long, Long>> timePair : minMaxTimeInMemtable.entrySet()) {
-        lastFlushedTime.put(timePair.getKey(), timePair.getValue().right);
-        if (!currentResource.containsDevice(timePair.getKey())) {
-          //the start time has not been set.
-          currentResource.setStartTime(timePair.getKey(), timePair.getValue().left);
-        }
-        // new end time must be larger than the old one.
-        currentResource.setEndTime(timePair.getKey(), timePair.getValue().right);
-      }
-
     } finally {
       flushQueryLock.unlock();
     }
@@ -442,6 +449,10 @@ public class TsFileProcessor extends Processor {
       afterFlushAction.act();
 
       tsFileResources.add(currentResource);
+      //maintain the inverse index
+      for (String device : currentResource.getDevices()) {
+        inverseIndexOfResource.computeIfAbsent(device, k -> new ArrayList<>()).add(currentResource);
+      }
 
       // delete the restore for this bufferwrite processor
       if (LOGGER.isInfoEnabled()) {
@@ -458,7 +469,7 @@ public class TsFileProcessor extends Processor {
       workMemTable.clear();
       flushMemTable.clear();
       logNode.close();
-      init();
+      initNewTsFile();
 
     } catch (IOException e) {
       LOGGER.error("Close the bufferwrite processor error, the bufferwrite is {}.",

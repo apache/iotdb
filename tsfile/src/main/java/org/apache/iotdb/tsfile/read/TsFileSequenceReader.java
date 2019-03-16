@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class TsFileSequenceReader {
+public class TsFileSequenceReader implements AutoCloseable{
 
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
