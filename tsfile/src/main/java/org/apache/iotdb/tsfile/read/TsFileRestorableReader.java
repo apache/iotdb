@@ -43,7 +43,7 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
     // Exception when reading broken data. Therefore, we set loadMetadata as true in this case.
     super(file, !autoRepair);
     if (autoRepair) {
-      checkAndRepair(file);
+      checkAndRepair();
       loadMetadataSize();
     }
   }
@@ -51,9 +51,9 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
   /**
    * Checks if the file is incomplete, and if so, tries to repair it.
    */
-  private void checkAndRepair(String file) throws IOException {
+  private void checkAndRepair() throws IOException {
     // Check if file is damaged
-    if (!TSFileConfig.MAGIC_STRING.equals(readTailMagic())) {
+    if (!isComplete()) {
       // Try to close it
       LOGGER.info("File {} has no correct tail magic, try to repair...", file);
       NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(new File(file), false);

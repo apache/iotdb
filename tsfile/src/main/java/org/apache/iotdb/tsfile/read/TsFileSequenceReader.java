@@ -59,7 +59,7 @@ public class TsFileSequenceReader implements AutoCloseable{
   private long fileMetadataPos;
   private int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
-  private String file;
+  protected String file;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -129,12 +129,6 @@ public class TsFileSequenceReader implements AutoCloseable{
    */
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
-
-    // CHeck if the file is large enough to contain a tail magic
-    // If the file only contains a header magic, this could also be assumed to be the tail magic
-//    if (totalSize <= TSFileConfig.MAGIC_STRING.length()) {
-//      throw new IOException("This file has no tail magic!");
-//    }
 
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
     tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.length());
