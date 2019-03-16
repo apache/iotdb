@@ -22,22 +22,22 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
+import java.io.*;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONObject;
+import org.apache.commons.io.IOUtils;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.JsonConverter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 import org.junit.Test;
 
 /**
@@ -49,9 +49,10 @@ public class JsonConverterTest {
   public void testJsonConverter() throws WriteProcessException {
     String path = "src/test/resources/test_schema.json";
     JSONObject obj = null;
-    try {
-      obj = new JSONObject(new JSONTokener(new FileReader(new File(path))));
-    } catch (JSONException | FileNotFoundException e) {
+    try (InputStream inputStream = new FileInputStream(path)) {
+      String jsonStr = IOUtils.toString(inputStream, "utf8");
+      obj = JSON.parseObject(jsonStr);
+    } catch (JSONException | IOException e) {
       e.printStackTrace();
       fail();
     }
@@ -74,29 +75,30 @@ public class JsonConverterTest {
   public void testConvertInJsonAndFileSchema() throws InvalidJsonSchemaException {
     String path = "src/test/resources/test_schema.json";
     JSONObject srcObj = null;
-    try {
-      srcObj = new JSONObject(new JSONTokener(new FileReader(new File(path))));
-    } catch (JSONException | FileNotFoundException e) {
+    try (InputStream inputStream = new FileInputStream(path)){
+      String jsonStr = IOUtils.toString(inputStream, "utf8");
+      srcObj = JSON.parseObject(jsonStr);
+    } catch (JSONException | IOException e) {
       e.printStackTrace();
       fail();
     }
     FileSchema fileSchema = new FileSchema(srcObj);
     JSONObject descObj = JsonConverter.converterFileSchemaToJson(fileSchema);
     // check schema
-    assertTrue(descObj.has(JsonFormatConstant.JSON_SCHEMA));
+    assertTrue(descObj.containsKey(JsonFormatConstant.JSON_SCHEMA));
     JSONArray srcSchemaArray = srcObj.getJSONArray(JsonFormatConstant.JSON_SCHEMA);
     JSONArray descSchemaArray = descObj.getJSONArray(JsonFormatConstant.JSON_SCHEMA);
-    assertEquals(srcSchemaArray.length(), descSchemaArray.length());
+    assertEquals(srcSchemaArray.size(), descSchemaArray.size());
     Map<String, JSONObject> descSchemaMap = new HashMap<>();
-    for (int i = 0; i < descSchemaArray.length(); i++) {
+    for (int i = 0; i < descSchemaArray.size(); i++) {
       JSONObject descMeasureObj = descSchemaArray.getJSONObject(i);
-      assertTrue(descMeasureObj.has(JsonFormatConstant.MEASUREMENT_UID));
+      assertTrue(descMeasureObj.containsKey(JsonFormatConstant.MEASUREMENT_UID));
       descSchemaMap
           .put(descMeasureObj.getString(JsonFormatConstant.MEASUREMENT_UID), descMeasureObj);
     }
-    for (int i = 0; i < srcSchemaArray.length(); i++) {
+    for (int i = 0; i < srcSchemaArray.size(); i++) {
       JSONObject srcMeasureObj = srcSchemaArray.getJSONObject(i);
-      assertTrue(srcMeasureObj.has(JsonFormatConstant.MEASUREMENT_UID));
+      assertTrue(srcMeasureObj.containsKey(JsonFormatConstant.MEASUREMENT_UID));
       String measureUID = srcMeasureObj.getString(JsonFormatConstant.MEASUREMENT_UID);
       assertTrue(descSchemaMap.containsKey(measureUID));
       checkJsonObjectEqual(srcMeasureObj, descSchemaMap.get(measureUID));
@@ -114,10 +116,10 @@ public class JsonConverterTest {
   private void checkJsonObjectEqual(JSONObject obj1, JSONObject obj2) {
     assertEquals(obj1.keySet().size(), obj2.keySet().size());
     obj1.keySet().forEach(k -> {
-      String key = (String) k;
-      assertTrue(obj2.has(key));
-      assertTrue(obj2.has(key));
-      assertEquals(obj1.get((String) k).toString(), obj2.get((String) k).toString());
+      String key = k;
+      assertTrue(obj2.containsKey(key));
+      assertTrue(obj2.containsKey(key));
+      assertEquals(obj1.get(k).toString(), obj2.get(k).toString());
     });
   }
 

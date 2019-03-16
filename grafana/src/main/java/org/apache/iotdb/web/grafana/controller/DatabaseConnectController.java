@@ -30,12 +30,14 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.service.DatabaseConnectService;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,6 +76,7 @@ public class DatabaseConnectController {
   @ResponseBody
   public String metricFindQuery(HttpServletRequest request, HttpServletResponse response) {
     Map<Integer, String> target = new HashMap<>();
+    JSONObject jsonObject = new JSONObject();
     response.setStatus(200);
     List<String> columnsName = new ArrayList<>();
     try {
@@ -82,12 +85,10 @@ public class DatabaseConnectController {
       logger.error("Failed to get metadata", e);
     }
     Collections.sort(columnsName);
-    int cnt = 0;
-    for (String columnName : columnsName) {
-      target.put(cnt++, columnName);
+    for (int i = 0; i < columnsName.size(); i++) {
+      jsonObject.put( i + "", columnsName.get(i));
     }
-    JSONObject ojb = new JSONObject(target);
-    return ojb.toString();
+    return jsonObject.toString();
   }
 
   /**
@@ -107,9 +108,9 @@ public class DatabaseConnectController {
       Pair<ZonedDateTime, ZonedDateTime> timeRange = getTimeFromAndTo(jsonObject);
       JSONArray array = (JSONArray) jsonObject.get("targets"); // []
       JSONArray result = new JSONArray();
-      for (int i = 0; i < array.length(); i++) {
+      for (int i = 0; i < array.size(); i++) {
         JSONObject object = (JSONObject) array.get(i); // {}
-        if (object.isNull(targetStr)) {
+        if (!object.containsKey(targetStr)) {
           return "[]";
         }
         String target = (String) object.get(targetStr);
@@ -121,7 +122,7 @@ public class DatabaseConnectController {
         } else if (type.equals("timeserie")) {
           setJsonTimeseries(obj, target, timeRange);
         }
-        result.put(i, obj);
+        result.add(i, obj);
       }
       logger.info("query finished");
       return result.toString();
@@ -148,18 +149,18 @@ public class DatabaseConnectController {
     JSONObject column = new JSONObject();
     column.put("text", "Time");
     column.put("type", "time");
-    columns.put(column);
+    columns.add(column);
     column = new JSONObject();
     column.put("text", "Number");
     column.put("type", "number");
-    columns.put(column);
+    columns.add(column);
     obj.put("columns", columns);
     JSONArray values = new JSONArray();
     for (TimeValues tv : timeValues) {
       JSONArray value = new JSONArray();
-      value.put(tv.getTime());
-      value.put(tv.getValue());
-      values.put(value);
+      value.add(tv.getTime());
+      value.add(tv.getValue());
+      values.add(value);
     }
     obj.put("values", values);
   }
@@ -174,9 +175,9 @@ public class DatabaseConnectController {
       long time = tv.getTime();
       float value = tv.getValue();
       JSONArray jsonArray = new JSONArray();
-      jsonArray.put(value);
-      jsonArray.put(time);
-      dataPoints.put(jsonArray);
+      jsonArray.add(value);
+      jsonArray.add(time);
+      dataPoints.add(jsonArray);
     }
     obj.put("datapoints", dataPoints);
   }
@@ -196,7 +197,7 @@ public class DatabaseConnectController {
       while ((line = br.readLine()) != null) {
         sb.append(line);
       }
-      return new JSONObject(sb.toString());
+      return JSON.parseObject(sb.toString());
     } catch (IOException e) {
       logger.error("getRequestBodyJson failed", e);
     }

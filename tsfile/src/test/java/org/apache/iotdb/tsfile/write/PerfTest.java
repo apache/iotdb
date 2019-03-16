@@ -26,6 +26,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
 import java.util.Scanner;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -37,8 +40,6 @@ import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -191,10 +192,10 @@ public class PerfTest {
     s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
     s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
     JSONArray measureGroup1 = new JSONArray();
-    measureGroup1.put(s1);
-    measureGroup1.put(s2);
-    measureGroup1.put(s3);
-    measureGroup1.put(s4);
+    measureGroup1.add(s1);
+    measureGroup1.add(s2);
+    measureGroup1.add(s3);
+    measureGroup1.add(s4);
 
     JSONObject jsonSchema = new JSONObject();
     jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
