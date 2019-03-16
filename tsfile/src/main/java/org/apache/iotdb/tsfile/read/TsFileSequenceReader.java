@@ -26,8 +26,11 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -70,7 +73,7 @@ public class TsFileSequenceReader implements AutoCloseable{
    * @throws IOException If some I/O error occurs
    */
   public TsFileSequenceReader(String file) throws IOException {
-    this(file, true, false);
+    this(file, true);
   }
 
   /**
@@ -80,41 +83,11 @@ public class TsFileSequenceReader implements AutoCloseable{
    * @param loadMetadataSize -load meta data size
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
-    this(file, loadMetadataSize, false);
-  }
-
-  /**
-   * construct function for TsFileSequenceReader.
-   *
-   * @param file -given file name
-   * @param loadMetadataSize -load meta data size
-   * @param autoRepair if true it tries to automatically repair a damaged file (by changing it!)
-   *                   before reading
-   */
-  public TsFileSequenceReader(String file, boolean loadMetadataSize, boolean autoRepair) throws IOException {
     this.file = file;
     final Path path = Paths.get(file);
     tsFileInput = new DefaultTsFileInput(path);
-    if (autoRepair) {
-      checkAndRepair(file, path);
-    }
     if (loadMetadataSize) {
       loadMetadataSize();
-    }
-  }
-
-  /**
-   * Checks if the file is incomplete, and if so, tries to repair it.
-   */
-  private void checkAndRepair(String file, Path path) throws IOException {
-    // Check if file is damaged
-    if (!TSFileConfig.MAGIC_STRING.equals(readTailMagic())) {
-      // Try to close it
-      LOGGER.info("File {} has no correct tail magic, try to repair...", path.toAbsolutePath());
-      NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(new File(file));
-      TsFileWriter writer = new TsFileWriter(rWriter);
-      // This writes the right magic string
-      writer.close();
     }
   }
 
@@ -133,7 +106,7 @@ public class TsFileSequenceReader implements AutoCloseable{
     this.fileMetadataSize = fileMetadataSize;
   }
 
-  private void loadMetadataSize() throws IOException {
+  protected void loadMetadataSize() throws IOException {
     ByteBuffer metadataSize = ByteBuffer.allocate(Integer.BYTES);
     tsFileInput.read(metadataSize,
         tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES);
@@ -202,6 +175,21 @@ public class TsFileSequenceReader implements AutoCloseable{
    */
   public TsFileMetaData readFileMetadata() throws IOException {
     return TsFileMetaData.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+  }
+
+  /**
+   * @return get the position after the last chunk group in the file
+   */
+  public long getPositionOfFirstDeviceMetaIndex() throws IOException {
+    TsFileMetaData metaData = readFileMetadata();
+    Optional<Long> data = metaData.getDeviceMap().values().stream().map(TsDeviceMetadataIndex::getOffset)
+        .min(Comparator.comparing(Long::valueOf));
+    if(data.isPresent()) {
+      return data.get();
+    } else {
+      //no real data
+      return TSFileConfig.MAGIC_STRING.length();
+    }
   }
 
   /**
@@ -494,6 +482,7 @@ public class TsFileSequenceReader implements AutoCloseable{
     if (fileSize == TSFileConfig.MAGIC_STRING.length()) {
       return TsFileCheckStatus.ONLY_MAGIC_HEAD;
     } else if (readTailMagic().equals(magic)) {
+      loadMetadataSize();
       return TsFileCheckStatus.COMPLETE_FILE;
     }
 
