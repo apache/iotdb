@@ -28,9 +28,9 @@ enum SyncDataStatus {
 }
 
 service SyncService{
-	bool getUUID(1:string uuid, 2:string address)
-	void getSchema(1:binary buff, 2:SyncDataStatus status)
-	string receiveData(1:string md5, 2:list<string> filename, 3:binary buff, 4:SyncDataStatus status)
+	bool checkIdentity(1:string uuid, 2:string address)
+	void syncSchema(1:binary buff, 2:SyncDataStatus status)
+	string syncData(1:string md5, 2:list<string> filename, 3:binary buff, 4:SyncDataStatus status)
 	bool load()
 	void cleanUp()
 	void init(1:string storageGroup)

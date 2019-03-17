@@ -332,7 +332,7 @@ public class FileSenderImpl implements FileSender {
     }
     boolean legalConnection;
     try {
-      legalConnection = serviceClient.getUUID(uuid,
+      legalConnection = serviceClient.checkIdentity(uuid,
           InetAddress.getLocalHost().getHostAddress());
     } catch (Exception e) {
       LOGGER.error("cannot confirm identity with receiver");
@@ -342,7 +342,7 @@ public class FileSenderImpl implements FileSender {
   }
 
   private String generateUUID() {
-    return Constans.SYNC + UUID.randomUUID().toString().replaceAll("-", "");
+    return Constans.SYNC_CLIENT + UUID.randomUUID().toString().replaceAll("-", "");
   }
 
   /**
@@ -403,7 +403,7 @@ public class FileSenderImpl implements FileSender {
               ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
               bos.reset();
               serviceClient
-                  .receiveData(null, filePathSplit, buffToSend, SyncDataStatus.PROCESSING_STATUS);
+                  .syncData(null, filePathSplit, buffToSend, SyncDataStatus.PROCESSING_STATUS);
             }
             bos.close();
           }
@@ -418,7 +418,7 @@ public class FileSenderImpl implements FileSender {
 
           // the file is sent successfully
           String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
-          String md5OfReceiver = serviceClient.receiveData(md5OfSender, filePathSplit,
+          String md5OfReceiver = serviceClient.syncData(md5OfSender, filePathSplit,
               null, SyncDataStatus.SUCCESS_STATUS);
           if (md5OfSender.equals(md5OfReceiver)) {
             LOGGER.info("receiver has received {} successfully.", snapshotFilePath);
@@ -450,11 +450,11 @@ public class FileSenderImpl implements FileSender {
         ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
         bos.reset();
         // 1 represents there is still schema buffer to send.
-        serviceClient.getSchema(buffToSend, SyncDataStatus.PROCESSING_STATUS);
+        serviceClient.syncSchema(buffToSend, SyncDataStatus.PROCESSING_STATUS);
       }
       bos.close();
       // 0 represents the schema file has been transferred completely.
-      serviceClient.getSchema(null, SyncDataStatus.SUCCESS_STATUS);
+      serviceClient.syncSchema(null, SyncDataStatus.SUCCESS_STATUS);
     } catch (Exception e) {
       LOGGER.error("cannot sync schema ", e);
       throw new SyncConnectionException(e);

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.filenode;
 
+import static java.time.ZonedDateTime.ofInstant;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
@@ -41,7 +43,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -101,8 +102,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static java.time.ZonedDateTime.ofInstant;
 
 public class FileNodeProcessor extends Processor implements IStatistic {
 
@@ -838,9 +837,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                 appendFile.getFilePath()));
       }
       if (!originFile.renameTo(targetFile)) {
-        LOGGER.warn("File renaming failed when appending new file. Origin: {}, target: {}",
-            originFile.getPath(),
-            targetFile.getPath());
+        LOGGER.warn("File renaming failed when appending new file. Origin: {}, Target: {}",
+            originFile.getPath(), targetFile.getPath());
       }
       // append the new tsfile
       this.newFileNodes.add(appendFile);

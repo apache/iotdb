@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 public class FileManagerTest {
 
-  public static final String POST_BACK_DIRECTORY_TEST = Constans.SYNC + File.separator;
+  public static final String POST_BACK_DIRECTORY_TEST = Constans.SYNC_CLIENT + File.separator;
   public static final String LAST_FILE_INFO_TEST =
       POST_BACK_DIRECTORY_TEST + Constans.LAST_LOCAL_FILE_NAME;
   public static final String SENDER_FILE_PATH_TEST = POST_BACK_DIRECTORY_TEST + "data";
