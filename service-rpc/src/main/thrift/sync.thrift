@@ -16,23 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-namespace java org.apache.iotdb.db.sync.receiver
+namespace java org.apache.iotdb.service.sync.thrift
 
 typedef i32 int 
 typedef i16 short
 typedef i64 long
 
-enum SYNC_STATUS {
+enum SyncDataStatus {
   SUCCESS_STATUS,
-  SYNC_STATUS
-
+  PROCESSING_STATUS
 }
 
-service ServerService{
+service SyncService{
 	bool getUUID(1:string uuid, 2:string address)
-	void getSchema(1:binary buff, 2:int status)
-	string receiveData(1:string md5, 2:list<string> filename, 3:binary buff, 4:int status)
+	void getSchema(1:binary buff, 2:SyncDataStatus status)
+	string receiveData(1:string md5, 2:list<string> filename, 3:binary buff, 4:SyncDataStatus status)
 	bool load()
-	void afterReceiving()
+	void cleanUp()
 	void init(1:string storageGroup)
 }
