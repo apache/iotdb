@@ -45,6 +45,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  */
 public class TsFileWrite {
 
+  public static int largeNum = 1024*1024*13+1023;
+
   public void create1(String tsfilePath) throws Exception {
     File f = new File(tsfilePath);
     if (f.exists()) {
@@ -150,11 +152,10 @@ public class TsFileWrite {
     }
     TsFileWriter tsFileWriter = new TsFileWriter(f);
 
-    int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
-    for (long i = 1; i < floatCount; i++) {
+    for (long i = 0; i < largeNum; i++) {
       // construct TSRecord
       TSRecord tsRecord = new TSRecord(i, "device_1");
       DataPoint dPoint1 = new FloatDataPoint("sensor_1", (float)i);

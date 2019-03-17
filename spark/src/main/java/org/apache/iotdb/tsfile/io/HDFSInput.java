@@ -1,20 +1,19 @@
 package org.apache.iotdb.tsfile.io;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.*;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 public class HDFSInput implements TsFileInput {
 
   private FSDataInputStream fsDataInputStream;
   private FileStatus fileStatus;
+  private boolean byteBufferReadable;
 
   public HDFSInput(String filePath) throws IOException {
 
@@ -28,13 +27,18 @@ public class HDFSInput implements TsFileInput {
 
   public HDFSInput(Path path, Configuration configuration) throws IOException {
     FileSystem fs = path.getFileSystem(configuration);
+    if(fs instanceof ChecksumFileSystem) {
+      byteBufferReadable = false;
+    } else {
+      byteBufferReadable = true;
+    }
     fsDataInputStream = fs.open(path);
     fileStatus = fs.getFileStatus(path);
   }
 
   @Override
   public long size() {
-    return fileStatus.getLen(); //TODO
+    return fileStatus.getLen();
   }
 
   @Override
@@ -44,15 +48,20 @@ public class HDFSInput implements TsFileInput {
 
   @Override
   public TsFileInput position(long newPosition) throws IOException {
-    fsDataInputStream.seek(newPosition); //TODO
+    fsDataInputStream.seek(newPosition);
     return this;
   }
 
   @Override
   public int read(ByteBuffer dst) throws IOException {
-    byte[] bytes = new byte[dst.remaining()]; //TODO
-    int res = fsDataInputStream.read(bytes);
-    dst.put(bytes);
+    int res;
+    if(byteBufferReadable) {
+      res = fsDataInputStream.read(dst);
+    } else {
+      byte[] bytes = new byte[dst.remaining()];
+      res = fsDataInputStream.read(bytes);
+      dst.put(bytes);
+    }
     return res;
   }
 
@@ -69,12 +78,17 @@ public class HDFSInput implements TsFileInput {
     long srcPosition = fsDataInputStream.getPos();
 
     fsDataInputStream.seek(position);
-    byte[] bytes = new byte[dst.remaining()]; //TODO 原来capacity会有问题
-    int res = fsDataInputStream.read(bytes);
-    dst.put(bytes);
+
+    int res;
+    if(byteBufferReadable) {
+      res = fsDataInputStream.read(dst);
+    } else {
+      byte[] bytes = new byte[dst.remaining()];
+      res = fsDataInputStream.read(bytes);
+      dst.put(bytes);
+    }
 
     fsDataInputStream.seek(srcPosition);
-    //TODO This method does not modify this TsFileInput's position.
 
     return res;
   }

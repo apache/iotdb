@@ -25,8 +25,8 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   private var spark: SparkSession = _
 
   override protected def beforeAll(): Unit = {
-    System.setProperty("hadoop.home.dir", "D:\\winutils")
-    //    System.setProperty("hadoop.home.dir", "/home/rl/usr/local/hadoop")
+//    System.setProperty("hadoop.home.dir", "D:\\winutils")
+    System.setProperty("hadoop.home.dir", "/home/rl/usr/local/hadoop")
     super.beforeAll()
     val resources = new File(resourcesFolder)
     if (!resources.exists())
@@ -71,7 +71,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
 
   }
 
-  test("test write") {
+  test("test write 1") {
     val df = spark.read.tsfile(tsfile1)
     df.show()
     df.write.tsfile(outputPath)
@@ -80,14 +80,20 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals(newDf.collectAsList(), df.collectAsList())
   }
 
-//  test("test write to HDFS") {
-//    val df = spark.read.tsfile(tsfile2)
-//    df.show()
-//    df.write.tsfile(outputHDFSPath)
-//    val newDf = spark.read.tsfile(outputHDFSPathFile)
-//    newDf.show()
-//    Assert.assertEquals(newDf.collectAsList(), df.collectAsList())
-//  }
+  test("test write 2") {
+    val df = spark.read.tsfile(tsfile2)
+    df.write.tsfile(outputPath2)
+    val newDf = spark.read.tsfile(outputPathFile2)
+    Assert.assertEquals(newDf.collectAsList(), df.collectAsList())
+  }
+
+  test("test write to HDFS") {
+    val df = spark.read.tsfile(tsfile2)
+    df.write.tsfile(outputHDFSPath)
+    val newDf = spark.read.tsfile(outputHDFSPathFile)
+    val count = newDf.count()
+    Assert.assertEquals(TsFileWrite.largeNum, count)
+  }
 
   test("testSelect * from tsfile1") {
     val df = spark.read.tsfile(tsfile1)
@@ -102,7 +108,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     df.createOrReplaceTempView("tsfile_table")
     val newDf = spark.sql("select * from tsfile_table")
     val count = newDf.count()
-    Assert.assertEquals(13632510, count)
+    Assert.assertEquals(TsFileWrite.largeNum, count)
   }
 
   test("testCount") {
