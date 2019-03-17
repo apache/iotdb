@@ -21,6 +21,9 @@ package org.apache.iotdb.tsfile.utils;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -30,8 +33,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,12 +73,12 @@ public class RecordUtilsTest {
     s6.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
     s6.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
     JSONArray columnGroup1 = new JSONArray();
-    columnGroup1.put(s1);
-    columnGroup1.put(s2);
-    columnGroup1.put(s3);
-    columnGroup1.put(s4);
-    columnGroup1.put(s5);
-    columnGroup1.put(s6);
+    columnGroup1.add(s1);
+    columnGroup1.add(s2);
+    columnGroup1.add(s3);
+    columnGroup1.add(s4);
+    columnGroup1.add(s5);
+    columnGroup1.add(s6);
 
     JSONObject jsonSchema = new JSONObject();
     jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, columnGroup1);

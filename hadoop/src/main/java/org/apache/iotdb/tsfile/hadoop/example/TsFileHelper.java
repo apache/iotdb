@@ -21,6 +21,9 @@ package org.apache.iotdb.tsfile.hadoop.example;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -30,8 +33,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsRandomAccessLocalFileReader;
 import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
 import org.apache.iotdb.tsfile.write.exception.WriteProcessException;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,10 +106,10 @@ public class TsFileHelper {
     s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
 
     JSONArray measureGroup = new JSONArray();
-    measureGroup.put(s1);
-    measureGroup.put(s2);
-    measureGroup.put(s3);
-    measureGroup.put(s4);
+    measureGroup.add(s1);
+    measureGroup.add(s2);
+    measureGroup.add(s3);
+    measureGroup.add(s4);
 
     JSONObject jsonSchema = new JSONObject();
     jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
