@@ -272,7 +272,6 @@ public abstract class BasicUserManager implements IUserManager {
   public void reset() throws AuthException {
     accessor.reset();
     userMap.clear();
-    lock.reset();
     initAdmin();
   }
 

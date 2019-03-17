@@ -60,24 +60,4 @@ public class HashLock {
     this.locks[Math.abs(obj.hashCode() % lockSize)].writeLock().unlock();
   }
 
-  /**
-   * This method will unlock all locks. Only for test convenience.
-   *
-   * The exceptions are ignored because they do not provide any useful information.
-   */
-  @SuppressWarnings("squid:S1166")
-  public void reset() {
-    for (int i = 0; i < lockSize; i++) {
-      try {
-        locks[i].readLock().unlock();
-      } catch (Exception ignored) {
-        // not useful exception
-      }
-      try {
-        locks[i].writeLock().unlock();
-      } catch (Exception ignored) {
-        // not useful exception
-      }
-    }
-  }
 }
