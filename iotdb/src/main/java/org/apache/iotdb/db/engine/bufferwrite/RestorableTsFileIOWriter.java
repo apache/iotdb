@@ -121,7 +121,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       } catch (IOException e) {
         LOGGER.info("remove unsealed tsfile restore file failed: ", e);
       }
-
       this.out = new DefaultTsFileOutput(new FileOutputStream(insertFile));
       this.chunkGroupMetaDataList = new ArrayList<>();
       lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
@@ -157,8 +156,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
     this.getAppendedRowGroupMetadata();
     tsDeviceMetadata.setChunkGroupMetadataList(this.append);
-    RandomAccessFile out = new RandomAccessFile(restoreFilePath, DEFAULT_MODE);
-    try {
+
+    try (RandomAccessFile out = new RandomAccessFile(restoreFilePath, DEFAULT_MODE)) {
       if (out.length() > 0) {
         out.seek(out.length() - TS_POSITION_BYTE_SIZE);
       }
@@ -172,8 +171,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       // write tsfile position using byte[8] which is a long
       byte[] lastPositionBytes = BytesUtils.longToBytes(lastPosition);
       out.write(lastPositionBytes);
-    } finally {
-      out.close();
     }
   }
 

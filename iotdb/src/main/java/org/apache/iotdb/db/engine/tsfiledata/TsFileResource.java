@@ -21,19 +21,23 @@ package org.apache.iotdb.db.engine.tsfiledata;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.engine.bufferwrite.RestorableTsFileIOWriter;
 import org.apache.iotdb.db.engine.filenode.FileNodeProcessorStatus;
 import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
  * This class is used to store one bufferwrite file status.<br>
@@ -44,9 +48,9 @@ public class TsFileResource implements Serializable {
 
   private OverflowChangeType overflowChangeType;
 
+  //the file index of `settled` folder in the Directories.
   private int baseDirIndex;
-  //the file name in the baseDir
-  private String relativePath;
+  private File file;
   private Map<String, Long> startTimeMap;
   private Map<String, Long> endTimeMap;
   private Set<String> mergeChanged = new HashSet<>();
@@ -54,82 +58,70 @@ public class TsFileResource implements Serializable {
   private transient ModificationFile modFile;
 
   /**
-   *
-   * @param file
    * @param autoRead whether read the file to initialize startTimeMap and endTimeMap
+   *
    */
   public TsFileResource(File file, boolean autoRead) throws IOException {
-    this(new HashMap<>(), new HashMap<>(), OverflowChangeType.NO_CHANGE, Directories.getInstance().getTsFileFolderIndex(file.getParent()), file.getName());
+    this(new HashMap<>(), new HashMap<>(), OverflowChangeType.NO_CHANGE, file);
     if (autoRead) {
       //init startTime and endTime
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
         if (reader.readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
           //this is a complete tsfile, and we can read the metadata directly.
-          for (Map.Entry<String, TsDeviceMetadataIndex> deviceEntry : reader.readFileMetadata().getDeviceMap().entrySet()){
+          for (Map.Entry<String, TsDeviceMetadataIndex> deviceEntry : reader.readFileMetadata()
+              .getDeviceMap().entrySet()) {
             startTimeMap.put(deviceEntry.getKey(), deviceEntry.getValue().getStartTime());
             endTimeMap.put(deviceEntry.getKey(), deviceEntry.getValue().getEndTime());
           }
         } else {
           //sadly, this is not a complete tsfile. we have to repair it bytes by bytes
-          
+          //TODO will implement it
+          List<ChunkGroupMetaData> metaDataList = new ArrayList<>();
+          reader.selfCheck(null, metaDataList, false);
+          initTimeMapFromChunGroupMetaDatas(metaDataList);
         }
       }
     }
   }
 
+  /**
+   * @param writer an unclosed TsFile Writer
+   */
+  public TsFileResource(File file, RestorableTsFileIOWriter writer) {
+    this(new HashMap<>(), new HashMap<>(), OverflowChangeType.NO_CHANGE, file);
+    initTimeMapFromChunGroupMetaDatas(writer.getChunkGroupMetaDatas());
+  }
 
+  private void initTimeMapFromChunGroupMetaDatas(List<ChunkGroupMetaData> metaDataList) {
+    for (ChunkGroupMetaData metaData : metaDataList) {
+      long startTime = startTimeMap.getOrDefault(metaData.getDeviceID(), Long.MAX_VALUE);
+      long endTime = endTimeMap.getOrDefault(metaData.getDeviceID(), Long.MIN_VALUE);
+      for (ChunkMetaData chunk : metaData.getChunkMetaDataList()) {
+        if (chunk.getStartTime() < startTime) {
+          startTime = chunk.getStartTime();
+        }
+        if (chunk.getEndTime() > endTime) {
+          endTime = chunk.getEndTime();
+        }
+      }
+      startTimeMap.put(metaData.getDeviceID(), startTime);
+      endTimeMap.put(metaData.getDeviceID(), endTime);
+    }
+  }
 
 
   public TsFileResource(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
-                          OverflowChangeType type, int baseDirIndex, String relativePath) {
+      OverflowChangeType type, File file) {
 
     this.overflowChangeType = type;
-    this.baseDirIndex = baseDirIndex;
-    this.relativePath = relativePath;
+    this.baseDirIndex = Directories.getInstance().getTsFileFolderIndex(file.getParentFile().getParent());
+    this.file = file;
 
     this.startTimeMap = startTimeMap;
     this.endTimeMap = endTimeMap;
-    this.modFile = new ModificationFile(
-        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-            + relativePath + ModificationFile.FILE_SUFFIX);
+    this.modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
   }
 
-  /**
-   * This is just used to construct a new bufferwritefile.
-   *
-   * @param type         whether this file is affected by overflow and how it is affected.
-   * @param relativePath the path of the file relative to the FileNode.
-   */
-  public TsFileResource(OverflowChangeType type, int baseDirIndex, String relativePath) {
-
-    this.overflowChangeType = type;
-    this.baseDirIndex = baseDirIndex;
-    this.relativePath = relativePath;
-
-    startTimeMap = new HashMap<>();
-    endTimeMap = new HashMap<>();
-    this.modFile = new ModificationFile(
-        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-            + relativePath + ModificationFile.FILE_SUFFIX);
-  }
-
-  public TsFileResource(OverflowChangeType type, String baseDir, String relativePath) {
-
-    this.overflowChangeType = type;
-    this.baseDirIndex = Directories.getInstance().getTsFileFolderIndex(baseDir);
-    this.relativePath = relativePath;
-
-    startTimeMap = new HashMap<>();
-    endTimeMap = new HashMap<>();
-    this.modFile = new ModificationFile(
-        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-            + relativePath + ModificationFile.FILE_SUFFIX);
-  }
-
-  public TsFileResource(OverflowChangeType type, String relativePath) {
-
-    this(type, 0, relativePath);
-  }
 
   public void setStartTime(String deviceId, long startTime) {
 
@@ -184,13 +176,8 @@ public class TsFileResource implements Serializable {
     endTimeMap.remove(deviceId);
   }
 
-  public String getFilePath() {
-
-    if (relativePath == null) {
-      return relativePath;
-    }
-    return new File(Directories.getInstance().getTsFileFolder(baseDirIndex),
-            relativePath).getPath();
+  public File getFile() {
+    return file;
   }
 
   public int getBaseDirIndex() {
@@ -201,15 +188,6 @@ public class TsFileResource implements Serializable {
     this.baseDirIndex = baseDirIndex;
   }
 
-  public String getRelativePath() {
-
-    return relativePath;
-  }
-
-  public void setRelativePath(String relativePath) {
-
-    this.relativePath = relativePath;
-  }
 
   public boolean checkEmpty() {
 
@@ -217,12 +195,10 @@ public class TsFileResource implements Serializable {
   }
 
   public void clear() {
-
     startTimeMap.clear();
     endTimeMap.clear();
     mergeChanged.clear();
     overflowChangeType = OverflowChangeType.NO_CHANGE;
-    relativePath = null;
   }
 
   public void changeTypeToChanged(FileNodeProcessorStatus fileNodeProcessorState) {
@@ -259,8 +235,7 @@ public class TsFileResource implements Serializable {
 
     Map<String, Long> startTimeMapCopy = new HashMap<>(this.startTimeMap);
     Map<String, Long> endTimeMapCopy = new HashMap<>(this.endTimeMap);
-    return new TsFileResource(startTimeMapCopy, endTimeMapCopy, overflowChangeType,
-            baseDirIndex, relativePath);
+    return new TsFileResource(startTimeMapCopy, endTimeMapCopy, overflowChangeType, file);
   }
 
   public Set<String> getDevices() {
@@ -273,7 +248,7 @@ public class TsFileResource implements Serializable {
     final int prime = 31;
     int result = 1;
     result = prime * result + ((endTimeMap == null) ? 0 : endTimeMap.hashCode());
-    result = prime * result + ((relativePath == null) ? 0 : relativePath.hashCode());
+    result = prime * result + ((file == null) ? 0 : file.hashCode());
     result = prime * result + ((overflowChangeType == null) ? 0 : overflowChangeType.hashCode());
     result = prime * result + ((startTimeMap == null) ? 0 : startTimeMap.hashCode());
     return result;
@@ -286,7 +261,7 @@ public class TsFileResource implements Serializable {
     TsFileResource fileNode = (TsFileResource) o;
     return baseDirIndex == fileNode.baseDirIndex &&
             overflowChangeType == fileNode.overflowChangeType &&
-            Objects.equals(relativePath, fileNode.relativePath) &&
+            Objects.equals(file, fileNode.file) &&
             Objects.equals(startTimeMap, fileNode.startTimeMap) &&
             Objects.equals(endTimeMap, fileNode.endTimeMap) &&
             Objects.equals(mergeChanged, fileNode.mergeChanged);
@@ -296,9 +271,9 @@ public class TsFileResource implements Serializable {
   public String toString() {
 
     return String.format(
-            "TsFileResource [relativePath=%s,overflowChangeType=%s, startTimeMap=%s,"
+            "TsFileResource [file=%s,overflowChangeType=%s, startTimeMap=%s,"
                     + " endTimeMap=%s, mergeChanged=%s]",
-            relativePath, overflowChangeType, startTimeMap, endTimeMap, mergeChanged);
+            file.getAbsolutePath(), overflowChangeType, startTimeMap, endTimeMap, mergeChanged);
   }
 
   public OverflowChangeType getOverflowChangeType() {
@@ -311,9 +286,7 @@ public class TsFileResource implements Serializable {
 
   public synchronized ModificationFile getModFile() {
     if (modFile == null) {
-      modFile = new ModificationFile(
-          Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-              + relativePath + ModificationFile.FILE_SUFFIX);
+      modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
     }
     return modFile;
   }
@@ -324,5 +297,9 @@ public class TsFileResource implements Serializable {
 
   public void setModFile(ModificationFile modFile) {
     this.modFile = modFile;
+  }
+
+  public void close() throws IOException {
+    modFile.close();
   }
 }
