@@ -16,34 +16,58 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.conf;
+package org.apache.iotdb.db.sync.conf;
 
 import java.io.File;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 
 /**
- * @author lta
+ * @author Tianan Li
  */
-public class PostBackSenderConfig {
-
-  public static final String CONFIG_NAME = "iotdb-postbackClient.properties";
+public class SyncSenderConfig {
 
   private String[] iotdbBufferwriteDirectory = IoTDBDescriptor.getInstance().getConfig()
       .getBufferWriteDirs();
-  private String dataDirectory =
-      new File(IoTDBDescriptor.getInstance().getConfig().getDataDir()).getAbsolutePath()
-          + File.separator;
+  private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getDataDir();
   private String uuidPath;
   private String lastFileInfo;
   private String[] snapshotPaths;
-  private String schemaPath =
-      new File(IoTDBDescriptor.getInstance().getConfig().getMetadataDir()).getAbsolutePath()
-          + File.separator + "mlog.txt";
+  private String schemaPath;
   private String serverIp = "127.0.0.1";
   private int serverPort = 5555;
   private int clientPort = 6666;
   private int uploadCycleInSeconds = 10;
   private boolean clearEnable = false;
+
+  public void init() {
+    String metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
+    if (metadataDirPath.length() > 0
+        && metadataDirPath.charAt(metadataDirPath.length() - 1) != File.separatorChar) {
+      metadataDirPath = metadataDirPath + File.separatorChar;
+    }
+    schemaPath = metadataDirPath + MetadataConstant.METADATA_LOG;
+    if (dataDirectory.length() > 0
+        && dataDirectory.charAt(dataDirectory.length() - 1) != File.separatorChar) {
+      dataDirectory += File.separatorChar;
+    }
+    uuidPath = dataDirectory + Constans.SYNC + File.separatorChar + Constans.UUID_FILE_NAME;
+    lastFileInfo =
+        dataDirectory + Constans.SYNC + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
+    snapshotPaths = new String[iotdbBufferwriteDirectory.length];
+    for (int i = 0; i < iotdbBufferwriteDirectory.length; i++) {
+      iotdbBufferwriteDirectory[i] = new File(iotdbBufferwriteDirectory[i]).getAbsolutePath();
+      if (iotdbBufferwriteDirectory[i].length() > 0
+          && iotdbBufferwriteDirectory[i].charAt(iotdbBufferwriteDirectory[i].length() - 1)
+          != File.separatorChar) {
+        iotdbBufferwriteDirectory[i] = iotdbBufferwriteDirectory[i] + File.separatorChar;
+      }
+      snapshotPaths[i] = iotdbBufferwriteDirectory[i] + Constans.SYNC + File.separatorChar
+          + Constans.DATA_SNAPSHOT_NAME
+          + File.separatorChar;
+    }
+
+  }
 
   public String[] getIotdbBufferwriteDirectory() {
     return iotdbBufferwriteDirectory;

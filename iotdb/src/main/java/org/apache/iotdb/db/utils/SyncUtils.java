@@ -21,24 +21,25 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.iotdb.db.postback.conf.PostBackSenderDescriptor;
+import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 
 /**
  * @author lta
  */
-public class PostbackUtils {
+public class SyncUtils {
 
-  private PostbackUtils(){}
+  private static final String IP_SEPARATOR = "\\.";
 
-  private static String[] snapshotPaths = PostBackSenderDescriptor.getInstance()
+  private static String[] snapshotPaths = SyncSenderDescriptor.getInstance()
       .getConfig().getSnapshotPaths();
 
+  private SyncUtils() {
+  }
+
   /**
-   * This method is to get a snapshot file seriesPath according to a tsfile seriesPath. Due to multiple directories,
-   * it's necessary to make a snapshot in the same disk. It's used by postback sender.
-   *
-   * @param filePath
-   * @return
+   * This method is to get a snapshot file seriesPath according to a tsfile seriesPath. Due to
+   * multiple directories, it's necessary to make a snapshot in the same disk. It's used by sync
+   * sender.
    */
   public static String getSnapshotFilePath(String filePath) {
     String[] name;
@@ -46,21 +47,22 @@ public class PostbackUtils {
     String os = System.getProperty("os.name");
     if (os.toLowerCase().startsWith("windows")) {
       name = filePath.split(File.separator + File.separator);
-      relativeFilePath =
-          "data" + File.separator + name[name.length - 2] + File.separator + name[name.length - 1];
+      relativeFilePath = name[name.length - 2] + File.separator + name[name.length - 1];
     } else {
       name = filePath.split(File.separator);
-      relativeFilePath =
-          "data" + File.separator + name[name.length - 2] + File.separator + name[name.length - 1];
+      relativeFilePath = name[name.length - 2] + File.separator + name[name.length - 1];
     }
     String bufferWritePath = name[0];
     for (int i = 1; i < name.length - 2; i++) {
-      bufferWritePath = bufferWritePath + File.separator + name[i];
+      bufferWritePath = bufferWritePath + File.separatorChar + name[i];
     }
     for (String snapshotPath : snapshotPaths) {
       if (snapshotPath.startsWith(bufferWritePath)) {
         if (!new File(snapshotPath).exists()) {
           new File(snapshotPath).mkdir();
+        }
+        if(snapshotPath.length() > 0 && snapshotPath.charAt(snapshotPath.length()-1)!=File.separatorChar){
+          snapshotPath = snapshotPath + File.separatorChar;
         }
         return snapshotPath + relativeFilePath;
       }
@@ -69,10 +71,7 @@ public class PostbackUtils {
   }
 
   /**
-   * Verify sending list is empty or not It's used by postback sender.
-   *
-   * @param sendingFileList
-   * @return
+   * Verify sending list is empty or not It's used by sync sender.
    */
   public static boolean isEmpty(Map<String, Set<String>> sendingFileList) {
     for (Entry<String, Set<String>> entry : sendingFileList.entrySet()) {
@@ -84,11 +83,8 @@ public class PostbackUtils {
   }
 
   /**
-   * Verify IP address with IP white list which contains more than one IP segment. It's used by postback sender.
-   *
-   * @param ipWhiteList
-   * @param ipAddress
-   * @return
+   * Verify IP address with IP white list which contains more than one IP segment. It's used by sync
+   * sender.
    */
   public static boolean verifyIPSegment(String ipWhiteList, String ipAddress) {
     String[] ipSegments = ipWhiteList.split(",");
@@ -104,43 +100,43 @@ public class PostbackUtils {
 
   /**
    * Verify IP address with IP segment.
-   *
-   * @param ipSegment
-   * @param ipAddress
-   * @param subnetMark
-   * @return
    */
   private static boolean verifyIP(String ipSegment, String ipAddress, int subnetMark) {
-    String ipSegmentBinary = "";
-    String ipAddressBinary = "";
-    String[] ipSplits = ipSegment.split("\\.");
+    String ipSegmentBinary;
+    String ipAddressBinary;
+    String[] ipSplits = ipSegment.split(IP_SEPARATOR);
     DecimalFormat df = new DecimalFormat("00000000");
     StringBuilder ipSegmentBuilder = new StringBuilder();
     for (String IPsplit : ipSplits) {
-      ipSegmentBuilder.append(String.valueOf(df.format(
-              Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit))))));
+      ipSegmentBuilder.append(df.format(
+          Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
     }
     ipSegmentBinary = ipSegmentBuilder.toString();
     ipSegmentBinary = ipSegmentBinary.substring(0, subnetMark);
-    ipSplits = ipAddress.split("\\.");
+    ipSplits = ipAddress.split(IP_SEPARATOR);
     StringBuilder ipAddressBuilder = new StringBuilder();
     for (String IPsplit : ipSplits) {
-      ipAddressBuilder.append(String.valueOf(df.format(
-              Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit))))));
+      ipAddressBuilder.append(df.format(
+          Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
     }
     ipAddressBinary = ipAddressBuilder.toString();
     ipAddressBinary = ipAddressBinary.substring(0, subnetMark);
     return ipAddressBinary.equals(ipSegmentBinary);
   }
 
+  /**
+   * Remove all files under this folder recursively
+   *
+   * @param file folder file
+   */
   public static void deleteFile(File file) throws IOException {
     if (!file.exists()) {
       return;
     }
     if (file.isFile() || Objects.requireNonNull(file.list()).length == 0) {
-      if (!file.delete()){
+      if (!file.delete()) {
         throw new IOException(
-            String.format("Cannot delete file : %s", file.getPath()));
+            String.format("cannot delete file : %s", file.getPath()));
       }
     } else {
       File[] files = file.listFiles();
@@ -149,7 +145,7 @@ public class PostbackUtils {
         deleteFile(f);
         if (!f.delete()) {
           throw new IOException(
-              String.format("Cannot delete file : %s", f.getPath()));
+              String.format("cannot delete file : %s", f.getPath()));
         }
       }
     }

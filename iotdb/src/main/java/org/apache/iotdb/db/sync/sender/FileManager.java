@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.sender;
+package org.apache.iotdb.db.sync.sender;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -29,27 +29,43 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.postback.conf.PostBackSenderConfig;
-import org.apache.iotdb.db.postback.conf.PostBackSenderDescriptor;
+import org.apache.iotdb.db.sync.conf.Constans;
+import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
+import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The class is to pick up which files need to postback.
+ * FileManager is used to pick up those tsfiles need to sync.
  *
- * @author lta
+ * @author Tianan Li
  */
 public class FileManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileManager.class);
-  private Map<String, Set<String>> sendingFiles = new HashMap<>();
+
+  /**
+   * Files that need to be synchronized
+   **/
+  private Map<String, Set<String>> validAllFiles = new HashMap<>();
+
+  /**
+   * All tsfiles in last synchronization process
+   **/
   private Set<String> lastLocalFiles = new HashSet<>();
+
+  /**
+   * All tsfiles in data directory
+   **/
   private Map<String, Set<String>> currentLocalFiles = new HashMap<>();
-  private PostBackSenderConfig postbackConfig = PostBackSenderDescriptor.getInstance().getConfig();
-  private IoTDBConfig tsfileConfig = IoTDBDescriptor.getInstance().getConfig();
+
+  private SyncSenderConfig syncConfig = SyncSenderDescriptor.getInstance().getConfig();
+
+  private IoTDBConfig systemConfig = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final String RESTORE_SUFFIX = ".restore";
 
   private FileManager() {
   }
@@ -59,30 +75,30 @@ public class FileManager {
   }
 
   /**
-   * initialize FileManager.
+   * Initialize FileManager.
    */
-  public void init() {
-    sendingFiles.clear();
+  public void init() throws IOException {
+    validAllFiles.clear();
     lastLocalFiles.clear();
     currentLocalFiles.clear();
-    getLastLocalFileList(postbackConfig.getLastFileInfo());
-    getCurrentLocalFileList(tsfileConfig.getBufferWriteDirs());
-    getSendingFileList();
+    getLastLocalFileList(syncConfig.getLastFileInfo());
+    getCurrentLocalFileList(systemConfig.getBufferWriteDirs());
+    getValidFileList();
   }
 
   /**
-   * get sending file list.
+   * get files that needs to be synchronized
    */
-  public void getSendingFileList() {
+  public void getValidFileList() {
     for (Entry<String, Set<String>> entry : currentLocalFiles.entrySet()) {
       for (String path : entry.getValue()) {
         if (!lastLocalFiles.contains(path)) {
-          sendingFiles.get(entry.getKey()).add(path);
+          validAllFiles.get(entry.getKey()).add(path);
         }
       }
     }
-    LOGGER.info("IoTDB sender : Sender has got list of sending files.");
-    for (Entry<String, Set<String>> entry : sendingFiles.entrySet()) {
+    LOGGER.info("acquire list of valid files.");
+    for (Entry<String, Set<String>> entry : validAllFiles.entrySet()) {
       for (String path : entry.getValue()) {
         LOGGER.info(path);
         currentLocalFiles.get(entry.getKey()).remove(path);
@@ -95,16 +111,16 @@ public class FileManager {
    *
    * @param path path
    */
-  public void getLastLocalFileList(String path) {
+  public void getLastLocalFileList(String path) throws IOException {
     Set<String> fileList = new HashSet<>();
     File file = new File(path);
     if (!file.exists()) {
       try {
         if (!file.createNewFile()) {
-          LOGGER.error("IoTDB post back sender: cannot create file {}", file.getAbsoluteFile());
+          LOGGER.error("cannot create file {}", file.getAbsoluteFile());
         }
       } catch (IOException e) {
-        LOGGER.error("IoTDB post back sender: cannot get last local file list", e);
+        throw new IOException("cannot get last local file list", e);
       }
     } else {
       try (BufferedReader bf = new BufferedReader(new FileReader(file))) {
@@ -113,12 +129,11 @@ public class FileManager {
           fileList.add(fileName);
         }
       } catch (IOException e) {
-        LOGGER.error(
-            "IoTDB post back sender: cannot get last local file list when reading file {}.",
-            postbackConfig.getLastFileInfo(), e);
+        LOGGER.error("cannot get last local file list when reading file {}.",
+            syncConfig.getLastFileInfo());
+        throw new IOException(e);
       }
     }
-
     lastLocalFiles = fileList;
   }
 
@@ -134,17 +149,17 @@ public class FileManager {
       }
       File[] listFiles = new File(path).listFiles();
       for (File storageGroup : listFiles) {
-        if (storageGroup.isDirectory() && !storageGroup.getName().equals("postback")) {
+        if (storageGroup.isDirectory() && !storageGroup.getName().equals(Constans.SYNC)) {
           if (!currentLocalFiles.containsKey(storageGroup.getName())) {
-            currentLocalFiles.put(storageGroup.getName(), new HashSet<String>());
+            currentLocalFiles.put(storageGroup.getName(), new HashSet<>());
           }
-          if (!sendingFiles.containsKey(storageGroup.getName())) {
-            sendingFiles.put(storageGroup.getName(), new HashSet<String>());
+          if (!validAllFiles.containsKey(storageGroup.getName())) {
+            validAllFiles.put(storageGroup.getName(), new HashSet<>());
           }
           File[] files = storageGroup.listFiles();
           for (File file : files) {
-            if (!file.getAbsolutePath().endsWith(".restore") && !new File(
-                file.getAbsolutePath() + ".restore").exists()) {
+            if (!file.getPath().endsWith(RESTORE_SUFFIX) && !new File(
+                file.getPath() + RESTORE_SUFFIX).exists()) {
               currentLocalFiles.get(storageGroup.getName()).add(file.getAbsolutePath());
             }
           }
@@ -166,12 +181,12 @@ public class FileManager {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("IoTDB post back sender: cannot back up now local file info", e);
+      LOGGER.error("cannot back up now local file info", e);
     }
   }
 
-  public Map<String, Set<String>> getSendingFiles() {
-    return sendingFiles;
+  public Map<String, Set<String>> getValidAllFiles() {
+    return validAllFiles;
   }
 
   public Set<String> getLastLocalFiles() {

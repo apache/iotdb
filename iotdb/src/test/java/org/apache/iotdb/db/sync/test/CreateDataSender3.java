@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.utils;
+package org.apache.iotdb.db.sync.test;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,10 +35,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The class is to generate data of another half timeseries (simulating jilian scene) which is
- * different to those in CreateDataSender2 to test stability of postback function.
+ * CreateDataSender3 is used to generate data of another half timeseries (simulating jilian scene) which is
+ * different to those in CreateDataSender2 to test stability of sync function.
  *
- * @author lta
+ * @author Tianan Li
  */
 public class CreateDataSender3 {
 

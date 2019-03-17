@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.sender;
+package org.apache.iotdb.db.sync.sender;
 
 import static org.junit.Assert.fail;
 

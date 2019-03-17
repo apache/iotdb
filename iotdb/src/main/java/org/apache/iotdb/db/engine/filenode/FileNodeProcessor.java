@@ -886,7 +886,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           tsFileResource.getEndTime(entry.getKey()) >= entry.getValue()
           && tsFileResource.getStartTime(entry.getKey()) <= appendFile
           .getEndTime(entry.getKey())) {
-        String relativeFilePath = "postback" + File.separator + uuid + File.separator + "backup"
+        String relativeFilePath = "sync" + File.separator + uuid + File.separator + "backup"
             + File.separator + tsFileResource.getRelativePath();
         File newFile = new File(
             Directories.getInstance().getTsFileFolder(tsFileResource.getBaseDirIndex()),

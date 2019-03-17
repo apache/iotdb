@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.sender;
+package org.apache.iotdb.db.sync.sender;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
+import org.apache.iotdb.db.sync.conf.Constans;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,9 +35,9 @@ import org.slf4j.LoggerFactory;
 
 public class FileManagerTest {
 
-  public static final String POST_BACK_DIRECTORY_TEST = "postback" + File.separator;
+  public static final String POST_BACK_DIRECTORY_TEST = Constans.SYNC + File.separator;
   public static final String LAST_FILE_INFO_TEST =
-      POST_BACK_DIRECTORY_TEST + "lastLocalFileList.txt";
+      POST_BACK_DIRECTORY_TEST + Constans.LAST_LOCAL_FILE_NAME;
   public static final String SENDER_FILE_PATH_TEST = POST_BACK_DIRECTORY_TEST + "data";
   FileManager manager = FileManager.getInstance();
   private static final Logger LOGGER = LoggerFactory.getLogger(FileManagerTest.class);
@@ -180,7 +181,7 @@ public class FileManagerTest {
         }
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
-            SENDER_FILE_PATH_TEST + File.separator + String.valueOf(i) + File.separator + rand;
+            SENDER_FILE_PATH_TEST + File.separator + i + File.separator + rand;
         File file = new File(fileName);
         allFileList.get(String.valueOf(i)).add(file.getAbsolutePath());
         if (!file.getParentFile().exists()) {
@@ -268,7 +269,7 @@ public class FileManagerTest {
     allFileList = manager.getCurrentLocalFiles();
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastlocalList = manager.getLastLocalFiles();
-    manager.getSendingFileList();
+    manager.getValidFileList();
     assert (lastlocalList.isEmpty());
     assert (isEmpty(allFileList));
 
@@ -302,8 +303,8 @@ public class FileManagerTest {
     allFileList = manager.getCurrentLocalFiles();
     manager.backupNowLocalFileInfo(LAST_FILE_INFO_TEST);
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
-    manager.getSendingFileList();
-    sendingFileList = manager.getSendingFiles();
+    manager.getValidFileList();
+    sendingFileList = manager.getValidAllFiles();
     assert (sendingFileList.size() == newFileList.size());
     for (Entry<String, Set<String>> entry : sendingFileList.entrySet()) {
       assert (newFileList.containsKey(entry.getKey()));
@@ -340,7 +341,7 @@ public class FileManagerTest {
         }
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
-            SENDER_FILE_PATH_TEST + File.separator + String.valueOf(i) + File.separator + rand;
+            SENDER_FILE_PATH_TEST + File.separator + i + File.separator + rand;
         File file = new File(fileName);
         allFileList.get(String.valueOf(i)).add(file.getAbsolutePath());
         newFileList.get(String.valueOf(i)).add(file.getAbsolutePath());
@@ -354,8 +355,8 @@ public class FileManagerTest {
     }
     manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
-    manager.getSendingFileList();
-    sendingFileList = manager.getSendingFiles();
+    manager.getValidFileList();
+    sendingFileList = manager.getValidAllFiles();
     assert (sendingFileList.size() == newFileList.size());
     for (Entry<String, Set<String>> entry : sendingFileList.entrySet()) {
       assert (newFileList.containsKey(entry.getKey()));
