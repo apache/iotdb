@@ -51,9 +51,9 @@ public class SyncSenderConfig {
         && dataDirectory.charAt(dataDirectory.length() - 1) != File.separatorChar) {
       dataDirectory += File.separatorChar;
     }
-    uuidPath = dataDirectory + Constans.SYNC + File.separatorChar + Constans.UUID_FILE_NAME;
+    uuidPath = dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.UUID_FILE_NAME;
     lastFileInfo =
-        dataDirectory + Constans.SYNC + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
+        dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
     snapshotPaths = new String[iotdbBufferwriteDirectory.length];
     for (int i = 0; i < iotdbBufferwriteDirectory.length; i++) {
       iotdbBufferwriteDirectory[i] = new File(iotdbBufferwriteDirectory[i]).getAbsolutePath();
@@ -62,7 +62,7 @@ public class SyncSenderConfig {
           != File.separatorChar) {
         iotdbBufferwriteDirectory[i] = iotdbBufferwriteDirectory[i] + File.separatorChar;
       }
-      snapshotPaths[i] = iotdbBufferwriteDirectory[i] + Constans.SYNC + File.separatorChar
+      snapshotPaths[i] = iotdbBufferwriteDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
           + Constans.DATA_SNAPSHOT_NAME
           + File.separatorChar;
     }

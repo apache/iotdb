@@ -149,7 +149,7 @@ public class FileManager {
       }
       File[] listFiles = new File(path).listFiles();
       for (File storageGroup : listFiles) {
-        if (storageGroup.isDirectory() && !storageGroup.getName().equals(Constans.SYNC)) {
+        if (storageGroup.isDirectory() && !storageGroup.getName().equals(Constans.SYNC_CLIENT)) {
           if (!currentLocalFiles.containsKey(storageGroup.getName())) {
             currentLocalFiles.put(storageGroup.getName(), new HashSet<>());
           }

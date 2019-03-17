@@ -27,11 +27,12 @@ public class Constans {
   }
 
   public static final String CONFIG_NAME = "iotdb-sync-client.properties";
-  public static final String SYNC = "sync";
+  public static final String SYNC_CLIENT = "sync-client";
+  public static final String SYNC_SERVER = "sync-server";
 
   public static final String UUID_FILE_NAME = "uuid.txt";
   public static final String LAST_LOCAL_FILE_NAME = "last_local_files.txt";
-  public static final String DATA_SNAPSHOT_NAME = "data_snapshot";
+  public static final String DATA_SNAPSHOT_NAME = "data-snapshot";
 
   /**
    * Split data file , block size at each transmission
