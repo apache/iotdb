@@ -34,10 +34,10 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   public int compareTo(TimeRange r) {
-    long res = this.min - r.min;
-    if (res > 0) {
+    long res1 = this.min - r.min;
+    if (res1 > 0) {
       return 1;
-    } else if (res == -1) {
+    } else if (res1 < 0) {
       return -1;
     } else {
       long res2 = this.max - r.max;
@@ -81,13 +81,6 @@ public class TimeRange implements Comparable<TimeRange> {
    */
   public void set(TimeRange r) {
     set(r.getMin(), r.getMax());
-  }
-
-  /**
-   * @return The difference between min and max
-   */
-  public float getSpan() {
-    return max - min;
   }
 
   /**
@@ -143,48 +136,11 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * @return The size of the intersection of the two ranges
-   */
-  public static long intersection(long minA, long maxA, long minB,
-                                  long maxB) {
-    long highMin = Math.max(minA, minB);
-    long lowMax = Math.min(maxA, maxB);
-
-    if (lowMax > highMin) {
-      return lowMax - highMin;
-    }
-
-    return 0;
-  }
-
-  /**
    * @return <code>true</code> if the ranges have values in common
    */
   public boolean intersects(TimeRange r) {
     return overlaps(min, max, r.min, r.max);
   }
-
-
-  @Override
-  public String toString() {
-    return "[ " + min + " : " + max + " ]";
-  }
-
-  /**
-   * Limits a value to lie within some range
-   *
-   * @return min if v < min, max if v > max, otherwise v
-   */
-  public static long limit(long v, long min, long max) {
-    if (v < min) {
-      v = min;
-    } else if (v > max) {
-      v = max;
-    }
-
-    return v;
-  }
-
 
   /**
    * @return <code>true</code> if the ranges overlap
@@ -193,9 +149,14 @@ public class TimeRange implements Comparable<TimeRange> {
     assert minA <= maxA;
     assert minB <= maxB;
 
-    return !(minA > maxB || maxA < minB);
+    // Because timestamp is long data type, x and x+1 are considered continuous.
+    return !(minA >= maxB + 2 || maxA <= minB - 2);
   }
 
+  @Override
+  public String toString() {
+    return "[ " + min + " : " + max + " ]";
+  }
 
   // NOTE the primitive timeRange is always a closed interval [min,max] and
   // only in getRemains functions are leftClose and rightClose considered.
@@ -231,8 +192,8 @@ public class TimeRange implements Comparable<TimeRange> {
     ArrayList<TimeRange> remains = new ArrayList<>();
 
     for (TimeRange prev : timeRangesPrev) {
-      if (prev.min > max) {
-        break; // because timeRangesPrev is sorted
+      if (prev.min >= max + 2) { // keep consistent with the definition of `overlap`
+        break; // break early since timeRangesPrev is sorted
       }
 
       if (intersects(prev)) {

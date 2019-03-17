@@ -23,6 +23,10 @@ package org.apache.iotdb.tsfile.tool;
  * There are two ways to construct a TsFile instance,they generate the same TsFile file. The class
  * use the second interface: public void addMeasurement(MeasurementSchema MeasurementSchema) throws
  * WriteProcessException
+ *
+ * There are two ways to construct a TsFile instance,they generate the same TsFile file. The class
+ * use the second interface: public void addMeasurement(MeasurementSchema MeasurementSchema) throws
+ * WriteProcessException
  */
 /**
  * There are two ways to construct a TsFile instance,they generate the same TsFile file.
@@ -45,7 +49,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  */
 public class TsFileWrite {
 
-  public static int largeNum = 1024*1024*13+1023;
+  public static int largeNum = 1024 * 1024;
 
   public void create1(String tsfilePath) throws Exception {
     File f = new File(tsfilePath);
@@ -158,7 +162,7 @@ public class TsFileWrite {
     for (long i = 0; i < largeNum; i++) {
       // construct TSRecord
       TSRecord tsRecord = new TSRecord(i, "device_1");
-      DataPoint dPoint1 = new FloatDataPoint("sensor_1", (float)i);
+      DataPoint dPoint1 = new FloatDataPoint("sensor_1", (float) i);
       tsRecord.addTuple(dPoint1);
       // write a TSRecord to TsFile
       tsFileWriter.write(tsRecord);

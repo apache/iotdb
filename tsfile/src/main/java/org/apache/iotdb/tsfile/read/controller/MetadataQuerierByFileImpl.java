@@ -246,38 +246,46 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
       throw new IOException(
           "Wrong use of getTimeRangeInOrPrev: should not be in NoPartition mode");
     }
-    this.mode = targetMode; // change mode temporarily for loadChunkMetadata's checkAccess function
 
-    ArrayList<TimeRange> timeRangeUnion = new ArrayList<>();
+    // change the mode temporarily to control loadChunkMetadata's checkAccess function
+    this.mode = targetMode;
+
+    ArrayList<TimeRange> unionCandidates = new ArrayList<>();
     for (Path path : paths) {
       List<ChunkMetaData> chunkMetaDataList = loadChunkMetadata(path);
       for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
-        timeRangeUnion.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+        unionCandidates
+            .add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
       }
     }
-    Collections.sort(timeRangeUnion);
+    Collections.sort(unionCandidates);
 
-    // union procedure
-    Iterator<TimeRange> iterator = timeRangeUnion.iterator();
-    boolean isSplit = false; // the split point of union
+    // union
+    ArrayList<TimeRange> unionResult = new ArrayList<>();
+    Iterator<TimeRange> iterator = unionCandidates.iterator();
     TimeRange range_curr = null;
-    if (iterator.hasNext()) {
-      range_curr = iterator.next();
+
+    if (!iterator.hasNext()) {
+      return unionResult;
+    } else {
+      TimeRange r = iterator.next();
+      range_curr = new TimeRange(r.getMin(), r.getMax());
     }
+
     while (iterator.hasNext()) {
       TimeRange range_next = iterator.next();
-      if (range_curr.intersects(range_next)) { // intersect
+      if (range_curr.intersects(range_next)) {
         range_curr.set(Math.min(range_curr.getMin(), range_next.getMin()),
-            Math.max(range_curr.getMax(), range_next.getMax())); // union
-        iterator.remove(); // union merged to the last one
+            Math.max(range_curr.getMax(), range_next.getMax()));
       } else {
+        unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
         range_curr.set(range_next.getMin(), range_next.getMax());
       }
-
     }
+    unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
 
-    this.mode = LoadMode.InPartition; // restore mode to InPartition
-    return timeRangeUnion;
+    this.mode = LoadMode.InPartition; // restore the mode to InPartition
+    return unionResult;
 
   }
 
