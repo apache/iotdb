@@ -37,12 +37,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CreateDataSender1 is used to generate data of whole timeseries (simulating jilian scene) to test stability of
+ * SyncTestClient1 is used to generate data of whole timeseries (simulating jilian scene) to test stability of
  * sync function.
- *
- * @author Tianan Li
  */
-public class CreateDataSender1 {
+public class SyncTestClient1 {
 
   private static final int TIME_INTERVAL = 0;
   private static final int TOTAL_DATA = 2000000;
@@ -58,7 +56,7 @@ public class CreateDataSender1 {
   private static final int MAX_FLOAT = 30;
   private static final int STRING_LENGTH = 5;
   private static final int BATCH_SQL = 10000;
-  private static final Logger logger = LoggerFactory.getLogger(CreateDataSender1.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncTestClient1.class);
 
   /**
    * generate time series map from file.

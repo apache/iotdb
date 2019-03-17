@@ -19,12 +19,12 @@
 #
 
 
-PIDS=$(ps ax | grep -i 'postBackClient' | grep java | grep -v grep | awk '{print $1}')
+PIDS=$(ps ax | grep -i 'SyncClient' | grep java | grep -v grep | awk '{print $1}')
 
 if [ -z "$PIDS" ]; then
-  echo "No post back Client to stop"
+  echo "No sync client to stop"
   exit 1
 else 
   kill -s TERM $PIDS
-  echo "close PostBackClient"
+  echo "close sync client"
 fi

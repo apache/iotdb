@@ -22,23 +22,19 @@ import java.io.File;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 
-/**
- * @author Tianan Li
- */
 public class SyncSenderConfig {
 
-  private String[] iotdbBufferwriteDirectory = IoTDBDescriptor.getInstance().getConfig()
+  private String[] bufferwriteDirectory = IoTDBDescriptor.getInstance().getConfig()
       .getBufferWriteDirs();
   private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getDataDir();
+  private String lockFilePath;
   private String uuidPath;
   private String lastFileInfo;
   private String[] snapshotPaths;
   private String schemaPath;
   private String serverIp = "127.0.0.1";
   private int serverPort = 5555;
-  private int clientPort = 6666;
   private int uploadCycleInSeconds = 10;
-  private boolean clearEnable = false;
 
   public void init() {
     String metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
@@ -51,30 +47,32 @@ public class SyncSenderConfig {
         && dataDirectory.charAt(dataDirectory.length() - 1) != File.separatorChar) {
       dataDirectory += File.separatorChar;
     }
+    lockFilePath =
+        dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.LOCK_FILE_NAME;
     uuidPath = dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.UUID_FILE_NAME;
     lastFileInfo =
         dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
-    snapshotPaths = new String[iotdbBufferwriteDirectory.length];
-    for (int i = 0; i < iotdbBufferwriteDirectory.length; i++) {
-      iotdbBufferwriteDirectory[i] = new File(iotdbBufferwriteDirectory[i]).getAbsolutePath();
-      if (iotdbBufferwriteDirectory[i].length() > 0
-          && iotdbBufferwriteDirectory[i].charAt(iotdbBufferwriteDirectory[i].length() - 1)
+    snapshotPaths = new String[bufferwriteDirectory.length];
+    for (int i = 0; i < bufferwriteDirectory.length; i++) {
+      bufferwriteDirectory[i] = new File(bufferwriteDirectory[i]).getAbsolutePath();
+      if (bufferwriteDirectory[i].length() > 0
+          && bufferwriteDirectory[i].charAt(bufferwriteDirectory[i].length() - 1)
           != File.separatorChar) {
-        iotdbBufferwriteDirectory[i] = iotdbBufferwriteDirectory[i] + File.separatorChar;
+        bufferwriteDirectory[i] = bufferwriteDirectory[i] + File.separatorChar;
       }
-      snapshotPaths[i] = iotdbBufferwriteDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
+      snapshotPaths[i] = bufferwriteDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
           + Constans.DATA_SNAPSHOT_NAME
           + File.separatorChar;
     }
 
   }
 
-  public String[] getIotdbBufferwriteDirectory() {
-    return iotdbBufferwriteDirectory;
+  public String[] getBufferwriteDirectory() {
+    return bufferwriteDirectory;
   }
 
-  public void setIotdbBufferwriteDirectory(String[] iotdbBufferwriteDirectory) {
-    this.iotdbBufferwriteDirectory = iotdbBufferwriteDirectory;
+  public void setBufferwriteDirectory(String[] bufferwriteDirectory) {
+    this.bufferwriteDirectory = bufferwriteDirectory;
   }
 
   public String getDataDirectory() {
@@ -133,14 +131,6 @@ public class SyncSenderConfig {
     this.serverPort = serverPort;
   }
 
-  public int getClientPort() {
-    return clientPort;
-  }
-
-  public void setClientPort(int clientPort) {
-    this.clientPort = clientPort;
-  }
-
   public int getUploadCycleInSeconds() {
     return uploadCycleInSeconds;
   }
@@ -149,11 +139,11 @@ public class SyncSenderConfig {
     this.uploadCycleInSeconds = uploadCycleInSeconds;
   }
 
-  public boolean getClearEnable() {
-    return clearEnable;
+  public String getLockFilePath() {
+    return lockFilePath;
   }
 
-  public void setClearEnable(boolean clearEnable) {
-    this.clearEnable = clearEnable;
+  public void setLockFilePath(String lockFilePath) {
+    this.lockFilePath = lockFilePath;
   }
 }

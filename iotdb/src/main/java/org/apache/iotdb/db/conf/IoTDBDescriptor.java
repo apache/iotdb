@@ -190,15 +190,15 @@ public class IoTDBDescriptor {
           properties.getProperty("overflow_file_size_threshold",
               Long.toString(conf.getOverflowFileSizeThreshold())).trim()));
 
-      conf.setPostbackEnable(Boolean
-          .parseBoolean(properties.getProperty("is_postback_enable",
-                  Boolean.toString(conf.isPostbackEnable()))));
-      conf.setPostbackServerPort(Integer
-          .parseInt(properties.getProperty("postback_server_port",
-                  Integer.toString(conf.getPostbackServerPort())).trim()));
+      conf.setSyncEnable(Boolean
+          .parseBoolean(properties.getProperty("is_sync_enable",
+                  Boolean.toString(conf.isSyncEnable()))));
+      conf.setSyncServerPort(Integer
+          .parseInt(properties.getProperty("sync_server_port",
+                  Integer.toString(conf.getSyncServerPort())).trim()));
       conf.setUpdate_historical_data_possibility(Boolean.parseBoolean(
           properties.getProperty("update_historical_data_possibility",
-                  Boolean.toString(conf.isPostbackEnable()))));
+                  Boolean.toString(conf.isSyncEnable()))));
       conf.setIpWhiteList(properties.getProperty("IP_white_list", conf.getIpWhiteList()));
 
       if (conf.getMemThresholdWarning() <= 0) {
