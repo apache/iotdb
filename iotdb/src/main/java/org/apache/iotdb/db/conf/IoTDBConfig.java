@@ -255,11 +255,11 @@ public class IoTDBConfig {
   /**
    * Is this IoTDB instance a receiver of sync or not.
    */
-  private boolean isPostbackEnable = true;
+  private boolean isSyncEnable = true;
   /**
    * If this IoTDB instance is a receiver of sync, set the server port.
    */
-  private int postbackServerPort = 5555;
+  private int syncServerPort = 5555;
   /*
    * Set the language version when loading file including error information, default value is "EN"
    */
@@ -768,20 +768,20 @@ public class IoTDBConfig {
     this.maxLogEntrySize = maxLogEntrySize;
   }
 
-  public boolean isPostbackEnable() {
-    return isPostbackEnable;
+  public boolean isSyncEnable() {
+    return isSyncEnable;
   }
 
-  public void setPostbackEnable(boolean postbackEnable) {
-    isPostbackEnable = postbackEnable;
+  public void setSyncEnable(boolean syncEnable) {
+    isSyncEnable = syncEnable;
   }
 
-  public int getPostbackServerPort() {
-    return postbackServerPort;
+  public int getSyncServerPort() {
+    return syncServerPort;
   }
 
-  public void setPostbackServerPort(int postbackServerPort) {
-    this.postbackServerPort = postbackServerPort;
+  public void setSyncServerPort(int syncServerPort) {
+    this.syncServerPort = syncServerPort;
   }
 
   public String getLanguageVersion() {

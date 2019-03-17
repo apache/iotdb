@@ -22,6 +22,7 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -34,8 +35,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * sync receiver server.
- *
- * @author Tianan Li
  */
 public class ServerManager {
 
@@ -58,7 +57,7 @@ public class ServerManager {
     Factory protocolFactory;
     TProcessor processor;
     TThreadPoolServer.Args poolArgs;
-    if (!conf.isPostbackEnable()) {
+    if (!conf.isSyncEnable()) {
       return;
     }
     try {
@@ -68,9 +67,9 @@ public class ServerManager {
         return;
       }
       conf.setIpWhiteList(conf.getIpWhiteList().replaceAll(" ", ""));
-      serverTransport = new TServerSocket(conf.getPostbackServerPort());
+      serverTransport = new TServerSocket(conf.getSyncServerPort());
       protocolFactory = new TBinaryProtocol.Factory();
-      processor = new ServerService.Processor<>(new ServerServiceImpl());
+      processor = new SyncService.Processor<>(new ServerServiceImpl());
       poolArgs = new TThreadPoolServer.Args(serverTransport);
       poolArgs.processor(processor);
       poolArgs.protocolFactory(protocolFactory);
@@ -80,7 +79,7 @@ public class ServerManager {
       Thread syncServerThread = new Thread(syncServerRunnable, ThreadName.SYNC_SERVER.getName());
       syncServerThread.start();
     } catch (TTransportException e) {
-      throw new StartupException("cannot start sync server.", e);
+      throw new StartupException("Cannot start sync server.", e);
     }
   }
 
@@ -88,10 +87,10 @@ public class ServerManager {
    * close sync receiver's server.
    */
   public void closeServer() {
-    if (conf.isPostbackEnable() && poolServer != null) {
+    if (conf.isSyncEnable() && poolServer != null) {
       poolServer.stop();
       serverTransport.close();
-      LOGGER.info("stop sync server.");
+      LOGGER.info("Stop sync server.");
     }
   }
 

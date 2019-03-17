@@ -39,8 +39,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * FileManager is used to pick up those tsfiles need to sync.
- *
- * @author Tianan Li
  */
 public class FileManager {
 
@@ -97,7 +95,7 @@ public class FileManager {
         }
       }
     }
-    LOGGER.info("acquire list of valid files.");
+    LOGGER.info("Acquire list of valid files.");
     for (Entry<String, Set<String>> entry : validAllFiles.entrySet()) {
       for (String path : entry.getValue()) {
         LOGGER.info(path);
@@ -117,10 +115,10 @@ public class FileManager {
     if (!file.exists()) {
       try {
         if (!file.createNewFile()) {
-          LOGGER.error("cannot create file {}", file.getAbsoluteFile());
+          LOGGER.error("Cannot create file {}", file.getPath());
         }
       } catch (IOException e) {
-        throw new IOException("cannot get last local file list", e);
+        throw new IOException("Cannot get last local file list", e);
       }
     } else {
       try (BufferedReader bf = new BufferedReader(new FileReader(file))) {
@@ -129,7 +127,7 @@ public class FileManager {
           fileList.add(fileName);
         }
       } catch (IOException e) {
-        LOGGER.error("cannot get last local file list when reading file {}.",
+        LOGGER.error("Cannot get last local file list when reading file {}.",
             syncConfig.getLastFileInfo());
         throw new IOException(e);
       }
@@ -160,7 +158,7 @@ public class FileManager {
           for (File file : files) {
             if (!file.getPath().endsWith(RESTORE_SUFFIX) && !new File(
                 file.getPath() + RESTORE_SUFFIX).exists()) {
-              currentLocalFiles.get(storageGroup.getName()).add(file.getAbsolutePath());
+              currentLocalFiles.get(storageGroup.getName()).add(file.getPath());
             }
           }
         }
@@ -181,7 +179,7 @@ public class FileManager {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("cannot back up now local file info", e);
+      LOGGER.error("Cannot back up current local file info", e);
     }
   }
 

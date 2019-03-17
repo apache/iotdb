@@ -77,6 +77,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.sync.conf.Constans;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -724,8 +725,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       newMultiPassLock.readLock().unlock();
       newMultiPassTokenSet.remove(token);
       LOGGER.debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token,
-              getProcessorName(),
-              newMultiPassTokenSet, newMultiPassLock);
+          getProcessorName(),
+          newMultiPassTokenSet, newMultiPassLock);
       return true;
     } else if (oldMultiPassTokenSet != null && oldMultiPassTokenSet.contains(token)) {
       // remove token first, then unlock
@@ -884,8 +885,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           tsFileResource.getEndTime(entry.getKey()) >= entry.getValue()
           && tsFileResource.getStartTime(entry.getKey()) <= appendFile
           .getEndTime(entry.getKey())) {
-        String relativeFilePath = "sync" + File.separator + uuid + File.separator + "backup"
-            + File.separator + tsFileResource.getRelativePath();
+        String relativeFilePath =
+            Constans.SYNC_SERVER + File.separatorChar + uuid + File.separatorChar
+                + Constans.BACK_UP_DIRECTORY_NAME
+                + File.separatorChar + tsFileResource.getRelativePath();
         File newFile = new File(
             Directories.getInstance().getTsFileFolder(tsFileResource.getBaseDirIndex()),
             relativeFilePath);

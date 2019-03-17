@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.sync.conf;
 
-/**
- * @author Tianan Li
- */
 public class Constans {
 
   private Constans() {
@@ -30,9 +27,12 @@ public class Constans {
   public static final String SYNC_CLIENT = "sync-client";
   public static final String SYNC_SERVER = "sync-server";
 
+  public static final String LOCK_FILE_NAME = "sync-lock";
   public static final String UUID_FILE_NAME = "uuid.txt";
   public static final String LAST_LOCAL_FILE_NAME = "last_local_files.txt";
   public static final String DATA_SNAPSHOT_NAME = "data-snapshot";
+
+  public static final String BACK_UP_DIRECTORY_NAME = "backup";
 
   /**
    * Split data file , block size at each transmission

@@ -35,12 +35,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CreateDataSender3 is used to generate data of another half timeseries (simulating jilian scene) which is
- * different to those in CreateDataSender2 to test stability of sync function.
- *
- * @author Tianan Li
+ * SyncTestClient3 is used to generate data of another half timeseries (simulating jilian scene) which is
+ * different to those in SyncTestClient2 to test stability of sync function.
  */
-public class CreateDataSender3 {
+public class SyncTestClient3 {
 
   private static final int TIME_INTERVAL = 0;
   private static final int TOTAL_DATA = 2000000;
@@ -56,7 +54,7 @@ public class CreateDataSender3 {
   private static final int MAX_FLOAT = 30;
   private static final int STRING_LENGTH = 5;
   private static final int BATCH_SQL = 10000;
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreateDataSender3.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncTestClient3.class);
 
   /**
    * generate time series map from file.
