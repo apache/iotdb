@@ -63,14 +63,19 @@ public class MetadataQuerierByFileImplTest {
     fileReader = new TsFileSequenceReader(FILE_PATH);
 
     HashMap<String, Long> params = new HashMap<>();
-    params.put(QueryConstant.PARTITION_START_OFFSET, 2618269L);
-    params.put(QueryConstant.PARTITION_END_OFFSET, 3006840L);
+    params.put(QueryConstant.PARTITION_START_OFFSET, 3621649L);
+    params.put(QueryConstant.PARTITION_END_OFFSET, 5010264L);
 
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader,
         params);
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d2.s1"));
-    Assert.assertEquals(1, chunkMetaDataList.size());
+    Assert.assertEquals(2, chunkMetaDataList.size());
+    Assert.assertEquals(1480562757700L, chunkMetaDataList.get(0).getStartTime());
+    Assert.assertEquals(1480562803465L, chunkMetaDataList.get(0).getEndTime());
+
+    Assert.assertEquals(1480562803470L, chunkMetaDataList.get(1).getStartTime());
+    Assert.assertEquals(1480562849220L, chunkMetaDataList.get(1).getEndTime());
   }
 
   @Test
@@ -78,7 +83,6 @@ public class MetadataQuerierByFileImplTest {
     fileReader = new TsFileSequenceReader(FILE_PATH);
 
     HashMap<String, Long> params = new HashMap<>();
-//    params.put(QueryConstant.PARTITION_START_OFFSET, 3006840L);
     params.put(QueryConstant.PARTITION_START_OFFSET, 1608255L);
     params.put(QueryConstant.PARTITION_END_OFFSET, 3006837L);
 

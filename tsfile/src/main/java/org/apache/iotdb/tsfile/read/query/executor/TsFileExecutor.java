@@ -56,49 +56,49 @@ public class TsFileExecutor implements QueryExecutor {
     }
 
     if (metadataQuerier.getLoadMode() == LoadMode.InPartition) {
-      // get the sorted union covered time ranges of chunkGroups in the current partition
+      // (1) get the sorted union covered time ranges of chunkGroups in the current partition
       ArrayList<TimeRange> timeRangesIn = metadataQuerier
           .getTimeRangeInOrPrev(queryExpression.getSelectedSeries(), LoadMode.InPartition);
 
-      // check if null
+      // (2) check if null
       if (timeRangesIn.size() == 0) {
         return new DataSetWithoutTimeGenerator(new ArrayList<Path>(), new ArrayList<TSDataType>(),
-            new ArrayList<FileSeriesReader>()); //TODO how to return empty QueryDataSet
+            new ArrayList<FileSeriesReader>()); // return empty QueryDataSet
       }
 
-      // get the sorted union covered time ranges of chunkGroups before the current partition
+      // (3) get the sorted union covered time ranges of chunkGroups before the current partition
       ArrayList<TimeRange> timeRangesPrev = metadataQuerier
           .getTimeRangeInOrPrev(queryExpression.getSelectedSeries(), LoadMode.PrevPartition);
 
-      // calculate remaining time range
+      // (4) calculate the remaining time range
       ArrayList<TimeRange> timeRangesRemains = new ArrayList<>();
       for (TimeRange in : timeRangesIn) {
         ArrayList<TimeRange> remains = in.getRemains(timeRangesPrev);
         timeRangesRemains.addAll(remains);
       }
 
-      // check if null
+      // (5) check if null
       if (timeRangesRemains.size() == 0) {
         return new DataSetWithoutTimeGenerator(new ArrayList<Path>(), new ArrayList<TSDataType>(),
-            new ArrayList<FileSeriesReader>()); //TODO how to return empty QueryDataSet
+            new ArrayList<FileSeriesReader>()); // return empty QueryDataSet
       }
 
-      // add an additional global time filter based on the left time range
+      // (6) add an additional global time filter based on the remaining time range
       IExpression timeBound = timeRangesRemains.get(0).getExpression();
       for (int i = 1; i < timeRangesRemains.size(); i++) {
         timeBound = BinaryExpression
-            .or(timeBound, timeRangesRemains.get(i).getExpression()); // TODO 检查正确性
+            .or(timeBound, timeRangesRemains.get(i).getExpression());
       }
 
       if (queryExpression.hasQueryFilter()) {
         IExpression timeBoundExpression = BinaryExpression
-            .and(queryExpression.getExpression(), timeBound); //TODO
+            .and(queryExpression.getExpression(), timeBound);
         queryExpression.setExpression(timeBoundExpression);
       } else {
         queryExpression.setExpression(timeBound);
       }
 
-      // with global time filters, we can now remove partition constraints
+      // (7) with global time filters, we can now remove partition constraints
       metadataQuerier.setLoadMode(LoadMode.NoPartition);
       metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
 

@@ -99,40 +99,16 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       val params = new java.util.HashMap[java.lang.String, java.lang.Long]()
       params.put(QueryConstant.PARTITION_START_OFFSET, file.start.asInstanceOf[java.lang.Long])
       System.out.println("partition start "+file.start)
-//      params.put(QueryConstant.PARTITION_START_OFFSET, 430L)
-//      params.put(QueryConstant.PARTITION_START_OFFSET, 0L)
       params.put(QueryConstant.PARTITION_END_OFFSET, (file.start + file.length).asInstanceOf[java.lang.Long])
       System.out.println("partition length "+file.length)
-//      params.put(QueryConstant.PARTITION_END_OFFSET, 800L)
-//      params.put(QueryConstant.PARTITION_END_OFFSET, 400L)
 
       val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader, params)
+      val tsFileMetaData = reader.readFileMetadata
 
       // get queriedSchema from requiredSchema
-      var queriedSchema: StructType = new StructType()
-      val tsFileMetaData = reader.readFileMetadata
-      if (requiredSchema.isEmpty
-        || (requiredSchema.size == 1 && requiredSchema.iterator.next().name == QueryConstant.RESERVED_TIME)) {
-        /*
-          e.g., select count(*) from table; select time from table
-         */
-        val fileSchema = Converter.getSeries(tsFileMetaData)
-        queriedSchema = Converter.toQueriedSchema(fileSchema)
-      } else {
-        // remove nonexistent schema according to the current file's metadata
-        val devices = tsFileMetaData.getDeviceMap.keySet()
-        val measurementIds = tsFileMetaData.getMeasurementSchema.keySet()
-        requiredSchema.foreach(f => {
-          if (!QueryConstant.RESERVED_TIME.equals(f.name)) {
-            val path = new org.apache.iotdb.tsfile.read.common.Path(f.name)
-            if (devices.contains(path.getDevice) && measurementIds.contains(path.getMeasurement)) {
-              queriedSchema = queriedSchema.add(f)
-            }
-          }
-        })
-      }
+      var queriedSchema = Converter.prep4requiredSchema(requiredSchema, tsFileMetaData)
 
-      //convert filters to queryExpression
+      // construct queryExpression based on queriedSchema and filters
       val queryExpression = Converter.toQueryExpression(queriedSchema, filters)
 
       val queryDataSet = readTsFile.query(queryExpression)
