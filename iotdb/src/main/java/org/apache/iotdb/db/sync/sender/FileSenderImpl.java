@@ -48,8 +48,9 @@ import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.conf.Constans;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
-import org.apache.iotdb.db.sync.receiver.ServerService;
 import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.service.sync.thrift.SyncDataStatus;
+import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -68,7 +69,7 @@ public class FileSenderImpl implements FileSender {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileSenderImpl.class);
   private TTransport transport;
-  private ServerService.Client serviceClient;
+  private SyncService.Client serviceClient;
   private List<String> schema = new ArrayList<>();
 
   /**
@@ -245,7 +246,7 @@ public class FileSenderImpl implements FileSender {
     // 8. notify receiver that synchronization finish
     // At this point the synchronization has finished even if connection fails
     try {
-      serviceClient.afterReceiving();
+      serviceClient.cleanUp();
     } catch (TException e) {
       LOGGER.error("unable to connect to receiver ", e);
     }
@@ -291,7 +292,7 @@ public class FileSenderImpl implements FileSender {
   public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
     transport = new TSocket(serverIp, serverPort);
     TProtocol protocol = new TBinaryProtocol(transport);
-    serviceClient = new ServerService.Client(protocol);
+    serviceClient = new SyncService.Client(protocol);
     try {
       transport.open();
     } catch (TTransportException e) {
@@ -401,7 +402,8 @@ public class FileSenderImpl implements FileSender {
               bos.write(buffer, 0, data);
               ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
               bos.reset();
-              serviceClient.startReceiving(null, filePathSplit, buffToSend, 1);
+              serviceClient
+                  .receiveData(null, filePathSplit, buffToSend, SyncDataStatus.PROCESSING_STATUS);
             }
             bos.close();
           }
@@ -416,8 +418,8 @@ public class FileSenderImpl implements FileSender {
 
           // the file is sent successfully
           String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
-          String md5OfReceiver = serviceClient.startReceiving(md5OfSender, filePathSplit,
-              null, 0);
+          String md5OfReceiver = serviceClient.receiveData(md5OfSender, filePathSplit,
+              null, SyncDataStatus.SUCCESS_STATUS);
           if (md5OfSender.equals(md5OfReceiver)) {
             LOGGER.info("receiver has received {} successfully.", snapshotFilePath);
             break;
@@ -448,11 +450,11 @@ public class FileSenderImpl implements FileSender {
         ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
         bos.reset();
         // 1 represents there is still schema buffer to send.
-        serviceClient.getSchema(buffToSend, 1);
+        serviceClient.getSchema(buffToSend, SyncDataStatus.PROCESSING_STATUS);
       }
       bos.close();
       // 0 represents the schema file has been transferred completely.
-      serviceClient.getSchema(null, 0);
+      serviceClient.getSchema(null, SyncDataStatus.SUCCESS_STATUS);
     } catch (Exception e) {
       LOGGER.error("cannot sync schema ", e);
       throw new SyncConnectionException(e);
@@ -463,7 +465,7 @@ public class FileSenderImpl implements FileSender {
   public boolean afterSynchronization() throws SyncConnectionException {
     boolean successOrNot;
     try {
-      successOrNot = serviceClient.merge();
+      successOrNot = serviceClient.load();
     } catch (TException e) {
       throw new SyncConnectionException(
           "can not finish sync process because sync receiver has broken down.", e);

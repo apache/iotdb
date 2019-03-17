@@ -51,6 +51,8 @@ import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.service.sync.thrift.SyncDataStatus;
+import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
@@ -72,7 +74,7 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Tianan Li
  */
-public class ServerServiceImpl implements ServerService.Iface {
+public class ServerServiceImpl implements SyncService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(ServerServiceImpl.class);
   private static final FileNodeManager fileNodeManager = FileNodeManager.getInstance();
@@ -145,75 +147,6 @@ public class ServerServiceImpl implements ServerService.Iface {
     return SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress);
   }
 
-  /**
-   * Start receiving tsfile from sender
-   *
-   * @param status status = 0 : finish receiving one tsfile status = 1 : a tsfile has not received
-   * completely.
-   */
-  @Override
-  public String startReceiving(String md5OfSender, List<String> filePathSplit,
-      ByteBuffer dataToReceive, int status) throws TException {
-    String md5OfReceiver = "";
-    StringBuilder filePathBuilder = new StringBuilder();
-    FileChannel channel;
-    for (int i = 0; i < filePathSplit.size(); i++) {
-      if (i == filePathSplit.size() - 1) {
-        filePathBuilder.append(filePathSplit.get(i));
-      } else {
-        filePathBuilder.append(filePathSplit.get(i)).append(File.separator);
-      }
-    }
-    String filePath = filePathBuilder.toString();
-    filePath = postbackPath + uuid.get() + File.separator + filePath;
-    if (status == 1) { // there are still data stream to add
-      File file = new File(filePath);
-      if (!file.getParentFile().exists()) {
-        try {
-          file.getParentFile().mkdirs();
-          if (!file.createNewFile()) {
-            logger.error("IoTDB post back receiver: cannot create file {}", file.getAbsoluteFile());
-          }
-        } catch (IOException e) {
-          logger.error("IoTDB post back receiver: cannot make file", e);
-        }
-      }
-      try (FileOutputStream fos = new FileOutputStream(file, true)) {// append new data
-        channel = fos.getChannel();
-        channel.write(dataToReceive);
-      } catch (IOException e) {
-        logger.error("IoTDB post back receiver: cannot write data to file", e);
-
-      }
-    } else { // all data in the same file has received successfully
-      try (FileInputStream fis = new FileInputStream(filePath)) {
-        MessageDigest md = MessageDigest.getInstance("MD5");
-        int mBufferSize = 8 * 1024 * 1024;
-        byte[] buffer = new byte[mBufferSize];
-        int n;
-        while ((n = fis.read(buffer)) != -1) {
-          md.update(buffer, 0, n);
-        }
-        md5OfReceiver = (new BigInteger(1, md.digest())).toString(16);
-        if (md5OfSender.equals(md5OfReceiver)) {
-          fileNum.set(fileNum.get() + 1);
-          if (logger.isInfoEnabled()) {
-            logger.info(String
-                .format("IoTDB post back receiver : Receiver has received %d files from sender",
-                    fileNum.get()));
-          }
-        } else {
-          if (!new File(filePath).delete()) {
-            logger.error("IoTDB post back receiver : Receiver can not delete file {}",
-                new File(filePath).getAbsolutePath());
-          }
-        }
-      } catch (Exception e) {
-        logger.error("IoTDB post back receiver: cannot generate md5", e);
-      }
-    }
-    return md5OfReceiver;
-  }
 
   /**
    * Get schema from sender
@@ -222,8 +155,8 @@ public class ServerServiceImpl implements ServerService.Iface {
    * IoTDB through jdbc status = 1 : the schema file has not received completely.
    */
   @Override
-  public void getSchema(ByteBuffer schema, int status) {
-    if (status == 0) {
+  public void getSchema(ByteBuffer schema, SyncDataStatus status) {
+    if (status == SyncDataStatus.SUCCESS_STATUS) {
       /** sync metadata, include storage group and timeseries **/
       syncMetadata();
     } else {
@@ -319,10 +252,81 @@ public class ServerServiceImpl implements ServerService.Iface {
     }
   }
 
+  /**
+   * Start receiving tsfile from sender
+   *
+   * @param status status = 0 : finish receiving one tsfile status = 1 : a tsfile has not received
+   * completely.
+   */
   @Override
-  public boolean merge() throws TException {
+  public String receiveData(String md5OfSender, List<String> filePathSplit,
+      ByteBuffer dataToReceive, SyncDataStatus status) {
+    String md5OfReceiver = "";
+    StringBuilder filePathBuilder = new StringBuilder();
+    FileChannel channel;
+    for (int i = 0; i < filePathSplit.size(); i++) {
+      if (i == filePathSplit.size() - 1) {
+        filePathBuilder.append(filePathSplit.get(i));
+      } else {
+        filePathBuilder.append(filePathSplit.get(i)).append(File.separator);
+      }
+    }
+    String filePath = filePathBuilder.toString();
+    filePath = postbackPath + uuid.get() + File.separator + filePath;
+    if (status == SyncDataStatus.PROCESSING_STATUS) { // there are still data stream to add
+      File file = new File(filePath);
+      if (!file.getParentFile().exists()) {
+        try {
+          file.getParentFile().mkdirs();
+          if (!file.createNewFile()) {
+            logger.error("IoTDB post back receiver: cannot create file {}", file.getAbsoluteFile());
+          }
+        } catch (IOException e) {
+          logger.error("IoTDB post back receiver: cannot make file", e);
+        }
+      }
+      try (FileOutputStream fos = new FileOutputStream(file, true)) {// append new data
+        channel = fos.getChannel();
+        channel.write(dataToReceive);
+      } catch (IOException e) {
+        logger.error("IoTDB post back receiver: cannot write data to file", e);
+
+      }
+    } else { // all data in the same file has received successfully
+      try (FileInputStream fis = new FileInputStream(filePath)) {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        int mBufferSize = 8 * 1024 * 1024;
+        byte[] buffer = new byte[mBufferSize];
+        int n;
+        while ((n = fis.read(buffer)) != -1) {
+          md.update(buffer, 0, n);
+        }
+        md5OfReceiver = (new BigInteger(1, md.digest())).toString(16);
+        if (md5OfSender.equals(md5OfReceiver)) {
+          fileNum.set(fileNum.get() + 1);
+          if (logger.isInfoEnabled()) {
+            logger.info(String
+                .format("IoTDB post back receiver : Receiver has received %d files from sender",
+                    fileNum.get()));
+          }
+        } else {
+          if (!new File(filePath).delete()) {
+            logger.error("IoTDB post back receiver : Receiver can not delete file {}",
+                new File(filePath).getAbsolutePath());
+          }
+        }
+      } catch (Exception e) {
+        logger.error("IoTDB post back receiver: cannot generate md5", e);
+      }
+    }
+    return md5OfReceiver;
+  }
+
+
+  @Override
+  public boolean load() throws TException {
     getFileNodeInfo();
-    mergeData();
+    loadData();
     try {
       SyncUtils.deleteFile(new File(postbackPath + this.uuid.get()));
     } catch (IOException e) {
@@ -345,24 +349,9 @@ public class ServerServiceImpl implements ServerService.Iface {
   }
 
   /**
-   * Release threadLocal variable resources
-   */
-  @Override
-  public void afterReceiving() {
-    uuid.remove();
-    fileNum.remove();
-    fileNodeMap.remove();
-    fileNodeStartTime.remove();
-    fileNodeEndTime.remove();
-    schemaFromSenderPath.remove();
-    logger.info("IoTDB post back receiver: the postBack has finished!");
-  }
-
-  /**
    * Get all tsfiles' info which are sent from sender, it is prepare for merging these data
    */
-  @Override
-  public void getFileNodeInfo() throws TException {
+  public void getFileNodeInfo() {
     String filePath = postbackPath + uuid.get() + File.separator + "data";
     File root = new File(filePath);
     File[] files = root.listFiles();
@@ -411,11 +400,84 @@ public class ServerServiceImpl implements ServerService.Iface {
     }
   }
 
+
+  /**
+   * It is to merge data. If data in the tsfile is new, append the tsfile to the storage group
+   * directly. If data in the tsfile is old, it has two strategy to merge.It depends on the
+   * possibility of updating historical data.
+   */
+  public void loadData() throws TException {
+    int num = 0;
+    for (String storageGroup : fileNodeMap.get().keySet()) {
+      List<String> filesPath = fileNodeMap.get().get(storageGroup);
+      // before load extern tsFile, it is necessary to order files in the same SG
+      for (int i = 0; i < filesPath.size(); i++) {
+        for (int j = i + 1; j < filesPath.size(); j++) {
+          boolean swapOrNot = false;
+          Map<String, Long> startTimeI = fileNodeStartTime.get().get(filesPath.get(i));
+          Map<String, Long> endTimeI = fileNodeStartTime.get().get(filesPath.get(i));
+          Map<String, Long> startTimeJ = fileNodeStartTime.get().get(filesPath.get(j));
+          Map<String, Long> endTimeJ = fileNodeStartTime.get().get(filesPath.get(j));
+          for (String deviceId : endTimeI.keySet()) {
+            if (startTimeJ.containsKey(deviceId) && startTimeI.get(deviceId) >
+                endTimeJ.get(deviceId)) {
+              swapOrNot = true;
+              break;
+            }
+          }
+          if (swapOrNot) {
+            String temp = filesPath.get(i);
+            filesPath.set(i, filesPath.get(j));
+            filesPath.set(j, temp);
+          }
+        }
+      }
+
+      for (String path : filesPath) {
+        // get startTimeMap and endTimeMap
+        Map<String, Long> startTimeMap = fileNodeStartTime.get().get(path);
+        Map<String, Long> endTimeMap = fileNodeEndTime.get().get(path);
+
+        // create a new fileNode
+        String header = postbackPath + uuid.get() + File.separator + "data" + File.separator;
+        String relativePath = path.substring(header.length());
+        TsFileResource fileNode = new TsFileResource(startTimeMap, endTimeMap,
+            OverflowChangeType.NO_CHANGE,
+            Directories.getInstance().getNextFolderIndexForTsFile(), relativePath);
+        // call interface of load external file
+        try {
+          if (!fileNodeManager.appendFileToFileNode(storageGroup, fileNode, path)) {
+            // it is a file with overflow data
+            if (config.isUpdate_historical_data_possibility()) {
+              loadOldData(path);
+            } else {
+              List<String> overlapFiles = fileNodeManager.getOverlapFilesFromFileNode(
+                  storageGroup,
+                  fileNode, uuid.get());
+              if (overlapFiles.isEmpty()) {
+                loadOldData(path);
+              } else {
+                loadOldData(path, overlapFiles);
+              }
+            }
+          }
+        } catch (FileNodeManagerException e) {
+          logger.error("IoTDB receiver : Can not load external file ", e);
+        }
+
+        num++;
+        if (logger.isInfoEnabled()) {
+          logger.info(String
+              .format("IoTDB receiver : Merging files has completed : %d/%d", num, fileNum.get()));
+        }
+      }
+    }
+  }
+
   /**
    * Insert all data in the tsfile into IoTDB.
    */
-  @Override
-  public void mergeOldData(String filePath) throws TException {
+  public void loadOldData(String filePath) throws TException {
     Set<String> timeseriesSet = new HashSet<>();
     TsFileSequenceReader reader = null;
     OverflowQPExecutor insertExecutor = new OverflowQPExecutor();
@@ -493,7 +555,7 @@ public class ServerServiceImpl implements ServerService.Iface {
    *
    * @param overlapFiles:files which are conflict with the sync file
    */
-  public void mergeOldData(String filePath, List<String> overlapFiles) {
+  public void loadOldData(String filePath, List<String> overlapFiles) {
     Set<String> timeseriesList = new HashSet<>();
     TsFileSequenceReader reader = null;
     OverflowQPExecutor insertExecutor = new OverflowQPExecutor();
@@ -615,77 +677,17 @@ public class ServerServiceImpl implements ServerService.Iface {
   }
 
   /**
-   * It is to merge data. If data in the tsfile is new, append the tsfile to the storage group
-   * directly. If data in the tsfile is old, it has two strategy to merge.It depends on the
-   * possibility of updating historical data.
+   * Release threadLocal variable resources
    */
   @Override
-  public void mergeData() throws TException {
-    int num = 0;
-    for (String storageGroup : fileNodeMap.get().keySet()) {
-      List<String> filesPath = fileNodeMap.get().get(storageGroup);
-      // before load extern tsFile, it is necessary to order files in the same SG
-      for (int i = 0; i < filesPath.size(); i++) {
-        for (int j = i + 1; j < filesPath.size(); j++) {
-          boolean swapOrNot = false;
-          Map<String, Long> startTimeI = fileNodeStartTime.get().get(filesPath.get(i));
-          Map<String, Long> endTimeI = fileNodeStartTime.get().get(filesPath.get(i));
-          Map<String, Long> startTimeJ = fileNodeStartTime.get().get(filesPath.get(j));
-          Map<String, Long> endTimeJ = fileNodeStartTime.get().get(filesPath.get(j));
-          for (String deviceId : endTimeI.keySet()) {
-            if (startTimeJ.containsKey(deviceId) && startTimeI.get(deviceId) >
-                endTimeJ.get(deviceId)) {
-              swapOrNot = true;
-              break;
-            }
-          }
-          if (swapOrNot) {
-            String temp = filesPath.get(i);
-            filesPath.set(i, filesPath.get(j));
-            filesPath.set(j, temp);
-          }
-        }
-      }
-
-      for (String path : filesPath) {
-        // get startTimeMap and endTimeMap
-        Map<String, Long> startTimeMap = fileNodeStartTime.get().get(path);
-        Map<String, Long> endTimeMap = fileNodeEndTime.get().get(path);
-
-        // create a new fileNode
-        String header = postbackPath + uuid.get() + File.separator + "data" + File.separator;
-        String relativePath = path.substring(header.length());
-        TsFileResource fileNode = new TsFileResource(startTimeMap, endTimeMap,
-            OverflowChangeType.NO_CHANGE,
-            Directories.getInstance().getNextFolderIndexForTsFile(), relativePath);
-        // call interface of load external file
-        try {
-          if (!fileNodeManager.appendFileToFileNode(storageGroup, fileNode, path)) {
-            // it is a file with overflow data
-            if (config.isUpdate_historical_data_possibility()) {
-              mergeOldData(path);
-            } else {
-              List<String> overlapFiles = fileNodeManager.getOverlapFilesFromFileNode(
-                  storageGroup,
-                  fileNode, uuid.get());
-              if (overlapFiles.isEmpty()) {
-                mergeOldData(path);
-              } else {
-                mergeOldData(path, overlapFiles);
-              }
-            }
-          }
-        } catch (FileNodeManagerException e) {
-          logger.error("IoTDB receiver : Can not load external file ", e);
-        }
-
-        num++;
-        if (logger.isInfoEnabled()) {
-          logger.info(String
-              .format("IoTDB receiver : Merging files has completed : %d/%d", num, fileNum.get()));
-        }
-      }
-    }
+  public void cleanUp() {
+    uuid.remove();
+    fileNum.remove();
+    fileNodeMap.remove();
+    fileNodeStartTime.remove();
+    fileNodeEndTime.remove();
+    schemaFromSenderPath.remove();
+    logger.info("IoTDB post back receiver: the postBack has finished!");
   }
 
   public Map<String, List<String>> getFileNodeMap() {
