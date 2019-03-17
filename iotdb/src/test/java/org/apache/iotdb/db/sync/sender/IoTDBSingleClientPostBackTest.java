@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.sender;
+package org.apache.iotdb.db.sync.sender;
 
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -31,9 +32,10 @@ import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.integration.Constant;
-import org.apache.iotdb.db.postback.conf.PostBackSenderConfig;
-import org.apache.iotdb.db.postback.conf.PostBackSenderDescriptor;
+import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
+import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -41,7 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The test is to run a complete postback function Before you run the test, make sure receiver has
+ * The test is to run a complete sync function Before you run the test, make sure receiver has
  * been cleaned up and inited.
  */
 public class IoTDBSingleClientPostBackTest {
@@ -49,7 +51,7 @@ public class IoTDBSingleClientPostBackTest {
   FileSenderImpl fileSenderImpl = FileSenderImpl.getInstance();
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   private String serverIpTest = "192.168.130.17";
-  private PostBackSenderConfig config = PostBackSenderDescriptor.getInstance().getConfig();
+  private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
   private Set<String> dataSender = new HashSet<>();
   private Set<String> dataReceiver = new HashSet<>();
   private boolean success = true;
@@ -143,7 +145,7 @@ public class IoTDBSingleClientPostBackTest {
       "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
       "insert into root.test.d1.g0(timestamp,s0) values(400,1050)", "merge", "flush",};
   private boolean testFlag = Constant.testFlag;
-  private static final String POSTBACK = "postback";
+  private static final String POSTBACK = "sync";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBSingleClientPostBackTest.class);
 
   public static void main(String[] args) throws Exception {
@@ -199,9 +201,9 @@ public class IoTDBSingleClientPostBackTest {
     }
   }
 
-  public void testPostback() {
+  public void testPostback() throws IOException, SyncConnectionException {
     if (testFlag) {
-      // the first time to postback
+      // the first time to sync
       logger.debug("It's the first time to post back!");
       try {
         Thread.sleep(2000);
@@ -220,7 +222,7 @@ public class IoTDBSingleClientPostBackTest {
         fail(e.getMessage());
       }
 
-      fileSenderImpl.postback();
+      fileSenderImpl.sync();
 
       // Compare data of sender and receiver
       dataSender.clear();
@@ -315,7 +317,7 @@ public class IoTDBSingleClientPostBackTest {
         return;
       }
 
-      // the second time to postback
+      // the second time to sync
       logger.debug("It's the second time to post back!");
       try {
         Thread.sleep(2000);
@@ -343,7 +345,7 @@ public class IoTDBSingleClientPostBackTest {
         Thread.currentThread().interrupt();
       }
 
-      fileSenderImpl.postback();
+      fileSenderImpl.sync();
 
       // Compare data of sender and receiver
       dataSender.clear();
@@ -443,7 +445,7 @@ public class IoTDBSingleClientPostBackTest {
         return;
       }
 
-      // the third time to postback
+      // the third time to sync
       logger.debug("It's the third time to post back!");
       try {
         Thread.sleep(2000);
@@ -465,7 +467,7 @@ public class IoTDBSingleClientPostBackTest {
         Thread.currentThread().interrupt();
       }
 
-      fileSenderImpl.postback();
+      fileSenderImpl.sync();
 
       // Compare data of sender and receiver
       dataSender.clear();

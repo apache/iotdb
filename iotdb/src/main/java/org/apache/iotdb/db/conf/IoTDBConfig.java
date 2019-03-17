@@ -253,11 +253,11 @@ public class IoTDBConfig {
    */
   private int maxLogEntrySize = 4 * 1024 * 1024;
   /**
-   * Is this IoTDB instance a receiver of postback or not.
+   * Is this IoTDB instance a receiver of sync or not.
    */
   private boolean isPostbackEnable = true;
   /**
-   * If this IoTDB instance is a receiver of postback, set the server port.
+   * If this IoTDB instance is a receiver of sync, set the server port.
    */
   private int postbackServerPort = 5555;
   /*

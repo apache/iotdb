@@ -16,33 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.utils;
+package org.apache.iotdb.db.sync.conf;
 
 /**
- * Created by stefanie on 07/08/2017.
+ * @author Tianan Li
  */
+public class Constans {
 
-public class Utils {
-
-  public static String getType(String properties) {
-    return properties.split(",")[0];
+  private Constans() {
   }
 
-  public static String getEncode(String properties) {
-    return properties.split(",")[1];
-  }
+  public static final String CONFIG_NAME = "iotdb-sync-client.properties";
+  public static final String SYNC = "sync";
 
-  private Utils() {
-    throw new IllegalStateException("Utility class");
-  }
+  public static final String UUID_FILE_NAME = "uuid.txt";
+  public static final String LAST_LOCAL_FILE_NAME = "last_local_files.txt";
+  public static final String DATA_SNAPSHOT_NAME = "data_snapshot";
 
-  public static String getPath(String timeseries) {
-    int lastPointIndex = timeseries.lastIndexOf('.');
-    return timeseries.substring(0, lastPointIndex);
-  }
+  /**
+   * Split data file , block size at each transmission
+   **/
+  public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
 
-  public static String getSensor(String timeseries) {
-    int lastPointIndex = timeseries.lastIndexOf('.');
-    return timeseries.substring(lastPointIndex + 1);
-  }
 }
