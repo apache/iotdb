@@ -64,6 +64,7 @@ matrix:
         - choco install maven
       script:
         - java -version
+        - mvn clean apache-rat:check -Drat.numUnapprovedLicenses=4000
         - mvn clean integration-test
 #    - os: windows
 #      language: c
@@ -98,6 +99,7 @@ matrix:
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
+        - mvn clean apache-rat:check -Drat.numUnapprovedLicenses=400
         - mvn clean integration-test
     - os: linux
       name: linux-openjdk8
