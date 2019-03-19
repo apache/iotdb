@@ -359,14 +359,17 @@ public class TsFileProcessor extends Processor {
       default:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
         LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
-        throw new BufferWriteProcessorException("Memory usage will exceed dangerous threshold");
+        //throw new BufferWriteProcessorException("Memory usage will exceed dangerous threshold");
+
     }
     long newMem = memSize.addAndGet(addedMemory);
     if (newMem > TSFileConfig.groupSizeInByte) {
-      String usageMem = MemUtils.bytesCntToStr(newMem);
-      String threshold = MemUtils.bytesCntToStr(TSFileConfig.groupSizeInByte);
-      LOGGER.info("The usage of memory {} in bufferwrite processor {} reaches the threshold {}",
-          usageMem, processorName, threshold);
+      if (LOGGER.isInfoEnabled()) {
+        String usageMem = MemUtils.bytesCntToStr(newMem);
+        String threshold = MemUtils.bytesCntToStr(TSFileConfig.groupSizeInByte);
+        LOGGER.info("The usage of memory {} in bufferwrite processor {} reaches the threshold {}",
+            usageMem, processorName, threshold);
+      }
       try {
         flush();
       } catch (IOException e) {
