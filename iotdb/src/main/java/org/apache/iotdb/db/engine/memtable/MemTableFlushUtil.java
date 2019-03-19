@@ -85,17 +85,13 @@ public class MemTableFlushUtil {
 
   /**
    * the function for flushing memtable.
-   * @return a collection of  device and it start and end timestamp in the memtable.
    */
-  public static Map<String, Pair<Long, Long>> flushMemTable(FileSchema fileSchema, TsFileIOWriter tsFileIoWriter,
+  public static void flushMemTable(FileSchema fileSchema, TsFileIOWriter tsFileIoWriter,
       IMemTable imemTable, long version) throws IOException {
-    Map<String, Pair<Long, Long>> result = new HashMap<>();
     for (String deviceId : imemTable.getMemTableMap().keySet()) {
       long startPos = tsFileIoWriter.getPos();
       tsFileIoWriter.startFlushChunkGroup(deviceId);
       int seriesNumber = imemTable.getMemTableMap().get(deviceId).size();
-      long minTime = Long.MAX_VALUE;
-      long maxTime = Long.MIN_VALUE;
       for (String measurementId : imemTable.getMemTableMap().get(deviceId).keySet()) {
         // TODO if we can not use TSFileIO writer, then we have to redesign the class of TSFileIO.
         IWritableMemChunk series = imemTable.getMemTableMap().get(deviceId).get(measurementId);
@@ -105,18 +101,10 @@ public class MemTableFlushUtil {
         List<TimeValuePair> sortedTimeValuePairs = series.getSortedTimeValuePairList();
         writeOneSeries(sortedTimeValuePairs, seriesWriter, desc.getType());
         seriesWriter.writeToFileWriter(tsFileIoWriter);
-        if (sortedTimeValuePairs.get(0).getTimestamp() < minTime) {
-          minTime = sortedTimeValuePairs.get(0).getTimestamp();
-        }
-        if (sortedTimeValuePairs.get(sortedTimeValuePairs.size() - 1).getTimestamp() > maxTime) {
-          maxTime = sortedTimeValuePairs.get(sortedTimeValuePairs.size() - 1).getTimestamp();
-        }
       }
       long memSize = tsFileIoWriter.getPos() - startPos;
       ChunkGroupFooter footer = new ChunkGroupFooter(deviceId, memSize, seriesNumber);
       tsFileIoWriter.endChunkGroup(footer, version);
-      result.put(deviceId, new Pair<>(minTime, maxTime));
     }
-    return result;
   }
 }

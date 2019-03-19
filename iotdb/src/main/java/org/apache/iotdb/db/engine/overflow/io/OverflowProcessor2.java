@@ -701,7 +701,7 @@
 //   * used for test. We can know when the flush() is called.
 //   * @return the last flush() time.
 //   */
-//  public long getLastFlushTime() {
+//  public long getFileNamePrefix() {
 //    return lastFlushTime;
 //  }
 //}

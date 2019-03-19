@@ -95,8 +95,9 @@ public class TsFileProcessor extends Processor {
   private AtomicLong memSize = new AtomicLong();
 
 
-  //lastFlushTime (system time, rather than data time) time unit: nanosecond
-  private long lastFlushTime = 0;
+  //fileNamePrefix (system time, rather than data time) time unit: nanosecond
+  // this is used for generate the new TsFile name
+  private long fileNamePrefix = 0;
   //the times of calling insertion function.
   private long valueCount = 0;
 
@@ -113,6 +114,8 @@ public class TsFileProcessor extends Processor {
   private List<TsFileResource> tsFileResources;
   private Map<String, List<TsFileResource>> inverseIndexOfResource;
 
+  private Map<String, Long> minWrittenTimeForEachDeviceInCurrentFile;
+  private Map<String, Long> maxWrittenTimeForEachDeviceInCurrentFile;
   private Map<String, Long> lastFlushedTimeForEachDevice;
 
   private WriteLogNode logNode;
@@ -142,6 +145,8 @@ public class TsFileProcessor extends Processor {
     tsFileResources = new ArrayList<>();
     inverseIndexOfResource = new HashMap<>();
     lastFlushedTimeForEachDevice = new HashMap<>();
+    minWrittenTimeForEachDeviceInCurrentFile = new HashMap<>();
+    maxWrittenTimeForEachDeviceInCurrentFile = new HashMap<>();
     File unclosedFile = null;
     String unclosedFileName = null;
     int unclosedFileCount = 0;
@@ -166,13 +171,13 @@ public class TsFileProcessor extends Processor {
           //TODO we'd better define a file suffix for TsFile, e.g., .ts
           String[] names = tsfile.getName().split(FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR);
           long time = Long.parseLong(names[0]);
-          if (lastFlushTime < time) {
-            lastFlushTime = time;
+          if (fileNamePrefix < time) {
+            fileNamePrefix = time;
           }
           if (unclosedFileCount == 0 || !tsfile.getName().equals(unclosedFileName)) {
             TsFileResource resource = new TsFileResource(tsfile, true);
             tsFileResources.add(resource);
-            //maintain the inverse index and lastFlushTime
+            //maintain the inverse index and fileNamePrefix
             for (String device : resource.getDevices()) {
               inverseIndexOfResource.computeIfAbsent(device, k -> new ArrayList<>()).add(resource);
               lastFlushedTimeForEachDevice
@@ -210,7 +215,7 @@ public class TsFileProcessor extends Processor {
       LOGGER.debug("The bufferwrite processor data dir doesn't exists, create new directory {}.",
           dataFolder.getAbsolutePath());
     }
-    String fileName = (lastFlushTime + 1) + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR
+    String fileName = (fileNamePrefix + 1) + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR
         + System.currentTimeMillis();
     return new File(dataFolder, fileName);
   }
@@ -234,6 +239,8 @@ public class TsFileProcessor extends Processor {
         throw new BufferWriteProcessorException(e);
       }
     }
+    minWrittenTimeForEachDeviceInCurrentFile.clear();
+    maxWrittenTimeForEachDeviceInCurrentFile.clear();
 
   }
 
@@ -251,12 +258,17 @@ public class TsFileProcessor extends Processor {
   public boolean insert(String deviceId, String measurementId, long timestamp, TSDataType dataType,
       String value)
       throws BufferWriteProcessorException {
-    if (!lastFlushedTimeForEachDevice.containsKey(deviceId)) {
-      lastFlushedTimeForEachDevice.put(deviceId, 0L);
-    } else if (timestamp <= lastFlushedTimeForEachDevice.get(deviceId)) {
+    if (lastFlushedTimeForEachDevice.containsKey(deviceId) && timestamp <= lastFlushedTimeForEachDevice.get(deviceId)) {
       return false;
     }
     workMemTable.write(deviceId, measurementId, dataType, timestamp, value);
+    if (!minWrittenTimeForEachDeviceInCurrentFile.containsKey(deviceId)) {
+      minWrittenTimeForEachDeviceInCurrentFile.put(deviceId, timestamp);
+    }
+    if (!maxWrittenTimeForEachDeviceInCurrentFile.containsKey(deviceId) || maxWrittenTimeForEachDeviceInCurrentFile
+        .get(deviceId) < timestamp) {
+      maxWrittenTimeForEachDeviceInCurrentFile.put(deviceId, timestamp);
+    }
     valueCount++;
     long memUsage = MemUtils.getPointSize(dataType, value);
     checkMemThreshold4Flush(memUsage);
@@ -273,14 +285,19 @@ public class TsFileProcessor extends Processor {
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
   public boolean insert(TSRecord tsRecord) throws BufferWriteProcessorException {
-    if (!lastFlushedTimeForEachDevice.containsKey(tsRecord.deviceId)) {
-      lastFlushedTimeForEachDevice.put(tsRecord.deviceId, 0L);
-    } else if (tsRecord.time <= lastFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
+    if (lastFlushedTimeForEachDevice.containsKey(tsRecord.deviceId) && tsRecord.time <= lastFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
       return false;
     }
     for (DataPoint dataPoint : tsRecord.dataPointList) {
       workMemTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
           tsRecord.time, dataPoint.getValue());
+    }
+    if (!minWrittenTimeForEachDeviceInCurrentFile.containsKey(tsRecord.deviceId)) {
+      minWrittenTimeForEachDeviceInCurrentFile.put(tsRecord.deviceId, tsRecord.time);
+    }
+    if (!maxWrittenTimeForEachDeviceInCurrentFile.containsKey(tsRecord.deviceId) || maxWrittenTimeForEachDeviceInCurrentFile
+        .get(tsRecord.deviceId) < tsRecord.time) {
+      maxWrittenTimeForEachDeviceInCurrentFile.put(tsRecord.deviceId, tsRecord.time);
     }
     valueCount++;
     long memUsage = MemUtils.getRecordSize(tsRecord);
@@ -299,6 +316,11 @@ public class TsFileProcessor extends Processor {
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     workMemTable.delete(deviceId, measurementId, timestamp);
+    if (maxWrittenTimeForEachDeviceInCurrentFile.containsKey(deviceId) && maxWrittenTimeForEachDeviceInCurrentFile
+        .get(deviceId) < timestamp) {
+      maxWrittenTimeForEachDeviceInCurrentFile
+          .put(deviceId, lastFlushedTimeForEachDevice.getOrDefault(deviceId, 0L));
+    }
     boolean deleteFlushTable = false;
     if (isFlush()) {
       // flushing MemTable cannot be directly modified since another thread is reading it
@@ -361,7 +383,7 @@ public class TsFileProcessor extends Processor {
    * @throws IOException
    */
   @Override
-  public  Future<Boolean> flush() throws IOException {
+  public Future<Boolean> flush() throws IOException {
     // waiting for the end of last flush operation.
     try {
       flushFuture.get();
@@ -373,19 +395,22 @@ public class TsFileProcessor extends Processor {
     }
     // statistic information for flush
     if (valueCount <= 0) {
+      LOGGER.debug(
+          "TsFile Processor {} has zero data to be flushed, will return directly.", processorName);
       flushFuture = new ImmediateFuture<>(true);
       return flushFuture;
     }
+
     if (LOGGER.isInfoEnabled()) {
       long thisFlushTime = System.currentTimeMillis();
       LOGGER.info(
           "The TsFile Processor {}: last flush time is {}, this flush time is {}, "
               + "flush time interval is {}s", getProcessorName(),
-          DatetimeUtils.convertMillsecondToZonedDateTime(lastFlushTime / 1000),
+          DatetimeUtils.convertMillsecondToZonedDateTime(fileNamePrefix / 1000),
           DatetimeUtils.convertMillsecondToZonedDateTime(thisFlushTime),
-          (thisFlushTime - lastFlushTime / 1000) / 1000);
+          (thisFlushTime - fileNamePrefix / 1000) / 1000);
     }
-    lastFlushTime = System.nanoTime();
+    fileNamePrefix = System.nanoTime();
 
     // update the lastUpdatetime, prepare for flush
     try {
@@ -409,7 +434,7 @@ public class TsFileProcessor extends Processor {
   }
 
   /**
-   * the caller mast guarantee no other concurrent caller entering this function.
+   * this method will be concurrent with other methods..
    *
    * @param displayMessage message that will appear in system log.
    * @param version the operation version that will tagged on the to be flushed memtable (i.e.,
@@ -419,13 +444,12 @@ public class TsFileProcessor extends Processor {
   private boolean flushTask(String displayMessage, long version) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
-    LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(),
+    LOGGER.info("The TsFile Processor {} starts flushing {}.", getProcessorName(),
         displayMessage);
-    Map<String, Pair<Long, Long>> minMaxTimeInMemTable = null;
     try {
       if (flushMemTable != null && !flushMemTable.isEmpty()) {
         // flush data
-        minMaxTimeInMemTable = MemTableFlushUtil.flushMemTable(fileSchema, writer, flushMemTable,
+        MemTableFlushUtil.flushMemTable(fileSchema, writer, flushMemTable,
             version);
         // write restore information
         writer.flush();
@@ -438,33 +462,20 @@ public class TsFileProcessor extends Processor {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode.notifyEndFlush(null);
       }
-      //we update the index of currentTsResource.
-      for (Map.Entry<String, Pair<Long, Long>> timePair : minMaxTimeInMemTable.entrySet()) {
-        //TODO lastFlushedTimeForEachDevice and currentResource EndTime must be changed before workMemtable is changed to flushMemtable
-        lastFlushedTimeForEachDevice.put(timePair.getKey(), timePair.getValue().right);
-        if (!currentResource.containsDevice(timePair.getKey())) {
-          //the start time has not been set.
-          currentResource.setStartTime(timePair.getKey(), timePair.getValue().left);
-        }
-        // new end time must be larger than the old one.
-        currentResource.setEndTime(timePair.getKey(), timePair.getValue().right);
-      }
-
       result = true;
     } catch (Exception e) {
       LOGGER.error(
-          "The bufferwrite processor {} failed to flush {}, when calling the filenodeFlushAction.",
+          "The TsFile Processor {} failed to flush {}, when calling the afterFlushAction（filenodeFlushAction）.",
           getProcessorName(), displayMessage, e);
       result = false;
     } finally {
       switchFlushToWork();
-      LOGGER.info("The bufferwrite processor {} ends flushing {}.", getProcessorName(),
-          displayMessage);
+      LOGGER.info("The TsFile Processor {} ends flushing {}.", getProcessorName(), displayMessage);
     }
     if (LOGGER.isInfoEnabled()) {
       long flushEndTime = System.currentTimeMillis();
       LOGGER.info(
-          "The bufferwrite processor {} flush {}, start time is {}, flush end time is {}, "
+          "The TsFile Processor {} flush {}, start time is {}, flush end time is {}, "
               + "flush time consumption is {}ms",
           getProcessorName(), displayMessage,
           DatetimeUtils.convertMillsecondToZonedDateTime(flushStartTime),
@@ -479,6 +490,9 @@ public class TsFileProcessor extends Processor {
     try {
       if (flushMemTable == null) {
         flushMemTable = workMemTable;
+        for (String device : flushMemTable.getMemTableMap().keySet()) {
+          lastFlushedTimeForEachDevice.put(device, maxWrittenTimeForEachDeviceInCurrentFile.get(device));
+        }
         workMemTable = new PrimitiveMemTable();
       }
     } finally {
@@ -489,8 +503,15 @@ public class TsFileProcessor extends Processor {
   private void switchFlushToWork() {
     flushQueryLock.lock();
     try {
+      //we update the index of currentTsResource.
+      for (String device : flushMemTable.getMemTableMap().keySet()) {
+        currentResource.setStartTime(device, minWrittenTimeForEachDeviceInCurrentFile.get(device));
+        // new end time must be larger than the old one.
+        currentResource.setEndTime(device, lastFlushedTimeForEachDevice.get(device));
+      }
       flushMemTable.clear();
       flushMemTable = null;
+      //make chunk groups in this flush task visble
       writer.appendMetadata();
     } finally {
       flushQueryLock.unlock();
@@ -539,9 +560,8 @@ public class TsFileProcessor extends Processor {
       if (LOGGER.isInfoEnabled()) {
         long closeEndTime = System.currentTimeMillis();
         LOGGER.info(
-            "Close bufferwrite processor {}, the file name is {}, start time is {}, end time is {}, "
-                + "time consumption is {}ms",
-            getProcessorName(), insertFile.getAbsolutePath(),
+            "Close current TsFile {}, start time is {}, end time is {}, time consumption is {}ms",
+            insertFile.getAbsolutePath(),
             DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
             DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
             closeEndTime - closeStartTime);
@@ -668,8 +688,8 @@ public class TsFileProcessor extends Processor {
    *
    * @return the last flush() time. Time unit: nanosecond.
    */
-  public long getLastFlushTime() {
-    return lastFlushTime;
+  public long getFileNamePrefix() {
+    return fileNamePrefix;
   }
 
   /**
@@ -724,7 +744,7 @@ public class TsFileProcessor extends Processor {
       return false;
     }
     TsFileProcessor that = (TsFileProcessor) o;
-    return lastFlushTime == that.lastFlushTime &&
+    return fileNamePrefix == that.fileNamePrefix &&
         valueCount == that.valueCount &&
         Objects.equals(fileSchema, that.fileSchema) &&
         Objects.equals(flushFuture, that.flushFuture) &&
@@ -748,7 +768,7 @@ public class TsFileProcessor extends Processor {
   @Override
   public int hashCode() {
     return Objects
-        .hash(super.hashCode(), fileSchema, flushFuture, flushQueryLock, memSize, lastFlushTime,
+        .hash(super.hashCode(), fileSchema, flushFuture, flushQueryLock, memSize, fileNamePrefix,
             valueCount, workMemTable, flushMemTable, writer, beforeFlushAction, afterCloseAction,
             afterFlushAction, insertFile, currentResource, tsFileResources, inverseIndexOfResource,
             lastFlushedTimeForEachDevice, logNode, versionController);

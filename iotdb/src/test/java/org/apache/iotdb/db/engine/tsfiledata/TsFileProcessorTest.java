@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineExecutorWithoutTimeGenerator;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -56,10 +58,14 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TsFileProcessorTest {
+  private static Logger LOGGER = LoggerFactory.getLogger(TsFileProcessorTest.class);
   TsFileProcessor processor;
   MManager mManager;
   EngineQueryRouter queryManager;
@@ -82,37 +88,46 @@ public class TsFileProcessorTest {
     schema = new FileSchema(measurementSchemaMap);
     processor = new TsFileProcessor("root.test", doNothingAction, doNothingAction, doNothingAction,
         SysTimeVersionController.INSTANCE, schema);
+    mManager.setStorageLevelToMTree("root.test");
+    mManager.addPathToMTree("root.test.d1.s1",  TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY, Collections.emptyMap());
+    mManager.addPathToMTree("root.test.d2.s1",  TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY, Collections.emptyMap());
+    mManager.addPathToMTree("root.test.d1.s2",  TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY, Collections.emptyMap());
+    mManager.addPathToMTree("root.test.d2.s2",  TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY, Collections.emptyMap());
   }
 
 
   @After
   public void tearDown() throws Exception {
     //processor.close();
+    processor.writeLock();
    processor.removeMe();
-    EnvironmentUtils.cleanEnv();
+   processor.writeUnlock();
+   EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void insert()
       throws BufferWriteProcessorException, IOException, ExecutionException, InterruptedException, FileNodeProcessorException, FileNodeManagerException, PathErrorException, MetadataArgsErrorException {
-    mManager.setStorageLevelToMTree("root.test");
-    mManager.addPathToMTree("root.test.d1.s1",  TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY, Collections.emptyMap());
-    System.out.println(processor.insert("root.test.d1", "s1", 10, TSDataType.FLOAT, "5.0"));
-    System.out.println(processor.insert("root.test.d1", "s2", 10, TSDataType.FLOAT, "5.0"));
-    System.out.println(processor.insert("root.test.d1", "s1", 12, TSDataType.FLOAT, "5.0"));
+
+    Assert.assertTrue(processor.insert("root.test.d1", "s1", 10, TSDataType.FLOAT, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d1", "s2", 10, TSDataType.FLOAT, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d1", "s1", 12, TSDataType.FLOAT, "5.0"));
     Future<Boolean> ok = processor.flush();
     ok.get();
     ok = processor.flush();
+    Assert.assertTrue(ok instanceof ImmediateFuture);
     ok.get();
     ok = processor.flush();
+    Assert.assertTrue(ok instanceof ImmediateFuture);
     ok.get();
-    processor.delete("root.test.d1", "s1",12);
+
     //let's rewrite timestamp =12 again..
-    System.out.println(processor.insert("root.test.d1", "s1", 12, TSDataType.FLOAT, "5.0"));
-    System.out.println(processor.insert("root.test.d1", "s1", 12, TSDataType.FLOAT, "5.0"));
-    System.out.println(processor.insert("root.test.d1", "s1", 13, TSDataType.FLOAT, "5.0"));
-    System.out.println(processor.insert("root.test.d2", "s1", 10, TSDataType.FLOAT, "5.0"));
-    System.out.println(processor.insert(new TSRecord(14, "root.test.d1").addTuple(new FloatDataPoint("s1", 6.0f))));
+    Assert.assertFalse(processor.insert("root.test.d1", "s1", 12, TSDataType.FLOAT, "5.0"));
+    processor.delete("root.test.d1", "s1",12);
+    Assert.assertTrue(processor.insert("root.test.d1", "s1", 12, TSDataType.FLOAT, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d1", "s1", 13, TSDataType.FLOAT, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d2", "s1", 10, TSDataType.FLOAT, "5.0"));
+    Assert.assertTrue(processor.insert(new TSRecord(14, "root.test.d1").addTuple(new FloatDataPoint("s1", 6.0f))));
     processor.delete("root.test.d1", "s1",12);
     processor.delete("root.test.d3", "s1",12);
 
@@ -128,28 +143,90 @@ public class TsFileProcessorTest {
 
 
   @Test
-  public void delete() {
+  public void bruteForceTest() throws InterruptedException, FileNodeManagerException, IOException {
 
+    String[] devices = new String[] {"root.test.d1", "root.test.d2"};
+    String[] sensors = new String[] {"s1", "s2"};
+    final boolean[] exception = {false, false, false};
+    final boolean[] goon = {true};
+    int totalsize = 10000;
+    final int[] count = {0};
+    QueryExpression qe = QueryExpression.create(Collections.singletonList(new Path("root.test.d1", "s1")), null);
+    Thread insertThread = new Thread() {
+      @Override
+      public void run() {
+        int i =0;
+        long time = 100L;
+        try {
+          for (int j = 0; j < totalsize * 2 && goon[0]; j++) {
+            processor.lock(true);
+            Assert.assertTrue(processor.insert(devices[j%2], sensors[0], time++, TSDataType.FLOAT, "5.0"));
+            Assert.assertTrue(processor.insert(devices[j%2], sensors[1], time++, TSDataType.FLOAT, "5.0"));
+            processor.writeUnlock();
+            count[0]++;
+          }
+        } catch (BufferWriteProcessorException e) {
+          // we will break out.
+          LOGGER.error(e.getMessage());
+          exception[0] = true;
+        }
+      }
+    };
+    Thread flushThread = new Thread() {
+      @Override
+      public void run() {
+        try {
+          for (int j = 0; j < totalsize * 2 && goon[0]; j++) {
+            processor.lock(true);
+            processor.flush();
+            processor.writeUnlock();
+          }
+        } catch (IOException e) {
+          // we will break out.
+          LOGGER.error(e.getMessage());
+          exception[1] = true;
+        }
+      }
+    };
+    //we temporary disable the query because there are bugs..
+//    Thread queryThread = new Thread() {
+//      @Override
+//      public void run() {
+//        try {
+//          for (int j = 0; j < totalsize * 2 && goon[0]; j++) {
+//            //processor.lock(false);
+//            QueryDataSet result = queryManager.query(qe, processor);
+//            while (result.hasNext()) {
+//              result.next();
+//            }
+//            //processor.readUnlock();
+//          }
+//        } catch (IOException | FileNodeManagerException e) {
+//          // we will break out.
+//          LOGGER.error(e.getMessage());
+//          exception[2] = true;
+//        }
+//      }
+//    };
+    flushThread.start();
+    insertThread.start();
+    //queryThread.start();
+    //wait at most 20 seconds.
+    insertThread.join(10000);
+    goon[0] = false;
+    //queryThread.join(5000);
+    Assert.assertFalse(exception[0]);
+    Assert.assertFalse(exception[1]);
+    Assert.assertFalse(exception[2]);
+    QueryDataSet result = queryManager.query(qe, processor);
+    int size =0;
+    while (result.hasNext()) {
+      RowRecord record = result.next();
+      size ++;
+    }
+    Assert.assertEquals(count[0]/2, size);
   }
 
-
-  @Test
-  public void canBeClosed() {
-  }
-
-
-  @Test
-  public void memoryUsage() {
-  }
-
-  @Test
-  public void isFlush() {
-    //processor.isFlush() can not be tested... because it is uncertain...
-  }
-
-  @Test
-  public void queryBufferWriteData() {
-  }
 
 
 }

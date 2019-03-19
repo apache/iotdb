@@ -19,20 +19,15 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.compressor;
 
 import java.io.IOException;
 import java.util.Collections;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.postback.sender.FileManager;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -41,11 +36,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.junit.After;
 import org.junit.Before;
@@ -89,14 +81,16 @@ public class QueryDataFromUnclosedTsFileIT {
     for (int i=0; i < 100; i++) {
       sgManager.insert(new TSRecord(i, "root.test.d1").addTuple(new IntDataPoint("s1", i)), false);
     }
-    SingleSeriesExpression expression = new SingleSeriesExpression(new Path("root.test.d1", "s1"), null);
-    QueryExpression qe = QueryExpression.create(Collections.singletonList(new Path("root.test.d1", "s1")), expression);
-    QueryDataSet result = queryManager.query(qe);
-    while (result.hasNext()) {
-      RowRecord record = result.next();
-      System.out.println(record.getTimestamp() +"," + record.getFields().get(0).getIntV());
-    }
 
+    //for (int i=0; i< 2; i++) {
+      QueryExpression qe = QueryExpression
+          .create(Collections.singletonList(new Path("root.test.d1", "s1")), null);
+      QueryDataSet result = queryManager.query(qe);
+      while (result.hasNext()) {
+        RowRecord record = result.next();
+        System.out.println(record.getTimestamp() + "," + record.getFields().get(0).getIntV());
+      }
+    //}
 
   }
 
