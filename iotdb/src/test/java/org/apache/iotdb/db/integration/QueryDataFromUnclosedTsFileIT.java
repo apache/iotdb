@@ -97,6 +97,7 @@ public class QueryDataFromUnclosedTsFileIT {
       System.out.println(record.getTimestamp() +"," + record.getFields().get(0).getIntV());
     }
 
+
   }
 
 }

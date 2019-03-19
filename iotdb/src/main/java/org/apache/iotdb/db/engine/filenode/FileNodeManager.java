@@ -409,7 +409,7 @@ public class FileNodeManager implements IStatistic, IService {
       String bufferwriteBaseDir = bufferWriteProcessor.getBaseDir();
       String bufferwriteRelativePath = bufferWriteProcessor.getFileRelativePath();
       try {
-        fileNodeProcessor.addIntervalFileNode(bufferwriteBaseDir, bufferwriteRelativePath);
+        fileNodeProcessor.addIntervalFileNode(new File(new File(bufferwriteBaseDir), bufferwriteRelativePath));
       } catch (Exception e) {
         if (!isMonitor) {
           updateStatHashMapWhenFail(tsRecord);
@@ -715,7 +715,7 @@ public class FileNodeManager implements IStatistic, IService {
       // append file to storage group.
       fileNodeProcessor.appendFile(appendFile, appendFilePath);
     } catch (FileNodeProcessorException e) {
-      LOGGER.error("Cannot append the file {} to {}", appendFile.getFilePath(), fileNodeName, e);
+      LOGGER.error("Cannot append the file {} to {}", appendFile.getFile().getAbsolutePath(), fileNodeName, e);
       throw new FileNodeManagerException(e);
     } finally {
       fileNodeProcessor.writeUnlock();

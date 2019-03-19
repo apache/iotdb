@@ -24,10 +24,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,33 +43,49 @@ import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.bufferwrite.RestorableTsFileIOWriter;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.pool.FlushManager;
+import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.querycontext.UnsealedTsFile;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Each storage group has a TsFileProcessor instance. Though there are many clients read/write data
+ * by accessing TsFileProcessor, they need to get the readWriteReentrantLock of this processor
+ * first. Therefore, as for different clients, the class looks like thread safe.
+ * <br/> The class has two backend tasks:
+ *  (1) submit a flush job to flush data from memtable to disk async;
+ *  (2) close a tsfile and open a new one.
+ * users also need to get the write lock to call these two tasks.
+ */
 public class TsFileProcessor extends Processor {
-
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileProcessor.class);
 
@@ -74,7 +93,6 @@ public class TsFileProcessor extends Processor {
   private volatile Future<Boolean> flushFuture = new ImmediateFuture<>(true);
   private ReentrantLock flushQueryLock = new ReentrantLock();
   private AtomicLong memSize = new AtomicLong();
-  private static long memThreshold = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
 
 
   //lastFlushTime (system time, rather than data time) time unit: nanosecond
@@ -95,7 +113,7 @@ public class TsFileProcessor extends Processor {
   private List<TsFileResource> tsFileResources;
   private Map<String, List<TsFileResource>> inverseIndexOfResource;
 
-  private Map<String, Long> lastFlushedTime;
+  private Map<String, Long> lastFlushedTimeForEachDevice;
 
   private WriteLogNode logNode;
   private VersionController versionController;
@@ -108,6 +126,7 @@ public class TsFileProcessor extends Processor {
    * @param fileSchema file schema
    * @throws BufferWriteProcessorException BufferWriteProcessorException
    */
+  @SuppressWarnings({"squid:S2259", "squid:S3776"})
   public TsFileProcessor(String processorName,
       Action beforeFlushAction, Action afterFlushAction, Action afterCloseAction,
       VersionController versionController,
@@ -122,8 +141,8 @@ public class TsFileProcessor extends Processor {
     workMemTable = new PrimitiveMemTable();
     tsFileResources = new ArrayList<>();
     inverseIndexOfResource = new HashMap<>();
-    lastFlushedTime = new HashMap<>();
-    File unclosedFile;
+    lastFlushedTimeForEachDevice = new HashMap<>();
+    File unclosedFile = null;
     String unclosedFileName = null;
     int unclosedFileCount = 0;
     for (String folderPath : Directories.getInstance().getAllTsFileFolders()) {
@@ -135,47 +154,48 @@ public class TsFileProcessor extends Processor {
         unclosedFileCount += unclosedFiles.length;
         if (unclosedFileCount > 1) {
           break;
-        } else if (unclosedFiles.length == 1) {
+        } else if (unclosedFileCount == 1) {
           unclosedFileName = unclosedFiles[0].getName()
               .split(RestorableTsFileIOWriter.RESTORE_SUFFIX)[0];
-          unclosedFile = unclosedFiles[0];
+          unclosedFile = new File(unclosedFiles[0].getParentFile(), unclosedFileName);
         }
-        for (File tsfile : dataFolder
-            .listFiles(x -> !x.getName().contains(RestorableTsFileIOWriter.RESTORE_SUFFIX))) {
+        File[] datas = dataFolder
+            .listFiles(x -> !x.getName().contains(RestorableTsFileIOWriter.RESTORE_SUFFIX) && x.getName().split(FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR).length == 2);
+        Arrays.sort(datas, Comparator.comparingLong(x -> Long.parseLong(x.getName().split(FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR)[0])));
+        for (File tsfile : datas) {
           //TODO we'd better define a file suffix for TsFile, e.g., .ts
           String[] names = tsfile.getName().split(FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR);
-          if (names.length != 2) {
-            //this is not a valid TsFile
-            continue;
-          } else {
-            long time = Long.valueOf(names[0]);
-            if (lastFlushTime < time) {
-              lastFlushTime = time;
-            }
+          long time = Long.parseLong(names[0]);
+          if (lastFlushTime < time) {
+            lastFlushTime = time;
           }
           if (unclosedFileCount == 0 || !tsfile.getName().equals(unclosedFileName)) {
-            TsFileResource resource = new TsFileResource(tsfile, false);
+            TsFileResource resource = new TsFileResource(tsfile, true);
             tsFileResources.add(resource);
             //maintain the inverse index and lastFlushTime
             for (String device : resource.getDevices()) {
               inverseIndexOfResource.computeIfAbsent(device, k -> new ArrayList<>()).add(resource);
-              lastFlushedTime.merge(device, resource.getEndTime(device), (x, y) -> x > y ? x : y);
+              lastFlushedTimeForEachDevice
+                  .merge(device, resource.getEndTime(device), (x, y) -> x > y ? x : y);
             }
           }
         }
+      } else {
+        //processor folder does not exist
+        dataFolder.mkdirs();
       }
     }
     if (unclosedFileCount > 1) {
       throw new BufferWriteProcessorException(String
           .format("TsProcessor %s has more than one unclosed TsFile. please repair it",
               processorName));
-    } else {
+    } else if (unclosedFileCount == 0){
       unclosedFile = generateNewTsFilePath();
     }
+
     initNewOrUnClosedTsFile(unclosedFile);
 
     this.versionController = versionController;
-    // we need to know  the last flushed timestamps of all devices
   }
 
 
@@ -194,6 +214,7 @@ public class TsFileProcessor extends Processor {
         + System.currentTimeMillis();
     return new File(dataFolder, fileName);
   }
+
 
   private void initNewOrUnClosedTsFile(File file) throws BufferWriteProcessorException {
     this.insertFile = file;
@@ -230,9 +251,9 @@ public class TsFileProcessor extends Processor {
   public boolean insert(String deviceId, String measurementId, long timestamp, TSDataType dataType,
       String value)
       throws BufferWriteProcessorException {
-    if (!lastFlushedTime.containsKey(deviceId)) {
-      lastFlushedTime.put(deviceId, 0L);
-    } else if (timestamp < lastFlushedTime.get(deviceId)) {
+    if (!lastFlushedTimeForEachDevice.containsKey(deviceId)) {
+      lastFlushedTimeForEachDevice.put(deviceId, 0L);
+    } else if (timestamp <= lastFlushedTimeForEachDevice.get(deviceId)) {
       return false;
     }
     workMemTable.write(deviceId, measurementId, dataType, timestamp, value);
@@ -252,9 +273,9 @@ public class TsFileProcessor extends Processor {
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
   public boolean insert(TSRecord tsRecord) throws BufferWriteProcessorException {
-    if (!lastFlushedTime.containsKey(tsRecord.deviceId)) {
-      lastFlushedTime.put(tsRecord.deviceId, 0L);
-    } else if (tsRecord.time < lastFlushedTime.get(tsRecord.deviceId)) {
+    if (!lastFlushedTimeForEachDevice.containsKey(tsRecord.deviceId)) {
+      lastFlushedTimeForEachDevice.put(tsRecord.deviceId, 0L);
+    } else if (tsRecord.time <= lastFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
       return false;
     }
     for (DataPoint dataPoint : tsRecord.dataPointList) {
@@ -287,13 +308,16 @@ public class TsFileProcessor extends Processor {
     String fullPath = deviceId +
         IoTDBConstant.PATH_SEPARATOR + measurementId;
     Deletion deletion = new Deletion(fullPath, versionController.nextVersion(), timestamp);
-    if (deleteFlushTable || currentResource.getStartTime(deviceId) < timestamp) {
+    if (deleteFlushTable || (currentResource.containsDevice(deviceId) && currentResource.getStartTime(deviceId) <= timestamp)) {
       currentResource.getModFile().write(deletion);
     }
     for (TsFileResource resource : tsFileResources) {
-      if (resource.containsDevice(deviceId) && resource.getStartTime(deviceId) < timestamp) {
+      if (resource.containsDevice(deviceId) && resource.getStartTime(deviceId) <= timestamp) {
         resource.getModFile().write(deletion);
       }
+    }
+    if (lastFlushedTimeForEachDevice.containsKey(deviceId) && lastFlushedTimeForEachDevice.get(deviceId) <= timestamp) {
+      lastFlushedTimeForEachDevice.put(deviceId, 0L);
     }
   }
 
@@ -316,9 +340,9 @@ public class TsFileProcessor extends Processor {
         throw new BufferWriteProcessorException("Memory usage will exceed dangerous threshold");
     }
     long newMem = memSize.addAndGet(addedMemory);
-    if (newMem > memThreshold) {
+    if (newMem > TSFileConfig.groupSizeInByte) {
       String usageMem = MemUtils.bytesCntToStr(newMem);
-      String threshold = MemUtils.bytesCntToStr(memThreshold);
+      String threshold = MemUtils.bytesCntToStr(TSFileConfig.groupSizeInByte);
       LOGGER.info("The usage of memory {} in bufferwrite processor {} reaches the threshold {}",
           usageMem, processorName, threshold);
       try {
@@ -331,9 +355,22 @@ public class TsFileProcessor extends Processor {
   }
 
 
-  // keyword synchronized is added in this method, so that only one flush task can be submitted now.
+  /**
+   * this method is for preparing a task task and then submitting it.
+   * @return
+   * @throws IOException
+   */
   @Override
-  public synchronized Future<Boolean> flush() throws IOException {
+  public  Future<Boolean> flush() throws IOException {
+    // waiting for the end of last flush operation.
+    try {
+      flushFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      LOGGER.error(
+          "Encounter an interrupt error when waitting for the flushing, the TsFile Processor is {}.",
+          getProcessorName(), e);
+      Thread.currentThread().interrupt();
+    }
     // statistic information for flush
     if (valueCount <= 0) {
       flushFuture = new ImmediateFuture<>(true);
@@ -342,7 +379,7 @@ public class TsFileProcessor extends Processor {
     if (LOGGER.isInfoEnabled()) {
       long thisFlushTime = System.currentTimeMillis();
       LOGGER.info(
-          "The bufferwrite processor {}: last flush time is {}, this flush time is {}, "
+          "The TsFile Processor {}: last flush time is {}, this flush time is {}, "
               + "flush time interval is {}s", getProcessorName(),
           DatetimeUtils.convertMillsecondToZonedDateTime(lastFlushTime / 1000),
           DatetimeUtils.convertMillsecondToZonedDateTime(thisFlushTime),
@@ -350,15 +387,6 @@ public class TsFileProcessor extends Processor {
     }
     lastFlushTime = System.nanoTime();
 
-    // waiting for the end of last flush operation.
-    try {
-      flushFuture.get();
-    } catch (InterruptedException | ExecutionException e) {
-      LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
-              + "the bufferwrite processor is {}.",
-          getProcessorName(), e);
-      Thread.currentThread().interrupt();
-    }
     // update the lastUpdatetime, prepare for flush
     try {
       beforeFlushAction.act();
@@ -412,7 +440,8 @@ public class TsFileProcessor extends Processor {
       }
       //we update the index of currentTsResource.
       for (Map.Entry<String, Pair<Long, Long>> timePair : minMaxTimeInMemTable.entrySet()) {
-        lastFlushedTime.put(timePair.getKey(), timePair.getValue().right);
+        //TODO lastFlushedTimeForEachDevice and currentResource EndTime must be changed before workMemtable is changed to flushMemtable
+        lastFlushedTimeForEachDevice.put(timePair.getKey(), timePair.getValue().right);
         if (!currentResource.containsDevice(timePair.getKey())) {
           //the start time has not been set.
           currentResource.setStartTime(timePair.getKey(), timePair.getValue().left);
@@ -475,24 +504,35 @@ public class TsFileProcessor extends Processor {
 
 
 
+  public void closeCurrentTsFileAndOpenNewOne() throws BufferWriteProcessorException {
+    closeCurrentFile();
+    initNewOrUnClosedTsFile(generateNewTsFilePath());
+  }
 
   //very dangerous, how to make sure this function is thread safe (no other functions are running)
-  public void closeCurrentFile() throws BufferWriteProcessorException {
+  private void closeCurrentFile() throws BufferWriteProcessorException {
     try {
       long closeStartTime = System.currentTimeMillis();
       // flush data and wait for finishing flush
       flush().get();
       // end file
-      writer.endFile(fileSchema);
-      // update the IntervalFile for interval list
-      afterCloseAction.act();
-      // flush the changed information for filenode
-      afterFlushAction.act();
+      if (writer.getChunkGroupMetaDatas().isEmpty()){
+        //this is an empty TsFile, we do not need to save it...
+        writer.endFile(fileSchema);
+        Files.delete(Paths.get(insertFile.getAbsolutePath()));
+      } else {
+        writer.endFile(fileSchema);
+        // update the IntervalFile for interval list
+        afterCloseAction.act();
+        // flush the changed information for filenode
+        afterFlushAction.act();
 
-      tsFileResources.add(currentResource);
-      //maintain the inverse index
-      for (String device : currentResource.getDevices()) {
-        inverseIndexOfResource.computeIfAbsent(device, k -> new ArrayList<>()).add(currentResource);
+        tsFileResources.add(currentResource);
+        //maintain the inverse index
+        for (String device : currentResource.getDevices()) {
+          inverseIndexOfResource.computeIfAbsent(device, k -> new ArrayList<>())
+              .add(currentResource);
+        }
       }
 
       // delete the restore for this bufferwrite processor
@@ -546,6 +586,48 @@ public class TsFileProcessor extends Processor {
     return flushMemTable != null;
   }
 
+
+  /**
+   * query data.
+   */
+  public GlobalSortedSeriesDataSource query(String deviceId, String measurementId,
+      QueryContext context) throws IOException {
+    MeasurementSchema mSchema;
+    TSDataType dataType;
+
+    mSchema = fileSchema.getMeasurementSchema(measurementId);
+    dataType = mSchema.getType();
+
+    // tsfile dataØØ
+    List<TsFileResource> dataFiles = new ArrayList<>();
+    for (TsFileResource tsfile : tsFileResources) {
+      //TODO in the old version, tsfile is deep copied. I do not know why
+      dataFiles.add(tsfile);
+    }
+    // bufferwrite data
+    //TODO unsealedTsFile class is a little redundant.
+    UnsealedTsFile unsealedTsFile = null;
+
+    if (currentResource.getStartTime(deviceId) >= 0) {
+      unsealedTsFile = new UnsealedTsFile();
+      unsealedTsFile.setFilePath(currentResource.getFile().getAbsolutePath());
+      List<ChunkMetaData> chunks = writer.getMetadatas(deviceId, measurementId, dataType);
+      try {
+        List<Modification> pathModifications = context.getPathModifications(
+            currentResource.getModFile(), deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
+        if (!pathModifications.isEmpty()) {
+          QueryUtils.modifyChunkMetaData(chunks, pathModifications);
+        }
+      } catch (IOException e) {
+        throw e;
+      }
+      unsealedTsFile.setTimeSeriesChunkMetaDatas(chunks);
+    }
+    return new GlobalSortedSeriesDataSource(
+        new Path(deviceId + "." + measurementId), dataFiles, unsealedTsFile,
+        queryDataInMemtable(deviceId, measurementId, dataType, mSchema.getProps()));
+  }
+
   /**
    * get the one (or two) chunk(s) in the memtable ( and the other one in flushing status and then
    * compact them into one TimeValuePairSorter). Then get its (or their) ChunkMetadata(s).
@@ -553,29 +635,25 @@ public class TsFileProcessor extends Processor {
    * @param deviceId device id
    * @param measurementId sensor id
    * @param dataType data type
-   * @return corresponding chunk data and chunk metadata in memory
+   * @return corresponding chunk data in memory
    */
-  public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryBufferWriteData(String deviceId,
+  private ReadOnlyMemChunk queryDataInMemtable(String deviceId,
       String measurementId, TSDataType dataType, Map<String, String> props) {
     flushQueryLock.lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
       if (flushMemTable != null) {
-        memSeriesLazyMerger
-            .addMemSeries(flushMemTable.query(deviceId, measurementId, dataType, props));
+        memSeriesLazyMerger.addMemSeries(flushMemTable.query(deviceId, measurementId, dataType, props));
       }
-      memSeriesLazyMerger
-          .addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
+      memSeriesLazyMerger.addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
       // memSeriesLazyMerger has handled the props,
       // so we do not need to handle it again in the following readOnlyMemChunk
-      ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(dataType, memSeriesLazyMerger,
-          Collections.emptyMap());
-      return new Pair<>(timeValuePairSorter,
-          writer.getMetadatas(deviceId, measurementId, dataType));
+      return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger, Collections.emptyMap());
     } finally {
       flushQueryLock.unlock();
     }
   }
+
 
   public String getInsertFilePath() {
     return insertFile.getAbsolutePath();
@@ -613,12 +691,7 @@ public class TsFileProcessor extends Processor {
       for (TsFileResource resource : tsFileResources) {
         resource.close();
       }
-//      if (logNode != null) {
-//        logNode.close();
-//      }
-//      if (writer != null) {
-//        writer.endFile(fileSchema);
-//      }
+
     } catch (IOException e) {
       throw new BufferWriteProcessorException(e);
     }
@@ -637,5 +710,47 @@ public class TsFileProcessor extends Processor {
         }
       }
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof TsFileProcessor)) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    TsFileProcessor that = (TsFileProcessor) o;
+    return lastFlushTime == that.lastFlushTime &&
+        valueCount == that.valueCount &&
+        Objects.equals(fileSchema, that.fileSchema) &&
+        Objects.equals(flushFuture, that.flushFuture) &&
+        Objects.equals(flushQueryLock, that.flushQueryLock) &&
+        Objects.equals(memSize, that.memSize) &&
+        Objects.equals(workMemTable, that.workMemTable) &&
+        Objects.equals(flushMemTable, that.flushMemTable) &&
+        Objects.equals(writer, that.writer) &&
+        Objects.equals(beforeFlushAction, that.beforeFlushAction) &&
+        Objects.equals(afterCloseAction, that.afterCloseAction) &&
+        Objects.equals(afterFlushAction, that.afterFlushAction) &&
+        Objects.equals(insertFile, that.insertFile) &&
+        Objects.equals(currentResource, that.currentResource) &&
+        Objects.equals(tsFileResources, that.tsFileResources) &&
+        Objects.equals(inverseIndexOfResource, that.inverseIndexOfResource) &&
+        Objects.equals(lastFlushedTimeForEachDevice, that.lastFlushedTimeForEachDevice) &&
+        Objects.equals(logNode, that.logNode) &&
+        Objects.equals(versionController, that.versionController);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects
+        .hash(super.hashCode(), fileSchema, flushFuture, flushQueryLock, memSize, lastFlushTime,
+            valueCount, workMemTable, flushMemTable, writer, beforeFlushAction, afterCloseAction,
+            afterFlushAction, insertFile, currentResource, tsFileResources, inverseIndexOfResource,
+            lastFlushedTimeForEachDevice, logNode, versionController);
   }
 }

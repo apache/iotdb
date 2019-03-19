@@ -662,7 +662,7 @@ public class ServerServiceImpl implements ServerService.Iface {
         String relativePath = path.substring(header.length());
         TsFileResource fileNode = new TsFileResource(startTimeMap, endTimeMap,
             OverflowChangeType.NO_CHANGE,
-            Directories.getInstance().getNextFolderIndexForTsFile(), relativePath);
+            new File(Directories.getInstance().getNextFolderIndexForTsFile() +File.separator + relativePath));
         // call interface of load external file
         try {
           if (!fileNodeManager.appendFileToFileNode(storageGroup, fileNode, path)) {

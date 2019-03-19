@@ -82,15 +82,13 @@ public class SerializeUtilTest {
   }
 
   @Test
-  public void testFileStore() {
-    TsFileResource emptyTsFileResource = new TsFileResource(OverflowChangeType.NO_CHANGE,
-        null);
+  public void testFileStore() throws IOException {
+    TsFileResource emptyTsFileResource = new TsFileResource(null, false);
     List<TsFileResource> newFilenodes = new ArrayList<>();
     String deviceId = "d0.s0";
     for (int i = 1; i <= 3; i++) {
       // i * 100, i * 100 + 99
-      TsFileResource node = new TsFileResource(OverflowChangeType.NO_CHANGE,
-          "bufferfiletest" + i);
+      TsFileResource node = new TsFileResource(new File("root.test" + File.separator + "bufferfiletest" + i), false);
       node.setStartTime(deviceId, i * 100);
       node.setEndTime(deviceId, i * 100 + 99);
       newFilenodes.add(node);
@@ -114,7 +112,7 @@ public class SerializeUtilTest {
     try {
       FileNodeProcessorStore fileNodeProcessorStore2 = serializeUtil.deserialize(filePath)
           .orElse(new FileNodeProcessorStore(false, new HashMap<>(),
-              new TsFileResource(OverflowChangeType.NO_CHANGE, null),
+              new TsFileResource(null, false),
               new ArrayList<TsFileResource>(),
               FileNodeProcessorStatus.NONE, 0));
       assertEquals(fileNodeProcessorStore.getLastUpdateTimeMap(),
