@@ -79,6 +79,11 @@ public class SeriesReaderFactory {
     for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource
         .getOverflowInsertFileList()) {
 
+      // add current overflowInsertFile reference to FileReaderManager
+      // to avoid that this reader is cleared in fix time
+      FileReaderManager.getInstance().increaseFileReaderReference(overflowInsertFile.getFilePath(),
+              false);
+
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
           .get(overflowInsertFile.getFilePath(), false);
@@ -160,6 +165,12 @@ public class SeriesReaderFactory {
       SingleSeriesExpression singleSeriesExpression,
       QueryContext context)
       throws IOException {
+
+    // add current tsfile reference to FileReaderManager
+    // to avoid that this reader is cleared in fix time
+    FileReaderManager.getInstance().increaseFileReaderReference(fileNode.getFilePath(),
+            true);
+
     TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
         .get(fileNode.getFilePath(), true);
     ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileSequenceReader);
