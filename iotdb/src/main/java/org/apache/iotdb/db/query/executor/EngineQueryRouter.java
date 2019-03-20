@@ -71,7 +71,6 @@ public class EngineQueryRouter {
         if (optimizedExpression.getType() == GLOBAL_TIME) {
           EngineExecutorWithoutTimeGenerator engineExecutor =
               new EngineExecutorWithoutTimeGenerator(
-
                   nextJobId, queryExpression);
           return engineExecutor.executeWithGlobalTimeFilter(context);
         } else {
