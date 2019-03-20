@@ -185,7 +185,11 @@ The server can be stopped with ctrl-C or the following script:
 Now let's trying to read and write some data from IoTDB using our Client. To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
 
 ```
-cd cli/cli
+# You can first build cli project
+> pwd
+/workspace/incubator-iotdb
+
+> mvn clean package -pl iotdb-cli -am -Dmaven.test.skip=true
 
 # Unix/OS X
 > $IOTDB_CLI_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
