@@ -29,14 +29,16 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Set;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -54,6 +56,7 @@ import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.sync.conf.Constans;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.service.sync.thrift.SyncDataStatus;
 import org.apache.iotdb.service.sync.thrift.SyncService;
@@ -137,17 +140,35 @@ public class ServerServiceImpl implements SyncService.Iface {
   private String syncDataPath;
 
   /**
-   * Init threadLocal variable
+   * Init threadLocal variable and delete old useless files.
    */
   @Override
-  public void init(String storageGroup) {
-    if (logger.isInfoEnabled()) {
-      logger.info("Sync process starts to receive data of storage group {}", storageGroup);
-    }
+  public boolean init(String storageGroup) {
+    logger.info("Sync process starts to receive data of storage group {}", storageGroup);
     fileNum.set(0);
     fileNodeMap.set(new HashMap<>());
     fileNodeStartTime.set(new HashMap<>());
     fileNodeEndTime.set(new HashMap<>());
+    try {
+      FileUtils.deleteDirectory(new File(syncDataPath));
+    } catch (IOException e) {
+      logger.error("cannot delete directory {} ", syncFolderPath);
+      return false;
+    }
+    for (String bufferWritePath : bufferWritePaths) {
+      bufferWritePath = FilePathUtils.regularizePath(bufferWritePath);
+      String backupPath = bufferWritePath + SYNC_SERVER + File.separator;
+      File backupDirectory = new File(backupPath, this.uuid.get());
+      if (backupDirectory.exists() && backupDirectory.list().length != 0) {
+        try {
+          FileUtils.deleteDirectory(backupDirectory);
+        } catch (IOException e) {
+          logger.error("cannot delete directory {} ", syncFolderPath);
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   /**
@@ -165,54 +186,35 @@ public class ServerServiceImpl implements SyncService.Iface {
    * Init file path and clear data if last sync process failed.
    */
   private void initPath() {
-    if (dataPath.length() > 0 && dataPath.charAt(dataPath.length() - 1) != File.separatorChar) {
-      dataPath = dataPath + File.separatorChar;
-    }
+    dataPath = FilePathUtils.regularizePath(dataPath);
     syncFolderPath = dataPath + SYNC_SERVER + File.separatorChar + this.uuid.get();
     syncDataPath = syncFolderPath + File.separatorChar + Constans.DATA_SNAPSHOT_NAME;
     schemaFromSenderPath
         .set(syncFolderPath + File.separator + MetadataConstant.METADATA_LOG);
-    File syncFileDirectory = new File(syncFolderPath, this.uuid.get());
-    if (syncFileDirectory.exists()
-        && Objects.requireNonNull(syncFileDirectory.list()).length != 0) {
-      SyncUtils.deleteFile(syncFileDirectory);
-    }
-    for (String bufferWritePath : bufferWritePaths) {
-      if (bufferWritePath.length() > 0
-          && bufferWritePath.charAt(bufferWritePath.length() - 1) != File.separatorChar) {
-        bufferWritePath = bufferWritePath + File.separatorChar;
-      }
-      String backupPath = bufferWritePath + SYNC_SERVER + File.separator;
-      File backupDirectory = new File(backupPath, this.uuid.get());
-      if (backupDirectory.exists() && Objects.requireNonNull(backupDirectory.list()).length != 0) {
-        /** if does not exist, it means that the last time sync failed, clear data in the uuid directory and receive the data again **/
-        SyncUtils.deleteFile(backupDirectory);
-      }
-    }
   }
 
   /**
    * Acquire schema from sender
    *
-   * @param status: SUCCESS_STATUS or PROCESSING_STATUS. status = SUCCESS_STATUS : finish receiving
-   * schema file, start to sync schema. status = SUCCESS_STATUS : the schema file has not received
-   * completely.
+   * @param status: FINIFSH_STATUS, SUCCESS_STATUS or PROCESSING_STATUS. status = FINISH_STATUS :
+   * finish receiving schema file, start to sync schema. status = PROCESSING_STATUS : the schema
+   * file has not received completely.SUCCESS_STATUS: load metadata.
    */
   @Override
-  public void syncSchema(ByteBuffer schema, SyncDataStatus status) {
+  public String syncSchema(String md5, ByteBuffer schema, SyncDataStatus status) {
+    String md5OfReceiver = Boolean.toString(Boolean.TRUE);
     if (status == SyncDataStatus.SUCCESS_STATUS) {
       /** sync metadata, include storage group and timeseries **/
-      loadMetadata();
-    } else {
+      return Boolean.toString(loadMetadata());
+    } else if (status == SyncDataStatus.PROCESSING_STATUS) {
       File file = new File(schemaFromSenderPath.get());
       if (!file.getParentFile().exists()) {
         try {
           file.getParentFile().mkdirs();
-          if (!file.createNewFile()) {
-            logger.error("Cannot create file {}", file.getPath());
-          }
+          file.createNewFile();
         } catch (IOException e) {
           logger.error("Cannot make schema file {}.", file.getPath(), e);
+          md5OfReceiver = Boolean.toString(Boolean.FALSE);
         }
       }
       try (FileOutputStream fos = new FileOutputStream(file, true);
@@ -220,15 +222,31 @@ public class ServerServiceImpl implements SyncService.Iface {
         channel.write(schema);
       } catch (Exception e) {
         logger.error("Cannot write data to file {}.", file.getPath(), e);
+        md5OfReceiver = Boolean.toString(Boolean.FALSE);
+      }
+    } else {
+      try (FileInputStream fis = new FileInputStream(schemaFromSenderPath.get())) {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] buffer = new byte[Constans.DATA_CHUNK_SIZE];
+        int n;
+        while ((n = fis.read(buffer)) != -1) {
+          md.update(buffer, 0, n);
+        }
+        md5OfReceiver = (new BigInteger(1, md.digest())).toString(16);
+        if (!md5.equals(md5OfReceiver)) {
+          FileUtils.forceDelete(new File(schemaFromSenderPath.get()));
+        }
+      } catch (Exception e) {
+        logger.error("Receiver cannot generate md5 {}", schemaFromSenderPath.get(), e);
       }
     }
-
+    return md5OfReceiver;
   }
 
   /**
    * Load metadata from sender
    */
-  private void loadMetadata() {
+  private boolean loadMetadata() {
     if (new File(schemaFromSenderPath.get()).exists()) {
       try (BufferedReader br = new BufferedReader(
           new java.io.FileReader(schemaFromSenderPath.get()))) {
@@ -239,12 +257,15 @@ public class ServerServiceImpl implements SyncService.Iface {
       } catch (FileNotFoundException e) {
         logger.error("Cannot read the file {}.",
             schemaFromSenderPath.get(), e);
+        return false;
       } catch (IOException e) {
-        //TODO: how to deal with multiple insert schema
+        /** multiple insert schema, ignore it **/
       } catch (Exception e) {
         logger.error("Parse metadata operation failed.", e);
+        return false;
       }
     }
+    return true;
   }
 
   /**
@@ -257,7 +278,7 @@ public class ServerServiceImpl implements SyncService.Iface {
     String[] args = cmd.trim().split(",");
     switch (args[0]) {
       case MetadataOperationType.ADD_PATH_TO_MTREE:
-        Map<String, String> props = null;
+        Map<String, String> props;
         String[] kv;
         props = new HashMap<>(args.length - 5 + 1, 1);
         for (int k = 5; k < args.length; k++) {
@@ -304,33 +325,21 @@ public class ServerServiceImpl implements SyncService.Iface {
   @Override
   public String syncData(String md5OfSender, List<String> filePathSplit,
       ByteBuffer dataToReceive, SyncDataStatus status) {
-    String md5OfReceiver = "";
-    StringBuilder filePathBuilder = new StringBuilder();
+    String md5OfReceiver = Boolean.toString(Boolean.TRUE);
     FileChannel channel;
     /** Recombination File Path **/
-    for (int i = 0; i < filePathSplit.size(); i++) {
-      if (i == filePathSplit.size() - 1) {
-        filePathBuilder.append(filePathSplit.get(i));
-      } else {
-        filePathBuilder.append(filePathSplit.get(i)).append(File.separator);
-      }
-    }
-    String filePath = filePathBuilder.toString();
-    if (syncDataPath.length() > 0
-        && syncDataPath.charAt(syncDataPath.length() - 1) != File.separatorChar) {
-      syncDataPath = syncDataPath + File.separatorChar;
-    }
+    String filePath = StringUtils.join(filePathSplit, File.separatorChar);
+    syncDataPath = FilePathUtils.regularizePath(syncDataPath);
     filePath = syncDataPath + filePath;
     if (status == SyncDataStatus.PROCESSING_STATUS) { // there are still data stream to add
       File file = new File(filePath);
       if (!file.getParentFile().exists()) {
         try {
           file.getParentFile().mkdirs();
-          if (!file.createNewFile()) {
-            logger.error("cannot create file {}", file.getPath());
-          }
+          file.createNewFile();
         } catch (IOException e) {
           logger.error("cannot make file {}", file.getPath(), e);
+          md5OfReceiver = Boolean.toString(Boolean.FALSE);
         }
       }
       try (FileOutputStream fos = new FileOutputStream(file, true)) {// append new data
@@ -338,6 +347,7 @@ public class ServerServiceImpl implements SyncService.Iface {
         channel.write(dataToReceive);
       } catch (IOException e) {
         logger.error("cannot write data to file {}", file.getPath(), e);
+        md5OfReceiver = Boolean.toString(Boolean.FALSE);
 
       }
     } else { // all data in the same file has received successfully
@@ -351,16 +361,13 @@ public class ServerServiceImpl implements SyncService.Iface {
         md5OfReceiver = (new BigInteger(1, md.digest())).toString(16);
         if (md5OfSender.equals(md5OfReceiver)) {
           fileNum.set(fileNum.get() + 1);
-          if (logger.isInfoEnabled()) {
-            logger.info(String.format("Receiver has received %d files from sender", fileNum.get()));
-          }
+
+          logger.info(String.format("Receiver has received %d files from sender", fileNum.get()));
         } else {
-          if (!new File(filePath).delete()) {
-            logger.error("Receiver can not delete file {}", new File(filePath).getPath());
-          }
+          FileUtils.forceDelete(new File(filePath));
         }
       } catch (Exception e) {
-        logger.error("Receiver cannot generate md5", e);
+        logger.error("Receiver cannot generate md5 {}", filePath, e);
       }
     }
     return md5OfReceiver;
@@ -369,27 +376,20 @@ public class ServerServiceImpl implements SyncService.Iface {
 
   @Override
   public boolean load() {
-    getFileNodeInfo();
-    loadData();
-    SyncUtils.deleteFile(new File(syncDataPath));
-    for (String bufferWritePath : bufferWritePaths) {
-      if (bufferWritePath.length() > 0
-          && bufferWritePath.charAt(bufferWritePath.length() - 1) != File.separatorChar) {
-        bufferWritePath = bufferWritePath + File.separatorChar;
-      }
-      String backupPath = bufferWritePath + SYNC_SERVER + File.separator;
-      File backupDirectory = new File(backupPath, this.uuid.get());
-      if (backupDirectory.exists() && Objects.requireNonNull(backupDirectory.list()).length != 0) {
-        SyncUtils.deleteFile(backupDirectory);
-      }
+    try {
+      getFileNodeInfo();
+      loadData();
+    } catch (Exception e) {
+      logger.error("fail to load data", e);
+      return false;
     }
     return true;
   }
 
   /**
-   * Get all tsfiles' info which are sent from sender, it is prepare for merging these data
+   * Get all tsfiles' info which are sent from sender, it is preparing for merging these data
    */
-  public void getFileNodeInfo() {
+  public void getFileNodeInfo() throws IOException {
     File dataFileRoot = new File(syncDataPath);
     File[] files = dataFileRoot.listFiles();
     int processedNum = 0;
@@ -410,25 +410,25 @@ public class ServerServiceImpl implements SyncService.Iface {
             startTimeMap.put(key, device.getStartTime());
             endTimeMap.put(key, device.getEndTime());
           }
-        } catch (Exception e) {
-          logger.error("Unable to read tsfile {}", fileTF.getPath(), e);
+        } catch (IOException e) {
+          logger.error("Unable to read tsfile {}", fileTF.getPath());
+          throw new IOException(e);
         } finally {
           try {
             if (reader != null) {
               reader.close();
             }
           } catch (IOException e) {
-            logger.error("Cannot close tsfile stream {}", fileTF.getPath(), e);
+            logger.error("Cannot close tsfile stream {}", fileTF.getPath());
+            throw new IOException(e);
           }
         }
         fileNodeStartTime.get().put(fileTF.getPath(), startTimeMap);
         fileNodeEndTime.get().put(fileTF.getPath(), endTimeMap);
         filesPath.add(fileTF.getPath());
         processedNum++;
-        if (logger.isInfoEnabled()) {
-          logger.info(String
-              .format("Get tsfile info has complete : %d/%d", processedNum, fileNum.get()));
-        }
+        logger.info(String
+            .format("Get tsfile info has complete : %d/%d", processedNum, fileNum.get()));
         fileNodeMap.get().put(storageGroupPB.getName(), filesPath);
       }
     }
@@ -440,36 +440,26 @@ public class ServerServiceImpl implements SyncService.Iface {
    * directly. If data in the tsfile is old, it has two strategy to merge.It depends on the
    * possibility of updating historical data.
    */
-  public void loadData() {
-    if (syncDataPath.length() > 0
-        && syncDataPath.charAt(syncDataPath.length() - 1) != File.separatorChar) {
-      syncDataPath = syncDataPath + File.separatorChar;
-    }
+  public void loadData() throws FileNodeManagerException {
+    syncDataPath = FilePathUtils.regularizePath(syncDataPath);
     int processedNum = 0;
     for (String storageGroup : fileNodeMap.get().keySet()) {
       List<String> filesPath = fileNodeMap.get().get(storageGroup);
       /**  before load external tsFile, it is necessary to order files in the same storage group **/
-      for (int i = 0; i < filesPath.size(); i++) {
-        for (int j = i + 1; j < filesPath.size(); j++) {
-          boolean swapOrNot = false;
-          Map<String, Long> startTimeI = fileNodeStartTime.get().get(filesPath.get(i));
-          Map<String, Long> endTimeI = fileNodeStartTime.get().get(filesPath.get(i));
-          Map<String, Long> startTimeJ = fileNodeStartTime.get().get(filesPath.get(j));
-          Map<String, Long> endTimeJ = fileNodeStartTime.get().get(filesPath.get(j));
-          for (String deviceId : endTimeI.keySet()) {
-            if (startTimeJ.containsKey(deviceId) && startTimeI.get(deviceId) >
-                endTimeJ.get(deviceId)) {
-              swapOrNot = true;
-              break;
+      Collections.sort(filesPath, (o1, o2) -> {
+        Map<String, Long> startTimePath1 = fileNodeStartTime.get().get(o1);
+        Map<String, Long> endTimePath2 = fileNodeEndTime.get().get(o2);
+        for (Entry<String, Long> entry : endTimePath2.entrySet()) {
+          if (startTimePath1.containsKey(entry.getKey())) {
+            if (startTimePath1.get(entry.getKey()) > entry.getValue()) {
+              return 1;
+            } else {
+              return -1;
             }
           }
-          if (swapOrNot) {
-            String temp = filesPath.get(i);
-            filesPath.set(i, filesPath.get(j));
-            filesPath.set(j, temp);
-          }
         }
-      }
+        return 0;
+      });
 
       for (String path : filesPath) {
         // get startTimeMap and endTimeMap
@@ -499,15 +489,13 @@ public class ServerServiceImpl implements SyncService.Iface {
               }
             }
           }
-        } catch (FileNodeManagerException e) {
-          logger.error("Can not load external file ", e);
+        } catch (FileNodeManagerException | IOException | ProcessorException e) {
+          logger.error("Can not load external file {}", path);
+          throw new FileNodeManagerException(e);
         }
-
         processedNum++;
-        if (logger.isInfoEnabled()) {
-          logger.info(String
-              .format("Merging files has completed : %d/%d", processedNum, fileNum.get()));
-        }
+        logger.info(String
+            .format("Merging files has completed : %d/%d", processedNum, fileNum.get()));
       }
     }
   }
@@ -515,7 +503,7 @@ public class ServerServiceImpl implements SyncService.Iface {
   /**
    * Insert all data in the tsfile into IoTDB.
    */
-  public void loadOldData(String filePath) {
+  public void loadOldData(String filePath) throws IOException, ProcessorException {
     Set<String> timeseriesSet = new HashSet<>();
     TsFileSequenceReader reader = null;
     OverflowQPExecutor insertExecutor = new OverflowQPExecutor();
@@ -542,7 +530,7 @@ public class ServerServiceImpl implements SyncService.Iface {
             timeseriesSet.add(measurementUID);
           }
         }
-        /** Secondly, use tsFile Reader to form SQL **/
+        /** Secondly, use tsFile Reader to form InsertPlan **/
         ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
         List<Path> paths = new ArrayList<>();
         paths.clear();
@@ -551,7 +539,6 @@ public class ServerServiceImpl implements SyncService.Iface {
         }
         QueryExpression queryExpression = QueryExpression.create(paths, null);
         QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-        InsertPlan insertPlan;
         while (queryDataSet.hasNext()) {
           RowRecord record = queryDataSet.next();
           List<Field> fields = record.getFields();
@@ -568,15 +555,18 @@ public class ServerServiceImpl implements SyncService.Iface {
               }
             }
           }
-          insertPlan = new InsertPlan(deviceId, record.getTimestamp(), measurementList,
-              insertValues);
-          insertExecutor.processNonQuery(insertPlan);
+          if (insertExecutor
+              .multiInsert(deviceId, record.getTimestamp(), measurementList, insertValues) <= 0) {
+            throw new IOException("Inserting series data to IoTDB engine has failed.");
+          }
         }
       }
     } catch (IOException e) {
-      logger.error("Receiver can not parse tsfile into SQL", e);
+      logger.error("Can not parse tsfile into SQL", e);
+      throw new IOException(e);
     } catch (ProcessorException e) {
-      logger.error("Meet error while processing non-query.", e);
+      logger.error("Meet error while processing non-query.");
+      throw new ProcessorException(e);
     } finally {
       try {
         if (reader != null) {
@@ -593,12 +583,13 @@ public class ServerServiceImpl implements SyncService.Iface {
    *
    * @param overlapFiles:files which are conflict with the sync file
    */
-  public void loadOldData(String filePath, List<String> overlapFiles) {
+  public void loadOldData(String filePath, List<String> overlapFiles)
+      throws IOException, ProcessorException {
     Set<String> timeseriesList = new HashSet<>();
-    TsFileSequenceReader reader = null;
     OverflowQPExecutor insertExecutor = new OverflowQPExecutor();
+    Map<String, ReadOnlyTsFile> tsfilesReaders = openReaders(filePath, overlapFiles);
     try {
-      reader = new TsFileSequenceReader(filePath);
+      TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
       Map<String, TsDeviceMetadataIndex> deviceIdMap = reader.readFileMetadata().getDeviceMap();
       Iterator<String> it = deviceIdMap.keySet().iterator();
       while (it.hasNext()) {
@@ -617,8 +608,10 @@ public class ServerServiceImpl implements SyncService.Iface {
             timeseriesList.add(measurementUID);
           }
         }
+        reader.close();
+
         /** secondly, use tsFile Reader to form SQL **/
-        ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(reader);
+        ReadOnlyTsFile readOnlyTsFile = tsfilesReaders.get(filePath);
         ArrayList<Path> paths = new ArrayList<>();
         /** compare data with one timeseries in a round to get valid data **/
         for (String timeseries : timeseriesList) {
@@ -647,31 +640,23 @@ public class ServerServiceImpl implements SyncService.Iface {
           }
           /** get all data with the timeseries in all overlap files. **/
           for (String overlapFile : overlapFiles) {
-            TsFileSequenceReader inputOverlap = null;
-            try {
-              inputOverlap = new TsFileSequenceReader(overlapFile);
-              ReadOnlyTsFile readTsFileOverlap = new ReadOnlyTsFile(inputOverlap);
-              QueryDataSet queryDataSetOverlap = readTsFileOverlap.query(queryExpression);
-              while (queryDataSetOverlap.hasNext()) {
-                RowRecord recordOverlap = queryDataSetOverlap.next();
-                List<Field> fields = recordOverlap.getFields();
-                for (int i = 0; i < fields.size(); i++) {
-                  Field field = fields.get(i);
-                  List<String> measurementList = new ArrayList<>();
-                  if (!field.isNull()) {
-                    measurementList.add(paths.get(i).getMeasurement());
-                    InsertPlan insertPlan = new InsertPlan(deviceID, recordOverlap.getTimestamp(),
-                        measurementList, new ArrayList<>());
-                    originDataPoint.put(insertPlan,
-                        field.getDataType() == TSDataType.TEXT ? String
-                            .format("'%s'", field.toString())
-                            : field.toString());
-                  }
+            ReadOnlyTsFile readTsFileOverlap = tsfilesReaders.get(overlapFile);
+            QueryDataSet queryDataSetOverlap = readTsFileOverlap.query(queryExpression);
+            while (queryDataSetOverlap.hasNext()) {
+              RowRecord recordOverlap = queryDataSetOverlap.next();
+              List<Field> fields = recordOverlap.getFields();
+              for (int i = 0; i < fields.size(); i++) {
+                Field field = fields.get(i);
+                List<String> measurementList = new ArrayList<>();
+                if (!field.isNull()) {
+                  measurementList.add(paths.get(i).getMeasurement());
+                  InsertPlan insertPlan = new InsertPlan(deviceID, recordOverlap.getTimestamp(),
+                      measurementList, new ArrayList<>());
+                  originDataPoint.put(insertPlan,
+                      field.getDataType() == TSDataType.TEXT ? String
+                          .format("'%s'", field.toString())
+                          : field.toString());
                 }
-              }
-            } finally {
-              if (inputOverlap != null) {
-                inputOverlap.close();
               }
             }
           }
@@ -682,8 +667,10 @@ public class ServerServiceImpl implements SyncService.Iface {
               InsertPlan insertPlan = entry.getKey();
               List<String> insertValues = new ArrayList<>();
               insertValues.add(entry.getValue());
-              insertPlan.setValues(insertValues);
-              insertExecutor.processNonQuery(insertPlan);
+              if (insertExecutor.multiInsert(insertPlan.getDeviceId(), insertPlan.getTime(),
+                  insertPlan.getMeasurements(), insertValues) <= 0) {
+                throw new IOException("Inserting series data to IoTDB engine has failed.");
+              }
             }
           } else {
             /** Compare every data to get valid data **/
@@ -694,8 +681,10 @@ public class ServerServiceImpl implements SyncService.Iface {
                 InsertPlan insertPlan = entry.getKey();
                 List<String> insertValues = new ArrayList<>();
                 insertValues.add(entry.getValue());
-                insertPlan.setValues(insertValues);
-                insertExecutor.processNonQuery(insertPlan);
+                if (insertExecutor.multiInsert(insertPlan.getDeviceId(), insertPlan.getTime(),
+                    insertPlan.getMeasurements(), insertValues) <= 0) {
+                  throw new IOException("Inserting series data to IoTDB engine has failed.");
+                }
               }
             }
           }
@@ -703,14 +692,38 @@ public class ServerServiceImpl implements SyncService.Iface {
       }
     } catch (IOException e) {
       logger.error("Can not parse tsfile into SQL", e);
+      throw new IOException(e);
     } catch (ProcessorException e) {
       logger.error("Meet error while processing non-query.", e);
+      throw new ProcessorException(e);
     } finally {
       try {
-        reader.close();
+        closeReaders(tsfilesReaders);
       } catch (IOException e) {
         logger.error("Cannot close file stream {}", filePath, e);
       }
+    }
+  }
+
+  /**
+   * Open all tsfile reader and cache
+   */
+  private Map<String, ReadOnlyTsFile> openReaders(String filePath, List<String> overlapFiles)
+      throws IOException {
+    Map<String, ReadOnlyTsFile> tsfileReaders = new HashMap<>();
+    tsfileReaders.put(filePath, new ReadOnlyTsFile(new TsFileSequenceReader(filePath)));
+    for (String overlapFile : overlapFiles) {
+      tsfileReaders.put(overlapFile, new ReadOnlyTsFile(new TsFileSequenceReader(overlapFile)));
+    }
+    return tsfileReaders;
+  }
+
+  /**
+   * Close all tsfile reader
+   */
+  private void closeReaders(Map<String, ReadOnlyTsFile> readers) throws IOException {
+    for (ReadOnlyTsFile tsfileReader : readers.values()) {
+      tsfileReader.close();
     }
   }
 
@@ -725,7 +738,11 @@ public class ServerServiceImpl implements SyncService.Iface {
     fileNodeStartTime.remove();
     fileNodeEndTime.remove();
     schemaFromSenderPath.remove();
-    SyncUtils.deleteFile(new File(syncFolderPath));
+    try {
+      FileUtils.deleteDirectory(new File(syncFolderPath));
+    } catch (IOException e) {
+      logger.error("can not delete directory {}", syncFolderPath, e);
+    }
     logger.info("Synchronization has finished!");
   }
 

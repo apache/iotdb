@@ -257,12 +257,10 @@ public class IoTDBDescriptor {
     } finally {
       // update all data seriesPath
       conf.updatePath();
-      if (inputStream != null) {
-        try {
-          inputStream.close();
-        } catch (IOException e) {
-          LOGGER.error("Fail to close config file input stream because ", e);
-        }
+      try {
+        inputStream.close();
+      } catch (IOException e) {
+        LOGGER.error("Fail to close config file input stream because ", e);
       }
     }
   }

@@ -114,9 +114,7 @@ public class FileManager {
     File file = new File(path);
     if (!file.exists()) {
       try {
-        if (!file.createNewFile()) {
-          LOGGER.error("Cannot create file {}", file.getPath());
-        }
+        file.createNewFile();
       } catch (IOException e) {
         throw new IOException("Cannot get last local file list", e);
       }

@@ -44,7 +44,6 @@ public class FileManagerTest {
 
   @Before
   public void setUp() throws IOException, InterruptedException {
-    Thread.sleep(1000);
     File file = new File(LAST_FILE_INFO_TEST);
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();
@@ -61,7 +60,6 @@ public class FileManagerTest {
 
   @After
   public void tearDown() throws InterruptedException {
-    Thread.sleep(1000);
     delete(new File(POST_BACK_DIRECTORY_TEST));
     new File(POST_BACK_DIRECTORY_TEST).delete();
   }

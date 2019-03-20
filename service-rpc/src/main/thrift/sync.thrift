@@ -24,14 +24,15 @@ typedef i64 long
 
 enum SyncDataStatus {
   SUCCESS_STATUS,
+  FINISH_STATUS,
   PROCESSING_STATUS
 }
 
 service SyncService{
 	bool checkIdentity(1:string uuid, 2:string address)
-	void syncSchema(1:binary buff, 2:SyncDataStatus status)
+	string syncSchema(1:string md5, 2:binary buff, 3:SyncDataStatus status)
 	string syncData(1:string md5, 2:list<string> filename, 3:binary buff, 4:SyncDataStatus status)
 	bool load()
 	void cleanUp()
-	void init(1:string storageGroup)
+	bool init(1:string storageGroup)
 }

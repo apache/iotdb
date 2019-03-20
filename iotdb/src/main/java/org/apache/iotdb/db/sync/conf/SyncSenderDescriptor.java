@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.SyncUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,11 +107,7 @@ public class SyncSenderDescriptor {
       String[] iotdbBufferwriteDirectory = conf.getBufferwriteDirectory();
       String[] snapshots = new String[conf.getBufferwriteDirectory().length];
       for (int i = 0; i < conf.getBufferwriteDirectory().length; i++) {
-        if (iotdbBufferwriteDirectory[i].length() > 0
-            && iotdbBufferwriteDirectory[i].charAt(iotdbBufferwriteDirectory[i].length() - 1)
-            != File.separatorChar) {
-          iotdbBufferwriteDirectory[i] = iotdbBufferwriteDirectory[i] + File.separatorChar;
-        }
+        iotdbBufferwriteDirectory[i] = FilePathUtils.regularizePath(iotdbBufferwriteDirectory[i]);
         snapshots[i] = iotdbBufferwriteDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
             + Constans.DATA_SNAPSHOT_NAME + File.separatorChar;
       }
@@ -120,12 +118,10 @@ public class SyncSenderDescriptor {
     } catch (Exception e) {
       LOGGER.warn("Error format in config file because {}, use default configuration", e);
     } finally {
-      if (inputStream != null) {
-        try {
-          inputStream.close();
-        } catch (IOException e) {
-          LOGGER.error("Fail to close sync config file input stream because ", e);
-        }
+      try {
+        inputStream.close();
+      } catch (IOException e) {
+        LOGGER.error("Fail to close sync config file input stream because ", e);
       }
     }
   }

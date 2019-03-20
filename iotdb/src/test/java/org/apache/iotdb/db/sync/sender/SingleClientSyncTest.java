@@ -194,7 +194,6 @@ public class SingleClientSyncTest {
   public void tearDown() throws Exception {
     if (testFlag) {
       deamon.stop();
-      Thread.sleep(2000);
       EnvironmentUtils.cleanEnv();
     }
     if (success) {
@@ -204,12 +203,11 @@ public class SingleClientSyncTest {
     }
   }
 
-  public void testPostback() throws IOException, SyncConnectionException {
+  public void testPostback() throws IOException, SyncConnectionException, ClassNotFoundException, SQLException, InterruptedException {
     if (testFlag) {
       // the first time to sync
       logger.debug("It's the first time to sync!");
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -219,9 +217,8 @@ public class SingleClientSyncTest {
             statement.execute(sql);
           }
           statement.close();
-          Thread.sleep(100);
         }
-      } catch (InterruptedException | SQLException | ClassNotFoundException e) {
+      } catch (SQLException | ClassNotFoundException e) {
         fail(e.getMessage());
       }
 
@@ -230,7 +227,6 @@ public class SingleClientSyncTest {
       // Compare data of sender and receiver
       dataSender.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -262,14 +258,13 @@ public class SingleClientSyncTest {
         } catch (Exception e) {
           logger.error("", e);
         }
-      } catch (ClassNotFoundException | InterruptedException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
 
       dataReceiver.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
@@ -308,7 +303,7 @@ public class SingleClientSyncTest {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+      } catch (ClassNotFoundException | SQLException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
@@ -324,7 +319,6 @@ public class SingleClientSyncTest {
       // the second time to sync
       logger.debug("It's the second time to sync!");
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
@@ -336,7 +330,6 @@ public class SingleClientSyncTest {
             statement.execute(sql);
           }
           statement.close();
-          Thread.sleep(100);
         } catch (Exception e) {
           logger.error("", e);
         } finally {
@@ -344,7 +337,7 @@ public class SingleClientSyncTest {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+      } catch (ClassNotFoundException | SQLException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
@@ -354,7 +347,6 @@ public class SingleClientSyncTest {
       // Compare data of sender and receiver
       dataSender.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
@@ -392,14 +384,13 @@ public class SingleClientSyncTest {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+      } catch (ClassNotFoundException | SQLException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
 
       dataReceiver.clear();
-      try {
-        Thread.sleep(2000);
+      {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
@@ -437,9 +428,6 @@ public class SingleClientSyncTest {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
-        fail(e.getMessage());
-        Thread.currentThread().interrupt();
       }
       logger.debug(String.valueOf(dataSender.size()));
       logger.debug(String.valueOf(dataReceiver.size()));
@@ -453,7 +441,6 @@ public class SingleClientSyncTest {
       // the third time to sync
       logger.debug("It's the third time to sync!");
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -463,11 +450,10 @@ public class SingleClientSyncTest {
             statement.execute(sql);
           }
           statement.close();
-          Thread.sleep(100);
         } catch (Exception e) {
           logger.error("", e);
         }
-      } catch (ClassNotFoundException | InterruptedException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
@@ -477,7 +463,6 @@ public class SingleClientSyncTest {
       // Compare data of sender and receiver
       dataSender.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(String.format("jdbc:iotdb://%s:6667/", serverIpTest), "root",
@@ -531,14 +516,13 @@ public class SingleClientSyncTest {
         } catch (Exception e) {
           logger.error("", e);
         }
-      } catch (ClassNotFoundException | InterruptedException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
 
       dataReceiver.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
@@ -597,7 +581,7 @@ public class SingleClientSyncTest {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+      } catch (ClassNotFoundException | SQLException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
