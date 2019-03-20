@@ -100,7 +100,7 @@ In the result, there will be a statement shows `Total timeseries number`, this n
 If you are using Linux, you can use the following shell command:
 
 ```
-> grep "0,root" IOTDB_HOMEW/data/system/schema/mlog.txt |  wc -l
+> grep "0,root" $IOTDB_HOME/data/system/schema/mlog.txt |  wc -l
 >   6
 ```
 
@@ -141,3 +141,4 @@ The default IoTDB's CLI time display format is human readable (e.g. ```1970-01-0
 ```
 > $IOTDB_CLI_HOME/bin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
 ```
+
