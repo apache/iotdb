@@ -20,7 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import java.io.Serializable;
 
-public class TimeValuePair implements Serializable {
+public class TimeValuePair implements Serializable, Comparable<TimeValuePair>{
 
   private long timestamp;
   private TsPrimitiveType value;
@@ -70,5 +70,10 @@ public class TimeValuePair implements Serializable {
 
   public int getSize() {
     return 8 + 8 + value.getSize();
+  }
+
+  @Override
+  public int compareTo(TimeValuePair o) {
+    return Long.compare(this.getTimestamp(), o.getTimestamp());
   }
 }

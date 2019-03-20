@@ -19,9 +19,10 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
-
 import org.apache.iotdb.db.utils.PrimitiveArrayList;
 import org.apache.iotdb.db.utils.PrimitiveArrayListFactory;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -100,13 +101,16 @@ public class WritableMemChunk implements IWritableMemChunk {
   // TODO: Consider using arrays to sort and remove duplicates
   public List<TimeValuePair> getSortedTimeValuePairList() {
     int length = list.size();
-    TreeMap<Long, TsPrimitiveType> treeMap = new TreeMap<>();
+    List<TimeValuePair> ret = new ArrayList<>(length);
+    Map<Long, TsPrimitiveType> treeMap = new HashMap<>(length, 1.0f);
+    //Map<Long, TsPrimitiveType> treeMap = new TreeMap<>();
     for (int i = 0; i < length; i++) {
       treeMap.put(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i)));
     }
-    List<TimeValuePair> ret = new ArrayList<>();
     treeMap.forEach((k, v) -> ret.add(new TimeValuePairInMemTable(k, v)));
+    ret.sort(TimeValuePair::compareTo);
     return ret;
+
   }
 
   @Override
