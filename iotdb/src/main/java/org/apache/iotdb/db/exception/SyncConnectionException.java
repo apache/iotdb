@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.exception;
 
-/**
- * @author Tianan Li
- */
 public class SyncConnectionException extends Exception {
 
 
