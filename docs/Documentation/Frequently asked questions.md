@@ -99,7 +99,7 @@ In the result, there will be a statement shows `Total timeseries number`, this n
 If you are using Linux, you can use the following shell command:
 
 ```
-> grep "0,root" IOTDB_HOMEW/data/system/schema/mlog.txt |  wc -l
+> grep "0,root" IOTDB_HOME/data/system/schema/mlog.txt |  wc -l
 >   6
 ```
 
