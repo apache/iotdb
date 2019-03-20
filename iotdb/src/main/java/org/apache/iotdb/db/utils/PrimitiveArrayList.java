@@ -131,4 +131,5 @@ public class PrimitiveArrayList {
     System.arraycopy(array, 0, cloneArray, 0, Array.getLength(array));
     return cloneArray;
   }
+
 }
