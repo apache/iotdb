@@ -55,6 +55,18 @@ public class IoTDBAggregationTestIT {
       "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
   };
 
+  private static String[] dataSet2 = new String[]{
+      "SET STORAGE GROUP TO root.ln.wf01.wt01",
+      "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+      "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+      "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(1, 1.1, false, 11)",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(2, 2.2, true, 22)",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(3, 3.3, false, 33 )",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(4, 4.4, false, 44)",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(5, 5.5, false, 55)"
+  };
+
   private String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3"
       + ") VALUES(%d,%d,%d,%f,%s)";
 
@@ -79,6 +91,68 @@ public class IoTDBAggregationTestIT {
   public void tearDown() throws Exception {
     daemon.stop();
     EnvironmentUtils.cleanEnv();
+  }
+
+  //add test for part of points in page don't satisfy filter
+  //details in: https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-54
+  @Test
+  public void test() throws SQLException {
+    String[] retArray = new String[]{
+        "0,2",
+        "0,4",
+        "0,3"
+    };
+    Connection connection = null;
+    try {
+      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      boolean hasResultSet = statement.execute("select count(temperature) from root.ln.wf01.wt01 where time > 3");
+
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count("root.ln.wf01.wt01.temperature"));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(1, cnt);
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select min_time(temperature) from root.ln.wf01.wt01 where time > 3");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_time("root.ln.wf01.wt01.temperature"));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select min_time(temperature) from root.ln.wf01.wt01 where temperature > 3");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_time("root.ln.wf01.wt01.temperature"));
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(3, cnt);
+      statement.close();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      if (connection != null) {
+        connection.close();
+      }
+    }
   }
 
   @Test
@@ -406,6 +480,10 @@ public class IoTDBAggregationTestIT {
               "root");
       Statement statement = connection.createStatement();
       for (String sql : creationSqls) {
+        statement.execute(sql);
+      }
+
+      for (String sql : dataSet2) {
         statement.execute(sql);
       }
       statement.close();

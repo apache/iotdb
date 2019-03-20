@@ -50,6 +50,12 @@ public class AndFilter extends BinaryFilter {
   }
 
   @Override
+  public boolean containStartEndTime(long startTime, long endTime) {
+    return left.containStartEndTime(startTime, endTime) && right
+        .containStartEndTime(startTime, endTime);
+  }
+
+  @Override
   public String toString() {
     return "(" + left + " && " + right + ")";
   }

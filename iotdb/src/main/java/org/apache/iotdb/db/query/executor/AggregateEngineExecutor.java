@@ -126,23 +126,24 @@ public class AggregateEngineExecutor {
     //TODO use multi-thread
     for (int i = 0; i < selectedSeries.size(); i++) {
       BatchData batchData = aggregateWithOutTimeGenerator(aggregateFunctions.get(i),
-          readersOfSequenceData.get(i), readersOfUnSequenceData.get(i));
+          readersOfSequenceData.get(i), readersOfUnSequenceData.get(i), timeFilter);
       batchDatas.add(batchData);
     }
     return constructDataSet(batchDatas);
   }
 
   private BatchData aggregateWithOutTimeGenerator(AggregateFunction function,
-      SequenceDataReader sequenceReader, IPointReader unSequenceReader)
+      SequenceDataReader sequenceReader, IPointReader unSequenceReader, Filter filter)
       throws IOException, ProcessorException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
-      return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader);
+      return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader,
+          filter);
     }
 
     while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       //judge if overlap with unsequence data
-      if (canUseHeader(function, pageHeader, unSequenceReader)) {
+      if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
         //cal by pageHeader
         function.calculateValueFromPageHeader(pageHeader);
         sequenceReader.skipPageData();
@@ -164,7 +165,7 @@ public class AggregateEngineExecutor {
   }
 
   private boolean canUseHeader(AggregateFunction function, PageHeader pageHeader,
-      IPointReader unSequenceReader)
+      IPointReader unSequenceReader, Filter filter)
       throws IOException, ProcessorException {
     //if page data is memory data.
     if (pageHeader == null) {
@@ -173,6 +174,12 @@ public class AggregateEngineExecutor {
 
     long minTime = pageHeader.getMinTimestamp();
     long maxTime = pageHeader.getMaxTimestamp();
+
+    // If there are points in the page that do not satisfy the time filter,
+    // page header cannot be used to calculate.
+    if (filter != null && !filter.containStartEndTime(minTime, maxTime)) {
+      return false;
+    }
 
     //cal unsequence data with timestamps between pages.
     function.calculateValueFromUnsequenceReader(unSequenceReader, minTime);
@@ -192,14 +199,14 @@ public class AggregateEngineExecutor {
    * @return BatchData-aggregate result
    */
   private BatchData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
-      SequenceDataReader sequenceReader, IPointReader unSequenceReader)
+      SequenceDataReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
       throws IOException, ProcessorException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
 
     while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       //judge if overlap with unsequence data
-      if (canUseHeader(function, pageHeader, unSequenceReader)) {
+      if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
         //cal by pageHeader
         function.calculateValueFromPageHeader(pageHeader);
         sequenceReader.skipPageData();
@@ -336,5 +343,4 @@ public class AggregateEngineExecutor {
     }
     return new EngineDataSetWithoutTimeGenerator(selectedSeries, dataTypes, batchDataPointReaders);
   }
-
 }
