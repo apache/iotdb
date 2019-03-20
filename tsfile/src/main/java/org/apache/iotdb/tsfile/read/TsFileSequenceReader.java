@@ -147,7 +147,7 @@ public class TsFileSequenceReader implements AutoCloseable{
    * @throws IOException
    */
   public boolean isComplete() throws IOException {
-    return tsFileInput.size() == TSFileConfig.MAGIC_STRING.length() * 2 && readTailMagic()
+    return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.length() * 2 && readTailMagic()
         .equals(readHeadMagic());
   }
 
