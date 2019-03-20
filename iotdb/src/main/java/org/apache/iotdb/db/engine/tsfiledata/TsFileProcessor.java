@@ -45,6 +45,7 @@ import org.apache.iotdb.db.engine.bufferwrite.RestorableTsFileIOWriter;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
+import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
@@ -121,6 +122,7 @@ public class TsFileProcessor extends Processor {
   private WriteLogNode logNode;
   private VersionController versionController;
 
+  private BasicMemController.UsageLevel memLevel = UsageLevel.SAFE;
 
   /**
    * constructor of BufferWriteProcessor. data will be stored in baseDir/processorName/ folder.
@@ -258,6 +260,10 @@ public class TsFileProcessor extends Processor {
   public boolean insert(String deviceId, String measurementId, long timestamp, TSDataType dataType,
       String value)
       throws BufferWriteProcessorException {
+    if (memLevel == UsageLevel.DANGEROUS) {
+      checkMemThreshold4Flush(0);
+      return false;
+    }
     if (lastFlushedTimeForEachDevice.containsKey(deviceId) && timestamp <= lastFlushedTimeForEachDevice.get(deviceId)) {
       return false;
     }
@@ -285,6 +291,10 @@ public class TsFileProcessor extends Processor {
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
   public boolean insert(TSRecord tsRecord) throws BufferWriteProcessorException {
+    if (memLevel == UsageLevel.DANGEROUS) {
+      checkMemThreshold4Flush(0);
+      return false;
+    }
     if (lastFlushedTimeForEachDevice.containsKey(tsRecord.deviceId) && tsRecord.time <= lastFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
       return false;
     }
@@ -345,10 +355,9 @@ public class TsFileProcessor extends Processor {
 
 
   private void checkMemThreshold4Flush(long addedMemory) throws BufferWriteProcessorException {
-    BasicMemController.UsageLevel level = BasicMemController.getInstance()
-        .reportUse(this, addedMemory);
+    memLevel = BasicMemController.getInstance().reportUse(this, addedMemory);
     String memory;
-    switch (level) {
+    switch (memLevel) {
       case SAFE:
         break;
       case WARNING:
