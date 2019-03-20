@@ -80,7 +80,7 @@ Now suppose your directory is like this:
 
 ```
 > pwd
-/User/workspace/incubator-iotdb
+/workspace/incubator-iotdb
 
 > ls -l
 incubator-iotdb/     <-- root path
@@ -96,7 +96,7 @@ incubator-iotdb/     <-- root path
 +- pom.xml
 ```
 
-Let $IOTDB_HOME = /User/workspace/incubator-iotdb/iotdb/iotdb/
+Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb/
 
 If you are not the first time that building IoTDB, remember deleting the following files:
 
@@ -109,7 +109,7 @@ Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 
 ```
 > pwd
-/User/workspace/incubator-iotdb
+/workspace/incubator-iotdb
 
 > mvn clean package -pl iotdb -am -Dmaven.test.skip=true
 ```
@@ -187,10 +187,12 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 cd cli/cli
 
 # Unix/OS X
-> $IOTDB_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
+> cd /workspace/incubator-iotdb/iotdb-cli/cli/bin/
+> start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
 
 # Windows
-> $IOTDB_HOME\bin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
+> cd \workspace\incubator-iotdb\iotdb-cli\cli\bin
+> start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
 ```
 
 > NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.
@@ -280,7 +282,7 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ### Run import shell
 
 ```
-cd cli/cli
+cd iotdb-cli/cli
 
 # Unix/OS X
 > ./bin/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
@@ -297,7 +299,7 @@ csvInsertError.error
 
 ### Run export shell
 ```
-cd cli/cli
+cd iotdb-cli/cli
 
 # Unix/OS X
 > ./bin/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
