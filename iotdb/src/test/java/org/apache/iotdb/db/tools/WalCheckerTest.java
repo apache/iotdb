@@ -76,8 +76,8 @@ public class WalCheckerTest {
 
         List<byte[]> binaryPlans = new ArrayList<>();
         String deviceId = "device1";
-        List<String> measurements = Arrays.asList("s1", "s2", "s3");
-        List<String> values = Arrays.asList("5", "6", "7");
+        String[] measurements = new String[]{"s1", "s2", "s3"};
+        String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
           binaryPlans.add(PhysicalPlanLogTransfer
               .operatorToLog(new InsertPlan(deviceId, j, measurements, values)));
@@ -109,8 +109,8 @@ public class WalCheckerTest {
 
         List<byte[]> binaryPlans = new ArrayList<>();
         String deviceId = "device1";
-        List<String> measurements = Arrays.asList("s1", "s2", "s3");
-        List<String> values = Arrays.asList("5", "6", "7");
+        String[] measurements = new String[]{"s1", "s2", "s3"};
+        String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
           binaryPlans.add(PhysicalPlanLogTransfer
               .operatorToLog(new InsertPlan(deviceId, j, measurements, values)));

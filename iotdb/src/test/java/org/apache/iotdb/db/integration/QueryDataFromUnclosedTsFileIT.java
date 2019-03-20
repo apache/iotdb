@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -50,10 +51,11 @@ public class QueryDataFromUnclosedTsFileIT {
   MManager mManager;
   EngineQueryRouter queryManager;
   @Before
-  public void setUp() {
+  public void setUp() throws IOException, FileNodeManagerException {
+    EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(true);
     bufferWriteFileSize = IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(100);
+    //IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(100);
     sgManager  = FileNodeManager.getInstance();
     mManager = MManager.getInstance();
     queryManager = new EngineQueryRouter();
@@ -76,20 +78,26 @@ public class QueryDataFromUnclosedTsFileIT {
     //  Map<String, String> props
     mManager.setStorageLevelToMTree("root.test");
     mManager.addPathToMTree("root.test.d1.s1",  TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY, Collections.emptyMap());
+    mManager.addPathToMTree("root.test.d2.s1",  TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY, Collections.emptyMap());
     sgManager.addTimeSeries(new Path("root.test.d1", "s1"), TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY, Collections
         .emptyMap());
-    for (int i=0; i < 100; i++) {
+    sgManager.addTimeSeries(new Path("root.test.d2", "s1"), TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY, Collections
+        .emptyMap());
+    long time = System.currentTimeMillis();
+    for (int i=0; i < 20000000; i++) {
       sgManager.insert(new TSRecord(i, "root.test.d1").addTuple(new IntDataPoint("s1", i)), false);
+      sgManager.insert(new TSRecord(i, "root.test.d2").addTuple(new IntDataPoint("s1", i)), false);
     }
-
+    System.out.println((System.currentTimeMillis() - time));
     //for (int i=0; i< 2; i++) {
       QueryExpression qe = QueryExpression
           .create(Collections.singletonList(new Path("root.test.d1", "s1")), null);
       QueryDataSet result = queryManager.query(qe);
       while (result.hasNext()) {
         RowRecord record = result.next();
-        System.out.println(record.getTimestamp() + "," + record.getFields().get(0).getIntV());
+        //System.out.println(record.getTimestamp() + "," + record.getFields().get(0).getIntV());
       }
+    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
     //}
 
   }

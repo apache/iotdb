@@ -185,13 +185,13 @@ public class BufferWriteProcessor extends Processor {
         return true;
       case WARNING:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
-        LOGGER.warn("Memory usage will exceed warning threshold, current : {}.", memory);
+        //LOGGER.warn("Memory usage will exceed warning threshold, current : {}.", memory);
         checkMemThreshold4Flush(memUsage);
         return true;
       case DANGEROUS:
       default:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
-        LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
+        //LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
         return false;
     }
   }

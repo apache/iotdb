@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
@@ -39,7 +41,9 @@ import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.executor.EngineExecutorWithoutTimeGenerator;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -55,6 +59,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -78,9 +83,13 @@ public class TsFileProcessorTest {
 
   FileSchema schema;
 
+  long oldBufferwriteFileSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold();
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanEnv();
+//
+//  IoTDBDescriptor.getInstance().getConfig().setEnableWal(true);
+    IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(1*1024*1024);
     mManager = MManager.getInstance();
     queryManager = new EngineQueryRouter();
     measurementSchemaMap.put("s1", new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -104,15 +113,17 @@ public class TsFileProcessorTest {
    processor.removeMe();
    processor.writeUnlock();
    EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
+    IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(oldBufferwriteFileSizeThreshold);
   }
 
   @Test
   public void insert()
       throws BufferWriteProcessorException, IOException, ExecutionException, InterruptedException, FileNodeProcessorException, FileNodeManagerException, PathErrorException, MetadataArgsErrorException {
 
-    Assert.assertTrue(processor.insert("root.test.d1", "s1", 10, TSDataType.FLOAT, "5.0"));
-    Assert.assertTrue(processor.insert("root.test.d1", "s2", 10, TSDataType.FLOAT, "5.0"));
-    Assert.assertTrue(processor.insert("root.test.d1", "s1", 12, TSDataType.FLOAT, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d1", "s1", 10, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d1", "s2", 10, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d1", "s1", 12, "5.0"));
     Future<Boolean> ok = processor.flush();
     ok.get();
     ok = processor.flush();
@@ -123,11 +134,11 @@ public class TsFileProcessorTest {
     ok.get();
 
     //let's rewrite timestamp =12 again..
-    Assert.assertFalse(processor.insert("root.test.d1", "s1", 12, TSDataType.FLOAT, "5.0"));
+    Assert.assertFalse(processor.insert("root.test.d1", "s1", 12, "5.0"));
     processor.delete("root.test.d1", "s1",12);
-    Assert.assertTrue(processor.insert("root.test.d1", "s1", 12, TSDataType.FLOAT, "5.0"));
-    Assert.assertTrue(processor.insert("root.test.d1", "s1", 13, TSDataType.FLOAT, "5.0"));
-    Assert.assertTrue(processor.insert("root.test.d2", "s1", 10, TSDataType.FLOAT, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d1", "s1", 12, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d1", "s1", 13, "5.0"));
+    Assert.assertTrue(processor.insert("root.test.d2", "s1", 10, "5.0"));
     Assert.assertTrue(processor.insert(new TSRecord(14, "root.test.d1").addTuple(new FloatDataPoint("s1", 6.0f))));
     processor.delete("root.test.d1", "s1",12);
     processor.delete("root.test.d3", "s1",12);
@@ -150,7 +161,7 @@ public class TsFileProcessorTest {
     String[] sensors = new String[] {"s1", "s2"};
     final boolean[] exception = {false, false, false};
     final boolean[] goon = {true};
-    int totalsize = 5000000;
+    int totalsize = 100000;
     final int[] count = {0};
     QueryExpression qe = QueryExpression.create(Collections.singletonList(new Path("root.test.d1", "s1")), null);
     Thread insertThread = new Thread() {
@@ -158,18 +169,22 @@ public class TsFileProcessorTest {
       public void run() {
         int i =0;
         long time = 100L;
+        long start = System.currentTimeMillis();
+        String[] sensors = new String[]{"s1"};
+        String[] values = new String[1];
         try {
-          for (int j = 0; j < totalsize * 2 && goon[0]; j++) {
+          for (int j = 0; j < totalsize  && goon[0]; j++) {
             processor.lock(true);
-            if (!processor.insert(devices[j%2], sensors[0], time++, TSDataType.FLOAT, "5.0")) {
-              j--;
-            } else {
-              count[0]++;
-            }
-            processor.insert(devices[j%2], sensors[1], time++, TSDataType.FLOAT, "5.0");
+//            processor.insert("root.test.d1","s1", time++,  String.valueOf(j));
+//            processor.insert("root.test.d2","s1", time++,  String.valueOf(j));
+            values[0] = String.valueOf(j);
+            processor.insert(new InsertPlan("root.test.d1",  time++, sensors, values));
+            processor.insert(new InsertPlan("root.test.d2",  time++, sensors, values));
             processor.writeUnlock();
+            count[0]++;
           }
-        } catch (BufferWriteProcessorException e) {
+          System.out.println((System.currentTimeMillis() - start));
+        } catch (BufferWriteProcessorException | IOException e) {
           // we will break out.
           LOGGER.error(e.getMessage());
           exception[0] = true;
@@ -198,12 +213,13 @@ public class TsFileProcessorTest {
 //      public void run() {
 //        try {
 //          for (int j = 0; j < totalsize * 2 && goon[0]; j++) {
-//            //processor.lock(false);
+//            processor.lock(false);
 //            QueryDataSet result = queryManager.query(qe, processor);
 //            while (result.hasNext()) {
 //              result.next();
 //            }
-//            //processor.readUnlock();
+//            QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+//            processor.readUnlock();
 //          }
 //        } catch (IOException | FileNodeManagerException e) {
 //          // we will break out.
@@ -212,11 +228,11 @@ public class TsFileProcessorTest {
 //        }
 //      }
 //    };
-//    flushThread.start();
+   // flushThread.start();
     insertThread.start();
     //queryThread.start();
     //wait at most 20 seconds.
-    insertThread.join(10000000);
+    insertThread.join(20000);
     goon[0] = false;
     //queryThread.join(5000);
     Assert.assertFalse(exception[0]);
@@ -228,7 +244,8 @@ public class TsFileProcessorTest {
       RowRecord record = result.next();
       size ++;
     }
-    Assert.assertEquals(count[0]/2, size);
+    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+    Assert.assertEquals(count[0], size);
   }
 
 

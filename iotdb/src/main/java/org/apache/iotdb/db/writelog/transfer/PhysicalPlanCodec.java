@@ -181,16 +181,16 @@ public enum PhysicalPlanCodec {
         buffer.putInt(deviceBytes.length);
         buffer.put(deviceBytes);
 
-        List<String> measurementList = plan.getMeasurements();
-        buffer.putInt(measurementList.size());
+        String[] measurementList = plan.getMeasurements();
+        buffer.putInt(measurementList.length);
         for (String m : measurementList) {
           byte[] mBytes = BytesUtils.stringToBytes(m);
           buffer.putInt(mBytes.length);
           buffer.put(mBytes);
         }
 
-        List<String> valueList = plan.getValues();
-        buffer.putInt(valueList.size());
+        String[] valueList = plan.getValues();
+        buffer.putInt(valueList.length);
         for (String m : valueList) {
           byte[] vBytes = BytesUtils.stringToBytes(m);
           buffer.putInt(vBytes.length);
@@ -214,21 +214,21 @@ public enum PhysicalPlanCodec {
         String device = BytesUtils.bytesToString(deltaObjBytes);
 
         int mmListLength = buffer.getInt();
-        List<String> measurementsList = new ArrayList<>(mmListLength);
+        String[] measurementsList = new String[mmListLength];
         for (int i = 0; i < mmListLength; i++) {
           int mmLen = buffer.getInt();
           byte[] mmBytes = new byte[mmLen];
           buffer.get(mmBytes);
-          measurementsList.add(BytesUtils.bytesToString(mmBytes));
+          measurementsList[i] = BytesUtils.bytesToString(mmBytes);
         }
 
         int valueListLength = buffer.getInt();
-        List<String> valuesList = new ArrayList<>(valueListLength);
+        String[] valuesList = new String[valueListLength];
         for (int i = 0; i < valueListLength; i++) {
           int valueLen = buffer.getInt();
           byte[] valueBytes = new byte[valueLen];
           buffer.get(valueBytes);
-          valuesList.add(BytesUtils.bytesToString(valueBytes));
+          valuesList[i] = BytesUtils.bytesToString(valueBytes);
         }
 
         InsertPlan ans = new InsertPlan(device, time, measurementsList, valuesList);

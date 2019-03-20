@@ -324,11 +324,13 @@ public class FileNodeManager implements IStatistic, IService {
       throws FileNodeManagerException {
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        List<String> measurementList = new ArrayList<>();
-        List<String> insertValues = new ArrayList<>();
+        String[] measurementList = new String[tsRecord.dataPointList.size()];
+        String[] insertValues = new String[tsRecord.dataPointList.size()];
+        int i=0;
         for (DataPoint dp : tsRecord.dataPointList) {
-          measurementList.add(dp.getMeasurementId());
-          insertValues.add(dp.getValue().toString());
+          measurementList[i] = dp.getMeasurementId();
+          insertValues[i] = dp.getValue().toString();
+          i++;
         }
         logNode.write(new InsertPlan(2, tsRecord.deviceId, tsRecord.time, measurementList,
             insertValues));
