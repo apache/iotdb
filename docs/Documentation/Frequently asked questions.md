@@ -64,11 +64,28 @@ String iotdbVersion = tsfileDatabaseMetadata.getDatabaseProductVersion();
 
 ## Where can I find IoTDB logs?
 
-By default settings, the logs are stored under ```IOTDB_HOME/iotdb/logs```. You can change log level and storage path by configuring ```logback.xml``` under ```IOTDB_HOME/iotdb/conf```. ```IOTDB_HOME``` is the root path of IoTDB project.
+Suppose your root directory is:
+
+```
+$ pwd
+/workspace/incubator-iotdb
+
+$ ls -l
+iotdb/
+iotdb-cli/
+pom.xml
+Readme.md
+...
+```
+
+Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb
+Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli/
+
+By default settings, the logs are stored under ```IOTDB_HOME/logs```. You can change log level and storage path by configuring ```logback.xml``` under ```IOTDB_HOME/conf```.
 
 ## Where can I find IoTDB data files?
 
-By default settings, the data files (including tsfile, metadata, and WAL files) are stored under ```IOTDB_HOME/iotdb/data```.
+By default settings, the data files (including tsfile, metadata, and WAL files) are stored under ```IOTDB_HOME/data```.
 
 ## How do I know how many time series are stored in IoTDB?
 
@@ -83,7 +100,7 @@ In the result, there will be a statement shows `Total timeseries number`, this n
 If you are using Linux, you can use the following shell command:
 
 ```
-> grep "0,root" IOTDB_HOME/iotdb/data/system/schema/mlog.txt |  wc -l
+> grep "0,root" $IOTDB_HOME/data/system/schema/mlog.txt |  wc -l
 >   6
 ```
 
@@ -122,5 +139,6 @@ IoTDB> show timeseries root.fit.d1.*
 The default IoTDB's CLI time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableIS08601``` in start command:
 
 ```
->sh IOTDB_HOME/iotdb/bin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601
+> $IOTDB_CLI_HOME/bin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
 ```
+
