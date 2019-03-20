@@ -101,12 +101,12 @@ public class WritableMemChunk implements IWritableMemChunk {
   // TODO: Consider using arrays to sort and remove duplicates
   public List<TimeValuePair> getSortedTimeValuePairList() {
     int length = list.size();
-    List<TimeValuePair> ret = new ArrayList<>(length);
+
     Map<Long, TsPrimitiveType> treeMap = new HashMap<>(length, 1.0f);
-    //Map<Long, TsPrimitiveType> treeMap = new TreeMap<>();
     for (int i = 0; i < length; i++) {
       treeMap.put(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i)));
     }
+    List<TimeValuePair> ret = new ArrayList<>(treeMap.size());
     treeMap.forEach((k, v) -> ret.add(new TimeValuePairInMemTable(k, v)));
     ret.sort(TimeValuePair::compareTo);
     return ret;

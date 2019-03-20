@@ -22,7 +22,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
-public class  PrimitiveArrayList {
+public class PrimitiveArrayList {
 
   private static final int MAX_SIZE_OF_ONE_ARRAY = 512;
   private static final int INITIAL_SIZE = 1;
