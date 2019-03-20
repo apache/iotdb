@@ -95,7 +95,7 @@ public class AggregateEngineExecutor {
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
-      //construct AggregateFunction
+      // construct AggregateFunction
       TSDataType tsDataType = MManager.getInstance()
           .getSeriesType(selectedSeries.get(i).getFullPath());
       AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
@@ -106,7 +106,7 @@ public class AggregateEngineExecutor {
           .getQueryDataSource(jobId, selectedSeries.get(i), context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SequenceDataReader sequenceReader = null;
+      SequenceDataReader sequenceReader;
       if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
         sequenceReader = new SequenceDataReader(queryDataSource.getSeqDataSource(), timeFilter,
             context, true);
@@ -122,14 +122,14 @@ public class AggregateEngineExecutor {
       readersOfUnSequenceData.add(unSeqMergeReader);
     }
 
-    List<BatchData> batchDatas = new ArrayList<BatchData>();
+    List<BatchData> batchDataList = new ArrayList<>();
     //TODO use multi-thread
     for (int i = 0; i < selectedSeries.size(); i++) {
       BatchData batchData = aggregateWithOutTimeGenerator(aggregateFunctions.get(i),
           readersOfSequenceData.get(i), readersOfUnSequenceData.get(i), timeFilter);
-      batchDatas.add(batchData);
+      batchDataList.add(batchData);
     }
-    return constructDataSet(batchDatas);
+    return constructDataSet(batchDataList);
   }
 
   private BatchData aggregateWithOutTimeGenerator(AggregateFunction function,
@@ -262,9 +262,9 @@ public class AggregateEngineExecutor {
       function.init();
       aggregateFunctions.add(function);
     }
-    List<BatchData> batchDatas = aggregateWithTimeGenerator(aggregateFunctions, timestampGenerator,
+    List<BatchData> batchDataList = aggregateWithTimeGenerator(aggregateFunctions, timestampGenerator,
         readersOfSelectedSeries);
-    return constructDataSet(batchDatas);
+    return constructDataSet(batchDataList);
   }
 
   private List<BatchData> aggregateWithTimeGenerator(List<AggregateFunction> aggregateFunctions,
@@ -288,7 +288,6 @@ public class AggregateEngineExecutor {
         aggregateFunctions.get(i)
             .calcAggregationUsingTimestamps(timestamps, readersOfSelectedSeries.get(i));
       }
-
     }
 
     List<BatchData> batchDataList = new ArrayList<>();
