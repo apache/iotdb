@@ -97,6 +97,7 @@ incubator-iotdb/     <-- root path
 ```
 
 Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb/
+Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli
 
 If you are not the first time that building IoTDB, remember deleting the following files:
 
@@ -187,12 +188,10 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 cd cli/cli
 
 # Unix/OS X
-> cd /workspace/incubator-iotdb/iotdb-cli/cli/bin/
-> start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
+> $IOTDB_CLI_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
 
 # Windows
-> cd \workspace\incubator-iotdb\iotdb-cli\cli\bin
-> start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
+> $IOTDB_CLI_HOME\bin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
 ```
 
 > NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.
@@ -282,13 +281,13 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ### Run import shell
 
 ```
-cd iotdb-cli/cli
+
 
 # Unix/OS X
-> ./bin/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+> $IOTDB_CLI_HOME/bin/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 
 # Windows
-> bin\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+> $IOTDB_CLI_HOME\bin\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 ```
 
 ### Error data file
@@ -299,11 +298,9 @@ csvInsertError.error
 
 ### Run export shell
 ```
-cd iotdb-cli/cli
-
 # Unix/OS X
-> ./bin/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
+> $IOTDB_CLI_HOME/bin/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
 
 # Windows
-> bin\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
+> $IOTDB_CLI_HOME\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
 ```

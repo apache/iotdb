@@ -79,6 +79,7 @@ Readme.md
 ```
 
 Let IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb
+Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli/
 
 By default settings, the logs are stored under ```IOTDB_HOME/logs```. You can change log level and storage path by configuring ```logback.xml``` under ```IOTDB_HOME/conf```.
 
@@ -138,5 +139,5 @@ IoTDB> show timeseries root.fit.d1.*
 The default IoTDB's CLI time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableIS08601``` in start command:
 
 ```
-> sh /workspace/incubator-iotdb/iotdb-cli/cli/bin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
+> $IOTDB_CLI_HOME/bin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
 ```
