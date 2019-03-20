@@ -33,9 +33,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author Tianan Li
- */
 public class FileManagerTest {
 
   private static final String POST_BACK_DIRECTORY_TEST = Constans.SYNC_CLIENT + File.separator;
