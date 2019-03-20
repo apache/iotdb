@@ -39,4 +39,9 @@ public class Constans {
    **/
   public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
 
+  /**
+   * Max try when syncing the same file to receiver fails.
+   */
+  public static final int MAX_SYNC_FILE_TRY = 10;
+
 }

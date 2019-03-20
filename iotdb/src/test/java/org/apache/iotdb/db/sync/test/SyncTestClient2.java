@@ -202,7 +202,6 @@ public class SyncTestClient2 {
           sqlCount = 0;
         }
       }
-      Thread.sleep(TIME_INTERVAL);
 
       if (abnormalFlag == 0) {
         abnormalCount += 1;

@@ -33,6 +33,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -42,6 +43,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.conf.Constans;
@@ -68,16 +70,6 @@ public class FileSenderImpl implements FileSender {
   private TTransport transport;
   private SyncService.Client serviceClient;
   private List<String> schema = new ArrayList<>();
-
-  /**
-   * Mark the identity of sender
-   **/
-  private String uuid;
-
-  /**
-   * Monitor sync status
-   **/
-  private Thread syncMonitor;
 
   /**
    * Files that need to be synchronized
@@ -112,10 +104,7 @@ public class FileSenderImpl implements FileSender {
    */
   private final Runnable monitorSyncStatus = () -> {
     Date oldTime = new Date();
-    while (true) {
-      if (Thread.interrupted()) {
-        break;
-      }
+    while (!Thread.interrupted()) {
       Date currentTime = new Date();
       if (currentTime.getTime() / 1000 == oldTime.getTime() / 1000) {
         continue;
@@ -152,10 +141,10 @@ public class FileSenderImpl implements FileSender {
   }
 
   /**
-   * Start Monitor Thread
+   * Start Monitor Thread, monitor sync status
    */
   public void startMonitor() {
-    syncMonitor = new Thread(monitorSyncStatus, ThreadName.SYNC_MONITOR.getName());
+    Thread syncMonitor = new Thread(monitorSyncStatus, ThreadName.SYNC_MONITOR.getName());
     syncMonitor.setDaemon(true);
     syncMonitor.start();
   }
@@ -191,7 +180,7 @@ public class FileSenderImpl implements FileSender {
     for (String snapshotPath : config.getSnapshotPaths()) {
       if (new File(snapshotPath).exists() && new File(snapshotPath).list().length != 0) {
         /** It means that the last task of sync does not succeed! Clear the files and start to sync again **/
-        SyncUtils.deleteFile(new File(snapshotPath));
+        FileUtils.deleteDirectory(new File(snapshotPath));
       }
     }
 
@@ -208,7 +197,7 @@ public class FileSenderImpl implements FileSender {
     establishConnection(config.getServerIp(), config.getServerPort());
     if (!confirmIdentity(config.getUuidPath())) {
       LOGGER.error("Sorry, you do not have the permission to connect to sync receiver.");
-      return;
+      System.exit(1);
     }
 
     // 4. Create snapshot
@@ -218,15 +207,21 @@ public class FileSenderImpl implements FileSender {
 
     syncStatus = true;
 
-    // 5. Sync schema
-    syncSchema();
+    try{
+      // 5. Sync schema
+      syncSchema();
 
-    // 6. Sync data
-    syncAllData();
+      // 6. Sync data
+      syncAllData();
+    }catch (SyncConnectionException e){
+      LOGGER.error("cannot finish sync process", e);
+      syncStatus = false;
+      return;
+    }
 
     // 7. clear snapshot
     for (String snapshotPath : config.getSnapshotPaths()) {
-      SyncUtils.deleteFile(new File(snapshotPath));
+      FileUtils.deleteDirectory(new File(snapshotPath));
     }
 
     // 8. notify receiver that synchronization finish
@@ -251,7 +246,9 @@ public class FileSenderImpl implements FileSender {
       }
       LOGGER.info("Sync process starts to transfer data of storage group {}", entry.getKey());
       try {
-        serviceClient.init(entry.getKey());
+        if(!serviceClient.init(entry.getKey())){
+          throw new SyncConnectionException("unable init receiver");
+        }
       } catch (TException e) {
         throw new SyncConnectionException("Unable to connect to receiver", e);
       }
@@ -262,8 +259,7 @@ public class FileSenderImpl implements FileSender {
         fileManager.backupNowLocalFileInfo(config.getLastFileInfo());
         LOGGER.info("Sync process has finished storage group {}.", entry.getKey());
       } else {
-        throw new SyncConnectionException(
-            "Receiver cannot sync data, abandon this synchronization");
+        LOGGER.error("Receiver cannot sync data, abandon this synchronization of storage group {}", entry.getKey());
       }
     }
   }
@@ -294,6 +290,8 @@ public class FileSenderImpl implements FileSender {
   @Override
   public boolean confirmIdentity(String uuidPath) throws SyncConnectionException, IOException {
     File file = new File(uuidPath);
+    /** Mark the identity of sender **/
+    String uuid;
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();
     }
@@ -376,43 +374,47 @@ public class FileSenderImpl implements FileSender {
           filePathSplit.add(name[name.length - 2]);
           filePathSplit.add(name[name.length - 1]);
         }
+        int retryCount = 0;
+        // Get md5 of the file.
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        outer:
         while (true) {
+          retryCount++;
           // Sync all data to receiver
+          if(retryCount > Constans.MAX_SYNC_FILE_TRY){
+            throw new SyncConnectionException(String
+                .format("can not sync file %s after %s tries.", snapshotFilePath,
+                    Constans.MAX_SYNC_FILE_TRY));
+          }
+          md.reset();
           byte[] buffer = new byte[Constans.DATA_CHUNK_SIZE];
-          int data;
-          try (FileInputStream fis = new FileInputStream(file)) {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream(Constans.DATA_CHUNK_SIZE);
-            while ((data = fis.read(buffer)) != -1) { // cut the file into pieces to send
-              bos.write(buffer, 0, data);
+          int dataLength;
+          try (FileInputStream fis = new FileInputStream(file);
+              ByteArrayOutputStream bos = new ByteArrayOutputStream(Constans.DATA_CHUNK_SIZE)) {
+            while ((dataLength = fis.read(buffer)) != -1) { // cut the file into pieces to send
+              bos.write(buffer, 0, dataLength);
+              md.update(buffer, 0, dataLength);
               ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
               bos.reset();
-              serviceClient
-                  .syncData(null, filePathSplit, buffToSend, SyncDataStatus.PROCESSING_STATUS);
-            }
-            bos.close();
-          }
-
-          // Get md5 of the file.
-          MessageDigest md = MessageDigest.getInstance("MD5");
-          try (FileInputStream fis = new FileInputStream(file)) {
-            while ((data = fis.read(buffer)) != -1) {
-              md.update(buffer, 0, data);
+              if(!Boolean.parseBoolean(serviceClient
+                  .syncData(null, filePathSplit, buffToSend, SyncDataStatus.PROCESSING_STATUS))){
+                LOGGER.info("Receiver failed to receive data from {}, retry.", snapshotFilePath);
+                continue outer;
+              }
             }
           }
 
           // the file is sent successfully
           String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
           String md5OfReceiver = serviceClient.syncData(md5OfSender, filePathSplit,
-              null, SyncDataStatus.SUCCESS_STATUS);
+              null, SyncDataStatus.FINISH_STATUS);
           if (md5OfSender.equals(md5OfReceiver)) {
             LOGGER.info("Receiver has received {} successfully.", snapshotFilePath);
             break;
           }
         }
-        if (LOGGER.isInfoEnabled()) {
-          LOGGER.info(String.format("Task of synchronization has completed %d/%d.", successNum,
-              fileSnapshotList.size()));
-        }
+        LOGGER.info(String.format("Task of synchronization has completed %d/%d.", successNum,
+            fileSnapshotList.size()));
       }
     } catch (Exception e) {
       throw new SyncConnectionException("Cannot sync data with receiver.", e);
@@ -424,24 +426,48 @@ public class FileSenderImpl implements FileSender {
    */
   @Override
   public void syncSchema() throws SyncConnectionException {
-    try (FileInputStream fis = new FileInputStream(new File(config.getSchemaPath()))) {
-      int mBufferSize = 4 * 1024 * 1024;
-      ByteArrayOutputStream bos = new ByteArrayOutputStream(mBufferSize);
-      byte[] buffer = new byte[mBufferSize];
-      int n;
-      while ((n = fis.read(buffer)) != -1) { // cut the file into pieces to send
-        bos.write(buffer, 0, n);
-        ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
-        bos.reset();
-        // 1 represents there is still schema buffer to send.
-        serviceClient.syncSchema(buffToSend, SyncDataStatus.PROCESSING_STATUS);
+    int retryCount = 0;
+    outer:
+    while (true) {
+      retryCount++;
+      if (retryCount > Constans.MAX_SYNC_FILE_TRY) {
+        throw new SyncConnectionException(String
+            .format("can not sync schema after %s tries.", Constans.MAX_SYNC_FILE_TRY));
       }
-      bos.close();
-      // 0 represents the schema file has been transferred completely.
-      serviceClient.syncSchema(null, SyncDataStatus.SUCCESS_STATUS);
-    } catch (Exception e) {
-      LOGGER.error("Cannot sync schema ", e);
-      throw new SyncConnectionException(e);
+      byte[] buffer = new byte[Constans.DATA_CHUNK_SIZE];
+      try (FileInputStream fis = new FileInputStream(new File(config.getSchemaPath()));
+          ByteArrayOutputStream bos = new ByteArrayOutputStream(Constans.DATA_CHUNK_SIZE)) {
+        // Get md5 of the file.
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        int dataLength;
+        while ((dataLength = fis.read(buffer)) != -1) { // cut the file into pieces to send
+          bos.write(buffer, 0, dataLength);
+          md.update(buffer, 0, dataLength);
+          ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
+          bos.reset();
+          // PROCESSING_STATUS represents there is still schema buffer to send.
+          if(!Boolean.parseBoolean(serviceClient.syncSchema(null, buffToSend, SyncDataStatus.PROCESSING_STATUS))){
+            LOGGER.error("Receiver failed to receive metadata, retry.");
+            continue outer;
+          }
+        }
+        bos.close();
+        String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
+        String md5OfReceiver = serviceClient
+            .syncSchema(md5OfSender, null, SyncDataStatus.FINISH_STATUS);
+        if (md5OfSender.equals(md5OfReceiver)) {
+          LOGGER.info("Receiver has received schema successfully.");
+          /** receiver start to load metadata **/
+          if (Boolean
+              .parseBoolean(serviceClient.syncSchema(null, null, SyncDataStatus.SUCCESS_STATUS))) {
+            throw new SyncConnectionException("Receiver failed to load metadata");
+          }
+          break;
+        }
+      } catch (Exception e) {
+        LOGGER.error("Cannot sync schema ", e);
+        throw new SyncConnectionException(e);
+      }
     }
   }
 
@@ -490,7 +516,7 @@ public class FileSenderImpl implements FileSender {
           try {
             fileLock.release();
             randomAccessFile.close();
-            file.delete();
+            FileUtils.forceDelete(file);
           } catch (Exception e) {
             LOGGER.error("Unable to remove lock file: {}", lockFile, e);
           }

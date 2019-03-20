@@ -21,6 +21,9 @@ package org.apache.iotdb.db.sync.conf;
 import java.io.File;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.db.utils.SyncUtils;
 
 public class SyncSenderConfig {
 
@@ -38,10 +41,7 @@ public class SyncSenderConfig {
 
   public void init() {
     String metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
-    if (metadataDirPath.length() > 0
-        && metadataDirPath.charAt(metadataDirPath.length() - 1) != File.separatorChar) {
-      metadataDirPath = metadataDirPath + File.separatorChar;
-    }
+    metadataDirPath = FilePathUtils.regularizePath(metadataDirPath);
     schemaPath = metadataDirPath + MetadataConstant.METADATA_LOG;
     if (dataDirectory.length() > 0
         && dataDirectory.charAt(dataDirectory.length() - 1) != File.separatorChar) {
@@ -55,11 +55,7 @@ public class SyncSenderConfig {
     snapshotPaths = new String[bufferwriteDirectory.length];
     for (int i = 0; i < bufferwriteDirectory.length; i++) {
       bufferwriteDirectory[i] = new File(bufferwriteDirectory[i]).getAbsolutePath();
-      if (bufferwriteDirectory[i].length() > 0
-          && bufferwriteDirectory[i].charAt(bufferwriteDirectory[i].length() - 1)
-          != File.separatorChar) {
-        bufferwriteDirectory[i] = bufferwriteDirectory[i] + File.separatorChar;
-      }
+      bufferwriteDirectory[i] = FilePathUtils.regularizePath(bufferwriteDirectory[i]);
       snapshotPaths[i] = bufferwriteDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
           + Constans.DATA_SNAPSHOT_NAME
           + File.separatorChar;

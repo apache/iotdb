@@ -22,7 +22,6 @@ import java.io.File;
 import java.text.DecimalFormat;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 
@@ -123,27 +122,5 @@ public class SyncUtils {
     ipAddressBinary = ipAddressBuilder.toString();
     ipAddressBinary = ipAddressBinary.substring(0, subnetMark);
     return ipAddressBinary.equals(ipSegmentBinary);
-  }
-
-  /**
-   * Remove all files under this folder recursively
-   *
-   * @param file folder file
-   */
-  public static void deleteFile(File file) {
-    if (!file.exists()) {
-      return;
-    }
-    if (file.isFile() || Objects.requireNonNull(file.list()).length == 0) {
-      file.delete();
-    } else {
-      File[] files = file.listFiles();
-      assert files != null;
-      for (File f : files) {
-        deleteFile(f);
-        f.delete();
-      }
-      file.delete();
-    }
   }
 }
