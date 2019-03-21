@@ -72,8 +72,8 @@ public abstract class GroupByEngine extends QueryDataSet {
     this.endTime = -1;
   }
 
-  protected void initAggreFuction(QueryContext context, List<String> aggres, IExpression expression)
-      throws FileNodeManagerException, PathErrorException, ProcessorException, IOException {
+  protected void initAggreFuction(List<String> aggres)
+      throws PathErrorException, ProcessorException{
 
     List<TSDataType> types = new ArrayList<>();
     //construct AggregateFunctions
@@ -122,7 +122,7 @@ public abstract class GroupByEngine extends QueryDataSet {
     }
 
     //current interval is not covered yet
-    if (endTime < mergedIntervals.get(usedIndex).right) {
+    if (endTime <= mergedIntervals.get(usedIndex).right) {
       startTime = endTime;
       endTime += unit;
       hasCachedTimeInterval = true;

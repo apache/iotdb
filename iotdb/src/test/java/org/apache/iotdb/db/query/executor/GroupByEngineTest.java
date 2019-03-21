@@ -46,6 +46,7 @@ public class GroupByEngineTest {
       Assert.assertEquals(endTimeArray[cnt], pair.right);
       cnt++;
     }
+    Assert.assertEquals(startTimeArray.length, cnt);
   }
 
   @Test
@@ -70,6 +71,7 @@ public class GroupByEngineTest {
       Assert.assertEquals(endTimeArray[cnt], pair.right);
       cnt++;
     }
+    Assert.assertEquals(startTimeArray.length, cnt);
   }
 
   @Test
@@ -83,8 +85,8 @@ public class GroupByEngineTest {
     pairList.add(new Pair<>(858L,860L));
     pairList.add(new Pair<>(1200L,1220L));
 
-    long[] startTimeArray = {805, 820, 850, 1200, 1210};
-    long[] endTimeArray = {820, 840, 860, 1210, 1230};
+    long[] startTimeArray = {805, 820, 850, 860, 1200, 1220};
+    long[] endTimeArray = {820, 840, 860, 880, 1220, 1240};
     GroupByEngine groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, startTimePoint, pairList);
     int cnt = 0;
     while (groupByEngine.hasNext()){
@@ -94,6 +96,7 @@ public class GroupByEngineTest {
       Assert.assertEquals(endTimeArray[cnt], pair.right);
       cnt++;
     }
+    Assert.assertEquals(startTimeArray.length, cnt);
   }
 
   @Test
@@ -118,7 +121,31 @@ public class GroupByEngineTest {
       Assert.assertEquals(endTimeArray[cnt], pair.right);
       cnt++;
     }
+    Assert.assertEquals(startTimeArray.length, cnt);
   }
 
+//(80ms, 30,[50,100], [585,590], [615, 650])
+  @Test
+  public void test5() {
+    long jobId = 1000L;
+    long unit = 80;
+    long startTimePoint = 30;
+    List<Pair<Long, Long>> pairList = new ArrayList<>();
+    pairList.add(new Pair<>(50L,100L));
+    pairList.add(new Pair<>(585L,590L));
+    pairList.add(new Pair<>(615L,650L));
 
+    long[] startTimeArray = {50, 585, 590};
+    long[] endTimeArray = {110, 590, 670};
+    GroupByEngine groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, startTimePoint, pairList);
+    int cnt = 0;
+    while (groupByEngine.hasNext()){
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
 }

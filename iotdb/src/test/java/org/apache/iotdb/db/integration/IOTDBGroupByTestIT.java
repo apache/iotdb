@@ -326,6 +326,126 @@ public class IOTDBGroupByTestIT {
     }
   }
 
+  @Test
+  public void largeIntervalTest() throws SQLException {
+    String[] retArray1 = new String[]{
+        "2,4.4,4,20,4",
+        "30,30.3,16,610,30",
+        "620,500.5,1,620,620"
+    };
+    String[] retArray2 = new String[]{
+        "2,3.3,5,20,3",
+        "30,30.3,16,610,30",
+        "620,500.5,1,620,620"
+    };
+
+    Connection connection = null;
+    try {
+      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      boolean hasResultSet = statement.execute("select min_value(temperature), count(temperature), max_time(temperature), min_time(temperature) from root.ln.wf01.wt01 where time > 3 "
+          + "GROUP BY (590ms, 30, [2, 30], [30, 120], [100, 120], [123, 125], [155, 550], [540, 680])");
+
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"))
+            + "," + resultSet.getString(count("root.ln.wf01.wt01.temperature"))+ "," + resultSet.getString(max_time("root.ln.wf01.wt01.temperature"))
+            + "," + resultSet.getString(min_time("root.ln.wf01.wt01.temperature"));
+        Assert.assertEquals(retArray1[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select min_value(temperature), count (temperature), max_time(temperature), min_time(temperature) from root.ln.wf01.wt01 where temperature > 3 "
+          + "GROUP BY (590ms, 30, [2, 30], [30, 120], [100, 120], [123, 125], [155, 550],[540, 680])");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      cnt = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"))
+            + "," + resultSet.getString(count("root.ln.wf01.wt01.temperature"))+ "," + resultSet.getString(max_time("root.ln.wf01.wt01.temperature"))
+            + "," + resultSet.getString(min_time("root.ln.wf01.wt01.temperature"));
+        Assert.assertEquals(retArray2[cnt], ans);
+        cnt++;
+        //System.out.println(ans);
+      }
+      Assert.assertEquals(retArray2.length, cnt);
+      statement.close();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      if (connection != null) {
+        connection.close();
+      }
+    }
+  }
+
+  @Test
+  public void smallPartitionTest() throws SQLException {
+    String[] retArray1 = new String[]{
+        "50,100.1,50.5,150.6",
+        "615,500.5,500.5,500.5"
+
+    };
+    String[] retArray2 = new String[]{
+        "50,100.1,50.5,150.6",
+        "585,null,null,0.0",
+        "590,500.5,200.2,700.7"
+    };
+    Connection connection = null;
+    try {
+      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      boolean hasResultSet = statement.execute("select last(temperature), first(temperature), sum(temperature) from root.ln.wf01.wt01 where time > 3 "
+          + "GROUP BY (80ms, 30,[50,100], [615, 650])");
+
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last("root.ln.wf01.wt01.temperature"))
+            + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature"))+ "," + resultSet.getString(sum("root.ln.wf01.wt01.temperature"));
+        System.out.println(ans);
+        Assert.assertEquals(retArray1[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(retArray1.length, cnt);
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select first(temperature), last(temperature), sum(temperature) from root.ln.wf01.wt01 where temperature > 3 "
+          + "GROUP BY (80ms, 30,[50,100], [585,590], [615, 650])");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      cnt = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last("root.ln.wf01.wt01.temperature"))
+            + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature"))+ "," + resultSet.getString(sum("root.ln.wf01.wt01.temperature"));
+        System.out.println(ans);
+        Assert.assertEquals(retArray2[cnt], ans);
+        cnt++;
+      }
+      Assert.assertEquals(retArray2.length, cnt);
+      statement.close();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      if (connection != null) {
+        connection.close();
+      }
+    }
+  }
+
   public void prepareData() throws SQLException {
     Connection connection = null;
     try {

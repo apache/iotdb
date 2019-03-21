@@ -76,7 +76,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
    */
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
       throws FileNodeManagerException, PathErrorException, ProcessorException, IOException {
-    initAggreFuction(context, aggres, expression);
+    initAggreFuction(aggres);
     //init reader
     QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
     if (expression != null) {
@@ -128,16 +128,14 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
     IPointReader unsequenceReader = unSequenceReaderList.get(idx);
     IAggregateReader sequenceReader = sequenceReaderList.get(idx);
     AggregateFunction function = functions.get(idx);
-    BatchData batchData = batchDataList.get(idx);
-    boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
-
     function.init();
-
     boolean finishCheckSequenceData = false;
 
     //skip the points with timestamp less than startTime
     skipExessData(idx, sequenceReader, unsequenceReader);
 
+    BatchData batchData = batchDataList.get(idx);
+    boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
     //there was unprocessed data in last batch
     if (hasCachedSequenceData && batchData.hasNext()) {
       function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
@@ -183,6 +181,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
       if (canUseHeader(minTime, maxTime, unsequenceReader, function)) {
         //cal using page header
         function.calculateValueFromPageHeader(pageHeader);
+        sequenceReader.skipPageData();
       } else {
         //cal using page data
         batchData = sequenceReader.nextBatch();
@@ -202,54 +201,59 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
   }
 
   //skip the points with timestamp less than startTime
-  private void skipExessData(int idx, IAggregateReader sequenceReader, IPointReader unsequenceReader)
+  private void skipExessData(int idx, IAggregateReader sequenceReader,
+      IPointReader unsequenceReader)
       throws IOException {
     BatchData batchData = batchDataList.get(idx);
     boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
 
     //skip the unsequenceReader points with timestamp less than startTime
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < startTime){
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < startTime) {
       unsequenceReader.next();
     }
 
     //skip the cached batch data points with timestamp less than startTime
-    if(hasCachedSequenceData){
-      while (batchData.hasNext() && batchData.currentTime() < startTime){
+    if (hasCachedSequenceData) {
+      while (batchData.hasNext() && batchData.currentTime() < startTime) {
         batchData.next();
       }
     }
-    if(hasCachedSequenceData && !batchData.hasNext()){
+    if (hasCachedSequenceData && !batchData.hasNext()) {
       hasCachedSequenceData = false;
-    }
-    else {
+    } else {
       return;
     }
 
     //skip the points in sequenceReader data whose timestamp are less than startTime
-    while (sequenceReader.hasNext()){
+    while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       //memory data
-      if(pageHeader == null){
+      if (pageHeader == null) {
         batchData = sequenceReader.nextBatch();
         hasCachedSequenceData = true;
-        while (batchData.hasNext() && batchData.currentTime() < startTime){
+        while (batchData.hasNext() && batchData.currentTime() < startTime) {
           batchData.next();
         }
-        continue;
+        if (batchData.hasNext()) {
+          break;
+        } else {
+          hasCachedSequenceData = false;
+          continue;
+        }
       }
       //timestamps of all points in the page are less than startTime
-      if(pageHeader.getMaxTimestamp() < startTime){
+      if (pageHeader.getMaxTimestamp() < startTime) {
         sequenceReader.skipPageData();
         continue;
       }
       //timestamps of all points in the page are greater or equal to startTime, don't need to skip
-      if(pageHeader.getMinTimestamp() >= startTime){
+      if (pageHeader.getMinTimestamp() >= startTime) {
         break;
       }
       //the page has overlap with startTime
       batchData = sequenceReader.nextBatch();
       hasCachedSequenceData = true;
-      while (batchData.hasNext() && batchData.currentTime() < startTime){
+      while (batchData.hasNext() && batchData.currentTime() < startTime) {
         batchData.next();
       }
       break;

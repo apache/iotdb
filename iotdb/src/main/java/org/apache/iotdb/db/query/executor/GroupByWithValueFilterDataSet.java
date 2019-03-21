@@ -64,7 +64,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
    */
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
       throws FileNodeManagerException, PathErrorException, ProcessorException, IOException {
-    initAggreFuction(context, aggres, expression);
+    initAggreFuction(aggres);
 
     QueryTokenManager.getInstance().beginQueryOfGivenExpression(jobId, expression);
     QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
