@@ -59,17 +59,22 @@ public class TsFileGeneratorForTest {
 
   public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
       throws IOException, InterruptedException, WriteProcessException {
-    TsFileGeneratorForTest.rowCount = rowCount;
+    generateFile(rowCount, rowCount, chunkGroupSize, pageSize);
+  }
+
+  public static void generateFile(int minRowCount, int maxRowCount,int chunkGroupSize, int pageSize)
+      throws IOException, InterruptedException, WriteProcessException {
+    TsFileGeneratorForTest.rowCount = maxRowCount;
     TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
     TsFileGeneratorForTest.pageSize = pageSize;
-    prepare();
+    prepare(minRowCount, maxRowCount);
     write();
   }
 
-  public static void prepare() throws IOException {
+  public static void prepare(int minrowCount, int maxRowCount) throws IOException {
     inputDataFile = "src/test/resources/perTestInputData";
     errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
-    generateSampleInputDataFile();
+    generateSampleInputDataFile(minrowCount, maxRowCount);
   }
 
   public static void after() {
@@ -87,7 +92,7 @@ public class TsFileGeneratorForTest {
     }
   }
 
-  static private void generateSampleInputDataFile() throws IOException {
+  static private void generateSampleInputDataFile(int minRowCount, int maxRowCount) throws IOException {
     File file = new File(inputDataFile);
     if (file.exists()) {
       file.delete();
@@ -96,7 +101,7 @@ public class TsFileGeneratorForTest {
     FileWriter fw = new FileWriter(file);
 
     long startTime = START_TIMESTAMP;
-    for (int i = 0; i < rowCount; i++) {
+    for (int i = 0; i < maxRowCount; i++) {
       // write d1
       String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
       if (i % 5 == 0) {
@@ -108,7 +113,7 @@ public class TsFileGeneratorForTest {
       if (i % 9 == 0) {
         d1 += ",s5," + "false";
       }
-      if (i % 10 == 0) {
+      if (i % 10 == 0 && i < minRowCount) {
         d1 += ",s6," + ((int) (i / 9.0) * 100) / 100.0;
       }
       if (i % 11 == 0) {
