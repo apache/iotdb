@@ -31,24 +31,24 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public abstract class AggregateFunction {
 
   protected String name;
-  protected BatchData resultData;
-  protected TSDataType dataType;
+  protected AggreResultData resultData;
+  protected TSDataType resultDataType;
 
   /**
    * construct.
    *
    * @param name aggregate function name.
-   * @param dataType series data type.
+   * @param dataType result data type.
    */
   public AggregateFunction(String name, TSDataType dataType) {
     this.name = name;
-    this.dataType = dataType;
-    resultData = new BatchData(dataType, true, true);
+    this.resultDataType = dataType;
+    resultData = new AggreResultData(dataType);
   }
 
   public abstract void init();
 
-  public abstract BatchData getResult();
+  public abstract AggreResultData getResult();
 
   /**
    * <p>
@@ -74,6 +74,20 @@ public abstract class AggregateFunction {
   public abstract void calculateValueFromPageData(BatchData dataInThisPage,
       IPointReader unsequenceReader) throws IOException, ProcessorException;
 
+  /**
+   * <p>
+   * Could not calculate using <method>calculateValueFromPageHeader</method> directly. Calculate the
+   * aggregation according to all decompressed data in this page.
+   * </p>
+   *
+   * @param dataInThisPage the data in the DataPage
+   * @param unsequenceReader unsequence data reader
+   * @param bound the time upper bounder of data in unsequence data reader
+   * @throws IOException TsFile data read exception
+   * @throws ProcessorException wrong aggregation method parameter
+   */
+  public abstract void calculateValueFromPageData(BatchData dataInThisPage,
+      IPointReader unsequenceReader, long bound) throws IOException, ProcessorException;
 
   /**
    * <p>
@@ -106,21 +120,21 @@ public abstract class AggregateFunction {
    * @throws ProcessorException wrong aggregation method parameter
    */
   public abstract void calcAggregationUsingTimestamps(List<Long> timestamps,
-      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException;
+      EngineReaderByTimeStamp dataReader) throws IOException;
 
   /**
-   * Judge if aggregation results have been calculated.
+   * Judge if aggregation results have been calculated. In other words, if the aggregated result
+   * does not need to compute the remaining data, it returns true.
    * @return If the aggregation result has been calculated return true, else return false.
    */
   public abstract boolean isCalculatedAggregationResult();
 
   /**
-   * <p>
-   * This method is calculate the group by function.
-   * </p>
+   * Return data type of aggregation function result data.
+   * @return
    */
-  public abstract void calcGroupByAggregation(long partitionStart, long partitionEnd,
-      long intervalStart, long intervalEnd,
-      BatchData data) throws ProcessorException;
+  public TSDataType getResultDataType() {
+    return resultDataType;
+  }
 
 }

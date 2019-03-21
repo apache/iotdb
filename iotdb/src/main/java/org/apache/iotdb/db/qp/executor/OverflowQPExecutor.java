@@ -190,10 +190,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   // }
 
   @Override
-  public QueryDataSet groupBy(List<Pair<Path, String>> aggres, IExpression expression, long unit,
-      long origin,
-      List<Pair<Long, Long>> intervals, int fetchSize) throws ProcessorException {
-    throw new ProcessorException("not support");
+  public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression, long unit,
+      long origin, List<Pair<Long, Long>> intervals)
+      throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException, PathErrorException, IOException {
+    return new EngineQueryRouter().groupBy(paths, aggres, expression, unit, origin, intervals);
   }
 
   @Override
@@ -516,7 +516,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               if (!columnSchema.getType().equals(dataType)
                   || !columnSchema.getEncodingType().equals(encoding)) {
                 throw new ProcessorException(String.format(
-                    "The dataType or encoding of the last node %s is conflicting in the storage group %s",
+                    "The resultDataType or encoding of the last node %s is conflicting in the storage group %s",
                     lastNode, fileNodePath));
               }
               mManager.addPathToMTree(path.getFullPath(), dataType, encoding, compressor, props);
@@ -531,7 +531,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               if (isNewMeasurement) {
                 // add time series to schema
                 fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, props);
-                //TODO fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, encodingArgs);
+                //TODO fileNodeManager.addTimeSeries(path, resultDataType, encoding, compressor, encodingArgs);
               }
               // fileNodeManager.closeOneFileNode(namespacePath);
             } catch (FileNodeManagerException e) {

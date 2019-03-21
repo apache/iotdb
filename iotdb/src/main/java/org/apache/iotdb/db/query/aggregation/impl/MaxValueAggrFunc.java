@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -39,25 +40,18 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
-
+    resultData.reSet();
   }
 
   @Override
-  public BatchData getResult() {
+  public AggreResultData getResult() {
     return resultData;
   }
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
     Comparable<Object> maxVal = (Comparable<Object>) pageHeader.getStatistics().getMax();
-    if (resultData.length() == 0) {
-      resultData.putTime(0);
-      resultData.putAnObject(maxVal);
-    } else {
-      if (maxVal.compareTo(resultData.currentValue()) > 0) {
-        resultData.setAnObject(0, maxVal);
-      }
-    }
+    updateResult(maxVal);
   }
 
   @Override
@@ -96,6 +90,50 @@ public class MaxValueAggrFunc extends AggregateFunction {
   }
 
   @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
+      long bound) throws IOException, ProcessorException {
+    Comparable<Object> maxVal = null;
+    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
+        if (dataInThisPage.currentTime() >= bound) {
+          break;
+        }
+        if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
+          maxVal = (Comparable<Object>) dataInThisPage.currentValue();
+        }
+        dataInThisPage.next();
+      } else if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
+        if (dataInThisPage.currentTime() >= bound) {
+          break;
+        }
+        if (maxVal == null
+            || maxVal.compareTo(unsequenceReader.current().getValue().getValue()) < 0) {
+          maxVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
+        }
+        dataInThisPage.next();
+        unsequenceReader.next();
+      } else {
+        if (unsequenceReader.current().getTimestamp() >= bound) {
+          break;
+        }
+        if (maxVal == null
+            || maxVal.compareTo(unsequenceReader.current().getValue().getValue()) < 0) {
+          maxVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
+        }
+        unsequenceReader.next();
+      }
+    }
+
+    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+      if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
+        maxVal = (Comparable<Object>) dataInThisPage.currentValue();
+      }
+      dataInThisPage.next();
+    }
+    updateResult(maxVal);
+  }
+
+  @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
       throws IOException, ProcessorException {
     Comparable<Object> maxVal = null;
@@ -125,7 +163,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
-      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+      EngineReaderByTimeStamp dataReader) throws IOException {
     Comparable<Object> maxVal = null;
     for (long time : timestamps) {
       TsPrimitiveType value = dataReader.getValueInTimestamp(time);
@@ -145,21 +183,11 @@ public class MaxValueAggrFunc extends AggregateFunction {
   }
 
   private void updateResult(Comparable<Object> maxVal) {
-    if (resultData.length() == 0) {
-      if (maxVal != null) {
-        resultData.putTime(0);
-        resultData.putAnObject(maxVal);
-      }
-    } else {
-      if (maxVal != null && maxVal.compareTo(resultData.currentValue()) > 0) {
-        resultData.setAnObject(0, maxVal);
-      }
+    if (maxVal == null) {
+      return;
     }
-  }
-
-  @Override
-  public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart,
-      long intervalEnd, BatchData data) throws ProcessorException {
-
+    if (!resultData.isSetValue() || maxVal.compareTo(resultData.getValue()) > 0) {
+      resultData.putTimeAndValue(0, maxVal);
+    }
   }
 }

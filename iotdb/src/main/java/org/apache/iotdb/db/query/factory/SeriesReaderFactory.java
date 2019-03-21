@@ -20,29 +20,38 @@
 package org.apache.iotdb.db.query.factory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.control.QueryDataSourceManager;
 import org.apache.iotdb.db.query.reader.AllDataReader;
 import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
+import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SealedTsFilesReader;
+import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -173,6 +182,41 @@ public class SeriesReaderFactory {
         metaDataList,
         singleSeriesExpression.getFilter());
     return new SealedTsFilesReader(seriesInTsFileReader, context);
+  }
+
+  public static List<EngineReaderByTimeStamp> getByTimestampReadersOfSelectedPaths(long jobId , List<Path> paths,
+      QueryContext context) throws IOException, FileNodeManagerException {
+
+    List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
+
+    for (Path path : paths) {
+
+      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
+          context);
+
+      PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
+
+      // reader for sequence data
+      SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
+          null, context);
+
+      // reader for unSequence data
+      PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
+          .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
+
+      if (tsFilesReader == null || !tsFilesReader.hasNext()) {
+        mergeReaderByTimestamp
+            .addReaderWithPriority(unSeqMergeReader, PriorityMergeReader.HIGH_PRIORITY);
+      } else {
+        mergeReaderByTimestamp
+            .addReaderWithPriority(new AllDataReader(tsFilesReader, unSeqMergeReader),
+                PriorityMergeReader.HIGH_PRIORITY);
+      }
+
+      readersOfSelectedSeries.add(mergeReaderByTimestamp);
+    }
+
+    return readersOfSelectedSeries;
   }
 
   private static class SeriesReaderFactoryHelper {

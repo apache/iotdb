@@ -16,34 +16,34 @@
 package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class BatchDataPointReader implements IPointReader {
+public class AggreResultDataPointReader implements IPointReader {
 
-  private BatchData batchData;
+  private AggreResultData aggreResultData;
 
-  public BatchDataPointReader(BatchData batchData) {
-    this.batchData = batchData;
+  public AggreResultDataPointReader(AggreResultData aggreResultData) {
+    this.aggreResultData = aggreResultData;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    return batchData.hasNext();
+    return aggreResultData.isSetValue();
   }
 
   @Override
   public TimeValuePair next() throws IOException {
-    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
-    batchData.next();
+    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(aggreResultData);
+    aggreResultData.reSet();
     return timeValuePair;
   }
 
   @Override
   public TimeValuePair current() throws IOException {
-    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
+    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(aggreResultData);
     return timeValuePair;
   }
 

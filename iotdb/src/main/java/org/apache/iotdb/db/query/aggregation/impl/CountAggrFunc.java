@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -43,14 +44,13 @@ public class CountAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
-    if (resultData.length() == 0) {
-      resultData.putTime(0);
-      resultData.putLong(0);
-    }
+    resultData.reSet();
+    resultData.setTimestamp(0);
+    resultData.setLongRet(0);
   }
 
   @Override
-  public BatchData getResult() {
+  public AggreResultData getResult() {
     return resultData;
   }
 
@@ -58,9 +58,9 @@ public class CountAggrFunc extends AggregateFunction {
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
     LOGGER.debug("PageHeader>>>>>>>>>>>>num of rows:{}, minTimeStamp:{}, maxTimeStamp{}",
         pageHeader.getNumOfValues(), pageHeader.getMinTimestamp(), pageHeader.getMaxTimestamp());
-    long preValue = resultData.getLong();
+    long preValue = resultData.getLongRet();
     preValue += pageHeader.getNumOfValues();
-    resultData.setLong(0, preValue);
+    resultData.setLongRet(preValue);
 
   }
 
@@ -76,29 +76,63 @@ public class CountAggrFunc extends AggregateFunction {
       } else {
         unsequenceReader.next();
       }
-      long preValue = resultData.getLong();
+      long preValue = resultData.getLongRet();
       preValue += 1;
-      resultData.setLong(0, preValue);
+      resultData.setLongRet(preValue);
     }
 
     if (dataInThisPage.hasNext()) {
-      long preValue = resultData.getLong();
+      long preValue = resultData.getLongRet();
       preValue += (dataInThisPage.length() - dataInThisPage.getCurIdx());
-      resultData.setLong(0, preValue);
+      resultData.setLongRet(preValue);
     }
   }
 
   @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
+      long bound) throws IOException {
+    int cnt = 0;
+    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+      if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
+        if (dataInThisPage.currentTime() >= bound) {
+          break;
+        }
+        dataInThisPage.next();
+        unsequenceReader.next();
+      } else if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
+        if (dataInThisPage.currentTime() >= bound) {
+          break;
+        }
+        dataInThisPage.next();
+      } else {
+        if (unsequenceReader.current().getTimestamp() >= bound) {
+          break;
+        }
+        unsequenceReader.next();
+      }
+      cnt++;
+    }
+
+    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+      dataInThisPage.next();
+      cnt++;
+    }
+    long preValue = resultData.getLongRet();
+    preValue += cnt;
+    resultData.setLongRet(preValue);
+  }
+
+  @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException {
     int cnt = 0;
     while (unsequenceReader.hasNext()) {
       unsequenceReader.next();
       cnt++;
     }
-    long preValue = resultData.getLong();
+    long preValue = resultData.getLongRet();
     preValue += cnt;
-    resultData.setLong(0, preValue);
+    resultData.setLongRet(preValue);
   }
 
   @Override
@@ -109,14 +143,14 @@ public class CountAggrFunc extends AggregateFunction {
       unsequenceReader.next();
       cnt++;
     }
-    long preValue = resultData.getLong();
+    long preValue = resultData.getLongRet();
     preValue += cnt;
-    resultData.setLong(0, preValue);
+    resultData.setLongRet(preValue);
   }
 
   @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
-      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+      EngineReaderByTimeStamp dataReader) throws IOException {
     int cnt = 0;
     for (long time : timestamps) {
       TsPrimitiveType value = dataReader.getValueInTimestamp(time);
@@ -125,19 +159,13 @@ public class CountAggrFunc extends AggregateFunction {
       }
     }
 
-    long preValue = resultData.getLong();
+    long preValue = resultData.getLongRet();
     preValue += cnt;
-    resultData.setLong(0, preValue);
+    resultData.setLongRet(preValue);
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
     return false;
-  }
-
-  @Override
-  public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart,
-      long intervalEnd, BatchData data) throws ProcessorException {
-
   }
 }

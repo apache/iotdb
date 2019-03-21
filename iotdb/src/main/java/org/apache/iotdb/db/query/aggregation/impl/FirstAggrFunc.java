@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -39,17 +40,17 @@ public class FirstAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
-
+    resultData.reSet();
   }
 
   @Override
-  public BatchData getResult() {
+  public AggreResultData getResult() {
     return resultData;
   }
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
-    if (resultData.length() != 0) {
+    if (resultData.isSetTime()) {
       return;
     }
 
@@ -57,45 +58,70 @@ public class FirstAggrFunc extends AggregateFunction {
     if (firstVal == null) {
       throw new ProcessorException("PageHeader contains no FIRST value");
     }
-    resultData.putTime(0);
-    resultData.putAnObject(firstVal);
+    resultData.putTimeAndValue(0, firstVal);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException, ProcessorException {
-    if (resultData.length() != 0) {
+    if (resultData.isSetTime()) {
       return;
     }
     if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
-        resultData.putTime(0);
-        resultData.putAnObject(unsequenceReader.current().getValue().getValue());
+        resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
         unsequenceReader.next();
         return;
       } else {
-        resultData.putTime(0);
-        resultData.putAnObject(dataInThisPage.currentValue());
+        resultData.putTimeAndValue(0, dataInThisPage.currentValue());
+        dataInThisPage.next();
         return;
       }
     }
 
     if (dataInThisPage.hasNext()) {
-      resultData.putTime(0);
-      resultData.putAnObject(dataInThisPage.currentValue());
+      resultData.putTimeAndValue(0, dataInThisPage.currentValue());
+      return;
+    }
+  }
+
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
+      long bound) throws IOException, ProcessorException {
+    if (resultData.isSetTime()) {
+      return;
+    }
+    if (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+      if (dataInThisPage.currentTime() >= unsequenceReader.current().getTimestamp()) {
+        if (unsequenceReader.current().getTimestamp() < bound) {
+          resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
+          unsequenceReader.next();
+          return;
+        }
+      } else {
+        if (dataInThisPage.currentTime() < bound) {
+          resultData.putTimeAndValue(0, dataInThisPage.currentValue());
+          dataInThisPage.next();
+          return;
+        }
+      }
+    }
+
+    if (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+      resultData.putTimeAndValue(0, dataInThisPage.currentValue());
+      dataInThisPage.next();
       return;
     }
   }
 
   @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
-    if (resultData.length() != 0) {
+      throws IOException {
+    if (resultData.isSetTime()) {
       return;
     }
     if (unsequenceReader.hasNext()) {
-      resultData.putTime(0);
-      resultData.putAnObject(unsequenceReader.current().getValue().getValue());
+      resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
       return;
     }
   }
@@ -103,28 +129,26 @@ public class FirstAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
       throws IOException {
-    if (resultData.length() != 0) {
+    if (resultData.isSetTime()) {
       return;
     }
     if (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
-      resultData.putTime(0);
-      resultData.putAnObject(unsequenceReader.current().getValue().getValue());
+      resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
       return;
     }
   }
 
   @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
-      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
-    if (resultData.length() != 0) {
+      EngineReaderByTimeStamp dataReader) throws IOException {
+    if (resultData.isSetTime()) {
       return;
     }
 
     for (long time : timestamps) {
       TsPrimitiveType value = dataReader.getValueInTimestamp(time);
       if (value != null) {
-        resultData.putTime(0);
-        resultData.putAnObject(value.getValue());
+        resultData.putTimeAndValue(0, value.getValue());
         break;
       }
     }
@@ -132,12 +156,6 @@ public class FirstAggrFunc extends AggregateFunction {
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return resultData.length() != 0;
-  }
-
-  @Override
-  public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart,
-      long intervalEnd, BatchData data) throws ProcessorException {
-
+    return resultData.isSetTime();
   }
 }

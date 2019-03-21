@@ -112,11 +112,12 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet groupBy(List<Pair<Path, String>> aggres, IExpression expression, long unit,
-      long origin,
-      List<Pair<Long, Long>> intervals, int fetchSize) {
+  public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
+      long unit, long origin, List<Pair<Long, Long>> intervals)
+      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException, QueryFilterOptimizationException {
     return null;
   }
+
 
   @Override
   public boolean judgePathExists(Path path) {

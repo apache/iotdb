@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import static org.apache.iotdb.tsfile.read.expression.ExpressionType.GLOBAL_TIME;
-
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -32,10 +33,15 @@ import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
@@ -68,10 +74,9 @@ public class EngineQueryRouter {
             .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
         queryExpression.setExpression(optimizedExpression);
 
-        if (optimizedExpression.getType() == GLOBAL_TIME) {
+        if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           EngineExecutorWithoutTimeGenerator engineExecutor =
               new EngineExecutorWithoutTimeGenerator(
-
                   nextJobId, queryExpression);
           return engineExecutor.executeWithGlobalTimeFilter(context);
         } else {
@@ -96,8 +101,8 @@ public class EngineQueryRouter {
    * execute aggregation query.
    */
   public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression)
-      throws QueryFilterOptimizationException, FileNodeManagerException, IOException, PathErrorException, ProcessorException {
+      IExpression expression) throws QueryFilterOptimizationException, FileNodeManagerException,
+      IOException, PathErrorException, ProcessorException {
 
     long nextJobId = getNextJobId();
     QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
@@ -110,7 +115,7 @@ public class EngineQueryRouter {
           .optimize(expression, selectedSeries);
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(nextJobId,
           selectedSeries, aggres, optimizedExpression);
-      if (optimizedExpression.getType() == GLOBAL_TIME) {
+      if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
         return engineExecutor.executeWithOutTimeGenerator(context);
       } else {
         return engineExecutor.executeWithTimeGenerator(context);
@@ -120,6 +125,111 @@ public class EngineQueryRouter {
           selectedSeries, aggres, expression);
       return engineExecutor.executeWithOutTimeGenerator(context);
     }
+  }
+
+  /**
+   * execute groupBy query.
+   * @param selectedSeries select path list
+   * @param aggres aggregation name list
+   * @param expression filter expression
+   * @param unit time granularity for interval partitioning, unit is ms.
+   * @param origin the datum time point for interval division is divided into a time interval
+   *        for each TimeUnit time from this point forward and backward.
+   * @param intervals time intervals, closed interval.
+   * @return
+   * @throws ProcessorException
+   * @throws QueryFilterOptimizationException
+   * @throws FileNodeManagerException
+   * @throws PathErrorException
+   * @throws IOException
+   */
+  public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
+      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals)
+      throws ProcessorException, QueryFilterOptimizationException, FileNodeManagerException,
+      PathErrorException, IOException {
+
+    long nextJobId = getNextJobId();
+    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    QueryContext context = new QueryContext();
+
+    //check the legitimacy of intervals
+    for (Pair<Long, Long> pair : intervals) {
+      if (!(pair.left > 0 && pair.right > 0)) {
+        throw new ProcessorException(
+            String.format("Time interval<%d, %d> must be greater than 0.", pair.left, pair.right));
+      }
+      if (pair.right < pair.left) {
+        throw new ProcessorException(String.format(
+            "Interval starting time must be greater than the interval ending time, "
+                + "found error interval<%d, %d>", pair.left, pair.right));
+      }
+    }
+    //merge intervals
+    List<Pair<Long, Long>> mergedIntervalList = mergeInterval(intervals);
+
+    //construct groupBy intervals filter
+    BinaryExpression intervalFilter = null;
+    for (Pair<Long, Long> pair : mergedIntervalList) {
+      BinaryExpression pairFilter = BinaryExpression
+          .and(new GlobalTimeExpression(TimeFilter.gtEq(pair.left)),
+              new GlobalTimeExpression(TimeFilter.ltEq(pair.right)));
+      if (intervalFilter != null) {
+        intervalFilter = BinaryExpression.or(intervalFilter, pairFilter);
+      } else {
+        intervalFilter = pairFilter;
+      }
+    }
+
+    //merge interval filter and filtering conditions after where statements
+    if (expression == null) {
+      expression = intervalFilter;
+    } else {
+      expression = BinaryExpression.and(expression, intervalFilter);
+    }
+
+    IExpression optimizedExpression = ExpressionOptimizer.getInstance()
+        .optimize(expression, selectedSeries);
+    if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+      GroupByWithOnlyTimeFilterDataSet groupByEngine = new GroupByWithOnlyTimeFilterDataSet(
+          nextJobId, selectedSeries, unit, origin, mergedIntervalList);
+      groupByEngine.initGroupBy(context, aggres, optimizedExpression);
+      return groupByEngine;
+    } else {
+      GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(nextJobId,
+          selectedSeries, unit, origin, mergedIntervalList);
+      groupByEngine.initGroupBy(context, aggres, optimizedExpression);
+      return groupByEngine;
+    }
+  }
+
+  /**
+   * sort intervals by start time and merge overlapping intervals.
+   *
+   * @param intervals time interval
+   */
+  private List<Pair<Long, Long>> mergeInterval(List<Pair<Long, Long>> intervals) {
+    Collections.sort(intervals, new Comparator<Pair<Long, Long>>() {
+      @Override
+      public int compare(Pair<Long, Long> o1, Pair<Long, Long> o2) {
+        /*sort by interval start time.*/
+        return (int) (o1.left - o2.left);
+      }
+    });
+
+    LinkedList<Pair<Long, Long>> merged = new LinkedList<>();
+    for (Pair<Long, Long> interval : intervals) {
+      // if the list of merged intervals is empty or
+      // if the current interval does not overlap with the previous, simply append it.
+      if (merged.isEmpty() || merged.getLast().right < interval.left) {
+        merged.add(interval);
+      }
+      // otherwise, there is overlap, so we merge the current and previous intervals.
+      else {
+        merged.getLast().right = Math.max(merged.getLast().right, interval.right);
+      }
+    }
+    return merged;
   }
 
   private synchronized long getNextJobId() {

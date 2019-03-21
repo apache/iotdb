@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -47,16 +48,24 @@ public abstract class QueryProcessExecutor {
   public QueryProcessExecutor() {
   }
 
-  public QueryDataSet processQuery(PhysicalPlan plan) throws IOException, FileNodeManagerException, PathErrorException, QueryFilterOptimizationException, ProcessorException {
+  public QueryDataSet processQuery(PhysicalPlan plan)
+      throws IOException, FileNodeManagerException, PathErrorException,
+      QueryFilterOptimizationException, ProcessorException {
     QueryPlan queryPlan = (QueryPlan) plan;
 
     QueryExpression queryExpression = QueryExpression.create().setSelectSeries(queryPlan.getPaths())
         .setExpression(queryPlan.getExpression());
-
-    if(plan instanceof AggregationPlan) {
-      return aggregate(plan.getPaths(), plan.getAggregations(), ((AggregationPlan) plan).getExpression());
+    if (plan instanceof GroupByPlan) {
+      GroupByPlan groupByPlan = (GroupByPlan) plan;
+      return groupBy(groupByPlan.getPaths(), groupByPlan.getAggregations(),
+          groupByPlan.getExpression(), groupByPlan.getUnit(), groupByPlan.getOrigin(),
+          groupByPlan.getIntervals());
     }
 
+    if (plan instanceof AggregationPlan) {
+      return aggregate(plan.getPaths(), plan.getAggregations(),
+          ((AggregationPlan) plan).getExpression());
+    }
     return queryRouter.query(queryExpression);
   }
 
@@ -79,25 +88,22 @@ public abstract class QueryProcessExecutor {
     this.fetchSize.set(fetchSize);
   }
 
-  public abstract QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression)
-          throws ProcessorException, IOException, PathErrorException, FileNodeManagerException, QueryFilterOptimizationException;
+  public abstract QueryDataSet aggregate(List<Path> paths, List<String> aggres,
+      IExpression expression) throws ProcessorException, IOException, PathErrorException,
+      FileNodeManagerException, QueryFilterOptimizationException;
 
-  public abstract QueryDataSet groupBy(List<Pair<Path, String>> aggres, IExpression expression,
-      long unit,
-      long origin, List<Pair<Long, Long>> intervals, int fetchSize)
-      throws ProcessorException, IOException, PathErrorException;
+  public abstract QueryDataSet groupBy(List<Path> paths, List<String> aggres,
+      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals)
+      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException,
+      QueryFilterOptimizationException;
 
   /**
    * executeWithGlobalTimeFilter update command and return whether the operator is successful.
    *
-   * @param path
-   *            : update series seriesPath
-   * @param startTime
-   *            start time in update command
-   * @param endTime
-   *            end time in update command
-   * @param value
-   *            - in type of string
+   * @param path : update series seriesPath
+   * @param startTime start time in update command
+   * @param endTime end time in update command
+   * @param value - in type of string
    * @return - whether the operator is successful.
    */
   public abstract boolean update(Path path, long startTime, long endTime, String value)
@@ -106,10 +112,8 @@ public abstract class QueryProcessExecutor {
   /**
    * executeWithGlobalTimeFilter delete command and return whether the operator is successful.
    *
-   * @param paths
-   *            : delete series paths
-   * @param deleteTime
-   *            end time in delete command
+   * @param paths : delete series paths
+   * @param deleteTime end time in delete command
    * @return - whether the operator is successful.
    */
   public boolean delete(List<Path> paths, long deleteTime) throws ProcessorException {
@@ -143,10 +147,8 @@ public abstract class QueryProcessExecutor {
   /**
    * executeWithGlobalTimeFilter delete command and return whether the operator is successful.
    *
-   * @param path
-   *            : delete series seriesPath
-   * @param deleteTime
-   *            end time in delete command
+   * @param path : delete series seriesPath
+   * @param deleteTime end time in delete command
    * @return - whether the operator is successful.
    */
   protected abstract boolean delete(Path path, long deleteTime) throws ProcessorException;
@@ -154,12 +156,9 @@ public abstract class QueryProcessExecutor {
   /**
    * insert a single value. Only used in test
    *
-   * @param path
-   *            seriesPath to be inserted
-   * @param insertTime
-   *            - it's time point but not a range
-   * @param value
-   *            value to be inserted
+   * @param path seriesPath to be inserted
+   * @param insertTime - it's time point but not a range
+   * @param value value to be inserted
    * @return - Operate Type.
    */
   public abstract int insert(Path path, long insertTime, String value) throws ProcessorException;
@@ -167,14 +166,10 @@ public abstract class QueryProcessExecutor {
   /**
    * executeWithGlobalTimeFilter insert command and return whether the operator is successful.
    *
-   * @param deviceId
-   *            deviceId to be inserted
-   * @param insertTime
-   *            - it's time point but not a range
-   * @param measurementList
-   *            measurements to be inserted
-   * @param insertValues
-   *            values to be inserted
+   * @param deviceId deviceId to be inserted
+   * @param insertTime - it's time point but not a range
+   * @param measurementList measurements to be inserted
+   * @param insertValues values to be inserted
    * @return - Operate Type.
    */
   public abstract int multiInsert(String deviceId, long insertTime, List<String> measurementList,

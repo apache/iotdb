@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class SumAggrFunc extends MeanAggrFunc {
 
@@ -29,9 +29,9 @@ public class SumAggrFunc extends MeanAggrFunc {
   }
 
   @Override
-  public BatchData getResult() {
-    resultData.putDouble(sum);
-    resultData.putTime(0);
+  public AggreResultData getResult() {
+    resultData.setDoubleRet(sum);
+    resultData.setTimestamp(0);
     return resultData;
   }
 }

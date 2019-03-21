@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -40,13 +41,13 @@ public class LastAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
-
+    resultData.reSet();
   }
 
   @Override
-  public BatchData getResult() {
-    if (resultData.length() != 0) {
-      resultData.setTime(0, 0);
+  public AggreResultData getResult() {
+    if (resultData.isSetTime()) {
+      resultData.setTimestamp(0);
     }
     return resultData;
   }
@@ -60,14 +61,20 @@ public class LastAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException, ProcessorException {
+    calculateValueFromPageData(dataInThisPage, unsequenceReader, Long.MAX_VALUE);
+  }
+
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
+      long bound) throws IOException, ProcessorException {
     long time = -1;
     Object lastVal = null;
-    int maxIndex = dataInThisPage.length() - 1;
-    if (maxIndex < 0) {
-      return;
+    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+      time = dataInThisPage.currentTime();
+      lastVal = dataInThisPage.currentValue();
+      dataInThisPage.next();
     }
-    time = dataInThisPage.getTimeByIndex(maxIndex);
-    lastVal = dataInThisPage.getValueByIndex(maxIndex);
+
     while (unsequenceReader.hasNext()) {
       if (unsequenceReader.current().getTimestamp() < time) {
         unsequenceReader.next();
@@ -114,7 +121,7 @@ public class LastAggrFunc extends AggregateFunction {
 
   @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
-      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+      EngineReaderByTimeStamp dataReader) throws IOException {
 
     long time = -1;
     Object lastVal = null;
@@ -135,20 +142,12 @@ public class LastAggrFunc extends AggregateFunction {
     return false;
   }
 
-  @Override
-  public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart,
-      long intervalEnd, BatchData data) throws ProcessorException {
-
-  }
-
   private void updateLastResult(long time, Object value) {
-    if (resultData.length() == 0) {
-      resultData.putAnObject(value);
-      resultData.putTime(time);
+    if (!resultData.isSetTime()) {
+      resultData.putTimeAndValue(time, value);
     } else {
-      if (time >= resultData.currentTime()) {
-        resultData.setAnObject(0, (Comparable<?>) value);
-        resultData.setTime(0, time);
+      if (time >= resultData.getTimestamp()) {
+        resultData.putTimeAndValue(time, value);
       }
     }
   }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -40,49 +41,47 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
-
+    resultData.reSet();
   }
 
   @Override
-  public BatchData getResult() {
+  public AggreResultData getResult() {
     return resultData;
   }
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
     long maxTimestamp = pageHeader.getMaxTimestamp();
-
-    //has not set value
-    if (resultData.length() == 0) {
-      resultData.putTime(0);
-      resultData.putLong(maxTimestamp);
-      return;
-    }
-
-    if (resultData.getLong() < maxTimestamp) {
-      resultData.setLong(0, maxTimestamp);
-    }
+    updateMaxTimeResult(0, maxTimestamp);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException, ProcessorException {
-    long time = -1;
+
     int maxIndex = dataInThisPage.length() - 1;
     if (maxIndex < 0) {
       return;
     }
-    time = dataInThisPage.getTimeByIndex(maxIndex);
-    if (resultData.length() == 0) {
-      if (time != -1) {
-        resultData.putTime(0);
-        resultData.putAnObject(time);
+    long time = dataInThisPage.getTimeByIndex(maxIndex);
+    updateMaxTimeResult(0, time);
+  }
+
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
+      long bound) throws IOException, ProcessorException {
+    long time = -1;
+    while (dataInThisPage.hasNext()) {
+      if(dataInThisPage.currentTime() < bound){
+        time = dataInThisPage.currentTime();
+        dataInThisPage.next();
       }
-    } else {
-      //has set value
-      if (time != -1 && time > resultData.getLong()) {
-        resultData.setAnObject(0, time);
+      else{
+        break;
       }
+    }
+    if (time != -1) {
+      updateMaxTimeResult(0, time);
     }
   }
 
@@ -93,16 +92,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     while (unsequenceReader.hasNext()) {
       pair = unsequenceReader.next();
     }
-    if (resultData.length() == 0) {
-      if (pair != null) {
-        resultData.putTime(0);
-        resultData.putAnObject(pair.getTimestamp());
-      }
-    } else {
-      //has set value
-      if (pair != null && pair.getTimestamp() > resultData.getLong()) {
-        resultData.setAnObject(0, pair.getTimestamp());
-      }
+    if (pair != null) {
+      updateMaxTimeResult(0, pair.getTimestamp());
     }
   }
 
@@ -113,23 +104,15 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
       pair = unsequenceReader.next();
     }
-    if (resultData.length() == 0) {
-      if (pair != null) {
-        resultData.putTime(0);
-        resultData.putAnObject(pair.getTimestamp());
-      }
-    } else {
-      //has set value
-      if (pair != null && pair.getTimestamp() > resultData.getLong()) {
-        resultData.setAnObject(0, pair.getTimestamp());
-      }
+    if (pair != null) {
+      updateMaxTimeResult(0, pair.getTimestamp());
     }
   }
 
   //TODO Consider how to reverse order in dataReader(EngineReaderByTimeStamp)
   @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
-      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+      EngineReaderByTimeStamp dataReader) throws IOException {
     long time = -1;
     for (int i = 0; i < timestamps.size(); i++) {
       TsPrimitiveType value = dataReader.getValueInTimestamp(timestamps.get(i));
@@ -141,15 +124,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     if (time == -1) {
       return;
     }
-
-    if (resultData.length() == 0) {
-      resultData.putTime(0);
-      resultData.putLong(time);
-    } else {
-      if (resultData.getLong() < time) {
-        resultData.setLong(0, time);
-      }
-    }
+    updateMaxTimeResult(0, time);
   }
 
   @Override
@@ -157,9 +132,10 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     return false;
   }
 
-  @Override
-  public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart,
-      long intervalEnd, BatchData data) throws ProcessorException {
-
+  private void updateMaxTimeResult(long time, long value) {
+    if (!resultData.isSetValue() || value >= resultData.getLongRet()) {
+      resultData.setTimestamp(time);
+      resultData.setLongRet(value);
+    }
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
@@ -44,13 +45,16 @@ public class MeanAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
+    resultData.reSet();
+    sum = 0.0;
+    cnt = 0;
   }
 
   @Override
-  public BatchData getResult() {
+  public AggreResultData getResult() {
     if (cnt > 0) {
-      resultData.putTime(0);
-      resultData.putDouble(sum / cnt);
+      resultData.setTimestamp(0);
+      resultData.setDoubleRet(sum / cnt);
     }
     return resultData;
   }
@@ -86,7 +90,41 @@ public class MeanAggrFunc extends AggregateFunction {
     }
   }
 
-  private void updateMean(TSDataType type, Object sumVal) throws ProcessorException {
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
+      long bound) throws IOException, ProcessorException {
+    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+      Object sumVal = null;
+      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
+        if (dataInThisPage.currentTime() >= bound) {
+          break;
+        }
+        sumVal = dataInThisPage.currentValue();
+        dataInThisPage.next();
+      } else if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
+        if (dataInThisPage.currentTime() >= bound) {
+          break;
+        }
+        sumVal = unsequenceReader.current().getValue().getValue();
+        dataInThisPage.next();
+        unsequenceReader.next();
+      } else {
+        if (unsequenceReader.current().getTimestamp() >= bound) {
+          break;
+        }
+        sumVal = unsequenceReader.current().getValue().getValue();
+        unsequenceReader.next();
+      }
+      updateMean(seriesDataType, sumVal);
+    }
+
+    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+      updateMean(seriesDataType, dataInThisPage.currentValue());
+      dataInThisPage.next();
+    }
+  }
+
+  private void updateMean(TSDataType type, Object sumVal) throws IOException {
     switch (type) {
       case INT32:
         sum += (int) sumVal;
@@ -103,7 +141,7 @@ public class MeanAggrFunc extends AggregateFunction {
       case TEXT:
       case BOOLEAN:
       default:
-        throw new ProcessorException("Unsupported data type in aggregation MEAN : " + type);
+        throw new IOException("Unsupported data type in aggregation MEAN : " + type);
     }
     cnt++;
   }
@@ -128,7 +166,7 @@ public class MeanAggrFunc extends AggregateFunction {
 
   @Override
   public void calcAggregationUsingTimestamps(List<Long> timestamps,
-      EngineReaderByTimeStamp dataReader) throws IOException, ProcessorException {
+      EngineReaderByTimeStamp dataReader) throws IOException {
     for (long time : timestamps) {
       TsPrimitiveType value = dataReader.getValueInTimestamp(time);
       if (value != null) {
@@ -140,12 +178,5 @@ public class MeanAggrFunc extends AggregateFunction {
   @Override
   public boolean isCalculatedAggregationResult() {
     return false;
-  }
-
-
-  @Override
-  public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart,
-      long intervalEnd, BatchData data) throws ProcessorException {
-
   }
 }

@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public abstract class TsPrimitiveType implements Serializable {
 
   /**
-   * get tsPrimitiveType by dataType.
+   * get tsPrimitiveType by resultDataType.
    *
    * @param dataType -given TsDataType
    * @param v -

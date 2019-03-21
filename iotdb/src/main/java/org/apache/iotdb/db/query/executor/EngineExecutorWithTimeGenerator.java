@@ -22,20 +22,14 @@ package org.apache.iotdb.db.query.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithTimeGenerator;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
-import org.apache.iotdb.db.query.reader.AllDataReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -73,7 +67,7 @@ public class EngineExecutorWithTimeGenerator {
     List<EngineReaderByTimeStamp> readersOfSelectedSeries;
     try {
       timestampGenerator = new EngineTimeGenerator(jobId, queryExpression.getExpression(), context);
-      readersOfSelectedSeries = getReadersOfSelectedPaths(queryExpression.getSelectedSeries(),
+      readersOfSelectedSeries = SeriesReaderFactory.getByTimestampReadersOfSelectedPaths(jobId, queryExpression.getSelectedSeries(),
           context);
     } catch (IOException ex) {
       throw new FileNodeManagerException(ex);
@@ -92,42 +86,6 @@ public class EngineExecutorWithTimeGenerator {
     return new EngineDataSetWithTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
         timestampGenerator,
         readersOfSelectedSeries);
-  }
-
-  private List<EngineReaderByTimeStamp> getReadersOfSelectedPaths(List<Path> paths,
-      QueryContext context)
-      throws IOException, FileNodeManagerException {
-
-    List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
-
-    for (Path path : paths) {
-
-      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
-          context);
-
-      PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
-
-      // reader for sequence data
-      SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-          null, context);
-
-      // reader for unSequence data
-      PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
-          .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
-
-      if (tsFilesReader == null || !tsFilesReader.hasNext()) {
-        mergeReaderByTimestamp
-            .addReaderWithPriority(unSeqMergeReader, PriorityMergeReader.HIGH_PRIORITY);
-      } else {
-        mergeReaderByTimestamp
-            .addReaderWithPriority(new AllDataReader(tsFilesReader, unSeqMergeReader),
-                PriorityMergeReader.HIGH_PRIORITY);
-      }
-
-      readersOfSelectedSeries.add(mergeReaderByTimestamp);
-    }
-
-    return readersOfSelectedSeries;
   }
 
 }
