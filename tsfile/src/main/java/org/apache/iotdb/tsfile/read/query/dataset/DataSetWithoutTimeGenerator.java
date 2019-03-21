@@ -113,7 +113,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
       BatchData data = batchDataList.get(i);
 
-      if (data.currentTime() == minTime) {
+      if (data.hasNext() && data.currentTime() == minTime) {
         putValueToField(data, field);
         data.next();
 
