@@ -37,6 +37,7 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -99,9 +100,9 @@ public class WriteLogNodeTest {
     crc32.update(buffer, 0, logSize);
     assertEquals(checksum, crc32.getValue());
     InsertPlan bwInsertPlan2 = (InsertPlan) PhysicalPlanLogTransfer.logToOperator(buffer);
-    assertEquals(bwInsertPlan.getMeasurements(), bwInsertPlan2.getMeasurements());
+    Assert.assertArrayEquals(bwInsertPlan.getMeasurements(), bwInsertPlan2.getMeasurements());
     assertEquals(bwInsertPlan.getTime(), bwInsertPlan2.getTime());
-    assertEquals(bwInsertPlan.getValues(), bwInsertPlan2.getValues());
+    Assert.assertArrayEquals(bwInsertPlan.getValues(), bwInsertPlan2.getValues());
     assertEquals(bwInsertPlan.getPaths(), bwInsertPlan2.getPaths());
     assertEquals(bwInsertPlan.getDeviceId(), bwInsertPlan2.getDeviceId());
 

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -115,8 +116,8 @@ public class InsertPlan extends PhysicalPlan {
     }
     InsertPlan that = (InsertPlan) o;
     return time == that.time && Objects.equals(deviceId, that.deviceId)
-        && Objects.equals(measurements, that.measurements)
-        && Objects.equals(values, that.values);
+        && Arrays.equals(measurements, that.measurements)
+        && Arrays.equals(values, that.values);
   }
 
 }
