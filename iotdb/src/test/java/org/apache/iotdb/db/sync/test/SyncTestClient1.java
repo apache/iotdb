@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.utils;
+package org.apache.iotdb.db.sync.test;
+
+import static org.apache.iotdb.db.sync.test.RandomNum.getRandomInt;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,12 +37,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The class is to generate data of another half timeseries (simulating jilian scene) which is
- * different to those in CreateDataSender2 to test stability of postback function.
- *
- * @author lta
+ * SyncTestClient1 is used to generate data of whole timeseries (simulating jilian scene) to test stability of
+ * sync function.
  */
-public class CreateDataSender3 {
+public class SyncTestClient1 {
 
   private static final int TIME_INTERVAL = 0;
   private static final int TOTAL_DATA = 2000000;
@@ -56,13 +56,13 @@ public class CreateDataSender3 {
   private static final int MAX_FLOAT = 30;
   private static final int STRING_LENGTH = 5;
   private static final int BATCH_SQL = 10000;
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreateDataSender3.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncTestClient1.class);
 
   /**
    * generate time series map from file.
    *
    * @param inputFilePath input file path
-   * @return map
+   * @return Map
    * @throws Exception Exception
    */
   public static Map<String, String> generateTimeseriesMapFromFile(String inputFilePath)
@@ -74,13 +74,13 @@ public class CreateDataSender3 {
     try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
       String line;
       while ((line = reader.readLine()) != null) {
+
         String timeseries = line.split(" ")[2];
         String dataType = line.split("DATATYPE = ")[1].split(",")[0].trim();
         String encodingType = line.split("ENCODING = ")[1].split(";")[0].trim();
         timeseriesMap.put(timeseries, dataType + "," + encodingType);
       }
     }
-
     return timeseriesMap;
 
   }
@@ -90,42 +90,32 @@ public class CreateDataSender3 {
    *
    * @param statement statement
    * @param timeseriesMap time series map
-   * @throws SQLException SQLException
    */
-  public static void createTimeseries(Statement statement, Statement statement1,
-      Map<String, String> timeseriesMap)
-      throws SQLException {
+  public static void createTimeseries(Statement statement, Map<String, String> timeseriesMap) {
 
     try {
       String createTimeseriesSql = "CREATE TIMESERIES <timeseries> WITH DATATYPE=<datatype>, "
           + "ENCODING=<encode>";
 
       int sqlCount = 0;
-
       for (Map.Entry<String, String> entry : timeseriesMap.entrySet()) {
         String key = entry.getKey();
         String properties = entry.getValue();
         String sql = createTimeseriesSql.replace("<timeseries>", key)
             .replace("<datatype>", Utils.getType(properties))
             .replace("<encode>", Utils.getEncode(properties));
-
         statement.addBatch(sql);
-        statement1.addBatch(sql);
         sqlCount++;
         if (sqlCount >= BATCH_SQL) {
           statement.executeBatch();
           statement.clearBatch();
-          statement1.executeBatch();
-          statement1.clearBatch();
           sqlCount = 0;
         }
       }
       statement.executeBatch();
       statement.clearBatch();
-      statement1.executeBatch();
-      statement1.clearBatch();
     } catch (Exception e) {
-      LOGGER.error("", e);
+      logger.error("", e);
     }
   }
 
@@ -136,34 +126,31 @@ public class CreateDataSender3 {
    * @param storageGroupList storage group list
    * @throws SQLException SQLException
    */
-  public static void setStorageGroup(Statement statement, Statement statement1,
-      List<String> storageGroupList)
+  public static void setStorageGroup(Statement statement, List<String> storageGroupList)
       throws SQLException {
     try {
       String setStorageGroupSql = "SET STORAGE GROUP TO <prefixpath>";
       for (String str : storageGroupList) {
         String sql = setStorageGroupSql.replace("<prefixpath>", str);
         statement.execute(sql);
-        statement1.execute(sql);
       }
     } catch (Exception e) {
-      LOGGER.error("", e);
+      logger.error("", e);
     }
   }
 
   /**
-   * randomly insert data.
+   * random insert data.
    *
    * @param statement statement
    * @param timeseriesMap time series map
    * @throws Exception Exception
    */
-  public static void randomInsertData(Statement statement, Statement statement1,
-      Map<String, String> timeseriesMap) throws InterruptedException, SQLException {
+  public static void randomInsertData(Statement statement, Map<String, String> timeseriesMap)
+      throws SQLException, InterruptedException {
     String insertDataSql = "INSERT INTO %s (timestamp, %s) VALUES (%s, %s)";
     int abnormalCount = 0;
     int abnormalFlag = 1;
-
     int sqlCount = 0;
 
     for (int i = 0; i < TOTAL_DATA; i++) {
@@ -184,9 +171,9 @@ public class CreateDataSender3 {
         if (type.equals("INT32")) {
           int value;
           if (abnormalFlag == 0) {
-            value = RandomNum.getRandomInt(ABNORMAL_MIN_INT, ABNORMAL_MAX_INT);
+            value = getRandomInt(ABNORMAL_MIN_INT, ABNORMAL_MAX_INT);
           } else {
-            value = RandomNum.getRandomInt(MIN_INT, MAX_INT);
+            value = getRandomInt(MIN_INT, MAX_INT);
           }
           sql = String.format(insertDataSql, path, sensor, time, value);
         } else if (type.equals("FLOAT")) {
@@ -204,17 +191,13 @@ public class CreateDataSender3 {
         }
 
         statement.addBatch(sql);
-        statement1.addBatch(sql);
         sqlCount++;
         if (sqlCount >= BATCH_SQL) {
           statement.executeBatch();
           statement.clearBatch();
-          statement1.executeBatch();
-          statement1.clearBatch();
           sqlCount = 0;
         }
       }
-      Thread.sleep(TIME_INTERVAL);
 
       if (abnormalFlag == 0) {
         abnormalCount += 1;
@@ -226,8 +209,6 @@ public class CreateDataSender3 {
     }
     statement.executeBatch();
     statement.clearBatch();
-    statement1.executeBatch();
-    statement1.clearBatch();
   }
 
   /**
@@ -239,46 +220,38 @@ public class CreateDataSender3 {
   public static void main(String[] args) throws Exception {
 
     Statement statement = null;
-    Statement statement1 = null;
 
     String path =
         new File(System.getProperty(IoTDBConstant.IOTDB_HOME, null)).getParent() + File.separator
             + "src"
             + File.separator + "test" + File.separator + "resources" + File.separator
-            + "CreateTimeseries3.txt";
+            + "CreateTimeseries1.txt";
     Map<String, String> timeseriesMap = generateTimeseriesMapFromFile(path);
 
     List<String> storageGroupList = new ArrayList<>();
-    storageGroupList.add("root.vehicle_history2");
-    storageGroupList.add("root.vehicle_alarm2");
-    storageGroupList.add("root.vehicle_temp2");
-    storageGroupList.add("root.range_event2");
+    storageGroupList.add("root.vehicle_history");
+    storageGroupList.add("root.vehicle_alarm");
+    storageGroupList.add("root.vehicle_temp");
+    storageGroupList.add("root.range_event");
 
-    try (Connection connection1 = DriverManager
-        .getConnection("jdbc:iotdb://192.168.130.17:6667/", "root", "root")) {
+    try (Connection connection = DriverManager
+        .getConnection("jdbc:iotdb://localhost:6667/", "root", "root")) {
       Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-      try (Connection connection = DriverManager
-          .getConnection("jdbc:iotdb://localhost:6667/", "root", "root")) {
-        statement = connection.createStatement();
+      statement = connection.createStatement();
 
-        statement1 = connection1.createStatement();
-
-        setStorageGroup(statement, statement1, storageGroupList);
-        LOGGER.debug("Finish set storage group.");
-        createTimeseries(statement, statement1, timeseriesMap);
-        LOGGER.debug("Finish create timeseries.");
-        while (true) {
-          randomInsertData(statement, statement1, timeseriesMap);
-        }
+      setStorageGroup(statement, storageGroupList);
+      logger.debug("Finish set storage group.");
+      createTimeseries(statement, timeseriesMap);
+      logger.debug("Finish create timeseries.");
+      while (true) {
+        randomInsertData(statement, timeseriesMap);
       }
+
     } catch (Exception e) {
-      LOGGER.error("", e);
+      logger.error("", e);
     } finally {
       if (statement != null) {
         statement.close();
-      }
-      if (statement1 != null) {
-        statement1.close();
       }
     }
   }

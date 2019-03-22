@@ -16,19 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- namespace java org.apache.iotdb.db.postback.receiver
+namespace java org.apache.iotdb.service.sync.thrift
 
 typedef i32 int 
 typedef i16 short
 typedef i64 long
-service ServerService{
-	bool getUUID(1:string uuid, 2:string address)
-	string startReceiving(1:string md5, 2:list<string> filename, 3:binary buff, 4:int status)
-	void getFileNodeInfo()
-	void mergeOldData(1:string path)
-	void mergeData()
-	void getSchema(1:binary buff, 2:int status)
-	bool merge()
-	void afterReceiving()
-	void init(1:string storageGroup)
+
+enum SyncDataStatus {
+  SUCCESS_STATUS,
+  FINISH_STATUS,
+  PROCESSING_STATUS
+}
+
+service SyncService{
+	bool checkIdentity(1:string uuid, 2:string address)
+	string syncSchema(1:string md5, 2:binary buff, 3:SyncDataStatus status)
+	string syncData(1:string md5, 2:list<string> filename, 3:binary buff, 4:SyncDataStatus status)
+	bool load()
+	void cleanUp()
+	bool init(1:string storageGroup)
 }

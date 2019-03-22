@@ -16,51 +16,50 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.sender;
+package org.apache.iotdb.db.sync.sender;
 
+import java.io.IOException;
 import java.util.Set;
+import org.apache.iotdb.db.exception.SyncConnectionException;
 
 /**
- * FileSender defines the methods of a sender in postback module.
- * @author lta
+ * FileSender defines the methods of a sender in sync module.
  */
 public interface FileSender {
 
   /**
    * Connect to server.
    */
-  void connectToReceiver(String serverIp, int serverPort);
+  void establishConnection(String serverIp, int serverPort) throws SyncConnectionException;
 
   /**
    * Transfer UUID to receiver.
    */
-  boolean transferUUID(String uuidPath);
+  boolean confirmIdentity(String uuidPath) throws SyncConnectionException, IOException;
 
   /**
    * Make file snapshots before sending files.
    */
-  Set<String> makeFileSnapshot(Set<String> sendingFileList);
+  Set<String> makeFileSnapshot(Set<String> validFiles) throws IOException;
 
   /**
    * Send schema file to receiver.
    */
-  void sendSchema(String schemaPath);
+  void syncSchema() throws SyncConnectionException;
 
   /**
-   * For each file in fileList, send it to receiver side.
-   *
-   * @param fileSnapshotList snapshot file list to send
+   * For all valid files, send it to receiver side and load these data in receiver.
    */
-  void transferData(Set<String> fileSnapshotList);
+  void syncAllData() throws SyncConnectionException;
 
   /**
    * Close the socket after sending files.
    */
-  boolean afterSending();
+  boolean afterSynchronization() throws SyncConnectionException;
 
   /**
-   * Execute a postback task.
+   * Execute a sync task.
    */
-  void postback();
+  void sync() throws SyncConnectionException, IOException;
 
 }

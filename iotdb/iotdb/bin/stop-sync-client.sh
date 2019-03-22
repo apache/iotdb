@@ -1,3 +1,4 @@
+#!/bin/sh
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,16 +18,13 @@
 # under the License.
 #
 
-server_ip=127.0.0.1
-# PostBack server port address
-server_port=5555
-# PostBack client port
-client_port=6666
-# The cycle time of post data back to receiver, the unit of time is second
-upload_cycle_in_seconds=600
-# Set bufferWrite data absolute path of IoTDB 
-# It needs to be set with iotdb_schema_directory, they have to belong to the same IoTDB
-# iotdb_bufferWrite_directory = D:\\iotdb\\data\\data\\settled
-# Set schema file absolute path of IoTDB
-# It needs to be set with iotdb_bufferWrite_directory, they have to belong to the same IoTDB
-# iotdb_schema_directory = D:\\iotdb\\data\\system\\schema\\mlog.txt
+
+PIDS=$(ps ax | grep -i 'SyncClient' | grep java | grep -v grep | awk '{print $1}')
+
+if [ -z "$PIDS" ]; then
+  echo "No sync client to stop"
+  exit 1
+else 
+  kill -s TERM $PIDS
+  echo "close sync client"
+fi
