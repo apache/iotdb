@@ -16,33 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.utils;
+package org.apache.iotdb.db.utils;
 
-/**
- * Created by stefanie on 07/08/2017.
- */
+import java.io.File;
 
-public class Utils {
+public class FilePathUtils {
 
-  public static String getType(String properties) {
-    return properties.split(",")[0];
+  /**
+   * Format file path to end with File.separator
+   * @param filePath origin file path
+   * @return Regularized Path
+   */
+  public static String regularizePath(String filePath){
+    if (filePath.length() > 0
+        && filePath.charAt(filePath.length() - 1) != File.separatorChar) {
+      filePath = filePath + File.separatorChar;
+    }
+    return filePath;
   }
 
-  public static String getEncode(String properties) {
-    return properties.split(",")[1];
-  }
-
-  private Utils() {
-    throw new IllegalStateException("Utility class");
-  }
-
-  public static String getPath(String timeseries) {
-    int lastPointIndex = timeseries.lastIndexOf('.');
-    return timeseries.substring(0, lastPointIndex);
-  }
-
-  public static String getSensor(String timeseries) {
-    int lastPointIndex = timeseries.lastIndexOf('.');
-    return timeseries.substring(lastPointIndex + 1);
-  }
 }

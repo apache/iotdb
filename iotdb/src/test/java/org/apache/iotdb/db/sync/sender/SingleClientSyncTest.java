@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.sender;
+package org.apache.iotdb.db.sync.sender;
 
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -31,25 +32,27 @@ import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.integration.Constant;
-import org.apache.iotdb.db.postback.conf.PostBackSenderConfig;
-import org.apache.iotdb.db.postback.conf.PostBackSenderDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.conf.Constans;
+import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
+import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The test is to run a complete postback function Before you run the test, make sure receiver has
- * been cleaned up and inited.
+ * The test is to run a complete sync function Before you run the test, make sure receiver has been
+ * cleaned up and inited.
  */
-public class IoTDBSingleClientPostBackTest {
+public class SingleClientSyncTest {
 
   FileSenderImpl fileSenderImpl = FileSenderImpl.getInstance();
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-  private String serverIpTest = "192.168.130.17";
-  private PostBackSenderConfig config = PostBackSenderDescriptor.getInstance().getConfig();
+  private String serverIpTest = "192.168.130.7";
+  private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
   private Set<String> dataSender = new HashSet<>();
   private Set<String> dataReceiver = new HashSet<>();
   private boolean success = true;
@@ -143,11 +146,11 @@ public class IoTDBSingleClientPostBackTest {
       "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
       "insert into root.test.d1.g0(timestamp,s0) values(400,1050)", "merge", "flush",};
   private boolean testFlag = Constant.testFlag;
-  private static final String POSTBACK = "postback";
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBSingleClientPostBackTest.class);
+  private static final String SYNC_CLIENT = Constans.SYNC_CLIENT;
+  private static final Logger logger = LoggerFactory.getLogger(SingleClientSyncTest.class);
 
   public static void main(String[] args) throws Exception {
-    IoTDBSingleClientPostBackTest singleClientPostBackTest = new IoTDBSingleClientPostBackTest();
+    SingleClientSyncTest singleClientPostBackTest = new SingleClientSyncTest();
     singleClientPostBackTest.setUp();
     singleClientPostBackTest.testPostback();
     singleClientPostBackTest.tearDown();
@@ -155,21 +158,23 @@ public class IoTDBSingleClientPostBackTest {
   }
 
   public void setConfig() {
-    config.setUuidPath(config.getDataDirectory() + POSTBACK + File.separator + "uuid.txt");
+    config.setUuidPath(
+        config.getDataDirectory() + SYNC_CLIENT + File.separator + Constans.UUID_FILE_NAME);
     config.setLastFileInfo(
-        config.getDataDirectory() + POSTBACK + File.separator + "lastLocalFileList.txt");
-    String[] iotdbBufferwriteDirectory = config.getIotdbBufferwriteDirectory();
-    String[] snapshots = new String[config.getIotdbBufferwriteDirectory().length];
-    for (int i = 0; i < config.getIotdbBufferwriteDirectory().length; i++) {
+        config.getDataDirectory() + SYNC_CLIENT + File.separator + Constans.LAST_LOCAL_FILE_NAME);
+    String[] iotdbBufferwriteDirectory = config.getBufferwriteDirectory();
+    String[] snapshots = new String[config.getBufferwriteDirectory().length];
+    for (int i = 0; i < config.getBufferwriteDirectory().length; i++) {
       iotdbBufferwriteDirectory[i] = new File(iotdbBufferwriteDirectory[i]).getAbsolutePath();
       if (!iotdbBufferwriteDirectory[i].endsWith(File.separator)) {
         iotdbBufferwriteDirectory[i] = iotdbBufferwriteDirectory[i] + File.separator;
       }
-      snapshots[i] = iotdbBufferwriteDirectory[i] + POSTBACK + File.separator + "dataSnapshot"
-          + File.separator;
+      snapshots[i] =
+          iotdbBufferwriteDirectory[i] + SYNC_CLIENT + File.separator + Constans.DATA_SNAPSHOT_NAME
+              + File.separator;
     }
     config.setSnapshotPaths(snapshots);
-    config.setIotdbBufferwriteDirectory(iotdbBufferwriteDirectory);
+    config.setBufferwriteDirectory(iotdbBufferwriteDirectory);
     config.setServerIp(serverIpTest);
     fileSenderImpl.setConfig(config);
   }
@@ -189,7 +194,6 @@ public class IoTDBSingleClientPostBackTest {
   public void tearDown() throws Exception {
     if (testFlag) {
       deamon.stop();
-      Thread.sleep(2000);
       EnvironmentUtils.cleanEnv();
     }
     if (success) {
@@ -199,12 +203,11 @@ public class IoTDBSingleClientPostBackTest {
     }
   }
 
-  public void testPostback() {
+  public void testPostback() throws IOException, SyncConnectionException, ClassNotFoundException, SQLException, InterruptedException {
     if (testFlag) {
-      // the first time to postback
-      logger.debug("It's the first time to post back!");
+      // the first time to sync
+      logger.debug("It's the first time to sync!");
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -214,18 +217,16 @@ public class IoTDBSingleClientPostBackTest {
             statement.execute(sql);
           }
           statement.close();
-          Thread.sleep(100);
         }
-      } catch (InterruptedException | SQLException | ClassNotFoundException e) {
+      } catch (SQLException | ClassNotFoundException e) {
         fail(e.getMessage());
       }
 
-      fileSenderImpl.postback();
+      fileSenderImpl.sync();
 
       // Compare data of sender and receiver
       dataSender.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -257,19 +258,19 @@ public class IoTDBSingleClientPostBackTest {
         } catch (Exception e) {
           logger.error("", e);
         }
-      } catch (ClassNotFoundException | InterruptedException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
 
       dataReceiver.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
           connection = DriverManager
-              .getConnection("jdbc:iotdb://192.168.130.17:6667/", "root", "root");
+              .getConnection(String.format("jdbc:iotdb://%s:6667/", serverIpTest), "root",
+                  "root");
           Statement statement = connection.createStatement();
           boolean hasResultSet = statement.execute("select * from root.vehicle");
           if (hasResultSet) {
@@ -296,13 +297,13 @@ public class IoTDBSingleClientPostBackTest {
           }
           statement.close();
         } catch (Exception e) {
-          logger.error("",e);
+          logger.error("", e);
         } finally {
           if (connection != null) {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+      } catch (ClassNotFoundException | SQLException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
@@ -315,10 +316,9 @@ public class IoTDBSingleClientPostBackTest {
         return;
       }
 
-      // the second time to postback
-      logger.debug("It's the second time to post back!");
+      // the second time to sync
+      logger.debug("It's the second time to sync!");
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
@@ -330,7 +330,6 @@ public class IoTDBSingleClientPostBackTest {
             statement.execute(sql);
           }
           statement.close();
-          Thread.sleep(100);
         } catch (Exception e) {
           logger.error("", e);
         } finally {
@@ -338,17 +337,16 @@ public class IoTDBSingleClientPostBackTest {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+      } catch (ClassNotFoundException | SQLException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
 
-      fileSenderImpl.postback();
+      fileSenderImpl.sync();
 
       // Compare data of sender and receiver
       dataSender.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
@@ -386,19 +384,19 @@ public class IoTDBSingleClientPostBackTest {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+      } catch (ClassNotFoundException | SQLException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
 
       dataReceiver.clear();
-      try {
-        Thread.sleep(2000);
+      {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
           connection = DriverManager
-              .getConnection("jdbc:iotdb://192.168.130.17:6667/", "root", "root");
+              .getConnection(String.format("jdbc:iotdb://%s:6667/", serverIpTest), "root",
+                  "root");
           Statement statement = connection.createStatement();
           boolean hasResultSet = statement.execute("select * from root.vehicle");
           if (hasResultSet) {
@@ -430,9 +428,6 @@ public class IoTDBSingleClientPostBackTest {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
-        fail(e.getMessage());
-        Thread.currentThread().interrupt();
       }
       logger.debug(String.valueOf(dataSender.size()));
       logger.debug(String.valueOf(dataReceiver.size()));
@@ -443,10 +438,9 @@ public class IoTDBSingleClientPostBackTest {
         return;
       }
 
-      // the third time to postback
-      logger.debug("It's the third time to post back!");
+      // the third time to sync
+      logger.debug("It's the third time to sync!");
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -456,24 +450,22 @@ public class IoTDBSingleClientPostBackTest {
             statement.execute(sql);
           }
           statement.close();
-          Thread.sleep(100);
         } catch (Exception e) {
           logger.error("", e);
         }
-      } catch (ClassNotFoundException | InterruptedException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
 
-      fileSenderImpl.postback();
+      fileSenderImpl.sync();
 
       // Compare data of sender and receiver
       dataSender.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            .getConnection(String.format("jdbc:iotdb://%s:6667/", serverIpTest), "root",
                 "root")) {
           Statement statement = connection.createStatement();
           boolean hasResultSet = statement.execute("select * from root.vehicle");
@@ -524,19 +516,18 @@ public class IoTDBSingleClientPostBackTest {
         } catch (Exception e) {
           logger.error("", e);
         }
-      } catch (ClassNotFoundException | InterruptedException e) {
+      } catch (ClassNotFoundException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
 
       dataReceiver.clear();
       try {
-        Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
           connection = DriverManager
-              .getConnection("jdbc:iotdb://192.168.130.17:6667/", "root", "root");
+              .getConnection("jdbc:iotdb://192.168.130.8:6667/", "root", "root");
           Statement statement = connection.createStatement();
           boolean hasResultSet = statement.execute("select * from root.vehicle");
           if (hasResultSet) {
@@ -590,7 +581,7 @@ public class IoTDBSingleClientPostBackTest {
             connection.close();
           }
         }
-      } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+      } catch (ClassNotFoundException | SQLException e) {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }

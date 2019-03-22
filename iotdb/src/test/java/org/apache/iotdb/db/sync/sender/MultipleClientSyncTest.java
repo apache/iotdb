@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.sender;
+package org.apache.iotdb.db.sync.sender;
 
 import static org.junit.Assert.fail;
 
@@ -38,17 +38,17 @@ import org.apache.iotdb.jdbc.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MultipleClientPostBackTest {
+public class MultipleClientSyncTest {
 
   Map<String, ArrayList<String>> timeseriesList = new HashMap();
   Map<String, ArrayList<String>> timeseriesList1 = new HashMap();
-  private static final Logger LOGGER = LoggerFactory.getLogger(MultipleClientPostBackTest.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MultipleClientSyncTest.class);
   private Set<String> dataSender = new HashSet<>();
   private Set<String> dataReceiver = new HashSet<>();
 
   public static void main(String[] args) throws IOException {
-    MultipleClientPostBackTest multipleClientPostBackTest = new MultipleClientPostBackTest();
-    multipleClientPostBackTest.testPostback();
+    MultipleClientSyncTest multipleClientSyncTest = new MultipleClientSyncTest();
+    multipleClientSyncTest.testPostback();
   }
 
   public void testPostback() throws IOException {

@@ -78,6 +78,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.sync.conf.Constans;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -838,9 +839,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                 appendFile.getFilePath()));
       }
       if (!originFile.renameTo(targetFile)) {
-        LOGGER.warn("File renaming failed when appending new file. Origin: {}, target: {}",
-            originFile.getPath(),
-            targetFile.getPath());
+        LOGGER.warn("File renaming failed when appending new file. Origin: {}, Target: {}",
+            originFile.getPath(), targetFile.getPath());
       }
       // append the new tsfile
       this.newFileNodes.add(appendFile);
@@ -886,8 +886,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           tsFileResource.getEndTime(entry.getKey()) >= entry.getValue()
           && tsFileResource.getStartTime(entry.getKey()) <= appendFile
           .getEndTime(entry.getKey())) {
-        String relativeFilePath = "postback" + File.separator + uuid + File.separator + "backup"
-            + File.separator + tsFileResource.getRelativePath();
+        String relativeFilePath =
+            Constans.SYNC_SERVER + File.separatorChar + uuid + File.separatorChar
+                + Constans.BACK_UP_DIRECTORY_NAME
+                + File.separatorChar + tsFileResource.getRelativePath();
         File newFile = new File(
             Directories.getInstance().getTsFileFolder(tsFileResource.getBaseDirIndex()),
             relativeFilePath);

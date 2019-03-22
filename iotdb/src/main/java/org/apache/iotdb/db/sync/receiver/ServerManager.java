@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.receiver;
+package org.apache.iotdb.db.sync.receiver;
 
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -32,9 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * receiver server.
- *
- * @author lta
+ * sync receiver server.
  */
 public class ServerManager {
 
@@ -51,47 +51,46 @@ public class ServerManager {
   }
 
   /**
-   * start postback receiver's server.
+   * start sync receiver's server.
    */
   public void startServer() throws StartupException {
     Factory protocolFactory;
     TProcessor processor;
     TThreadPoolServer.Args poolArgs;
-    if (!conf.isPostbackEnable()) {
+    if (!conf.isSyncEnable()) {
       return;
     }
     try {
       if (conf.getIpWhiteList() == null) {
         LOGGER.error(
-            "IoTDB post back receiver: Postback server failed to start because IP white "
-                + "list is null, please set IP white list!");
+            "Sync server failed to start because IP white list is null, please set IP white list.");
         return;
       }
       conf.setIpWhiteList(conf.getIpWhiteList().replaceAll(" ", ""));
-      serverTransport = new TServerSocket(conf.getPostbackServerPort());
+      serverTransport = new TServerSocket(conf.getSyncServerPort());
       protocolFactory = new TBinaryProtocol.Factory();
-      processor = new ServerService.Processor<>(new ServerServiceImpl());
+      processor = new SyncService.Processor<>(new ServerServiceImpl());
       poolArgs = new TThreadPoolServer.Args(serverTransport);
       poolArgs.processor(processor);
       poolArgs.protocolFactory(protocolFactory);
       poolServer = new TThreadPoolServer(poolArgs);
-      LOGGER.info("Postback server has started.");
-      Runnable runnable = () -> poolServer.serve();
-      Thread thread = new Thread(runnable);
-      thread.start();
+      LOGGER.info("Sync server has started.");
+      Runnable syncServerRunnable = () -> poolServer.serve();
+      Thread syncServerThread = new Thread(syncServerRunnable, ThreadName.SYNC_SERVER.getName());
+      syncServerThread.start();
     } catch (TTransportException e) {
-      throw new StartupException("IoTDB post back receiver: cannot start postback server.", e);
+      throw new StartupException("Cannot start sync server.", e);
     }
   }
 
   /**
-   * close postback receiver's server.
+   * close sync receiver's server.
    */
   public void closeServer() {
-    if (conf.isPostbackEnable() && poolServer != null) {
+    if (conf.isSyncEnable() && poolServer != null) {
       poolServer.stop();
       serverTransport.close();
-      LOGGER.info("Stop postback server.");
+      LOGGER.info("Stop sync server.");
     }
   }
 

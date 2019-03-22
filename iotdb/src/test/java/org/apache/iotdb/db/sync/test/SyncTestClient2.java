@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.postback.utils;
+package org.apache.iotdb.db.sync.test;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,12 +35,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The class is to generate data of half timeseries (simulating jilian scene) to test stability of
- * postback function.
- *
- * @author lta
+ * SyncTestClient2 is used to generate data of half timeseries (simulating jilian scene) to test stability of
+ * sync function.
  */
-public class CreateDataSender2 {
+public class SyncTestClient2 {
 
   private static final int TIME_INTERVAL = 0;
   private static final int TOTAL_DATA = 2000000;
@@ -56,7 +54,7 @@ public class CreateDataSender2 {
   private static final int MAX_FLOAT = 30;
   private static final int STRING_LENGTH = 5;
   private static final int BATCH_SQL = 10000;
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreateDataSender2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncTestClient2.class);
 
   /**
    * generate time series map from file.
@@ -204,7 +202,6 @@ public class CreateDataSender2 {
           sqlCount = 0;
         }
       }
-      Thread.sleep(TIME_INTERVAL);
 
       if (abnormalFlag == 0) {
         abnormalCount += 1;
