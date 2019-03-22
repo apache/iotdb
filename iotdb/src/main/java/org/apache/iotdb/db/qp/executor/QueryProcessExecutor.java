@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -29,9 +30,11 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
+import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -66,6 +69,11 @@ public abstract class QueryProcessExecutor {
       return aggregate(plan.getPaths(), plan.getAggregations(),
           ((AggregationPlan) plan).getExpression());
     }
+
+    if (plan instanceof FillQueryPlan) {
+      FillQueryPlan fillQueryPlan = (FillQueryPlan) plan;
+      return fill(plan.getPaths(), fillQueryPlan.getQueryTime(), fillQueryPlan.getFillType());
+    }
     return queryRouter.query(queryExpression);
   }
 
@@ -96,6 +104,10 @@ public abstract class QueryProcessExecutor {
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException,
       QueryFilterOptimizationException;
+
+  public abstract QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType,
+      IFill> fillTypes)
+      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException;
 
   /**
    * executeWithGlobalTimeFilter update command and return whether the operator is successful.

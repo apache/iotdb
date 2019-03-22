@@ -82,14 +82,7 @@ public class IOTDBGroupByTestIT {
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(620, 500.5, false, 550)",
   };
 
-  private String insertTemplate1 = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3"
-      + ") VALUES(%d,%d,%d,%f,%s)";
-
   private static final String TIMESTAMP_STR = "Time";
-  private final String d0s0 = "root.vehicle.d0.s0";
-  private final String d0s1 = "root.vehicle.d0.s1";
-  private final String d0s2 = "root.vehicle.d0.s2";
-  private final String d0s3 = "root.vehicle.d0.s3";
 
   @Before
   public void setUp() throws Exception {

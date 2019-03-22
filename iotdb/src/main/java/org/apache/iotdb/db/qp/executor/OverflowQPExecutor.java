@@ -52,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
+import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.LoadDataUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -179,20 +180,22 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
   @Override
   public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression)
-          throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException, PathErrorException, IOException {
+      throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
+      PathErrorException, IOException {
     return new EngineQueryRouter().aggregate(paths, aggres, expression);
   }
 
-  // @Override
-  // public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes) throws
-  // ProcessorException, IOException, PathErrorException {
-  // return queryEngine.fill(fillPaths, queryTime, fillTypes);
-  // }
+  @Override
+  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes)
+      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException {
+    return new EngineQueryRouter().fill(fillPaths, queryTime, fillTypes);
+  }
 
   @Override
-  public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression, long unit,
-      long origin, List<Pair<Long, Long>> intervals)
-      throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException, PathErrorException, IOException {
+  public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
+      long unit, long origin, List<Pair<Long, Long>> intervals)
+      throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
+      PathErrorException, IOException {
     return new EngineQueryRouter().groupBy(paths, aggres, expression, unit, origin, intervals);
   }
 
@@ -504,7 +507,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           // optimize the speed of adding timeseries
           String fileNodePath = mManager.getFileNameByPath(path.getFullPath());
           // the two map is stored in the storage group node
-          Map<String, MeasurementSchema> schemaMap = mManager.getSchemaMapForOneFileNode(fileNodePath);
+          Map<String, MeasurementSchema> schemaMap = mManager
+              .getSchemaMapForOneFileNode(fileNodePath);
           Map<String, Integer> numSchemaMap = mManager.getNumSchemaMapForOneFileNode(fileNodePath);
           String lastNode = path.getMeasurement();
           boolean isNewMeasurement = true;
@@ -629,8 +633,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   /**
    * Delete all data of time series in pathList.
    *
-   * @param pathList
-   *            deleted paths
+   * @param pathList deleted paths
    */
   private void deleteDataOfTimeSeries(List<String> pathList) throws ProcessorException {
     for (String p : pathList) {

@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -31,7 +32,9 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -129,19 +132,14 @@ public class EngineQueryRouter {
 
   /**
    * execute groupBy query.
+   *
    * @param selectedSeries select path list
    * @param aggres aggregation name list
    * @param expression filter expression
    * @param unit time granularity for interval partitioning, unit is ms.
-   * @param origin the datum time point for interval division is divided into a time interval
-   *        for each TimeUnit time from this point forward and backward.
+   * @param origin the datum time point for interval division is divided into a time interval for
+   *        each TimeUnit time from this point forward and backward.
    * @param intervals time intervals, closed interval.
-   * @return
-   * @throws ProcessorException
-   * @throws QueryFilterOptimizationException
-   * @throws FileNodeManagerException
-   * @throws PathErrorException
-   * @throws IOException
    */
   public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals)
@@ -201,6 +199,25 @@ public class EngineQueryRouter {
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;
     }
+  }
+
+  /**
+   * execute fill query.
+   * @param fillPaths select path list
+   * @param queryTime timestamp
+   * @param fillType type IFill map
+   * @return
+   */
+  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType)
+      throws FileNodeManagerException, PathErrorException, IOException, ProcessorException {
+    long nextJobId = getNextJobId();
+    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+
+    QueryContext context = new QueryContext();
+    FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(nextJobId, fillPaths, queryTime,
+        fillType);
+    return fillEngineExecutor.execute(context);
   }
 
   /**

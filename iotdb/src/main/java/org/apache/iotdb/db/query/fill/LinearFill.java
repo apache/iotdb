@@ -18,16 +18,20 @@
  */
 package org.apache.iotdb.db.query.fill;
 
-import org.apache.iotdb.db.exception.ProcessorException;
+import java.io.IOException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.UnSupportedFillTypeException;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class LinearFill extends IFill {
 
   private long beforeRange;
   private long afterRange;
-  private BatchData result;
 
   public LinearFill(long beforeRange, long afterRange) {
     this.beforeRange = beforeRange;
@@ -42,7 +46,6 @@ public class LinearFill extends IFill {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
     this.afterRange = afterRange;
-    result = new BatchData(dataType, true, true);
   }
 
   public long getBeforeRange() {
@@ -67,7 +70,82 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  public BatchData getFillResult() throws ProcessorException {
-    return result;
+  public void constructReaders(QueryDataSource queryDataSource, QueryContext context)
+      throws IOException {
+    super.constructReaders(queryDataSource, context, beforeRange);
+  }
+
+  @Override
+  public IPointReader getFillResult() throws IOException {
+    TimeValuePair beforePair = null;
+    TimeValuePair afterPair = null;
+    while (allDataReader.hasNext()) {
+      afterPair = allDataReader.next();
+      if (afterPair.getTimestamp() <= queryTime) {
+        beforePair = afterPair;
+      } else {
+        break;
+      }
+    }
+
+    if (beforePair == null || beforePair.getTimestamp() == queryTime) {
+      return new TimeValuePairPointReader(beforePair);
+    }
+
+    if (afterPair == null && !allDataReader.hasNext()) {
+      return new TimeValuePairPointReader(null);
+    }
+    if (afterPair == null) {
+      afterPair = allDataReader.next();
+    }
+    if (afterPair.getTimestamp() > queryTime + afterRange) {
+      return new TimeValuePairPointReader(null);
+    }
+    return new TimeValuePairPointReader(average(beforePair, afterPair));
+  }
+
+  //returns the average of two points
+  private TimeValuePair average(TimeValuePair beforePair, TimeValuePair afterPair) {
+    double totalTimeLength = afterPair.getTimestamp() - beforePair.getTimestamp();
+    double beforeTimeLength = queryTime - beforePair.getTimestamp();
+    switch (dataType) {
+      case INT32:
+        int startIntValue = beforePair.getValue().getInt();
+        int endIntValue = afterPair.getValue().getInt();
+        int fillIntValue =
+            startIntValue + (int) ((double) (endIntValue - startIntValue) / totalTimeLength
+                * beforeTimeLength);
+        beforePair.setValue(TsPrimitiveType.getByType(TSDataType.INT32, fillIntValue));
+        break;
+      case INT64:
+        long startLongValue = beforePair.getValue().getLong();
+        long endLongValue = afterPair.getValue().getLong();
+        long fillLongValue =
+            startLongValue + (long) ((double) (endLongValue - startLongValue) / totalTimeLength
+                * beforeTimeLength);
+        beforePair.setValue(TsPrimitiveType.getByType(TSDataType.INT64, fillLongValue));
+        break;
+      case FLOAT:
+        float startFloatValue = beforePair.getValue().getFloat();
+        float endFloatValue = afterPair.getValue().getFloat();
+        float fillFloatValue =
+            startFloatValue + (float) ((endFloatValue - startFloatValue) / totalTimeLength
+                * beforeTimeLength);
+        beforePair.setValue(TsPrimitiveType.getByType(TSDataType.FLOAT, fillFloatValue));
+        break;
+      case DOUBLE:
+        double startDoubleValue = beforePair.getValue().getDouble();
+        double endDoubleValue = afterPair.getValue().getDouble();
+        double fillDoubleValue =
+            startDoubleValue + (double) ((endDoubleValue - startDoubleValue) / totalTimeLength
+                * beforeTimeLength);
+        beforePair.setValue(TsPrimitiveType.getByType(TSDataType.DOUBLE, fillDoubleValue));
+        break;
+      default:
+        throw new UnSupportedFillTypeException("Unsupported linear fill data type : " + dataType);
+
+    }
+    beforePair.setTimestamp(queryTime);
+    return beforePair;
   }
 }
