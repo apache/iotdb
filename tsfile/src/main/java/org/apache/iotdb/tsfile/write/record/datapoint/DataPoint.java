@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
 import java.io.IOException;
@@ -86,10 +87,12 @@ public abstract class DataPoint {
           dataPoint = new StringDataPoint(measurementId, new Binary(value));
           break;
         default:
-          throw new UnSupportedDataTypeException(String.format("Data type %s is not supported.", dataType));
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataType));
       }
-    } catch (Exception e){
-      throw new UnSupportedDataTypeException(String.format("Data type of %s is %s, but input value is %s", measurementId,
+    } catch (Exception e) {
+      throw new UnSupportedDataTypeException(
+          String.format("Data type of %s is %s, but input value is %s", measurementId,
               dataType, value));
     }
 
