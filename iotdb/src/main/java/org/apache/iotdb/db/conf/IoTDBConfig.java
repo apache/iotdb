@@ -93,7 +93,7 @@ public class IoTDBConfig {
 
   /**
    * Data directory of bufferWrite data.
-   * It can be setted as bufferWriteDirs = {"settled1", "settled2", "settled3"};
+   * It can be settled as bufferWriteDirs = {"settled1", "settled2", "settled3"};
    */
   private String[] bufferWriteDirs = {DEFAULT_TSFILE_DIR};
 

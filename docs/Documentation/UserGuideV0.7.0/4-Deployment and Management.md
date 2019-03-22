@@ -39,6 +39,7 @@
         - [Data Status Monitoring](#data-status-monitoring)
             - [Writing Data Monitor](#writing-data-monitor)
                 - [Example](#example)
+            - [File Size Monitor](#file-size-monitor)
     - [System log](#system-log)
         - [Dynamic System Log Configuration](#dynamic-system-log-configuration)
             - [Connect JMX](#connect-jmx)
@@ -812,6 +813,82 @@ If you want to know the current timeseries point in the system, you can use `MAX
 ```
 select MAX_VALUE(TOTAL_POINTS_SUCCESS) from root.stats.write.root_ln
 ```
+
+#### File Size Monitor
+
+Sometimes we are concerned about how the data file size of IoTDB is changing, maybe to help calculate how much disk space is left or the data ingestion speed. The File Size Monitor provides several statistics to show how different types of file-sizes change. 
+
+The file size monitor defaults to collect file size data every 5 seconds using the same shared parameter ```back_loop_period_sec```, 
+
+Unlike Writing Data Monitor, currently File Size Monitor will not delete statistic data at regular intervals. 
+
+You can also use `select` clause to get the file size statistics like other time series.
+
+Here are the file size statistics:
+
+* DATA
+
+|Name| DATA |
+|:---:|:---|
+|Description| Calculate the sum of all the files's sizes under the data directory (```data/data``` by default) in byte.|
+|Type| File size statistics |
+|Timeseries Name| root.stats.file\_size.DATA |
+|Reset After Restarting System| No |
+|Example| select DATA from root.stats.file\_size.DATA|
+
+* SETTLED
+
+|Name| SETTLED |
+|:---:|:---|
+|Description| Calculate the sum of all the ```TsFile``` size (under ```data/data/settled``` by default) in byte. If there are multiple ```TsFile``` directories like ```{data/data/settled1, data/data/settled2}```, this statistic is the sum of their size.|
+|Type| File size statistics |
+|Timeseries Name| root.stats.file\_size.SETTLED |
+|Reset After Restarting System| No |
+|Example| select SETTLED from root.stats.file\_size.SETTLED|
+
+* OVERFLOW
+
+|Name| OVERFLOW |
+|:---:|:---|
+|Description| Calculate the sum of all the ```out-of-order data file``` size (under ```data/data/overflow``` by default) in byte.|
+|Type| File size statistics |
+|Timeseries Name| root.stats.file\_size.OVERFLOW |
+|Reset After Restarting System| No |
+|Example| select OVERFLOW from root.stats.file\_size.OVERFLOW|
+
+
+* WAL
+
+|Name| WAL |
+|:---:|:---|
+|Description| Calculate the sum of all the ```Write-Ahead-Log file``` size (under ```data/wal``` by default) in byte.|
+|Type| File size statistics |
+|Timeseries Name| root.stats.file\_size.WAL |
+|Reset After Restarting System| No |
+|Example| select WAL from root.stats.file\_size.WAL|
+
+
+* INFO
+
+|Name| INFO|
+|:---:|:---|
+|Description| Calculate the sum of all the ```.restore```, etc. file size (under ```data/system/info```) in byte.|
+|Type| File size statistics |
+|Timeseries Name| root.stats.file\_size.INFO |
+|Reset After Restarting System| No |
+|Example| select INFO from root.stats.file\_size.INFO|
+
+* SCHEMA
+
+|Name| SCHEMA |
+|:---:|:---|
+|Description| Calculate the sum of all the ```metadata file``` size (under ```data/system/metadata```) in byte.|
+|Type| File size statistics |
+|Timeseries Name| root.stats.file\_size.SCHEMA |
+|Reset After Restarting System| No |
+|Example| select SCHEMA from root.stats.file\_size.SCHEMA|
+
+
 
 ## System log
 
