@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,10 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.engine.filenode;
 
+import static java.time.ZonedDateTime.ofInstant;
+
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -41,7 +44,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -101,8 +103,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static java.time.ZonedDateTime.ofInstant;
 
 public class FileNodeProcessor extends Processor implements IStatistic {
 
@@ -725,8 +725,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       newMultiPassLock.readLock().unlock();
       newMultiPassTokenSet.remove(token);
       LOGGER.debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token,
-              getProcessorName(),
-              newMultiPassTokenSet, newMultiPassLock);
+          getProcessorName(),
+          newMultiPassTokenSet, newMultiPassLock);
       return true;
     } else if (oldMultiPassTokenSet != null && oldMultiPassTokenSet.contains(token)) {
       // remove token first, then unlock
@@ -1796,9 +1796,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreLock) {
-      SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
-      try {
-        serializeUtil.serialize(fileNodeProcessorStore, fileNodeRestoreFilePath);
+      try (FileOutputStream fileOutputStream = new FileOutputStream(fileNodeRestoreFilePath)) {
+        fileNodeProcessorStore.serialize(fileOutputStream);
         LOGGER.debug("The filenode processor {} writes restore information to the restore file",
             getProcessorName());
       } catch (IOException e) {
@@ -1810,17 +1809,21 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private FileNodeProcessorStore readStoreFromDisk() throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreLock) {
-      FileNodeProcessorStore processorStore;
-      SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
-      try {
-        processorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
-            .orElse(new FileNodeProcessorStore(false, new HashMap<>(),
-                new TsFileResource(OverflowChangeType.NO_CHANGE, null),
-                new ArrayList<>(), FileNodeProcessorStatus.NONE, 0));
+
+      File restoreFile = new File(fileNodeRestoreFilePath);
+      if (!restoreFile.exists() || restoreFile.length() == 0) {
+        return new FileNodeProcessorStore(false, new HashMap<>(),
+            new TsFileResource(OverflowChangeType.NO_CHANGE, null),
+            new ArrayList<>(), FileNodeProcessorStatus.NONE, 0);
+      }
+      try (FileInputStream inputStream = new FileInputStream(fileNodeRestoreFilePath)) {
+        return FileNodeProcessorStore.deSerialize(inputStream);
       } catch (IOException e) {
+        LOGGER
+            .error("Failed to deserialize the FileNodeRestoreFile {}, {}", fileNodeRestoreFilePath,
+                e);
         throw new FileNodeProcessorException(e);
       }
-      return processorStore;
     }
   }
 
