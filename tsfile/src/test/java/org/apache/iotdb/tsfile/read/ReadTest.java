@@ -1,15 +1,19 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements.  See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with the License.  You may obtain
- * a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.read;
@@ -56,36 +60,6 @@ public class ReadTest {
       roTsFile.close();
     }
     FileGenerator.after();
-  }
-
-  @Test
-  public void tmp() throws IOException {
-    ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1.s6"));
-    paths.add(new Path("d2.s1"));
-
-//    IExpression expression1 = new GlobalTimeExpression(TimeFilter.gt(1480562618996L));
-    IExpression expression1 = new GlobalTimeExpression(TimeFilter.gt(1480562664760L));
-    IExpression expression2 = new GlobalTimeExpression(TimeFilter.ltEq(1480562664765L));
-    IExpression expression = BinaryExpression.and(expression1, expression2);
-
-    QueryExpression queryExpression = QueryExpression.create(paths, expression);
-
-    QueryDataSet queryDataSet = roTsFile.query(queryExpression);
-
-    int cnt = 0;
-    while (queryDataSet.hasNext()) {
-      RowRecord r = queryDataSet.next();
-//      if (cnt == 1) {
-//        assertEquals(1480562618970L, r.getTimestamp());
-//      } else if (cnt == 2) {
-//        assertEquals(1480562618971L, r.getTimestamp());
-//      } else if (cnt == 3) {
-//        assertEquals(1480562618973L, r.getTimestamp());
-//      }
-      System.out.println(r);
-      cnt++;
-    }
   }
 
   @Test

@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,11 +52,36 @@ public class ReadInPartitionTest {
   }
 
   @Test
-  public void test() throws IOException {
+  public void test1() throws IOException {
     HashMap<String, Long> params = new HashMap<>();
-//    params.put(QueryConstant.PARTITION_START_OFFSET, 0L);
-//    params.put(QueryConstant.PARTITION_END_OFFSET, 603242L);
+    params.put(QueryConstant.PARTITION_START_OFFSET, 0L);
+    params.put(QueryConstant.PARTITION_END_OFFSET, 603242L);
 
+    roTsFile = new ReadOnlyTsFile(reader, params);
+
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("d1.s6"));
+    paths.add(new Path("d2.s1"));
+    QueryExpression queryExpression = QueryExpression.create(paths, null);
+
+    QueryDataSet queryDataSet = roTsFile.query(queryExpression);
+
+    int cnt = 0;
+    while (queryDataSet.hasNext()) {
+      RowRecord r = queryDataSet.next();
+      cnt++;
+      if (cnt == 1) {
+        Assert.assertEquals("1480562618000\t0.0\t1", r.toString());
+      } else if (cnt == 9352) {
+        Assert.assertEquals("1480562664755\tnull\t467551", r.toString());
+      }
+    }
+    Assert.assertEquals(9353, cnt);
+  }
+
+  @Test
+  public void test2() throws IOException {
+    HashMap<String, Long> params = new HashMap<>();
     params.put(QueryConstant.PARTITION_START_OFFSET, 603242L);
     params.put(QueryConstant.PARTITION_END_OFFSET, 993790L);
 
@@ -71,17 +97,62 @@ public class ReadInPartitionTest {
     int cnt = 0;
     while (queryDataSet.hasNext()) {
       RowRecord r = queryDataSet.next();
-//      if (cnt == 1) {
-//        assertEquals(1480562618970L, r.getTimestamp());
-//      } else if (cnt == 2) {
-//        assertEquals(1480562618971L, r.getTimestamp());
-//      } else if (cnt == 3) {
-//        assertEquals(1480562618973L, r.getTimestamp());
-//      }
-      System.out.println(r);
+      cnt++;
+      if (cnt == 1) {
+        Assert.assertEquals("1480562664765\tnull\t467651", r.toString());
+      }
+    }
+    Assert.assertEquals(1, cnt);
+  }
+
+  @Test
+  public void test3() throws IOException {
+    HashMap<String, Long> params = new HashMap<>();
+    params.put(QueryConstant.PARTITION_START_OFFSET, 993790L);
+    params.put(QueryConstant.PARTITION_END_OFFSET, 1608255L);
+
+    roTsFile = new ReadOnlyTsFile(reader, params);
+
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("d1.s6"));
+    paths.add(new Path("d2.s1"));
+    QueryExpression queryExpression = QueryExpression.create(paths, null);
+
+    QueryDataSet queryDataSet = roTsFile.query(queryExpression);
+
+    int cnt = 0;
+    while (queryDataSet.hasNext()) {
+      RowRecord r = queryDataSet.next();
+      cnt++;
+      if (cnt == 1) {
+        Assert.assertEquals("1480562664770\t5196.0\t467701", r.toString());
+      } else if (cnt == 9936) {
+        Assert.assertEquals("1480562711445\tnull\t934451", r.toString());
+      }
+    }
+    Assert.assertEquals(9337, cnt);
+  }
+
+  @Test
+  public void test4() throws IOException {
+    HashMap<String, Long> params = new HashMap<>();
+    params.put(QueryConstant.PARTITION_START_OFFSET, 1608255L);
+    params.put(QueryConstant.PARTITION_END_OFFSET, 1999353L);
+
+    roTsFile = new ReadOnlyTsFile(reader, params);
+
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("d1.s6"));
+    paths.add(new Path("d2.s1"));
+    QueryExpression queryExpression = QueryExpression.create(paths, null);
+
+    QueryDataSet queryDataSet = roTsFile.query(queryExpression);
+
+    int cnt = 0;
+    while (queryDataSet.hasNext()) {
+      RowRecord r = queryDataSet.next();
       cnt++;
     }
-//    assertEquals(7, cnt);
-
+    Assert.assertEquals(0, cnt);
   }
 }
