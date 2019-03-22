@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -26,5 +26,32 @@ package org.apache.iotdb.db.engine.filenode;
  * After merging, if it's MERGING_CHANGE, MERGING_CHANGE-->CHANGED, otherwise in NO_CHANGE, MERGING_CHANGE-->NO_CHANGE
  */
 public enum OverflowChangeType {
-  NO_CHANGE, CHANGED, MERGING_CHANGE,
+  NO_CHANGE, CHANGED, MERGING_CHANGE;
+
+  public short serialize() {
+    switch (this) {
+      case NO_CHANGE:
+        return 0;
+      case CHANGED:
+        return 1;
+      case MERGING_CHANGE:
+        return 2;
+      default:
+        throw new IllegalStateException("Unsupported type");
+    }
+  }
+
+  public static OverflowChangeType deserialize(short i) {
+    switch (i) {
+      case 0:
+        return NO_CHANGE;
+      case 1:
+        return CHANGED;
+      case 2:
+        return MERGING_CHANGE;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid input %d for OverflowChangeType", i));
+    }
+  }
 }

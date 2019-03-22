@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,10 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.engine.filenode;
 
+import static java.time.ZonedDateTime.ofInstant;
+
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -41,7 +44,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -76,6 +78,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.sync.conf.Constans;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -101,8 +104,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static java.time.ZonedDateTime.ofInstant;
 
 public class FileNodeProcessor extends Processor implements IStatistic {
 
@@ -229,8 +230,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       statParamsHashMap.put(statConstant.name(), new AtomicLong(0));
     }
     statStorageDeltaName =
-        MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
-            + MonitorConstants.FILE_NODE_PATH + MonitorConstants.MONITOR_PATH_SEPERATOR
+        MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPARATOR
+            + MonitorConstants.FILE_NODE_PATH + MonitorConstants.MONITOR_PATH_SEPARATOR
             + processorName.replaceAll("\\.", "_");
 
     this.parameters = new HashMap<>();
@@ -251,11 +252,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     fileNodeRestoreFilePath = new File(dataDir, processorName + RESTORE_FILE_SUFFIX).getPath();
     try {
       fileNodeProcessorStore = readStoreFromDisk();
-    } catch (FileNodeProcessorException e) {
+    } catch (FileNodeProcessorException | IOException  e) {
       LOGGER.error(
           "The fileNode processor {} encountered an error when recoverying restore " +
-              "information.",
-          processorName, e);
+              "information.", processorName);
       throw new FileNodeProcessorException(e);
     }
     // TODO deep clone the lastupdate time
@@ -287,8 +287,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     // RegistStatService
     if (TsFileDBConf.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
-      registStatMetadata();
-      statMonitor.registStatistics(statStorageDeltaName, this);
+      registerStatMetadata();
+      statMonitor.registerStatistics(statStorageDeltaName, this);
     }
     try {
       versionController = new SimpleFileVersionController(fileNodeDirPath);
@@ -303,15 +303,15 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   @Override
-  public void registStatMetadata() {
+  public void registerStatMetadata() {
     Map<String, String> hashMap = new HashMap<>();
     for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
         MonitorConstants.FileNodeProcessorStatConstants.values()) {
       hashMap
-          .put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
-              MonitorConstants.DATA_TYPE);
+          .put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPARATOR + statConstant.name(),
+              MonitorConstants.DATA_TYPE_INT64);
     }
-    StatMonitor.getInstance().registStatStorageGroup(hashMap);
+    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
   }
 
   @Override
@@ -320,7 +320,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
         MonitorConstants.FileNodeProcessorStatConstants.values()) {
       list.add(
-          statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name());
+          statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPARATOR + statConstant.name());
     }
     return list;
   }
@@ -724,8 +724,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       newMultiPassLock.readLock().unlock();
       newMultiPassTokenSet.remove(token);
       LOGGER.debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token,
-              getProcessorName(),
-              newMultiPassTokenSet, newMultiPassLock);
+          getProcessorName(),
+          newMultiPassTokenSet, newMultiPassLock);
       return true;
     } else if (oldMultiPassTokenSet != null && oldMultiPassTokenSet.contains(token)) {
       // remove token first, then unlock
@@ -837,9 +837,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                 appendFile.getFile().getAbsolutePath()));
       }
       if (!originFile.renameTo(targetFile)) {
-        LOGGER.warn("File renaming failed when appending new file. Origin: {}, target: {}",
-            originFile.getPath(),
-            targetFile.getPath());
+        LOGGER.warn("File renaming failed when appending new file. Origin: {}, Target: {}",
+            originFile.getPath(), targetFile.getPath());
       }
       // append the new tsfile
       this.newFileNodes.add(appendFile);
@@ -885,8 +884,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           tsFileResource.getEndTime(entry.getKey()) >= entry.getValue()
           && tsFileResource.getStartTime(entry.getKey()) <= appendFile
           .getEndTime(entry.getKey())) {
-        String relativeFilePath = "postback" + File.separator + uuid + File.separator + "backup"
-            + File.separator + tsFileResource.getRelativePath();
+        String relativeFilePath =
+            Constans.SYNC_SERVER + File.separatorChar + uuid + File.separatorChar
+                + Constans.BACK_UP_DIRECTORY_NAME
+                + File.separatorChar + tsFileResource.getRelativePath();
         File newFile = new File(
             Directories.getInstance().getTsFileFolder(tsFileResource.getBaseDirIndex()),
             relativeFilePath);
@@ -1762,7 +1763,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     if (TsFileDBConf.isEnableStatMonitor()) {
       // remove the monitor
       LOGGER.info("Deregister the filenode processor: {} from monitor.", getProcessorName());
-      StatMonitor.getInstance().deregistStatistics(statStorageDeltaName);
+      StatMonitor.getInstance().deregisterStatistics(statStorageDeltaName);
     }
     closeBufferWrite();
     closeOverflow();
@@ -1793,9 +1794,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreLock) {
-      SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
-      try {
-        serializeUtil.serialize(fileNodeProcessorStore, fileNodeRestoreFilePath);
+      try (FileOutputStream fileOutputStream = new FileOutputStream(fileNodeRestoreFilePath)) {
+        fileNodeProcessorStore.serialize(fileOutputStream);
         LOGGER.debug("The filenode processor {} writes restore information to the restore file",
             getProcessorName());
       } catch (IOException e) {
@@ -1804,20 +1804,23 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  private FileNodeProcessorStore readStoreFromDisk() throws FileNodeProcessorException {
+  private FileNodeProcessorStore readStoreFromDisk() throws FileNodeProcessorException, IOException {
 
     synchronized (fileNodeRestoreLock) {
-      FileNodeProcessorStore processorStore;
-      SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
-      try {
-        processorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
-            .orElse(new FileNodeProcessorStore(false, new HashMap<>(),
-                new TsFileResource(null, false),
-                new ArrayList<>(), FileNodeProcessorStatus.NONE, 0));
+      File restoreFile = new File(fileNodeRestoreFilePath);
+      if (!restoreFile.exists() || restoreFile.length() == 0) {
+        return new FileNodeProcessorStore(false, new HashMap<>(),
+            new TsFileResource(null, false),
+            new ArrayList<>(), FileNodeProcessorStatus.NONE, 0);
+      }
+      try (FileInputStream inputStream = new FileInputStream(fileNodeRestoreFilePath)) {
+        return FileNodeProcessorStore.deSerialize(inputStream);
       } catch (IOException e) {
+        LOGGER
+            .error("Failed to deserialize the FileNodeRestoreFile {}, {}", fileNodeRestoreFilePath,
+                e);
         throw new FileNodeProcessorException(e);
       }
-      return processorStore;
     }
   }
 

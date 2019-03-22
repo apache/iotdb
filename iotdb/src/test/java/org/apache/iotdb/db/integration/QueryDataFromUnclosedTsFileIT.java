@@ -53,7 +53,6 @@ public class QueryDataFromUnclosedTsFileIT {
   @Before
   public void setUp() throws IOException, FileNodeManagerException {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(true);
     bufferWriteFileSize = IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold();
     //IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(100);
     sgManager  = FileNodeManager.getInstance();
@@ -84,7 +83,7 @@ public class QueryDataFromUnclosedTsFileIT {
     sgManager.addTimeSeries(new Path("root.test.d2", "s1"), TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY, Collections
         .emptyMap());
     long time = System.currentTimeMillis();
-    for (int i=0; i < 20000000; i++) {
+    for (int i=0; i < 200000; i++) {
       sgManager.insert(new TSRecord(i, "root.test.d1").addTuple(new IntDataPoint("s1", i)), false);
       sgManager.insert(new TSRecord(i, "root.test.d2").addTuple(new IntDataPoint("s1", i)), false);
     }

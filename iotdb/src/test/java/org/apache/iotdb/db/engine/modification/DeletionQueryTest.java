@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -110,6 +111,7 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
+    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
     assertEquals(50, count);
   }
 
@@ -141,6 +143,7 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
+    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
     assertEquals(70, count);
   }
 
@@ -183,6 +186,7 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
+    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
     assertEquals(150, count);
   }
 
@@ -225,6 +229,7 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
+    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
     assertEquals(170, count);
   }
 
@@ -289,6 +294,7 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
+    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
     assertEquals(100, count);
   }
 }
