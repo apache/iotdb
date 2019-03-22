@@ -125,7 +125,7 @@ public class EngineQueryRouter {
       }
     } else {
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(nextJobId,
-          selectedSeries, aggres, expression);
+          selectedSeries, aggres, null);
       return engineExecutor.executeWithOutTimeGenerator(context);
     }
   }
@@ -203,10 +203,10 @@ public class EngineQueryRouter {
 
   /**
    * execute fill query.
+   *
    * @param fillPaths select path list
    * @param queryTime timestamp
    * @param fillType type IFill map
-   * @return
    */
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType)
       throws FileNodeManagerException, PathErrorException, IOException, ProcessorException {
@@ -240,9 +240,8 @@ public class EngineQueryRouter {
       // if the current interval does not overlap with the previous, simply append it.
       if (merged.isEmpty() || merged.getLast().right < interval.left) {
         merged.add(interval);
-      }
-      // otherwise, there is overlap, so we merge the current and previous intervals.
-      else {
+      } else {
+        // otherwise, there is overlap, so we merge the current and previous intervals.
         merged.getLast().right = Math.max(merged.getLast().right, interval.right);
       }
     }

@@ -99,14 +99,8 @@ public class EngineExecutorWithoutTimeGenerator {
         throw new FileNodeManagerException(e);
       }
 
-      if (tsFilesReader == null) {
-        //only have unsequence data.
-        readersOfSelectedSeries.add(unSeqMergeReader);
-      } else {
-        //merge sequence data with unsequence data.
-        readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
-      }
-
+      //merge sequence data with unsequence data.
+      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
     }
 
     try {
@@ -159,13 +153,8 @@ public class EngineExecutorWithoutTimeGenerator {
         throw new FileNodeManagerException(e);
       }
 
-      if (tsFilesReader == null) {
-        //only have unsequence data.
-        readersOfSelectedSeries.add(unSeqMergeReader);
-      } else {
-        //merge sequence data with unsequence data.
-        readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
-      }
+      //merge sequence data with unsequence data.
+      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
     }
 
     try {

@@ -46,33 +46,37 @@ import org.apache.iotdb.tsfile.utils.Pair;
 public abstract class QueryProcessExecutor {
 
   protected ThreadLocal<Integer> fetchSize = new ThreadLocal<>();
-  private EngineQueryRouter queryRouter = new EngineQueryRouter();
+  protected EngineQueryRouter queryRouter = new EngineQueryRouter();
 
   public QueryProcessExecutor() {
   }
 
-  public QueryDataSet processQuery(PhysicalPlan plan)
+  /**
+   * process query plan of qp layer, construct queryDataSet.
+   * @param queryPlan QueryPlan
+   * @return QueryDataSet
+   */
+  public QueryDataSet processQuery(QueryPlan queryPlan)
       throws IOException, FileNodeManagerException, PathErrorException,
       QueryFilterOptimizationException, ProcessorException {
-    QueryPlan queryPlan = (QueryPlan) plan;
 
     QueryExpression queryExpression = QueryExpression.create().setSelectSeries(queryPlan.getPaths())
         .setExpression(queryPlan.getExpression());
-    if (plan instanceof GroupByPlan) {
-      GroupByPlan groupByPlan = (GroupByPlan) plan;
+    if (queryPlan instanceof GroupByPlan) {
+      GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
       return groupBy(groupByPlan.getPaths(), groupByPlan.getAggregations(),
           groupByPlan.getExpression(), groupByPlan.getUnit(), groupByPlan.getOrigin(),
           groupByPlan.getIntervals());
     }
 
-    if (plan instanceof AggregationPlan) {
-      return aggregate(plan.getPaths(), plan.getAggregations(),
-          ((AggregationPlan) plan).getExpression());
+    if (queryPlan instanceof AggregationPlan) {
+      return aggregate(queryPlan.getPaths(), queryPlan.getAggregations(),
+          ((AggregationPlan) queryPlan).getExpression());
     }
 
-    if (plan instanceof FillQueryPlan) {
-      FillQueryPlan fillQueryPlan = (FillQueryPlan) plan;
-      return fill(plan.getPaths(), fillQueryPlan.getQueryTime(), fillQueryPlan.getFillType());
+    if (queryPlan instanceof FillQueryPlan) {
+      FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
+      return fill(queryPlan.getPaths(), fillQueryPlan.getQueryTime(), fillQueryPlan.getFillType());
     }
     return queryRouter.query(queryExpression);
   }

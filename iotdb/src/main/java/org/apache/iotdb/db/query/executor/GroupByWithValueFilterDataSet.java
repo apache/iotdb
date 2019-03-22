@@ -84,11 +84,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
       function.init();
     }
 
-    List<Long> timestampList = new ArrayList<>(timeStampFetchSize);
+    long[] timestampArray = new long[timeStampFetchSize];
+    int timeArrayLength = 0;
     if (hasCachedTimestamp) {
       if (timestamp < endTime) {
         hasCachedTimestamp = false;
-        timestampList.add(timestamp);
+        timestampArray[timeArrayLength++] = timestamp;
       } else {
         //所有域均为空
         return constructRowRecord();
@@ -103,7 +104,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
         }
         timestamp = timestampGenerator.next();
         if (timestamp < endTime) {
-          timestampList.add(timestamp);
+          timestampArray[timeArrayLength++] = timestamp;
         } else {
           hasCachedTimestamp = true;
           break;
@@ -112,10 +113,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
 
       //cal result using timestamp list
       for (int i = 0; i < selectedSeries.size(); i++) {
-        functions.get(i).calcAggregationUsingTimestamps(timestampList, allDataReaderList.get(i));
+        functions.get(i).calcAggregationUsingTimestamps(
+            timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
 
-      timestampList.clear();
+      timeArrayLength = 0;
       //judge if it's end
       if (timestamp >= endTime) {
         hasCachedTimestamp = true;
@@ -123,10 +125,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
       }
     }
 
-    if(!timestampList.isEmpty()){
+    if (timeArrayLength > 0) {
       //cal result using timestamp list
       for (int i = 0; i < selectedSeries.size(); i++) {
-        functions.get(i).calcAggregationUsingTimestamps(timestampList, allDataReaderList.get(i));
+        functions.get(i).calcAggregationUsingTimestamps(
+            timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
     }
     return constructRowRecord();

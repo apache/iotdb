@@ -51,7 +51,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -153,7 +152,7 @@ public class SeriesReaderFactory {
     // UnSequence merge reader
     IPointReader unSeqMergeReader = createUnSeqMergeReader(overflowSeriesDataSource,
         singleSeriesExpression.getFilter());
-    if (seriesInTsFileReader == null || !seriesInTsFileReader.hasNext()) {
+    if (!seriesInTsFileReader.hasNext()) {
       //only have unsequence data.
       return unSeqMergeReader;
     } else {
@@ -184,8 +183,15 @@ public class SeriesReaderFactory {
     return new SealedTsFilesReader(seriesInTsFileReader, context);
   }
 
-  public static List<EngineReaderByTimeStamp> getByTimestampReadersOfSelectedPaths(long jobId , List<Path> paths,
-      QueryContext context) throws IOException, FileNodeManagerException {
+  /**
+   * construct ByTimestampReader, include sequential data and unsequential data.
+   * @param jobId query jobId
+   * @param paths selected series path
+   * @param context query context
+   * @return the list of EngineReaderByTimeStamp
+   */
+  public static List<EngineReaderByTimeStamp> getByTimestampReadersOfSelectedPaths(long jobId,
+      List<Path> paths, QueryContext context) throws IOException, FileNodeManagerException {
 
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
@@ -204,7 +210,7 @@ public class SeriesReaderFactory {
       PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
           .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
 
-      if (tsFilesReader == null || !tsFilesReader.hasNext()) {
+      if (!tsFilesReader.hasNext()) {
         mergeReaderByTimestamp
             .addReaderWithPriority(unSeqMergeReader, PriorityMergeReader.HIGH_PRIORITY);
       } else {

@@ -51,7 +51,6 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.LoadDataUtils;
@@ -182,13 +181,13 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression)
       throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
       PathErrorException, IOException {
-    return new EngineQueryRouter().aggregate(paths, aggres, expression);
+    return queryRouter.aggregate(paths, aggres, expression);
   }
 
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException {
-    return new EngineQueryRouter().fill(fillPaths, queryTime, fillTypes);
+    return queryRouter.fill(fillPaths, queryTime, fillTypes);
   }
 
   @Override
@@ -196,7 +195,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       long unit, long origin, List<Pair<Long, Long>> intervals)
       throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
       PathErrorException, IOException {
-    return new EngineQueryRouter().groupBy(paths, aggres, expression, unit, origin, intervals);
+    return queryRouter.groupBy(paths, aggres, expression, unit, origin, intervals);
   }
 
   @Override
@@ -520,8 +519,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               if (!columnSchema.getType().equals(dataType)
                   || !columnSchema.getEncodingType().equals(encoding)) {
                 throw new ProcessorException(String.format(
-                    "The resultDataType or encoding of the last node %s is conflicting in the storage group %s",
-                    lastNode, fileNodePath));
+                    "The resultDataType or encoding of the last node %s is conflicting "
+                        + "in the storage group %s", lastNode, fileNodePath));
               }
               mManager.addPathToMTree(path.getFullPath(), dataType, encoding, compressor, props);
               numSchemaMap.put(lastNode, numSchemaMap.get(lastNode) + 1);
@@ -535,7 +534,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               if (isNewMeasurement) {
                 // add time series to schema
                 fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, props);
-                //TODO fileNodeManager.addTimeSeries(path, resultDataType, encoding, compressor, encodingArgs);
+                //TODO fileNodeManager.addTimeSeries(
+                //TODO path, resultDataType, encoding, compressor, encodingArgs);
               }
               // fileNodeManager.closeOneFileNode(namespacePath);
             } catch (FileNodeManagerException e) {

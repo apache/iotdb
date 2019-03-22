@@ -132,6 +132,7 @@ public class AggregateEngineExecutor {
 
   /**
    * calculation aggregate result with only time filter or no filter for one series.
+   *
    * @param function aggregate function
    * @param sequenceReader sequence data reader
    * @param unSequenceReader unsequence data reader
@@ -284,23 +285,24 @@ public class AggregateEngineExecutor {
       List<AggregateFunction> aggregateFunctions,
       EngineTimeGenerator timestampGenerator,
       List<EngineReaderByTimeStamp> readersOfSelectedSeries)
-      throws IOException, ProcessorException {
+      throws IOException {
 
     while (timestampGenerator.hasNext()) {
 
       //generate timestamps for aggregate
-      List<Long> timestamps = new ArrayList<>(aggregateFetchSize);
+      long[] timeArray = new long[aggregateFetchSize];
+      int timeArrayLength = 0;
       for (int cnt = 0; cnt < aggregateFetchSize; cnt++) {
         if (!timestampGenerator.hasNext()) {
           break;
         }
-        timestamps.add(timestampGenerator.next());
+        timeArray[timeArrayLength++] = timestampGenerator.next();
       }
 
       //cal part of aggregate result
       for (int i = 0; i < readersOfSelectedSeries.size(); i++) {
-        aggregateFunctions.get(i)
-            .calcAggregationUsingTimestamps(timestamps, readersOfSelectedSeries.get(i));
+        aggregateFunctions.get(i).calcAggregationUsingTimestamps(timeArray, timeArrayLength,
+            readersOfSelectedSeries.get(i));
       }
     }
 
@@ -313,6 +315,7 @@ public class AggregateEngineExecutor {
 
   /**
    * using aggregate result data list construct QueryDataSet.
+   *
    * @param aggreResultDataList aggregate result data list
    */
   private QueryDataSet constructDataSet(List<AggreResultData> aggreResultDataList)

@@ -102,7 +102,7 @@ public class EngineNodeConstructor {
     PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
         .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), filter);
 
-    if (tsFilesReader == null || !tsFilesReader.hasNext()) {
+    if (!tsFilesReader.hasNext()) {
       //only have unsequence data.
       return unSeqMergeReader;
     } else {

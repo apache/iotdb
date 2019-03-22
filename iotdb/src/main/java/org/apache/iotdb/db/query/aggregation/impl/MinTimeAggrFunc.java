@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
@@ -83,7 +82,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException, ProcessorException {
+      long bound) throws IOException {
     if (resultData.isSetValue()) {
       return;
     }
@@ -137,16 +136,16 @@ public class MinTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calcAggregationUsingTimestamps(List<Long> timestamps,
+  public void calcAggregationUsingTimestamps(long[] timestamps, int length,
       EngineReaderByTimeStamp dataReader) throws IOException {
     if (resultData.isSetValue()) {
       return;
     }
-    for (long time : timestamps) {
-      TsPrimitiveType value = dataReader.getValueInTimestamp(time);
+    for (int i = 0; i < length; i++) {
+      TsPrimitiveType value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
         resultData.setTimestamp(0);
-        resultData.setLongRet(time);
+        resultData.setLongRet(timestamps[i]);
         return;
       }
     }

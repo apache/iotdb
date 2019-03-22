@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
@@ -63,11 +64,7 @@ public abstract class IFill {
     PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
         .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
 
-    if (sequenceReader == null) {
-      allDataReader = unSeqMergeReader;
-    } else {
-      allDataReader = new AllDataReader(sequenceReader, unSeqMergeReader);
-    }
+    allDataReader = new AllDataReader(sequenceReader, unSeqMergeReader);
   }
 
   public abstract IPointReader getFillResult() throws IOException;

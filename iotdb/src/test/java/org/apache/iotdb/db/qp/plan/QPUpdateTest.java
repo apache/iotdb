@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -122,7 +123,7 @@ public class QPUpdateTest {
     // query to assert
     sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2);
     String[] expect = {"10	33000	null", "20	null	10"};
     int i = 0;
     while (queryDataSet.hasNext()) {
@@ -144,7 +145,7 @@ public class QPUpdateTest {
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
     // RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
     // RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2);
 
     String[] expect = {"20	null	10"};
     int i = 0;
@@ -167,7 +168,7 @@ public class QPUpdateTest {
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
     // RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
     // RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2);
 
     String[] expect = {"20	null	10"};
     int i = 0;
@@ -192,7 +193,7 @@ public class QPUpdateTest {
     // query to assert
     sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2);
 
     String[] expect = {"13	50	40", "20	null	10"};
     int i = 0;

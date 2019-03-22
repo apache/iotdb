@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.aggregation;
 
 import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
@@ -91,7 +90,7 @@ public abstract class AggregateFunction {
 
   /**
    * <p>
-   *  Calculate the aggregation with data in unsequenceReader.
+   * Calculate the aggregation with data in unsequenceReader.
    * </p>
    *
    * @param unsequenceReader unsequence data reader
@@ -101,7 +100,7 @@ public abstract class AggregateFunction {
 
   /**
    * <p>
-   *  Calculate the aggregation with data whose timestamp is less than bound in unsequenceReader.
+   * Calculate the aggregation with data whose timestamp is less than bound in unsequenceReader.
    * </p>
    *
    * @param unsequenceReader unsequence data reader
@@ -119,19 +118,19 @@ public abstract class AggregateFunction {
    * @throws IOException TsFile data read error
    * @throws ProcessorException wrong aggregation method parameter
    */
-  public abstract void calcAggregationUsingTimestamps(List<Long> timestamps,
+  public abstract void calcAggregationUsingTimestamps(long[] timestamps, int length,
       EngineReaderByTimeStamp dataReader) throws IOException;
 
   /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result
    * does not need to compute the remaining data, it returns true.
+   *
    * @return If the aggregation result has been calculated return true, else return false.
    */
   public abstract boolean isCalculatedAggregationResult();
 
   /**
    * Return data type of aggregation function result data.
-   * @return
    */
   public TSDataType getResultDataType() {
     return resultDataType;
