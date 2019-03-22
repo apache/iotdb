@@ -1,3 +1,21 @@
+/**
+  * Licensed to the Apache Software Foundation (ASF) under one
+  * or more contributor license agreements.  See the NOTICE file
+  * distributed with this work for additional information
+  * regarding copyright ownership.  The ASF licenses this file
+  * to you under the Apache License, Version 2.0 (the
+  * "License"); you may not use this file except in compliance
+  * with the License.  You may obtain a copy of the License at
+  *
+  *     http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing,
+  * software distributed under the License is distributed on an
+  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  * KIND, either express or implied.  See the License for the
+  * specific language governing permissions and limitations
+  * under the License.
+  */
 package org.apache.iotdb.tsfile
 
 import java.io.File
@@ -71,6 +89,14 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
 
   }
 
+//  test("test write to HDFS") {
+//    val df = spark.read.tsfile(tsfile2)
+//    df.write.tsfile(outputHDFSPath)
+//    val newDf = spark.read.tsfile(outputHDFSPathFile)
+//    val count = newDf.count()
+//    Assert.assertEquals(TsFileWrite.largeNum, count)
+//  }
+
   test("test write 1") {
     val df = spark.read.tsfile(tsfile1)
     df.write.tsfile(outputPath)
@@ -83,14 +109,6 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     df.write.tsfile(outputPath2)
     val newDf = spark.read.tsfile(outputPathFile2)
     Assert.assertEquals(newDf.collectAsList(), df.collectAsList())
-  }
-
-  test("test write to HDFS") {
-    //    val df = spark.read.tsfile(tsfile2)
-    //    df.write.tsfile(outputHDFSPath)
-    //    val newDf = spark.read.tsfile(outputHDFSPathFile)
-    //    val count = newDf.count()
-    //    Assert.assertEquals(TsFileWrite.largeNum, count)
   }
 
   test("testSelect * from tsfile1") {
