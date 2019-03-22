@@ -115,8 +115,8 @@ public class FileNodeManager implements IStatistic, IService {
     //TODO merge this with label A
     if (TsFileDBConf.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
-      registStatMetadata();
-      statMonitor.registStatistics(MonitorConstants.STAT_STORAGE_DELTA_NAME, this);
+      registerStatMetadata();
+      statMonitor.registerStatistics(MonitorConstants.STAT_STORAGE_DELTA_NAME, this);
     }
   }
 
@@ -146,7 +146,7 @@ public class FileNodeManager implements IStatistic, IService {
     List<String> list = new ArrayList<>();
     for (MonitorConstants.FileNodeManagerStatConstants statConstant :
         MonitorConstants.FileNodeManagerStatConstants.values()) {
-      list.add(MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR
+      list.add(MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPARATOR
           + statConstant.name());
     }
     return list;
@@ -164,18 +164,18 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   /**
-   * Init Stat MetaDta
+   * Init Stat MetaDta.
    */
   @Override
-  public void registStatMetadata() {
+  public void registerStatMetadata() {
     Map<String, String> hashMap = new HashMap<>();
     for (MonitorConstants.FileNodeManagerStatConstants statConstant :
         MonitorConstants.FileNodeManagerStatConstants.values()) {
       hashMap
-          .put(MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR +
-              statConstant.name(), MonitorConstants.DATA_TYPE);
+          .put(MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPARATOR
+              + statConstant.name(), MonitorConstants.DATA_TYPE_INT64);
     }
-    StatMonitor.getInstance().registStatStorageGroup(hashMap);
+    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
   }
 
   /**
@@ -533,9 +533,9 @@ public class FileNodeManager implements IStatistic, IService {
           }
           try {
             overflowProcessor.getLogNode().write(new DeletePlan(timestamp,
-                    new Path(deviceId + "." + measurementId)));
+                new Path(deviceId + "." + measurementId)));
             bufferWriteProcessor.getLogNode().write(new DeletePlan(timestamp,
-                    new Path(deviceId + "." + measurementId)));
+                new Path(deviceId + "." + measurementId)));
           } catch (IOException e) {
             throw new FileNodeManagerException(e);
           }
@@ -553,6 +553,39 @@ public class FileNodeManager implements IStatistic, IService {
       }
     } finally {
       fileNodeProcessor.writeUnlock();
+    }
+  }
+
+  private void delete(String processorName,
+      Iterator<Map.Entry<String, FileNodeProcessor>> processorIterator)
+      throws FileNodeManagerException {
+    if (!processorMap.containsKey(processorName)) {
+      LOGGER.warn("The processorMap doesn't contain the filenode processor {}.", processorName);
+      return;
+    }
+    LOGGER.info("Try to delete the filenode processor {}.", processorName);
+    FileNodeProcessor processor = processorMap.get(processorName);
+    if (!processor.tryWriteLock()) {
+      LOGGER.warn("Can't get the write lock of the filenode processor {}.", processorName);
+      return;
+    }
+
+    try {
+      if (!processor.canBeClosed()) {
+        LOGGER.warn("The filenode processor {} can't be deleted.", processorName);
+        return;
+      }
+
+      try {
+        LOGGER.info("Delete the filenode processor {}.", processorName);
+        processor.delete();
+        processorIterator.remove();
+      } catch (ProcessorException e) {
+        LOGGER.error("Delete the filenode processor {} by iterator error.", processorName, e);
+        throw new FileNodeManagerException(e);
+      }
+    } finally {
+      processor.writeUnlock();
     }
   }
 
@@ -590,40 +623,6 @@ public class FileNodeManager implements IStatistic, IService {
     // change the type of tsfile to overflowed
     fileNodeProcessor.changeTypeToChangedForDelete(deviceId, timestamp);
     fileNodeProcessor.setOverflowed(true);
-  }
-
-
-  private void delete(String processorName,
-      Iterator<Map.Entry<String, FileNodeProcessor>> processorIterator)
-      throws FileNodeManagerException {
-    if (!processorMap.containsKey(processorName)) {
-      LOGGER.warn("The processorMap doesn't contain the filenode processor {}.", processorName);
-      return;
-    }
-    LOGGER.info("Try to delete the filenode processor {}.", processorName);
-    FileNodeProcessor processor = processorMap.get(processorName);
-    if (!processor.tryWriteLock()) {
-      LOGGER.warn("Can't get the write lock of the filenode processor {}.", processorName);
-      return;
-    }
-
-    try {
-      if (!processor.canBeClosed()) {
-        LOGGER.warn("The filenode processor {} can't be deleted.", processorName);
-        return;
-      }
-
-      try {
-        LOGGER.info("Delete the filenode processor {}.", processorName);
-        processor.delete();
-        processorIterator.remove();
-      } catch (ProcessorException e) {
-        LOGGER.error("Delete the filenode processor {} by iterator error.", processorName, e);
-        throw new FileNodeManagerException(e);
-      }
-    } finally {
-      processor.writeUnlock();
-    }
   }
 
   /**
@@ -700,7 +699,7 @@ public class FileNodeManager implements IStatistic, IService {
    * @param fileNodeName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
-  public boolean appendFileToFileNode(String fileNodeName, IntervalFileNode appendFile,
+  public boolean appendFileToFileNode(String fileNodeName, TsFileResource appendFile,
       String appendFilePath) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(fileNodeName, true);
     try {
@@ -729,7 +728,7 @@ public class FileNodeManager implements IStatistic, IService {
    * @param fileNodeName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
-  public List<String> getOverlapFilesFromFileNode(String fileNodeName, IntervalFileNode appendFile,
+  public List<String> getOverlapFilesFromFileNode(String fileNodeName, TsFileResource appendFile,
       String uuid) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(fileNodeName, true);
     List<String> overlapFiles;

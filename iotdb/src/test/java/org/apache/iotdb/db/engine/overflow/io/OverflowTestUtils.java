@@ -47,7 +47,7 @@ public class OverflowTestUtils {
     return fileSchema;
   }
 
-  public static void produceInsertData(OverflowSupport support) {
+  public static void produceInsertData(OverflowMemtable support) {
     support.insert(getData(deviceId1, measurementId1, dataType1, String.valueOf(1), 1));
     support.insert(getData(deviceId1, measurementId1, dataType1, String.valueOf(3), 3));
     support.insert(getData(deviceId1, measurementId1, dataType1, String.valueOf(2), 2));

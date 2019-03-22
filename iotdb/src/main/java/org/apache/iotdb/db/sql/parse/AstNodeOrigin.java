@@ -31,7 +31,6 @@ package org.apache.iotdb.db.sql.parse;
  * So, when expanding the definition of v while analyzing the top-level query, we tag each AstNode
  * with a reference to an AstNodeOrign describing v and its usage within the query.
  */
-
 public class AstNodeOrigin {
 
   private final String objectType;

@@ -43,15 +43,10 @@ To use IoTDB, you need to have:
 
 1. Java >= 1.8 (Please make sure the environment path has been set)
 2. Maven >= 3.0 (If you want to compile and install IoTDB from source code)
-3. TsFile >= 0.7.0 (TsFile Github page: [https://github.com/apache/incubator-iotdb/tree/master/tsfile](https://github.com/apache/incubator-iotdb/tree/master/tsfile))
-4. IoTDB-JDBC >= 0.7.0 (IoTDB-JDBC Github page: [https://github.com/apache/incubator-iotdb/tree/master/jdbc](https://github.com/apache/incubator-iotdb/tree/master/jdbc))
-
-TODO: TsFile and IoTDB-JDBC dependencies will be removed after the project reconstruct.
 
 ## Installation
 
 IoTDB provides you two installation methods, you can refer to the following suggestions, choose one of them:
-
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
@@ -76,7 +71,7 @@ Now suppose your directory is like this:
 
 ```
 > pwd
-/User/workspace/incubator-iotdb
+/workspace/incubator-iotdb
 
 > ls -l
 incubator-iotdb/     <-- root path
@@ -85,15 +80,15 @@ incubator-iotdb/     <-- root path
 |
 +- jdbc/
 |
-+- tsile/
++- iotdb-cli/
 |
 ...
 |
 +- pom.xml
 ```
 
-Let $IOTDB_HOME = /User/workspace/incubator-iotdb/iotdb/iotdb/
-
+Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb/
+Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli/
 If you are not the first time that building IoTDB, remember deleting the following files:
 
 ```
@@ -105,7 +100,7 @@ Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 
 ```
 > pwd
-/User/workspace/incubator-iotdb
+/workspace/incubator-iotdb
 
 > mvn clean package -pl iotdb -am -Dmaven.test.skip=true
 ```
@@ -173,11 +168,17 @@ After that we start the server. Running the startup script:
 Now let's trying to read and write some data from IoTDB using our Client. To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
 
 ```
+# You can first build cli project
+> pwd
+/workspace/incubator-iotdb
+
+> mvn clean package -pl iotdb-cli -am -Dmaven.test.skip=true
+
 # Unix/OS X
-> $IOTDB_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
+> $IOTDB_CLI_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
 
 # Windows
-> $IOTDB_HOME\bin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
+> $IOTDB_CLI_HOME\bin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
 ```
 
 > NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.

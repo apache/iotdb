@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -35,34 +36,28 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 public class ReadOnlyTsFileTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
   private TsFileSequenceReader fileReader;
-  private int rowCount = 1000;
   private ReadOnlyTsFile tsFile;
 
-  @Before
-  public void before() throws InterruptedException, WriteProcessException, IOException {
+  @Test
+  public void test1() throws InterruptedException, WriteProcessException, IOException {
     TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder = "TS_2DIFF";
+    int rowCount = 1000;
     TsFileGeneratorForTest.generateFile(rowCount, 16 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     tsFile = new ReadOnlyTsFile(fileReader);
-  }
-
-  @After
-  public void after() throws IOException {
+    queryTest(rowCount);
     tsFile.close();
     TsFileGeneratorForTest.after();
   }
 
-  @Test
-  public void queryTest() throws IOException {
+  private void queryTest(int rowCount) throws IOException {
     Filter filter = TimeFilter.lt(1480562618100L);
     Filter filter2 = ValueFilter.gt(new Binary("dog"));
     Filter filter3 = FilterFactory
@@ -111,6 +106,38 @@ public class ReadOnlyTsFileTest {
       count++;
     }
     Assert.assertEquals(101, count);
+  }
 
+  @Test
+  public void test2() throws InterruptedException, WriteProcessException, IOException {
+    int minRowCount = 1000, maxRowCount=100000;
+    TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder = "TS_2DIFF";
+    TsFileGeneratorForTest.generateFile(minRowCount, maxRowCount, 16 * 1024 * 1024, 10000);
+    fileReader = new TsFileSequenceReader(FILE_PATH);
+    tsFile = new ReadOnlyTsFile(fileReader);
+    queryTest2();
+    tsFile.close();
+    TsFileGeneratorForTest.after();
+  }
+
+  void queryTest2() throws IOException {
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("d1.s6"));
+    paths.add(new Path("d2.s1"));
+
+    IExpression expression = new GlobalTimeExpression(TimeFilter.gt(1480562664760L));
+
+    QueryExpression queryExpression = QueryExpression.create(paths, expression);
+
+    QueryDataSet queryDataSet = tsFile.query(queryExpression);
+
+    int cnt = 0;
+    while (queryDataSet.hasNext()) {
+      RowRecord r = queryDataSet.next();
+      //System.out.println(r);
+      cnt++;
+    }
+    Assert.assertEquals(10647, cnt);
   }
 }
+

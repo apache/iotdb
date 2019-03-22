@@ -53,6 +53,15 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
   }
 
   public NativeRestorableIOWriter(File file) throws IOException {
+    this(file, true);
+  }
+
+  /**
+   * @param file a given tsfile path you want to (continue to) write
+   * @param autoRepair whether auto repair the tsfile (if it is broken)
+   * @throws IOException if write failed, or the file is broken but autoRepair==false.
+   */
+  public NativeRestorableIOWriter(File file, boolean autoRepair) throws IOException {
     super();
     long fileSize;
     if (!file.exists()) {
@@ -85,20 +94,28 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
     boolean newGroup = true;
 
     TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false);
-    if (fileSize <= magicStringBytes.length) {
-      LOGGER.debug("{} only has magic header, does not worth to recover.", file.getAbsolutePath());
-      reader.close();
-      this.out.truncate(0);
-      startFile();
-      truncatedPosition = magicStringBytes.length;
-      return;
+    if (fileSize < magicStringBytes.length) {
+        reader.close();
+        out.close();
+        throw new IOException(String
+            .format("%s is not using TsFile format, and will be ignored...", file.getAbsolutePath()));
     }
     String magic = reader.readHeadMagic(true);
     if (!magic.equals(new String(magicStringBytes))) {
+      reader.close();
+      out.close();
       throw new IOException(String
           .format("%s is not using TsFile format, and will be ignored...", file.getAbsolutePath()));
     }
-    if (reader.readTailMagic().equals(magic)) {
+
+    if (fileSize == magicStringBytes.length) {
+      if (!autoRepair) {
+        reader.close();
+        out.close();
+        throw new IOException(String
+            .format("%s only has header, but does not allowed to be repaired...", file.getAbsolutePath()));
+      }
+    } else if (reader.readTailMagic().equals(magic)) {
       LOGGER.debug("{} is an complete TsFile.", file.getAbsolutePath());
       canWrite = false;
       reader.close();
@@ -192,10 +209,17 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
     } finally {
       //something wrong or all data is complete. We will discard current FileMetadata
       // so that we can continue to write data into this tsfile.
-      LOGGER.info("File {} has {} bytes, and will be truncated from {}.",
-          file.getAbsolutePath(), file.length(), truncatedPosition);
-      out.truncate(truncatedPosition);
       reader.close();
+      if (autoRepair) {
+        LOGGER.info("File {} has {} bytes, and will be truncated from {}.",
+            file.getAbsolutePath(), file.length(), truncatedPosition);
+        out.truncate(truncatedPosition);
+      }
+    }
+    if (!autoRepair) {
+      out.close();
+      throw new IOException(String
+          .format("%s is incomplete but does not allowed to be repaired...", file.getAbsolutePath()));
     }
   }
 

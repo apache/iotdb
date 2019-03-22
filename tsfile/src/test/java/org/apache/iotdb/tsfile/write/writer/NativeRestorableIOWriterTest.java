@@ -25,53 +25,62 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
+@SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
 public class NativeRestorableIOWriterTest {
 
   private static final String FILE_NAME = "test.ts";
+
+  @Test
+  public void testBadHeadMagic() throws Exception {
+    File file = new File(FILE_NAME);
+    FileWriter fWriter = new FileWriter(file);
+    fWriter.write("Tsfile");
+    fWriter.close();
+    try {
+      NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
+    } catch (IOException e) {
+      assertTrue(e.getMessage().contains("is not using TsFile format"));
+    }
+    assertTrue(file.delete());
+  }
 
   @Test
   public void testOnlyHeadMagic() throws Exception {
     File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.getIOWriter().forceClose();
+    try {
+      NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file, false);
+      writer = new TsFileWriter(rWriter);
+      writer.close();
+    } catch (IOException e) {
+      assertTrue(e.getMessage().contains("only has header"));
+    }
+
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
+    assertEquals(TsFileIOWriter.magicStringBytes.length, rWriter.getTruncatedPosition());
     writer = new TsFileWriter(rWriter);
     writer.close();
-    assertEquals(TsFileIOWriter.magicStringBytes.length, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
-
   }
+
 
   @Test
   public void testOnlyFirstMask() throws Exception {
@@ -91,19 +100,11 @@ public class NativeRestorableIOWriterTest {
   @Test
   public void testOnlyOneIncompleteChunkHeader() throws Exception {
     File file = new File(FILE_NAME);
-    TsFileWriter writer = new TsFileWriter(file);
 
-    ChunkHeader header = new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY,
-        TSEncoding.PLAIN, 5);
-    ByteBuffer buffer = ByteBuffer.allocate(header.getSerializedSize());
-    header.serializeTo(buffer);
-    buffer.flip();
-    byte[] data = new byte[3];
-    buffer.get(data, 0, 3);
-    writer.getIOWriter().out.write(data);
-    writer.getIOWriter().forceClose();
+    IncompleteFileTestUtil.writeFileWithOneIncompleteChunkHeader(file);
+
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
-    writer = new TsFileWriter(rWriter);
+    TsFileWriter writer = new TsFileWriter(rWriter);
     writer.close();
     assertEquals(TsFileIOWriter.magicStringBytes.length, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
