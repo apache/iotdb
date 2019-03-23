@@ -19,33 +19,30 @@
 
 -->
 
-# tsfile-spark-connector
+# TsFile-Spark-Connector Quick Guide
 
-Used to read and write(developing) tsfile in spark.
+## About TsFile-Spark-Connector
 
-将一个或多个TsFile展示成SparkSQL中的一张表。允许指定单个目录，或使用通配符匹配多个目录。如果是多个TsFile，schema将保留各个TsFile中sensor的并集。
+TsFile-Spark-Connector provides integration between TsFile and Apache Spark.
 
+With this connector, you can
+* load a single TsFile into Spark
+* load files in a specified directory into Spark
+* write data from Spark to TsFile
 
-## 1. dependency
+Both the local file system and the hadoop file system are supported.
 
-https://github.com/thulab/tsfile.git
-
-
-## 2. versions
-
-The versions required for Spark and Java are as follow:
+## 2. System Requirements
 
 | Spark Version | Scala Version | Java Version | TsFile |
 | ------------- | ------------- | ------------ |------------ |
-| `2.0+`        | `2.11`        | `1.8`        | `0.4.0`|
+| `2.0+`        | `2.11`        | `1.8`        | `0.8.0-SNAPSHOT`|
 
-ATTENTION: Please check the jar packages in the root directory  of your spark and replace libthrift-0.9.2.jar and libfb303-0.9.2.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.
+NOTE: Check the jar packages in the root directory  of your Spark and replace libthrift-0.9.2.jar and libfb303-0.9.2.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.
 
-## 3. TsFile Type <=> SparkSQL type
+## 3. Data Type Correspondence
 
-This library uses the following mapping the data type from TsFile to SparkSQL:
-
-| TsFile 		   | SparkSQL|
+| TsFile data type | SparkSQL data type|
 | --------------| -------------- |
 | INT32       		   | IntegerType    |
 | INT64       		   | LongType       |
@@ -53,10 +50,11 @@ This library uses the following mapping the data type from TsFile to SparkSQL:
 | DOUBLE      		   | DoubleType     |
 | BYTE_ARRAY      		| StringType     |
 
+## 4. Schema Inference
 
-## 4. TsFile Schema <-> SparkSQL Table Structure
+Illustrate the schema inference between TsFile and Apache Spark using the following example.
 
-The set of time-series data in section "Time-series Data" is used here to illustrate the mapping from TsFile Schema to SparkSQL Table Stucture.
+Given a TsFile:
 
 <center>
 <table style="text-align:center">
@@ -68,64 +66,24 @@ The set of time-series data in section "Time-series Data" is used here to illust
 	<tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
 	<tr><td>7</td><td>1.8</td><td>4</td><td>20</td><td>8</td><td>53</td></tr>
 </table>
-<span>A set of time-series data</span>
 </center>
 
-### 4.1. using delta_object as reserved column
-
-There are two reserved columns in Spark SQL Table:
-
-- `time` : Timestamp, LongType
-- `delta_object` : Delta_object ID, StringType
-
-The SparkSQL Table Structure is as follow:
+The corresponding SparkSQL table:
 
 <center>
 	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> delta_object(StringType)</th><th>sensor_1(FloatType)</th><th>sensor_2(IntType)</th><th>sensor_3(IntType)</th></tr>
-	<tr><td>1</td><td> root.car.turbine1 </td><td>1.2</td><td>20</td><td>null</td></tr>
-	<tr><td>2</td><td> root.car.turbine1 </td><td>null</td><td>20</td><td>50</td></tr>
-	<tr><td>3</td><td> root.car.turbine1 </td><td>1.4</td><td>21</td><td>null</td></tr>
-	<tr><td>4</td><td> root.car.turbine1 </td><td>null</td><td>20</td><td>51</td></tr>
-	<tr><td>5</td><td> root.car.turbine1 </td><td>1.1</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> root.car.turbine1 </td><td>null</td><td>null</td><td>52</td></tr>
-	<tr><td>7</td><td> root.car.turbine1 </td><td>1.8</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> root.car.turbine1 </td><td>null</td><td>null</td><td>53</td></tr>
+	<tr><th>time</th><th> root.car.turbine1.sensor_1</th><th>root.car.turbine1.sensor_2</th><th>root.car.turbine1.sensor_3</th></tr>
+	<tr><td>1</td><td>1.2</td><td>20</td><td>null</td></tr>
+	<tr><td>2</td><td>null</td><td>20</td><td>50</td></tr>
+	<tr><td>3</td><td>1.4</td><td>21</td><td>null</td></tr>
+	<tr><td>4</td><td>null</td><td>20</td><td>51</td></tr>
+	<tr><td>5</td><td>1.1</td><td>null</td><td>null</td></tr>
+	<tr><td>6</td><td>null</td><td>null</td><td>52</td></tr>
+	<tr><td>7</td><td>1.8</td><td>null</td><td>null</td></tr>
+	<tr><td>8</td><td>null</td><td>null</td><td>53</td></tr>
 	</table>
 
 </center>
-
-
-### 4.2. unfolding delta_object column
-
-If you want to unfold the delta_object column into multi columns you should add an option when read and write:
-
-e.g. 
-
-option("delta_object_name" -> "root.device.turbine")
-
-The "delta_object_name" is reserved key.
-
-
-Then The SparkSQL Table Structure is as follow:
-
-<center>
-	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> device(StringType)</th><th> turbine(StringType)</th><th>sensor_1(FloatType)</th><th>sensor_2(IntType)</th><th>sensor_3(IntType)</th></tr>
-	<tr><td>1</td><td> car </td><td> turbine1 </td><td>1.2</td><td>20</td><td>null</td></tr>
-	<tr><td>2</td><td> car </td><td> turbine1 </td><td>null</td><td>20</td><td>50</td></tr>
-	<tr><td>3</td><td> car </td><td> turbine1 </td><td>1.4</td><td>21</td><td>null</td></tr>
-	<tr><td>4</td><td> car </td><td> turbine1 </td><td>null</td><td>20</td><td>51</td></tr>
-	<tr><td>5</td><td> car </td><td> turbine1 </td><td>1.1</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> car </td><td> turbine1 </td><td>null</td><td>null</td><td>52</td></tr>
-	<tr><td>7</td><td> car </td><td> turbine1 </td><td>1.8</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> car </td><td> turbine1 </td><td>null</td><td>null</td><td>53</td></tr>
-	</table>
-
-</center>
-
-
-Then you can group by any level in delta_object. And then with the same option you can write this dataframe to TsFile.
 
 ## 5. Building
 
@@ -220,3 +178,76 @@ ATTENTION:
 ```
 . /spark-2.0.1-bin-hadoop2.7/bin/spark-shell  --jars  tsfile-0.4.0.jar,tsfile-spark-connector-0.4.0.jar  --master spark://ip:7077
 ```
+
+## Appendix: Old Design of Schema Inference
+
+The set of time-series data in section "Time-series Data" is used here to illustrate the mapping from TsFile Schema to SparkSQL Table Stucture.
+
+<center>
+<table style="text-align:center">
+	<tr><th colspan="6">delta_object:root.car.turbine1</th></tr>
+	<tr><th colspan="2">sensor_1</th><th colspan="2">sensor_2</th><th colspan="2">sensor_3</th></tr>
+	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</td>
+	<tr><td>1</td><td>1.2</td><td>1</td><td>20</td><td>2</td><td>50</td></tr>
+	<tr><td>3</td><td>1.4</td><td>2</td><td>20</td><td>4</td><td>51</td></tr>
+	<tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
+	<tr><td>7</td><td>1.8</td><td>4</td><td>20</td><td>8</td><td>53</td></tr>
+</table>
+<span>A set of time-series data</span>
+</center>
+
+### using delta_object as reserved column
+
+There are two reserved columns in Spark SQL Table:
+
+- `time` : Timestamp, LongType
+- `delta_object` : Delta_object ID, StringType
+
+The SparkSQL Table Structure is as follow:
+
+<center>
+	<table style="text-align:center">
+	<tr><th>time(LongType)</th><th> delta_object(StringType)</th><th>sensor_1(FloatType)</th><th>sensor_2(IntType)</th><th>sensor_3(IntType)</th></tr>
+	<tr><td>1</td><td> root.car.turbine1 </td><td>1.2</td><td>20</td><td>null</td></tr>
+	<tr><td>2</td><td> root.car.turbine1 </td><td>null</td><td>20</td><td>50</td></tr>
+	<tr><td>3</td><td> root.car.turbine1 </td><td>1.4</td><td>21</td><td>null</td></tr>
+	<tr><td>4</td><td> root.car.turbine1 </td><td>null</td><td>20</td><td>51</td></tr>
+	<tr><td>5</td><td> root.car.turbine1 </td><td>1.1</td><td>null</td><td>null</td></tr>
+	<tr><td>6</td><td> root.car.turbine1 </td><td>null</td><td>null</td><td>52</td></tr>
+	<tr><td>7</td><td> root.car.turbine1 </td><td>1.8</td><td>null</td><td>null</td></tr>
+	<tr><td>8</td><td> root.car.turbine1 </td><td>null</td><td>null</td><td>53</td></tr>
+	</table>
+
+</center>
+
+
+### unfolding delta_object column
+
+If you want to unfold the delta_object column into multi columns you should add an option when read and write:
+
+e.g. 
+
+option("delta_object_name" -> "root.device.turbine")
+
+The "delta_object_name" is reserved key.
+
+
+Then The SparkSQL Table Structure is as follow:
+
+<center>
+	<table style="text-align:center">
+	<tr><th>time(LongType)</th><th> device(StringType)</th><th> turbine(StringType)</th><th>sensor_1(FloatType)</th><th>sensor_2(IntType)</th><th>sensor_3(IntType)</th></tr>
+	<tr><td>1</td><td> car </td><td> turbine1 </td><td>1.2</td><td>20</td><td>null</td></tr>
+	<tr><td>2</td><td> car </td><td> turbine1 </td><td>null</td><td>20</td><td>50</td></tr>
+	<tr><td>3</td><td> car </td><td> turbine1 </td><td>1.4</td><td>21</td><td>null</td></tr>
+	<tr><td>4</td><td> car </td><td> turbine1 </td><td>null</td><td>20</td><td>51</td></tr>
+	<tr><td>5</td><td> car </td><td> turbine1 </td><td>1.1</td><td>null</td><td>null</td></tr>
+	<tr><td>6</td><td> car </td><td> turbine1 </td><td>null</td><td>null</td><td>52</td></tr>
+	<tr><td>7</td><td> car </td><td> turbine1 </td><td>1.8</td><td>null</td><td>null</td></tr>
+	<tr><td>8</td><td> car </td><td> turbine1 </td><td>null</td><td>null</td><td>53</td></tr>
+	</table>
+
+</center>
+
+
+Then you can group by any level in delta_object. And then with the same option you can write this dataframe to TsFile.
