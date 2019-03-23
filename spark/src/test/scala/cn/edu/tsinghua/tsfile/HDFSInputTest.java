@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -30,20 +30,36 @@ import org.junit.Test;
 
 public class HDFSInputTest {
 
-  private String path = "../spark/src/test/resources/tsfile/test.tsfile";
+  private String folder = "../spark/src/test/resources/HDFSInputTest";
+  private String path = folder + "/test.tsfile";
   private HDFSInput in;
 
   @Before
   public void before() throws Exception {
-    new TsFileWrite().create1(path);
+    File tsfile_folder = new File(folder);
+    if (tsfile_folder.exists()) {
+      deleteDir(tsfile_folder);
+    }
+    tsfile_folder.mkdirs();
+    TsFileWrite tsFileWrite = new TsFileWrite();
+    tsFileWrite.create1(path);
     in = new HDFSInput(path);
   }
 
   @After
   public void after() throws IOException {
     in.close();
-    File file = new File(path);
-    file.delete();
+    File tsfile_folder = new File(folder);
+    deleteDir(tsfile_folder);
+  }
+
+  private void deleteDir(File dir) {
+    if (dir.isDirectory()) {
+      for (File f : dir.listFiles()) {
+        deleteDir(f);
+      }
+    }
+    dir.delete();
   }
 
   @Test
