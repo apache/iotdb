@@ -19,105 +19,212 @@
 
 -->
 
+
 <!-- TOC -->
 
 - [TsFile-Spark-Connector User Guide](#tsfile-spark-connector-user-guide)
-    - [Dependencies & Version](#dependencies--version)
-    - [Quick Start](#quick-start)
-        - [Step1: Build TsFile-Spark-Connector](#step1-build-tsfile-spark-connector)
-        - [Step2: Import Connector Lib into Spark](#step2-import-connector-lib-into-spark)
-        - [Step3: Use Connector in Spark](#step3-use-connector-in-spark)
-            - [5.2.1.1 Local Mode](#5211-local-mode)
-            - [5.2.1.2 Distributed Mode](#5212-distributed-mode)
-    - [Detail: Conversion between TsFile and Spark](#detail-conversion-between-tsfile-and-spark)
-        - [TsFile Type <-> SparkSQL type](#tsfile-type---sparksql-type)
-        - [TsFile Schema <-> SparkSQL Table Structure](#tsfile-schema---sparksql-table-structure)
-            - [the default way](#the-default-way)
-            - [unfolding delta_object column](#unfolding-delta_object-column)
-    - [Example](#example)
-        - [5.1 Scala API](#51-scala-api)
+	- [1. About TsFile-Spark-Connector](#1-about-tsfile-spark-connector)
+	- [2. System Requirements](#2-system-requirements)
+	- [3. Quick Start](#3-quick-start)
+		- [Local Mode](#local-mode)
+		- [Distributed Mode](#distributed-mode)
+	- [4. Data Type Correspondence](#4-data-type-correspondence)
+	- [5. Schema Inference](#5-schema-inference)
+	- [6. Scala API](#6-scala-api)
+		- [Example 1: read from the local file system](#example-1-read-from-the-local-file-system)
+		- [Example 2: read from the hadoop file system](#example-2-read-from-the-hadoop-file-system)
+		- [Example 3: read from a specific directory](#example-3-read-from-a-specific-directory)
+		- [Example 4: query](#example-4-query)
+		- [Example 5: write](#example-5-write)
+	- [Appendix A: Old Design of Schema Inference](#appendix-a-old-design-of-schema-inference)
+			- [the default way](#the-default-way)
+			- [unfolding delta_object column](#unfolding-delta_object-column)
+	- [Appendix B: Old Note](#appendix-b-old-note)
 
 <!-- /TOC -->
+
+<a id="tsfile-spark-connector-user-guide"></a>
 # TsFile-Spark-Connector User Guide
+
+<a id="1-about-tsfile-spark-connector"></a>
+## 1. About TsFile-Spark-Connector
 
 TsFile-Spark-Connector implements the support of Spark for external data sources of Tsfile type. This enables users to read, write and query Tsfile by Spark.
 
-## Dependencies & Version
+With this connector, you can
+* load a single TsFile, from either the local file system or hdfs, into Spark
+* load all files in a specific directory, from either the local file system or hdfs, into Spark
+* write data from Spark into TsFile
 
-The versions required for Spark and Java are as follow:
+<a id="2-system-requirements"></a>
+## 2. System Requirements
 
-| Spark Version | Scala Version | Java Version | TsFile |
-| ------------- | ------------- | ------------ |------- |
-| `2.0+`        | `2.11`        | `1.8`        | `0.7.0`|
+|Spark Version | Scala Version | Java Version | TsFile |
+|------------- | ------------- | ------------ |------------ |
+| `2.0+`        | `2.11`        | `1.8`        | `0.8.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
-## Quick Start
-
-### Step1: Build TsFile-Spark-Connector
-
-To build TsFile-Spark-Connector, you can use the following command:
-
-```
-mvn clean scala:compile compile package
-```
-
-In addition, you can also choose to download the available lib package directly from our website. The download link will be comming soon.
-
-### Step2: Import Connector Lib into Spark
-
-* import tsfile-spark-connector.jar into spark lib
-* replace libthrift-0.9.2.jar and libfb303-0.9.2.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.
-
-### Step3: Use Connector in Spark
-#### 5.2.1.1 Local Mode
+<a id="3-quick-start"></a>
+## 3. Quick Start
+<a id="local-mode"></a>
+### Local Mode
 
 Start Spark with TsFile-Spark-Connector in local mode: 
 
 ```
-./<spark-shell-path>  --jars  tsfile-<tsfile-version>.jar,tsfile-spark-connector-<connector-version>.jar
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar
 ```
+
 Note:
 
 * \<spark-shell-path> is the real path of your spark-shell.
-* \<tsfile-version> is the tsfile version.
-* \<connector-version> is the TsFile-Spark-Connector version. Note that, the version of TsFile-Spark-Connector and TsFile should be correspondence.
 * Multiple jar packages are separated by commas without any spaces.
 * See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
 
-#### 5.2.1.2 Distributed Mode
+
+<a id="distributed-mode"></a>
+### Distributed Mode
 
 Start Spark with TsFile-Spark-Connector in distributed mode (That is, the spark cluster is connected by spark-shell): 
 
 ```
-. /<spark-shell-path>  --jars tsfile-<tsfile-version>.jar,tsfile-spark-connector-<connector-version>.jar  --master spark://ip:7077
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar  --master spark://ip:7077
 ```
 
 Note:
 
 * \<spark-shell-path> is the real path of your spark-shell.
-* \<tsfile-version> is the tsfile version.
-* \<connector-version> is the TsFile-Spark-Connector version. Note that, the version of TsFile-Spark-Connector and TsFile should be correspondence.
 * Multiple jar packages are separated by commas without any spaces.
 * See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
 
-## Detail: Conversion between TsFile and Spark
+<a id="4-data-type-correspondence"></a>
+## 4. Data Type Correspondence
 
-### TsFile Type <-> SparkSQL type
-
-This library uses the following mapping the data type from TsFile to SparkSQL:
-
-| TsFile 		   | SparkSQL|
+| TsFile data type | SparkSQL data type|
 | --------------| -------------- |
 | BOOLEAN       		   | BooleanType    |
 | INT32       		   | IntegerType    |
 | INT64       		   | LongType       |
 | FLOAT       		   | FloatType      |
 | DOUBLE      		   | DoubleType     |
-| ENUMS     		 		| StringType     |
 | TEXT      				| StringType     |
 
-### TsFile Schema <-> SparkSQL Table Structure
+<a id="5-schema-inference"></a>
+## 5. Schema Inference
+
+The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three Measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is as follows:
+
+<center>
+<table style="text-align:center">
+	<tr><th colspan="2">Name</th><th colspan="2">Type</th><th colspan="2">Encode</th></tr>
+	<tr><td colspan="2">status</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
+	<tr><td colspan="2">temperature</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
+	<tr><td colspan="2">hardware</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
+</table>
+</center>
+
+The existing data in the file is as follows:
+
+
+<center>
+<table style="text-align:center">
+	<tr><th colspan="4">delta_object:root.ln.wf01.wt01</th><th colspan="4">delta_object:root.ln.wf02.wt02</th><th colspan="4">delta_object:root.sgcc.wf03.wt01</th></tr>
+	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th><th colspan="2">status</th><th colspan="2">temperature</th></tr>
+	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th></tr>
+	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td><td>2</td><td>True</td><td>3</td><td>3.3</td></tr>
+	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td><td>3</td><td>True</td><td>6</td><td>6.6</td></tr>
+	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td><td>4</td><td>True</td><td>8</td><td>8.8</td></tr>
+	<tr><td>7</td><td> True </td><td>4</td><td>2.0</td><td>8</td><td>"ddd"</td><td>5</td><td>False</td><td>6</td><td>True</td><td>9</td><td>9.9</td></tr>
+</table>
+</center>
+
+The corresponding SparkSQL table is as follows:
+
+| time | root.ln.wf01.wt01.status (BooleanType) | root.ln.wf01.wt01.temperature (FloatType) | root.ln.wf02.wt02.hardware (StringType) | root.ln.wf02.wt02.status (BooleanType) | root.sgcc.wf03.wt01.status (BooleanType) | root.sgcc.wf03.wt01.temperature (FloatType) |
+|------|----------------------------------------|-------------------------------------------|-----------------------------------------|----------------------------------------|------------------------------------------|---------------------------------------------|
+|    1 | True                                   | 2.2                                       | null                                    | True                                   | null                                     | null                                        |
+|    2 | null                                   | 2.2                                       | "aaa"                                   | False                                  | True                                     | null                                        |
+|    3 | True                                   | 2.1                                       | null                                    | null                                   | True                                     | 3.3                                         |
+|    4 | null                                   | 2.0                                       | "bbb"                                   | True                                   | True                                     | null                                        |
+|    5 | False                                  | null                                      | null                                    | False                                  | null                                     | null                                        |
+|    6 | null                                   | null                                      | "ccc"                                   | null                                   | True                                     | 6.6                                         |
+|    7 | True                                   | null                                      | null                                    | null                                   | null                                     | null                                        |
+|    8 | null                                   | null                                      | "ddd"                                   | null                                   | null                                     | 8.8                                         |
+|    9 | null                                   | null                                      | null                                    | null                                   | null                                     | 9.9                                            |
+
+
+
+<a id="6-scala-api"></a>
+## 6. Scala API
+
+NOTE: Remember to assign necessary read and write permissions in advance.
+
+<a id="example-1-read-from-the-local-file-system"></a>
+### Example 1: read from the local file system
+
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("test.tsfile") 
+df.show
+```
+
+<a id="example-2-read-from-the-hadoop-file-system"></a>
+### Example 2: read from the hadoop file system
+
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+df.show
+```
+
+<a id="example-3-read-from-a-specific-directory"></a>
+### Example 3: read from a specific directory
+
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/usr/hadoop") 
+df.show
+```
+
+Note: Global time ordering of all TsFiles in a directory is not supported now.
+
+<a id="example-4-query"></a>
+### Example 4: query
+
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+df.createOrReplaceTempView("tsfile_table")
+val newDf = spark.sql("select * from tsfile_table where `device_1.sensor_1`>0 and `device_1.sensor_2` < 22")
+newDf.show
+```
+
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+df.createOrReplaceTempView("tsfile_table")
+val newDf = spark.sql("select count(*) from tsfile_table")
+newDf.show
+```
+
+<a id="example-5-write"></a>
+### Example 5: write
+
+```scala
+import org.apache.iotdb.tsfile._
+
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+df.show
+df.write.tsfile("hdfs://localhost:9000/output")
+
+val newDf = spark.read.tsfile("hdfs://localhost:9000/output")
+newDf.show
+```
+
+
+<a id="appendix-a-old-design-of-schema-inference"></a>
+## Appendix A: Old Design of Schema Inference
 
 The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three Measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is as follows:
 
@@ -148,6 +255,7 @@ The existing data in the file is as follows:
 
 There are two ways to show it out:
 
+<a id="the-default-way"></a>
 #### the default way
 
 Two columns will be created to store the full path of the device: time(LongType) and delta_object(StringType).
@@ -183,6 +291,7 @@ Next, a column is created for each Measurement to store the specific data. The S
 </center>
 
 
+<a id="unfolding-delta_object-column"></a>
 #### unfolding delta_object column
 
 Expand the device column by "." into multiple columns, ignoring the root directory "root". Convenient for richer aggregation operations. If the user wants to use this display way, the parameter "delta\_object\_name" needs to be set in the table creation statement (refer to Example 5 in Section 5.1 of this manual), as in this example, parameter "delta\_object\_name" is set to "root.device.turbine". The number of path layers needs to be one-to-one. At this point, one column is created for each layer of the device path except the "root" layer. The column name is the name in the parameter and the value is the name of the corresponding layer of the device. Next, one column will be created for each Measurement to store the specific data.
@@ -219,73 +328,6 @@ TsFile-Spark-Connector can display one or more TsFiles as a table in SparkSQL By
 
 The writing process is to write a DataFrame as one or more TsFiles. By default, two columns need to be included: time and delta_object. The rest of the columns are used as Measurement. If user wants to write the second table structure back to TsFile, user can set the "delta\_object\_name" parameter(refer to Section 5.1 of Section 5.1 of this manual).
 
-## Example
-
-The path of 'test.tsfile' used in the following examples is "data/test.tsfile". Please upload 'test.tsfile' to hdfs in advance and the directory is "/test.tsfile".
-
-### 5.1 Scala API
-
-* **Example 1**
-
-	```scala
-	import cn.edu.tsinghua.tsfile._
-	
-	//read data in TsFile and create a table
-	val df = spark.read.tsfile("/test.tsfile")
-	df.createOrReplaceTempView("tsfile_table")
-	
-	//query with filter
-	val newDf = spark.sql("select * from tsfile_table where temperature > 1.2").cache()
-	
-	newDf.show()
-	```
-
-* **Example 2**
-
-	```scala
-	val df = spark.read
-       .format("cn.edu.tsinghua.tsfile")
-       .load("/test.tsfile ")
-	df.filter("time < 10").show()
-	```
-
-* **Example 3**
-
-	```scala
-	//create a table in SparkSQL and build relation with a TsFile
-	spark.sql("create temporary view tsfile_table using cn.edu.tsinghua.tsfile options(path = \"test.ts\")")
-	
-	spark.sql("select * from tsfile_table where temperature > 1.2").show()
-	```
-	
-* **Example 4(using options to read)**
-
-	```scala
-	import cn.edu.tsinghua.tsfile._
-	
-	val df = spark.read.option("delta_object_name", "root.group.field.device").tsfile("/test.tsfile")
-	     
-	//create a table in SparkSQL and build relation with a TsFile
-	df.createOrReplaceTempView("tsfile_table")
-	 
-	spark.sql("select * from tsfile_table where device = 'wt01' and field = 'wf01' and group = 'ln' and time < 10").show()
-	```
-
-* **Example 5(write)**
-
-	```scala
-	import cn.edu.tsinghua.tsfile._
-	
-	val df = spark.read.tsfile("/test.tsfile").write.tsfile("/out")
-	```
-	
-* **Example 6(using options to write)**
-
-	```scala
-	import cn.edu.tsinghua.tsfile._
-	
-	val df = spark.read.option("delta_object_name", "root.group.field.device").tsfile("/test.tsfile")
-	     
-	df.write.option("delta_object_name", "root.group.field.device").tsfile("/out")
-	```
-
+<a id="appendix-b-old-note"></a>
+## Appendix B: Old Note
+NOTE: Check the jar packages in the root directory  of your Spark and replace libthrift-0.9.2.jar and libfb303-0.9.2.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.
