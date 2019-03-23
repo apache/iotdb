@@ -97,6 +97,8 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals("[device_2.sensor_3,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(3).toString)
     Assert.assertEquals("[device_2.sensor_1,FLOAT,RLE,{},UNCOMPRESSED]", series.get(4).toString)
     Assert.assertEquals("[device_2.sensor_2,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(5).toString)
+
+    in.close()
   }
 
   test("getUnionSeries") {
@@ -185,6 +187,8 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals("StructField(device_1.sensor_3,IntegerType,true)", fields(0).toString)
     Assert.assertEquals("StructField(device_1.sensor_1,FloatType,true)", fields(1).toString)
     Assert.assertEquals("StructField(device_1.sensor_2,IntegerType,true)", fields(2).toString)
+
+    in.close()
   }
 
   test("prep4requiredSchema2") {
@@ -206,6 +210,8 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals("StructField(device_2.sensor_3,IntegerType,true)", fields(3).toString)
     Assert.assertEquals("StructField(device_2.sensor_1,FloatType,true)", fields(4).toString)
     Assert.assertEquals("StructField(device_2.sensor_2,IntegerType,true)", fields(5).toString)
+
+    in.close()
   }
 
   test("toTsRecord") {

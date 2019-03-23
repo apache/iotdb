@@ -101,6 +101,7 @@ object Converter {
           }
         })
       })
+      in.close()
     })
 
     unionSeries
