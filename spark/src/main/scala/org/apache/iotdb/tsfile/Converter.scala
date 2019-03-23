@@ -45,7 +45,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
-  * This object contains methods that are used to convert schema and data between sparkSQL and TSFile.
+  * This object contains methods that are used to convert schema and data between SparkSQL and TSFile.
   *
   */
 object Converter {
@@ -109,10 +109,10 @@ object Converter {
   }
 
   /**
-    * Convert TSFile data to sparkSQL data.
+    * Convert TSFile data to SparkSQL data.
     *
     * @param field one data point in TsFile
-    * @return sparkSQL data
+    * @return SparkSQL data
     */
   def toSqlValue(field: Field): Any = {
     if (field == null)
@@ -131,7 +131,7 @@ object Converter {
   }
 
   /**
-    * Construct fields with the TSFile data type converted to the sparkSQL data type.
+    * Construct fields with the TSFile data type converted to the SparkSQL data type.
     *
     * @param tsfileSchema tsfileSchema
     * @param isTimeField  true to add a time field; false to not
@@ -160,10 +160,10 @@ object Converter {
   }
 
   /**
-    * Convert TSFile columns to sparkSQL schema.
+    * Convert TSFile columns to SparkSQL schema.
     *
     * @param tsfileSchema all time series information in TSFile
-    * @return sparkSQL table schema with the time field added
+    * @return SparkSQL table schema with the time field added
     */
   def toSqlSchema(tsfileSchema: util.ArrayList[MeasurementSchema]): Option[StructType] = {
     val fields = toSqlField(tsfileSchema, true) // true to add the time field
@@ -215,9 +215,9 @@ object Converter {
 
 
   /**
-    * Return the TsFile data type of given sparkSQL data type.
+    * Return the TsFile data type of given SparkSQL data type.
     *
-    * @param dataType sparkSQL data type
+    * @param dataType SparkSQL data type
     * @return TsFile data type
     */
   def getTsDataType(dataType: DataType): TSDataType = {
@@ -257,7 +257,7 @@ object Converter {
   }
 
   /**
-    * Given a sparkSQL struct type, generate the TsFile schema.
+    * Given a SparkSQL struct type, generate the TsFile schema.
     * Note: There are not two sensors with the same name in the same TsFile.
     *
     * @param structType given sql schema
@@ -374,7 +374,7 @@ object Converter {
   }
 
   /**
-    * Transform sparkSQL's filter binary tree to TsFile's filter expression.
+    * Transform SparkSQL's filter binary tree to TsFile's filter expression.
     *
     * @param schema to get relative columns' dataType information
     * @param node   filter tree's node
