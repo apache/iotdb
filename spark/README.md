@@ -87,10 +87,13 @@ The corresponding SparkSQL table:
 ## 5. Use the TsFile-Spark-Connector
 ### 5.2 Start Spark Command
 ##### Local Mode
+
 ```
 ./usr/local/spark/bin/spark-shell  --jars  tsfile-spark-connector.jar
 ```
+
 ##### Distributed Mode
+
 ```
 ./usr/local/spark/bin/spark-shell  --jars  tsfile-spark-connector.jar  --master spark://ip:7077
 ```
@@ -100,53 +103,62 @@ The corresponding SparkSQL table:
 NOTE: Pay attention to assigning the appropriate read and write permissions in advance.
 
 #### Example 1 read from the local file system
-	```scala
-	import org.apache.iotdb.tsfile._
-	val df = spark.read.tsfile("test.tsfile") 
-	df.show
-	```
+
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("test.tsfile") 
+df.show
+```
+
 #### Example 2 read from the hadoop file system
-	```scala
-	import org.apache.iotdb.tsfile._
-	val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
-	df.show
-	```
+
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+df.show
+```
+	
 #### Example 3 read from a specific directory
-	```scala
-	import org.apache.iotdb.tsfile._
-	val df = spark.read.tsfile("hdfs://localhost:9000/usr/hadoop") 
-	df.show
-	```
+
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/usr/hadoop") 
+df.show
+```
+	
 Note: Global time ordering of all TsFiles in a directory is not supported now.
 
 #### Example 4 query
-	```scala
-	import org.apache.iotdb.tsfile._
-	val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
-	df.createOrReplaceTempView("tsfile_table")
-	val newDf = spark.sql("select * from tsfile_table where `device_1.sensor_1`>0 and `device_1.sensor_2` < 22")
-    newDf.show
-	```
 
-	```scala
-	import org.apache.iotdb.tsfile._
-	val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
-	df.createOrReplaceTempView("tsfile_table")
-	val newDf = spark.sql("select count(*) from tsfile_table")
-    newDf.show
-	```
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+df.createOrReplaceTempView("tsfile_table")
+val newDf = spark.sql("select * from tsfile_table where `device_1.sensor_1`>0 and `device_1.sensor_2` < 22")
+newDf.show
+```
+	
+
+```scala
+import org.apache.iotdb.tsfile._
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+df.createOrReplaceTempView("tsfile_table")
+val newDf = spark.sql("select count(*) from tsfile_table")
+newDf.show
+```
 
 #### Example 5 write
-	```scala
-	import org.apache.iotdb.tsfile._
 
-	val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
-	df.show
-	df.write.tsfile("hdfs://localhost:9000/output")
+```scala
+import org.apache.iotdb.tsfile._
 
-	val newDf = spark.read.tsfile("hdfs://localhost:9000/output")
-	newDf.show
-	```
+val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+df.show
+df.write.tsfile("hdfs://localhost:9000/output")
+
+val newDf = spark.read.tsfile("hdfs://localhost:9000/output")
+newDf.show
+```
 
 
 ## Appendix A: Old Design of Schema Inference
