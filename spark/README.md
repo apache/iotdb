@@ -21,7 +21,7 @@
 
 # TsFile-Spark-Connector Quick Guide
 
-## About TsFile-Spark-Connector
+## 1. About TsFile-Spark-Connector
 
 TsFile-Spark-Connector provides integration between TsFile and Apache Spark.
 
@@ -34,11 +34,10 @@ Both the local file system and the hadoop file system are supported.
 
 ## 2. System Requirements
 
-| Spark Version | Scala Version | Java Version | TsFile |
-| ------------- | ------------- | ------------ |------------ |
-| `2.0+`        | `2.11`        | `1.8`        | `0.8.0-SNAPSHOT`|
+|Spark Version | Scala Version | Java Version | TsFile |
+|------------- | ------------- | ------------ |------------ |
+| `2.0.1`        | `2.11.8`        | `1.8`        | `0.8.0-SNAPSHOT`|
 
-NOTE: Check the jar packages in the root directory  of your Spark and replace libthrift-0.9.2.jar and libfb303-0.9.2.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.
 
 ## 3. Data Type Correspondence
 
@@ -85,101 +84,72 @@ The corresponding SparkSQL table:
 
 </center>
 
-## 5. Building
-
+## 5. Use the TsFile-Spark-Connector
+### 5.2 Start Spark Command
+##### Local Mode
 ```
-mvn clean scala:compile compile package
+./usr/local/spark/bin/spark-shell  --jars  tsfile-spark-connector.jar
+```
+##### Distributed Mode
+```
+./usr/local/spark/bin/spark-shell  --jars  tsfile-spark-connector.jar  --master spark://ip:7077
 ```
 
+### 5.1 Scala API
 
-## 6. Examples
+NOTE: Pay attention to assigning the appropriate read and write permissions in advance.
 
-The path of 'test.tsfile' used in the following examples is "data/test.tsfile". Please upload 'test.tsfile' to hdfs in advance and the directory is "/test.tsfile".
-
-
-### 6.1 Scala API
-
-* **Example 1**
-
+#### Example 1 read from the local file system
 	```scala
 	import org.apache.iotdb.tsfile._
-	
-	//read data in TsFile and create a table
-	val df = spark.read.tsfile("/test.tsfile")
+	val df = spark.read.tsfile("test.tsfile") 
+	df.show
+	```
+#### Example 2 read from the hadoop file system
+	```scala
+	import org.apache.iotdb.tsfile._
+	val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+	df.show
+	```
+#### Example 3 read from a specific directory
+	```scala
+	import org.apache.iotdb.tsfile._
+	val df = spark.read.tsfile("hdfs://localhost:9000/usr/hadoop") 
+	df.show
+	```
+Note: Global time ordering of all TsFiles in a directory is not supported now.
+
+#### Example 4 query
+	```scala
+	import org.apache.iotdb.tsfile._
+	val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 	df.createOrReplaceTempView("tsfile_table")
-	
-	//query with filter
-	val newDf = spark.sql("select * from tsfile_table where s1 > 1.2").cache()
-	
-	newDf.show()
+	val newDf = spark.sql("select * from tsfile_table where `device_1.sensor_1`>0 and `device_1.sensor_2` < 22")
+    newDf.show
 	```
-
-* **Example 2**
-
-	```scala
-	val df = spark.read
-       .format("org.apache.iotdb.tsfile")
-       .load("/test.tsfile ")
-	df.filter("time < 10").show()
-	```
-
-* **Example 3**
-
-	```scala
-	//create a table in SparkSQL and build relation with a TsFile
-	spark.sql("create temporary view tsfile_table using org.apache.iotdb.tsfile options(path = \"test.ts\")")
-	
-	spark.sql("select * from tsfile_table where s1 > 1.2").show()
-	```
-	
-* **Example 4(using options to read)**
 
 	```scala
 	import org.apache.iotdb.tsfile._
-	
-	val df = spark.read.option("delta_object_name", "root.device.turbine").tsfile("/test.tsfile")
-	     
-	//create a table in SparkSQL and build relation with a TsFile
+	val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 	df.createOrReplaceTempView("tsfile_table")
-	 
-	spark.sql("select * from tsfile_table where turbine = 'd1' and device = 'car' and time < 10").show()
+	val newDf = spark.sql("select count(*) from tsfile_table")
+    newDf.show
 	```
 
-* **Example 5(write)**
-
+#### Example 5 write
 	```scala
 	import org.apache.iotdb.tsfile._
-	
-	val df = spark.read.tsfile("/test.tsfile").write.tsfile("/out")
-	```
-	
-* **Example 6(using options to write)**
 
-	```scala
-	import org.apache.iotdb.tsfile._
-	
-	val df = spark.read.option("delta_object_name", "root.device.turbine").tsfile("/test.tsfile")
-	     
-	df.write.option("delta_object_name", "root.device.turbine").tsfile("/out")
+	val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
+	df.show
+	df.write.tsfile("hdfs://localhost:9000/output")
+
+	val newDf = spark.read.tsfile("hdfs://localhost:9000/output")
+	newDf.show
 	```
 
 
-### 6.2 spark-shell
-#### 6.2.1 Start Spark
-##### 6.2.1.1 Local Mode
-```
-./spark-2.0.1-bin-hadoop2.7/bin/spark-shell  --jars  tsfile-0.4.0.jar,tsfile-spark-connector-0.4.0.jar
-```
-ATTENTION:
-* Please replace "spark-2.0.1-bin-hadoop2.7/bin/spark-shell" with the real path of your spark-shell.
-* Multiple jar packages are separated by commas without any spaces.
-* The latest version used is v0.4.0.
-##### 6.2.1.2 Distributed Mode
-```
-. /spark-2.0.1-bin-hadoop2.7/bin/spark-shell  --jars  tsfile-0.4.0.jar,tsfile-spark-connector-0.4.0.jar  --master spark://ip:7077
-```
-
-## Appendix: Old Design of Schema Inference
+## Appendix A: Old Design of Schema Inference
 
 The set of time-series data in section "Time-series Data" is used here to illustrate the mapping from TsFile Schema to SparkSQL Table Stucture.
 
@@ -251,3 +221,6 @@ Then The SparkSQL Table Structure is as follow:
 
 
 Then you can group by any level in delta_object. And then with the same option you can write this dataframe to TsFile.
+
+## Appendix B: Old Note
+NOTE: Check the jar packages in the root directory  of your Spark and replace libthrift-0.9.2.jar and libfb303-0.9.2.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.

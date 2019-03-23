@@ -45,8 +45,6 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   private var spark: SparkSession = _
 
   override protected def beforeAll(): Unit = {
-//    System.setProperty("hadoop.home.dir", "D:\\winutils")
-    //System.setProperty("hadoop.home.dir","/home/rl/usr/local/hadoop")
     super.beforeAll()
 
     val resources = new File(resourcesFolder)
