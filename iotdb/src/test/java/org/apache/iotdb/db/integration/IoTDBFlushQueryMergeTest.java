@@ -38,7 +38,6 @@ public class IoTDBFlushQueryMergeTest {
 
   private static IoTDB daemon;
   private static String[] sqls = new String[]{
-
       "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
 
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -62,6 +61,7 @@ public class IoTDBFlushQueryMergeTest {
   };
 
   private static IoTDBConfig iotDBConfig = IoTDBDescriptor.getInstance().getConfig();
+  private static long overflowFileSizeThreshold;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -70,15 +70,15 @@ public class IoTDBFlushQueryMergeTest {
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
+    overflowFileSizeThreshold = iotDBConfig.getOverflowFileSizeThreshold();
     iotDBConfig.setOverflowFileSizeThreshold(0);
-
     insertData();
-
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     daemon.stop();
+    iotDBConfig.setOverflowFileSizeThreshold(overflowFileSizeThreshold);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -117,10 +117,6 @@ public class IoTDBFlushQueryMergeTest {
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
       while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
-            + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2) + "," + resultSet
-            .getString(d0s3)
-            + "," + resultSet.getString(d1s0);
         cnt++;
       }
       statement.close();
