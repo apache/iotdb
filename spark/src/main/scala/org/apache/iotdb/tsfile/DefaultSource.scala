@@ -102,7 +102,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       val tsFileMetaData = reader.readFileMetadata
 
       // get queriedSchema from requiredSchema
-      var queriedSchema = Converter.prep4requiredSchema(requiredSchema, tsFileMetaData)
+      var queriedSchema = Converter.prepSchema(requiredSchema, tsFileMetaData)
 
       // construct queryExpression based on queriedSchema and filters
       val queryExpression = Converter.toQueryExpression(queriedSchema, filters)

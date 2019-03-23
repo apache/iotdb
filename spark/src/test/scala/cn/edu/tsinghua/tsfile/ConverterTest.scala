@@ -180,7 +180,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     requiredFields.add(StructField("device_1.sensor_2", IntegerType, true))
     val requiredSchema = StructType(requiredFields)
 
-    val filteredSchema = Converter.prep4requiredSchema(requiredSchema, tsFileMetaData)
+    val filteredSchema = Converter.prepSchema(requiredSchema, tsFileMetaData)
 
     Assert.assertEquals(3, filteredSchema.size)
     val fields = filteredSchema.fields
@@ -191,7 +191,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     in.close()
   }
 
-  test("prep4requiredSchema2") {
+  test("prepSchema") {
     val in = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
@@ -200,7 +200,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     requiredFields.add(StructField(QueryConstant.RESERVED_TIME, LongType, false))
     val requiredSchema = StructType(requiredFields)
 
-    val filteredSchema = Converter.prep4requiredSchema(requiredSchema, tsFileMetaData)
+    val filteredSchema = Converter.prepSchema(requiredSchema, tsFileMetaData)
 
     Assert.assertEquals(6, filteredSchema.size)
     val fields = filteredSchema.fields

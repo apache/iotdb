@@ -21,11 +21,14 @@ package org.apache.iotdb.tsfile.tool;
 import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -151,6 +154,61 @@ public class TsFileWrite {
       // write a TSRecord to TsFile
       tsFileWriter.write(tsRecord);
     }
+    // close TsFile
+    tsFileWriter.close();
+  }
+
+  public void create3(String tsfilePath) throws Exception {
+    File f = new File(tsfilePath);
+    if (f.exists()) {
+      f.delete();
+    }
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
+
+    // add measurements into file schema
+    // NOTE the sensors here are different from those defined in create1 and
+    // create2 function, despite their names are the same.
+    tsFileWriter
+        .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.BOOLEAN, TSEncoding.RLE));
+    tsFileWriter
+        .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.TEXT, TSEncoding.PLAIN));
+
+    // construct TSRecord
+    TSRecord tsRecord = new TSRecord(1, "device_1");
+    DataPoint dPoint1 = new BooleanDataPoint("sensor_1", true);
+    DataPoint dPoint2 = new StringDataPoint("sensor_2", new Binary("Monday"));
+    tsRecord.addTuple(dPoint1);
+    tsRecord.addTuple(dPoint2);
+
+    // write a TSRecord to TsFile
+    tsFileWriter.write(tsRecord);
+
+    tsRecord = new TSRecord(2, "device_1");
+    dPoint2 = new StringDataPoint("sensor_2", new Binary("Tuesday"));
+    tsRecord.addTuple(dPoint2);
+    tsFileWriter.write(tsRecord);
+
+    tsRecord = new TSRecord(3, "device_1");
+    dPoint1 = new BooleanDataPoint("sensor_1", false);
+    dPoint2 = new StringDataPoint("sensor_2", new Binary("Wednesday"));
+    tsRecord.addTuple(dPoint1);
+    tsRecord.addTuple(dPoint2);
+    tsFileWriter.write(tsRecord);
+
+    tsRecord = new TSRecord(4, "device_1");
+    dPoint1 = new BooleanDataPoint("sensor_1", false);
+    dPoint2 = new StringDataPoint("sensor_2", new Binary("Thursday"));
+    tsRecord.addTuple(dPoint1);
+    tsRecord.addTuple(dPoint2);
+    tsFileWriter.write(tsRecord);
+
+    tsRecord = new TSRecord(6, "device_1");
+    dPoint1 = new BooleanDataPoint("sensor_1", true);
+    dPoint2 = new StringDataPoint("sensor_2", new Binary("Saturday"));
+    tsRecord.addTuple(dPoint1);
+    tsRecord.addTuple(dPoint2);
+    tsFileWriter.write(tsRecord);
+
     // close TsFile
     tsFileWriter.close();
   }

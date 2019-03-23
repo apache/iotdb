@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.{Field, Path}
 import org.apache.iotdb.tsfile.read.expression.impl.{BinaryExpression, GlobalTimeExpression, SingleSeriesExpression}
 import org.apache.iotdb.tsfile.read.expression.{IExpression, QueryExpression}
 import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
+import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
 import org.apache.iotdb.tsfile.write.schema.{FileSchema, MeasurementSchema, SchemaBuilder}
@@ -136,7 +137,7 @@ object Converter {
     * @param isTimeField  true to add a time field; false to not
     * @return the converted list of fields
     */
-  def convert2SqlType(tsfileSchema: util.ArrayList[MeasurementSchema], isTimeField: Boolean): ListBuffer[StructField] = {
+  def toSqlField(tsfileSchema: util.ArrayList[MeasurementSchema], isTimeField: Boolean): ListBuffer[StructField] = {
     val fields = new ListBuffer[StructField]()
 
     if (isTimeField) {
@@ -165,7 +166,7 @@ object Converter {
     * @return sparkSQL table schema with the time field added
     */
   def toSqlSchema(tsfileSchema: util.ArrayList[MeasurementSchema]): Option[StructType] = {
-    val fields = convert2SqlType(tsfileSchema, true) // true to add the time field
+    val fields = toSqlField(tsfileSchema, true) // true to add the time field
 
     SchemaType(StructType(fields.toList), nullable = false).dataType match {
       case t: StructType => Some(t)
@@ -177,13 +178,13 @@ object Converter {
   }
 
   /**
-    * Pre-process requiredSchema to get queriedSchema.
+    * Prepare queriedSchema from requiredSchema.
     *
     * @param requiredSchema requiredSchema
     * @param tsFileMetaData tsFileMetaData
     * @return
     */
-  def prep4requiredSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetaData): StructType = {
+  def prepSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetaData): StructType = {
     var queriedSchema: StructType = new StructType()
 
     if (requiredSchema.isEmpty
@@ -191,7 +192,7 @@ object Converter {
       // for example, (i) select count(*) from table; (ii) select time from table
 
       val fileSchema = Converter.getSeries(tsFileMetaData)
-      queriedSchema = StructType(convert2SqlType(fileSchema, false).toList)
+      queriedSchema = StructType(toSqlField(fileSchema, false).toList)
 
     } else { // Remove nonexistent schema according to the current file's metadata.
       // This may happen when queried TsFiles in the same folder do not have the same schema.
@@ -397,7 +398,7 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.eq(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructEqFilter(schema, node.attribute, node.value)
+          filter = constructFilter(schema, node.attribute, node.value, "Eq")
         }
         filter
 
@@ -405,7 +406,7 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.lt(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructLtFilter(schema, node.attribute, node.value)
+          filter = constructFilter(schema, node.attribute, node.value, "Lt")
         }
         filter
 
@@ -413,7 +414,7 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.ltEq(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructLtEqFilter(schema, node.attribute, node.value)
+          filter = constructFilter(schema, node.attribute, node.value, "LtEq")
         }
         filter
 
@@ -421,7 +422,7 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.gt(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructGtFilter(schema, node.attribute, node.value)
+          filter = constructFilter(schema, node.attribute, node.value, "Gt")
         }
         filter
 
@@ -429,16 +430,16 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.gtEq(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructGtEqFilter(schema, node.attribute, node.value)
+          filter = constructFilter(schema, node.attribute, node.value, "GtEq")
         }
         filter
 
-      case _ =>
-        throw new Exception("unsupported filter:" + node.toString)
+      case other =>
+        throw new Exception(s"Unsupported filter $other")
     }
   }
 
-  def constructEqFilter(schema: StructType, nodeName: String, nodeValue: Any): IExpression = {
+  def constructFilter(schema: StructType, nodeName: String, nodeValue: Any, filterType: String): IExpression = {
     val fieldNames = schema.fieldNames
     val index = fieldNames.indexOf(nodeName)
     if (index == -1) {
@@ -448,172 +449,115 @@ object Converter {
     } else {
       val dataType = schema.get(index).dataType
 
-      dataType match {
-        case IntegerType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Integer]))
-          filter
-        case LongType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Long]))
-          filter
-        case FloatType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Float]))
-          filter
-        case DoubleType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Double]))
-          filter
-        case StringType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.eq(nodeValue.asInstanceOf[java.lang.String]))
-          filter
-        case other => throw new UnsupportedOperationException(s"Unsupported type $other")
-      }
-    }
-  }
-
-  def constructGtFilter(requiredSchema: StructType, nodeName: String, nodeValue: Any): IExpression = {
-    val fieldNames = requiredSchema.fieldNames
-    val index = fieldNames.indexOf(nodeName)
-    if (index == -1) {
-      // placeholder for an invalid filter in the current TsFile
-      val filter = new SingleSeriesExpression(new Path(nodeName), null)
-      filter
-    } else {
-      val dataType = requiredSchema.get(index).dataType
-
-      dataType match {
-        case IntegerType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gt(nodeValue.asInstanceOf[java.lang.Integer]))
-          filter
-        case LongType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gt(nodeValue.asInstanceOf[java.lang.Long]))
-          filter
-        case FloatType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gt(nodeValue.asInstanceOf[java.lang.Float]))
-          filter
-        case DoubleType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gt(nodeValue.asInstanceOf[java.lang.Double]))
-          filter
-        case StringType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gt(nodeValue.asInstanceOf[java.lang.String]))
-          filter
-        case other => throw new UnsupportedOperationException(s"Unsupported type $other")
-      }
-    }
-  }
-
-  def constructGtEqFilter(requiredSchema: StructType, nodeName: String, nodeValue: Any): IExpression = {
-    val fieldNames = requiredSchema.fieldNames
-    val index = fieldNames.indexOf(nodeName)
-    if (index == -1) {
-      // placeholder for an invalid filter in the current TsFile
-      val filter = new SingleSeriesExpression(new Path(nodeName), null)
-      filter
-    } else {
-      val dataType = requiredSchema.get(index).dataType
-
-      dataType match {
-        case IntegerType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gtEq(nodeValue.asInstanceOf[java.lang.Integer]))
-          filter
-        case LongType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gtEq(nodeValue.asInstanceOf[java.lang.Long]))
-          filter
-        case FloatType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gtEq(nodeValue.asInstanceOf[java.lang.Float]))
-          filter
-        case DoubleType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gtEq(nodeValue.asInstanceOf[java.lang.Double]))
-          filter
-        case StringType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.gtEq(nodeValue.asInstanceOf[java.lang.String]))
-          filter
-        case other => throw new UnsupportedOperationException(s"Unsupported type $other")
-      }
-    }
-  }
-
-  def constructLtFilter(requiredSchema: StructType, nodeName: String, nodeValue: Any): IExpression = {
-    val fieldNames = requiredSchema.fieldNames
-    val index = fieldNames.indexOf(nodeName)
-    if (index == -1) {
-      // placeholder for an invalid filter in the current TsFile
-      val filter = new SingleSeriesExpression(new Path(nodeName), null)
-      filter
-    } else {
-      val dataType = requiredSchema.get(index).dataType
-
-      dataType match {
-        case IntegerType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.lt(nodeValue.asInstanceOf[java.lang.Integer]))
-          filter
-        case LongType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.lt(nodeValue.asInstanceOf[java.lang.Long]))
-          filter
-        case FloatType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.lt(nodeValue.asInstanceOf[java.lang.Float]))
-          filter
-        case DoubleType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.lt(nodeValue.asInstanceOf[java.lang.Double]))
-          filter
-        case StringType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.lt(nodeValue.asInstanceOf[java.lang.String]))
-          filter
-        case other => throw new UnsupportedOperationException(s"Unsupported type $other")
-      }
-    }
-  }
-
-  def constructLtEqFilter(requiredSchema: StructType, nodeName: String, nodeValue: Any): IExpression = {
-    val fieldNames = requiredSchema.fieldNames
-    val index = fieldNames.indexOf(nodeName)
-    if (index == -1) {
-      // placeholder for an invalid filter in the current TsFile
-      val filter = new SingleSeriesExpression(new Path(nodeName), null)
-      filter
-    } else {
-      val dataType = requiredSchema.get(index).dataType
-
-      dataType match {
-        case IntegerType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.ltEq(nodeValue.asInstanceOf[java.lang.Integer]))
-          filter
-        case LongType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.ltEq(nodeValue.asInstanceOf[java.lang.Long]))
-          filter
-        case FloatType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.ltEq(nodeValue.asInstanceOf[java.lang.Float]))
-          filter
-        case DoubleType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.ltEq(nodeValue.asInstanceOf[java.lang.Double]))
-          filter
-        case StringType =>
-          val filter = new SingleSeriesExpression(new Path(nodeName),
-            ValueFilter.ltEq(nodeValue.asInstanceOf[java.lang.String]))
-          filter
-        case other => throw new UnsupportedOperationException(s"Unsupported type $other")
+      filterType match {
+        case "Eq" =>
+          dataType match {
+            case IntegerType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Integer]))
+              filter
+            case LongType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Long]))
+              filter
+            case FloatType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Float]))
+              filter
+            case DoubleType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Double]))
+              filter
+            case StringType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.eq(new Binary(nodeValue.toString)))
+              filter
+            case BooleanType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Boolean]))
+              filter
+            case other => throw new UnsupportedOperationException(s"Unsupported type $other")
+          }
+        case "Gt" =>
+          dataType match {
+            case IntegerType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.gt(nodeValue.asInstanceOf[java.lang.Integer]))
+              filter
+            case LongType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.gt(nodeValue.asInstanceOf[java.lang.Long]))
+              filter
+            case FloatType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.gt(nodeValue.asInstanceOf[java.lang.Float]))
+              filter
+            case DoubleType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.gt(nodeValue.asInstanceOf[java.lang.Double]))
+              filter
+            case other => throw new UnsupportedOperationException(s"Unsupported type $other")
+          }
+        case "GtEq" =>
+          dataType match {
+            case IntegerType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.gtEq(nodeValue.asInstanceOf[java.lang.Integer]))
+              filter
+            case LongType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.gtEq(nodeValue.asInstanceOf[java.lang.Long]))
+              filter
+            case FloatType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.gtEq(nodeValue.asInstanceOf[java.lang.Float]))
+              filter
+            case DoubleType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.gtEq(nodeValue.asInstanceOf[java.lang.Double]))
+              filter
+            case other => throw new UnsupportedOperationException(s"Unsupported type $other")
+          }
+        case "Lt" =>
+          dataType match {
+            case IntegerType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.lt(nodeValue.asInstanceOf[java.lang.Integer]))
+              filter
+            case LongType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.lt(nodeValue.asInstanceOf[java.lang.Long]))
+              filter
+            case FloatType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.lt(nodeValue.asInstanceOf[java.lang.Float]))
+              filter
+            case DoubleType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.lt(nodeValue.asInstanceOf[java.lang.Double]))
+              filter
+            case other => throw new UnsupportedOperationException(s"Unsupported type $other")
+          }
+        case "LtEq" =>
+          dataType match {
+            case IntegerType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.ltEq(nodeValue.asInstanceOf[java.lang.Integer]))
+              filter
+            case LongType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.ltEq(nodeValue.asInstanceOf[java.lang.Long]))
+              filter
+            case FloatType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.ltEq(nodeValue.asInstanceOf[java.lang.Float]))
+              filter
+            case DoubleType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.ltEq(nodeValue.asInstanceOf[java.lang.Double]))
+              filter
+            case other => throw new UnsupportedOperationException(s"Unsupported type $other")
+          }
       }
     }
   }
@@ -624,6 +568,5 @@ object Converter {
   }
 
   case class SchemaType(dataType: DataType, nullable: Boolean)
-
 
 }

@@ -31,9 +31,11 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 class TSFileSuit extends FunSuite with BeforeAndAfterAll {
 
   private val resourcesFolder = "../spark/src/test/resources"
-  private val tsfileFolder = "../spark/src/test/resources/tsfile"
-  private val tsfile1 = "../spark/src/test/resources/tsfile/test1.tsfile"
-  private val tsfile2 = "../spark/src/test/resources/tsfile/test2.tsfile"
+  private val tsfileFolder1 = resourcesFolder + "/tsfile1"
+  private val tsfileFolder2 = resourcesFolder + "/tsfile2"
+  private val tsfile1 = tsfileFolder1 + "/test1.tsfile"
+  private val tsfile2 = tsfileFolder1 + "/test2.tsfile"
+  private val tsfile3 = tsfileFolder2 + "/test.tsfile"
   private val outputPath = "../spark/src/test/resources/output"
   private val outputPathFile = outputPath + "/part-m-00000"
   private val outputPath2 = "../spark/src/test/resources/output2"
@@ -46,22 +48,34 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     System.setProperty("hadoop.home.dir", "D:\\winutils")
     //System.setProperty("hadoop.home.dir","/home/rl/usr/local/hadoop")
     super.beforeAll()
+
     val resources = new File(resourcesFolder)
     if (!resources.exists())
       resources.mkdirs()
-    val tsfile_folder = new File(tsfileFolder)
-    if (tsfile_folder.exists()) {
-      deleteDir(tsfile_folder)
+
+    val tsfile_folder1 = new File(tsfileFolder1)
+    if (tsfile_folder1.exists()) {
+      deleteDir(tsfile_folder1)
     }
-    tsfile_folder.mkdirs()
+    tsfile_folder1.mkdirs()
+
+    val tsfile_folder2 = new File(tsfileFolder2)
+    if (tsfile_folder2.exists()) {
+      deleteDir(tsfile_folder2)
+    }
+    tsfile_folder2.mkdirs()
+
     new TsFileWrite().create1(tsfile1)
     new TsFileWrite().create2(tsfile2)
+    new TsFileWrite().create3(tsfile3)
+
     val output = new File(outputPath)
     if (output.exists())
       deleteDir(output)
     val output2 = new File(outputPath2)
     if (output2.exists())
       deleteDir(output2)
+
     spark = SparkSession
       .builder()
       .config("spark.master", "local")
@@ -70,8 +84,10 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   }
 
   override protected def afterAll(): Unit = {
-    val folder = new File(tsfileFolder)
-    deleteDir(folder)
+    val folder1 = new File(tsfileFolder1)
+    deleteDir(folder1)
+    val folder2 = new File(tsfileFolder2)
+    deleteDir(folder2)
     val out = new File(outputPath)
     deleteDir(out)
     val out2 = new File(outputPath2)
@@ -144,6 +160,20 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals(7, newDf.count())
   }
 
+  test("testSelectString") {
+    val df = spark.read.tsfile(tsfile3)
+    df.createOrReplaceTempView("tsfile_table")
+    val newDf = spark.sql("select * from tsfile_table where `device_1.sensor_2` = \"Monday\"")
+    Assert.assertEquals(1, newDf.count())
+  }
+
+  test("testSelectBoolean") {
+    val df = spark.read.tsfile(tsfile3)
+    df.createOrReplaceTempView("tsfile_table")
+    val newDf = spark.sql("select * from tsfile_table where `device_1.sensor_1` = true")
+    Assert.assertEquals(2, newDf.count())
+  }
+
   test("testSelectWithFilterAnd") {
     val df = spark.read.tsfile(tsfile1)
     df.createOrReplaceTempView("tsfile_table")
@@ -166,13 +196,13 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   }
 
   test("testMultiFiles") {
-    val df = spark.read.tsfile(tsfileFolder)
+    val df = spark.read.tsfile(tsfileFolder1)
     df.createOrReplaceTempView("tsfile_table")
     Assert.assertEquals(TsFileWrite.largeNum + 7, df.count())
   }
 
   test("testMultiFilesWithFilter1") {
-    val df = spark.read.tsfile(tsfileFolder)
+    val df = spark.read.tsfile(tsfileFolder1)
     df.createOrReplaceTempView("tsfile_table")
     val newDf = spark.sql("select * from tsfile_table where `device_1.sensor_1` >0 " +
       "and `device_1.sensor_1` <10 or `device_1.sensor_2` >0")
