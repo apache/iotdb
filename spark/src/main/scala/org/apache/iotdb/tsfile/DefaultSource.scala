@@ -99,7 +99,6 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       params.put(QueryConstant.PARTITION_START_OFFSET, file.start.asInstanceOf[java.lang.Long])
       params.put(QueryConstant.PARTITION_END_OFFSET, (file.start + file.length).asInstanceOf[java.lang.Long])
 
-      val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader, params)
       val tsFileMetaData = reader.readFileMetadata
 
       // get queriedSchema from requiredSchema
@@ -108,6 +107,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       // construct queryExpression based on queriedSchema and filters
       val queryExpression = Converter.toQueryExpression(queriedSchema, filters)
 
+      val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader, params)
       val queryDataSet = readTsFile.query(queryExpression)
 
       new Iterator[InternalRow] {

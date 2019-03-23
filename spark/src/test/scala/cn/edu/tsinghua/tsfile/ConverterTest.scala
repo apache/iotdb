@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -19,54 +19,106 @@
 package cn.edu.tsinghua.tsfile
 
 import java.io.File
+import java.net.URI
 import java.util
 
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
 import org.apache.iotdb.tsfile.Converter
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
+import org.apache.iotdb.tsfile.io.HDFSInput
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.tool.TsFileWrite
 import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
+import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.junit.Assert
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class ConverterTest extends FunSuite with BeforeAndAfterAll {
-  private val tsfilePath: String = "../spark/src/test/resources/tsfile/test.tsfile"
+  private val tsfileFolder = "../spark/src/test/resources/convertTest"
+  private val tsfilePath1: String = tsfileFolder + "/test_1.tsfile"
+  private val tsfilePath2: String = tsfileFolder + "/test_2.tsfile"
+  private var spark: SparkSession = _
+  private var conf: Configuration = _
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    new TsFileWrite().create1(tsfilePath)
+    val tsfile_folder = new File(tsfileFolder)
+    if (tsfile_folder.exists()) {
+      deleteDir(tsfile_folder)
+    }
+    tsfile_folder.mkdirs()
+    new TsFileWrite().create1(tsfilePath1)
+    new TsFileWrite().create2(tsfilePath2)
+    spark = SparkSession
+      .builder()
+      .config("spark.master", "local")
+      .appName("TSFile test")
+      .getOrCreate()
+    conf = spark.sparkContext.hadoopConfiguration
   }
 
   override protected def afterAll(): Unit = {
-    super.afterAll()
-    val file = new File(tsfilePath)
-    file.delete()
+    val folder = new File(tsfileFolder)
+    deleteDir(folder)
+    try {
+      spark.sparkContext.stop()
+    } finally {
+      super.afterAll()
+    }
   }
 
-  test("testToSparkSqlSchema") {
-    val fields: util.ArrayList[MeasurementSchema] = new util.ArrayList[MeasurementSchema]()
-    fields.add(new MeasurementSchema("device_1.sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF))
-    fields.add(new MeasurementSchema("device_1.sensor_1", TSDataType.FLOAT, TSEncoding.RLE))
-    fields.add(new MeasurementSchema("device_1.sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF))
-    fields.add(new MeasurementSchema("device_2.sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF))
-    fields.add(new MeasurementSchema("device_2.sensor_1", TSDataType.FLOAT, TSEncoding.RLE))
-    fields.add(new MeasurementSchema("device_2.sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF))
+  def deleteDir(dir: File): Unit = {
+    if (dir.isDirectory) {
+      dir.list().foreach(f => {
+        deleteDir(new File(dir, f))
+      })
+    }
+    dir.delete()
+  }
 
-    val sqlSchema = Converter.toSqlSchema(fields)
+  test("getSeries") {
+    val in = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsFileMetaData = reader.readFileMetadata
 
-    val expectedFields: util.ArrayList[StructField] = new util.ArrayList[StructField]()
-    expectedFields.add(new StructField(QueryConstant.RESERVED_TIME, LongType, false))
-    expectedFields.add(new StructField("device_1.sensor_3", IntegerType, true))
-    expectedFields.add(new StructField("device_1.sensor_1", FloatType, true))
-    expectedFields.add(new StructField("device_1.sensor_2", IntegerType, true))
-    expectedFields.add(new StructField("device_2.sensor_3", IntegerType, true))
-    expectedFields.add(new StructField("device_2.sensor_1", FloatType, true))
-    expectedFields.add(new StructField("device_2.sensor_2", IntegerType, true))
+    val series = Converter.getSeries(tsFileMetaData)
 
-    Assert.assertEquals(StructType(expectedFields), sqlSchema.get)
+    Assert.assertEquals(6, series.size())
+    Assert.assertEquals("[device_1.sensor_3,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(0).toString)
+    Assert.assertEquals("[device_1.sensor_1,FLOAT,RLE,{},UNCOMPRESSED]", series.get(1).toString)
+    Assert.assertEquals("[device_1.sensor_2,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(2).toString)
+    Assert.assertEquals("[device_2.sensor_3,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(3).toString)
+    Assert.assertEquals("[device_2.sensor_1,FLOAT,RLE,{},UNCOMPRESSED]", series.get(4).toString)
+    Assert.assertEquals("[device_2.sensor_2,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(5).toString)
+  }
+
+  test("getUnionSeries") {
+    val path1: Path = new Path(new URI(tsfilePath1))
+    val fs1: FileSystem = path1.getFileSystem(conf)
+    val status1 = fs1.getFileStatus(path1)
+
+    val path2: Path = new Path(new URI(tsfilePath2))
+    val fs2: FileSystem = path2.getFileSystem(conf)
+    val status2 = fs2.getFileStatus(path2)
+
+    val statusSeq: Seq[FileStatus] = Seq(status1, status2)
+
+    val tsfileSchema = Converter.getUnionSeries(statusSeq, conf)
+
+    Assert.assertEquals(tsfileSchema.size(), 6)
+    Assert.assertEquals("[device_1.sensor_3,INT32,TS_2DIFF,{},UNCOMPRESSED]", tsfileSchema.get(0).toString)
+    Assert.assertEquals("[device_1.sensor_1,FLOAT,RLE,{},UNCOMPRESSED]", tsfileSchema.get(1).toString)
+    Assert.assertEquals("[device_1.sensor_2,INT32,TS_2DIFF,{},UNCOMPRESSED]", tsfileSchema.get(2).toString)
+    Assert.assertEquals("[device_2.sensor_3,INT32,TS_2DIFF,{},UNCOMPRESSED]", tsfileSchema.get(3).toString)
+    Assert.assertEquals("[device_2.sensor_1,FLOAT,RLE,{},UNCOMPRESSED]", tsfileSchema.get(4).toString)
+    Assert.assertEquals("[device_2.sensor_2,INT32,TS_2DIFF,{},UNCOMPRESSED]", tsfileSchema.get(5).toString)
   }
 
   test("testToSqlValue") {
@@ -89,5 +141,122 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals(Converter.toSqlValue(floatField), 3.14f)
     Assert.assertEquals(Converter.toSqlValue(doubleField), 0.618d)
     Assert.assertEquals(Converter.toSqlValue(stringField), "pass")
+  }
+
+  test("testToSparkSqlSchema") {
+    val fields: util.ArrayList[MeasurementSchema] = new util.ArrayList[MeasurementSchema]()
+    fields.add(new MeasurementSchema("device_1.sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF))
+    fields.add(new MeasurementSchema("device_1.sensor_1", TSDataType.FLOAT, TSEncoding.RLE))
+    fields.add(new MeasurementSchema("device_1.sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF))
+    fields.add(new MeasurementSchema("device_2.sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF))
+    fields.add(new MeasurementSchema("device_2.sensor_1", TSDataType.FLOAT, TSEncoding.RLE))
+    fields.add(new MeasurementSchema("device_2.sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF))
+
+    val sqlSchema = Converter.toSqlSchema(fields)
+
+    val expectedFields: util.ArrayList[StructField] = new util.ArrayList[StructField]()
+    expectedFields.add(StructField(QueryConstant.RESERVED_TIME, LongType, false))
+    expectedFields.add(StructField("device_1.sensor_3", IntegerType, true))
+    expectedFields.add(StructField("device_1.sensor_1", FloatType, true))
+    expectedFields.add(StructField("device_1.sensor_2", IntegerType, true))
+    expectedFields.add(StructField("device_2.sensor_3", IntegerType, true))
+    expectedFields.add(StructField("device_2.sensor_1", FloatType, true))
+    expectedFields.add(StructField("device_2.sensor_2", IntegerType, true))
+
+    Assert.assertEquals(StructType(expectedFields), sqlSchema.get)
+  }
+
+  test("prep4requiredSchema1") {
+    val in = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsFileMetaData = reader.readFileMetadata
+
+    val requiredFields: util.ArrayList[StructField] = new util.ArrayList[StructField]()
+    requiredFields.add(StructField(QueryConstant.RESERVED_TIME, LongType, false))
+    requiredFields.add(StructField("device_1.sensor_3", IntegerType, true))
+    requiredFields.add(StructField("device_1.sensor_1", FloatType, true))
+    requiredFields.add(StructField("device_1.sensor_2", IntegerType, true))
+    val requiredSchema = StructType(requiredFields)
+
+    val filteredSchema = Converter.prep4requiredSchema(requiredSchema, tsFileMetaData)
+
+    Assert.assertEquals(3, filteredSchema.size)
+    val fields = filteredSchema.fields
+    Assert.assertEquals("StructField(device_1.sensor_3,IntegerType,true)", fields(0).toString)
+    Assert.assertEquals("StructField(device_1.sensor_1,FloatType,true)", fields(1).toString)
+    Assert.assertEquals("StructField(device_1.sensor_2,IntegerType,true)", fields(2).toString)
+  }
+
+  test("prep4requiredSchema2") {
+    val in = new HDFSInput(new Path(new URI(tsfilePath1)), conf)
+    val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
+    val tsFileMetaData = reader.readFileMetadata
+
+    val requiredFields: util.ArrayList[StructField] = new util.ArrayList[StructField]()
+    requiredFields.add(StructField(QueryConstant.RESERVED_TIME, LongType, false))
+    val requiredSchema = StructType(requiredFields)
+
+    val filteredSchema = Converter.prep4requiredSchema(requiredSchema, tsFileMetaData)
+
+    Assert.assertEquals(6, filteredSchema.size)
+    val fields = filteredSchema.fields
+    Assert.assertEquals("StructField(device_1.sensor_3,IntegerType,true)", fields(0).toString)
+    Assert.assertEquals("StructField(device_1.sensor_1,FloatType,true)", fields(1).toString)
+    Assert.assertEquals("StructField(device_1.sensor_2,IntegerType,true)", fields(2).toString)
+    Assert.assertEquals("StructField(device_2.sensor_3,IntegerType,true)", fields(3).toString)
+    Assert.assertEquals("StructField(device_2.sensor_1,FloatType,true)", fields(4).toString)
+    Assert.assertEquals("StructField(device_2.sensor_2,IntegerType,true)", fields(5).toString)
+  }
+
+  test("toTsRecord") {
+    val fields: util.ArrayList[StructField] = new util.ArrayList[StructField]()
+    fields.add(StructField(QueryConstant.RESERVED_TIME, LongType, false))
+    fields.add(StructField("device_1.sensor_3", IntegerType, true))
+    fields.add(StructField("device_1.sensor_1", FloatType, true))
+    fields.add(StructField("device_1.sensor_2", IntegerType, true))
+    fields.add(StructField("device_2.sensor_3", IntegerType, true))
+    fields.add(StructField("device_2.sensor_1", FloatType, true))
+    fields.add(StructField("device_2.sensor_2", IntegerType, true))
+    val schema = StructType(fields)
+
+    var row: GenericRowWithSchema = new GenericRowWithSchema(Array(1L, null, 1.2f, 20, 19, 2.3f, 11), schema)
+    val records = Converter.toTsRecord(row)
+
+    Assert.assertEquals(2, records.size)
+    Assert.assertEquals(1, records(0).time)
+    Assert.assertEquals("device_2", records(0).deviceId)
+    val dataPoints1 = records(0).dataPointList
+    Assert.assertEquals("{measurement id: sensor_3 type: INT32 value: 19 }", dataPoints1.get(0).toString)
+    Assert.assertEquals("{measurement id: sensor_1 type: FLOAT value: 2.3 }", dataPoints1.get(1).toString)
+    Assert.assertEquals("{measurement id: sensor_2 type: INT32 value: 11 }", dataPoints1.get(2).toString)
+
+    Assert.assertEquals(1, records(1).time)
+    Assert.assertEquals("device_1", records(1).deviceId)
+    val dataPoints2 = records(1).dataPointList
+    Assert.assertEquals("{measurement id: sensor_1 type: FLOAT value: 1.2 }", dataPoints2.get(0).toString)
+    Assert.assertEquals("{measurement id: sensor_2 type: INT32 value: 20 }", dataPoints2.get(1).toString)
+  }
+
+  test("toQueryExpression") {
+    val fields: util.ArrayList[StructField] = new util.ArrayList[StructField]()
+    fields.add(StructField(QueryConstant.RESERVED_TIME, LongType, false))
+    fields.add(StructField("device_1.sensor_1", FloatType, true))
+    fields.add(StructField("device_1.sensor_2", IntegerType, true))
+    val schema = StructType(fields)
+
+    val ft1 = IsNotNull("time")
+    val ft2 = GreaterThan("device_1.sensor_1", 0.0f)
+    val ft3 = LessThan("device_1.sensor_2", 22)
+    val ft2_3 = Or(ft2, ft3)
+    val ft4 = LessThan("time", 4L)
+    val filters: Seq[Filter] = Seq(ft1, ft2_3, ft4)
+
+    val expression = Converter.toQueryExpression(schema, filters)
+
+    Assert.assertEquals(true, expression.hasQueryFilter)
+    Assert.assertEquals(2, expression.getSelectedSeries.size())
+    Assert.assertEquals("device_1.sensor_1", expression.getSelectedSeries.get(0).toString)
+    Assert.assertEquals("device_1.sensor_2", expression.getSelectedSeries.get(1).toString)
+    Assert.assertEquals("[[[device_1.sensor_1:value > 0.0] || [device_1.sensor_2:value < 22]] && [time < 4]]", expression.getExpression.toString)
   }
 }

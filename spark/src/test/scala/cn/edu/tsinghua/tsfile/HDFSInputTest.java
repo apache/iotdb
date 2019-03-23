@@ -60,6 +60,4 @@ public class HDFSInputTest {
     ByteBuffer buffer = ByteBuffer.allocate(size);
     Assert.assertEquals(size, in.read(buffer, pos));
   }
-
-
 }

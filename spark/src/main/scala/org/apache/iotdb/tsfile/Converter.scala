@@ -50,7 +50,30 @@ import scala.collection.mutable.ListBuffer
 object Converter {
 
   /**
-    * Get union series in all tsfiles
+    * Get series from the given tsFileMetaData.
+    *
+    * @param tsFileMetaData TsFileMetaData
+    * @return union series
+    */
+  def getSeries(tsFileMetaData: TsFileMetaData): util.ArrayList[MeasurementSchema] = {
+    val series = new util.ArrayList[MeasurementSchema]()
+
+    val devices = tsFileMetaData.getDeviceMap.keySet()
+    val measurements = tsFileMetaData.getMeasurementSchema
+
+    devices.foreach(d => {
+      measurements.foreach(m => {
+        val fullPath = d + "." + m._1
+        series.add(new MeasurementSchema(fullPath, m._2.getType, m._2.getEncodingType)
+        )
+      })
+    })
+
+    series
+  }
+
+  /**
+    * Get union series in all tsfiles.
     * e.g. (tsfile1:s1,s2) & (tsfile2:s2,s3) = s1,s2,s3
     *
     * @param files tsfiles
@@ -84,30 +107,6 @@ object Converter {
   }
 
   /**
-    * Get series from the given tsFileMetaData
-    *
-    * @param tsFileMetaData TsFileMetaData
-    * @return union series
-    */
-  def getSeries(tsFileMetaData: TsFileMetaData): util.ArrayList[MeasurementSchema] = {
-    val series = new util.ArrayList[MeasurementSchema]()
-
-    val devices = tsFileMetaData.getDeviceMap.keySet()
-    val measurements = tsFileMetaData.getMeasurementSchema
-
-    devices.foreach(d => {
-      measurements.foreach(m => {
-        val fullPath = d + "." + m._1
-        series.add(new MeasurementSchema(fullPath, m._2.getType, m._2.getEncodingType)
-        )
-      })
-    })
-
-    series
-  }
-
-
-  /**
     * Convert TSFile data to sparkSQL data.
     *
     * @param field one data point in TsFile
@@ -130,10 +129,10 @@ object Converter {
   }
 
   /**
-    * convert tsfile data type to sparkSQL data type
+    * Construct fields with the TSFile data type converted to the sparkSQL data type.
     *
-    * @param tsfileSchema given tsfileSchema
-    * @param isTimeField  true to add a time field at the beginning
+    * @param tsfileSchema tsfileSchema
+    * @param isTimeField  true to add a time field; false to not
     * @return the converted list of fields
     */
   def convert2SqlType(tsfileSchema: util.ArrayList[MeasurementSchema], isTimeField: Boolean): ListBuffer[StructField] = {
@@ -162,10 +161,10 @@ object Converter {
     * Convert TSFile columns to sparkSQL schema.
     *
     * @param tsfileSchema all time series information in TSFile
-    * @return sparkSQL table schema including the additional time field
+    * @return sparkSQL table schema with the time field added
     */
   def toSqlSchema(tsfileSchema: util.ArrayList[MeasurementSchema]): Option[StructType] = {
-    val fields = convert2SqlType(tsfileSchema, true) // add time field
+    val fields = convert2SqlType(tsfileSchema, true) // true to add the time field
 
     SchemaType(StructType(fields.toList), nullable = false).dataType match {
       case t: StructType => Some(t)
@@ -176,9 +175,13 @@ object Converter {
     }
   }
 
-  /*
-    preprocess requiredSchema to get queriedSchema
-   */
+  /**
+    * Pre-process requiredSchema to get queriedSchema.
+    *
+    * @param requiredSchema requiredSchema
+    * @param tsFileMetaData tsFileMetaData
+    * @return
+    */
   def prep4requiredSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetaData): StructType = {
     var queriedSchema: StructType = new StructType()
 
@@ -210,9 +213,9 @@ object Converter {
 
 
   /**
-    * return the TsFile data type of given spark sql data type
+    * Return the TsFile data type of given sparkSQL data type.
     *
-    * @param dataType spark sql data type
+    * @param dataType sparkSQL data type
     * @return TsFile data type
     */
   def getTsDataType(dataType: DataType): TSDataType = {
@@ -228,11 +231,11 @@ object Converter {
   }
 
   /**
-    * construct series schema from name and data type
+    * Construct MeasurementSchema from the given field.
     *
-    * @param field   series name
-    * @param options series data type
-    * @return series schema
+    * @param field   field
+    * @param options encoding options
+    * @return MeasurementSchema
     */
   def getSeriesSchema(field: StructField, options: Map[String, String]): MeasurementSchema = {
     val conf = TSFileDescriptor.getInstance.getConfig
@@ -252,9 +255,8 @@ object Converter {
   }
 
   /**
-    * given a spark sql struct type, generate the TsFile schema
-    *
-    * Note: It is impossible to have two sensors with the same name in the same TsFile.
+    * Given a sparkSQL struct type, generate the TsFile schema.
+    * Note: There are not two sensors with the same name in the same TsFile.
     *
     * @param structType given sql schema
     * @return TsFile schema
@@ -271,7 +273,7 @@ object Converter {
   }
 
   /**
-    * convert a row in spark table to a list of TSRecord
+    * Convert a row in the spark table to a list of TSRecord.
     *
     * @param row given spark sql row
     * @return TSRecord
@@ -313,10 +315,10 @@ object Converter {
 
 
   /**
-    * construct queryExpression based on queriedSchema and filters
+    * Construct queryExpression based on queriedSchema and filters.
     *
-    * @param schema  selected columns.
-    * @param filters filters.
+    * @param schema  selected columns
+    * @param filters filters
     * @return query expression
     */
   def toQueryExpression(schema: StructType, filters: Seq[Filter]): QueryExpression = {
@@ -439,7 +441,7 @@ object Converter {
     val fieldNames = schema.fieldNames
     val index = fieldNames.indexOf(nodeName)
     if (index == -1) {
-      // TODO placeholder for an invalid filter in the current TsFile
+      // placeholder for an invalid filter in the current TsFile
       val filter = new SingleSeriesExpression(new Path(nodeName), null)
       filter
     } else {
@@ -475,7 +477,7 @@ object Converter {
     val fieldNames = requiredSchema.fieldNames
     val index = fieldNames.indexOf(nodeName)
     if (index == -1) {
-      // TODO placeholder for an invalid filter in the current TsFile
+      // placeholder for an invalid filter in the current TsFile
       val filter = new SingleSeriesExpression(new Path(nodeName), null)
       filter
     } else {
@@ -511,7 +513,7 @@ object Converter {
     val fieldNames = requiredSchema.fieldNames
     val index = fieldNames.indexOf(nodeName)
     if (index == -1) {
-      // TODO placeholder for an invalid filter in the current TsFile
+      // placeholder for an invalid filter in the current TsFile
       val filter = new SingleSeriesExpression(new Path(nodeName), null)
       filter
     } else {
@@ -547,7 +549,7 @@ object Converter {
     val fieldNames = requiredSchema.fieldNames
     val index = fieldNames.indexOf(nodeName)
     if (index == -1) {
-      // TODO placeholder for an invalid filter in the current TsFile
+      // placeholder for an invalid filter in the current TsFile
       val filter = new SingleSeriesExpression(new Path(nodeName), null)
       filter
     } else {
@@ -583,7 +585,7 @@ object Converter {
     val fieldNames = requiredSchema.fieldNames
     val index = fieldNames.indexOf(nodeName)
     if (index == -1) {
-      // TODO placeholder for an invalid filter in the current TsFile
+      // placeholder for an invalid filter in the current TsFile
       val filter = new SingleSeriesExpression(new Path(nodeName), null)
       filter
     } else {

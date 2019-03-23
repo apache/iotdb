@@ -137,7 +137,6 @@
         <module>example</module>
         <!-- <module>hadoop</module> -->
         <module>spark</module>
-
     </modules>
     <build>
         <pluginManagement>

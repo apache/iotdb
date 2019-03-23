@@ -130,7 +130,7 @@ public class TsFileSequenceReader {
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize)
       throws IOException {
     this.tsFileInput = input;
-    if (loadMetadataSize) { // TODO no autoRepair here
+    if (loadMetadataSize) { // NOTE no autoRepair here
       loadMetadataSize();
     }
   }
