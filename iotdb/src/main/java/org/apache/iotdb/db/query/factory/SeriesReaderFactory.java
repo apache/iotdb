@@ -81,8 +81,8 @@ public class SeriesReaderFactory {
 
       // add current overflowInsertFile reference to FileReaderManager
       // to avoid that this reader is cleared in fix time
-      FileReaderManager.getInstance().increaseFileReaderReference(overflowInsertFile.getFilePath(),
-              false);
+//      FileReaderManager.getInstance().increaseFileReaderReference(overflowInsertFile.getFilePath(),
+//              false);
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
@@ -168,8 +168,8 @@ public class SeriesReaderFactory {
 
     // add current tsfile reference to FileReaderManager
     // to avoid that this reader is cleared in fix time
-    FileReaderManager.getInstance().increaseFileReaderReference(fileNode.getFilePath(),
-            true);
+//    FileReaderManager.getInstance().increaseFileReaderReference(fileNode.getFilePath(),
+//            true);
 
     TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
         .get(fileNode.getFilePath(), true);

@@ -1554,12 +1554,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         seriesWriterImpl.writeToFileWriter(mergeFileWriter);
       }
     } finally {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource.getFilePath(),
-              true);
-      for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource.getOverflowInsertFileList()) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(overflowInsertFile.getFilePath(),
-                false);
-      }
+//      FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource.getFilePath(),
+//              true);
+//      for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource.getOverflowInsertFileList()) {
+//        FileReaderManager.getInstance().decreaseFileReaderReference(overflowInsertFile.getFilePath(),
+//                false);
+//      }
     }
     return numOfChunk;
   }
