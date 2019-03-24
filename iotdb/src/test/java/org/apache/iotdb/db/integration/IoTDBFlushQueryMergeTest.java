@@ -27,22 +27,15 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
 import java.sql.*;
-
-import static org.apache.iotdb.db.integration.Constant.*;
-import static org.apache.iotdb.db.integration.Constant.d1s0;
 import static org.junit.Assert.fail;
 
 public class IoTDBFlushQueryMergeTest {
 
   private static IoTDB daemon;
   private static String[] sqls = new String[]{
-      "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
-
+      "SET STORAGE GROUP TO root.vehicle.d0",
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-
-      "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
 
       "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
       "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
@@ -121,9 +114,9 @@ public class IoTDBFlushQueryMergeTest {
       }
       statement.close();
 
-//      statement = connection.createStatement();
-//      statement.execute("merge");
-//      statement.close();
+      statement = connection.createStatement();
+      statement.execute("merge");
+      statement.close();
 
     } catch (Exception e) {
       e.printStackTrace();

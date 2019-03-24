@@ -1406,15 +1406,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  private void deleteBufferWriteFiles(List<File> bufferwriteDirList, Set<String> bufferFiles) {
+  private void deleteBufferWriteFiles(List<File> bufferwriteDirList, Set<String> bufferFiles)
+      throws IOException {
     for (File bufferwriteDir : bufferwriteDirList) {
       File[] files = bufferwriteDir.listFiles();
       if (files == null) {
         continue;
       }
       for (File file : files) {
-        if (!bufferFiles.contains(file.getPath()) && !file.delete()) {
-          LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
+        if (!bufferFiles.contains(file.getPath())) {
+          FileReaderManager.getInstance().closeFileAndRemoveReader(file.getAbsolutePath());
+          if (!file.delete()) {
+            LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
+          }
         }
       }
     }
