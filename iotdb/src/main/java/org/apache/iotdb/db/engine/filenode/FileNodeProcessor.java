@@ -1415,6 +1415,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
       for (File file : files) {
         if (!bufferFiles.contains(file.getPath())) {
+          System.out.println("TO delete file ~~~~  " + file.getPath());
           FileReaderManager.getInstance().closeFileAndRemoveReader(file.getAbsolutePath());
           if (!file.delete()) {
             LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
