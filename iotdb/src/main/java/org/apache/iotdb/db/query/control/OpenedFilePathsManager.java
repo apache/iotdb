@@ -94,11 +94,11 @@ public class OpenedFilePathsManager {
       jobIdContainer.remove();
 
       for (String filePath : closedFilePathsMap.get(jobId)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, false);
+        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, true);
       }
       closedFilePathsMap.remove(jobId);
       for (String filePath : unclosedFilePathsMap.get(jobId)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, true);
+        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, false);
       }
       unclosedFilePathsMap.remove(jobId);
     }

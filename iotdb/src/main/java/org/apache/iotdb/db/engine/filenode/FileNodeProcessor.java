@@ -1352,6 +1352,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
         // overflow switch from merge to work
         overflowProcessor.switchMergeToWork();
+
         // write status to file
         isMerging = FileNodeProcessorStatus.NONE;
         synchronized (fileNodeProcessorStore) {
@@ -1415,8 +1416,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
       for (File file : files) {
         if (!bufferFiles.contains(file.getPath())) {
-          System.out.println("TO delete file ~~~~  " + file.getPath());
-          FileReaderManager.getInstance().closeFileAndRemoveReader(file.getAbsolutePath());
+          FileReaderManager.getInstance().closeFileAndRemoveReader(file.getPath());
           if (!file.delete()) {
             LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
           }
@@ -1447,6 +1447,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     mergeDeleteLock.lock();
     QueryContext context = new QueryContext();
     try {
+      FileReaderManager.getInstance().increaseFileReaderReference(backupIntervalFile.getFilePath(),
+          true);
       for (String deviceId : backupIntervalFile.getStartTimeMap().keySet()) {
         // query one deviceId
         List<Path> pathList = new ArrayList<>();
@@ -1477,12 +1479,16 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                   TimeFilter.ltEq(backupIntervalFile.getEndTime(deviceId)));
           SingleSeriesExpression seriesFilter = new SingleSeriesExpression(path, timeFilter);
 
+          for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource.getOverflowInsertFileList()) {
+            FileReaderManager.getInstance().increaseFileReaderReference(overflowInsertFile.getFilePath(),
+                false);
+          }
+
           IReader seriesReader = SeriesReaderFactory.getInstance()
               .createSeriesReaderForMerge(backupIntervalFile,
                   overflowSeriesDataSource, seriesFilter, context);
-
           numOfChunk += queryAndWriteSeries(seriesReader, path, seriesFilter, dataType,
-              startTimeMap, endTimeMap, backupIntervalFile, overflowSeriesDataSource);
+              startTimeMap, endTimeMap, overflowSeriesDataSource);
         }
         if (mergeIsChunkGroupHasData) {
           // end the new rowGroupMetadata
@@ -1492,6 +1498,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         }
       }
     } finally {
+      FileReaderManager.getInstance().decreaseFileReaderReference(backupIntervalFile.getFilePath(),
+          true);
+
       if (mergeDeleteLock.isLocked()) {
         mergeDeleteLock.unlock();
       }
@@ -1513,7 +1522,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private int queryAndWriteSeries(IReader seriesReader, Path path,
       SingleSeriesExpression seriesFilter, TSDataType dataType,
       Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
-      TsFileResource tsFileResource, OverflowSeriesDataSource overflowSeriesDataSource)
+      OverflowSeriesDataSource overflowSeriesDataSource)
       throws IOException {
     int numOfChunk = 0;
     try {
@@ -1559,12 +1568,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         seriesWriterImpl.writeToFileWriter(mergeFileWriter);
       }
     } finally {
-//      FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource.getFilePath(),
-//              true);
-//      for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource.getOverflowInsertFileList()) {
-//        FileReaderManager.getInstance().decreaseFileReaderReference(overflowInsertFile.getFilePath(),
-//                false);
-//      }
+      for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource.getOverflowInsertFileList()) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(overflowInsertFile.getFilePath(),
+                false);
+      }
     }
     return numOfChunk;
   }
