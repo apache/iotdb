@@ -16,13 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.org.apache.iotdb.cluster.utils;
 
-public class App {
-  public App(){
-  }
-
-  public static void main(String[] args){
-    System.out.println(123);
-  }
+public interface HashFunction {
+  public int hash(String str);
 }
