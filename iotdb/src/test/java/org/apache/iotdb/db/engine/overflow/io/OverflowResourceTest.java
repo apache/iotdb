@@ -44,7 +44,7 @@ public class OverflowResourceTest {
   private String positionFileName = "positionFile";
   private String filePath = "overflow";
   private String dataPath = "1";
-  private OverflowSupport support = new OverflowSupport();
+  private OverflowMemtable support = new OverflowMemtable();
 
   @Before
   public void setUp() throws Exception {

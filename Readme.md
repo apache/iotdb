@@ -47,7 +47,7 @@ IoTDB's features are as following:
 7. Intense integration with Open Source Ecosystem. IoTDB supports Hadoop, Spark, etc. analysis ecosystems and Grafana visualization tool.
 
 
-For the latest information about IoTDB, please visit our [IoTDB official website](http://tsfile.org/index) (will transfer to iotdb.apache.org in the future).
+For the latest information about IoTDB, please visit our [IoTDB official website](http://iotdb.apache.org/#/).
 
 # Prerequisites
 
@@ -58,37 +58,81 @@ To use IoTDB, you need to have:
 
 If you want to use Hadoop or Spark to analyze IoTDB data file (called as TsFile), you need to compile the hadoop and spark modules.
 
-
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [Document Part](http://tsfile.org/document).
+This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [Document Part](http://iotdb.apache.org/#/Documents/Quick%20Start).
 
-## Build
+### Installation from source code
+
+Use git to get IoTDB source code:
+
+```
+Shell > git clone https://github.com/apache/incubator-iotdb.git
+```
+
+Or:
+
+```
+Shell > git clone git@github.com:apache/incubator-iotdb.git
+```
+
+Now suppose your directory is like this:
+
+```
+> pwd
+/workspace/incubator-iotdb
+
+> ls -l
+incubator-iotdb/     <-- root path
+|
++- iotdb/
+|
++- jdbc/
+|
++- tsile/
+|
+...
+|
++- pom.xml
+```
+
+Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb/
+Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli
 
 If you are not the first time that building IoTDB, remember deleting the following files:
-```
-rm -rf iotdb/iotdb/data/
-rm -rf iotdb/iotdb/lib/
-```
-
-Then you can build IoTDB using Maven in current folder:
 
 ```
-mvn clean package -Dmaven.test.skip=true
+> rm -rf $IOTDB_HOME/data/
+> rm -rf $IOTDB_HOME/lib/
 ```
 
-(__NOTICE:__ Remember that you have to use -Dmaven.test.skip=true before you run tests, it is because some IT (integration test) requires jars in iotdb-cli/cli/lib/, and the folder is empty before you run `mvn package`. After that, you can run `mvn test` as long as you do not run `mvn clean`. For more details, see: [How to test IoTDB
-](https://github.com/thulab/iotdb/wiki/How-to-test-IoTDB) )
+Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
+
+```
+> pwd
+/workspace/incubator-iotdb
+
+> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
+```
 
 If successful, you will see the the following text in the terminal:
 
 ```
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary:
+[INFO]
+[INFO] IoTDB Root ......................................... SUCCESS [  7.020 s]
+[INFO] TsFile ............................................. SUCCESS [ 10.486 s]
+[INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
+[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
+[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
 ```
 Otherwise, you may need to check the error statements and fix the problems.
 
 After build, the IoTDB project will be at the folder "iotdb/iotdb". The folder will include the following contents:
-
 
 ```
 iotdb/iotdb/     <-- root path
@@ -98,11 +142,9 @@ iotdb/iotdb/     <-- root path
 +- conf/      <-- configuration files
 |
 +- lib/       <-- project dependencies
-|
-+- LICENSE    <-- LICENSE
 ```
 
-> NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself.
+<!-- > NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself. -->
 
 ## Configure
 
@@ -110,7 +152,7 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 
 In total, we provide users three kinds of configurations module: environment config module (iotdb-env.bat, iotdb-env.sh), system config module (tsfile-format.properties, iotdb-engine.properties) and log config module (logback.xml). All of these kinds of configuration files are put in iotdb/config folder.
 
-For more, you are advised to check our website [document page](http://tsfile.org/document). The forth chapter in User Guide Document will give you the details.
+For more, you are advised to check our website [document page](http://iotdb.apache.org/#/Documents/Quick%20Start). The forth chapter in User Guide Document will give you the details.
 
 ## Start
 
@@ -120,10 +162,10 @@ After that we start the server. Running the startup script:
 
 ```
 # Unix/OS X
-> ./bin/start-server.sh
+> $IOTDB_HOME/bin/start-server.sh
 
 # Windows
-> bin\start-server.bat
+> $IOTDB_HOME\bin\start-server.bat
 ```
 
 ### Stop Server
@@ -132,10 +174,10 @@ The server can be stopped with ctrl-C or the following script:
 
 ```
 # Unix/ OS X
-> ./bin/stop-server.sh
+> $IOTDB_HOME/bin/stop-server.sh
 
 # Windows
-> bin\stop-server.bat
+> $IOTDB_HOME\bin\stop-server.bat
 ```
 
 ### Start Client
@@ -143,13 +185,17 @@ The server can be stopped with ctrl-C or the following script:
 Now let's trying to read and write some data from IoTDB using our Client. To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
 
 ```
-cd cli/cli
+# You can first build cli project
+> pwd
+/workspace/incubator-iotdb
+
+> mvn clean package -pl iotdb-cli -am -Dmaven.test.skip=true
 
 # Unix/OS X
-> ./bin/start-client.sh -h <ip> -p <port> -u <username> -pw <password>
+> $IOTDB_CLI_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
 
 # Windows
-> bin\start-client.bat -h <ip> -p <port> -u <username> -pw <password>
+> $IOTDB_CLI_HOME\bin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
 ```
 
 > NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.
@@ -162,7 +208,7 @@ The command line client is interactive so if everything is ready you should see 
   | |   .--.|_/ | | \_|  | | `. \ | |_) |
   | | / .'`\ \  | |      | |  | | |  __'.
  _| |_| \__. | _| |_    _| |_.' /_| |__) |
-|_____|'.__.' |_____|  |______.'|_______/  version 0.7.0
+|_____|'.__.' |_____|  |______.'|_______/  version x.x.x
 
 
 IoTDB> login successfully
@@ -191,6 +237,7 @@ root:{
             s0:{
                  DataType: INT32,
                  Encoding: RLE,
+                 Compressor: UNCOMPRESSED,
                  args: {},
                  StorageGroup: root.vehicle
             }
@@ -219,7 +266,7 @@ execute successfully.
 
 If your session looks similar to what's above, congrats, your IoTDB is operational!
 
-For more on what commands are supported by IoTDB SQL, see our website [document page](http://tsfile.org/document). The eighth chapter in User Guide Document will give you help.
+For more on what commands are supported by IoTDB SQL, see our website [document page](http://iotdb.apache.org/#/Documents/Quick%20Start). The eighth chapter in User Guide Document will give you help.
 
 
 # Usage of import-csv.sh
@@ -238,11 +285,13 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ### Run import shell
 
 ```
+
+
 # Unix/OS X
-> ./bin/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+> $IOTDB_CLI_HOME/bin/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 
 # Windows
-> bin\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+> $IOTDB_CLI_HOME\bin\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 ```
 
 ### Error data file
@@ -254,8 +303,8 @@ csvInsertError.error
 ### Run export shell
 ```
 # Unix/OS X
-> ./bin/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
+> $IOTDB_CLI_HOME/bin/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
 
 # Windows
-> bin\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
+> $IOTDB_CLI_HOME\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
 ```

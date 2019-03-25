@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.factory;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
@@ -81,7 +81,7 @@ public class SeriesReaderFactory {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-          .get(overflowInsertFile.getFilePath(), true);
+          .get(overflowInsertFile.getFilePath(), false);
 
       ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
@@ -131,7 +131,7 @@ public class SeriesReaderFactory {
    * This method is used to construct reader for merge process in IoTDB. To merge only one TsFile
    * data and one UnSeqFile data.
    */
-  public IReader createSeriesReaderForMerge(IntervalFileNode intervalFileNode,
+  public IReader createSeriesReaderForMerge(TsFileResource tsFileResource,
       OverflowSeriesDataSource overflowSeriesDataSource,
       SingleSeriesExpression singleSeriesExpression,
       QueryContext context)
@@ -139,12 +139,12 @@ public class SeriesReaderFactory {
 
     logger.debug("Create seriesReaders for merge. SeriesFilter = {}. TsFilePath = {}",
         singleSeriesExpression,
-        intervalFileNode.getFilePath());
+        tsFileResource.getFilePath());
 
     PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
 
     // Sequence reader
-    IReader seriesInTsFileReader = createSealedTsFileReaderForMerge(intervalFileNode,
+    IReader seriesInTsFileReader = createSealedTsFileReaderForMerge(tsFileResource,
         singleSeriesExpression, context);
     priorityMergeReader.addReaderWithPriority(seriesInTsFileReader, 1);
 
@@ -156,12 +156,12 @@ public class SeriesReaderFactory {
     return priorityMergeReader;
   }
 
-  private IReader createSealedTsFileReaderForMerge(IntervalFileNode fileNode,
+  private IReader createSealedTsFileReaderForMerge(TsFileResource fileNode,
       SingleSeriesExpression singleSeriesExpression,
       QueryContext context)
       throws IOException {
     TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
-        .get(fileNode.getFilePath(), false);
+        .get(fileNode.getFilePath(), true);
     ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileSequenceReader);
     MetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(tsFileSequenceReader);
     List<ChunkMetaData> metaDataList = metadataQuerier

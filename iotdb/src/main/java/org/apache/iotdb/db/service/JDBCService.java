@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.service;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -67,6 +67,19 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public String getJDBCServiceStatus() {
+    // TODO debug log, will be deleted in production env
+    if(startLatch == null) {
+      LOGGER.info("Start latch is null when getting status");
+    } else {
+      LOGGER.info("Start latch is {} when getting status", startLatch.getCount());
+    }
+    if(stopLatch == null) {
+      LOGGER.info("Stop latch is null when getting status");
+    } else {
+      LOGGER.info("Stop latch is {} when getting status", stopLatch.getCount());
+    }	
+    // debug log, will be deleted in production env
+
     if(startLatch != null && startLatch.getCount() == 0) {
       return STATUS_UP;
     } else {
@@ -77,7 +90,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
   @Override
   public int getRPCPort() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.rpcPort;
+    return config.getRpcPort();
   }
 
   @Override
@@ -124,8 +137,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
       throw new StartupException(errorMessage);
     }
 
-    LOGGER.info("{}: start {} successfully, listening on port {}", IoTDBConstant.GLOBAL_DB_NAME,
-        this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().rpcPort);
+    LOGGER.info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
+        this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+        IoTDBDescriptor.getInstance().getConfig().getRpcPort());
   }
   
   private void reset() {
@@ -184,7 +198,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
     @Override
     public void run() {
       try {
-        serverTransport = new TServerSocket(IoTDBDescriptor.getInstance().getConfig().rpcPort);
+        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+        serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
+            config.getRpcPort()));
         poolArgs = new TThreadPoolServer.Args(serverTransport);
         poolArgs.executorService = IoTDBThreadPoolFactory.createJDBCClientThreadPool(poolArgs,
             ThreadName.JDBC_CLIENT.getName());
@@ -200,6 +216,14 @@ public class JDBCService implements JDBCServiceMBean, IService {
         LOGGER.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       } finally {
         close();
+        // TODO debug log, will be deleted in production env
+        if(threadStopLatch == null) {
+          LOGGER.info("Stop Count Down latch is null");
+        } else {
+          LOGGER.info("Stop Count Down latch is {}", threadStopLatch.getCount());
+        }
+        // debug log, will be deleted in production env
+
         if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
           threadStopLatch.countDown();
         }

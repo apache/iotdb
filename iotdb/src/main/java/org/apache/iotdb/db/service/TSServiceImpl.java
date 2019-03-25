@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -248,7 +249,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         break;
       case "SHOW_STORAGE_GROUP":
         try {
-          HashSet<String> storageGroups = MManager.getInstance().getAllStorageGroup();
+          Set<String> storageGroups = MManager.getInstance().getAllStorageGroup();
           resp.setShowStorageGroups(storageGroups);
         } catch (PathErrorException e) {
           status = getErrorStatus(String.format("Failed to fetch storage groups' metadata because: %s", e));
@@ -567,7 +568,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       recordANewQuery(statement, plan);
       return resp;
     } catch (Exception e) {
-      LOGGER.error("{}: Internal server error: {}", IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
+      LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
@@ -605,7 +606,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       resp.setQueryDataSet(result);
       return resp;
     } catch (Exception e) {
-      LOGGER.error("{}: Internal server error: {}", IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
+      LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
@@ -623,7 +624,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.error("meet error while executing update statement.", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     } catch (Exception e) {
-      LOGGER.error("{}: server Internal Error: {}", IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
+      LOGGER.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }

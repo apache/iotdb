@@ -16,16 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.monitor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -36,10 +37,16 @@ import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
+import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
+import org.apache.iotdb.db.monitor.collector.FileSize;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,11 +58,12 @@ public class StatMonitor implements IService {
   private final int statMonitorDetectFreqSec;
   private final int statMonitorRetainIntervalSec;
   private long runningTimeMillis = System.currentTimeMillis();
+  private static final ArrayList<String> temporaryStatList = new ArrayList<>();
   /**
    * key: is the statistics store seriesPath Value: is an interface that implements statistics
    * function.
    */
-  private HashMap<String, IStatistic> statisticMap;
+  private final HashMap<String, IStatistic> statisticMap;
   private ScheduledExecutorService service;
 
   /**
@@ -67,13 +75,14 @@ public class StatMonitor implements IService {
   private AtomicLong numInsertError = new AtomicLong(0);
 
   private StatMonitor() {
+    initTemporaryStatList();
     MManager mmanager = MManager.getInstance();
     statisticMap = new HashMap<>();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    statMonitorDetectFreqSec = config.statMonitorDetectFreqSec;
-    statMonitorRetainIntervalSec = config.statMonitorRetainIntervalSec;
-    backLoopPeriod = config.backLoopPeriodSec;
-    if (config.enableStatMonitor) {
+    statMonitorDetectFreqSec = config.getStatMonitorDetectFreqSec();
+    statMonitorRetainIntervalSec = config.getStatMonitorRetainIntervalSec();
+    backLoopPeriod = config.getBackLoopPeriodSec();
+    if (config.isEnableStatMonitor()) {
       try {
         String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
         if (!mmanager.pathExist(prefix)) {
@@ -82,6 +91,15 @@ public class StatMonitor implements IService {
       } catch (PathErrorException | IOException e) {
         LOGGER.error("MManager cannot set storage level to MTree.", e);
       }
+    }
+  }
+
+  private void initTemporaryStatList() {
+    for (FileNodeManagerStatConstants constants : FileNodeManagerStatConstants.values()) {
+      temporaryStatList.add(constants.name());
+    }
+    for (FileNodeProcessorStatConstants constants : FileNodeProcessorStatConstants.values()) {
+      temporaryStatList.add(constants.name());
     }
   }
 
@@ -94,20 +112,17 @@ public class StatMonitor implements IService {
    *
    * @param hashMap key is statParams name, values is AtomicLong type
    * @param statGroupDeltaName is the deviceId seriesPath of this module
-   * @param curTime TODO need to be fixed because it may contain overflow
+   * @param curTime current time stamp
    * @return TSRecord contains the DataPoints of a statGroupDeltaName
    */
   public static TSRecord convertToTSRecord(Map<String, AtomicLong> hashMap,
-                                           String statGroupDeltaName, long curTime) {
+      String statGroupDeltaName, long curTime) {
     TSRecord tsRecord = new TSRecord(curTime, statGroupDeltaName);
-    tsRecord.dataPointList = new ArrayList<DataPoint>() {
-      {
-        for (Map.Entry<String, AtomicLong> entry : hashMap.entrySet()) {
-          AtomicLong value = entry.getValue();
-          add(new LongDataPoint(entry.getKey(), value.get()));
-        }
-      }
-    };
+    tsRecord.dataPointList = new ArrayList<>();
+    for (Map.Entry<String, AtomicLong> entry : hashMap.entrySet()) {
+      AtomicLong value = entry.getValue();
+      tsRecord.dataPointList.add(new LongDataPoint(entry.getKey(), value.get()));
+    }
     return tsRecord;
   }
 
@@ -123,7 +138,7 @@ public class StatMonitor implements IService {
     return numInsertError.get();
   }
 
-  public void registStatStorageGroup() {
+  void registerStatStorageGroup() {
     MManager mManager = MManager.getInstance();
     String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
     try {
@@ -135,16 +150,23 @@ public class StatMonitor implements IService {
     }
   }
 
-  public synchronized void registStatStorageGroup(Map<String, String> hashMap) {
+  /**
+   * register monitor statistics time series metadata into MManager.
+   *
+   * @param hashMap series path and data type pair, for example: [root.stat.file.size.DATA, INT64]
+   */
+  public synchronized void registerStatStorageGroup(Map<String, String> hashMap) {
     MManager mManager = MManager.getInstance();
     try {
       for (Map.Entry<String, String> entry : hashMap.entrySet()) {
-        if (entry.getKey() == null) {
-          LOGGER.error("Registering metadata but {} is null", entry.getKey());
+        if (entry.getValue() == null) {
+          LOGGER.error("Registering metadata but data type of {} is null", entry.getKey());
         }
 
         if (!mManager.pathExist(entry.getKey())) {
-          mManager.addPathToMTree(entry.getKey(), entry.getValue(), "RLE", new String[0]);
+          mManager.addPathToMTree(entry.getKey(), TSDataType.valueOf(entry.getValue()),
+              TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
+              Collections.emptyMap());
         }
       }
     } catch (MetadataArgsErrorException | IOException | PathErrorException e) {
@@ -156,15 +178,14 @@ public class StatMonitor implements IService {
     // // restore the FildeNode Manager TOTAL_POINTS statistics info
   }
 
-  public void activate() {
-
+  void activate() {
     service = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
-            ThreadName.STAT_MONITOR.getName());
+        ThreadName.STAT_MONITOR.getName());
     service.scheduleAtFixedRate(
         new StatBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
   }
 
-  public void clearIStatisticMap() {
+  void clearIStatisticMap() {
     statisticMap.clear();
   }
 
@@ -172,7 +193,13 @@ public class StatMonitor implements IService {
     return numBackLoop.get();
   }
 
-  public void registStatistics(String path, IStatistic iStatistic) {
+  /**
+   * register class which implemented IStatistic interface into statisticMap
+   *
+   * @param path the stat series prefix path, like root.stat.file.size
+   * @param iStatistic instance of class which implemented IStatistic interface
+   */
+  public void registerStatistics(String path, IStatistic iStatistic) {
     synchronized (statisticMap) {
       LOGGER.debug("Register {} to StatMonitor for statistics service", path);
       this.statisticMap.put(path, iStatistic);
@@ -180,9 +207,9 @@ public class StatMonitor implements IService {
   }
 
   /**
-   * deregist statistics.
+   * deregister statistics.
    */
-  public void deregistStatistics(String path) {
+  public void deregisterStatistics(String path) {
     LOGGER.debug("Deregister {} in StatMonitor for stopping statistics service", path);
     synchronized (statisticMap) {
       if (statisticMap.containsKey(path)) {
@@ -192,7 +219,7 @@ public class StatMonitor implements IService {
   }
 
   /**
-   * TODO: need to complete the query key concept.
+   * This function is not used and need to complete the query key concept.
    *
    * @return TSRecord, query statistics params
    */
@@ -201,8 +228,9 @@ public class StatMonitor implements IService {
     // or FileNodeManager seriesPath:FileNodeManager
     String queryPath;
     if (key.contains("\\.")) {
-      queryPath = MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
-          + key.replaceAll("\\.", "_");
+      queryPath =
+          MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPARATOR
+              + key.replaceAll("\\.", "_");
     } else {
       queryPath = key;
     }
@@ -212,8 +240,8 @@ public class StatMonitor implements IService {
       long currentTimeMillis = System.currentTimeMillis();
       HashMap<String, TSRecord> hashMap = new HashMap<>();
       TSRecord tsRecord = convertToTSRecord(
-              MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST), queryPath,
-              currentTimeMillis);
+          MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST), queryPath,
+          currentTimeMillis);
       hashMap.put(queryPath, tsRecord);
       return hashMap;
     }
@@ -222,21 +250,31 @@ public class StatMonitor implements IService {
   /**
    * get all statistics.
    */
-  public HashMap<String, TSRecord> gatherStatistics() {
+  public Map<String, TSRecord> gatherStatistics() {
     synchronized (statisticMap) {
       long currentTimeMillis = System.currentTimeMillis();
       HashMap<String, TSRecord> tsRecordHashMap = new HashMap<>();
       for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
         if (entry.getValue() == null) {
-          tsRecordHashMap.put(entry.getKey(),
+          switch (entry.getKey()) {
+            case MonitorConstants.STAT_STORAGE_DELTA_NAME:
+              tsRecordHashMap.put(entry.getKey(),
                   convertToTSRecord(
-                          MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST),
-                          entry.getKey(), currentTimeMillis));
+                      MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST),
+                      entry.getKey(), currentTimeMillis));
+              break;
+            case MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME:
+              tsRecordHashMap.put(entry.getKey(),
+                  convertToTSRecord(
+                      MonitorConstants.initValues(MonitorConstants.FILE_SIZE_CONST),
+                      entry.getKey(), currentTimeMillis));
+              break;
+            default:
+          }
         } else {
           tsRecordHashMap.putAll(entry.getValue().getAllStatisticsValue());
         }
       }
-      LOGGER.debug("Values of tsRecordHashMap is : {}", tsRecordHashMap.toString());
       for (TSRecord value : tsRecordHashMap.values()) {
         value.time = currentTimeMillis;
       }
@@ -244,23 +282,6 @@ public class StatMonitor implements IService {
     }
   }
 
-  private void insert(HashMap<String, TSRecord> tsRecordHashMap) {
-    FileNodeManager fManager = FileNodeManager.getInstance();
-    int count = 0;
-    int pointNum;
-    for (Map.Entry<String, TSRecord> entry : tsRecordHashMap.entrySet()) {
-      try {
-        fManager.insert(entry.getValue(), true);
-        numInsert.incrementAndGet();
-        pointNum = entry.getValue().dataPointList.size();
-        numPointsInsert.addAndGet(pointNum);
-        count += pointNum;
-      } catch (FileNodeManagerException e) {
-        numInsertError.incrementAndGet();
-        LOGGER.error("Inserting stat points error.", e);
-      }
-    }
-  }
 
   /**
    * close statistic service.
@@ -276,26 +297,28 @@ public class StatMonitor implements IService {
       service.awaitTermination(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       LOGGER.error("StatMonitor timing service could not be shutdown.", e);
+      // Restore interrupted state...
+      Thread.currentThread().interrupt();
     }
   }
 
   @Override
   public void start() throws StartupException {
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().enableStatMonitor) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         activate();
       }
     } catch (Exception e) {
       String errorMessage = String
-              .format("Failed to start %s because of %s", this.getID().getName(),
-                      e.getMessage());
+          .format("Failed to start %s because of %s", this.getID().getName(),
+              e.getMessage());
       throw new StartupException(errorMessage);
     }
   }
 
   @Override
   public void stop() {
-    if (IoTDBDescriptor.getInstance().getConfig().enableStatMonitor) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
       close();
     }
   }
@@ -306,39 +329,63 @@ public class StatMonitor implements IService {
   }
 
   private static class StatMonitorHolder {
-    private StatMonitorHolder(){
+
+    private StatMonitorHolder() {
       //allowed do nothing
     }
+
     private static final StatMonitor INSTANCE = new StatMonitor();
   }
 
   class StatBackLoop implements Runnable {
+
+    FileSize fileSize = FileSize.getInstance();
+
     @Override
     public void run() {
       try {
         long currentTimeMillis = System.currentTimeMillis();
         long seconds = (currentTimeMillis - runningTimeMillis) / 1000;
-        if (seconds - statMonitorDetectFreqSec >= 0) {
+        if (seconds >= statMonitorDetectFreqSec) {
           runningTimeMillis = currentTimeMillis;
           // delete time-series data
           FileNodeManager fManager = FileNodeManager.getInstance();
           try {
             for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
               for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
-                fManager.delete(entry.getKey(), statParamName,
-                    currentTimeMillis - statMonitorRetainIntervalSec * 1000);
+                if (temporaryStatList.contains(statParamName)) {
+                  fManager.delete(entry.getKey(), statParamName,
+                      currentTimeMillis - statMonitorRetainIntervalSec * 1000);
+                }
               }
             }
           } catch (FileNodeManagerException e) {
-            LOGGER.error("Error occurred when deleting statistics information periodically, because",
-                            e);
+            LOGGER
+                .error("Error occurred when deleting statistics information periodically, because",
+                    e);
           }
         }
-        HashMap<String, TSRecord> tsRecordHashMap = gatherStatistics();
+        Map<String, TSRecord> tsRecordHashMap = gatherStatistics();
         insert(tsRecordHashMap);
         numBackLoop.incrementAndGet();
       } catch (Exception e) {
         LOGGER.error("Error occurred in Stat Monitor thread", e);
+      }
+    }
+
+    public void insert(Map<String, TSRecord> tsRecordHashMap) {
+      FileNodeManager fManager = FileNodeManager.getInstance();
+      int pointNum;
+      for (Map.Entry<String, TSRecord> entry : tsRecordHashMap.entrySet()) {
+        try {
+          fManager.insert(entry.getValue(), true);
+          numInsert.incrementAndGet();
+          pointNum = entry.getValue().dataPointList.size();
+          numPointsInsert.addAndGet(pointNum);
+        } catch (FileNodeManagerException e) {
+          numInsertError.incrementAndGet();
+          LOGGER.error("Inserting stat points error.", e);
+        }
       }
     }
   }

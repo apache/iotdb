@@ -64,8 +64,9 @@ public class TSRecord {
    *
    * @param tuple data point to be added
    */
-  public void addTuple(DataPoint tuple) {
+  public TSRecord addTuple(DataPoint tuple) {
     this.dataPointList.add(tuple);
+    return this;
   }
 
   /**

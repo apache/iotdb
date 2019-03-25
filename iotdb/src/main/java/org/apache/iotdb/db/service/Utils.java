@@ -17,11 +17,7 @@ package org.apache.iotdb.db.service;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.db.metadata.ColumnSchema;
-import org.apache.iotdb.service.rpc.thrift.TSColumnSchema;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
@@ -36,42 +32,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class Utils {
 
   private Utils(){}
-
-  /**
-   * convert all schema.
-   *
-   * @param allSchema -all schema
-   */
-  public static Map<String, List<TSColumnSchema>> convertAllSchema(
-      Map<String, List<ColumnSchema>> allSchema) {
-    if (allSchema == null) {
-      return null;
-    }
-    Map<String, List<TSColumnSchema>> tsAllSchema = new HashMap<>();
-    for (Map.Entry<String, List<ColumnSchema>> entry : allSchema.entrySet()) {
-      List<TSColumnSchema> tsColumnSchemas = new ArrayList<>();
-      for (ColumnSchema columnSchema : entry.getValue()) {
-        tsColumnSchemas.add(convertColumnSchema(columnSchema));
-      }
-      tsAllSchema.put(entry.getKey(), tsColumnSchemas);
-    }
-    return tsAllSchema;
-  }
-
-  private static TSColumnSchema convertColumnSchema(ColumnSchema columnSchema) {
-    if (columnSchema == null) {
-      return null;
-    }
-    TSColumnSchema tsColumnSchema = new TSColumnSchema();
-    tsColumnSchema.setName(columnSchema.getName());
-    tsColumnSchema
-        .setDataType(columnSchema.dataType == null ? null : columnSchema.dataType.toString());
-    tsColumnSchema
-        .setEncoding(columnSchema.encoding == null ? null : columnSchema.encoding.toString());
-    tsColumnSchema
-        .setOtherArgs(columnSchema.getArgsMap() == null ? null : columnSchema.getArgsMap());
-    return tsColumnSchema;
-  }
 
   /**
    * convert query data set by fetch size.

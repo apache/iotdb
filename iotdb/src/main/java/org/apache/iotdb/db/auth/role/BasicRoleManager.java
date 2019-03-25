@@ -159,7 +159,6 @@ public abstract class BasicRoleManager implements IRoleManager {
   public void reset() {
     accessor.reset();
     roleMap.clear();
-    lock.reset();
   }
 
   @Override

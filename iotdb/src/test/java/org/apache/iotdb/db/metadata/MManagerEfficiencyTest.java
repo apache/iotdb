@@ -39,7 +39,6 @@ public class MManagerEfficiencyTest {
   String[] storageGroup = new String[storageGroupCount];
   String[] devices = new String[deviceCount];
   String[] sensors = new String[sensorCount];
-  String args[] = new String[0];
   String[] paths;
   private MManager manager;
 
@@ -136,7 +135,7 @@ public class MManagerEfficiencyTest {
         for (String sensor : sensors) {
           String path = new StringBuilder(root).append(".").append(group).append(".").append(device)
               .append(".").append(sensor).toString();
-          manager.addPathToMTree(path, dataType, encoding, args);
+          manager.addPathToMTree(path, dataType, encoding);
         }
       }
     }

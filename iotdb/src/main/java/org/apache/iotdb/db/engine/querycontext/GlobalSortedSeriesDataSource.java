@@ -19,8 +19,7 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import java.util.List;
-import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
-import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class GlobalSortedSeriesDataSource {
@@ -28,17 +27,17 @@ public class GlobalSortedSeriesDataSource {
   private Path seriesPath;
 
   // sealed tsfile
-  private List<IntervalFileNode> sealedTsFiles;
+  private List<TsFileResource> sealedTsFiles;
 
   // unsealed tsfile
   private UnsealedTsFile unsealedTsFile;
 
   // seq mem-table
-  private TimeValuePairSorter readableChunk;
+  private ReadOnlyMemChunk readableChunk;
 
-  public GlobalSortedSeriesDataSource(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
+  public GlobalSortedSeriesDataSource(Path seriesPath, List<TsFileResource> sealedTsFiles,
       UnsealedTsFile unsealedTsFile,
-      TimeValuePairSorter readableChunk) {
+      ReadOnlyMemChunk readableChunk) {
     this.seriesPath = seriesPath;
     this.sealedTsFiles = sealedTsFiles;
     this.unsealedTsFile = unsealedTsFile;
@@ -50,11 +49,11 @@ public class GlobalSortedSeriesDataSource {
     return sealedTsFiles != null && !sealedTsFiles.isEmpty();
   }
 
-  public List<IntervalFileNode> getSealedTsFiles() {
+  public List<TsFileResource> getSealedTsFiles() {
     return sealedTsFiles;
   }
 
-  public void setSealedTsFiles(List<IntervalFileNode> sealedTsFiles) {
+  public void setSealedTsFiles(List<TsFileResource> sealedTsFiles) {
     this.sealedTsFiles = sealedTsFiles;
   }
 
@@ -74,11 +73,11 @@ public class GlobalSortedSeriesDataSource {
     return readableChunk != null;
   }
 
-  public TimeValuePairSorter getReadableChunk() {
+  public ReadOnlyMemChunk getReadableChunk() {
     return readableChunk;
   }
 
-  public void setReadableChunk(TimeValuePairSorter readableChunk) {
+  public void setReadableChunk(ReadOnlyMemChunk readableChunk) {
     this.readableChunk = readableChunk;
   }
 

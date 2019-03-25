@@ -42,26 +42,19 @@
             <artifactId>logback-classic</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>${json.version}</version>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>1.2.31</version>
         </dependency>
         <dependency>
             <groupId>org.xerial.snappy</groupId>
             <artifactId>snappy-java</artifactId>
             <version>1.0.5-M1</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>${common.io.version}</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/io.netty/netty-buffer -->
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-buffer</artifactId>
-            <version>4.1.25.Final</version>
         </dependency>
     </dependencies>
     <build>
@@ -112,19 +105,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.rat</groupId>
-                <artifactId>apache-rat-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>src/test/resources/*.json</exclude>
-                        <!-- if `mvn clean` is not executed and `mvn test` is interrupted, then perTestInputData may be not deleted -->
-                        <exclude>src/test/resources/perTestInputData</exclude>
-                        <!-- Runtime log -->
-                        <exclude>**/*.log</exclude>
-                    </excludes>
-                </configuration>
             </plugin>
         </plugins>
     </build>

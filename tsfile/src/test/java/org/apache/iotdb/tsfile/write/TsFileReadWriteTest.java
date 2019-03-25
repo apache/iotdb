@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.write;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,28 +50,27 @@ public class TsFileReadWriteTest {
   private final double delta = 0.0000001;
   private String path = "read_write_rle.tsfile";
   private File f;
-  private TsFileWriter tsFileWriter;
 
   @Before
   public void setUp() throws Exception {
     f = new File(path);
     if (f.exists()) {
-      f.delete();
+      assertTrue(f.delete());
     }
-    tsFileWriter = new TsFileWriter(f);
   }
 
   @After
   public void tearDown() throws Exception {
     f = new File(path);
     if (f.exists()) {
-      f.delete();
+      assertTrue(f.delete());;
     }
   }
 
   @Test
   public void intTest() throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
     // add measurements into file schema
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
@@ -108,6 +109,7 @@ public class TsFileReadWriteTest {
   public void longTest() throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
     for (long i = 1; i < floatCount; i++) {
@@ -145,6 +147,7 @@ public class TsFileReadWriteTest {
   public void floatTest() throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
     for (long i = 1; i < floatCount; i++) {
@@ -183,6 +186,7 @@ public class TsFileReadWriteTest {
   public void doubleTest() throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
     tsFileWriter
         .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.DOUBLE, TSEncoding.RLE));
     for (long i = 1; i < floatCount; i++) {
@@ -216,4 +220,32 @@ public class TsFileReadWriteTest {
     reader.close();
   }
 
+  @Test
+  public void readEmptyMeasurementTest() throws IOException, WriteProcessException {
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
+    // add measurements into file schema
+    tsFileWriter
+        .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+    tsFileWriter
+        .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    // construct TSRecord
+    TSRecord tsRecord = new TSRecord(1, "device_1");
+    DataPoint dPoint1 = new FloatDataPoint("sensor_1", 1.2f);
+    tsRecord.addTuple(dPoint1);
+    // write a TSRecord to TsFile
+    tsFileWriter.write(tsRecord);
+    // close TsFile
+    tsFileWriter.close();
+
+    // read example : no filter
+    TsFileSequenceReader reader = new TsFileSequenceReader(path);
+    ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("device_1.sensor_2"));
+    QueryExpression queryExpression = QueryExpression.create(paths, null);
+    QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+    assertFalse(queryDataSet.hasNext());
+    reader.close();
+    assertTrue(f.delete());
+  }
 }

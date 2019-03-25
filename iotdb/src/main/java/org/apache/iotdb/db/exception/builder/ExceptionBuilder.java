@@ -73,7 +73,7 @@ public class ExceptionBuilder {
    * load information.
    */
   public void loadInfo() {
-    String language = IoTDBDescriptor.getInstance().getConfig().languageVersion.toLowerCase();
+    String language = IoTDBDescriptor.getInstance().getConfig().getLanguageVersion().toLowerCase();
 
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {

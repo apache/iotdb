@@ -84,8 +84,8 @@ public class PhysicalGenerator {
       case METADATA:
         MetadataOperator metadata = (MetadataOperator) operator;
         return new MetadataPlan(metadata.getNamespaceType(), metadata.getPath(),
-            metadata.getDataType(),
-            metadata.getEncoding(), metadata.getEncodingArgs(), metadata.getDeletePathList());
+            metadata.getDataType(), metadata.getCompressor(),
+            metadata.getEncoding(), metadata.getProps(), metadata.getDeletePathList());
       case PROPERTY:
         PropertyOperator property = (PropertyOperator) operator;
         return new PropertyPlan(property.getPropertyType(), property.getPropertyPath(),

@@ -41,7 +41,7 @@ public class Monitor implements MonitorMBean, IService {
   @Override
   public long getDataSizeInByte() {
     try {
-      return FileUtils.sizeOfDirectory(new File(config.dataDir));
+      return FileUtils.sizeOfDirectory(new File(config.getDataDir()));
     } catch (Exception e) {
       LOGGER.error("meet error while trying to get data size.", e);
       return -1;
@@ -69,7 +69,7 @@ public class Monitor implements MonitorMBean, IService {
   @Override
   public String getBaseDirectory() {
     try {
-      File file = new File(config.dataDir);
+      File file = new File(config.getDataDir());
       return file.getAbsolutePath();
     } catch (Exception e) {
       LOGGER.error("meet error while trying to get base dir.", e);
@@ -79,7 +79,7 @@ public class Monitor implements MonitorMBean, IService {
 
   @Override
   public boolean getWriteAheadLogStatus() {
-    return config.enableWal;
+    return config.isEnableWal();
   }
 
   @Override
@@ -132,12 +132,12 @@ public class Monitor implements MonitorMBean, IService {
 
   @Override
   public long getMergePeriodInSecond() {
-    return config.periodTimeForMerge;
+    return config.getPeriodTimeForMerge();
   }
 
   @Override
   public long getClosePeriodInSecond() {
-    return config.periodTimeForFlush;
+    return config.getPeriodTimeForFlush();
   }
 
   @Override

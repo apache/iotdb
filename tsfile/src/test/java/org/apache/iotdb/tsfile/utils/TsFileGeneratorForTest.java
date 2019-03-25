@@ -24,6 +24,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Scanner;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -36,8 +39,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.SchemaBuilder;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,97 +59,40 @@ public class TsFileGeneratorForTest {
 
   public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
       throws IOException, InterruptedException, WriteProcessException {
-    TsFileGeneratorForTest.rowCount = rowCount;
+    generateFile(rowCount, rowCount, chunkGroupSize, pageSize);
+  }
+
+  public static void generateFile(int minRowCount, int maxRowCount,int chunkGroupSize, int pageSize)
+      throws IOException, InterruptedException, WriteProcessException {
+    TsFileGeneratorForTest.rowCount = maxRowCount;
     TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
     TsFileGeneratorForTest.pageSize = pageSize;
-    prepare();
+    prepare(minRowCount, maxRowCount);
     write();
   }
 
-    public static void generateFileWithoutText(int rowCount, int chunkGroupSize, int pageSize)
-            throws IOException, InterruptedException, WriteProcessException {
-        TsFileGeneratorForTest.rowCount = rowCount;
-        TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
-        TsFileGeneratorForTest.pageSize = pageSize;
-        prepareWithoutText();
-        write();
-    }
-
-  public static void prepare() throws IOException {
+  public static void prepare(int minrowCount, int maxRowCount) throws IOException {
     inputDataFile = "src/test/resources/perTestInputData";
     errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
-    generateSampleInputDataFile();
-  }
-
-  public static void prepareWithoutText() throws IOException {
-    inputDataFile = "src/test/resources/perTestInputData";
-    errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
-    generateSampleInputDataFileWithoutText();
+    generateSampleInputDataFile(minrowCount, maxRowCount);
   }
 
   public static void after() {
     File file = new File(inputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file = new File(outputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file = new File(errorOutputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
   }
 
-    static private void generateSampleInputDataFileWithoutText() throws IOException {
-        File file = new File(inputDataFile);
-        if (file.exists()) {
-            file.delete();
-        }
-        file.getParentFile().mkdirs();
-        FileWriter fw = new FileWriter(file);
-
-        long startTime = START_TIMESTAMP;
-        for (int i = 0; i < rowCount; i++) {
-            // write d1
-            String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
-            if (i % 5 == 0) {
-                d1 += ",s3," + (i * 10 + 3);
-            }
-            if (i % 9 == 0) {
-                d1 += ",s5," + "false";
-            }
-            if (i % 10 == 0) {
-                d1 += ",s6," + ((int) (i / 9.0) * 100) / 100.0;
-            }
-            if (i % 11 == 0) {
-                d1 += ",s7," + ((int) (i / 10.0) * 100) / 100.0;
-            }
-            fw.write(d1 + "\r\n");
-
-            // write d2
-            String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3);
-            if (i % 20 < 5) {
-                // LOG.info("write null to d2:" + (startTime + i));
-                d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3);
-            }
-            if (i % 5 == 0) {
-                d2 += ",s1," + (i * 10 + 1);
-            }
-            fw.write(d2 + "\r\n");
-        }
-        // write error
-        String d =
-                "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10
-                        + 3);
-        fw.write(d + "\r\n");
-        d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
-        fw.write(d + "\r\n");
-        fw.close();
-    }
-
-  static private void generateSampleInputDataFile() throws IOException {
+  static private void generateSampleInputDataFile(int minRowCount, int maxRowCount) throws IOException {
     File file = new File(inputDataFile);
     if (file.exists()) {
       file.delete();
@@ -156,7 +101,7 @@ public class TsFileGeneratorForTest {
     FileWriter fw = new FileWriter(file);
 
     long startTime = START_TIMESTAMP;
-    for (int i = 0; i < rowCount; i++) {
+    for (int i = 0; i < maxRowCount; i++) {
       // write d1
       String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
       if (i % 5 == 0) {
@@ -168,7 +113,7 @@ public class TsFileGeneratorForTest {
       if (i % 9 == 0) {
         d1 += ",s5," + "false";
       }
-      if (i % 10 == 0) {
+      if (i % 10 == 0 && i < minRowCount) {
         d1 += ",s6," + ((int) (i / 9.0) * 100) / 100.0;
       }
       if (i % 11 == 0) {
@@ -259,13 +204,13 @@ public class TsFileGeneratorForTest {
     s7.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
 
     JSONArray measureGroup1 = new JSONArray();
-    measureGroup1.put(s1);
-    measureGroup1.put(s2);
-    measureGroup1.put(s3);
-    measureGroup1.put(s4);
-    measureGroup1.put(s5);
-    measureGroup1.put(s6);
-    measureGroup1.put(s7);
+    measureGroup1.add(s1);
+    measureGroup1.add(s2);
+    measureGroup1.add(s3);
+    measureGroup1.add(s4);
+    measureGroup1.add(s5);
+    measureGroup1.add(s6);
+    measureGroup1.add(s7);
 
     JSONObject jsonSchema = new JSONObject();
     jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");

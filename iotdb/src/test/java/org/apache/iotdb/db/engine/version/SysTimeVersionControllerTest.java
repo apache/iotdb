@@ -29,8 +29,9 @@ public class SysTimeVersionControllerTest {
   public void test() {
     VersionController versionController = SysTimeVersionController.INSTANCE;
     long diff = versionController.currVersion() - System.currentTimeMillis();
-    assertTrue(diff >= -1 && diff <= 1);
+    // TODO these comparisons can fail in very rare conditions, how to fix?
+    assertTrue(diff >= -2 && diff <= 2);
     diff = versionController.nextVersion() - System.currentTimeMillis();
-    assertTrue(diff >= -1 && diff <= 1);
+    assertTrue(diff >= -2 && diff <= 2);
   }
 }

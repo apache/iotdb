@@ -121,23 +121,22 @@ public class ExportCsv extends AbstractCsvTool {
         for (int i = 0; i < values.length; i++) {
           dumpResult(values[i], i);
         }
-        return;
       } else {
         dumpFromSqlFile(sqlFile);
       }
     } catch (ClassNotFoundException e) {
       LOGGER.error(
           "Failed to dump data because cannot find TsFile JDBC Driver, "
-              + "please check whether you have imported driver or not");
+              + "please check whether you have imported driver or not", e);
     } catch (SQLException e) {
-      LOGGER.error("Encounter an error when dumping data, error is {}", e.getMessage());
+      LOGGER.error("Encounter an error when dumping data, error is ", e);
     } catch (IOException e) {
-      LOGGER.error("Failed to operate on file, because {}", e.getMessage());
+      LOGGER.error("Failed to operate on file, because ", e);
     } catch (TException e) {
-      LOGGER.error("Encounter an error when connecting to server, because {}",
-              e.getMessage());
+      LOGGER.error("Encounter an error when connecting to server, because ",
+              e);
     } catch (ArgsErrorException e) {
-      e.printStackTrace();
+      LOGGER.error("Invalid args.", e);
     } finally {
       reader.close();
       if (connection != null) {
@@ -222,7 +221,7 @@ public class ExportCsv extends AbstractCsvTool {
         try {
           dumpResult(sql, index);
         } catch (SQLException e) {
-          LOGGER.error("Cannot dump data for statment {}, because {}", sql, e.getMessage());
+          LOGGER.error("Cannot dump data for statement {}, because ", sql, e);
         }
         index++;
       }
@@ -238,95 +237,99 @@ public class ExportCsv extends AbstractCsvTool {
    */
   private static void dumpResult(String sql, int index)
       throws SQLException {
-    FileWriter fw = null;
-    BufferedWriter bw = null;
+
     final String path = targetDirectory + DUMP_FILE_NAME + index + ".csv";
+    File tf = new File(path);
     try {
-      File tf = new File(path);
       if (!tf.exists() && !tf.createNewFile()) {
           LOGGER.error("Could not create target file for sql statement: {}", sql);
           return;
       }
-      fw = new FileWriter(tf);
-      bw = new BufferedWriter(fw);
     } catch (IOException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Cannot create dump file {}", path,  e);
       return;
     }
 
-    Statement statement = connection.createStatement();
-    ResultSet rs = statement.executeQuery(sql);
-    ResultSetMetaData metadata = rs.getMetaData();
-    long startTime = System.currentTimeMillis();
-    try {
+    try (Statement statement = connection.createStatement();
+        ResultSet rs = statement.executeQuery(sql);
+        BufferedWriter bw = new BufferedWriter(new FileWriter(tf))) {
+      ResultSetMetaData metadata = rs.getMetaData();
+      long startTime = System.currentTimeMillis();
+
       int count = metadata.getColumnCount();
       // write data in csv file
-      for (int i = 1; i <= count; i++) {
-        if (i < count) {
-          bw.write(metadata.getColumnLabel(i) + ",");
-        } else {
-          bw.write(metadata.getColumnLabel(i) + "\n");
-        }
-      }
-      while (rs.next()) {
-        if (rs.getString(1) == null || "null".equalsIgnoreCase(rs.getString(1))) {
-          bw.write(",");
-        } else {
-          ZonedDateTime dateTime;
-          switch (timeFormat) {
-            case DEFAULT_TIME_FORMAT:
-            case "default":
-              dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(rs.getLong(1)), zoneId);
-              bw.write(dateTime.toString() + ",");
-              break;
-            case "timestamp":
-            case "long":
-            case "nubmer":
-              bw.write(rs.getLong(1) + ",");
-              break;
-            default:
-              dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(rs.getLong(1)), zoneId);
-              bw.write(dateTime.format(DateTimeFormatter.ofPattern(timeFormat)) + ",");
-              break;
-          }
+      writeMetadata(bw, count, metadata);
 
-          for (int j = 2; j <= count; j++) {
-            if (j < count) {
-              if ("null".equals(rs.getString(j))) {
-                bw.write(",");
-              } else {
-                bw.write(rs.getString(j) + ",");
-              }
-            } else {
-              if ("null".equals(rs.getString(j))) {
-                bw.write("\n");
-              } else {
-                bw.write(rs.getString(j) + "\n");
-              }
-            }
-          }
-        }
-      }
+      writeResultSet(rs, bw, count);
       LOGGER.info("Statement [{}] has dumped to file {} successfully! It costs {}ms.",
-                  sql, path, System.currentTimeMillis() - startTime);
+          sql, path, System.currentTimeMillis() - startTime);
     } catch (IOException e) {
-      LOGGER.error(e.getMessage());
-    } finally {
-      try {
-        if (rs != null) {
-          rs.close();
-        }
-        if (bw != null) {
-          bw.close();
-        }
-        if (fw != null) {
-          fw.close();
-        }
-      } catch (IOException e) {
-        LOGGER.error(e.getMessage());
-      }
-      statement.close();
+      LOGGER.error("Cannot dump result because", e);
     }
   }
 
+  private static void writeMetadata(BufferedWriter bw, int count, ResultSetMetaData metadata)
+      throws SQLException, IOException {
+    for (int i = 1; i <= count; i++) {
+      if (i < count) {
+        bw.write(metadata.getColumnLabel(i) + ",");
+      } else {
+        bw.write(metadata.getColumnLabel(i) + "\n");
+      }
+    }
+  }
+
+  private static void writeResultSet(ResultSet rs, BufferedWriter bw, int count)
+      throws SQLException, IOException {
+    while (rs.next()) {
+      if (rs.getString(1) == null ||
+          "null".equalsIgnoreCase(rs.getString(1))) {
+        bw.write(",");
+      } else {
+        writeTime(rs, bw);
+        writeValue(rs, count, bw);
+      }
+    }
+  }
+
+  private static void writeTime(ResultSet rs, BufferedWriter bw) throws SQLException, IOException {
+    ZonedDateTime dateTime;
+    switch (timeFormat) {
+      case DEFAULT_TIME_FORMAT:
+      case "default":
+        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(rs.getLong(1)),
+            zoneId);
+        bw.write(dateTime.toString() + ",");
+        break;
+      case "timestamp":
+      case "long":
+      case "nubmer":
+        bw.write(rs.getLong(1) + ",");
+        break;
+      default:
+        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(rs.getLong(1)),
+            zoneId);
+        bw.write(dateTime.format(DateTimeFormatter.ofPattern(timeFormat)) + ",");
+        break;
+    }
+  }
+
+  private static void writeValue(ResultSet rs, int count, BufferedWriter bw)
+      throws SQLException, IOException {
+    for (int j = 2; j <= count; j++) {
+      if (j < count) {
+        if ("null".equals(rs.getString(j))) {
+          bw.write(",");
+        } else {
+          bw.write(rs.getString(j) + ",");
+        }
+      } else {
+        if ("null".equals(rs.getString(j))) {
+          bw.write("\n");
+        } else {
+          bw.write(rs.getString(j) + "\n");
+        }
+      }
+    }
+  }
 }
