@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.NoStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class PageHeader {
@@ -57,7 +58,11 @@ public class PageHeader {
   }
 
   public static int calculatePageHeaderSize(TSDataType type) {
-    return 3 * Integer.BYTES + 2 * Long.BYTES + Statistics.getStatsByType(type).getSerializedSize();
+    return calculatePageHeaderSizeWithoutStatistics() + Statistics.getStatsByType(type).getSerializedSize();
+  }
+
+  public static int calculatePageHeaderSizeWithoutStatistics() {
+    return 3 * Integer.BYTES + 2 * Long.BYTES;
   }
 
   public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
@@ -80,6 +85,52 @@ public class PageHeader {
     long maxTimestamp = ReadWriteIOUtils.readLong(buffer);
     long minTimestamp = ReadWriteIOUtils.readLong(buffer);
     Statistics statistics = Statistics.deserialize(buffer, dataType);
+    return new PageHeader(uncompressedSize, compressedSize, numOfValues, statistics, maxTimestamp,
+        minTimestamp);
+  }
+
+  /**
+   * deserialize from TsFileInput.
+   *
+   * @param dataType data type
+   * @param input TsFileInput
+   * @param offset offset
+   * @param markerRead read marker (boolean type)
+   * @return CHUNK_HEADER object
+   * @throws IOException IOException
+   */
+  public static PageHeader deserializeFrom(TSDataType dataType, TsFileInput input, long offset,
+      boolean markerRead)
+      throws IOException {
+    long offsetVar = offset;
+    if (!markerRead) {
+      offsetVar++;
+    }
+
+    if (dataType == TSDataType.TEXT) {
+      int sizeWithoutStatistics = calculatePageHeaderSizeWithoutStatistics();
+      ByteBuffer bufferWithoutStatistics = ByteBuffer.allocate(sizeWithoutStatistics);
+      ReadWriteIOUtils.readAsPossible(input, offsetVar, bufferWithoutStatistics);
+      bufferWithoutStatistics.flip();
+      offsetVar += sizeWithoutStatistics;
+
+      Statistics statistics = Statistics.deserialize(input, offsetVar, dataType);
+      return deserializePartFrom(statistics, bufferWithoutStatistics);
+    } else {
+      int size = calculatePageHeaderSize(dataType);
+      ByteBuffer buffer = ByteBuffer.allocate(size);
+      ReadWriteIOUtils.readAsPossible(input, offsetVar, buffer);
+      buffer.flip();
+      return deserializeFrom(buffer, dataType);
+    }
+  }
+
+  private static PageHeader deserializePartFrom(Statistics statistics, ByteBuffer buffer) {
+    int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
+    int compressedSize = ReadWriteIOUtils.readInt(buffer);
+    int numOfValues = ReadWriteIOUtils.readInt(buffer);
+    long maxTimestamp = ReadWriteIOUtils.readLong(buffer);
+    long minTimestamp = ReadWriteIOUtils.readLong(buffer);
     return new PageHeader(uncompressedSize, compressedSize, numOfValues, statistics, maxTimestamp,
         minTimestamp);
   }

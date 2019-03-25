@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -75,58 +76,20 @@ public abstract class Statistics<T> {
 
   public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
-    Statistics statistics = null;
-    switch (dataType) {
-      case INT32:
-        statistics = new IntegerStatistics();
-        break;
-      case INT64:
-        statistics = new LongStatistics();
-        break;
-      case TEXT:
-        statistics = new BinaryStatistics();
-        break;
-      case BOOLEAN:
-        statistics = new BooleanStatistics();
-        break;
-      case DOUBLE:
-        statistics = new DoubleStatistics();
-        break;
-      case FLOAT:
-        statistics = new FloatStatistics();
-        break;
-      default:
-        throw new UnknownColumnTypeException(dataType.toString());
-    }
+    Statistics statistics = getStatsByType(dataType);
     statistics.fill(inputStream);
     return statistics;
   }
 
   public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
-    Statistics statistics = null;
-    switch (dataType) {
-      case INT32:
-        statistics = new IntegerStatistics();
-        break;
-      case INT64:
-        statistics = new LongStatistics();
-        break;
-      case TEXT:
-        statistics = new BinaryStatistics();
-        break;
-      case BOOLEAN:
-        statistics = new BooleanStatistics();
-        break;
-      case DOUBLE:
-        statistics = new DoubleStatistics();
-        break;
-      case FLOAT:
-        statistics = new FloatStatistics();
-        break;
-      default:
-        throw new UnknownColumnTypeException(dataType.toString());
-    }
+    Statistics statistics = getStatsByType(dataType);
     statistics.fill(buffer);
+    return statistics;
+  }
+
+  public static Statistics deserialize(TsFileInput input, long offset, TSDataType dataType) throws IOException {
+    Statistics statistics = getStatsByType(dataType);
+    statistics.fill(input, offset);
     return statistics;
   }
 
@@ -182,7 +145,7 @@ public abstract class Statistics<T> {
       String thisClass = this.getClass().toString();
       String statsClass = stats.getClass().toString();
       LOG.warn("tsfile-file Statistics classes mismatched,no merge: {} v.s. {}",
-              thisClass, statsClass);
+          thisClass, statsClass);
 
       throw new StatisticsClassException(this.getClass(), stats.getClass());
     }
@@ -249,6 +212,14 @@ public abstract class Statistics<T> {
 
   abstract void fill(ByteBuffer byteBuffer) throws IOException;
 
+  protected void fill(TsFileInput input, long offset) throws IOException {
+    int size = getSerializedSize();
+    ByteBuffer buffer = ByteBuffer.allocate(size);
+    ReadWriteIOUtils.readAsPossible(input, offset, buffer);
+    buffer.flip();
+    fill(buffer);
+  }
+
   public int getSerializedSize() {
     if (sizeOfDatum() == 0) {
       return 0;
@@ -294,5 +265,4 @@ public abstract class Statistics<T> {
     }
     return length;
   }
-
 }
