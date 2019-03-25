@@ -196,7 +196,7 @@ public class IoTDBDescriptor {
       conf.setSyncServerPort(Integer
           .parseInt(properties.getProperty("sync_server_port",
                   Integer.toString(conf.getSyncServerPort())).trim()));
-      conf.setUpdate_historical_data_possibility(Boolean.parseBoolean(
+      conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
           properties.getProperty("update_historical_data_possibility",
                   Boolean.toString(conf.isSyncEnable()))));
       conf.setIpWhiteList(properties.getProperty("IP_white_list", conf.getIpWhiteList()));
@@ -240,6 +240,7 @@ public class IoTDBDescriptor {
 
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());
+      conf.setJdbcServiceImplClassName(properties.getProperty("jdbc_service impl_class_name", conf.getJdbcServiceImplClassName().trim()));
 
       String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
       try {

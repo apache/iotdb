@@ -207,7 +207,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private TS_Status getErrorStatus(String message){
+  public TS_Status getErrorStatus(String message){
     TS_Status status = new TS_Status(TS_StatusCode.ERROR_STATUS);
     status.setErrorMessage(message);
     return status;
@@ -347,7 +347,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @return true if the statement is ADMIN COMMAND
    * @throws IOException exception
    */
-  private boolean execAdminCommand(String statement) throws IOException {
+  public boolean execAdminCommand(String statement) throws IOException {
     if (!"root".equals(username.get())) {
       return false;
     }
@@ -629,7 +629,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
+  public TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
     List<Path> paths = plan.getPaths();
 
     try {
@@ -664,7 +664,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private TSExecuteStatementResp executeUpdateStatement(String statement)
+  public TSExecuteStatementResp executeUpdateStatement(String statement)
       throws ProcessorException {
 
     PhysicalPlan physicalPlan;
@@ -681,40 +681,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           "Statement is a query statement.");
     }
 
-    // if operation belongs to add/delete/update
-    List<Path> paths = physicalPlan.getPaths();
-
-    try {
-      if (!checkAuthorization(paths, physicalPlan)) {
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-            "No permissions for this operation " + physicalPlan.getOperatorType());
-      }
-    } catch (AuthException e) {
-      LOGGER.error("meet error while checking authorization.", e);
-      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-          "Uninitialized authorizer : " + e.getMessage());
-    }
-
-    // TODO
-    // In current version, we only return OK/ERROR
-    // Do we need to add extra information of executive condition
-    boolean execRet;
-    try {
-      execRet = processor.getExecutor().processNonQuery(physicalPlan);
-    } catch (ProcessorException e) {
-      LOGGER.error("meet error while processing non-query.", e);
-      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
-    }
-    TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
-    String msg = execRet ? "Execute successfully" : "Execute statement error.";
-    TSExecuteStatementResp resp = getTSExecuteStatementResp(statusCode, msg);
-    TSHandleIdentifier operationId = new TSHandleIdentifier(
-        ByteBuffer.wrap(username.get().getBytes()),
-        ByteBuffer.wrap(("PASS".getBytes())));
-    TSOperationHandle operationHandle;
-    operationHandle = new TSOperationHandle(operationId, false);
-    resp.setOperationHandle(operationHandle);
-    return resp;
+    return executeUpdateStatement(physicalPlan);
   }
 
   private void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
@@ -730,11 +697,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    *
    * @return true: If logined; false: If not logined
    */
-  private boolean checkLogin() {
+  public boolean checkLogin() {
     return username.get() != null;
   }
 
-  private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
+  public boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
       targetUser = ((AuthorPlan) plan).getUserName();
@@ -742,7 +709,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return AuthorityChecker.check(username.get(), paths, plan.getOperatorType(), targetUser);
   }
 
-  private TSExecuteStatementResp getTSExecuteStatementResp(TS_StatusCode code, String msg) {
+  public TSExecuteStatementResp getTSExecuteStatementResp(TS_StatusCode code, String msg) {
     TSExecuteStatementResp resp = new TSExecuteStatementResp();
     TS_Status tsStatus = new TS_Status(code);
     tsStatus.setErrorMessage(msg);
@@ -755,7 +722,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private TSExecuteBatchStatementResp getTSBathExecuteStatementResp(TS_StatusCode code, String msg,
+  public TSExecuteBatchStatementResp getTSBathExecuteStatementResp(TS_StatusCode code, String msg,
       List<Integer> result) {
     TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
     TS_Status tsStatus = new TS_Status(code);
@@ -765,7 +732,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private TSFetchResultsResp getTSFetchResultsResp(TS_StatusCode code, String msg) {
+  public TSFetchResultsResp getTSFetchResultsResp(TS_StatusCode code, String msg) {
     TSFetchResultsResp resp = new TSFetchResultsResp();
     TS_Status tsStatus = new TS_Status(code);
     tsStatus.setErrorMessage(msg);
