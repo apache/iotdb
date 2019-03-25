@@ -16,14 +16,52 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.entity.raft;
 
-import org.apache.iotdb.cluster.entity.Server;
+import com.alipay.sofa.jraft.storage.LogStorage;
+import java.util.List;
+import org.apache.iotdb.cluster.entity.service.IService;
 
-public class App {
+public class RaftService implements IService {
 
-  public static void main(String[] args){
-    Server server = new Server();
-    server.start();
+  private List<RaftNode> nodeList;
+  private LogStorage logStorage;
+  private State state;
+  private RaftNode leader;
+
+  public RaftService(List<RaftNode> nodeList, LogStorage logStorage) {
+    this.nodeList = nodeList;
+    this.logStorage = logStorage;
+  }
+
+  @Override
+  public void init() {
+
+  }
+
+  @Override
+  public void start() {
+
+  }
+
+  @Override
+  public void stop() {
+
+  }
+
+  public void saveSnapshot() {
+
+  }
+
+  public void loadSnapshot() {
+
+  }
+
+  public void onRevice(Object message) {
+
+  }
+
+  enum State {
+    FOLLOWER, LEADER, CANIDIDATE;
   }
 }

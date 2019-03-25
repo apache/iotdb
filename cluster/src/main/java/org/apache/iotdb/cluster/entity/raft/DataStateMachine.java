@@ -16,14 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.entity.raft;
 
-import org.apache.iotdb.cluster.entity.Server;
+import com.alipay.sofa.jraft.Iterator;
+import com.alipay.sofa.jraft.core.StateMachineAdapter;
+import org.apache.iotdb.db.engine.Processor;
 
-public class App {
+public class DataStateMachine extends StateMachineAdapter {
+  private Processor process;
 
-  public static void main(String[] args){
-    Server server = new Server();
-    server.start();
+  public DataStateMachine() {
+    //TODO init @code{process}
+  }
+
+  @Override
+  public void onApply(Iterator iterator) {
+
   }
 }
