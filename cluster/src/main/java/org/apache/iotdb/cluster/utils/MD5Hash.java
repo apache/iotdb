@@ -16,15 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.utils;
 
-import static org.junit.Assert.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
-import org.junit.Test;
+public class MD5Hash implements HashFunction {
 
-public class AppTest {
-  @Test
-  public void Test(){
-    assertEquals("123", "123");
+  MessageDigest instance;
+
+  public MD5Hash() {
+    try {
+      instance = MessageDigest.getInstance("MD5");
+    } catch (NoSuchAlgorithmException e) {
+    }
+  }
+
+  @Override
+  public synchronized int hash(String str) {
+    instance.reset();
+    instance.update(str.getBytes());
+    byte[] digest = instance.digest();
+
+    int h = 0;
+    for (int i = 0; i < 4; i++) {
+      h <<= 8;
+      h |= ((int) digest[i]) & 0xFF;
+    }
+    return h;
   }
 }

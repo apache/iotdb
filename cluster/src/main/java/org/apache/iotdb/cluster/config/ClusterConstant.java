@@ -16,15 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.config;
 
-import static org.junit.Assert.*;
+public class ClusterConstant {
 
-import org.junit.Test;
+  public static final String CLUSTER_CONF = "CLUSTER_CONF";
 
-public class AppTest {
-  @Test
-  public void Test(){
-    assertEquals("123", "123");
+  private ClusterConstant(){
   }
 }

@@ -16,15 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.entity.service;
 
-import static org.junit.Assert.*;
-
-import org.junit.Test;
-
-public class AppTest {
-  @Test
-  public void Test(){
-    assertEquals("123", "123");
-  }
+public interface IService {
+  void init();
+  void start();
+  void stop();
 }

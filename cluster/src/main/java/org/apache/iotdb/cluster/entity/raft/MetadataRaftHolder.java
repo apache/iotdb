@@ -16,15 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.entity.raft;
 
-import static org.junit.Assert.*;
+import com.alipay.sofa.jraft.storage.LogStorage;
+import java.util.List;
+import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 
-import org.junit.Test;
+public class MetadataRaftHolder extends MetadataHolder {
 
-public class AppTest {
-  @Test
-  public void Test(){
-    assertEquals("123", "123");
+  private MetadataStateManchine fsm;
+
+  public MetadataRaftHolder(List<RaftNode> nodeList, LogStorage logStorage) {
+    fsm = new MetadataStateManchine();
+    service = new RaftService(nodeList, logStorage);
   }
 }

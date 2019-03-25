@@ -16,15 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.entity.raft;
 
-import static org.junit.Assert.*;
+import com.alipay.sofa.jraft.storage.LogStorage;
+import java.util.List;
+import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 
-import org.junit.Test;
+public class DataPartitionRaftHolder extends DataPartitionHolder {
 
-public class AppTest {
-  @Test
-  public void Test(){
-    assertEquals("123", "123");
+  private int groupId;
+  private DataStateMachine fsm;
+
+  public DataPartitionRaftHolder(int groupId, List<RaftNode> nodeList, LogStorage logStorage) {
+    this.groupId = groupId;
+    fsm = new DataStateMachine();
+    service = new RaftService(nodeList, logStorage);
   }
 }
