@@ -16,15 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.org.apache.iotdb.cluster.utils;
 
-import static org.junit.Assert.*;
-
-import org.junit.Test;
-
-public class AppTest {
-  @Test
-  public void Test(){
-    assertEquals("123", "123");
-  }
+public interface HashFunction {
+  public int hash(String str);
 }
