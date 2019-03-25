@@ -16,14 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.entity.metadata;
 
-import org.apache.iotdb.cluster.entity.Server;
+import org.apache.iotdb.cluster.entity.service.IService;
 
-public class App {
+public abstract class MetadataHolder implements IHolder {
 
-  public static void main(String[] args){
-    Server server = new Server();
-    server.start();
+  protected IService service;
+
+  @Override
+  public void init() {
+    service.init();
+  }
+
+  @Override
+  public void start() {
+    service.start();
+  }
+
+  @Override
+  public void stop() {
+    service.stop();
   }
 }

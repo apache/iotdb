@@ -16,14 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.entity.raft;
 
-import org.apache.iotdb.cluster.entity.Server;
+import com.alipay.sofa.jraft.storage.LogStorage;
+import java.util.List;
+import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 
-public class App {
+public class DataPartitionRaftHolder extends DataPartitionHolder {
 
-  public static void main(String[] args){
-    Server server = new Server();
-    server.start();
+  private int groupId;
+  private DataStateMachine fsm;
+
+  public DataPartitionRaftHolder(int groupId, List<RaftNode> nodeList, LogStorage logStorage) {
+    this.groupId = groupId;
+    fsm = new DataStateMachine();
+    service = new RaftService(nodeList, logStorage);
   }
 }

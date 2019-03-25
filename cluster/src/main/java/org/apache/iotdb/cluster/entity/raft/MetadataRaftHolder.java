@@ -16,14 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.entity.raft;
 
-import org.apache.iotdb.cluster.entity.Server;
+import com.alipay.sofa.jraft.storage.LogStorage;
+import java.util.List;
+import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 
-public class App {
+public class MetadataRaftHolder extends MetadataHolder {
 
-  public static void main(String[] args){
-    Server server = new Server();
-    server.start();
+  private MetadataStateManchine fsm;
+
+  public MetadataRaftHolder(List<RaftNode> nodeList, LogStorage logStorage) {
+    fsm = new MetadataStateManchine();
+    service = new RaftService(nodeList, logStorage);
   }
 }

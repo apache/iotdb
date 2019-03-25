@@ -16,14 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.entity.service;
 
-import org.apache.iotdb.cluster.entity.Server;
-
-public class App {
-
-  public static void main(String[] args){
-    Server server = new Server();
-    server.start();
-  }
+public interface IService {
+  void init();
+  void start();
+  void stop();
 }

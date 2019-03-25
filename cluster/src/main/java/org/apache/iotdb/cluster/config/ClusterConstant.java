@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.config;
 
-import org.apache.iotdb.cluster.entity.Server;
+public class ClusterConstant {
 
-public class App {
+  public static final String CLUSTER_CONF = "CLUSTER_CONF";
 
-  public static void main(String[] args){
-    Server server = new Server();
-    server.start();
+  private ClusterConstant(){
   }
 }
