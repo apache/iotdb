@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,150 +16,214 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.read.reader;
 
-package org.apache.iotdb.tsfile.file.header;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.file.Paths;
+import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.encoding.common.EndianType;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.IntRleDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.LongRleDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.SinglePrecisionDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.LongRleEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
-import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
-import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-import org.junit.After;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
-public class PageHeaderTest {
-  public static final int UNCOMPRESSED_SIZE = 123456;
-  public static final int COMPRESSED_SIZE = 100000;
-  public static final int NUM_OF_VALUES = 10000;
-  public static final long MAX_TIMESTAMO = 523372036854775806L;
-  public static final long MIN_TIMESTAMO = 423372036854775806L;
-  public static final TSDataType DATA_TYPE = TSDataType.TEXT;
-  public static final int OFFSET = 123456;
-  final String PATH = "target/outputPageHeader.tsfile";
+public class PageReaderTest {
 
-  @Before
-  public void setUp() {
-  }
+  private static final int POINTS_COUNT_IN_ONE_PAGE = 1000000;
 
-  @After
-  public void tearDown() {
-    File file = new File(PATH);
-    if (file.exists()) {
-      Assert.assertTrue(file.delete());
-    }
+  @Test
+  public void testLong() {
+
+    LoopWriteReadTest test = new LoopWriteReadTest("Test INT64",
+        new LongRleEncoder(EndianType.BIG_ENDIAN),
+        new LongRleDecoder(EndianType.BIG_ENDIAN), TSDataType.INT64, POINTS_COUNT_IN_ONE_PAGE) {
+      @Override
+      public Object generateValueByIndex(int i) {
+        return Long.valueOf(Long.MAX_VALUE - i);
+      }
+    };
+    test.test();
   }
 
   @Test
-  public void testWriteIntoFile() throws IOException {
-    PageHeader header = TestHelper.createSimplePageHeader();
-    serialized(header);
-    PageHeader readHeader = deSerialized();
-    Utils.isPageHeaderEqual(header, readHeader);
-    serialized(readHeader);
-  }
-
-  private PageHeader deSerialized() {
-    FileInputStream fis = null;
-    PageHeader header = null;
-    try {
-      fis = new FileInputStream(new File(PATH));
-      header = PageHeader.deserializeFrom(fis, DATA_TYPE);
-      return header;
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (fis != null) {
-        try {
-          fis.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
+  public void testBoolean() {
+    LoopWriteReadTest test = new LoopWriteReadTest("Test Boolean",
+        new IntRleEncoder(EndianType.BIG_ENDIAN),
+        new IntRleDecoder(EndianType.BIG_ENDIAN), TSDataType.BOOLEAN, POINTS_COUNT_IN_ONE_PAGE) {
+      @Override
+      public Object generateValueByIndex(int i) {
+        return i % 3 == 0 ? true : false;
       }
-    }
-    return header;
-  }
-
-  private void serialized(PageHeader header) {
-    File file = new File(PATH);
-    if (file.exists()) {
-      Assert.assertTrue(file.delete());
-    }
-    FileOutputStream fos = null;
-    try {
-      fos = new FileOutputStream(file);
-      header.serializeTo(fos);
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (fos != null) {
-        try {
-          fos.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
-    }
+    };
+    test.test();
   }
 
   @Test
-  public void testReadWithOffset() throws IOException {
-    PageHeader header = TestHelper.createSimplePageHeader();
-    serialized(header, OFFSET);
-    PageHeader readHeader = deSerialized(OFFSET);
-    Utils.isPageHeaderEqual(header, readHeader);
-    serialized(readHeader);
+  public void testInt() {
+    LoopWriteReadTest test = new LoopWriteReadTest("Test INT32",
+        new IntRleEncoder(EndianType.BIG_ENDIAN),
+        new IntRleDecoder(EndianType.BIG_ENDIAN), TSDataType.INT32, POINTS_COUNT_IN_ONE_PAGE) {
+      @Override
+      public Object generateValueByIndex(int i) {
+        return Integer.valueOf(i);
+      }
+    };
+    test.test();
   }
 
-  private PageHeader deSerialized(int offset) {
-    FileInputStream fis = null;
-    PageHeader header = null;
-    try {
-      TsFileInput input = new DefaultTsFileInput(Paths.get(PATH));
-      header = PageHeader.deserializeFrom(DATA_TYPE, input, offset, true);
-      return header;
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (fis != null) {
-        try {
-          fis.close();
-        } catch (IOException e) {
-          e.printStackTrace();
+  @Test
+  public void testFloat() {
+    LoopWriteReadTest test = new LoopWriteReadTest("Test FLOAT", new SinglePrecisionEncoder(),
+        new SinglePrecisionDecoder(), TSDataType.FLOAT, POINTS_COUNT_IN_ONE_PAGE) {
+      @Override
+      public Object generateValueByIndex(int i) {
+        return Float.valueOf(i) / 10 - Float.valueOf(i) / 100;
+      }
+    };
+    test.test();
+
+    LoopWriteReadTest test2 = new LoopWriteReadTest("Test FLOAT", new SinglePrecisionEncoder(),
+        new SinglePrecisionDecoder(), TSDataType.FLOAT, POINTS_COUNT_IN_ONE_PAGE) {
+      @Override
+      public Object generateValueByIndex(int i) {
+        return Float.valueOf(i) / 100 - Float.valueOf(i) / 10;
+      }
+    };
+    test2.test();
+  }
+
+  @Test
+  public void testDouble() {
+    LoopWriteReadTest test = new LoopWriteReadTest("Test Double", new DoublePrecisionEncoder(),
+        new DoublePrecisionDecoder(), TSDataType.DOUBLE, POINTS_COUNT_IN_ONE_PAGE) {
+      @Override
+      public Object generateValueByIndex(int i) {
+        return Double.valueOf(i) / 10 - Double.valueOf(i) / 100;
+      }
+    };
+    test.test();
+
+    LoopWriteReadTest test2 = new LoopWriteReadTest("Test Double", new DoublePrecisionEncoder(),
+        new DoublePrecisionDecoder(), TSDataType.DOUBLE, POINTS_COUNT_IN_ONE_PAGE) {
+      @Override
+      public Object generateValueByIndex(int i) {
+        return Double.valueOf(i) / 1000 - Double.valueOf(i) / 100;
+      }
+    };
+    test2.test();
+  }
+
+  @Test
+  public void testBinary() {
+    LoopWriteReadTest test = new LoopWriteReadTest("Test Double",
+        new PlainEncoder(EndianType.LITTLE_ENDIAN, TSDataType.TEXT, 1000),
+        new PlainDecoder(EndianType.LITTLE_ENDIAN), TSDataType.TEXT, POINTS_COUNT_IN_ONE_PAGE) {
+      @Override
+      public Object generateValueByIndex(int i) {
+        return new Binary(new StringBuilder("TEST TEXT").append(i).toString());
+      }
+    };
+    test.test();
+  }
+
+  private abstract static class LoopWriteReadTest {
+
+    private Encoder encoder;
+    private Decoder decoder;
+    private TSDataType dataType;
+    private PageWriter pageWriter;
+    private String name;
+    private int count;
+
+    public LoopWriteReadTest(String name, Encoder encoder, Decoder decoder, TSDataType dataType,
+        int count) {
+      this.name = name;
+      this.encoder = encoder;
+      this.decoder = decoder;
+      this.dataType = dataType;
+      this.count = count;
+    }
+
+    public void test() {
+      try {
+        pageWriter = new PageWriter();
+        pageWriter.setTimeEncoder(new DeltaBinaryEncoder.LongDeltaEncoder());
+        pageWriter.setValueEncoder(this.encoder);
+        writeData();
+
+        ByteBuffer page = ByteBuffer.wrap(pageWriter.getUncompressedBytes().array());
+
+        PageReader pageReader = new PageReader(page, dataType, decoder,
+            new DeltaBinaryDecoder.LongDeltaDecoder());
+
+        int index = 0;
+        long startTimestamp = System.currentTimeMillis();
+        BatchData data = null;
+        if (pageReader.hasNextBatch()) {
+          data = pageReader.nextBatch();
+        }
+        assert data != null;
+
+        while (data.hasNext()) {
+          Assert.assertEquals(Long.valueOf(index), (Long) data.currentTime());
+          Assert.assertEquals(generateValueByIndex(index), data.currentValue());
+          data.next();
+          index++;
+        }
+        long endTimestamp = System.currentTimeMillis();
+        System.out
+            .println("TestName: [" + name + "]\n\tTSDataType: " + dataType + "\tRead-Count:" + count
+                + "\tTime-used:" + (endTimestamp - startTimestamp) + "ms");
+        Assert.assertEquals(count, index);
+      } catch (IOException e) {
+        e.printStackTrace();
+        Assert.fail("Fail when executing test: [" + name + "]");
+      }
+    }
+
+    private void writeData() throws IOException {
+      for (int i = 0; i < count; i++) {
+        switch (dataType) {
+          case BOOLEAN:
+            pageWriter.write(Long.valueOf(i), (Boolean) generateValueByIndex(i));
+            break;
+          case INT32:
+            pageWriter.write(Long.valueOf(i), (Integer) generateValueByIndex(i));
+            break;
+          case INT64:
+            pageWriter.write(Long.valueOf(i), (Long) generateValueByIndex(i));
+            break;
+          case FLOAT:
+            pageWriter.write(Long.valueOf(i), (Float) generateValueByIndex(i));
+            break;
+          case DOUBLE:
+            pageWriter.write(Long.valueOf(i), (Double) generateValueByIndex(i));
+            break;
+          case TEXT:
+            pageWriter.write(Long.valueOf(i), (Binary) generateValueByIndex(i));
+            break;
+
         }
       }
     }
-    return header;
+
+    public abstract Object generateValueByIndex(int i);
   }
 
-  private void serialized(PageHeader header, int offset) {
-    File file = new File(PATH);
-    if (file.exists()) {
-      Assert.assertTrue(file.delete());
-    }
-    FileOutputStream fos = null;
-    FileChannel fc = null;
-    try {
-      fos = new FileOutputStream(file);
-      fos.write(new byte[offset]);
-      header.serializeTo(fos);
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (fos != null) {
-        try {
-          fos.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-  }
 }
