@@ -16,8 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.org.apache.iotdb.cluster.utils;
+package org.apache.iotdb.cluster.utils;
 
-public interface HashFunction {
-  public int hash(String str);
+public class VirtualNode {
+
+  private final int replicaIndex;
+  private final PhysicalNode physicalNode;
+
+  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
+    this.replicaIndex = replicaIndex;
+    this.physicalNode = physicalNode;
+  }
+
+  PhysicalNode getPhysicalNode() {
+    return this.physicalNode;
+  }
+
+  String getKey() {
+    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
+  }
 }
