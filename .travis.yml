@@ -68,11 +68,10 @@ matrix:
         - export -f travis_time_start
         - export -f travis_time_finish
       script:
-        travis_fold start win-oraclejdk8-IT
-        # execute commands here
+        travis_fold start winIT
         - java -version
         - mvn clean integration-test
-        travis_fold end "name.of.fold"
+        travis_fold end winIT
 #    - os: windows
 #      language: c
 #      name: win-oraclejdk11
