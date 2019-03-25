@@ -98,6 +98,12 @@ public class LinearFill extends IFill {
     if (afterPair == null) {
       afterPair = allDataReader.next();
     }
+
+    //if afterRange equals -1, this means that there is no time-bound filling.
+    if (afterRange == -1) {
+      return new TimeValuePairPointReader(average(beforePair, afterPair));
+    }
+
     if (afterPair.getTimestamp() > queryTime + afterRange) {
       return new TimeValuePairPointReader(null);
     }

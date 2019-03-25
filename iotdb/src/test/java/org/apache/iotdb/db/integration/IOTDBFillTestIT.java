@@ -220,6 +220,55 @@ public class IOTDBFillTestIT {
     }
   }
 
+  @Test
+  public void EmptyTimeRangeFillTest() throws SQLException {
+    String[] retArray1 = new String[]{
+        "3,3.3,false,33",
+        "70,70.34,false,374"
+    };
+    Connection connection = null;
+    try {
+      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      boolean hasResultSet = statement.execute("select temperature,status, hardware from root.ln.wf01.wt01 where time = 3 "
+          + "Fill(int32[linear], double[linear], boolean[previous])");
+
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.ln.wf01.wt01.temperature")
+            + "," + resultSet.getString("root.ln.wf01.wt01.status")+ "," + resultSet.getString("root.ln.wf01.wt01.hardware");
+        Assert.assertEquals(retArray1[cnt], ans);
+        cnt++;
+      }
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select temperature,status, hardware from root.ln.wf01.wt01 where time = 70 "
+          + "Fill(int32[linear], double[linear], boolean[previous])");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.ln.wf01.wt01.temperature")
+            + "," + resultSet.getString("root.ln.wf01.wt01.status")+ "," + resultSet.getString("root.ln.wf01.wt01.hardware");
+        Assert.assertEquals(retArray1[cnt], ans);
+        cnt++;
+        System.out.println(ans);
+      }
+      statement.close();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      if (connection != null) {
+        connection.close();
+      }
+    }
+  }
+
   private void prepareData() throws SQLException {
     Connection connection = null;
     try {
