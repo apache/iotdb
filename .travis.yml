@@ -62,16 +62,11 @@ matrix:
         - export PATH=$PATH:"/c/java8/bin"
         - export JAVA_HOME="/c/java8"
         - choco install maven
-      before_script:
-        - export -f travis_nanoseconds
-        - export -f travis_fold
-        - export -f travis_time_start
-        - export -f travis_time_finish
       script:
-        travis_fold start winIT
+        - echo -en "travis_fold:start:win_oraclejdk8_integration_test\r"
         - java -version
         - mvn clean integration-test
-        travis_fold end winIT
+        - echo -en "travis_fold:end:win_oraclejdk8_integration_test\r"
 #    - os: windows
 #      language: c
 #      name: win-oraclejdk11
