@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.cluster.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ClusterConfig {
 
   public static final String CONFIG_NAME = "iotdb-cluster.properties";
-  public static final String DEFAULT_NODE_IP = "127.0.0.1";
+  public static final String DEFAULT_NODE_IP = "127.0.0.1:8888";
 
   // Cluster node: {ip1,ip2,...,ipn}
   private String[] nodes = {DEFAULT_NODE_IP};
@@ -57,6 +60,8 @@ public class ClusterConfig {
   private int taskRedoTimeLimit = 3;
   /** timeout limit for a single task **/
   private int taskTimeout = 0;
+
+  private int numOfVirtulaNodes = 2;
 
   public ClusterConfig() {
     // empty constructor
@@ -164,5 +169,13 @@ public class ClusterConfig {
 
   public void setTaskTimeout(int taskTimeout) {
     this.taskTimeout = taskTimeout;
+  }
+
+  public int getNumOfVirtulaNodes(){
+    return numOfVirtulaNodes;
+  }
+
+  public void setNumOfVirtulaNodes(int numOfVirtulaNodes){
+    this.numOfVirtulaNodes = numOfVirtulaNodes;
   }
 }

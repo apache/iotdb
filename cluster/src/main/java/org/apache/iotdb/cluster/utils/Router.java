@@ -16,7 +16,6 @@ public class Router {
 
   // Replication number
   private int replicator;
-  private final int numOfVirtulaNodes = 2;
   private HashFunction hashFunction = new MD5Hash();
   private final SortedMap<Integer, PhysicalNode> physicalRing = new TreeMap<>();
   private final SortedMap<Integer, VirtualNode> virtualRing = new TreeMap<>();
@@ -24,6 +23,8 @@ public class Router {
   // A local cache to store Which nodes do a storage group correspond to
   private Map<String, PhysicalNode[]> router = new ConcurrentHashMap<>();
   private Map<PhysicalNode, PhysicalNode[][]> dataPartitionCache = new HashMap<>();
+  private Map<PhysicalNode, String> groupIdCache = new HashMap<>();
+  public static final String DATA_GROUP_STR = "data-group-";
 
   private static class RouterHolder {
 
@@ -38,12 +39,14 @@ public class Router {
     return RouterHolder.INSTANCE;
   }
 
+  // change this method to public for test, you should not invoke this method explicitly.
   public void init() {
     reset();
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     String[] ipList = config.getNodes();
     this.replicator = config.getReplication();
     int port = config.getPort();
+    int numOfVirtulaNodes = config.getNumOfVirtulaNodes();
     for (String ip : ipList) {
       PhysicalNode node = new PhysicalNode(ip, port);
       addNode(node, numOfVirtulaNodes);
@@ -57,12 +60,14 @@ public class Router {
             + "than cluster number %d", replicator, len));
       } else if (len == replicator) {
         PhysicalNode[][] val = new PhysicalNode[1][len];
+        groupIdCache.put(first, DATA_GROUP_STR + "0");
         for (int j = 0; j < len; j++) {
           val[0][j] = nodes[(i + j) % len];
         }
         dataPartitionCache.put(first, val);
       } else {
         PhysicalNode[][] val = new PhysicalNode[replicator][replicator];
+        groupIdCache.put(first, DATA_GROUP_STR + i);
         for (int j = 0; j < replicator; j++) {
           for (int k = 0; k < replicator; k++) {
             val[j][k] = nodes[(i - j + k + len) % len];
@@ -85,6 +90,10 @@ public class Router {
     return nodes;
   }
 
+  public String getGroupID(PhysicalNode[] nodes) {
+    return groupIdCache.get(nodes[0]);
+  }
+
   public PhysicalNode[][] generateGroups(String ip, int port) {
     return this.generateGroups(new PhysicalNode(ip, port));
   }
@@ -97,8 +106,8 @@ public class Router {
     }
   }
 
-  // For a storage group, compute the nearest physical node on the VRing
-  private PhysicalNode routeNode(String objectKey) {
+  // For a storage group, compute the nearest physical node on the hash ring
+  public PhysicalNode routeNode(String objectKey) {
     int hashVal = hashFunction.hash(objectKey);
     SortedMap<Integer, VirtualNode> tailMap = virtualRing.tailMap(hashVal);
     Integer nodeHashVal = !tailMap.isEmpty() ? tailMap.firstKey() : virtualRing.firstKey();
@@ -115,10 +124,19 @@ public class Router {
     virtualRing.clear();
     router.clear();
     dataPartitionCache.clear();
+    groupIdCache.clear();
   }
 
+  // only for test
   public void showPhysicalRing() {
     for (Entry<Integer, PhysicalNode> entry : physicalRing.entrySet()) {
+      System.out.println(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
+    }
+  }
+
+  //only for test
+  public void showVirtualRing() {
+    for (Entry<Integer, VirtualNode> entry : virtualRing.entrySet()) {
       System.out.println(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
     }
   }
