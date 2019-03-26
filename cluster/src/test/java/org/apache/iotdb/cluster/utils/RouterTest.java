@@ -14,6 +14,7 @@ public class RouterTest {
   String[] ipListOld;
   int portOld;
   int replicatorOld;
+  int numOfVirtulaNodesOld;
   HashFunction function = new MD5Hash();
 
   @Before
@@ -21,6 +22,7 @@ public class RouterTest {
     ipListOld = config.getNodes();
     portOld = config.getPort();
     replicatorOld = config.getReplication();
+    numOfVirtulaNodesOld = config.getNumOfVirtulaNodes();
   }
 
   @After
@@ -28,6 +30,7 @@ public class RouterTest {
     config.setNodes(ipListOld);
     config.setPort(portOld);
     config.setReplication(replicatorOld);
+    config.setNumOfVirtulaNodes(numOfVirtulaNodesOld);
   }
 
   @Test
@@ -36,10 +39,11 @@ public class RouterTest {
         "192.168.130.5",};
     int port = 7777;
     int replicator = 3;
+    int numOfVirtulaNodes = 2;
     config.setNodes(ipList);
     config.setPort(port);
     config.setReplication(replicator);
-
+    config.setNumOfVirtulaNodes(numOfVirtulaNodes);
     Router router = Router.getInstance();
     router.init();
 //    router.showPhysicalRing();
@@ -76,9 +80,12 @@ public class RouterTest {
     String[] ipList = {"192.168.130.1", "192.168.130.2", "192.168.130.3"};
     int port = 7777;
     int replicator = 3;
+    int numOfVirtulaNodes = 2;
+
     config.setNodes(ipList);
     config.setPort(port);
     config.setReplication(replicator);
+    config.setNumOfVirtulaNodes(numOfVirtulaNodes);
 
     Router router = Router.getInstance();
     router.init();
@@ -118,9 +125,12 @@ public class RouterTest {
         "192.168.130.5",};
     int port = 7777;
     int replicator = 3;
+    int numOfVirtulaNodes = 2;
+
     config.setNodes(ipList);
     config.setPort(port);
     config.setReplication(replicator);
+    config.setNumOfVirtulaNodes(numOfVirtulaNodes);
 
     Router router = Router.getInstance();
     router.init();
@@ -163,9 +173,12 @@ public class RouterTest {
     String[] ipList = {"192.168.130.1", "192.168.130.2", "192.168.130.3"};
     int port = 7777;
     int replicator = 3;
+    int numOfVirtulaNodes = 2;
+
     config.setNodes(ipList);
     config.setPort(port);
     config.setReplication(replicator);
+    config.setNumOfVirtulaNodes(numOfVirtulaNodes);
 
     Router router = Router.getInstance();
     router.init();

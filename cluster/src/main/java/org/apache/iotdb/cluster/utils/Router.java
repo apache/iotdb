@@ -16,7 +16,6 @@ public class Router {
 
   // Replication number
   private int replicator;
-  private final int numOfVirtulaNodes = 2;
   private HashFunction hashFunction = new MD5Hash();
   private final SortedMap<Integer, PhysicalNode> physicalRing = new TreeMap<>();
   private final SortedMap<Integer, VirtualNode> virtualRing = new TreeMap<>();
@@ -47,6 +46,7 @@ public class Router {
     String[] ipList = config.getNodes();
     this.replicator = config.getReplication();
     int port = config.getPort();
+    int numOfVirtulaNodes = config.getNumOfVirtulaNodes();
     for (String ip : ipList) {
       PhysicalNode node = new PhysicalNode(ip, port);
       addNode(node, numOfVirtulaNodes);

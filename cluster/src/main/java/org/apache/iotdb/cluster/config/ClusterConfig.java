@@ -56,6 +56,8 @@ public class ClusterConfig {
   // Maximum allowed delay hours
   private int delayHours = 24;
 
+  private int numOfVirtulaNodes = 2;
+
   public ClusterConfig() {
     // empty constructor
   }
@@ -146,5 +148,13 @@ public class ClusterConfig {
 
   public void setDelayHours(int delayHours) {
     this.delayHours = delayHours;
+  }
+
+  public int getNumOfVirtulaNodes(){
+    return numOfVirtulaNodes;
+  }
+
+  public void setNumOfVirtulaNodes(int numOfVirtulaNodes){
+    this.numOfVirtulaNodes = numOfVirtulaNodes;
   }
 }
