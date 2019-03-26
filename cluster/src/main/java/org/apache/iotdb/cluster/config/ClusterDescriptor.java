@@ -108,6 +108,15 @@ public class ClusterDescriptor {
       conf.setDelayHours(Integer
           .parseInt(properties.getProperty("delay_hours",
               Integer.toString(conf.getDelayHours()))));
+
+      conf.setTaskRedoTimeLimit(Integer
+          .parseInt(properties.getProperty("task_redo_time_limit",
+              Integer.toString(conf.getTaskRedoTimeLimit()))));
+
+      conf.setTaskTimeout(Integer
+          .parseInt(properties.getProperty("task_timeout",
+              Integer.toString(conf.getTaskTimeout()))));
+
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {
