@@ -50,34 +50,36 @@ public class RaftNodeAsClient implements NodeAsClient {
   private static final int TASK_TIMEOUT_MS = clusterConfig.getTaskTimeoutMs();
 
   @Override
-  public void asyncHandleRequest(Object clientService,BasicRequest request, Object leader, Task task)
+  public void asyncHandleRequest(Object clientService, BasicRequest request, Object leader,
+      Task task)
       throws RaftConnectionException {
-    BoltCliClientService boltClientService = (BoltCliClientService)clientService;
-    PeerId raftLeader = (PeerId)leader;
+    BoltCliClientService boltClientService = (BoltCliClientService) clientService;
+    PeerId raftLeader = (PeerId) leader;
     try {
-      boltClientService.getRpcClient().invokeWithCallback(raftLeader.getEndpoint().toString(), request,
-          new InvokeCallback() {
+      boltClientService.getRpcClient()
+          .invokeWithCallback(raftLeader.getEndpoint().toString(), request,
+              new InvokeCallback() {
 
-            @Override
-            public void onResponse(Object result) {
-              BasicResponse response = (BasicResponse)result;
-              task.run(response);
-            }
+                @Override
+                public void onResponse(Object result) {
+                  BasicResponse response = (BasicResponse) result;
+                  task.run(response);
+                }
 
-            @Override
-            public void onException(Throwable e) {
-              LOGGER.error("Bolt rpc client occurs errors when handling Request",e);
-              task.setTaskState(TaskState.EXCEPTION);
-              task.run(null);
+                @Override
+                public void onException(Throwable e) {
+                  LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
+                  task.setTaskState(TaskState.EXCEPTION);
+                  task.run(null);
 
-            }
+                }
 
-            @Override
-            public Executor getExecutor() {
-              return null;
-            }
-          }, TASK_TIMEOUT_MS);
-    } catch (RemotingException|InterruptedException e) {
+                @Override
+                public Executor getExecutor() {
+                  return null;
+                }
+              }, TASK_TIMEOUT_MS);
+    } catch (RemotingException | InterruptedException e) {
       throw new RaftConnectionException(e);
     }
   }

@@ -31,7 +31,7 @@ import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClient;
-import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
+import org.apache.iotdb.cluster.rpc.request.ChangeMetadataRequest;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -72,7 +72,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    */
   private static final int SUB_TASK_NUM = 1;
 
-  public NonQueryExecutor(BoltCliClientService cliClientService){
+  public NonQueryExecutor(BoltCliClientService cliClientService) {
     this.cliClientService = cliClientService;
   }
 
@@ -115,7 +115,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           throw new UnsupportedOperationException(
               String.format("operation %s does not support", plan.getOperatorType()));
       }
-    }catch (RaftConnectionException e) {
+    } catch (RaftConnectionException e) {
       LOGGER.error("Raft connection occurs error.");
       throw new ProcessorException(e);
     } catch (InterruptedException | PathErrorException | IOException e) {
@@ -178,7 +178,8 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           throw new ProcessorException(
               String.format("File level %s already exists.", path.getFullPath()));
         } else {
-          NonQueryRequest request = new NonQueryRequest(clusterConfig.getMetadataGroupId(),
+          ChangeMetadataRequest request = new ChangeMetadataRequest(
+              clusterConfig.getMetadataGroupId(),
               metadataPlan);
           PeerId leader = RaftUtils.getLeader(clusterConfig.getMetadataGroupId());
 
@@ -206,12 +207,12 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       return qpExecutor.processNonQuery(plan);
     } else {
       String groupId = getGroupIdBySG(storageGroup);
-      NonQueryRequest request = new NonQueryRequest(groupId, plan);
+      ChangeMetadataRequest request = new ChangeMetadataRequest(groupId, plan);
       PeerId leader = RaftUtils.getLeader(groupId);
 
       CountDownLatch latch = new CountDownLatch(SUB_TASK_NUM);
       SingleTask task = new SingleTask(false, latch, request);
-      return asyncHandleTask(task, leader,latch, 0);
+      return asyncHandleTask(task, leader, latch, 0);
     }
   }
 
@@ -237,7 +238,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     if (task.getTaskState() == TaskState.INITIAL || task.getTaskState() == TaskState.REDIRECT
         || task.getTaskState() == TaskState.EXCEPTION) {
       task.setTaskNum(new CountDownLatch(SUB_TASK_NUM));
-      return asyncHandleTask(task, leader, latch, taskRetryNum+ 1);
+      return asyncHandleTask(task, leader, latch, taskRetryNum + 1);
     }
     return task.getResponse().isSuccess();
   }

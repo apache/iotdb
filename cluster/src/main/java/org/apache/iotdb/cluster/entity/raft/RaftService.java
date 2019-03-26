@@ -19,40 +19,58 @@
 package org.apache.iotdb.cluster.entity.raft;
 
 import com.alipay.remoting.rpc.RpcServer;
+import com.alipay.sofa.jraft.Node;
 import com.alipay.sofa.jraft.RaftGroupService;
+import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.entity.PeerId;
+import com.alipay.sofa.jraft.option.NodeOptions;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.cluster.entity.service.IService;
 
 public class RaftService implements IService {
 
   private List<PeerId> peerIdList;
-  private PeerId leader;
+  private Node node;
   private RaftGroupService raftGroupService;
 
   public RaftService(String groupId, PeerId[] peerIds, PeerId serverId, RpcServer rpcServer) {
     this.peerIdList = new ArrayList<>(peerIds.length);
-    for (int i = 0; i < peerIds.length; i++) {
-      peerIdList.add(peerIds[i]);
-    }
-
+    peerIdList.addAll(Arrays.asList(peerIds));
     raftGroupService = new RaftGroupService(groupId, serverId, null, rpcServer);
   }
 
   @Override
   public void init() {
-
+    NodeOptions nodeOptions = new NodeOptions();
+    nodeOptions.setDisableCli(false);
+    final Configuration initConf = new Configuration();
+    initConf.setPeers(peerIdList);
+    nodeOptions.setInitialConf(initConf);
+    raftGroupService.setNodeOptions(nodeOptions);
   }
 
   @Override
   public void start() {
-    raftGroupService.start();
+    this.node = raftGroupService.start();
   }
 
   @Override
   public void stop() {
+    raftGroupService.shutdown();
+  }
 
+  public RaftGroupService getRaftGroupService() {
+    return raftGroupService;
+  }
+
+  public Node getNode() {
+    return node;
+  }
+
+  public void setNode(Node node) {
+    this.node = node;
   }
 
   public void saveSnapshot() {

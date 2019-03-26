@@ -18,23 +18,38 @@
  */
 package org.apache.iotdb.cluster.entity.raft;
 
+import com.alipay.remoting.exception.CodecException;
+import com.alipay.remoting.serialization.SerializerManager;
+import com.alipay.sofa.jraft.Closure;
 import com.alipay.sofa.jraft.Iterator;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.rpc.request.ChangeMetadataRequest;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
+import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MetadataStateManchine extends StateMachineAdapter {
 
-  /** manager of storage groups **/
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetadataStateManchine.class);
+
+  /**
+   * manager of storage groups
+   **/
   private MManager mManager = MManager.getInstance();
 
-  /** manager of user profile **/
+  /**
+   * manager of user profile
+   **/
   private IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
 
   private AtomicLong leaderTerm = new AtomicLong(-1);
@@ -45,8 +60,35 @@ public class MetadataStateManchine extends StateMachineAdapter {
   // Update StrageGroup List and userProfileMap based on Task read from raft log
   @Override
   public void onApply(Iterator iterator) {
+    while (iterator.hasNext()) {
 
+      Closure closure = null;
+      ChangeMetadataRequest request = null;
+      if (iterator.done() != null) {
+        closure = iterator.done();
+      }
+      final ByteBuffer data = iterator.getData();
+      try {
+        request = SerializerManager.getSerializer(SerializerManager.Hessian2)
+            .deserialize(data.array(), ChangeMetadataRequest.class.getName());
+      } catch (final CodecException e) {
+        LOGGER.error("Fail to decode IncrementAndGetRequest", e);
+      }
+      try {
+        assert request != null;
+        MetadataPlan plan = (MetadataPlan) PhysicalPlanLogTransfer
+            .logToOperator(request.getPhysicalPlanBytes());
+        addStorageGroup(plan.getPath().getFullPath());
+      } catch (IOException | PathErrorException e) {
+        LOGGER.error("Execute metadata plan error", e);
+      }
+      if (closure != null) {
+        closure.run(Status.OK());
+      }
+      iterator.next();
+    }
   }
+
 
   public boolean isStorageGroupLegal(String sg) {
     try {

@@ -37,8 +37,4 @@ public class DataPartitionRaftHolder extends DataPartitionHolder {
     service = new RaftService(groupId, peerIds, serverId, rpcServer);
   }
 
-  @Override
-  public void start() {
-    super.start();
-  }
 }

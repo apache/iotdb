@@ -20,7 +20,6 @@ package org.apache.iotdb.cluster.utils.hash;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import org.apache.iotdb.cluster.utils.hash.HashFunction;
 
 public class MD5Hash implements HashFunction {
 

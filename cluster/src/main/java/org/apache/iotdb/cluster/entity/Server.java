@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
+import org.apache.iotdb.cluster.rpc.processor.ChangeMetadataAsyncProcessor;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
@@ -37,22 +38,26 @@ import org.apache.iotdb.db.service.IoTDB;
 
 public class Server {
 
-  private static final ClusterConfig ClusterConf = ClusterDescriptor.getInstance().getConfig();
-
+  private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
   private MetadataHolder metadataHolder;
   private Map<String, DataPartitionHolder> dataPartitionHolderMap;
+
+  public static void main(String[] args) throws AuthException {
+    Server server = new Server();
+    server.start();
+  }
 
   public void start() throws AuthException {
     // Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version
     IoTDB iotdb = new IoTDB();
     iotdb.active();
 
-    PeerId[] peerIds = RaftUtils.convertStringArrayToPeerIdArray(ClusterConf.getNodes());
-    PeerId serverId = new PeerId(ClusterConf.getIp(), ClusterConf.getPort());
+    PeerId[] peerIds = RaftUtils.convertStringArrayToPeerIdArray(CLUSTER_CONF.getNodes());
+    PeerId serverId = new PeerId(CLUSTER_CONF.getIp(), CLUSTER_CONF.getPort());
     RpcServer rpcServer = new RpcServer(serverId.getPort());
     RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
     // TODO processor
-    rpcServer.registerUserProcessor(NonQueryAsyncProcessor);
+    rpcServer.registerUserProcessor(new ChangeMetadataAsyncProcessor(this));
     metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer);
     metadataHolder.init();
     metadataHolder.start();
@@ -61,14 +66,23 @@ public class Server {
     Router router = Router.getInstance();
     PhysicalNode[][] groups = router.generateGroups(serverId.getIp(), serverId.getPort());
 
-    for(int i = 0; i < groups.length; i++) {
+    for (int i = 0; i < groups.length; i++) {
       PhysicalNode[] group = groups[i];
       String groupId = router.getGroupID(group);
-      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId, RaftUtils.convertPhysicalNodeArrayToPeerIdArray(group), serverId, rpcServer);
+      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId,
+          RaftUtils.convertPhysicalNodeArrayToPeerIdArray(group), serverId, rpcServer);
       dataPartitionHolder.init();
       dataPartitionHolder.start();
       dataPartitionHolderMap.put(groupId, dataPartitionHolder);
     }
 
+  }
+
+  public MetadataHolder getMetadataHolder() {
+    return metadataHolder;
+  }
+
+  public void setMetadataHolder(MetadataHolder metadataHolder) {
+    this.metadataHolder = metadataHolder;
   }
 }

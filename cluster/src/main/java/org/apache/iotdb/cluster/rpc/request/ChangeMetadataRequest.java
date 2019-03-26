@@ -23,12 +23,12 @@ import java.io.Serializable;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 
-public class NonQueryRequest extends BasicRequest implements Serializable {
+public class ChangeMetadataRequest extends BasicRequest implements Serializable {
 
   private byte[] physicalPlanBytes;
   private byte[] requestType;
 
-  public NonQueryRequest(String groupID, PhysicalPlan plan) throws IOException {
+  public ChangeMetadataRequest(String groupID, PhysicalPlan plan) throws IOException {
     super(groupID);
     this.physicalPlanBytes = PhysicalPlanLogTransfer.operatorToLog(plan);
     this.requestType = String.valueOf(plan.getOperatorType()).getBytes();

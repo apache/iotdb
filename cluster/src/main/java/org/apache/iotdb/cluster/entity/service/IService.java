@@ -19,7 +19,10 @@
 package org.apache.iotdb.cluster.entity.service;
 
 public interface IService {
+
   void init();
+
   void start();
+
   void stop();
 }

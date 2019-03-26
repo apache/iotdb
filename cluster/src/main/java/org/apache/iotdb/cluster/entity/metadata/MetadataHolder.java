@@ -38,4 +38,8 @@ public abstract class MetadataHolder implements IMetadataHolder {
   public void stop() {
     service.stop();
   }
+
+  public IService getService() {
+    return service;
+  }
 }

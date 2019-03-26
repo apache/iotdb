@@ -54,9 +54,13 @@ public class ClusterConfig {
   // Maximum allowed delay hours
   private int delayHours = 24;
 
-  /** count limit to redo a single task **/
+  /**
+   * count limit to redo a single task
+   **/
   private int taskRedoCount = 3;
-  /** timeout limit for a single task, the unit is milliseconds **/
+  /**
+   * timeout limit for a single task, the unit is milliseconds
+   **/
   private int taskTimeoutMs = 0;
 
   private int numOfVirtulaNodes = 2;

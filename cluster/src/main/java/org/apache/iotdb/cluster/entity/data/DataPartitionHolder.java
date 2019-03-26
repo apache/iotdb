@@ -20,7 +20,7 @@ package org.apache.iotdb.cluster.entity.data;
 
 import org.apache.iotdb.cluster.entity.service.IService;
 
-public class DataPartitionHolder implements IPartitionHolder {
+public abstract class DataPartitionHolder implements IPartitionHolder {
 
   protected IService service;
 
