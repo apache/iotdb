@@ -23,8 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class ChunkGroupFooter {
@@ -84,11 +84,11 @@ public class ChunkGroupFooter {
   }
 
   /**
-   * deserialize from FileChannel.
+   * deserialize from TsFileInput.
    *
    * @param markerRead Whether the marker of the CHUNK_GROUP_FOOTER is read ahead.
    */
-  public static ChunkGroupFooter deserializeFrom(FileChannel channel, long offset,
+  public static ChunkGroupFooter deserializeFrom(TsFileInput input, long offset,
       boolean markerRead)
       throws IOException {
     long offsetVar = offset;
@@ -96,12 +96,12 @@ public class ChunkGroupFooter {
       offsetVar++;
     }
     ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-    channel.read(buffer, offsetVar);
+    input.read(buffer, offsetVar);
     buffer.flip();
     int size = buffer.getInt();
     offsetVar += Integer.BYTES;
     buffer = ByteBuffer.allocate(getSerializedSize(size));
-    ReadWriteIOUtils.readAsPossible(channel, offsetVar, buffer);
+    ReadWriteIOUtils.readAsPossible(input, offsetVar, buffer);
     buffer.flip();
     String deviceID = ReadWriteIOUtils.readStringWithoutLength(buffer, size);
     long dataSize = ReadWriteIOUtils.readLong(buffer);

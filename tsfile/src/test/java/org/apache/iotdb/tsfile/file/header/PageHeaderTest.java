@@ -24,9 +24,12 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
+import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -119,8 +122,8 @@ public class PageHeaderTest {
     FileInputStream fis = null;
     PageHeader header = null;
     try {
-      fis = new FileInputStream(new File(PATH));
-      header = PageHeader.deserializeFrom(DATA_TYPE, fis.getChannel(), offset, true);
+      TsFileInput input = new DefaultTsFileInput(Paths.get(PATH));
+      header = PageHeader.deserializeFrom(DATA_TYPE, input, offset, true);
       return header;
     } catch (IOException e) {
       e.printStackTrace();
