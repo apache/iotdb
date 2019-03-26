@@ -27,9 +27,9 @@ public class DataPartitionRaftHolder extends DataPartitionHolder {
   private int groupId;
   private DataStateMachine fsm;
 
-  public DataPartitionRaftHolder(int groupId, List<RaftNode> nodeList, LogStorage logStorage) {
+  public DataPartitionRaftHolder(int groupId, List<RaftNode> nodeList) {
     this.groupId = groupId;
     fsm = new DataStateMachine();
-    service = new RaftService(nodeList, logStorage);
+    service = new RaftService(nodeList);
   }
 }

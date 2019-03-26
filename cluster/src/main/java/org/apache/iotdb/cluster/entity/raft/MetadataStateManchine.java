@@ -21,21 +21,29 @@ package org.apache.iotdb.cluster.entity.raft;
 import com.alipay.sofa.jraft.Iterator;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 
 public class MetadataStateManchine extends StateMachineAdapter {
 
-  // All Storage Groups in Cluster
+  /** All Storage Groups in Cluster **/
   private List<String> storageGroupList;
 
-  // Map<username, password>
-  Map<String, String> userProfileMap;
+  /** manager of user profile **/
+  private IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
 
-  public MetadataStateManchine() {
+  public MetadataStateManchine() throws AuthException {
     storageGroupList = new ArrayList<>();
-    userProfileMap = new HashMap<>();
+    updateStorageGroupList();
+  }
+
+  /**
+   * update @code{storageGroupList} from IoTDB instance
+   */
+  private void updateStorageGroupList() {
+
   }
 
   // Update StrageGroup List and userProfileMap based on Task read from raft log
@@ -48,12 +56,8 @@ public class MetadataStateManchine extends StateMachineAdapter {
     return storageGroupList.contains(sg);
   }
 
-  public boolean isUerProfileLegal(String username, String password) {
-    if (userProfileMap.containsKey(username)) {
-      return password.equals(userProfileMap.get(username));
-    } else {
-      return false;
-    }
+  public boolean isUerProfileLegal(String username, String password) throws AuthException {
+    return authorizer.login(username, password);
   }
 
   public void addStorageGroup(String sg) {
@@ -64,17 +68,20 @@ public class MetadataStateManchine extends StateMachineAdapter {
     storageGroupList.remove(sg);
   }
 
-  public void addUser(String username, String password) {
-    userProfileMap.put(username, password);
+  public void addUser(String username, String password) throws AuthException {
+    authorizer.createUser(username, password);
   }
 
-  public void deleteUSer(String username, String password) {
-    userProfileMap.remove(username, password);
+  public void deleteUSer(String username, String password) throws AuthException {
+    if (isUerProfileLegal(username, password)) {
+      authorizer.deleteUser(username);
+    }
   }
 
-  public void updateUser(String username, String oldPassword, String newPassword) {
+  public void updateUser(String username, String oldPassword, String newPassword)
+      throws AuthException {
     if (isUerProfileLegal(username, oldPassword)) {
-      userProfileMap.put(username, newPassword);
+      authorizer.updateUserPassword(username, newPassword);
     }
   }
 }

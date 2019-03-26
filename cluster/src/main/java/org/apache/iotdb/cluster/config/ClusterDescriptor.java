@@ -108,6 +108,7 @@ public class ClusterDescriptor {
       conf.setDelayHours(Integer
           .parseInt(properties.getProperty("delay_hours",
               Integer.toString(conf.getDelayHours()))));
+
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

@@ -53,11 +53,14 @@ public class ClusterConfig {
   // Maximum allowed delay hours
   private int delayHours = 24;
 
-  private long taskTimeOut = 1000;
+  /** time limit to redo a single task **/
+  private int taskRedoCount = 3;
+  /** timeout limit for a single task **/
+  private int taskTimeout = 0;
 
-  private int taskMaxRetry = 5;
+  private String metadataGroupId = "metadata";
 
-  private String metadataGroupName = "metadata";
+  private int numOfVirtulaNodes = 2;
 
   public ClusterConfig() {
     // empty constructor
@@ -151,27 +154,35 @@ public class ClusterConfig {
     this.delayHours = delayHours;
   }
 
-  public long getTaskTimeOut() {
-    return taskTimeOut;
+  public int getTaskRedoCount() {
+    return taskRedoCount;
   }
 
-  public void setTaskTimeOut(int taskTimeOut) {
-    this.taskTimeOut = taskTimeOut;
+  public void setTaskRedoCount(int taskRedoCount) {
+    this.taskRedoCount = taskRedoCount;
   }
 
-  public int getTaskMaxRetry() {
-    return taskMaxRetry;
+  public int getTaskTimeout() {
+    return taskTimeout;
   }
 
-  public void setTaskMaxRetry(int taskMaxRetry) {
-    this.taskMaxRetry = taskMaxRetry;
+  public void setTaskTimeout(int taskTimeout) {
+    this.taskTimeout = taskTimeout;
   }
 
-  public String getMetadataGroupName() {
-    return metadataGroupName;
+  public int getNumOfVirtulaNodes() {
+    return numOfVirtulaNodes;
   }
 
-  public void setMetadataGroupName(String metadataGroupName) {
-    this.metadataGroupName = metadataGroupName;
+  public void setNumOfVirtulaNodes(int numOfVirtulaNodes) {
+    this.numOfVirtulaNodes = numOfVirtulaNodes;
+  }
+
+  public String getMetadataGroupId() {
+    return metadataGroupId;
+  }
+
+  public void setMetadataGroupId(String metadataGroupId) {
+    this.metadataGroupId = metadataGroupId;
   }
 }

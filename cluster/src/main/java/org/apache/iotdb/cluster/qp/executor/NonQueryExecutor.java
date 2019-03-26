@@ -54,8 +54,8 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   private MManager mManager = MManager.getInstance();
   private Router router = Router.getInstance();
   private static final ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
-  private static final long TASK_TIMEOUT = clusterConfig.getTaskTimeOut();
-  private static final int TASK_MAX_RETRY = clusterConfig.getTaskMaxRetry();
+  private static final long TASK_TIMEOUT = clusterConfig.getTaskTimeout();
+  private static final int TASK_MAX_RETRY = clusterConfig.getTaskRedoCount();
   private static final int TASK_NUM = 1;
 
   public boolean processNonQuery(PhysicalPlan plan)
@@ -148,9 +148,9 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           throw new ProcessorException(
               String.format("File level %s already exists.", path.getFullPath()));
         } else {
-          NonQueryRequest request = new NonQueryRequest(clusterConfig.getMetadataGroupName(),
+          NonQueryRequest request = new NonQueryRequest(clusterConfig.getMetadataGroupId(),
               metadataPlan);
-          PeerId leader = RaftUtils.getLeader(clusterConfig.getMetadataGroupName());
+          PeerId leader = RaftUtils.getLeader(clusterConfig.getMetadataGroupId());
 
           CountDownLatch latch = new CountDownLatch(TASK_NUM);
           SingleTask task = new SingleTask(false, latch, request);
