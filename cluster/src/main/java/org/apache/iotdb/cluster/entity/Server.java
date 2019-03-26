@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftNode;
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -40,13 +41,13 @@ public class Server {
   private MetadataHolder metadataHolder;
   private Map<Integer, DataPartitionHolder> dataPartitionHolderMap;
 
-  public void start() {
+  public void start() throws AuthException {
     // Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version
     IoTDB iotdb = new IoTDB();
     iotdb.active();
 
     List<RaftNode> nodeList = Utils.convertNodesToRaftNodeList(ClusterConf.getNodes());
-    metadataHolder = new MetadataRaftHolder(nodeList, null);
+    metadataHolder = new MetadataRaftHolder(nodeList);
     metadataHolder.init();
     metadataHolder.start();
 
@@ -55,7 +56,7 @@ public class Server {
     List<Pair<Integer, List<RaftNode>>> groupNodeList = getDataPartitonNodeList(index, nodeList);
     for(int i = 0; i < groupNodeList.size(); i++) {
       Pair<Integer, List<RaftNode>> pair = groupNodeList.get(i);
-      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(pair.left, pair.right, null);
+      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(pair.left, pair.right);
       dataPartitionHolder.init();
       dataPartitionHolder.start();
       dataPartitionHolderMap.put(pair.left, dataPartitionHolder);

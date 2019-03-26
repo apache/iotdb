@@ -19,10 +19,11 @@
 package org.apache.iotdb.cluster;
 
 import org.apache.iotdb.cluster.entity.Server;
+import org.apache.iotdb.db.auth.AuthException;
 
 public class App {
 
-  public static void main(String[] args){
+  public static void main(String[] args) throws AuthException {
     Server server = new Server();
     server.start();
   }

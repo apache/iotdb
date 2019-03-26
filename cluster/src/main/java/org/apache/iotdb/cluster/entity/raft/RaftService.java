@@ -25,13 +25,10 @@ import org.apache.iotdb.cluster.entity.service.IService;
 public class RaftService implements IService {
 
   private List<RaftNode> nodeList;
-  private LogStorage logStorage;
-  private State state;
   private RaftNode leader;
 
-  public RaftService(List<RaftNode> nodeList, LogStorage logStorage) {
+  public RaftService(List<RaftNode> nodeList) {
     this.nodeList = nodeList;
-    this.logStorage = logStorage;
   }
 
   @Override
