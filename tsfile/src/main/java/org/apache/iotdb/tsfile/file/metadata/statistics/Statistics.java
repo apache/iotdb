@@ -145,7 +145,7 @@ public abstract class Statistics<T> {
       String thisClass = this.getClass().toString();
       String statsClass = stats.getClass().toString();
       LOG.warn("tsfile-file Statistics classes mismatched,no merge: {} v.s. {}",
-              thisClass, statsClass);
+          thisClass, statsClass);
 
       throw new StatisticsClassException(this.getClass(), stats.getClass());
     }
