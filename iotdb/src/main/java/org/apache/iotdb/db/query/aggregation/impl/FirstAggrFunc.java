@@ -80,7 +80,6 @@ public class FirstAggrFunc extends AggregateFunction {
 
     if (dataInThisPage.hasNext()) {
       resultData.putTimeAndValue(0, dataInThisPage.currentValue());
-      return;
     }
   }
 
@@ -109,7 +108,6 @@ public class FirstAggrFunc extends AggregateFunction {
     if (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
       resultData.putTimeAndValue(0, dataInThisPage.currentValue());
       dataInThisPage.next();
-      return;
     }
   }
 
@@ -121,7 +119,6 @@ public class FirstAggrFunc extends AggregateFunction {
     }
     if (unsequenceReader.hasNext()) {
       resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
-      return;
     }
   }
 
@@ -133,7 +130,6 @@ public class FirstAggrFunc extends AggregateFunction {
     }
     if (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < bound) {
       resultData.putTimeAndValue(0, unsequenceReader.current().getValue().getValue());
-      return;
     }
   }
 

@@ -19,22 +19,18 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggreFuncFactory;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -44,11 +40,11 @@ public abstract class GroupByEngine extends QueryDataSet {
   protected List<Path> selectedSeries;
   private long unit;
   private long origin;
-  protected List<Pair<Long, Long>> mergedIntervals;
+  private List<Pair<Long, Long>> mergedIntervals;
 
   protected long startTime;
   protected long endTime;
-  protected int usedIndex;
+  private int usedIndex;
   protected List<AggregateFunction> functions;
   protected boolean hasCachedTimeInterval;
 

@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngine {
 
-
   private List<EngineReaderByTimeStamp> allDataReaderList;
   private TimeGenerator timestampGenerator;
   private long timestamp;
@@ -91,7 +90,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
         hasCachedTimestamp = false;
         timestampArray[timeArrayLength++] = timestamp;
       } else {
-        //所有域均为空
         return constructRowRecord();
       }
     }

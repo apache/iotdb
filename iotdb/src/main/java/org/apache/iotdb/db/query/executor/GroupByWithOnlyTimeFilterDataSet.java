@@ -124,7 +124,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
     return record;
   }
 
-  protected AggreResultData nextSeries(int idx) throws IOException, ProcessorException {
+  private AggreResultData nextSeries(int idx) throws IOException, ProcessorException {
     IPointReader unsequenceReader = unSequenceReaderList.get(idx);
     IAggregateReader sequenceReader = sequenceReaderList.get(idx);
     AggregateFunction function = functions.get(idx);
