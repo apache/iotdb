@@ -21,13 +21,14 @@ package org.apache.iotdb.cluster.entity.raft;
 import com.alipay.sofa.jraft.storage.LogStorage;
 import java.util.List;
 import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
+import org.apache.iotdb.db.auth.AuthException;
 
 public class MetadataRaftHolder extends MetadataHolder {
 
   private MetadataStateManchine fsm;
 
-  public MetadataRaftHolder(List<RaftNode> nodeList, LogStorage logStorage) {
+  public MetadataRaftHolder(List<RaftNode> nodeList) throws AuthException {
     fsm = new MetadataStateManchine();
-    service = new RaftService(nodeList, logStorage);
+    service = new RaftService(nodeList);
   }
 }
