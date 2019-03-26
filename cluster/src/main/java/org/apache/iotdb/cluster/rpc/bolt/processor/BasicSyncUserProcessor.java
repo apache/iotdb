@@ -16,30 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.rpc.bolt.processor;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.cluster.entity.raft.RaftNode;
+import com.alipay.remoting.rpc.protocol.SyncUserProcessor;
+import org.apache.iotdb.cluster.rpc.bolt.request.BasicRequest;
 
-public class Utils {
+public abstract class BasicSyncUserProcessor<T extends BasicRequest> extends SyncUserProcessor<T> {
 
-  private Utils(){}
 
-  public static List<RaftNode> convertNodesToRaftNodeList(String[] nodes) {
-    List<RaftNode> nodeList = new ArrayList<>(nodes.length);
-    for (int i = 0; i < nodes.length; i++) {
-      nodeList.add(RaftNode.parseRaftNode(nodes[i]));
-    }
-    return nodeList;
-  }
-
-  public static int getIndexOfIpFromRaftNodeList(String ip, List<RaftNode> nodeList) {
-    for (int i = 0; i < nodeList.size(); i++) {
-      if (nodeList.get(i).getIp().equals(ip)) {
-        return i;
-      }
-    }
-    return -1;
-  }
 }

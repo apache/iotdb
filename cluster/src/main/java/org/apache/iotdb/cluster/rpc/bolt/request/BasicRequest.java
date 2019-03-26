@@ -16,8 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.org.apache.iotdb.cluster.utils;
+package org.apache.iotdb.cluster.rpc.bolt.request;
 
-public interface HashFunction {
-  public int hash(String str);
+import java.io.Serializable;
+
+public abstract class BasicRequest implements Serializable {
+
+  private String groupID;
+
+  public BasicRequest(String groupID) {
+    this.groupID = groupID;
+  }
+
+  public String getGroupID() {
+    return groupID;
+  }
+
+  public void setGroupID(String groupID) {
+    this.groupID = groupID;
+  }
 }

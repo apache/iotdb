@@ -16,15 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.utils;
 
-import org.apache.iotdb.cluster.entity.Server;
-import org.apache.iotdb.db.auth.AuthException;
+public class VirtualNode {
 
-public class App {
+  private final int replicaIndex;
+  private final PhysicalNode physicalNode;
 
-  public static void main(String[] args) throws AuthException {
-    Server server = new Server();
-    server.start();
+  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
+    this.replicaIndex = replicaIndex;
+    this.physicalNode = physicalNode;
+  }
+
+  PhysicalNode getPhysicalNode() {
+    return this.physicalNode;
+  }
+
+  String getKey() {
+    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
   }
 }
