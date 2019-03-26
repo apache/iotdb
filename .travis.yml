@@ -63,8 +63,10 @@ matrix:
         - export JAVA_HOME="/c/java8"
         - choco install maven
       script:
+        - echo -e "travis_fold:start:win-oraclejdk8_integration_test"
         - java -version
         - mvn clean integration-test
+        - echo -e "travis_fold:end:win-oraclejdk8_integration_test"
 #    - os: windows
 #      language: c
 #      name: win-oraclejdk11
@@ -97,10 +99,8 @@ matrix:
         - export JAVA_HOME=$PWD/jdk-11.0.2/
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
-        - echo -e "travis_fold:start:linux-openjdk11_integration_test"
         - java -version
         - mvn clean integration-test
-        - echo -e "travis_fold:end:linux-openjdk11_integration_test"
     - os: linux
       name: linux-openjdk8
       dist: trusty
