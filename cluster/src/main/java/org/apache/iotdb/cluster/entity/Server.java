@@ -21,9 +21,7 @@ package org.apache.iotdb.cluster.entity;
 import com.alipay.remoting.rpc.RpcServer;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.RaftRpcServerFactory;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.utils.PhysicalNode;
 import org.apache.iotdb.cluster.utils.RaftUtils;
@@ -35,10 +33,8 @@ import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
-import org.apache.iotdb.cluster.entity.raft.RaftNode;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class Server {
 

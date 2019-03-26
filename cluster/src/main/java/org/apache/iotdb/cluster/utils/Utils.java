@@ -19,9 +19,6 @@
 package org.apache.iotdb.cluster.utils;
 
 import com.alipay.sofa.jraft.entity.PeerId;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.cluster.entity.raft.RaftNode;
 
 public class Utils {
 
