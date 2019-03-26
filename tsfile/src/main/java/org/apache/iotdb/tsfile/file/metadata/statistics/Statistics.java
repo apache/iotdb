@@ -23,13 +23,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -91,9 +87,9 @@ public abstract class Statistics<T> {
     return statistics;
   }
 
-  public static Statistics deserialize(FileChannel channel, long offset, TSDataType dataType) throws IOException {
+  public static Statistics deserialize(TsFileInput input, long offset, TSDataType dataType) throws IOException {
     Statistics statistics = getStatsByType(dataType);
-    statistics.fill(channel, offset);
+    statistics.fill(input, offset);
     return statistics;
   }
 
@@ -149,7 +145,7 @@ public abstract class Statistics<T> {
       String thisClass = this.getClass().toString();
       String statsClass = stats.getClass().toString();
       LOG.warn("tsfile-file Statistics classes mismatched,no merge: {} v.s. {}",
-              thisClass, statsClass);
+          thisClass, statsClass);
 
       throw new StatisticsClassException(this.getClass(), stats.getClass());
     }
@@ -216,10 +212,10 @@ public abstract class Statistics<T> {
 
   abstract void fill(ByteBuffer byteBuffer) throws IOException;
 
-  protected void fill(FileChannel channel, long offset) throws IOException {
+  protected void fill(TsFileInput input, long offset) throws IOException {
     int size = getSerializedSize();
     ByteBuffer buffer = ByteBuffer.allocate(size);
-    ReadWriteIOUtils.readAsPossible(channel, offset, buffer);
+    ReadWriteIOUtils.readAsPossible(input, offset, buffer);
     buffer.flip();
     fill(buffer);
   }
