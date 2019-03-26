@@ -1,19 +1,19 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ErrorConfigureExecption;
 
 public class Router {
 
-  private List<PhysicalNode> nodes = new ArrayList<>();
   // Replication number
   private int replicator;
   private final int numOfVirtulaNodes = 2;
@@ -31,13 +31,6 @@ public class Router {
   }
 
   private Router() {
-    // TODO get form config file
-    // String[] ipList = {"192.168.130.1", "192.168.130.2", "192.168.130.3"};
-    // this.replicator = replicator;
-    // int port = 7777;
-//    for (String ip : ipList) {
-//      nodes.add(new PhysicalNode(ip, port));
-//    }
     init();
   }
 
@@ -45,12 +38,17 @@ public class Router {
     return RouterHolder.INSTANCE;
   }
 
-  private void init() {
+  public void init() {
     reset();
-    for (PhysicalNode node : nodes) {
-      addNode(node, this.numOfVirtulaNodes);
+    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    String[] ipList = config.getNodes();
+    this.replicator = config.getReplication();
+    int port = config.getPort();
+    for (String ip : ipList) {
+      PhysicalNode node = new PhysicalNode(ip, port);
+      addNode(node, numOfVirtulaNodes);
     }
-    PhysicalNode[] nodes = (PhysicalNode[]) physicalRing.values().toArray();
+    PhysicalNode[] nodes = physicalRing.values().toArray(new PhysicalNode[physicalRing.size()]);
     int len = nodes.length;
     for (int i = 0; i < len; i++) {
       PhysicalNode first = nodes[i];
@@ -60,14 +58,14 @@ public class Router {
       } else if (len == replicator) {
         PhysicalNode[][] val = new PhysicalNode[1][len];
         for (int j = 0; j < len; j++) {
-          val[0][j] = nodes[i + j % len];
+          val[0][j] = nodes[(i + j) % len];
         }
         dataPartitionCache.put(first, val);
       } else {
         PhysicalNode[][] val = new PhysicalNode[replicator][replicator];
         for (int j = 0; j < replicator; j++) {
           for (int k = 0; k < replicator; k++) {
-            val[j][k] = nodes[(i - j + k) % len];
+            val[j][k] = nodes[(i - j + k + len) % len];
           }
         }
         dataPartitionCache.put(first, val);
@@ -112,10 +110,16 @@ public class Router {
     return dataPartitionCache.get(node);
   }
 
-  private void reset(){
+  private void reset() {
     physicalRing.clear();
     virtualRing.clear();
     router.clear();
     dataPartitionCache.clear();
+  }
+
+  public void showPhysicalRing() {
+    for (Entry<Integer, PhysicalNode> entry : physicalRing.entrySet()) {
+      System.out.println(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
+    }
   }
 }
