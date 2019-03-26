@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 
 public class RaftNode {
 
+  // TODO replace this by PeerId
+
   private static final Logger LOGGER = LoggerFactory.getLogger(RaftNode.class);
 
   private String ip;

@@ -109,9 +109,9 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("delay_hours",
               Integer.toString(conf.getDelayHours()))));
 
-      conf.setTaskRedoTimeLimit(Integer
-          .parseInt(properties.getProperty("task_redo_time_limit",
-              Integer.toString(conf.getTaskRedoTimeLimit()))));
+      conf.setTaskRedoCount(Integer
+          .parseInt(properties.getProperty("task_redo_count",
+              Integer.toString(conf.getTaskRedoCount()))));
 
       conf.setTaskTimeout(Integer
           .parseInt(properties.getProperty("task_timeout",

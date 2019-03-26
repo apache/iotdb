@@ -20,30 +20,22 @@ package org.apache.iotdb.cluster.entity.raft;
 
 import com.alipay.sofa.jraft.Iterator;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.metadata.MManager;
 
 public class MetadataStateManchine extends StateMachineAdapter {
 
-  /** All Storage Groups in Cluster **/
-  private List<String> storageGroupList;
+  /** manager of storage groups **/
+  private MManager mManager = MManager.getInstance();
 
   /** manager of user profile **/
   private IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
 
   public MetadataStateManchine() throws AuthException {
-    storageGroupList = new ArrayList<>();
-    updateStorageGroupList();
-  }
-
-  /**
-   * update @code{storageGroupList} from IoTDB instance
-   */
-  private void updateStorageGroupList() {
-
   }
 
   // Update StrageGroup List and userProfileMap based on Task read from raft log
@@ -53,19 +45,24 @@ public class MetadataStateManchine extends StateMachineAdapter {
   }
 
   public boolean isStorageGroupLegal(String sg) {
-    return storageGroupList.contains(sg);
+    try {
+      mManager.checkPathStorageLevelAndGetDataType(sg);
+    } catch (PathErrorException e) {
+      return false;
+    }
+    return true;
   }
 
   public boolean isUerProfileLegal(String username, String password) throws AuthException {
     return authorizer.login(username, password);
   }
 
-  public void addStorageGroup(String sg) {
-    storageGroupList.add(sg);
+  public void addStorageGroup(String sg) throws IOException, PathErrorException {
+    mManager.setStorageLevelToMTree(sg);
   }
 
   public void deleteStorageGroup(String sg) {
-    storageGroupList.remove(sg);
+    // TODO implement this method
   }
 
   public void addUser(String username, String password) throws AuthException {

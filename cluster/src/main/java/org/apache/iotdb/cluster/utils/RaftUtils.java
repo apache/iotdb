@@ -36,4 +36,20 @@ public class RaftUtils {
   public static Configuration getConfiguration(String groupID) {
     return null;
   }
+
+  public static PhysicalNode[] convertPeerIdArrayToPhysicalNodeArray(PeerId[] peerIds) {
+    PhysicalNode[] physicalNodes = new PhysicalNode[peerIds.length];
+    for (int i = 0; i < peerIds.length; i++) {
+      physicalNodes[i] = new PhysicalNode(peerIds[i].getIp(), peerIds[i].getPort());
+    }
+    return physicalNodes;
+  }
+
+  public static PeerId[] convertPhysicalNodeArrayToPeerIdArray(PhysicalNode[] physicalNodes) {
+    PeerId[] peerIds = new PeerId[physicalNodes.length];
+    for (int i = 0; i < physicalNodes.length; i++) {
+      peerIds[i] = new PeerId(physicalNodes[i].getIp(), physicalNodes[i].getPort());
+    }
+    return peerIds;
+  }
 }

@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.cluster.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class ClusterConfig {
 
   public static final String CONFIG_NAME = "iotdb-cluster.properties";
   public static final String DEFAULT_NODE_IP = "127.0.0.1:8888";
+  public static final String METADATA_GROUP_ID = "metadata";
 
   // Cluster node: {ip1,ip2,...,ipn}
   private String[] nodes = {DEFAULT_NODE_IP};
@@ -56,8 +54,8 @@ public class ClusterConfig {
   // Maximum allowed delay hours
   private int delayHours = 24;
 
-  /** time limit to redo a single task **/
-  private int taskRedoTimeLimit = 3;
+  /** count limit to redo a single task **/
+  private int taskRedoCount = 3;
   /** timeout limit for a single task **/
   private int taskTimeout = 0;
 
@@ -155,12 +153,12 @@ public class ClusterConfig {
     this.delayHours = delayHours;
   }
 
-  public int getTaskRedoTimeLimit() {
-    return taskRedoTimeLimit;
+  public int getTaskRedoCount() {
+    return taskRedoCount;
   }
 
-  public void setTaskRedoTimeLimit(int taskRedoTimeLimit) {
-    this.taskRedoTimeLimit = taskRedoTimeLimit;
+  public void setTaskRedoCount(int taskRedoCount) {
+    this.taskRedoCount = taskRedoCount;
   }
 
   public int getTaskTimeout() {
@@ -177,5 +175,9 @@ public class ClusterConfig {
 
   public void setNumOfVirtulaNodes(int numOfVirtulaNodes){
     this.numOfVirtulaNodes = numOfVirtulaNodes;
+  }
+
+  public static String getMetadataGroupId() {
+    return METADATA_GROUP_ID;
   }
 }

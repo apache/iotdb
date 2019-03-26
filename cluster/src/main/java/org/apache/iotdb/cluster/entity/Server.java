@@ -18,10 +18,16 @@
  */
 package org.apache.iotdb.cluster.entity;
 
+import com.alipay.remoting.rpc.RpcServer;
+import com.alipay.sofa.jraft.entity.PeerId;
+import com.alipay.sofa.jraft.rpc.RaftRpcServerFactory;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.cluster.utils.PhysicalNode;
+import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.apache.iotdb.cluster.utils.Router;
 import org.apache.iotdb.cluster.utils.Utils;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -39,32 +45,34 @@ public class Server {
   private static final ClusterConfig ClusterConf = ClusterDescriptor.getInstance().getConfig();
 
   private MetadataHolder metadataHolder;
-  private Map<Integer, DataPartitionHolder> dataPartitionHolderMap;
+  private Map<String, DataPartitionHolder> dataPartitionHolderMap;
 
   public void start() throws AuthException {
     // Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version
     IoTDB iotdb = new IoTDB();
     iotdb.active();
 
-    List<RaftNode> nodeList = Utils.convertNodesToRaftNodeList(ClusterConf.getNodes());
-    metadataHolder = new MetadataRaftHolder(nodeList);
+    PeerId[] peerIds = Utils.convertStringArrayToPeerIdArray(ClusterConf.getNodes());
+    PeerId serverId = new PeerId(ClusterConf.getIp(), ClusterConf.getPort());
+    RpcServer rpcServer = new RpcServer(serverId.getPort());
+    RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
+    // TODO 注册业务处理器
+
+    metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer);
     metadataHolder.init();
     metadataHolder.start();
 
     dataPartitionHolderMap = new HashMap<>();
-    int index = Utils.getIndexOfIpFromRaftNodeList(ClusterConf.getIp(), nodeList);
-    List<Pair<Integer, List<RaftNode>>> groupNodeList = getDataPartitonNodeList(index, nodeList);
-    for(int i = 0; i < groupNodeList.size(); i++) {
-      Pair<Integer, List<RaftNode>> pair = groupNodeList.get(i);
-      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(pair.left, pair.right);
+    Router router = Router.getInstance();
+    PhysicalNode[][] groups = router.generateGroups(serverId.getIp(), serverId.getPort());
+
+    for(int i = 0; i < groups.length; i++) {
+      PhysicalNode[] group = groups[i];
+      String groupId = router.getGroupID(group);
+      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId, RaftUtils.convertPhysicalNodeArrayToPeerIdArray(group), serverId, rpcServer);
       dataPartitionHolder.init();
       dataPartitionHolder.start();
-      dataPartitionHolderMap.put(pair.left, dataPartitionHolder);
+      dataPartitionHolderMap.put(groupId, dataPartitionHolder);
     }
-  }
-
-  // A node belongs to multiple data groups and calculates the members of the i-th data group.
-  private List<Pair<Integer, List<RaftNode>>> getDataPartitonNodeList(int i, List<RaftNode> nodeList) {
-    return Collections.emptyList();
   }
 }

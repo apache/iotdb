@@ -49,4 +49,12 @@ public class PhysicalNode {
   public String toString() {
     return getKey();
   }
+
+  public String getIp() {
+    return ip;
+  }
+
+  public int getPort() {
+    return port;
+  }
 }

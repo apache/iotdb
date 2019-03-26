@@ -23,7 +23,8 @@ import com.alipay.sofa.jraft.core.StateMachineAdapter;
 import org.apache.iotdb.db.engine.Processor;
 
 public class DataStateMachine extends StateMachineAdapter {
-  private Processor process;
+  private Processor process; //TODO 是否复用，复用的话是否线程安全
+  // TODO 是否可以直接改成QP
 
   public DataStateMachine() {
     //TODO init @code{process}

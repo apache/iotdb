@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.utils;
 
+import com.alipay.sofa.jraft.entity.PeerId;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.entity.raft.RaftNode;
@@ -26,17 +27,17 @@ public class Utils {
 
   private Utils(){}
 
-  public static List<RaftNode> convertNodesToRaftNodeList(String[] nodes) {
-    List<RaftNode> nodeList = new ArrayList<>(nodes.length);
+  public static PeerId[] convertStringArrayToPeerIdArray(String[] nodes) {
+    PeerId[] peerIds = new PeerId[nodes.length];
     for (int i = 0; i < nodes.length; i++) {
-      nodeList.add(RaftNode.parseRaftNode(nodes[i]));
+      peerIds[i] = PeerId.parsePeer(nodes[i]);
     }
-    return nodeList;
+    return peerIds;
   }
 
-  public static int getIndexOfIpFromRaftNodeList(String ip, List<RaftNode> nodeList) {
-    for (int i = 0; i < nodeList.size(); i++) {
-      if (nodeList.get(i).getIp().equals(ip)) {
+  public static int getIndexOfIpFromRaftNodeList(String ip, PeerId[] peerIds) {
+    for (int i = 0; i < peerIds.length; i++) {
+      if (peerIds[i].getIp().equals(ip)) {
         return i;
       }
     }
