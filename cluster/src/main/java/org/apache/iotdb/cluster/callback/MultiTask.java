@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.closure;
+package org.apache.iotdb.cluster.callback;
 
 import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.cluster.rpc.bolt.response.BasicResponse;
@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.rpc.bolt.response.BasicResponse;
 /**
  * Split a task to multi task closures.
  */
-public class MultiTaskClosure extends TaskClosure {
+public class MultiTask extends Task {
 
   private BasicResponse finalResponse;
 
@@ -33,7 +33,7 @@ public class MultiTaskClosure extends TaskClosure {
    */
   private CountDownLatch countDownLatch;
 
-  public MultiTaskClosure(CountDownLatch countDownLatch) {
+  public MultiTask(CountDownLatch countDownLatch) {
     this.countDownLatch = countDownLatch;
   }
 

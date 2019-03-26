@@ -31,7 +31,7 @@ public abstract class ClusterQPExecutor {
     try {
       storageGroup = MManager.getInstance().getFileNameByPath(device);
     } catch (PathErrorException e) {
-      throw new PathErrorException(String.format("File level of {} doesn't exist.", device));
+      throw new PathErrorException(String.format("File level of %s doesn't exist.", device));
     }
     return storageGroup;
   }
@@ -45,6 +45,8 @@ public abstract class ClusterQPExecutor {
 
   /**
    * Verify if the command can execute in local.
+   * 1. If this node belongs to the storage group
+   * 2. If this node is leader.
    */
   public boolean canHandle(String storageGroup) {
     return false;

@@ -16,20 +16,45 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.closure;
+package org.apache.iotdb.cluster.callback;
 
 import com.alipay.sofa.jraft.entity.PeerId;
+import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.rpc.bolt.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.bolt.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.bolt.response.BasicResponse;
 
-public abstract class TaskClosure {
+public abstract class Task {
 
+  /**
+   * Task response
+   */
+  private BasicResponse response;
+
+  /**
+   * Task request
+   */
+  private BasicRequest request;
   /**
    * Whether this's a synchronization task or not.
    */
   private boolean isSyncTask;
+
+  /**
+   * Num of sub-task
+   */
+  private CountDownLatch taskNum;
+  /**
+   * Describe task type
+   */
+  private TaskState taskState;
+
+  public Task(boolean isSyncTask, CountDownLatch taskNum, TaskState taskState) {
+    this.isSyncTask = isSyncTask;
+    this.taskNum = taskNum;
+    this.taskState = taskState;
+  }
 
   /**
    * Process response
@@ -59,5 +84,42 @@ public abstract class TaskClosure {
 
   public void setSyncTask(boolean syncTask) {
     isSyncTask = syncTask;
+  }
+
+  public CountDownLatch getTaskNum() {
+    return taskNum;
+  }
+
+  public void setTaskNum(CountDownLatch taskNum) {
+    this.taskNum = taskNum;
+  }
+
+  public TaskState getTaskState() {
+    return taskState;
+  }
+
+  public void setTaskState(TaskState taskState) {
+    this.taskState = taskState;
+  }
+
+
+  public BasicResponse getResponse() {
+    return response;
+  }
+
+  public void setResponse(BasicResponse response) {
+    this.response = response;
+  }
+
+  public BasicRequest getRequest() {
+    return request;
+  }
+
+  public void setRequest(BasicRequest request) {
+    this.request = request;
+  }
+
+  public enum TaskState {
+    INITIAL, REDIRECT, FINISH
   }
 }

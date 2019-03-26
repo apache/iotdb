@@ -21,12 +21,18 @@ package org.apache.iotdb.cluster.qp.executor;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
-import org.apache.iotdb.cluster.closure.SingleTaskClosure;
+import java.util.concurrent.TimeUnit;
+import org.apache.iotdb.cluster.callback.SingleTask;
+import org.apache.iotdb.cluster.callback.Task;
+import org.apache.iotdb.cluster.callback.Task.TaskState;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.bolt.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.bolt.request.NonQueryRequest;
 import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.apache.iotdb.cluster.utils.Router;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -46,9 +52,14 @@ public class NonQueryExecutor extends ClusterQPExecutor {
 
   private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
   private MManager mManager = MManager.getInstance();
+  private Router router = Router.getInstance();
+  private static final ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
+  private static final long TASK_TIMEOUT = clusterConfig.getTaskTimeOut();
+  private static final int TASK_MAX_RETRY = clusterConfig.getTaskMaxRetry();
+  private static final int TASK_NUM = 1;
 
   public boolean processNonQuery(PhysicalPlan plan)
-      throws ProcessorException, IOException, RaftConnectionException, PathErrorException {
+      throws ProcessorException, IOException, RaftConnectionException, PathErrorException, InterruptedException {
     switch (plan.getOperatorType()) {
       case DELETE:
         return delete((DeletePlan) plan);
@@ -99,7 +110,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   }
 
   private boolean insert(InsertPlan insertPlan)
-      throws ProcessorException, IOException, RaftConnectionException, PathErrorException {
+      throws ProcessorException, IOException, RaftConnectionException, PathErrorException, InterruptedException {
     String deviceId = insertPlan.getDeviceId();
     String storageGroup = getStroageGroupByDevice(deviceId);
     return handleRequest(storageGroup, insertPlan);
@@ -116,7 +127,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   }
 
   private boolean operateMetadata(MetadataPlan metadataPlan)
-      throws RaftConnectionException, ProcessorException, IOException, PathErrorException {
+      throws RaftConnectionException, ProcessorException, IOException, PathErrorException, InterruptedException {
     MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
     Path path = metadataPlan.getPath();
     switch (namespaceType) {
@@ -137,7 +148,13 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           throw new ProcessorException(
               String.format("File level %s already exists.", path.getFullPath()));
         } else {
-          return asyncHandleRequestByClient(getMetadataGroupID(), metadataPlan);
+          NonQueryRequest request = new NonQueryRequest(clusterConfig.getMetadataGroupName(),
+              metadataPlan);
+          PeerId leader = RaftUtils.getLeader(clusterConfig.getMetadataGroupName());
+
+          CountDownLatch latch = new CountDownLatch(TASK_NUM);
+          SingleTask task = new SingleTask(false, latch, request);
+          return asyncHandleTask(task, leader, latch, 0);
         }
       default:
         throw new ProcessorException("unknown namespace type:" + namespaceType);
@@ -153,30 +170,45 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    * Handle request by storage group and physical plan
    */
   private boolean handleRequest(String storageGroup, PhysicalPlan plan)
-      throws ProcessorException, IOException, RaftConnectionException {
+      throws ProcessorException, IOException, RaftConnectionException, InterruptedException {
     /** Check if the plan can be executed locally. **/
     if (canHandle(storageGroup)) {
       return qpExecutor.processNonQuery(plan);
     } else {
       String groupId = getGroupIdBySG(storageGroup);
-      return asyncHandleRequestByClient(groupId, plan);
+      NonQueryRequest request = new NonQueryRequest(groupId, plan);
+      PeerId leader = RaftUtils.getLeader(groupId);
+
+      CountDownLatch latch = new CountDownLatch(TASK_NUM);
+      SingleTask task = new SingleTask(false, latch, request);
+      return asyncHandleTask(task, leader,latch, 0);
     }
   }
 
   /**
-   * Async handle request by group id and physical plan.
+   * Async handle task by task and leader id.
+   *
+   * @param task request task
+   * @param leader leader of the target raft group
+   * @param latch wait for results
+   * @param taskRetryNum Number of task retries due to timeout and redirected.
+   * @return request result
    */
-  private boolean asyncHandleRequestByClient(String groupId, PhysicalPlan plan)
-      throws IOException, RaftConnectionException {
-    NonQueryRequest request = new NonQueryRequest(groupId, plan);
-    PeerId leader = RaftUtils.getLeader(groupId);
-
-    CountDownLatch countDownLatch = new CountDownLatch(1);
-    SingleTaskClosure taskClosure = new SingleTaskClosure(countDownLatch, request, false);
+  private boolean asyncHandleTask(Task task, PeerId leader, CountDownLatch latch, int taskRetryNum)
+      throws RaftConnectionException, InterruptedException {
+    if (taskRetryNum >= TASK_MAX_RETRY) {
+      throw new RaftConnectionException(String.format("Task retries reach the upper bound %s",
+          TASK_MAX_RETRY));
+    }
     NodeAsClient client = new NodeAsClient();
     /** Call async method **/
-    client.syncHandleRequest(request, leader, taskClosure);
-    return taskClosure.getBasicResponse().isSuccess();
+    client.asyncHandleRequest(task.getRequest(), leader, task);
+    latch.await(TASK_TIMEOUT, TimeUnit.MILLISECONDS);
+    if (task.getTaskState() == TaskState.INITIAL || task.getTaskState() == TaskState.REDIRECT){
+      task.setTaskNum(new CountDownLatch(TASK_NUM));
+      return asyncHandleTask(task, leader, latch, taskRetryNum+ 1);
+    }
+    return task.getResponse().isSuccess();
   }
 
 }

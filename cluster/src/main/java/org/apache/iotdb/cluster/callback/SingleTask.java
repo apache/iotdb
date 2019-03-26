@@ -16,19 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.bolt;
+package org.apache.iotdb.cluster.callback;
 
-import com.alipay.sofa.jraft.entity.PeerId;
-import org.apache.iotdb.cluster.callback.Task;
-import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.cluster.rpc.bolt.request.BasicRequest;
+import org.apache.iotdb.cluster.rpc.bolt.response.BasicResponse;
 
-public class NodeAsClient {
+/**
+ * Process single task.
+ */
+public class SingleTask extends Task {
 
-  public void asyncHandleRequest(BasicRequest request, PeerId leader, Task closure) {
+
+  public SingleTask(boolean isSyncTask, CountDownLatch taskBarrier, BasicRequest request) {
+    super(isSyncTask, taskBarrier, TaskState.INITIAL);
+    setRequest(request);
   }
 
-  public void syncHandleRequest(BasicRequest request, PeerId leader,
-      Task task) throws RaftConnectionException {
+  /**
+   * Process response. If it's necessary to redirect leader, redo the task.
+   */
+  @Override
+  public void run(BasicResponse response) {
+    if (response.isRedirected()) {
+      setTaskState(TaskState.REDIRECT);
+    } else {
+      setResponse(response);
+      setTaskState(TaskState.FINISH);
+    }
+    getTaskNum().countDown();
   }
 }

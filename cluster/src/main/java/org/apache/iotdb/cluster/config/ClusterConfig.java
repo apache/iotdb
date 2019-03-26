@@ -18,16 +18,13 @@
  */
 package org.apache.iotdb.cluster.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class ClusterConfig {
 
   public static final String CONFIG_NAME = "iotdb-cluster.properties";
-  public static final String DEFAULT_NODE_IP = "127.0.0.1:8888";
+  public static final String DEFAULT_NODE = "127.0.0.1:8888";
 
   // Cluster node: {ip1,ip2,...,ipn}
-  private String[] nodes = {DEFAULT_NODE_IP};
+  private String[] nodes = {DEFAULT_NODE};
 
   // Replication number
   private int replication = 3;
@@ -55,6 +52,12 @@ public class ClusterConfig {
   private boolean delaySnapshot = false;
   // Maximum allowed delay hours
   private int delayHours = 24;
+
+  private long taskTimeOut = 1000;
+
+  private int taskMaxRetry = 5;
+
+  private String metadataGroupName = "metadata";
 
   public ClusterConfig() {
     // empty constructor
@@ -146,5 +149,29 @@ public class ClusterConfig {
 
   public void setDelayHours(int delayHours) {
     this.delayHours = delayHours;
+  }
+
+  public long getTaskTimeOut() {
+    return taskTimeOut;
+  }
+
+  public void setTaskTimeOut(int taskTimeOut) {
+    this.taskTimeOut = taskTimeOut;
+  }
+
+  public int getTaskMaxRetry() {
+    return taskMaxRetry;
+  }
+
+  public void setTaskMaxRetry(int taskMaxRetry) {
+    this.taskMaxRetry = taskMaxRetry;
+  }
+
+  public String getMetadataGroupName() {
+    return metadataGroupName;
+  }
+
+  public void setMetadataGroupName(String metadataGroupName) {
+    this.metadataGroupName = metadataGroupName;
   }
 }

@@ -77,7 +77,7 @@ public class ClusterDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
-      conf.setNodes(properties.getProperty("nodes", ClusterConfig.DEFAULT_NODE_IP)
+      conf.setNodes(properties.getProperty("nodes", ClusterConfig.DEFAULT_NODE)
           .split(","));
 
       conf.setReplication(Integer
