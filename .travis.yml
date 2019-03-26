@@ -63,10 +63,8 @@ matrix:
         - export JAVA_HOME="/c/java8"
         - choco install maven
       script:
-        - echo -e "travis_fold:start:win-oraclejdk8_integration_test"
         - java -version
-        - mvn clean integration-test
-        - echo -e "travis_fold:end:win-oraclejdk8_integration_test"
+        - mvn -B clean integration-test
 #    - os: windows
 #      language: c
 #      name: win-oraclejdk11
