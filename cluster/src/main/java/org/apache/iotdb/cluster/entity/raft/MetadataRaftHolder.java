@@ -31,4 +31,12 @@ public class MetadataRaftHolder extends MetadataHolder {
     fsm = new MetadataStateManchine();
     service = new RaftService(nodeList);
   }
+
+  public MetadataStateManchine getFsm() {
+    return fsm;
+  }
+
+  public void setFsm(MetadataStateManchine fsm) {
+    this.fsm = fsm;
+  }
 }

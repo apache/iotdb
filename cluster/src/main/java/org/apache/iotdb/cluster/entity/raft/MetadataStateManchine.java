@@ -19,9 +19,11 @@
 package org.apache.iotdb.cluster.entity.raft;
 
 import com.alipay.sofa.jraft.Iterator;
+import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -33,6 +35,8 @@ public class MetadataStateManchine extends StateMachineAdapter {
 
   /** manager of user profile **/
   private IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+
+  private AtomicLong leaderTerm = new AtomicLong(-1);
 
   public MetadataStateManchine() throws AuthException {
     storageGroupList = new ArrayList<>();
@@ -84,4 +88,19 @@ public class MetadataStateManchine extends StateMachineAdapter {
       authorizer.updateUserPassword(username, newPassword);
     }
   }
+
+  @Override
+  public void onLeaderStart(final long term) {
+    this.leaderTerm.set(term);
+  }
+
+  @Override
+  public void onLeaderStop(final Status status) {
+    this.leaderTerm.set(-1);
+  }
+
+  public boolean isLeader() {
+    return this.leaderTerm.get() > 0;
+  }
+
 }

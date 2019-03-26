@@ -2,6 +2,7 @@ package org.apache.iotdb.cluster.utils;
 
 import static org.junit.Assert.*;
 
+import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

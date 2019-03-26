@@ -16,19 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.bolt;
+package org.apache.iotdb.cluster.rpc.response;
 
-import com.alipay.sofa.jraft.entity.PeerId;
-import org.apache.iotdb.cluster.callback.Task;
-import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.rpc.bolt.request.BasicRequest;
+import java.io.Serializable;
 
-public class NodeAsClient {
+public abstract class BasicResponse implements Serializable {
 
-  public void asyncHandleRequest(BasicRequest request, PeerId leader, Task closure) {
+  private boolean redirected;
+  private boolean success;
+
+  public BasicResponse(boolean redirected, boolean success) {
+    this.redirected = redirected;
+    this.success = success;
   }
 
-  public void syncHandleRequest(BasicRequest request, PeerId leader,
-      Task task) throws RaftConnectionException {
+  public boolean isRedirected() {
+    return redirected;
+  }
+
+  public void setRedirected(boolean redirected) {
+    this.redirected = redirected;
+  }
+
+  public boolean isSuccess() {
+    return success;
+  }
+
+  public void setSuccess(boolean success) {
+    this.success = success;
   }
 }

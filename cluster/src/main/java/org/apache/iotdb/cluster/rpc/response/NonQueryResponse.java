@@ -16,30 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils;
+package org.apache.iotdb.cluster.rpc.response;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.cluster.entity.raft.RaftNode;
+public class NonQueryResponse extends BasicResponse {
 
-public class Utils {
-
-  private Utils(){}
-
-  public static List<RaftNode> convertNodesToRaftNodeList(String[] nodes) {
-    List<RaftNode> nodeList = new ArrayList<>(nodes.length);
-    for (int i = 0; i < nodes.length; i++) {
-      nodeList.add(RaftNode.parseRaftNode(nodes[i]));
-    }
-    return nodeList;
+  public NonQueryResponse(boolean redirected, boolean success) {
+    super(redirected, success);
   }
 
-  public static int getIndexOfIpFromRaftNodeList(String ip, List<RaftNode> nodeList) {
-    for (int i = 0; i < nodeList.size(); i++) {
-      if (nodeList.get(i).getIp().equals(ip)) {
-        return i;
-      }
-    }
-    return -1;
-  }
 }

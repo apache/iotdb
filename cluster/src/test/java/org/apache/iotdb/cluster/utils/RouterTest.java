@@ -4,6 +4,10 @@ import static org.junit.Assert.*;
 
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.utils.hash.HashFunction;
+import org.apache.iotdb.cluster.utils.hash.MD5Hash;
+import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
+import org.apache.iotdb.cluster.utils.hash.Router;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

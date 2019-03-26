@@ -16,23 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils;
+package org.apache.iotdb.cluster.rpc.processor;
 
-public class VirtualNode {
+import com.alipay.remoting.rpc.protocol.SyncUserProcessor;
+import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 
-  private final int replicaIndex;
-  private final PhysicalNode physicalNode;
+public abstract class BasicSyncUserProcessor<T extends BasicRequest> extends SyncUserProcessor<T> {
 
-  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
-    this.replicaIndex = replicaIndex;
-    this.physicalNode = physicalNode;
-  }
 
-  PhysicalNode getPhysicalNode() {
-    return this.physicalNode;
-  }
-
-  String getKey() {
-    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
-  }
 }

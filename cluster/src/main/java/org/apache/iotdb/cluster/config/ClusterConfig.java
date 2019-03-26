@@ -53,10 +53,10 @@ public class ClusterConfig {
   // Maximum allowed delay hours
   private int delayHours = 24;
 
-  /** time limit to redo a single task **/
+  /** limit to redo a single task **/
   private int taskRedoCount = 3;
-  /** timeout limit for a single task **/
-  private int taskTimeout = 0;
+  /** timeout limit for a single task, the unit is milliseconds **/
+  private int taskTimeoutMs = 0;
 
   private String metadataGroupId = "metadata";
 
@@ -162,12 +162,12 @@ public class ClusterConfig {
     this.taskRedoCount = taskRedoCount;
   }
 
-  public int getTaskTimeout() {
-    return taskTimeout;
+  public int getTaskTimeoutMs() {
+    return taskTimeoutMs;
   }
 
-  public void setTaskTimeout(int taskTimeout) {
-    this.taskTimeout = taskTimeout;
+  public void setTaskTimeoutMs(int taskTimeoutMs) {
+    this.taskTimeoutMs = taskTimeoutMs;
   }
 
   public int getNumOfVirtulaNodes() {

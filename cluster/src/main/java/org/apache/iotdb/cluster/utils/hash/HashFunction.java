@@ -16,28 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.bolt.response;
+package org.apache.iotdb.cluster.utils.hash;
 
-import java.io.Serializable;
-
-public abstract class BasicResponse implements Serializable {
-
-  private boolean redirected;
-  private boolean success;
-
-  public boolean isRedirected() {
-    return redirected;
-  }
-
-  public void setRedirected(boolean redirected) {
-    this.redirected = redirected;
-  }
-
-  public boolean isSuccess() {
-    return success;
-  }
-
-  public void setSuccess(boolean success) {
-    this.success = success;
-  }
+public interface HashFunction {
+  public int hash(String str);
 }

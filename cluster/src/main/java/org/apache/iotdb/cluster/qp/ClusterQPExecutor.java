@@ -18,10 +18,20 @@
  */
 package org.apache.iotdb.cluster.qp;
 
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
+import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 
 public abstract class ClusterQPExecutor {
+
+  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
+  private Router router = Router.getInstance();
+  private PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
 
   /**
    * Get Storage Group Name by device name
@@ -40,7 +50,7 @@ public abstract class ClusterQPExecutor {
    * Get raft group id by storage group name
    */
   public String getGroupIdBySG(String storageGroup) {
-    return null;
+    return router.getGroupID(router.routeGroup(storageGroup));
   }
 
   /**
@@ -48,14 +58,13 @@ public abstract class ClusterQPExecutor {
    * 1. If this node belongs to the storage group
    * 2. If this node is leader.
    */
-  public boolean canHandle(String storageGroup) {
+  public boolean canHandle(String storageGroup) throws RaftConnectionException {
+    if(router.containPhysicalNode(storageGroup, localNode)){
+      String groupId = getGroupIdBySG(storageGroup);
+      if(RaftUtils.convertPeerId(RaftUtils.getLeader(groupId)).equals(localNode)){
+        return true;
+      }
+    }
     return false;
-  }
-
-  /**
-   * Get metadata raft group id
-   */
-  public String getMetadataGroupID() {
-    return null;
   }
 }

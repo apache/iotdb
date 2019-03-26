@@ -16,33 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils;
+package org.apache.iotdb.cluster.rpc.processor;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import com.alipay.remoting.rpc.protocol.AsyncUserProcessor;
+import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 
-public class MD5Hash implements HashFunction {
+public abstract class BasicAsyncUserProcessor<T extends BasicRequest> extends
+    AsyncUserProcessor<T> {
 
-  MessageDigest instance;
-
-  public MD5Hash() {
-    try {
-      instance = MessageDigest.getInstance("MD5");
-    } catch (NoSuchAlgorithmException e) {
-    }
-  }
-
-  @Override
-  public synchronized int hash(String str) {
-    instance.reset();
-    instance.update(str.getBytes());
-    byte[] digest = instance.digest();
-
-    int h = 0;
-    for (int i = 0; i < 4; i++) {
-      h <<= 8;
-      h |= ((int) digest[i]) & 0xFF;
-    }
-    return h;
-  }
 }

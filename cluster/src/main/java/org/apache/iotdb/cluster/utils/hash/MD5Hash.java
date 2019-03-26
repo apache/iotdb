@@ -16,23 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.bolt.request;
+package org.apache.iotdb.cluster.utils.hash;
 
-import java.io.Serializable;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import org.apache.iotdb.cluster.utils.hash.HashFunction;
 
-public abstract class BasicRequest implements Serializable {
+public class MD5Hash implements HashFunction {
 
-  private String groupID;
+  MessageDigest instance;
 
-  public BasicRequest(String groupID) {
-    this.groupID = groupID;
+  public MD5Hash() {
+    try {
+      instance = MessageDigest.getInstance("MD5");
+    } catch (NoSuchAlgorithmException e) {
+    }
   }
 
-  public String getGroupID() {
-    return groupID;
-  }
+  @Override
+  public synchronized int hash(String str) {
+    instance.reset();
+    instance.update(str.getBytes());
+    byte[] digest = instance.digest();
 
-  public void setGroupID(String groupID) {
-    this.groupID = groupID;
+    int h = 0;
+    for (int i = 0; i < 4; i++) {
+      h <<= 8;
+      h |= ((int) digest[i]) & 0xFF;
+    }
+    return h;
   }
 }

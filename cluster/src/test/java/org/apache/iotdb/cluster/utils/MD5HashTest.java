@@ -3,6 +3,7 @@ package org.apache.iotdb.cluster.utils;
 import static org.junit.Assert.*;
 
 import java.util.concurrent.CountDownLatch;
+import org.apache.iotdb.cluster.utils.hash.MD5Hash;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

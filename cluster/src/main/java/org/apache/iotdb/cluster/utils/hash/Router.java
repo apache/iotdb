@@ -1,6 +1,7 @@
 
-package org.apache.iotdb.cluster.utils;
+package org.apache.iotdb.cluster.utils.hash;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -78,7 +79,7 @@ public class Router {
     }
   }
 
-  // Calculate the physical nodes corresponding to the replications 
+  // Calculate the physical nodes corresponding to the replications
   // where a data point is located
   public PhysicalNode[] routeGroup(String objectKey) {
     if (router.containsKey(objectKey)) {
@@ -106,6 +107,7 @@ public class Router {
     }
   }
 
+  //Only for test
   // For a storage group, compute the nearest physical node on the hash ring
   public PhysicalNode routeNode(String objectKey) {
     int hashVal = hashFunction.hash(objectKey);
@@ -139,5 +141,10 @@ public class Router {
     for (Entry<Integer, VirtualNode> entry : virtualRing.entrySet()) {
       System.out.println(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
     }
+  }
+
+  public boolean containPhysicalNode(String storageGroup, PhysicalNode node) {
+    PhysicalNode[] nodes = routeGroup(storageGroup);
+    return Arrays.asList(nodes).contains(node);
   }
 }

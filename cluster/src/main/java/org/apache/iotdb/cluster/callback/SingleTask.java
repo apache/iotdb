@@ -19,8 +19,8 @@
 package org.apache.iotdb.cluster.callback;
 
 import java.util.concurrent.CountDownLatch;
-import org.apache.iotdb.cluster.rpc.bolt.request.BasicRequest;
-import org.apache.iotdb.cluster.rpc.bolt.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.request.BasicRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 
 /**
  * Process single task.
@@ -40,7 +40,7 @@ public class SingleTask extends Task {
   public void run(BasicResponse response) {
     if (response.isRedirected()) {
       setTaskState(TaskState.REDIRECT);
-    } else {
+    } else if(getTaskState() != TaskState.EXCEPTION){
       setResponse(response);
       setTaskState(TaskState.FINISH);
     }

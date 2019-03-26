@@ -16,23 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.bolt.processor;
+package org.apache.iotdb.cluster.rpc.request;
 
-import com.alipay.remoting.AsyncContext;
-import com.alipay.remoting.BizContext;
-import org.apache.iotdb.cluster.rpc.bolt.request.NonQueryRequest;
+import java.io.Serializable;
 
-public class NonQueryAsyncProcessor extends BasicAsyncUserProcessor<NonQueryRequest> {
+public abstract class BasicRequest implements Serializable {
 
+  private String groupID;
 
-  @Override
-  public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      NonQueryRequest nonQueryRequest) {
-
+  public BasicRequest(String groupID) {
+    this.groupID = groupID;
   }
 
-  @Override
-  public String interest() {
-    return NonQueryRequest.class.getName();
+  public String getGroupID() {
+    return groupID;
+  }
+
+  public void setGroupID(String groupID) {
+    this.groupID = groupID;
   }
 }

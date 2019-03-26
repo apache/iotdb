@@ -19,11 +19,14 @@
 package org.apache.iotdb.cluster.entity.raft;
 
 import com.alipay.sofa.jraft.Iterator;
+import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.Processor;
 
 public class DataStateMachine extends StateMachineAdapter {
   private Processor process;
+  private AtomicLong leaderTerm = new AtomicLong(-1);
 
   public DataStateMachine() {
     //TODO init @code{process}
@@ -32,5 +35,19 @@ public class DataStateMachine extends StateMachineAdapter {
   @Override
   public void onApply(Iterator iterator) {
 
+  }
+
+  @Override
+  public void onLeaderStart(final long term) {
+    this.leaderTerm.set(term);
+  }
+
+  @Override
+  public void onLeaderStop(final Status status) {
+    this.leaderTerm.set(-1);
+  }
+
+  public boolean isLeader() {
+    return this.leaderTerm.get() > 0;
   }
 }

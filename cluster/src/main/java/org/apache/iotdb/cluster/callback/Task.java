@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.cluster.callback;
 
-import com.alipay.sofa.jraft.entity.PeerId;
 import java.util.concurrent.CountDownLatch;
-import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.rpc.bolt.NodeAsClient;
-import org.apache.iotdb.cluster.rpc.bolt.request.BasicRequest;
-import org.apache.iotdb.cluster.rpc.bolt.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.request.BasicRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 
 public abstract class Task {
 
@@ -37,7 +34,7 @@ public abstract class Task {
    */
   private BasicRequest request;
   /**
-   * Whether this's a synchronization task or not.
+   * Whether it's a synchronization task or not.
    */
   private boolean isSyncTask;
 
@@ -61,22 +58,7 @@ public abstract class Task {
    *
    * @param basicResponse response from receiver
    */
-  public abstract void run(BasicResponse basicResponse) throws RaftConnectionException;
-
-  /**
-   * Redo the task if last task is not sent to leader
-   *
-   * @param request request to be sent
-   * @param peerId leader node
-   */
-  public void redoTask(BasicRequest request, PeerId peerId) throws RaftConnectionException {
-    NodeAsClient client = new NodeAsClient();
-    if (isSyncTask) {
-      client.syncHandleRequest(request, peerId, this);
-    } else {
-      client.asyncHandleRequest(request, peerId, this);
-    }
-  }
+  public abstract void run(BasicResponse basicResponse);
 
   public boolean isSyncTask() {
     return isSyncTask;
@@ -120,6 +102,6 @@ public abstract class Task {
   }
 
   public enum TaskState {
-    INITIAL, REDIRECT, FINISH
+    INITIAL, REDIRECT, FINISH, EXCEPTION
   }
 }

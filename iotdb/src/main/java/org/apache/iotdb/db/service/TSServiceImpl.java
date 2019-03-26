@@ -647,7 +647,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // Do we need to add extra information of executive condition
     boolean execRet;
     try {
-      execRet = processor.getExecutor().processNonQuery(plan);
+      execRet = executeNonQuery(plan);
     } catch (ProcessorException e) {
       LOGGER.error("meet error while processing non-query.", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -662,6 +662,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     operationHandle = new TSOperationHandle(operationId, false);
     resp.setOperationHandle(operationHandle);
     return resp;
+  }
+
+  public boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
+    return processor.getExecutor().processNonQuery(plan);
   }
 
   public TSExecuteStatementResp executeUpdateStatement(String statement)

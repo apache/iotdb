@@ -19,7 +19,9 @@
 package org.apache.iotdb.cluster.callback;
 
 import java.util.concurrent.CountDownLatch;
-import org.apache.iotdb.cluster.rpc.bolt.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.request.BasicRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
+
 @Deprecated
 /**
  * Split a task to multi task closures.
@@ -33,8 +35,9 @@ public class MultiTask extends Task {
    */
   private CountDownLatch countDownLatch;
 
-  public MultiTask(CountDownLatch countDownLatch) {
-    this.countDownLatch = countDownLatch;
+  public MultiTask(boolean isSyncTask, CountDownLatch taskBarrier, BasicRequest request) {
+    super(isSyncTask, taskBarrier, TaskState.INITIAL);
+    setRequest(request);
   }
 
   public CountDownLatch getCountDownLatch() {

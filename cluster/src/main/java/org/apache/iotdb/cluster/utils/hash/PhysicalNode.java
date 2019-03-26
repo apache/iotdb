@@ -1,12 +1,12 @@
-package org.apache.iotdb.cluster.utils;
+package org.apache.iotdb.cluster.utils.hash;
 
 
 public class PhysicalNode {
 
-  final String ip;
-  final int port;
+  public final String ip;
+  public final int port;
 
-  PhysicalNode(String ip, int port) {
+  public PhysicalNode(String ip, int port) {
     this.ip = ip;
     this.port = port;
   }

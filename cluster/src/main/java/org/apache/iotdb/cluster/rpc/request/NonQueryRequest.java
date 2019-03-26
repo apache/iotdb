@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.bolt.request;
+package org.apache.iotdb.cluster.rpc.request;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -26,10 +26,12 @@ import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 public class NonQueryRequest extends BasicRequest implements Serializable {
 
   private byte[] physicalPlanBytes;
+  private byte[] requestType;
 
   public NonQueryRequest(String groupID, PhysicalPlan plan) throws IOException {
     super(groupID);
-    this.physicalPlanBytes = PhysicalPlanLogTransfer.operatorToLog(plan);;
+    this.physicalPlanBytes = PhysicalPlanLogTransfer.operatorToLog(plan);
+    this.requestType = String.valueOf(plan.getOperatorType()).getBytes();
   }
 
   public byte[] getPhysicalPlanBytes() {
@@ -38,5 +40,13 @@ public class NonQueryRequest extends BasicRequest implements Serializable {
 
   public void setPhysicalPlanBytes(byte[] physicalPlanBytes) {
     this.physicalPlanBytes = physicalPlanBytes;
+  }
+
+  public byte[] getRequestType() {
+    return requestType;
+  }
+
+  public void setRequestType(byte[] requestType) {
+    this.requestType = requestType;
   }
 }
