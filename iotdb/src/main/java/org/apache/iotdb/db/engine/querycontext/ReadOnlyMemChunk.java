@@ -89,6 +89,8 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
           break;
       }
     }
+    //release memory
+    memSeries = null;
     initialized = true;
   }
 
