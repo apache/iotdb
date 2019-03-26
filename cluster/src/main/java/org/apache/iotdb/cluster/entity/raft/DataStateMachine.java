@@ -23,9 +23,12 @@ import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.Processor;
+import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 
 public class DataStateMachine extends StateMachineAdapter {
-  private Processor process;
+
+  private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
+
   private AtomicLong leaderTerm = new AtomicLong(-1);
 
   public DataStateMachine() {

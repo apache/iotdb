@@ -109,6 +109,18 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("delay_hours",
               Integer.toString(conf.getDelayHours()))));
 
+      conf.setTaskRedoCount(Integer
+          .parseInt(properties.getProperty("task_redo_count",
+              Integer.toString(conf.getTaskRedoCount()))));
+
+      conf.setTaskTimeoutMs(Integer
+          .parseInt(properties.getProperty("task_timeout_ms",
+              Integer.toString(conf.getTaskTimeoutMs()))));
+
+      conf.setNumOfVirtulaNodes(Integer
+          .parseInt(properties.getProperty("num_of_virtula_nodes",
+              Integer.toString(conf.getNumOfVirtulaNodes()))));
+
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

@@ -18,18 +18,22 @@
  */
 package org.apache.iotdb.cluster.entity.raft;
 
-import com.alipay.sofa.jraft.storage.LogStorage;
-import java.util.List;
+import com.alipay.remoting.rpc.RpcServer;
+import com.alipay.sofa.jraft.entity.PeerId;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.db.auth.AuthException;
 
 public class MetadataRaftHolder extends MetadataHolder {
 
   private MetadataStateManchine fsm;
+  private PeerId serverId;
 
-  public MetadataRaftHolder(List<RaftNode> nodeList) throws AuthException {
+  public MetadataRaftHolder(PeerId[] peerIds, PeerId serverId, RpcServer rpcServer) throws AuthException {
     fsm = new MetadataStateManchine();
-    service = new RaftService(nodeList);
+    this.serverId = serverId;
+    service = new RaftService(ClusterConfig.getMetadataGroupId(), peerIds, serverId, rpcServer);
   }
 
   public MetadataStateManchine getFsm() {

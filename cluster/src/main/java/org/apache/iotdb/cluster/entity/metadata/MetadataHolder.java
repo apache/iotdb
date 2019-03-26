@@ -20,7 +20,7 @@ package org.apache.iotdb.cluster.entity.metadata;
 
 import org.apache.iotdb.cluster.entity.service.IService;
 
-public abstract class MetadataHolder implements IHolder {
+public abstract class MetadataHolder implements IMetadataHolder {
 
   protected IService service;
 

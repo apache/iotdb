@@ -19,5 +19,5 @@
 package org.apache.iotdb.cluster.utils.hash;
 
 public interface HashFunction {
-  public int hash(String str);
+  int hash(String str);
 }

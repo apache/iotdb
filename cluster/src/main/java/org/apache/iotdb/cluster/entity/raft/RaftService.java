@@ -18,17 +18,26 @@
  */
 package org.apache.iotdb.cluster.entity.raft;
 
-import com.alipay.sofa.jraft.storage.LogStorage;
+import com.alipay.remoting.rpc.RpcServer;
+import com.alipay.sofa.jraft.RaftGroupService;
+import com.alipay.sofa.jraft.entity.PeerId;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.entity.service.IService;
 
 public class RaftService implements IService {
 
-  private List<RaftNode> nodeList;
-  private RaftNode leader;
+  private List<PeerId> peerIdList;
+  private PeerId leader;
+  private RaftGroupService raftGroupService;
 
-  public RaftService(List<RaftNode> nodeList) {
-    this.nodeList = nodeList;
+  public RaftService(String groupId, PeerId[] peerIds, PeerId serverId, RpcServer rpcServer) {
+    this.peerIdList = new ArrayList<>(peerIds.length);
+    for (int i = 0; i < peerIds.length; i++) {
+      peerIdList.add(peerIds[i]);
+    }
+
+    raftGroupService = new RaftGroupService(groupId, serverId, null, rpcServer);
   }
 
   @Override
@@ -38,7 +47,7 @@ public class RaftService implements IService {
 
   @Override
   public void start() {
-
+    raftGroupService.start();
   }
 
   @Override

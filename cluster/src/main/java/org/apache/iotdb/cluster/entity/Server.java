@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.cluster.entity;
 
-import java.util.Collections;
+import com.alipay.remoting.rpc.RpcServer;
+import com.alipay.sofa.jraft.entity.PeerId;
+import com.alipay.sofa.jraft.rpc.RaftRpcServerFactory;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -28,62 +29,46 @@ import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
-import org.apache.iotdb.cluster.entity.raft.RaftNode;
-import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
+import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class Server {
 
   private static final ClusterConfig ClusterConf = ClusterDescriptor.getInstance().getConfig();
 
   private MetadataHolder metadataHolder;
-  private Map<Integer, DataPartitionHolder> dataPartitionHolderMap;
+  private Map<String, DataPartitionHolder> dataPartitionHolderMap;
 
   public void start() throws AuthException {
     // Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version
     IoTDB iotdb = new IoTDB();
     iotdb.active();
 
-    List<RaftNode> nodeList = RaftUtils.convertNodesToRaftNodeList(ClusterConf.getNodes());
-    metadataHolder = new MetadataRaftHolder(nodeList);
+    PeerId[] peerIds = RaftUtils.convertStringArrayToPeerIdArray(ClusterConf.getNodes());
+    PeerId serverId = new PeerId(ClusterConf.getIp(), ClusterConf.getPort());
+    RpcServer rpcServer = new RpcServer(serverId.getPort());
+    RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
+    // TODO processor
+    rpcServer.registerUserProcessor(NonQueryAsyncProcessor);
+    metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer);
     metadataHolder.init();
     metadataHolder.start();
 
     dataPartitionHolderMap = new HashMap<>();
-    int index = RaftUtils.getIndexOfIpFromRaftNodeList(ClusterConf.getIp(), nodeList);
-    List<Pair<Integer, List<RaftNode>>> groupNodeList = getDataPartitonNodeList(index, nodeList);
-    for(int i = 0; i < groupNodeList.size(); i++) {
-      Pair<Integer, List<RaftNode>> pair = groupNodeList.get(i);
-      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(pair.left, pair.right);
+    Router router = Router.getInstance();
+    PhysicalNode[][] groups = router.generateGroups(serverId.getIp(), serverId.getPort());
+
+    for(int i = 0; i < groups.length; i++) {
+      PhysicalNode[] group = groups[i];
+      String groupId = router.getGroupID(group);
+      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId, RaftUtils.convertPhysicalNodeArrayToPeerIdArray(group), serverId, rpcServer);
       dataPartitionHolder.init();
       dataPartitionHolder.start();
-      dataPartitionHolderMap.put(pair.left, dataPartitionHolder);
+      dataPartitionHolderMap.put(groupId, dataPartitionHolder);
     }
 
-  }
-
-  // A node belongs to multiple data groups and calculates the members of the i-th data group.
-  private List<Pair<Integer, List<RaftNode>>> getDataPartitonNodeList(int i, List<RaftNode> nodeList) {
-    return Collections.emptyList();
-  }
-
-  public MetadataHolder getMetadataHolder() {
-    return metadataHolder;
-  }
-
-  public void setMetadataHolder(MetadataHolder metadataHolder) {
-    this.metadataHolder = metadataHolder;
-  }
-
-  public Map<Integer, DataPartitionHolder> getDataPartitionHolderMap() {
-    return dataPartitionHolderMap;
-  }
-
-  public void setDataPartitionHolderMap(
-      Map<Integer, DataPartitionHolder> dataPartitionHolderMap) {
-    this.dataPartitionHolderMap = dataPartitionHolderMap;
   }
 }

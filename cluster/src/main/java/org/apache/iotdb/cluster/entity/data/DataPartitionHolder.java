@@ -22,7 +22,7 @@ import org.apache.iotdb.cluster.entity.service.IService;
 
 public class DataPartitionHolder implements IPartitionHolder {
 
-  protected IService service;;
+  protected IService service;
 
   @Override
   public void init() {

@@ -20,8 +20,9 @@ package org.apache.iotdb.cluster.config;
 
 public class ClusterConfig {
 
-  public static final String CONFIG_NAME = "iotdb-cluster.properties";
+  public static final String CONFIG_NAME = "iotdb-engine.properties";
   public static final String DEFAULT_NODE = "127.0.0.1:8888";
+  public static final String METADATA_GROUP_ID = "metadata";
 
   // Cluster node: {ip1,ip2,...,ipn}
   private String[] nodes = {DEFAULT_NODE};
@@ -53,12 +54,10 @@ public class ClusterConfig {
   // Maximum allowed delay hours
   private int delayHours = 24;
 
-  /** limit to redo a single task **/
+  /** count limit to redo a single task **/
   private int taskRedoCount = 3;
   /** timeout limit for a single task, the unit is milliseconds **/
   private int taskTimeoutMs = 0;
-
-  private String metadataGroupId = "metadata";
 
   private int numOfVirtulaNodes = 2;
 
@@ -178,11 +177,7 @@ public class ClusterConfig {
     this.numOfVirtulaNodes = numOfVirtulaNodes;
   }
 
-  public String getMetadataGroupId() {
-    return metadataGroupId;
-  }
-
-  public void setMetadataGroupId(String metadataGroupId) {
-    this.metadataGroupId = metadataGroupId;
+  public static String getMetadataGroupId() {
+    return METADATA_GROUP_ID;
   }
 }
