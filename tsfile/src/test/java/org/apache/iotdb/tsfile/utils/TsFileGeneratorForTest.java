@@ -95,7 +95,7 @@ public class TsFileGeneratorForTest {
   static private void generateSampleInputDataFile(int minRowCount, int maxRowCount) throws IOException {
     File file = new File(inputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file.getParentFile().mkdirs();
     FileWriter fw = new FileWriter(file);
@@ -149,10 +149,10 @@ public class TsFileGeneratorForTest {
     File file = new File(outputDataFile);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     if (errorFile.exists()) {
-      errorFile.delete();
+      Assert.assertTrue(errorFile.delete());
     }
 
     // LOG.info(jsonSchema.toString());
