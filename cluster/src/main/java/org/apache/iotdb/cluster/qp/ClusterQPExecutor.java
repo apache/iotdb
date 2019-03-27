@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.qp;
 
+import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
@@ -58,10 +59,10 @@ public abstract class ClusterQPExecutor {
    * 1. If this node belongs to the storage group
    * 2. If this node is leader.
    */
-  public boolean canHandle(String storageGroup) throws RaftConnectionException {
+  public boolean canHandle(String storageGroup, BoltCliClientService cliClientService) throws RaftConnectionException {
     if(router.containPhysicalNode(storageGroup, localNode)){
       String groupId = getGroupIdBySG(storageGroup);
-      if(RaftUtils.convertPeerId(RaftUtils.getLeader(groupId)).equals(localNode)){
+      if(RaftUtils.convertPeerId(RaftUtils.getLeader(groupId, cliClientService)).equals(localNode)){
         return true;
       }
     }

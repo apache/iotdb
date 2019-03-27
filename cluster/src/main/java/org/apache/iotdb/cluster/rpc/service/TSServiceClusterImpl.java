@@ -26,13 +26,6 @@ import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
-import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,38 +54,38 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     cliClientService.init(new CliOptions());
   }
 
-  //TODO
-  @Override
-  public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) throws TException {
-    throw new TException("not support");
-  }
-
-  //TODO
-
-  /**
-   * Judge whether the statement is ADMIN COMMAND and if true, executeWithGlobalTimeFilter it.
-   *
-   * @param statement command
-   * @return true if the statement is ADMIN COMMAND
-   * @throws IOException exception
-   */
-  @Override
-  public boolean execAdminCommand(String statement) throws IOException {
-    throw new IOException("exec admin command not support");
-  }
-
-  //TODO
-  @Override
-  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) throws TException {
-    throw new TException("query not support");
-  }
-
-
-  //TODO
-  @Override
-  public TSFetchResultsResp fetchResults(TSFetchResultsReq req) throws TException {
-    throw new TException("not support");
-  }
+//  //TODO
+//  @Override
+//  public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) throws TException {
+//    throw new TException("not support");
+//  }
+//
+//  //TODO
+//
+//  /**
+//   * Judge whether the statement is ADMIN COMMAND and if true, executeWithGlobalTimeFilter it.
+//   *
+//   * @param statement command
+//   * @return true if the statement is ADMIN COMMAND
+//   * @throws IOException exception
+//   */
+//  @Override
+//  public boolean execAdminCommand(String statement) throws IOException {
+//    throw new IOException("exec admin command not support");
+//  }
+//
+//  //TODO
+//  @Override
+//  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) throws TException {
+//    throw new TException("query not support");
+//  }
+//
+//
+//  //TODO
+//  @Override
+//  public TSFetchResultsResp fetchResults(TSFetchResultsReq req) throws TException {
+//    throw new TException("not support");
+//  }
 
   @Override
   public boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
@@ -104,11 +97,5 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     cliClientService.shutdown();
     closeOperation(null);
     closeSession(null);
-  }
-
-  //TODO
-  @Override
-  public ServerProperties getProperties() throws TException {
-    throw new TException("not support");
   }
 }

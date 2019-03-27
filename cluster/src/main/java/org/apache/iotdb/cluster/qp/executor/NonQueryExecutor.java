@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.qp.executor;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.cluster.callback.SingleTask;
 import org.apache.iotdb.cluster.callback.Task;
 import org.apache.iotdb.cluster.callback.Task.TaskState;
@@ -170,10 +169,11 @@ public class NonQueryExecutor extends ClusterQPExecutor {
         return false;
       case SET_FILE_LEVEL:
         boolean fileLevelExist = false;
-        try {
-          fileLevelExist = mManager.checkFileLevel(path.getFullPath());
-        } catch (PathErrorException e) {
-        }
+//        try {
+//          PathCheckRet ret = mManager.checkPathStorageLevelAndGetDataType(path.getFullPath());
+//          fileLevelExist = !ret.isSuccessfully();
+//        } catch (PathErrorException e) {
+//        }
         if (fileLevelExist) {
           throw new ProcessorException(
               String.format("File level %s already exists.", path.getFullPath()));
@@ -181,11 +181,10 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           ChangeMetadataRequest request = new ChangeMetadataRequest(
               CLUSTER_CONFIG.METADATA_GROUP_ID,
               metadataPlan);
-          PeerId leader = RaftUtils.getLeader(CLUSTER_CONFIG.METADATA_GROUP_ID);
+          PeerId leader = RaftUtils.getLeader(CLUSTER_CONFIG.METADATA_GROUP_ID, cliClientService);
 
-          CountDownLatch latch = new CountDownLatch(SUB_TASK_NUM);
-          SingleTask task = new SingleTask(false, latch, request);
-          return asyncHandleTask(task, leader, latch, 0);
+          SingleTask task = new SingleTask(false, request);
+          return asyncHandleTask(task, leader, 0);
         }
       default:
         throw new ProcessorException("unknown namespace type:" + namespaceType);
@@ -203,16 +202,15 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   private boolean handleRequest(String storageGroup, PhysicalPlan plan)
       throws ProcessorException, IOException, RaftConnectionException, InterruptedException {
     /** Check if the plan can be executed locally. **/
-    if (canHandle(storageGroup)) {
+    if (canHandle(storageGroup, cliClientService)) {
       return qpExecutor.processNonQuery(plan);
     } else {
       String groupId = getGroupIdBySG(storageGroup);
       ChangeMetadataRequest request = new ChangeMetadataRequest(groupId, plan);
-      PeerId leader = RaftUtils.getLeader(groupId);
+      PeerId leader = RaftUtils.getLeader(groupId, cliClientService);
 
-      CountDownLatch latch = new CountDownLatch(SUB_TASK_NUM);
-      SingleTask task = new SingleTask(false, latch, request);
-      return asyncHandleTask(task, leader, latch, 0);
+      SingleTask task = new SingleTask(false, request);
+      return asyncHandleTask(task, leader, 0);
     }
   }
 
@@ -225,7 +223,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    * @param taskRetryNum Number of task retries due to timeout and redirected.
    * @return request result
    */
-  private boolean asyncHandleTask(Task task, PeerId leader, CountDownLatch latch, int taskRetryNum)
+  private boolean asyncHandleTask(Task task, PeerId leader, int taskRetryNum)
       throws RaftConnectionException, InterruptedException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
       throw new RaftConnectionException(String.format("Task retries reach the upper bound %s",
@@ -234,11 +232,11 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     NodeAsClient client = new RaftNodeAsClient();
     /** Call async method **/
     client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
-    latch.await();
+    task.await();
     if (task.getTaskState() == TaskState.INITIAL || task.getTaskState() == TaskState.REDIRECT
         || task.getTaskState() == TaskState.EXCEPTION) {
-      task.setTaskNum(new CountDownLatch(SUB_TASK_NUM));
-      return asyncHandleTask(task, leader, latch, taskRetryNum + 1);
+      task.setTaskNum(SUB_TASK_NUM);
+      return asyncHandleTask(task, leader, taskRetryNum + 1);
     }
     return task.getResponse().isSuccess();
   }

@@ -47,9 +47,9 @@ public abstract class Task {
    */
   private TaskState taskState;
 
-  public Task(boolean isSyncTask, CountDownLatch taskNum, TaskState taskState) {
+  public Task(boolean isSyncTask, int taskNum, TaskState taskState) {
     this.isSyncTask = isSyncTask;
-    this.taskNum = taskNum;
+    this.taskNum = new CountDownLatch(taskNum);
     this.taskState = taskState;
   }
 
@@ -72,8 +72,8 @@ public abstract class Task {
     return taskNum;
   }
 
-  public void setTaskNum(CountDownLatch taskNum) {
-    this.taskNum = taskNum;
+  public void setTaskNum(int taskNum) {
+    this.taskNum = new CountDownLatch(taskNum);
   }
 
   public TaskState getTaskState() {
@@ -103,5 +103,9 @@ public abstract class Task {
 
   public enum TaskState {
     INITIAL, REDIRECT, FINISH, EXCEPTION
+  }
+
+  public void await() throws InterruptedException {
+    this.taskNum.await();
   }
 }

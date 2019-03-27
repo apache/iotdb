@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.cluster.callback;
 
-import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 
@@ -28,8 +27,8 @@ import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 public class SingleTask extends Task {
 
 
-  public SingleTask(boolean isSyncTask, CountDownLatch taskBarrier, BasicRequest request) {
-    super(isSyncTask, taskBarrier, TaskState.INITIAL);
+  public SingleTask(boolean isSyncTask, BasicRequest request) {
+    super(isSyncTask, 1, TaskState.INITIAL);
     setRequest(request);
   }
 

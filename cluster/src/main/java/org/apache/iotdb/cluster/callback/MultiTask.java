@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.cluster.callback;
 
-import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 
@@ -28,35 +27,16 @@ import org.apache.iotdb.cluster.rpc.response.BasicResponse;
  */
 public class MultiTask extends Task {
 
-  private BasicResponse finalResponse;
-
-  /**
-   * Num of sub-task
-   */
-  private CountDownLatch countDownLatch;
-
-  public MultiTask(boolean isSyncTask, CountDownLatch taskBarrier, BasicRequest request) {
-    super(isSyncTask, taskBarrier, TaskState.INITIAL);
+  public MultiTask(boolean isSyncTask, int taskNum, BasicRequest request) {
+    super(isSyncTask, taskNum, TaskState.INITIAL);
     setRequest(request);
   }
 
-  public CountDownLatch getCountDownLatch() {
-    return countDownLatch;
-  }
-
-  public void setCountDownLatch(CountDownLatch countDownLatch) {
-    this.countDownLatch = countDownLatch;
-  }
-
-
-  public BasicResponse getFinalResponse() {
-    return finalResponse;
-  }
-
-  public void setFinalResponse(BasicResponse finalResponse) {
-    this.finalResponse = finalResponse;
-  }
-
+  /**
+   * Process response
+   *
+   * @param basicResponse response from receiver
+   */
   @Override
   public void run(BasicResponse basicResponse) {
 
