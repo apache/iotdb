@@ -49,8 +49,9 @@ public class ClusterDescriptor {
    * load an property file and set ClusterConfig variables.
    */
   private void loadProps() {
+    conf.updatePath();
     InputStream inputStream;
-    String url = System.getProperty(ClusterConstant.CLUSTER_CONF, null);
+    String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (url != null) {

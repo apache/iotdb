@@ -62,11 +62,11 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    * Rpc Service Client
    */
   private BoltCliClientService cliClientService;
-  private static final ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
+  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
   /**
    * Count limit to redo a single task
    */
-  private static final int TASK_MAX_RETRY = clusterConfig.getTaskRedoCount();
+  private static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getTaskRedoCount();
   /**
    * Number of subtask in task segmentation
    */
@@ -179,9 +179,9 @@ public class NonQueryExecutor extends ClusterQPExecutor {
               String.format("File level %s already exists.", path.getFullPath()));
         } else {
           ChangeMetadataRequest request = new ChangeMetadataRequest(
-              clusterConfig.getMetadataGroupId(),
+              CLUSTER_CONFIG.METADATA_GROUP_ID,
               metadataPlan);
-          PeerId leader = RaftUtils.getLeader(clusterConfig.getMetadataGroupId());
+          PeerId leader = RaftUtils.getLeader(CLUSTER_CONFIG.METADATA_GROUP_ID);
 
           CountDownLatch latch = new CountDownLatch(SUB_TASK_NUM);
           SingleTask task = new SingleTask(false, latch, request);

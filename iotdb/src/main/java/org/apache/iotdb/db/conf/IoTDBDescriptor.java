@@ -240,7 +240,12 @@ public class IoTDBDescriptor {
 
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());
-      conf.setJdbcServiceImplClassName(properties.getProperty("jdbc_service impl_class_name", conf.getJdbcServiceImplClassName().trim()));
+
+      conf.setEnableCluster(Boolean.parseBoolean(
+          properties.getProperty("enable_cluster", Boolean.toString(conf.isEnableCluster()))));
+      if(conf.isEnableCluster()){
+        conf.setJdbcServiceImplClassName(IoTDBConstant.CLUSTER_RPC_IMPL_CALSS);
+      }
 
       String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
       try {

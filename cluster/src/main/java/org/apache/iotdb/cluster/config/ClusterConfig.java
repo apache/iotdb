@@ -18,11 +18,22 @@
  */
 package org.apache.iotdb.cluster.config;
 
+import java.io.File;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.FilePathUtils;
+
 public class ClusterConfig {
 
-  public static final String CONFIG_NAME = "iotdb-engine.properties";
+  public static final String CONFIG_NAME = "iotdb-cluster.properties";
   public static final String DEFAULT_NODE = "127.0.0.1:8888";
   public static final String METADATA_GROUP_ID = "metadata";
+  private static final String DEFAULT_RAFT_DIR = "raft";
+  private static final String DEFAULT_METADATA_DIR = "metadata";
+  private static final String DEFAULT_DATA_DIR = "data";
+  private static final String DEFAULT_SNAPSHOT_DIR = "snapshot";
+  private static final String DEFAULT_LOG_DIR = "log";
+
 
   // Cluster node: {ip1,ip2,...,ipn}
   private String[] nodes = {DEFAULT_NODE};
@@ -61,12 +72,24 @@ public class ClusterConfig {
   /**
    * timeout limit for a single task, the unit is milliseconds
    **/
-  private int taskTimeoutMs = 0;
+  private int taskTimeoutMs = 1000;
 
   private int numOfVirtulaNodes = 2;
 
   public ClusterConfig() {
     // empty constructor
+  }
+
+  public void updatePath(){
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    String iotdbDataDir = conf.getDataDir();
+    iotdbDataDir = FilePathUtils.regularizePath(iotdbDataDir);
+    String metadataGroupPath = iotdbDataDir + DEFAULT_RAFT_DIR + File.separatorChar + DEFAULT_METADATA_DIR;
+    String dataGroupPath = iotdbDataDir + DEFAULT_RAFT_DIR + File.separatorChar + DEFAULT_DATA_DIR;
+    this.metadataGroupSnapshotPath = metadataGroupPath + File.separatorChar + DEFAULT_SNAPSHOT_DIR;
+    this.metadataGroupLogPath = metadataGroupPath + File.separatorChar + DEFAULT_LOG_DIR;
+    this.dataGroupLogPath = dataGroupPath + File.separatorChar + DEFAULT_LOG_DIR;
+    this.dataGroupSnapshotPath = dataGroupPath + File.separatorChar + DEFAULT_SNAPSHOT_DIR;
   }
 
   public String[] getNodes() {
@@ -181,7 +204,4 @@ public class ClusterConfig {
     this.numOfVirtulaNodes = numOfVirtulaNodes;
   }
 
-  public static String getMetadataGroupId() {
-    return METADATA_GROUP_ID;
-  }
 }
