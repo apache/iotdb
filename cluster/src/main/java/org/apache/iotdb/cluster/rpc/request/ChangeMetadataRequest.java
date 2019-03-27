@@ -20,18 +20,19 @@ package org.apache.iotdb.cluster.rpc.request;
 
 import java.io.IOException;
 import java.io.Serializable;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 
 public class ChangeMetadataRequest extends BasicRequest implements Serializable {
 
   private byte[] physicalPlanBytes;
-  private byte[] requestType;
+  private Operator.OperatorType requestType;
 
   public ChangeMetadataRequest(String groupID, PhysicalPlan plan) throws IOException {
     super(groupID);
     this.physicalPlanBytes = PhysicalPlanLogTransfer.operatorToLog(plan);
-    this.requestType = String.valueOf(plan.getOperatorType()).getBytes();
+    this.requestType = plan.getOperatorType();
   }
 
   public byte[] getPhysicalPlanBytes() {
@@ -42,11 +43,11 @@ public class ChangeMetadataRequest extends BasicRequest implements Serializable 
     this.physicalPlanBytes = physicalPlanBytes;
   }
 
-  public byte[] getRequestType() {
+  public Operator.OperatorType getRequestType() {
     return requestType;
   }
 
-  public void setRequestType(byte[] requestType) {
+  public void setRequestType(Operator.OperatorType requestType) {
     this.requestType = requestType;
   }
 }

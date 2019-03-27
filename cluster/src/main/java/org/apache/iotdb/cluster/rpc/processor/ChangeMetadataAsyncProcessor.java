@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.rpc.request.ChangeMetadataRequest;
 import org.apache.iotdb.cluster.rpc.response.NonQueryResponse;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,8 +46,8 @@ public class ChangeMetadataAsyncProcessor extends BasicAsyncUserProcessor<Change
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       ChangeMetadataRequest changeMetadataRequest) {
-    String requestType = String.valueOf(changeMetadataRequest.getRequestType());
-    if (requestType.equals(String.valueOf(OperatorType.SET_STORAGE_GROUP))) {
+    Operator.OperatorType requestType = changeMetadataRequest.getRequestType();
+    if (requestType == OperatorType.SET_STORAGE_GROUP) {
       MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
       /** Verify if it's the leader of metadata **/
       if (metadataHolder.getFsm().isLeader()) {
