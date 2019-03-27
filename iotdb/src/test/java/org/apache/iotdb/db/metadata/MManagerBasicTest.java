@@ -261,4 +261,30 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testSetStorageLevelAndExist() {
+
+    MManager manager = MManager.getInstance();
+
+    try {
+      assertEquals(false, manager.checkStorageLevelOfMTree("root"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root1.laptop.d2"));
+
+      manager.setStorageLevelToMTree("root.laptop.d1");
+      assertEquals(true, manager.checkStorageLevelOfMTree("root.laptop.d1"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop.d2"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop.d1.s1"));
+
+      manager.setStorageLevelToMTree("root.laptop.d2");
+      assertEquals(true, manager.checkStorageLevelOfMTree("root.laptop.d1"));
+      assertEquals(true, manager.checkStorageLevelOfMTree("root.laptop.d2"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop.d3"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop"));
+    } catch (PathErrorException | IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
