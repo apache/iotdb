@@ -29,10 +29,9 @@ public class ClusterConfig {
   public static final String DEFAULT_NODE = "127.0.0.1:8888";
   public static final String METADATA_GROUP_ID = "metadata";
   private static final String DEFAULT_RAFT_DIR = "raft";
-  private static final String DEFAULT_METADATA_DIR = "metadata";
-  private static final String DEFAULT_DATA_DIR = "data";
-  private static final String DEFAULT_SNAPSHOT_DIR = "snapshot";
-  private static final String DEFAULT_LOG_DIR = "log";
+  private static final String DEFAULT_RAFT_METADATA_DIR = "metadata";
+  private static final String DEFAULT_RAFT_LOG_DIR = "log";
+  private static final String DEFAULT_RAFT_SNAPSHOT_DIR = "snapshot";
 
 
   // Cluster node: {ip1,ip2,...,ipn}
@@ -44,17 +43,14 @@ public class ClusterConfig {
   private String ip = null;
   private int port = 8888;
 
-  // Path for metadata holder to store log
-  private String metadataGroupLogPath = "/tmp/metadata/log/";
+  // Path for holder to store raft log
+  private String raftLogPath;
 
-  // Path for metadata holder to store snapshot
-  private String metadataGroupSnapshotPath = "/tmp/metadata/snapshot/";
+  // Path for holder to store raft snapshot
+  private String raftSnapshotPath;
 
-  // Path for data partition to store log
-  private String dataGroupLogPath = "/tmp/data/log/";
-
-  // Path for data partition to store snapshot
-  private String dataGroupSnapshotPath = "/tmp/data/snapshot/";
+  // Path for holder to store raft metadata
+  private String raftMetadataPath;
 
   // When the number of the difference between
   // leader and follower log is less than this value, it is considered as 'catch-up'
@@ -84,12 +80,10 @@ public class ClusterConfig {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     String iotdbDataDir = conf.getDataDir();
     iotdbDataDir = FilePathUtils.regularizePath(iotdbDataDir);
-    String metadataGroupPath = iotdbDataDir + DEFAULT_RAFT_DIR + File.separatorChar + DEFAULT_METADATA_DIR;
-    String dataGroupPath = iotdbDataDir + DEFAULT_RAFT_DIR + File.separatorChar + DEFAULT_DATA_DIR;
-    this.metadataGroupSnapshotPath = metadataGroupPath + File.separatorChar + DEFAULT_SNAPSHOT_DIR;
-    this.metadataGroupLogPath = metadataGroupPath + File.separatorChar + DEFAULT_LOG_DIR;
-    this.dataGroupLogPath = dataGroupPath + File.separatorChar + DEFAULT_LOG_DIR;
-    this.dataGroupSnapshotPath = dataGroupPath + File.separatorChar + DEFAULT_SNAPSHOT_DIR;
+    String raftDir = iotdbDataDir + DEFAULT_RAFT_DIR;
+    this.raftSnapshotPath = raftDir + File.separatorChar + DEFAULT_RAFT_SNAPSHOT_DIR;
+    this.raftLogPath = raftDir + File.separatorChar + DEFAULT_RAFT_LOG_DIR;
+    this.raftMetadataPath = raftDir + File.separatorChar + DEFAULT_RAFT_METADATA_DIR;
   }
 
   public String[] getNodes() {
@@ -124,36 +118,28 @@ public class ClusterConfig {
     this.port = port;
   }
 
-  public String getMetadataGroupLogPath() {
-    return metadataGroupLogPath;
+  public String getRaftLogPath() {
+    return raftLogPath;
   }
 
-  public void setMetadataGroupLogPath(String metadataGroupLogPath) {
-    this.metadataGroupLogPath = metadataGroupLogPath;
+  public void setRaftLogPath(String raftLogPath) {
+    this.raftLogPath = raftLogPath;
   }
 
-  public String getMetadataGroupSnapshotPath() {
-    return metadataGroupSnapshotPath;
+  public String getRaftSnapshotPath() {
+    return raftSnapshotPath;
   }
 
-  public void setMetadataGroupSnapshotPath(String metadataGroupSnapshotPath) {
-    this.metadataGroupSnapshotPath = metadataGroupSnapshotPath;
+  public void setRaftSnapshotPath(String raftSnapshotPath) {
+    this.raftSnapshotPath = raftSnapshotPath;
   }
 
-  public String getDataGroupLogPath() {
-    return dataGroupLogPath;
+  public String getRaftMetadataPath() {
+    return raftMetadataPath;
   }
 
-  public void setDataGroupLogPath(String dataGroupLogPath) {
-    this.dataGroupLogPath = dataGroupLogPath;
-  }
-
-  public String getDataGroupSnapshotPath() {
-    return dataGroupSnapshotPath;
-  }
-
-  public void setDataGroupSnapshotPath(String dataGroupSnapshotPath) {
-    this.dataGroupSnapshotPath = dataGroupSnapshotPath;
+  public void setRaftMetadataPath(String raftMetadataPath) {
+    this.raftMetadataPath = raftMetadataPath;
   }
 
   public int getMaxCatchUpLogNum() {

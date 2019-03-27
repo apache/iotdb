@@ -19,7 +19,10 @@
 package org.apache.iotdb.cluster.entity.metadata;
 
 public interface IMetadataHolder {
+
   void init();
+
   void start();
+
   void stop();
 }

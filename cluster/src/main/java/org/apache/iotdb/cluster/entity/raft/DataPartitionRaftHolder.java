@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.entity.raft;
 
 import com.alipay.remoting.rpc.RpcServer;
 import com.alipay.sofa.jraft.RaftGroupService;
+import com.alipay.sofa.jraft.StateMachine;
 import com.alipay.sofa.jraft.entity.PeerId;
 import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 
@@ -28,13 +29,19 @@ public class DataPartitionRaftHolder extends DataPartitionHolder {
   private String groupId;
   private PeerId serverId;
   private DataStateMachine fsm;
-  private RaftGroupService raftGroupService;
 
   public DataPartitionRaftHolder(String groupId, PeerId[] peerIds, PeerId serverId, RpcServer rpcServer) {
     this.groupId = groupId;
     this.serverId = serverId;
     fsm = new DataStateMachine();
-    service = new RaftService(groupId, peerIds, serverId, rpcServer);
+    service = new RaftService(groupId, peerIds, serverId, rpcServer, fsm);
   }
 
+  public DataStateMachine getFsm() {
+    return fsm;
+  }
+
+  public void setFsm(DataStateMachine fsm) {
+    this.fsm = fsm;
+  }
 }
