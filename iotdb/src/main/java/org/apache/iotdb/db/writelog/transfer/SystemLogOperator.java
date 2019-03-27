@@ -30,4 +30,5 @@ public class SystemLogOperator {
   public static final int DELETE = 2;
   public static final int METADATA = 3;
   public static final int AUTHOR = 4;
+  public static final int LOADDATA = 5;
 }

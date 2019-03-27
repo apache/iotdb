@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 
 public class PhysicalPlanLogTransfer {
@@ -46,7 +47,9 @@ public class PhysicalPlanLogTransfer {
       codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.METADATA).codec;
     } else if (plan instanceof AuthorPlan) {
       codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.AUTHOR).codec;
-    } else {
+    } else if (plan instanceof LoadDataPlan) {
+      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.LOADDATA).codec;
+    } else{
       throw new UnsupportedOperationException(
           "SystemLogOperator given is not supported. " + plan.getOperatorType());
     }

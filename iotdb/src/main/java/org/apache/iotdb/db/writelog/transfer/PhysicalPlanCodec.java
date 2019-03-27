@@ -39,7 +39,8 @@ public enum PhysicalPlanCodec {
   UPDATEPLAN(SystemLogOperator.UPDATE, CodecInstances.updatePlanCodec),
   DELETEPLAN(SystemLogOperator.DELETE, CodecInstances.deletePlanCodec),
   METADATAPLAN(SystemLogOperator.METADATA, CodecInstances.metadataPlanCodec),
-  AUTHORPLAN(SystemLogOperator.AUTHOR, CodecInstances.authorPlanCodec);
+  AUTHORPLAN(SystemLogOperator.AUTHOR, CodecInstances.authorPlanCodec),
+  LOADDATAPLAN(SystemLogOperator.LOADDATA, CodecInstances.loadDataPlanCodec);
 
   private static final HashMap<Integer, PhysicalPlanCodec> codecMap = new HashMap<>();
 
