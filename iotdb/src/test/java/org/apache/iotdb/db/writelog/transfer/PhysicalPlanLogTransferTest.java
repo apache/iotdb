@@ -46,7 +46,7 @@ public class PhysicalPlanLogTransferTest {
   private DeletePlan deletePlan = new DeletePlan(50, new Path("root.vehicle.device"));
   private UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
       new Path("root.vehicle.device.sensor"));
-  private LoadDataPlan loadDataPlan = new LoadDataPlan("/tmp/data/vehicle","sensor");
+  private LoadDataPlan loadDataPlan = new LoadDataPlan("/tmp/data/vehicle", "sensor");
 
   @Test
   public void operatorToLog()
