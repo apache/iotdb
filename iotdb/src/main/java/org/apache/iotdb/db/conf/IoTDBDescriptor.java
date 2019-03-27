@@ -245,6 +245,7 @@ public class IoTDBDescriptor {
           properties.getProperty("enable_cluster", Boolean.toString(conf.isEnableCluster()))));
       if(conf.isEnableCluster()){
         conf.setJdbcServiceImplClassName(IoTDBConstant.CLUSTER_RPC_IMPL_CALSS);
+        conf.setEnableWal(false);
       }
 
       String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
