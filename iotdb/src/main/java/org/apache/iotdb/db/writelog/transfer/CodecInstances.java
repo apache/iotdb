@@ -33,12 +33,14 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
+import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
+import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.utils.ByteBufferUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -276,7 +278,7 @@ public class CodecInstances {
       buffer.put((byte) type);
 
       int authorType = plan.getAuthorType().serialize();
-      buffer.put((byte)authorType);
+      buffer.put((byte) authorType);
 
       ByteBufferUtils.putString(buffer, plan.getUserName());
       ByteBufferUtils.putString(buffer, plan.getRoleName());
@@ -312,7 +314,7 @@ public class CodecInstances {
       int permissionListLen = buffer.getInt();
       if (permissionListLen != -1) {
         permissions = new HashSet<>(permissionListLen);
-        for(int i =0 ; i < permissionListLen; i ++) {
+        for (int i = 0; i < permissionListLen; i++) {
           permissions.add(buffer.getInt());
         }
       }
@@ -359,4 +361,42 @@ public class CodecInstances {
     }
   };
 
+  static final Codec<PropertyPlan> propertyPlanCodec = new Codec<PropertyPlan>() {
+    ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
+
+    @Override
+    public byte[] encode(PropertyPlan plan) {
+      int type = SystemLogOperator.PROPERTY;
+      if (localBuffer.get() == null) {
+        localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
+      }
+      ByteBuffer buffer = localBuffer.get();
+      buffer.clear();
+      buffer.put((byte) type);
+
+      int propertyType = plan.getPropertyType().serialize();
+      buffer.put((byte) propertyType);
+
+      Path metadataPath = plan.getMetadataPath();
+      Path propertyPath = plan.getPropertyPath();
+      ByteBufferUtils.putString(buffer, metadataPath == null ? null : metadataPath.toString());
+      ByteBufferUtils.putString(buffer, propertyPath == null ? null : propertyPath.toString());
+
+      return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
+    }
+
+    @Override
+    public PropertyPlan decode(byte[] bytes) throws IOException {
+      ByteBuffer buffer = ByteBuffer.wrap(bytes);
+
+      buffer.get(); // read and skip an int representing "type"
+
+      PropertyOperator.PropertyType propertyType = PropertyOperator.PropertyType
+          .deserialize(buffer.get());
+      String metadataPath = ByteBufferUtils.readString(buffer);
+      String propertyPath = ByteBufferUtils.readString(buffer);
+      return new PropertyPlan(propertyType, propertyPath == null ? null : new Path(propertyPath),
+          metadataPath == null ? null : new Path(metadataPath));
+    }
+  };
 }

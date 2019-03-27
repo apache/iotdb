@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
+import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Test;
@@ -90,51 +91,20 @@ public class PhysicalPlanLogTransferTest {
     byte[] loadDataPlanProperty = loadDataPlanCodec.encode(loadDataPlan);
     assertEquals(true, Arrays.equals(loadDataPlanProperty, loadDataPlanBytesTest));
 
+    /** Property Plan test **/
+    sql = "add label label1021 to property propropro";
+    PropertyPlan propertyPlan = (PropertyPlan) processor.parseSQLToPhysicalPlan(sql);
+    byte[] propertyPlanBytesTest = PhysicalPlanLogTransfer.operatorToLog(propertyPlan);
+    Codec<PropertyPlan> propertyPlanCodec = CodecInstances.propertyPlanCodec;
+    byte[] propertyPlanProperty = propertyPlanCodec.encode(propertyPlan);
+    assertEquals(true, Arrays.equals(propertyPlanProperty, propertyPlanBytesTest));
+
   }
 
   @Test
   public void logToOperator()
       throws IOException, ArgsErrorException, ProcessorException, QueryProcessorException, AuthException {
 
-    /** Insert Plan test **/
-    byte[] insertPlanBytesTest = PhysicalPlanLogTransfer.operatorToLog(insertPlan);
-    InsertPlan insertPlanTest = (InsertPlan) PhysicalPlanLogTransfer
-        .logToOperator(insertPlanBytesTest);
-    assertEquals(true, insertPlanTest.equals(insertPlan));
-
-    /** Delete Plan test **/
-    byte[] deletePlanBytesTest = PhysicalPlanLogTransfer.operatorToLog(deletePlan);
-    DeletePlan deletePlanTest = (DeletePlan) PhysicalPlanLogTransfer
-        .logToOperator(deletePlanBytesTest);
-    assertEquals(true, deletePlanTest.equals(deletePlan));
-
-    /** Update Plan test **/
-    byte[] updatePlanBytesTest = PhysicalPlanLogTransfer.operatorToLog(updatePlan);
-    UpdatePlan updatePlanTest = (UpdatePlan) PhysicalPlanLogTransfer
-        .logToOperator(updatePlanBytesTest);
-    assertEquals(true, updatePlanTest.equals(updatePlan));
-
-    /** Metadata Plan test **/
-    String metadataStatement = "create timeseries root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
-    MetadataPlan metadataPlan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadataStatement);
-    byte[] metadataPlanBytesTest = PhysicalPlanLogTransfer.operatorToLog(metadataPlan);
-    MetadataPlan metadataPlanTest = (MetadataPlan) PhysicalPlanLogTransfer
-        .logToOperator(metadataPlanBytesTest);
-    assertEquals(true, metadataPlanTest.equals(metadataPlan));
-
-    /** Author Plan test **/
-    String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.device.sensor";
-    AuthorPlan authorPlan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
-    byte[] authorPlanBytesTest = PhysicalPlanLogTransfer.operatorToLog(authorPlan);
-    AuthorPlan authorPlanTest = (AuthorPlan) PhysicalPlanLogTransfer
-        .logToOperator(authorPlanBytesTest);
-    assertEquals(true, authorPlanTest.equals(authorPlan));
-
-    /** LoadData Plan test **/
-    byte[] loadDataPlanBytesTest = PhysicalPlanLogTransfer.operatorToLog(loadDataPlan);
-    LoadDataPlan loadDataPlanTest = (LoadDataPlan) PhysicalPlanLogTransfer
-        .logToOperator(loadDataPlanBytesTest);
-    assertEquals(true, loadDataPlan.equals(loadDataPlanTest));
 
   }
 }

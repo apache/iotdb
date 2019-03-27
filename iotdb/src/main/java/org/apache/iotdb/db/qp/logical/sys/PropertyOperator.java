@@ -56,6 +56,51 @@ public class PropertyOperator extends RootOperator {
   }
 
   public enum PropertyType {
-    ADD_TREE, ADD_PROPERTY_LABEL, DELETE_PROPERTY_LABEL, ADD_PROPERTY_TO_METADATA, DEL_PROPERTY_FROM_METADATA
+    ADD_TREE, ADD_PROPERTY_LABEL, DELETE_PROPERTY_LABEL, ADD_PROPERTY_TO_METADATA, DEL_PROPERTY_FROM_METADATA;
+
+    /**
+     * deserialize short number.
+     *
+     * @param i short number
+     * @return NamespaceType
+     */
+    public static PropertyType deserialize(short i) {
+      switch (i) {
+        case 0:
+          return ADD_TREE;
+        case 1:
+          return ADD_PROPERTY_LABEL;
+        case 2:
+          return DELETE_PROPERTY_LABEL;
+        case 3:
+          return ADD_PROPERTY_TO_METADATA;
+        case 4:
+          return DEL_PROPERTY_FROM_METADATA;
+        default:
+          return null;
+      }
+    }
+
+    /**
+     * serialize.
+     *
+     * @return short number
+     */
+    public short serialize() {
+      switch (this) {
+        case ADD_TREE:
+          return 0;
+        case ADD_PROPERTY_LABEL:
+          return 1;
+        case DELETE_PROPERTY_LABEL:
+          return 2;
+        case ADD_PROPERTY_TO_METADATA:
+          return 3;
+        case DEL_PROPERTY_FROM_METADATA:
+          return 4;
+        default:
+          return 0;
+      }
+    }
   }
 }
