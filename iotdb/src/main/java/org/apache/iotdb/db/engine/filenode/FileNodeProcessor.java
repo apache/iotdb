@@ -59,6 +59,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.overflow.io.OverflowProcessor;
 import org.apache.iotdb.db.engine.pool.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
+import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -76,6 +77,7 @@ import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.sync.conf.Constans;
@@ -748,7 +750,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * query data.
    */
   public <T extends Comparable<T>> QueryDataSource query(String deviceId, String measurementId,
-      QueryContext context) throws FileNodeProcessorException {
+         QueryContext context) throws FileNodeProcessorException {
     // query overflow data
     MeasurementSchema mSchema;
     TSDataType dataType;
@@ -1352,6 +1354,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
         // overflow switch from merge to work
         overflowProcessor.switchMergeToWork();
+
         // write status to file
         isMerging = FileNodeProcessorStatus.NONE;
         synchronized (fileNodeProcessorStore) {
@@ -1406,15 +1409,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  private void deleteBufferWriteFiles(List<File> bufferwriteDirList, Set<String> bufferFiles) {
+  private void deleteBufferWriteFiles(List<File> bufferwriteDirList, Set<String> bufferFiles)
+      throws IOException {
     for (File bufferwriteDir : bufferwriteDirList) {
       File[] files = bufferwriteDir.listFiles();
       if (files == null) {
         continue;
       }
       for (File file : files) {
-        if (!bufferFiles.contains(file.getPath()) && !file.delete()) {
-          LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
+        if (!bufferFiles.contains(file.getPath())) {
+          FileReaderManager.getInstance().closeFileAndRemoveReader(file.getPath());
+          if (!file.delete()) {
+            LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
+          }
         }
       }
     }
@@ -1442,6 +1449,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     mergeDeleteLock.lock();
     QueryContext context = new QueryContext();
     try {
+      FileReaderManager.getInstance().increaseFileReaderReference(backupIntervalFile.getFilePath(),
+          true);
       for (String deviceId : backupIntervalFile.getStartTimeMap().keySet()) {
         // query one deviceId
         List<Path> pathList = new ArrayList<>();
@@ -1471,11 +1480,17 @@ public class FileNodeProcessor extends Processor implements IStatistic {
               .and(TimeFilter.gtEq(backupIntervalFile.getStartTime(deviceId)),
                   TimeFilter.ltEq(backupIntervalFile.getEndTime(deviceId)));
           SingleSeriesExpression seriesFilter = new SingleSeriesExpression(path, timeFilter);
+
+          for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource.getOverflowInsertFileList()) {
+            FileReaderManager.getInstance().increaseFileReaderReference(overflowInsertFile.getFilePath(),
+                false);
+          }
+
           IReader seriesReader = SeriesReaderFactory.getInstance()
               .createSeriesReaderForMerge(backupIntervalFile,
                   overflowSeriesDataSource, seriesFilter, context);
           numOfChunk += queryAndWriteSeries(seriesReader, path, seriesFilter, dataType,
-              startTimeMap, endTimeMap);
+              startTimeMap, endTimeMap, overflowSeriesDataSource);
         }
         if (mergeIsChunkGroupHasData) {
           // end the new rowGroupMetadata
@@ -1485,6 +1500,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         }
       }
     } finally {
+      FileReaderManager.getInstance().decreaseFileReaderReference(backupIntervalFile.getFilePath(),
+          true);
+
       if (mergeDeleteLock.isLocked()) {
         mergeDeleteLock.unlock();
       }
@@ -1505,7 +1523,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   private int queryAndWriteSeries(IReader seriesReader, Path path,
       SingleSeriesExpression seriesFilter, TSDataType dataType,
-      Map<String, Long> startTimeMap, Map<String, Long> endTimeMap)
+      Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
+      OverflowSeriesDataSource overflowSeriesDataSource)
       throws IOException {
     int numOfChunk = 0;
     try {
@@ -1551,7 +1570,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         seriesWriterImpl.writeToFileWriter(mergeFileWriter);
       }
     } finally {
-      seriesReader.close();
+      for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource.getOverflowInsertFileList()) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(overflowInsertFile.getFilePath(),
+                false);
+      }
     }
     return numOfChunk;
   }
