@@ -359,7 +359,7 @@ public class IoTDBMultiSeriesIT {
         if (time > 200900) {
           assertEquals("7777", value);
         }
-        // String ans = resultSet.getString(d0s1);
+        // String ans = resultSet.readString(d0s1);
         cnt++;
       }
       assertEquals(22800, cnt);

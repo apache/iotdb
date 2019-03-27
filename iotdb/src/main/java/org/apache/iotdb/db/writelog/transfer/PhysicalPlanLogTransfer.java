@@ -20,28 +20,35 @@ package org.apache.iotdb.db.writelog.transfer;
 
 import java.io.IOException;
 import java.nio.BufferOverflowException;
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.WALOverSizedException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 
 public class PhysicalPlanLogTransfer {
 
-  private PhysicalPlanLogTransfer(){}
+  private PhysicalPlanLogTransfer() {
+  }
 
   public static byte[] operatorToLog(PhysicalPlan plan) throws IOException {
     Codec<PhysicalPlan> codec;
-    switch (plan.getOperatorType()) {
-      case INSERT:
-        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.INSERT).codec;
-        break;
-      case UPDATE:
-        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.UPDATE).codec;
-        break;
-      case DELETE:
-        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.DELETE).codec;
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            "SystemLogOperator given is not supported. " + plan.getOperatorType());
+    if (plan instanceof InsertPlan) {
+      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.INSERT).codec;
+    } else if (plan instanceof UpdatePlan) {
+      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.UPDATE).codec;
+    } else if (plan instanceof DeletePlan) {
+      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.DELETE).codec;
+    } else if (plan instanceof MetadataPlan) {
+      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.METADATA).codec;
+    } else if (plan instanceof AuthorPlan) {
+      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.AUTHOR).codec;
+    } else {
+      throw new UnsupportedOperationException(
+          "SystemLogOperator given is not supported. " + plan.getOperatorType());
     }
     try {
       return codec.encode(plan);
