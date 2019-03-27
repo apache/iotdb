@@ -37,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.utils.ByteBufferUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -312,7 +313,7 @@ public class CodecInstances {
       if (permissionListLen != -1) {
         permissions = new HashSet<>(permissionListLen);
         for(int i =0 ; i < permissionListLen; i ++) {
-           permissions.add(buffer.getInt());
+          permissions.add(buffer.getInt());
         }
       }
       AuthorPlan authorPlan = null;
@@ -324,6 +325,37 @@ public class CodecInstances {
       }
       authorPlan.setPermissions(permissions);
       return authorPlan;
+    }
+  };
+
+  static final Codec<LoadDataPlan> loadDataPlanCodec = new Codec<LoadDataPlan>() {
+    ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
+
+    @Override
+    public byte[] encode(LoadDataPlan plan) {
+      int type = SystemLogOperator.LOADDATA;
+      if (localBuffer.get() == null) {
+        localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
+      }
+      ByteBuffer buffer = localBuffer.get();
+      buffer.clear();
+      buffer.put((byte) type);
+
+      ByteBufferUtils.putString(buffer, plan.getInputFilePath());
+      ByteBufferUtils.putString(buffer, plan.getMeasureType());
+
+      return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
+    }
+
+    @Override
+    public LoadDataPlan decode(byte[] bytes) throws IOException {
+      ByteBuffer buffer = ByteBuffer.wrap(bytes);
+
+      buffer.get(); // read and skip an int representing "type"
+
+      String inputFilePath = ByteBufferUtils.readString(buffer);
+      String measureType = ByteBufferUtils.readString(buffer);
+      return new LoadDataPlan(inputFilePath, measureType);
     }
   };
 
