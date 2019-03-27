@@ -35,9 +35,12 @@ import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.service.IoTDB;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Server {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
   private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
   private MetadataHolder metadataHolder;
   private Map<String, DataPartitionHolder> dataPartitionHolderMap;
@@ -58,9 +61,11 @@ public class Server {
     RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
     // TODO processor
     rpcServer.registerUserProcessor(new ChangeMetadataAsyncProcessor(this));
-    metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer);
+    metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer,true);
     metadataHolder.init();
     metadataHolder.start();
+
+    LOGGER.info("Metadata group has started.");
 
     dataPartitionHolderMap = new HashMap<>();
     Router router = Router.getInstance();
@@ -70,10 +75,11 @@ public class Server {
       PhysicalNode[] group = groups[i];
       String groupId = router.getGroupID(group);
       DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId,
-          RaftUtils.convertPhysicalNodeArrayToPeerIdArray(group), serverId, rpcServer);
+          RaftUtils.convertPhysicalNodeArrayToPeerIdArray(group), serverId, rpcServer, false);
       dataPartitionHolder.init();
       dataPartitionHolder.start();
       dataPartitionHolderMap.put(groupId, dataPartitionHolder);
+      LOGGER.info("{} group has started", groupId);
     }
 
   }

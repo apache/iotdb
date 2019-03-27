@@ -43,12 +43,14 @@ public class RaftService implements IService {
   private StateMachine fsm;
   private String groupId;
   private RaftGroupService raftGroupService;
+  private boolean startRpcServer;
 
-  public RaftService(String groupId, PeerId[] peerIds, PeerId serverId, RpcServer rpcServer, StateMachine fsm) {
+  public RaftService(String groupId, PeerId[] peerIds, PeerId serverId, RpcServer rpcServer, StateMachine fsm, boolean startRpcServer) {
     this.peerIdList = new ArrayList<>(peerIds.length);
     peerIdList.addAll(Arrays.asList(peerIds));
     this.fsm = fsm;
     this.groupId = groupId;
+    this.startRpcServer = startRpcServer;
     raftGroupService = new RaftGroupService(groupId, serverId, null, rpcServer);
   }
 
@@ -68,7 +70,7 @@ public class RaftService implements IService {
 
   @Override
   public void start() {
-    this.node = raftGroupService.start();
+    this.node = raftGroupService.start(startRpcServer);
   }
 
   @Override

@@ -19,12 +19,17 @@
 package org.apache.iotdb.cluster.config;
 
 import java.io.File;
+import java.io.IOException;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClusterConfig {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterConfig.class);
   public static final String CONFIG_NAME = "iotdb-cluster.properties";
   public static final String DEFAULT_NODE = "127.0.0.1:8888";
   public static final String METADATA_GROUP_ID = "metadata";
@@ -84,6 +89,13 @@ public class ClusterConfig {
     this.raftSnapshotPath = raftDir + File.separatorChar + DEFAULT_RAFT_SNAPSHOT_DIR;
     this.raftLogPath = raftDir + File.separatorChar + DEFAULT_RAFT_LOG_DIR;
     this.raftMetadataPath = raftDir + File.separatorChar + DEFAULT_RAFT_METADATA_DIR;
+    try {
+      FileUtils.forceMkdir(new File(this.raftSnapshotPath));
+      FileUtils.forceMkdir(new File(this.raftLogPath));
+      FileUtils.forceMkdir(new File(this.raftMetadataPath));
+    } catch (IOException e) {
+      LOGGER.warn("Raft dir already exists.");
+    }
   }
 
   public String[] getNodes() {

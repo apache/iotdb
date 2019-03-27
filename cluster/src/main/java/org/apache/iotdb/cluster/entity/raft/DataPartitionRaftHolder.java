@@ -30,11 +30,11 @@ public class DataPartitionRaftHolder extends DataPartitionHolder {
   private PeerId serverId;
   private DataStateMachine fsm;
 
-  public DataPartitionRaftHolder(String groupId, PeerId[] peerIds, PeerId serverId, RpcServer rpcServer) {
+  public DataPartitionRaftHolder(String groupId, PeerId[] peerIds, PeerId serverId, RpcServer rpcServer, boolean startRpcServer) {
     this.groupId = groupId;
     this.serverId = serverId;
     fsm = new DataStateMachine();
-    service = new RaftService(groupId, peerIds, serverId, rpcServer, fsm);
+    service = new RaftService(groupId, peerIds, serverId, rpcServer, fsm, startRpcServer);
   }
 
   public DataStateMachine getFsm() {
@@ -43,5 +43,21 @@ public class DataPartitionRaftHolder extends DataPartitionHolder {
 
   public void setFsm(DataStateMachine fsm) {
     this.fsm = fsm;
+  }
+
+  public String getGroupId() {
+    return groupId;
+  }
+
+  public void setGroupId(String groupId) {
+    this.groupId = groupId;
+  }
+
+  public PeerId getServerId() {
+    return serverId;
+  }
+
+  public void setServerId(PeerId serverId) {
+    this.serverId = serverId;
   }
 }

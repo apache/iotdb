@@ -30,10 +30,10 @@ public class MetadataRaftHolder extends MetadataHolder {
   private MetadataStateManchine fsm;
   private PeerId serverId;
 
-  public MetadataRaftHolder(PeerId[] peerIds, PeerId serverId, RpcServer rpcServer) throws AuthException {
+  public MetadataRaftHolder(PeerId[] peerIds, PeerId serverId, RpcServer rpcServer, boolean startRpcServer) throws AuthException {
     fsm = new MetadataStateManchine();
     this.serverId = serverId;
-    service = new RaftService(ClusterConfig.METADATA_GROUP_ID, peerIds, serverId, rpcServer, fsm);
+    service = new RaftService(ClusterConfig.METADATA_GROUP_ID, peerIds, serverId, rpcServer, fsm, startRpcServer);
   }
 
   public MetadataStateManchine getFsm() {

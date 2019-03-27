@@ -90,11 +90,11 @@ public class ClusterDescriptor {
       conf.setPort(Integer.parseInt(properties.getProperty("port",
           Integer.toString(conf.getPort()))));
 
-      conf.setIp(properties.getProperty("raft_log_path", conf.getRaftLogPath()));
+      conf.setRaftLogPath(properties.getProperty("raft_log_path", conf.getRaftLogPath()));
 
-      conf.setIp(properties.getProperty("raft_snapshot_path", conf.getRaftSnapshotPath()));
+      conf.setRaftSnapshotPath(properties.getProperty("raft_snapshot_path", conf.getRaftSnapshotPath()));
 
-      conf.setIp(properties.getProperty("raft_metadata_path", conf.getRaftMetadataPath()));
+      conf.setRaftMetadataPath(properties.getProperty("raft_metadata_path", conf.getRaftMetadataPath()));
 
       conf.setMaxCatchUpLogNum(Integer
           .parseInt(properties.getProperty("max_catch_up_log_num",
