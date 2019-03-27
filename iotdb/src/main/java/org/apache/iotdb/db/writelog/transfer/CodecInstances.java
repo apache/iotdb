@@ -41,12 +41,12 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
-import org.apache.iotdb.db.utils.ByteBufferUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class CodecInstances {
 
@@ -55,6 +55,49 @@ public class CodecInstances {
   private CodecInstances() {
   }
 
+
+  /**
+   * Put a string to ByteBuffer, first put a int which represents the bytes len of string, then put
+   * the bytes of string to ByteBuffer, string may be null
+   *
+   * @param buffer Target ByteBuffer to put a string value
+   * @param value String value to be put
+   */
+  static void putString(ByteBuffer buffer, String value) {
+    if(value == null){
+      buffer.putInt(-1);
+    }else{
+      ReadWriteIOUtils.write(value, buffer);
+    }
+  }
+
+  /**
+   * Read a string value from ByteBuffer, first read a int that represents the bytes len of string,
+   * then read bytes len value, finally transfer bytes to string, string may be null
+   *
+   * @param buffer ByteBuffer to be read
+   * @return string value
+   */
+  static String readString(ByteBuffer buffer) {
+    int valueLen = buffer.getInt();
+    if(valueLen == -1)
+      return null;
+    return ReadWriteIOUtils.readStringWithoutLength(buffer, valueLen);
+  }
+
+  /**
+   * Check if ByteBuffer is initialized and put type
+   */
+  static void checkBufferAndPutType(ThreadLocal<ByteBuffer> localBuffer, int type) {
+    if (localBuffer.get() == null) {
+      localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
+    }
+
+    ByteBuffer buffer = localBuffer.get();
+    buffer.clear();
+    buffer.put((byte) type);
+  }
+  
   static final Codec<DeletePlan> deletePlanCodec = new Codec<DeletePlan>() {
     ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
 
@@ -69,7 +112,7 @@ public class CodecInstances {
       buffer.clear();
       buffer.put((byte) type);
       buffer.putLong(t.getDeleteTime());
-      ByteBufferUtils.putString(buffer, t.getPaths().get(0).getFullPath());
+      putString(buffer, t.getPaths().get(0).getFullPath());
 
       return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
     }
@@ -80,7 +123,7 @@ public class CodecInstances {
       buffer.get(); // read  and skip an int representing "type".
       long time = buffer.getLong();
 
-      String path = ByteBufferUtils.readString(buffer);
+      String path = readString(buffer);
 
       return new DeletePlan(time, new Path(path));
     }
@@ -92,21 +135,16 @@ public class CodecInstances {
     @Override
     public byte[] encode(UpdatePlan updatePlan) {
       int type = SystemLogOperator.UPDATE;
-      if (localBuffer.get() == null) {
-        localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
-      }
-
+      checkBufferAndPutType(localBuffer, type);
       ByteBuffer buffer = localBuffer.get();
-      buffer.clear();
-      buffer.put((byte) type);
       buffer.putInt(updatePlan.getIntervals().size());
       for (Pair<Long, Long> pair : updatePlan.getIntervals()) {
         buffer.putLong(pair.left);
         buffer.putLong(pair.right);
       }
 
-      ByteBufferUtils.putString(buffer, updatePlan.getValue());
-      ByteBufferUtils.putString(buffer, updatePlan.getPath().getFullPath());
+      putString(buffer, updatePlan.getValue());
+      putString(buffer, updatePlan.getPath().getFullPath());
 
       return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
     }
@@ -124,8 +162,8 @@ public class CodecInstances {
         timeArrayList.add(new Pair<>(startTime, endTime));
       }
 
-      String value = ByteBufferUtils.readString(buffer);
-      String path = ByteBufferUtils.readString(buffer);
+      String value = readString(buffer);
+      String path = readString(buffer);
 
       return new UpdatePlan(timeArrayList, value, new Path(path));
     }
@@ -137,27 +175,23 @@ public class CodecInstances {
     @Override
     public byte[] encode(InsertPlan plan) {
       int type = SystemLogOperator.INSERT;
-      if (localBuffer.get() == null) {
-        localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
-      }
+      checkBufferAndPutType(localBuffer, type);
       ByteBuffer buffer = localBuffer.get();
-      buffer.clear();
-      buffer.put((byte) type);
       buffer.put((byte) plan.getInsertType());
       buffer.putLong(plan.getTime());
 
-      ByteBufferUtils.putString(buffer, plan.getDeviceId());
+      putString(buffer, plan.getDeviceId());
 
       List<String> measurementList = plan.getMeasurements();
       buffer.putInt(measurementList.size());
       for (String m : measurementList) {
-        ByteBufferUtils.putString(buffer, m);
+        putString(buffer, m);
       }
 
       List<String> valueList = plan.getValues();
       buffer.putInt(valueList.size());
       for (String m : valueList) {
-        ByteBufferUtils.putString(buffer, m);
+        putString(buffer, m);
       }
 
       return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
@@ -171,18 +205,18 @@ public class CodecInstances {
       int insertType = buffer.get();
       long time = buffer.getLong();
 
-      String device = ByteBufferUtils.readString(buffer);
+      String device = readString(buffer);
 
       int mmListLength = buffer.getInt();
       List<String> measurementsList = new ArrayList<>(mmListLength);
       for (int i = 0; i < mmListLength; i++) {
-        measurementsList.add(ByteBufferUtils.readString(buffer));
+        measurementsList.add(readString(buffer));
       }
 
       int valueListLength = buffer.getInt();
       List<String> valuesList = new ArrayList<>(valueListLength);
       for (int i = 0; i < valueListLength; i++) {
-        valuesList.add(ByteBufferUtils.readString(buffer));
+        valuesList.add(readString(buffer));
       }
 
       InsertPlan ans = new InsertPlan(device, time, measurementsList, valuesList);
@@ -197,19 +231,39 @@ public class CodecInstances {
     @Override
     public byte[] encode(MetadataPlan plan) {
       int type = SystemLogOperator.METADATA;
-      if (localBuffer.get() == null) {
-        localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
-      }
+      checkBufferAndPutType(localBuffer, type);
       ByteBuffer buffer = localBuffer.get();
-      buffer.clear();
-      buffer.put((byte) type);
-      buffer.put((byte) plan.getNamespaceType().serialize());
-      buffer.put((byte) plan.getDataType().serialize());
-      buffer.put((byte) plan.getCompressor().serialize());
-      buffer.put((byte) plan.getEncoding().serialize());
+
+      MetadataOperator.NamespaceType namespaceType = plan.getNamespaceType();
+      if (namespaceType != null) {
+        buffer.put((byte) plan.getNamespaceType().serialize());
+      } else {
+        buffer.put((byte) -1);
+      }
+
+      TSDataType dataType = plan.getDataType();
+      if (dataType != null) {
+        buffer.put((byte) plan.getDataType().serialize());
+      } else {
+        buffer.put((byte) -1);
+      }
+
+      CompressionType compressionType = plan.getCompressor();
+      if (compressionType != null) {
+        buffer.put((byte) plan.getCompressor().serialize());
+      } else {
+        buffer.put((byte) -1);
+      }
+
+      TSEncoding tsEncoding = plan.getEncoding();
+      if (tsEncoding != null) {
+        buffer.put((byte) plan.getEncoding().serialize());
+      } else {
+        buffer.put((byte) -1);
+      }
 
       String path = plan.getPath().toString();
-      ByteBufferUtils.putString(buffer, path);
+      putString(buffer, path);
 
       List<Path> deletePathList = plan.getDeletePathList();
       if (deletePathList == null) {
@@ -217,15 +271,19 @@ public class CodecInstances {
       } else {
         buffer.putInt(deletePathList.size());
         for (Path deletePath : deletePathList) {
-          ByteBufferUtils.putString(buffer, deletePath.toString());
+          putString(buffer, deletePath.toString());
         }
       }
 
       Map<String, String> props = plan.getProps();
-      buffer.putInt(props.size());
-      for (Entry<String, String> entry : props.entrySet()) {
-        ByteBufferUtils.putString(buffer, entry.getKey());
-        ByteBufferUtils.putString(buffer, entry.getValue());
+      if (props != null) {
+        buffer.putInt(props.size());
+        for (Entry<String, String> entry : props.entrySet()) {
+          putString(buffer, entry.getKey());
+          putString(buffer, entry.getValue());
+        }
+      } else {
+        buffer.putInt(-1);
       }
 
       return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
@@ -237,26 +295,48 @@ public class CodecInstances {
 
       buffer.get(); // read and skip an int representing "type"
 
-      MetadataOperator.NamespaceType namespaceType = MetadataOperator.NamespaceType
-          .deserialize(buffer.get());
-      TSDataType dataType = TSDataType.deserialize(buffer.get());
-      CompressionType compressor = CompressionType.deserialize(buffer.get());
-      TSEncoding encoding = TSEncoding.deserialize(buffer.get());
+      byte namespaceTypeByte = buffer.get();
+      MetadataOperator.NamespaceType namespaceType = null;
+      if (namespaceTypeByte != -1) {
+        namespaceType = MetadataOperator.NamespaceType
+            .deserialize(namespaceTypeByte);
+      }
 
-      String path = ByteBufferUtils.readString(buffer);
+      byte dataTypeByte = buffer.get();
+      TSDataType dataType = null;
+      if (dataTypeByte != -1) {
+        dataType = TSDataType.deserialize(dataTypeByte);
+      }
+
+      byte compressorByte = buffer.get();
+      CompressionType compressor = null;
+      if (compressorByte != -1) {
+        compressor = CompressionType.deserialize(compressorByte);
+      }
+
+      byte encodingByte = buffer.get();
+      TSEncoding encoding = null;
+      if (compressorByte != -1) {
+        encoding = TSEncoding.deserialize(encodingByte);
+      }
+
+      String path = readString(buffer);
       int pathListLen = buffer.getInt();
       List<Path> deletePathList = null;
       if (pathListLen != -1) {
         deletePathList = new ArrayList<>(pathListLen);
         for (int i = 0; i < pathListLen; i++) {
-          deletePathList.add(new Path(ByteBufferUtils.readString(buffer)));
+          deletePathList.add(new Path(readString(buffer)));
         }
       }
 
       int propsLen = buffer.getInt();
-      Map<String, String> props = new HashMap<>(propsLen);
-      for (int i = 0; i < propsLen; i++) {
-        props.put(ByteBufferUtils.readString(buffer), ByteBufferUtils.readString(buffer));
+      Map<String, String> props = null;
+      if (propsLen != -1) {
+        props = new HashMap<>(propsLen);
+        for (int i = 0; i < propsLen; i++) {
+          props.put(readString(buffer), readString(buffer));
+        }
       }
 
       return new MetadataPlan(namespaceType, new Path(path), dataType, compressor, encoding, props,
@@ -270,21 +350,17 @@ public class CodecInstances {
     @Override
     public byte[] encode(AuthorPlan plan) {
       int type = SystemLogOperator.AUTHOR;
-      if (localBuffer.get() == null) {
-        localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
-      }
+      checkBufferAndPutType(localBuffer, type);
       ByteBuffer buffer = localBuffer.get();
-      buffer.clear();
-      buffer.put((byte) type);
 
       int authorType = plan.getAuthorType().serialize();
       buffer.put((byte) authorType);
 
-      ByteBufferUtils.putString(buffer, plan.getUserName());
-      ByteBufferUtils.putString(buffer, plan.getRoleName());
-      ByteBufferUtils.putString(buffer, plan.getPassword());
-      ByteBufferUtils.putString(buffer, plan.getNewPassword());
-      ByteBufferUtils.putString(buffer, plan.getNodeName().toString());
+      putString(buffer, plan.getUserName());
+      putString(buffer, plan.getRoleName());
+      putString(buffer, plan.getPassword());
+      putString(buffer, plan.getNewPassword());
+      putString(buffer, plan.getNodeName().toString());
 
       Set<Integer> permissions = plan.getPermissions();
       if (permissions == null) {
@@ -305,11 +381,11 @@ public class CodecInstances {
       buffer.get(); // read and skip an int representing "type"
 
       AuthorOperator.AuthorType authorType = AuthorOperator.AuthorType.deserialize(buffer.get());
-      String userName = ByteBufferUtils.readString(buffer);
-      String roleName = ByteBufferUtils.readString(buffer);
-      String password = ByteBufferUtils.readString(buffer);
-      String newPassword = ByteBufferUtils.readString(buffer);
-      Path nodeName = new Path(ByteBufferUtils.readString(buffer));
+      String userName = readString(buffer);
+      String roleName = readString(buffer);
+      String password = readString(buffer);
+      String newPassword = readString(buffer);
+      Path nodeName = new Path(readString(buffer));
       Set<Integer> permissions = null;
       int permissionListLen = buffer.getInt();
       if (permissionListLen != -1) {
@@ -336,15 +412,11 @@ public class CodecInstances {
     @Override
     public byte[] encode(LoadDataPlan plan) {
       int type = SystemLogOperator.LOADDATA;
-      if (localBuffer.get() == null) {
-        localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
-      }
+      checkBufferAndPutType(localBuffer, type);
       ByteBuffer buffer = localBuffer.get();
-      buffer.clear();
-      buffer.put((byte) type);
 
-      ByteBufferUtils.putString(buffer, plan.getInputFilePath());
-      ByteBufferUtils.putString(buffer, plan.getMeasureType());
+      putString(buffer, plan.getInputFilePath());
+      putString(buffer, plan.getMeasureType());
 
       return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
     }
@@ -355,8 +427,8 @@ public class CodecInstances {
 
       buffer.get(); // read and skip an int representing "type"
 
-      String inputFilePath = ByteBufferUtils.readString(buffer);
-      String measureType = ByteBufferUtils.readString(buffer);
+      String inputFilePath = readString(buffer);
+      String measureType = readString(buffer);
       return new LoadDataPlan(inputFilePath, measureType);
     }
   };
@@ -367,20 +439,16 @@ public class CodecInstances {
     @Override
     public byte[] encode(PropertyPlan plan) {
       int type = SystemLogOperator.PROPERTY;
-      if (localBuffer.get() == null) {
-        localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
-      }
+      checkBufferAndPutType(localBuffer, type);
       ByteBuffer buffer = localBuffer.get();
-      buffer.clear();
-      buffer.put((byte) type);
 
       int propertyType = plan.getPropertyType().serialize();
       buffer.put((byte) propertyType);
 
       Path metadataPath = plan.getMetadataPath();
       Path propertyPath = plan.getPropertyPath();
-      ByteBufferUtils.putString(buffer, metadataPath == null ? null : metadataPath.toString());
-      ByteBufferUtils.putString(buffer, propertyPath == null ? null : propertyPath.toString());
+      putString(buffer, metadataPath == null ? null : metadataPath.toString());
+      putString(buffer, propertyPath == null ? null : propertyPath.toString());
 
       return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
     }
@@ -393,8 +461,8 @@ public class CodecInstances {
 
       PropertyOperator.PropertyType propertyType = PropertyOperator.PropertyType
           .deserialize(buffer.get());
-      String metadataPath = ByteBufferUtils.readString(buffer);
-      String propertyPath = ByteBufferUtils.readString(buffer);
+      String metadataPath = readString(buffer);
+      String propertyPath = readString(buffer);
       return new PropertyPlan(propertyType, propertyPath == null ? null : new Path(propertyPath),
           metadataPath == null ? null : new Path(metadataPath));
     }
