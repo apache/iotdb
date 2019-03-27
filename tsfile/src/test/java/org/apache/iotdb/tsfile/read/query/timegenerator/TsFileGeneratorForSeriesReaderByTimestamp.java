@@ -50,7 +50,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
       .getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
   public static TsFileWriter innerWriter;
   public static String inputDataFile;
-  public static String outputDataFile = "src/test/resources/testTsFile.tsfile";
+  public static String outputDataFile = "target/testTsFile.tsfile";
   public static String errorOutputDataFile;
   public static JSONObject jsonSchema;
   private static int rowCount;
@@ -69,8 +69,8 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   }
 
   public static void prepare() throws IOException {
-    inputDataFile = "src/test/resources/perTestInputData";
-    errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
+    inputDataFile = "target/perTestInputData";
+    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
     jsonSchema = generateTestData();
     generateSampleInputDataFile();
   }
