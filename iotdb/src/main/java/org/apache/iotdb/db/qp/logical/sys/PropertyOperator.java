@@ -99,7 +99,7 @@ public class PropertyOperator extends RootOperator {
         case DEL_PROPERTY_FROM_METADATA:
           return 4;
         default:
-          return 0;
+          return -1;
       }
     }
   }

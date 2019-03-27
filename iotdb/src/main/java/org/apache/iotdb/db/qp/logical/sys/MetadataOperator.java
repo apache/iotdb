@@ -144,8 +144,9 @@ public class MetadataOperator extends RootOperator {
         case DELETE_PATH:
           return 1;
         case SET_FILE_LEVEL:
+          return 2;
         default:
-          return 0;
+          return -1;
       }
     }
   }
