@@ -23,7 +23,6 @@ import java.io.IOException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
@@ -34,7 +33,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class FirstAggrFunc extends AggregateFunction {
 
   public FirstAggrFunc(TSDataType dataType) {
-    super(AggregationConstant.FIRST, dataType);
+    super(dataType);
   }
 
   @Override
@@ -62,7 +61,7 @@ public class FirstAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException {
     if (resultData.isSetTime()) {
       return;
     }
@@ -85,7 +84,7 @@ public class FirstAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException, ProcessorException {
+      long bound) throws IOException {
     if (resultData.isSetTime()) {
       return;
     }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.executor;
+package org.apache.iotdb.db.query.executor.groupby;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,20 +38,28 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-public class GroupByWithValueFilterDataSet extends GroupByEngine {
+public class GroupByWithValueFilterDataSetDataSet extends GroupByEngineDataSet {
 
   private List<EngineReaderByTimeStamp> allDataReaderList;
   private TimeGenerator timestampGenerator;
+  /**
+   * cached timestamp for next group by partition.
+   */
   private long timestamp;
+  /**
+   * if this object has cached timestamp for next group by partition.
+   */
   private boolean hasCachedTimestamp;
 
-  //group by batch calculation size.
+  /**
+   * group by batch calculation size.
+   */
   private int timeStampFetchSize;
 
   /**
    * constructor.
    */
-  public GroupByWithValueFilterDataSet(long jobId, List<Path> paths, long unit, long origin,
+  public GroupByWithValueFilterDataSetDataSet(long jobId, List<Path> paths, long unit, long origin,
       List<Pair<Long, Long>> mergedIntervals) {
     super(jobId, paths, unit, origin, mergedIntervals);
     this.allDataReaderList = new ArrayList<>();
@@ -75,8 +83,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
   @Override
   public RowRecord next() throws IOException {
     if (!hasCachedTimeInterval) {
-      throw new IOException(
-          "need to call hasNext() before calling next() in GroupByWithOnlyTimeFilterDataSet.");
+      throw new IOException("need to call hasNext() before calling next()"
+          + " in GroupByWithOnlyTimeFilterDataSetDataSet.");
     }
     hasCachedTimeInterval = false;
     for (AggregateFunction function : functions) {
@@ -95,7 +103,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
     }
 
     while (timestampGenerator.hasNext()) {
-      //construct timestamp list
+      // construct timestamp list
       for (int cnt = 1; cnt < timeStampFetchSize; cnt++) {
         if (!timestampGenerator.hasNext()) {
           break;
@@ -109,14 +117,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
         }
       }
 
-      //cal result using timestamp list
+      // cal result using timestamp list
       for (int i = 0; i < selectedSeries.size(); i++) {
         functions.get(i).calcAggregationUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
 
       timeArrayLength = 0;
-      //judge if it's end
+      // judge if it's end
       if (timestamp >= endTime) {
         hasCachedTimestamp = true;
         break;
@@ -124,7 +132,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
     }
 
     if (timeArrayLength > 0) {
-      //cal result using timestamp list
+      // cal result using timestamp list
       for (int i = 0; i < selectedSeries.size(); i++) {
         functions.get(i).calcAggregationUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
@@ -135,9 +143,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngine {
 
   private RowRecord constructRowRecord() {
     RowRecord record = new RowRecord(startTime);
-    for (int i = 0; i < functions.size(); i++) {
-      record.addField(getField(functions.get(i).getResult()));
-    }
+    functions.forEach(function -> record.addField(getField(function.getResult())));
     return record;
   }
 }

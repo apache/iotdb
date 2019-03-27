@@ -145,18 +145,18 @@ public class SeriesReaderFactory {
         singleSeriesExpression,
         tsFileResource.getFilePath());
 
-    // Sequence reader
+    // sequence reader
     IBatchReader seriesInTsFileReader = createSealedTsFileReaderForMerge(tsFileResource,
         singleSeriesExpression, context);
 
-    // UnSequence merge reader
+    // unSequence merge reader
     IPointReader unSeqMergeReader = createUnSeqMergeReader(overflowSeriesDataSource,
         singleSeriesExpression.getFilter());
     if (!seriesInTsFileReader.hasNext()) {
-      //only have unsequence data.
+      // only have unsequence data.
       return unSeqMergeReader;
     } else {
-      //merge sequence data with unsequence data.
+      // merge sequence data with unsequence data.
       return new AllDataReader(seriesInTsFileReader, unSeqMergeReader);
     }
 
@@ -185,6 +185,7 @@ public class SeriesReaderFactory {
 
   /**
    * construct ByTimestampReader, include sequential data and unsequential data.
+   *
    * @param jobId query jobId
    * @param paths selected series path
    * @param context query context

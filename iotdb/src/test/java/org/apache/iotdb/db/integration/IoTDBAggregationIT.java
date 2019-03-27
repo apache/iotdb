@@ -43,11 +43,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class IoTDBAggregationTestIT {
+public class IoTDBAggregationIT {
+
   private static IoTDB daemon;
 
   private static String[] creationSqls = new String[]{
-      "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
+      "SET STORAGE GROUP TO root.vehicle.d0",
+      "SET STORAGE GROUP TO root.vehicle.d1",
 
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
       "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
@@ -60,21 +62,27 @@ public class IoTDBAggregationTestIT {
       "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(1, 1.1, false, 11)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(2, 2.2, true, 22)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(3, 3.3, false, 33 )",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(4, 4.4, false, 44)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) values(5, 5.5, false, 55)"
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+          + "values(1, 1.1, false, 11)",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+          + "values(2, 2.2, true, 22)",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+          + "values(3, 3.3, false, 33 )",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+          + "values(4, 4.4, false, 44)",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+          + "values(5, 5.5, false, 55)"
   };
 
-  private String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3"
-      + ") VALUES(%d,%d,%d,%f,%s)";
+  private String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3)"
+      + " VALUES(%d,%d,%d,%f,%s)";
 
   private static final String TIMESTAMP_STR = "Time";
   private final String d0s0 = "root.vehicle.d0.s0";
   private final String d0s1 = "root.vehicle.d0.s1";
   private final String d0s2 = "root.vehicle.d0.s2";
   private final String d0s3 = "root.vehicle.d0.s3";
+  private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
 
   @Before
   public void setUp() throws Exception {
@@ -104,15 +112,18 @@ public class IoTDBAggregationTestIT {
     };
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select count(temperature) from root.ln.wf01.wt01 where time > 3");
+      boolean hasResultSet = statement.execute(
+          "select count(temperature) from root.ln.wf01.wt01 where time > 3");
 
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
       while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count("root.ln.wf01.wt01.temperature"));
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," +
+            resultSet.getString(count(TEMPERATURE_STR));
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -120,12 +131,14 @@ public class IoTDBAggregationTestIT {
       statement.close();
 
       statement = connection.createStatement();
-      hasResultSet = statement.execute("select min_time(temperature) from root.ln.wf01.wt01 where time > 3");
+      hasResultSet = statement.execute(
+          "select min_time(temperature) from root.ln.wf01.wt01 where time > 3");
 
       Assert.assertTrue(hasResultSet);
       resultSet = statement.getResultSet();
       while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_time("root.ln.wf01.wt01.temperature"));
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," +
+            resultSet.getString(min_time(TEMPERATURE_STR));
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -133,12 +146,14 @@ public class IoTDBAggregationTestIT {
       statement.close();
 
       statement = connection.createStatement();
-      hasResultSet = statement.execute("select min_time(temperature) from root.ln.wf01.wt01 where temperature > 3");
+      hasResultSet = statement.execute(
+          "select min_time(temperature) from root.ln.wf01.wt01 where temperature > 3");
 
       Assert.assertTrue(hasResultSet);
       resultSet = statement.getResultSet();
       while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_time("root.ln.wf01.wt01.temperature"));
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," +
+            resultSet.getString(min_time(TEMPERATURE_STR));
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -163,7 +178,8 @@ public class IoTDBAggregationTestIT {
     };
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3) " +
           "from root.vehicle.d0 where time >= 6000 and time <= 9000");
@@ -215,7 +231,8 @@ public class IoTDBAggregationTestIT {
     };
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute("select first(s0),first(s1),first(s2),first(s3) " +
           "from root.vehicle.d0 where time >= 1500 and time <= 9000");
@@ -268,7 +285,8 @@ public class IoTDBAggregationTestIT {
     };
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute("select last(s0),last(s2) " +
           "from root.vehicle.d0 where time >= 1500 and time < 9000");
@@ -333,7 +351,8 @@ public class IoTDBAggregationTestIT {
     };
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute("select max_time(s0),min_time(s2) " +
           "from root.vehicle.d0 where time >= 100 and time < 9000");
@@ -382,7 +401,8 @@ public class IoTDBAggregationTestIT {
     };
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute("select max_value(s0),min_value(s2) " +
           "from root.vehicle.d0 where time >= 100 and time < 9000");
@@ -431,7 +451,8 @@ public class IoTDBAggregationTestIT {
     };
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute("select sum(s0),mean(s2)" +
           "from root.vehicle.d0 where time >= 6000 and time <= 9000");

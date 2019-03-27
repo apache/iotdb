@@ -20,10 +20,8 @@ package org.apache.iotdb.db.query.reader.merge;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -55,7 +53,8 @@ public class SeriesMergeSortReaderTest {
   private void test(long[] retTimestamp, long[] retValue, long[]... sources) throws IOException {
     PriorityMergeReader seriesMergeSortReader = new PriorityMergeReader();
     for (int i = 0; i < sources.length; i++) {
-      seriesMergeSortReader.addReaderWithPriority(new FakedSeriesReader(sources[i], i + 1), i + 1);
+      seriesMergeSortReader.addReaderWithPriority(
+          new FakedSeriesReader(sources[i], i + 1), i + 1);
     }
 
     int i = 0;
@@ -90,7 +89,7 @@ public class SeriesMergeSortReaderTest {
     }
 
     @Override
-    public TimeValuePair current() throws IOException {
+    public TimeValuePair current() {
       return new TimeValuePair(timestamps[index], new TsPrimitiveType.TsLong(value));
     }
 

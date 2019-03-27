@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -37,8 +36,8 @@ public class MeanAggrFunc extends AggregateFunction {
   private int cnt = 0;
   private TSDataType seriesDataType;
 
-  public MeanAggrFunc(String name, TSDataType seriesDataType) {
-    super(name, TSDataType.DOUBLE);
+  public MeanAggrFunc(TSDataType seriesDataType) {
+    super(TSDataType.DOUBLE);
     this.seriesDataType = seriesDataType;
   }
 
@@ -59,14 +58,14 @@ public class MeanAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
+  public void calculateValueFromPageHeader(PageHeader pageHeader) {
     sum += pageHeader.getStatistics().getSum();
     cnt += pageHeader.getNumOfValues();
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException {
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       Object sumVal = null;
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
@@ -91,7 +90,7 @@ public class MeanAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException, ProcessorException {
+      long bound) throws IOException {
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       Object sumVal = null;
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {

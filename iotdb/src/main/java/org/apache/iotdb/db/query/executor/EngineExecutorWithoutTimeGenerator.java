@@ -99,7 +99,7 @@ public class EngineExecutorWithoutTimeGenerator {
         throw new FileNodeManagerException(e);
       }
 
-      //merge sequence data with unsequence data.
+      // merge sequence data with unsequence data.
       readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
     }
 
@@ -153,7 +153,7 @@ public class EngineExecutorWithoutTimeGenerator {
         throw new FileNodeManagerException(e);
       }
 
-      //merge sequence data with unsequence data.
+      // merge sequence data with unsequence data.
       readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
     }
 

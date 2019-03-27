@@ -149,13 +149,13 @@ public class AggregateEngineExecutor {
 
     while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
-      //judge if overlap with unsequence data
+      // judge if overlap with unsequence data
       if (canUseHeader(function, pageHeader, unSequenceReader, filter)) {
-        //cal by pageHeader
+        // cal by pageHeader
         function.calculateValueFromPageHeader(pageHeader);
         sequenceReader.skipPageData();
       } else {
-        //cal by pageData
+        // cal by pageData
         function.calculateValueFromPageData(sequenceReader.nextBatch(), unSequenceReader);
       }
 
@@ -164,7 +164,7 @@ public class AggregateEngineExecutor {
       }
     }
 
-    //cal with unsequence data
+    // cal with unsequence data
     if (unSequenceReader.hasNext()) {
       function.calculateValueFromUnsequenceReader(unSequenceReader);
     }
@@ -177,7 +177,7 @@ public class AggregateEngineExecutor {
   private boolean canUseHeader(AggregateFunction function, PageHeader pageHeader,
       IPointReader unSequenceReader, Filter filter)
       throws IOException, ProcessorException {
-    //if page data is memory data.
+    // if page data is memory data.
     if (pageHeader == null) {
       return false;
     }
@@ -191,7 +191,7 @@ public class AggregateEngineExecutor {
       return false;
     }
 
-    //cal unsequence data with timestamps between pages.
+    // cal unsequence data with timestamps between pages.
     function.calculateValueFromUnsequenceReader(unSequenceReader, minTime);
 
     if (unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= maxTime) {
@@ -215,27 +215,27 @@ public class AggregateEngineExecutor {
 
     while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
-      //judge if overlap with unsequence data
+      // judge if overlap with unsequence data
       if (canUseHeader(function, pageHeader, unSequenceReader, timeFilter)) {
-        //cal by pageHeader
+        // cal by pageHeader
         function.calculateValueFromPageHeader(pageHeader);
         sequenceReader.skipPageData();
 
         if (lastBatchTimeStamp > pageHeader.getMinTimestamp()) {
-          //the chunk is end.
+          // the chunk is end.
           break;
         } else {
-          //current page and last page are in the same chunk.
+          // current page and last page are in the same chunk.
           lastBatchTimeStamp = pageHeader.getMinTimestamp();
         }
       } else {
-        //cal by pageData
+        // cal by pageData
         BatchData batchData = sequenceReader.nextBatch();
         if (lastBatchTimeStamp > batchData.currentTime()) {
-          //the chunk is end.
+          // the chunk is end.
           break;
         } else {
-          //current page and last page are in the same chunk.
+          // current page and last page are in the same chunk.
           lastBatchTimeStamp = batchData.currentTime();
         }
         function.calculateValueFromPageData(batchData, unSequenceReader);
@@ -243,7 +243,7 @@ public class AggregateEngineExecutor {
       }
     }
 
-    //cal with unsequence data
+    // cal with unsequence data
     if (unSequenceReader.hasNext()) {
       function.calculateValueFromUnsequenceReader(unSequenceReader);
     }
@@ -289,7 +289,7 @@ public class AggregateEngineExecutor {
 
     while (timestampGenerator.hasNext()) {
 
-      //generate timestamps for aggregate
+      // generate timestamps for aggregate
       long[] timeArray = new long[aggregateFetchSize];
       int timeArrayLength = 0;
       for (int cnt = 0; cnt < aggregateFetchSize; cnt++) {
@@ -299,7 +299,7 @@ public class AggregateEngineExecutor {
         timeArray[timeArrayLength++] = timestampGenerator.next();
       }
 
-      //cal part of aggregate result
+      // cal part of aggregate result
       for (int i = 0; i < readersOfSelectedSeries.size(); i++) {
         aggregateFunctions.get(i).calcAggregationUsingTimestamps(timeArray, timeArrayLength,
             readersOfSelectedSeries.get(i));

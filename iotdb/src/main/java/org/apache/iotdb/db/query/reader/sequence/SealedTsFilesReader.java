@@ -60,7 +60,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
    * @param sealedTsFiles sealed file list
    * @param filter null if no filter
    * @param isReverse true-traverse chunks from behind forward, false-traverse chunks from front to
-   *        back.
+   * back.
    */
   public SealedTsFilesReader(Path seriesPath, List<TsFileResource> sealedTsFiles, Filter filter,
       QueryContext context, boolean isReverse) {
@@ -177,7 +177,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
   }
 
   @Override
-  public void skipPageData() throws IOException {
+  public void skipPageData() {
     seriesReader.skipPageData();
   }
 }

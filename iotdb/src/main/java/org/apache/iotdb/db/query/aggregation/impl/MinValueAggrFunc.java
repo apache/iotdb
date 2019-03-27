@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
@@ -34,7 +32,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class MinValueAggrFunc extends AggregateFunction {
 
   public MinValueAggrFunc(TSDataType dataType) {
-    super(AggregationConstant.MIN_VALUE, dataType);
+    super(dataType);
   }
 
   @Override
@@ -48,7 +46,7 @@ public class MinValueAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
+  public void calculateValueFromPageHeader(PageHeader pageHeader) {
     Comparable<Object> minVal = (Comparable<Object>) pageHeader.getStatistics().getMin();
     updateResult(minVal);
   }
@@ -91,7 +89,7 @@ public class MinValueAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException, ProcessorException {
+      long bound) throws IOException {
     Comparable<Object> minVal = null;
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {

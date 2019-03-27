@@ -29,6 +29,7 @@ import org.apache.iotdb.db.query.aggregation.impl.MeanAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MinValueAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.SumAggrFunc;
+import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -38,10 +39,9 @@ public class AggreFuncFactory {
 
   /**
    * construct AggregateFunction using factory pattern.
+   *
    * @param aggrFuncName function name.
    * @param dataType data type.
-   * @return
-   * @throws ProcessorException
    */
   public static AggregateFunction getAggrFuncByName(String aggrFuncName, TSDataType dataType)
       throws ProcessorException {
@@ -50,23 +50,23 @@ public class AggreFuncFactory {
     }
 
     switch (aggrFuncName.toLowerCase()) {
-      case AggregationConstant.MIN_TIME:
+      case StatisticConstant.MIN_TIME:
         return new MinTimeAggrFunc();
-      case AggregationConstant.MAX_TIME:
+      case StatisticConstant.MAX_TIME:
         return new MaxTimeAggrFunc();
-      case AggregationConstant.MIN_VALUE:
+      case StatisticConstant.MIN_VALUE:
         return new MinValueAggrFunc(dataType);
-      case AggregationConstant.MAX_VALUE:
+      case StatisticConstant.MAX_VALUE:
         return new MaxValueAggrFunc(dataType);
-      case AggregationConstant.COUNT:
+      case StatisticConstant.COUNT:
         return new CountAggrFunc();
-      case AggregationConstant.MEAN:
-        return new MeanAggrFunc(AggregationConstant.MEAN, dataType);
-      case AggregationConstant.FIRST:
+      case StatisticConstant.MEAN:
+        return new MeanAggrFunc(dataType);
+      case StatisticConstant.FIRST:
         return new FirstAggrFunc(dataType);
-      case AggregationConstant.SUM:
-        return new SumAggrFunc(AggregationConstant.SUM, dataType);
-      case AggregationConstant.LAST:
+      case StatisticConstant.SUM:
+        return new SumAggrFunc(dataType);
+      case StatisticConstant.LAST:
         return new LastAggrFunc(dataType);
       default:
         throw new ProcessorException(

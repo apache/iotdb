@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.integration.Constant.count;
 import static org.apache.iotdb.db.integration.Constant.first;
 import static org.apache.iotdb.db.integration.Constant.last;
 import static org.apache.iotdb.db.integration.Constant.max_time;
 import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.min_time;
-import static org.apache.iotdb.db.integration.Constant.count;
 import static org.apache.iotdb.db.integration.Constant.mean;
+import static org.apache.iotdb.db.integration.Constant.min_time;
 import static org.apache.iotdb.db.integration.Constant.min_value;
 import static org.apache.iotdb.db.integration.Constant.sum;
 import static org.junit.Assert.fail;
@@ -35,7 +35,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -47,7 +46,8 @@ import org.junit.Test;
 /**
  * Multiple aggregation with filter test.
  */
-public class IoTDBAggregationSmallDataTestIT {
+public class IoTDBAggregationSmallDataIT {
+
   private static final String TIMESTAMP_STR = "Time";
   private final String d0s0 = "root.vehicle.d0.s0";
   private final String d0s1 = "root.vehicle.d0.s1";
@@ -67,7 +67,6 @@ public class IoTDBAggregationSmallDataTestIT {
       "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
       "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
       "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-
 
       "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
       "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
@@ -149,10 +148,12 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),count(s4) " +
-          "from root.vehicle.d0 where time >= 3 and time <= 106");
+      boolean hasResultSet = statement.execute(
+          "select count(s0),count(s1),count(s2),count(s3),count(s4) " +
+              "from root.vehicle.d0 where time >= 3 and time <= 106");
 
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
@@ -189,11 +190,13 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
 
       //select count(d0.s0),count(d1.s1),count(d0.s3),count(d0.s4) from root.vehicle
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select count(d0.s0),count(d1.s1),count(d0.s3),count(d0.s4) from root.vehicle");
+      boolean hasResultSet = statement.execute(
+          "select count(d0.s0),count(d1.s1),count(d0.s3),count(d0.s4) from root.vehicle");
 
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
@@ -210,12 +213,14 @@ public class IoTDBAggregationSmallDataTestIT {
 
       //select max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) from root.vehicle
       statement = connection.createStatement();
-      hasResultSet = statement.execute("select max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) from root.vehicle");
+      hasResultSet = statement.execute(
+          "select max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) from root.vehicle");
       resultSet = statement.getResultSet();
       Assert.assertTrue(hasResultSet);
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
-            + "," + resultSet.getString(max_value(d1s1)) + "," + resultSet.getString(max_value(d0s3));
+            + "," + resultSet.getString(max_value(d1s1)) + ","
+            + resultSet.getString(max_value(d0s3));
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -224,7 +229,8 @@ public class IoTDBAggregationSmallDataTestIT {
 
       //select first(d0.s0),first(d1.s1),first(d0.s3) from root.vehicle
       statement = connection.createStatement();
-      hasResultSet = statement.execute("select first(d0.s0),first(d1.s1),first(d0.s3) from root.vehicle");
+      hasResultSet = statement.execute(
+          "select first(d0.s0),first(d1.s1),first(d0.s3) from root.vehicle");
       resultSet = statement.getResultSet();
       Assert.assertTrue(hasResultSet);
       while (resultSet.next()) {
@@ -238,7 +244,8 @@ public class IoTDBAggregationSmallDataTestIT {
 
       //select last(d0.s0),last(d1.s1),last(d0.s3) from root.vehicle
       statement = connection.createStatement();
-      hasResultSet = statement.execute("select last(d0.s0),last(d1.s1),last(d0.s3) from root.vehicle");
+      hasResultSet = statement.execute(
+          "select last(d0.s0),last(d1.s1),last(d0.s3) from root.vehicle");
       resultSet = statement.getResultSet();
       Assert.assertTrue(hasResultSet);
       while (resultSet.next()) {
@@ -283,15 +290,18 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select last(s0),last(s1) from root.vehicle.d0 where s2 >= 3.33");
-      //boolean hasResultSet = statement.execute("select count(s3) from root.vehicle.d0 where s1 >= 0");
+      boolean hasResultSet = statement.execute(
+          "select last(s0),last(s1) from root.vehicle.d0 where s2 >= 3.33");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
       while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0))+ "," + resultSet.getString(last(d0s1));
+        String ans =
+            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0)) + ","
+                + resultSet.getString(last(d0s1));
         //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
@@ -316,15 +326,18 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select first(s0),first(s1) from root.vehicle.d0 where s2 >= 3.33");
-      //boolean hasResultSet = statement.execute("select count(s3) from root.vehicle.d0 where s1 >= 0");
+      boolean hasResultSet = statement.execute(
+          "select first(s0),first(s1) from root.vehicle.d0 where s2 >= 3.33");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
       while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0))+ "," + resultSet.getString(first(d0s1));
+        String ans =
+            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0)) + ","
+                + resultSet.getString(first(d0s1));
         //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
@@ -349,16 +362,18 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select sum(s0),sum(s1),sum(s2) from root.vehicle.d0 where s2 >= 3.33");
-      //boolean hasResultSet = statement.execute("select count(s3) from root.vehicle.d0 where s1 >= 0");
+      boolean hasResultSet = statement.execute(
+          "select sum(s0),sum(s1),sum(s2) from root.vehicle.d0 where s2 >= 3.33");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
-            + "," + resultSet.getString(sum(d0s1)) + "," + Math.round(resultSet.getDouble(sum(d0s2)));
+            + "," + resultSet.getString(sum(d0s1)) + "," + Math
+            .round(resultSet.getDouble(sum(d0s2)));
         //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
@@ -383,16 +398,18 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select mean(s0),mean(s1),mean(s2) from root.vehicle.d0 where s2 >= 3.33");
-      //boolean hasResultSet = statement.execute("select count(s3) from root.vehicle.d0 where s1 >= 0");
+      boolean hasResultSet = statement.execute(
+          "select mean(s0),mean(s1),mean(s2) from root.vehicle.d0 where s2 >= 3.33");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(mean(d0s0))
-            + "," + Math.round(resultSet.getDouble(mean(d0s1))) + "," + Math.round(resultSet.getDouble(mean(d0s2)));
+            + "," + Math.round(resultSet.getDouble(mean(d0s1))) + ","
+            + Math.round(resultSet.getDouble(mean(d0s2)));
         //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
@@ -418,9 +435,11 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),count(s4) from root.vehicle.d0 where s2 >= 3.33");
+      boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),"
+          + "count(s4) from root.vehicle.d0 where s2 >= 3.33");
       // System.out.println(hasResultSet + "...");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
@@ -454,9 +473,11 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select min_time(s0),min_time(s1),min_time(s2),min_time(s3),min_time(s4) from root.vehicle.d0 " +
+      boolean hasResultSet = statement.execute("select min_time(s0),min_time(s1),min_time(s2)"
+          + ",min_time(s3),min_time(s4) from root.vehicle.d0 " +
           "where s1 < 50000 and s1 != 100");
 
       Assert.assertTrue(hasResultSet);
@@ -491,9 +512,11 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select max_time(s0),max_time(s1),max_time(s2),max_time(s3),max_time(s4) from root.vehicle.d0 " +
+      boolean hasResultSet = statement.execute("select max_time(s0),max_time(s1),max_time(s2)"
+          + ",max_time(s3),max_time(s4) from root.vehicle.d0 " +
           "where s1 < 50000 and s1 != 100");
 
       Assert.assertTrue(hasResultSet);
@@ -528,9 +551,11 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select min_value(s0),min_value(s1),min_value(s2),min_value(s3),min_value(s4) from root.vehicle.d0 " +
+      boolean hasResultSet = statement.execute("select min_value(s0),min_value(s1),min_value(s2)"
+          + ",min_value(s3),min_value(s4) from root.vehicle.d0 " +
           "where s1 < 50000 and s1 != 100");
       Assert.assertTrue(hasResultSet);
 
@@ -538,8 +563,10 @@ public class IoTDBAggregationSmallDataTestIT {
       int cnt = 0;
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value(d0s0))
-            + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(min_value(d0s2))
-            + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet.getString(min_value(d0s4));
+            + "," + resultSet.getString(min_value(d0s1)) +
+            "," + resultSet.getString(min_value(d0s2))
+            + "," + resultSet.getString(min_value(d0s3)) + ","
+            + resultSet.getString(min_value(d0s4));
         // System.out.println("============ " + ans);
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
@@ -566,9 +593,11 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select max_value(s0),max_value(s1),max_value(s2),max_value(s3),max_value(s4) from root.vehicle.d0 " +
+      boolean hasResultSet = statement.execute("select max_value(s0),max_value(s1),max_value(s2),"
+          + "max_value(s3),max_value(s4) from root.vehicle.d0 " +
           "where s1 < 50000 and s1 != 100");
 
       Assert.assertTrue(hasResultSet);
@@ -576,8 +605,10 @@ public class IoTDBAggregationSmallDataTestIT {
       int cnt = 0;
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
-            + "," + resultSet.getString(max_value(d0s1)) + "," + resultSet.getString(max_value(d0s2))
-            + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet.getString(max_value(d0s4));
+            + "," + resultSet.getString(max_value(d0s1)) + "," + resultSet
+            .getString(max_value(d0s2))
+            + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet
+            .getString(max_value(d0s4));
         //System.out.println("============ " + ans);
         //Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
@@ -603,9 +634,11 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute("select count(s0) from root.vehicle.d0 where s2 >= 3.33");
+      boolean hasResultSet = statement.execute(
+          "select count(s0) from root.vehicle.d0 where s2 >= 3.33");
       // System.out.println(hasResultSet + "...");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
@@ -654,7 +687,8 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute("select * from root");
       // System.out.println(hasResultSet + "...");
@@ -662,8 +696,9 @@ public class IoTDBAggregationSmallDataTestIT {
         ResultSet resultSet = statement.getResultSet();
         int cnt = 0;
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
-              + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d1s0);
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+              + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2) + "," +
+              resultSet.getString(d0s3) + "," + resultSet.getString(d1s0);
           // System.out.println(ans);
           Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
@@ -702,8 +737,8 @@ public class IoTDBAggregationSmallDataTestIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+      connection = DriverManager.getConnection
+          (Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
       for (String sql : sqls) {
         statement.execute(sql);

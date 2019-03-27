@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.executor;
+package org.apache.iotdb.db.query.executor.groupby;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-public abstract class GroupByEngine extends QueryDataSet {
+public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long jobId;
   protected List<Path> selectedSeries;
@@ -51,7 +51,7 @@ public abstract class GroupByEngine extends QueryDataSet {
   /**
    * groupBy query.
    */
-  public GroupByEngine(long jobId, List<Path> paths, long unit, long origin,
+  public GroupByEngineDataSet(long jobId, List<Path> paths, long unit, long origin,
       List<Pair<Long, Long>> mergedIntervals) {
     super(paths);
     this.jobId = jobId;
@@ -59,20 +59,19 @@ public abstract class GroupByEngine extends QueryDataSet {
     this.unit = unit;
     this.origin = origin;
     this.mergedIntervals = mergedIntervals;
-
     this.functions = new ArrayList<>();
 
-    //init group by time partition
+    // init group by time partition
     this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
     this.endTime = -1;
   }
 
   protected void initAggreFuction(List<String> aggres)
-      throws PathErrorException, ProcessorException{
+      throws PathErrorException, ProcessorException {
 
     List<TSDataType> types = new ArrayList<>();
-    //construct AggregateFunctions
+    // construct AggregateFunctions
     for (int i = 0; i < paths.size(); i++) {
       TSDataType tsDataType = MManager.getInstance()
           .getSeriesType(selectedSeries.get(i).getFullPath());
@@ -86,17 +85,17 @@ public abstract class GroupByEngine extends QueryDataSet {
 
   @Override
   public boolean hasNext() {
-    //has cached
+    // has cached
     if (hasCachedTimeInterval) {
       return true;
     }
 
-    //end
+    // end
     if (usedIndex >= mergedIntervals.size()) {
       return false;
     }
 
-    //skip the intervals in coverage of last time-partition
+    // skip the intervals in coverage of last time-partition
     while (usedIndex < mergedIntervals.size() && mergedIntervals.get(usedIndex).right < endTime) {
       usedIndex++;
     }
@@ -104,9 +103,9 @@ public abstract class GroupByEngine extends QueryDataSet {
       return false;
     }
 
-    //initialize the start-end time of next interval
+    // initialize the start-end time of next interval
     if (endTime < mergedIntervals.get(usedIndex).left) {
-      //interval start time
+      // interval start time
       startTime = mergedIntervals.get(usedIndex).left;
       if (origin > startTime) {
         endTime = origin - (origin - startTime) / unit * unit;
@@ -117,7 +116,7 @@ public abstract class GroupByEngine extends QueryDataSet {
       return true;
     }
 
-    //current interval is not covered yet
+    // current interval is not covered yet
     if (endTime <= mergedIntervals.get(usedIndex).right) {
       startTime = endTime;
       endTime += unit;

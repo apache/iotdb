@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -27,7 +26,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class FakedIPointReader implements IPointReader{
+public class FakedIPointReader implements IPointReader {
 
   private Iterator<TimeValuePair> iterator;
   private boolean hasCachedTimeValuePair = false;
@@ -45,13 +44,13 @@ public class FakedIPointReader implements IPointReader{
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
     return hasCachedTimeValuePair || iterator.hasNext();
   }
 
   @Override
-  public TimeValuePair next() throws IOException {
-    if (hasCachedTimeValuePair){
+  public TimeValuePair next() {
+    if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
     }
@@ -59,8 +58,8 @@ public class FakedIPointReader implements IPointReader{
   }
 
   @Override
-  public TimeValuePair current() throws IOException {
-    if(hasCachedTimeValuePair){
+  public TimeValuePair current() {
+    if (hasCachedTimeValuePair) {
       return cachedTimeValuePair;
     }
     cachedTimeValuePair = iterator.next();
@@ -69,7 +68,7 @@ public class FakedIPointReader implements IPointReader{
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
 
   }
 }

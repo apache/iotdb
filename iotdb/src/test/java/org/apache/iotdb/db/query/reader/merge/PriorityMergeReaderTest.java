@@ -23,11 +23,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -75,7 +73,8 @@ public class PriorityMergeReaderTest {
       List<TimeValuePair> list = new ArrayList<>();
       for (int i = 0; i < size; i++) {
         list.add(
-            new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, time % modValue)));
+            new TimeValuePair(time,
+                TsPrimitiveType.getByType(TSDataType.INT64, time % modValue)));
         // System.out.println(time + "," + time % modValue);
         time += interval;
       }

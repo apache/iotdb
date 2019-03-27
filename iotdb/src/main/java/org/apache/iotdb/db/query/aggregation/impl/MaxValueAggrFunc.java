@@ -23,7 +23,6 @@ import java.io.IOException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
@@ -34,7 +33,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class MaxValueAggrFunc extends AggregateFunction {
 
   public MaxValueAggrFunc(TSDataType dataType) {
-    super(AggregationConstant.MAX_VALUE, dataType);
+    super(dataType);
   }
 
   @Override

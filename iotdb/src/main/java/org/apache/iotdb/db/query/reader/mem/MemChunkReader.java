@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.mem;
 
-import java.io.IOException;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
@@ -77,7 +76,7 @@ public class MemChunkReader implements IPointReader, IBatchReader, IAggregateRea
   }
 
   @Override
-  public TimeValuePair current() throws IOException {
+  public TimeValuePair current() {
     if (!hasCachedTimeValuePair) {
       cachedTimeValuePair = timeValuePairIterator.next();
       hasCachedTimeValuePair = true;
@@ -86,7 +85,7 @@ public class MemChunkReader implements IPointReader, IBatchReader, IAggregateRea
   }
 
   @Override
-  public BatchData nextBatch() throws IOException {
+  public BatchData nextBatch() {
     BatchData batchData = new BatchData(dataType, true);
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
@@ -110,12 +109,12 @@ public class MemChunkReader implements IPointReader, IBatchReader, IAggregateRea
   }
 
   @Override
-  public PageHeader nextPageHeader() throws IOException {
+  public PageHeader nextPageHeader() {
     return null;
   }
 
   @Override
-  public void skipPageData() throws IOException {
+  public void skipPageData() {
     nextBatch();
   }
 }

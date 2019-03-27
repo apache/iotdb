@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;

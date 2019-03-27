@@ -49,7 +49,7 @@ public class UnSealedTsFileReader implements IBatchReader, IAggregateReader {
    * @param unsealedTsFile -param to initial
    * @param filter -filter
    * @param isReverse true-traverse chunks from behind forward; false-traverse chunks from front to
-   *        back;
+   * back;
    */
   public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile, Filter filter, boolean isReverse)
       throws IOException {
@@ -95,7 +95,7 @@ public class UnSealedTsFileReader implements IBatchReader, IAggregateReader {
   }
 
   @Override
-  public void skipPageData() throws IOException {
+  public void skipPageData() {
     unSealedReader.skipPageData();
   }
 }

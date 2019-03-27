@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
@@ -34,7 +32,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class MinTimeAggrFunc extends AggregateFunction {
 
   public MinTimeAggrFunc() {
-    super(AggregationConstant.MIN_TIME, TSDataType.INT64);
+    super(TSDataType.INT64);
   }
 
   @Override
@@ -48,7 +46,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
+  public void calculateValueFromPageHeader(PageHeader pageHeader) {
     if (resultData.isSetValue()) {
       return;
     }
@@ -58,7 +56,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException {
     if (resultData.isSetValue()) {
       return;
     }
@@ -113,7 +111,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException {
     if (resultData.isSetValue()) {
       return;
     }
@@ -125,7 +123,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
-      throws IOException, ProcessorException {
+      throws IOException {
     if (resultData.isSetValue()) {
       return;
     }

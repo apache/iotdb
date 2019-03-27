@@ -24,11 +24,5 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 
 public interface IPointReader extends IReader {
 
-  boolean hasNext() throws IOException;
-
-  TimeValuePair next() throws IOException;
-
   TimeValuePair current() throws IOException;
-
-  void close() throws IOException;
 }

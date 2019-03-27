@@ -62,7 +62,6 @@ public class TimeValuePairUtils {
   public static TimeValuePair getCurrentTimeValuePair(AggreResultData data) {
     switch (data.getDataType()) {
       case INT32:
-
         return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsInt(data.getIntRet()));
       case INT64:
         return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsLong(data.getLongRet()));

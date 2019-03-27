@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -40,12 +39,14 @@ public class FakedIBatchPoint implements IBatchReader {
 
   private TimeValuePair timeValuePair;
 
-  public FakedIBatchPoint(long startTime, int size, int interval, int modValue, boolean hasEmptyBatch) {
+  public FakedIBatchPoint(long startTime, int size, int interval, int modValue,
+      boolean hasEmptyBatch) {
     long time = startTime;
     List<TimeValuePair> list = new ArrayList<>();
     for (int i = 0; i < size; i++) {
       list.add(
-          new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, time % modValue)));
+          new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64,
+              time % modValue)));
       time += interval;
     }
     iterator = list.iterator();
@@ -59,11 +60,11 @@ public class FakedIBatchPoint implements IBatchReader {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
-    if(hasCachedBatchData){
+  public boolean hasNext() {
+    if (hasCachedBatchData) {
       return true;
     }
-    if(iterator.hasNext()){
+    if (iterator.hasNext()) {
       constructBatchData();
       hasCachedBatchData = true;
       return true;
@@ -72,12 +73,11 @@ public class FakedIBatchPoint implements IBatchReader {
   }
 
   @Override
-  public BatchData nextBatch() throws IOException {
-    if(hasCachedBatchData){
+  public BatchData nextBatch() {
+    if (hasCachedBatchData) {
       hasCachedBatchData = false;
       return batchData;
-    }
-    else {
+    } else {
       constructBatchData();
       return batchData;
     }
@@ -85,23 +85,23 @@ public class FakedIBatchPoint implements IBatchReader {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
 
   }
 
-  private void constructBatchData(){
+  private void constructBatchData() {
     int num = random.nextInt(10);
-    if(!hasEmptyBatch){
-      num+=1;
+    if (!hasEmptyBatch) {
+      num += 1;
     }
-    batchData = new BatchData(TSDataType.INT64,true);
-    while (num > 0 && iterator.hasNext()){
+    batchData = new BatchData(TSDataType.INT64, true);
+    while (num > 0 && iterator.hasNext()) {
       timeValuePair = iterator.next();
       batchData.putTime(timeValuePair.getTimestamp());
       batchData.putLong(timeValuePair.getValue().getLong());
       num--;
     }
-    if(!hasEmptyBatch){
+    if (!hasEmptyBatch) {
       Assert.assertTrue(batchData.hasNext());
     }
   }

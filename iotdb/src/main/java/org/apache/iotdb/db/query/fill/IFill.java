@@ -100,23 +100,23 @@ public abstract class IFill {
     }
 
     @Override
-    public boolean hasNext() throws IOException {
+    public boolean hasNext() {
       return !isUsed;
     }
 
     @Override
-    public TimeValuePair next() throws IOException {
+    public TimeValuePair next() {
       isUsed = true;
       return pair;
     }
 
     @Override
-    public TimeValuePair current() throws IOException {
+    public TimeValuePair current() {
       return pair;
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
 
     }
   }

@@ -65,7 +65,7 @@ public class EngineChunkReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair current() throws IOException {
+  public TimeValuePair current() {
     return TimeValuePairUtils.getCurrentTimeValuePair(data);
   }
 

@@ -29,20 +29,17 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public abstract class AggregateFunction {
 
-  protected String name;
   protected AggreResultData resultData;
-  protected TSDataType resultDataType;
+  private TSDataType resultDataType;
 
   /**
    * construct.
    *
-   * @param name aggregate function name.
    * @param dataType result data type.
    */
-  public AggregateFunction(String name, TSDataType dataType) {
-    this.name = name;
+  public AggregateFunction(TSDataType dataType) {
     this.resultDataType = dataType;
-    resultData = new AggreResultData(dataType);
+    this.resultData = new AggreResultData(dataType);
   }
 
   public abstract void init();
@@ -116,7 +113,6 @@ public abstract class AggregateFunction {
    * </p>
    *
    * @throws IOException TsFile data read error
-   * @throws ProcessorException wrong aggregation method parameter
    */
   public abstract void calcAggregationUsingTimestamps(long[] timestamps, int length,
       EngineReaderByTimeStamp dataReader) throws IOException;

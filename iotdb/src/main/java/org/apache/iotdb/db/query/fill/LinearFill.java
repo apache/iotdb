@@ -99,7 +99,7 @@ public class LinearFill extends IFill {
       afterPair = allDataReader.next();
     }
 
-    //if afterRange equals -1, this means that there is no time-bound filling.
+    // if afterRange equals -1, this means that there is no time-bound filling.
     if (afterRange == -1) {
       return new TimeValuePairPointReader(average(beforePair, afterPair));
     }
@@ -110,7 +110,7 @@ public class LinearFill extends IFill {
     return new TimeValuePairPointReader(average(beforePair, afterPair));
   }
 
-  //returns the average of two points
+  // returns the average of two points
   private TimeValuePair average(TimeValuePair beforePair, TimeValuePair afterPair) {
     double totalTimeLength = afterPair.getTimestamp() - beforePair.getTimestamp();
     double beforeTimeLength = queryTime - beforePair.getTimestamp();

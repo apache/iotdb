@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -35,7 +33,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class LastAggrFunc extends AggregateFunction {
 
   public LastAggrFunc(TSDataType dataType) {
-    super(AggregationConstant.LAST, dataType);
+    super(dataType);
   }
 
   @Override
@@ -52,20 +50,20 @@ public class LastAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
+  public void calculateValueFromPageHeader(PageHeader pageHeader) {
     Object lastVal = pageHeader.getStatistics().getLast();
     updateLastResult(pageHeader.getMaxTimestamp(), lastVal);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException {
     calculateValueFromPageData(dataInThisPage, unsequenceReader, Long.MAX_VALUE);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException, ProcessorException {
+      long bound) throws IOException {
     long time = -1;
     Object lastVal = null;
     while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
@@ -85,7 +83,7 @@ public class LastAggrFunc extends AggregateFunction {
       }
     }
 
-    //has inited lastVal and time in the batch(dataInThisPage).
+    // has inited lastVal and time in the batch(dataInThisPage).
     if (time != -1) {
       updateLastResult(time, lastVal);
     }
@@ -93,7 +91,7 @@ public class LastAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException {
     TimeValuePair pair = null;
     while (unsequenceReader.hasNext()) {
       pair = unsequenceReader.next();

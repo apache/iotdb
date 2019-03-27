@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.executor;
+package org.apache.iotdb.db.query.executor.groupby;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -46,7 +46,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
+public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSet {
 
   protected List<IPointReader> unSequenceReaderList;
   protected List<IAggregateReader> sequenceReaderList;
@@ -57,8 +57,8 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
   /**
    * constructor.
    */
-  public GroupByWithOnlyTimeFilterDataSet(long jobId, List<Path> paths, long unit, long origin,
-      List<Pair<Long, Long>> mergedIntervals) {
+  public GroupByWithOnlyTimeFilterDataSetDataSet(long jobId, List<Path> paths, long unit,
+      long origin, List<Pair<Long, Long>> mergedIntervals) {
     super(jobId, paths, unit, origin, mergedIntervals);
     this.unSequenceReaderList = new ArrayList<>();
     this.sequenceReaderList = new ArrayList<>();
@@ -77,7 +77,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
       throws FileNodeManagerException, PathErrorException, ProcessorException, IOException {
     initAggreFuction(aggres);
-    //init reader
+    // init reader
     QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
@@ -103,8 +103,8 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
   @Override
   public RowRecord next() throws IOException {
     if (!hasCachedTimeInterval) {
-      throw new IOException(
-          "need to call hasNext() before calling next() in GroupByWithOnlyTimeFilterDataSet.");
+      throw new IOException("need to call hasNext() before calling next() "
+          + "in GroupByWithOnlyTimeFilterDataSetDataSet.");
     }
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(startTime);
@@ -124,6 +124,11 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
     return record;
   }
 
+  /**
+   * calculate the group by result of the series indexed by idx.
+   *
+   * @param idx series id
+   */
   private AggreResultData nextSeries(int idx) throws IOException, ProcessorException {
     IPointReader unsequenceReader = unSequenceReaderList.get(idx);
     IAggregateReader sequenceReader = sequenceReaderList.get(idx);
@@ -131,12 +136,12 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
     function.init();
     boolean finishCheckSequenceData = false;
 
-    //skip the points with timestamp less than startTime
-    skipExessData(idx, sequenceReader, unsequenceReader);
+    // skip the points with timestamp less than startTime
+    skipBeforeStartTimeData(idx, sequenceReader, unsequenceReader);
 
     BatchData batchData = batchDataList.get(idx);
     boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
-    //there was unprocessed data in last batch
+    // there was unprocessed data in last batch
     if (hasCachedSequenceData && batchData.hasNext()) {
       function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
     }
@@ -148,30 +153,30 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
     }
 
     if (finishCheckSequenceData) {
-      //check unsequence data
+      // check unsequence data
       function.calculateValueFromUnsequenceReader(unsequenceReader, endTime);
       return function.getResult().deepCopy();
     }
 
-    //continue checking sequence data
+    // continue checking sequence data
     while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
 
-      //memory data
+      // memory data
       if (pageHeader == null) {
         batchData = sequenceReader.nextBatch();
         function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
-        //no point in sequence data with a timestamp less than endTime
+        // no point in sequence data with a timestamp less than endTime
         if (batchData.hasNext()) {
           hasCachedSequenceData = true;
           break;
         }
       }
 
-      //page data
+      // page data
       long minTime = pageHeader.getMinTimestamp();
       long maxTime = pageHeader.getMaxTimestamp();
-      //no point in sequence data with a timestamp less than endTime
+      // no point in sequence data with a timestamp less than endTime
       if (minTime >= endTime) {
         hasCachedSequenceData = true;
         batchData = sequenceReader.nextBatch();
@@ -179,11 +184,11 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
       }
 
       if (canUseHeader(minTime, maxTime, unsequenceReader, function)) {
-        //cal using page header
+        // cal using page header
         function.calculateValueFromPageHeader(pageHeader);
         sequenceReader.skipPageData();
       } else {
-        //cal using page data
+        // cal using page data
         batchData = sequenceReader.nextBatch();
         function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
         if (batchData.hasNext()) {
@@ -200,19 +205,26 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
     return function.getResult().deepCopy();
   }
 
-  //skip the points with timestamp less than startTime
-  private void skipExessData(int idx, IAggregateReader sequenceReader,
+  /**
+   * skip the points with timestamp less than startTime.
+   *
+   * @param idx the index of series
+   * @param sequenceReader sequence Reader
+   * @param unsequenceReader unsequence Reader
+   * @throws IOException exception when reading file
+   */
+  private void skipBeforeStartTimeData(int idx, IAggregateReader sequenceReader,
       IPointReader unsequenceReader)
       throws IOException {
     BatchData batchData = batchDataList.get(idx);
     boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
 
-    //skip the unsequenceReader points with timestamp less than startTime
+    // skip the unsequenceReader points with timestamp less than startTime
     while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < startTime) {
       unsequenceReader.next();
     }
 
-    //skip the cached batch data points with timestamp less than startTime
+    // skip the cached batch data points with timestamp less than startTime
     if (hasCachedSequenceData) {
       while (batchData.hasNext() && batchData.currentTime() < startTime) {
         batchData.next();
@@ -224,10 +236,10 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
       return;
     }
 
-    //skip the points in sequenceReader data whose timestamp are less than startTime
+    // skip the points in sequenceReader data whose timestamp are less than startTime
     while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
-      //memory data
+      // memory data
       if (pageHeader == null) {
         batchData = sequenceReader.nextBatch();
         hasCachedSequenceData = true;
@@ -241,16 +253,16 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
           continue;
         }
       }
-      //timestamps of all points in the page are less than startTime
+      // timestamps of all points in the page are less than startTime
       if (pageHeader.getMaxTimestamp() < startTime) {
         sequenceReader.skipPageData();
         continue;
       }
-      //timestamps of all points in the page are greater or equal to startTime, don't need to skip
+      // timestamps of all points in the page are greater or equal to startTime, don't need to skip
       if (pageHeader.getMinTimestamp() >= startTime) {
         break;
       }
-      //the page has overlap with startTime
+      // the page has overlap with startTime
       batchData = sequenceReader.nextBatch();
       hasCachedSequenceData = true;
       while (batchData.hasNext() && batchData.currentTime() < startTime) {
@@ -270,7 +282,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngine {
       return false;
     }
 
-    //cal unsequence data with timestamps between pages.
+    // cal unsequence data with timestamps between pages.
     function.calculateValueFromUnsequenceReader(unSequenceReader, minTime);
 
     if (unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= maxTime) {

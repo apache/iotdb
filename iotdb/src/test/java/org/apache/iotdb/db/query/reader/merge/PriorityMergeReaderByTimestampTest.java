@@ -27,7 +27,6 @@ import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -126,7 +125,7 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     @Override
-    public boolean hasNext() throws IOException {
+    public boolean hasNext() {
       if (hasCachedTimeValuePair && cachedTimeValuePair.getTimestamp() >= currentTimeStamp) {
         return true;
       }

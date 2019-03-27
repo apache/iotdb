@@ -24,8 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SumAggrFunc extends MeanAggrFunc {
 
-  public SumAggrFunc(String name, TSDataType seriesDataType) {
-    super(name, seriesDataType);
+  public SumAggrFunc(TSDataType seriesDataType) {
+    super(seriesDataType);
   }
 
   @Override

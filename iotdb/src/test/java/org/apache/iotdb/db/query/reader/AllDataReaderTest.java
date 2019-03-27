@@ -29,7 +29,7 @@ public class AllDataReaderTest {
   private AllDataReader reader1;
   private AllDataReader reader2;
 
-  private void init(){
+  private void init() {
     IBatchReader batchReader1 = new FakedIBatchPoint(100, 1000, 7, 11);
     IBatchReader batchReader2 = new FakedIBatchPoint(100, 1000, 7, 11);
     IPointReader pointReader = new FakedIPointReader(20, 500, 11, 19);
@@ -47,29 +47,30 @@ public class AllDataReaderTest {
 
   private void testWithOutNullReader() throws IOException {
     int cnt = 0;
-    while (reader1.hasNext()){
+    while (reader1.hasNext()) {
       TimeValuePair timeValuePair = reader1.next();
       cnt++;
-      if((timeValuePair.getTimestamp()-20) % 11 == 0 && timeValuePair.getTimestamp() < 20+500*11){
+      if ((timeValuePair.getTimestamp() - 20) % 11 == 0
+          && timeValuePair.getTimestamp() < 20 + 500 * 11) {
         Assert.assertEquals(timeValuePair.getTimestamp() % 19, timeValuePair.getValue().getLong());
         continue;
       }
-      if((timeValuePair.getTimestamp()-100) % 7 == 0){
+      if ((timeValuePair.getTimestamp() - 100) % 7 == 0) {
         Assert.assertEquals(timeValuePair.getTimestamp() % 11, timeValuePair.getValue().getLong());
       }
     }
     Assert.assertEquals(1430, cnt);
-    System.out.println("testWithOutNullReader-cnt:"+cnt);
+    System.out.println("testWithOutNullReader-cnt:" + cnt);
   }
 
   private void testWithNullPointReader() throws IOException {
     int cnt = 0;
-    while (reader2.hasNext()){
+    while (reader2.hasNext()) {
       TimeValuePair timeValuePair = reader2.next();
       Assert.assertEquals(timeValuePair.getTimestamp() % 11, timeValuePair.getValue().getLong());
       cnt++;
     }
     Assert.assertEquals(1000, cnt);
-    System.out.println("testWithNullPointReader-cnt:"+cnt);
+    System.out.println("testWithNullPointReader-cnt:" + cnt);
   }
 }

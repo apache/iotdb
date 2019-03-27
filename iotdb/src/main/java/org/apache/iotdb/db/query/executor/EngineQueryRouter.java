@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.query.executor;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +30,8 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.executor.groupby.GroupByWithOnlyTimeFilterDataSetDataSet;
+import org.apache.iotdb.db.query.executor.groupby.GroupByWithValueFilterDataSetDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -138,7 +138,7 @@ public class EngineQueryRouter {
    * @param expression filter expression
    * @param unit time granularity for interval partitioning, unit is ms.
    * @param origin the datum time point for interval division is divided into a time interval for
-   *        each TimeUnit time from this point forward and backward.
+   * each TimeUnit time from this point forward and backward.
    * @param intervals time intervals, closed interval.
    */
   public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
@@ -151,7 +151,7 @@ public class EngineQueryRouter {
     OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
     QueryContext context = new QueryContext();
 
-    //check the legitimacy of intervals
+    // check the legitimacy of intervals
     for (Pair<Long, Long> pair : intervals) {
       if (!(pair.left > 0 && pair.right > 0)) {
         throw new ProcessorException(
@@ -163,10 +163,10 @@ public class EngineQueryRouter {
                 + "found error interval<%d, %d>", pair.left, pair.right));
       }
     }
-    //merge intervals
+    // merge intervals
     List<Pair<Long, Long>> mergedIntervalList = mergeInterval(intervals);
 
-    //construct groupBy intervals filter
+    // construct groupBy intervals filter
     BinaryExpression intervalFilter = null;
     for (Pair<Long, Long> pair : mergedIntervalList) {
       BinaryExpression pairFilter = BinaryExpression
@@ -179,7 +179,7 @@ public class EngineQueryRouter {
       }
     }
 
-    //merge interval filter and filtering conditions after where statements
+    // merge interval filter and filtering conditions after where statements
     if (expression == null) {
       expression = intervalFilter;
     } else {
@@ -189,12 +189,13 @@ public class EngineQueryRouter {
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      GroupByWithOnlyTimeFilterDataSet groupByEngine = new GroupByWithOnlyTimeFilterDataSet(
+      GroupByWithOnlyTimeFilterDataSetDataSet groupByEngine = new GroupByWithOnlyTimeFilterDataSetDataSet(
           nextJobId, selectedSeries, unit, origin, mergedIntervalList);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;
     } else {
-      GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(nextJobId,
+      GroupByWithValueFilterDataSetDataSet groupByEngine = new GroupByWithValueFilterDataSetDataSet(
+          nextJobId,
           selectedSeries, unit, origin, mergedIntervalList);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;
@@ -226,13 +227,8 @@ public class EngineQueryRouter {
    * @param intervals time interval
    */
   private List<Pair<Long, Long>> mergeInterval(List<Pair<Long, Long>> intervals) {
-    Collections.sort(intervals, new Comparator<Pair<Long, Long>>() {
-      @Override
-      public int compare(Pair<Long, Long> o1, Pair<Long, Long> o2) {
-        /*sort by interval start time.*/
-        return (int) (o1.left - o2.left);
-      }
-    });
+    // sort by interval start time.
+    intervals.sort(((o1, o2) -> (int) (o1.left - o2.left)));
 
     LinkedList<Pair<Long, Long>> merged = new LinkedList<>();
     for (Pair<Long, Long> interval : intervals) {

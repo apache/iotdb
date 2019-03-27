@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.mem;
 
-import java.io.IOException;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
@@ -45,7 +44,7 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   @Override
-  public TimeValuePair next() throws IOException {
+  public TimeValuePair next() {
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
@@ -62,7 +61,7 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
   // TODO consider change timeValuePairIterator to List structure, and use binary search instead of
   // sequential search
   @Override
-  public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
+  public TsPrimitiveType getValueInTimestamp(long timestamp) {
     while (hasNext()) {
       TimeValuePair timeValuePair = next();
       long time = timeValuePair.getTimestamp();
@@ -76,5 +75,4 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
     }
     return null;
   }
-
 }

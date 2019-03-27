@@ -51,7 +51,7 @@ public class SequenceDataReader implements IBatchReader, IAggregateReader {
    * @param filter null if no filter
    * @param context query context
    * @param isReverse true-traverse chunks from behind forward, false-traverse chunks from front to
-   *        back.
+   * back.
    */
   public SequenceDataReader(GlobalSortedSeriesDataSource sources, Filter filter,
       QueryContext context, boolean isReverse) throws IOException {

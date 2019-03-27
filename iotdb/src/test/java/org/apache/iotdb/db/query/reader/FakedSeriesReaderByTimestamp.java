@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -29,6 +28,7 @@ import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class FakedSeriesReaderByTimestamp implements EngineReaderByTimeStamp {
+
   private Iterator<TimeValuePair> iterator;
   private boolean hasCachedTimeValuePair = false;
   private TimeValuePair cachedTimeValuePair;
@@ -45,25 +45,22 @@ public class FakedSeriesReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   @Override
-  public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
-    if(hasCachedTimeValuePair){
-      if(timestamp == cachedTimeValuePair.getTimestamp()){
+  public TsPrimitiveType getValueInTimestamp(long timestamp) {
+    if (hasCachedTimeValuePair) {
+      if (timestamp == cachedTimeValuePair.getTimestamp()) {
         hasCachedTimeValuePair = false;
         return cachedTimeValuePair.getValue();
-      }
-      else if(timestamp > cachedTimeValuePair.getTimestamp()){
+      } else if (timestamp > cachedTimeValuePair.getTimestamp()) {
         hasCachedTimeValuePair = false;
-      }
-      else {
+      } else {
         return null;
       }
     }
-    while(iterator.hasNext()){
+    while (iterator.hasNext()) {
       cachedTimeValuePair = iterator.next();
-      if(timestamp == cachedTimeValuePair.getTimestamp()){
+      if (timestamp == cachedTimeValuePair.getTimestamp()) {
         return cachedTimeValuePair.getValue();
-      }
-      else if(timestamp < cachedTimeValuePair.getTimestamp()){
+      } else if (timestamp < cachedTimeValuePair.getTimestamp()) {
         hasCachedTimeValuePair = true;
         break;
       }
@@ -72,13 +69,13 @@ public class FakedSeriesReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
     return hasCachedTimeValuePair || iterator.hasNext();
   }
 
   @Override
-  public TimeValuePair next() throws IOException {
-    if (hasCachedTimeValuePair){
+  public TimeValuePair next() {
+    if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
     }
@@ -86,7 +83,7 @@ public class FakedSeriesReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
 
   }
 }

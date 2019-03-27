@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -35,7 +33,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class MaxTimeAggrFunc extends AggregateFunction {
 
   public MaxTimeAggrFunc() {
-    super(AggregationConstant.MAX_TIME, TSDataType.INT64);
+    super(TSDataType.INT64);
   }
 
   @Override
@@ -49,14 +47,13 @@ public class MaxTimeAggrFunc extends AggregateFunction {
   }
 
   @Override
-  public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
+  public void calculateValueFromPageHeader(PageHeader pageHeader) {
     long maxTimestamp = pageHeader.getMaxTimestamp();
     updateMaxTimeResult(0, maxTimestamp);
   }
 
   @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader) {
 
     int maxIndex = dataInThisPage.length() - 1;
     if (maxIndex < 0) {
@@ -68,7 +65,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException, ProcessorException {
+      long bound) {
     long time = -1;
     while (dataInThisPage.hasNext()) {
       if (dataInThisPage.currentTime() < bound) {
@@ -85,7 +82,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromUnsequenceReader(IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException {
     TimeValuePair pair = null;
     while (unsequenceReader.hasNext()) {
       pair = unsequenceReader.next();

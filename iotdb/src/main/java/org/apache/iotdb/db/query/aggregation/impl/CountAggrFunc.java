@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.aggregation.AggregationConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
@@ -38,7 +36,7 @@ public class CountAggrFunc extends AggregateFunction {
   private static final Logger LOGGER = LoggerFactory.getLogger(CountAggrFunc.class);
 
   public CountAggrFunc() {
-    super(AggregationConstant.COUNT, TSDataType.INT64);
+    super(TSDataType.INT64);
   }
 
   @Override
@@ -67,7 +65,7 @@ public class CountAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
-      throws IOException, ProcessorException {
+      throws IOException {
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
         dataInThisPage.next();

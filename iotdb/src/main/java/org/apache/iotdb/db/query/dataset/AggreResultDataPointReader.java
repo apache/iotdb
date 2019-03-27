@@ -15,7 +15,6 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -30,25 +29,25 @@ public class AggreResultDataPointReader implements IPointReader {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
     return aggreResultData.isSetValue();
   }
 
   @Override
-  public TimeValuePair next() throws IOException {
+  public TimeValuePair next() {
     TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(aggreResultData);
     aggreResultData.reSet();
     return timeValuePair;
   }
 
   @Override
-  public TimeValuePair current() throws IOException {
+  public TimeValuePair current() {
     TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(aggreResultData);
     return timeValuePair;
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     //batch data doesn't need to close.
   }
 }
