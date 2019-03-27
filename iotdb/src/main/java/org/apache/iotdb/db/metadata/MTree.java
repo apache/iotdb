@@ -226,7 +226,7 @@ public class MTree implements Serializable {
     int i = 1;
     while (i < nodeNames.length - 1) {
       MNode temp = cur.getChild(nodeNames[i]);
-      if (temp == null && temp.isStorageLevel()) {
+      if (temp == null || temp.isStorageLevel()) {
         return false;
       }
       cur = cur.getChild(nodeNames[i]);
