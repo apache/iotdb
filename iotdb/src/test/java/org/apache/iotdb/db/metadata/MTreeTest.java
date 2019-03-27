@@ -195,9 +195,14 @@ public class MTreeTest {
     // set storage group first
     MTree root = new MTree("root");
     try {
+      assertEquals(false, root.checkStorageGroup("root"));
+      assertEquals(false, root.checkStorageGroup("root1.laptop.d2"));
+
       root.setStorageGroup("root.laptop.d1");
       assertEquals(true, root.checkStorageGroup("root.laptop.d1"));
       assertEquals(false, root.checkStorageGroup("root.laptop.d2"));
+      assertEquals(false, root.checkStorageGroup("root.laptop"));
+      assertEquals(false, root.checkStorageGroup("root.laptop.d1.s1"));
 
       root.setStorageGroup("root.laptop.d2");
       assertEquals(true, root.checkStorageGroup("root.laptop.d1"));
