@@ -213,6 +213,34 @@ public class MTree implements Serializable {
   }
 
   /**
+   * check whether the input path is storage group or not
+   * @param path input path
+   * @return if it is storage group, return true. Else return false
+   */
+  public boolean checkStorageGroup(String path) {
+    String[] nodeNames = path.split(DOUB_SEPARATOR);
+    MNode cur = root;
+    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
+      return false;
+    }
+    int i = 1;
+    while (i < nodeNames.length - 1) {
+      MNode temp = cur.getChild(nodeNames[i]);
+      if (temp == null && temp.isStorageLevel()) {
+        return false;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      i++;
+    }
+    MNode temp = cur.getChild(nodeNames[i]);
+    if (temp == null || !temp.isStorageLevel()) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  /**
    * Check whether set file seriesPath for this node or not. If not, throw an exception
    */
   private void checkStorageGroup(MNode node) throws PathErrorException {

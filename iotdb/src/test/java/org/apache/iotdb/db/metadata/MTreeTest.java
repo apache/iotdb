@@ -189,4 +189,23 @@ public class MTreeTest {
     assertEquals(root.isPathExist("root.laptop.d2"), true);
     assertEquals(root.isPathExist("root.laptop.d2.s0"), true);
   }
+
+  @Test
+  public void testCheckStorageGroup() {
+    // set storage group first
+    MTree root = new MTree("root");
+    try {
+      root.setStorageGroup("root.laptop.d1");
+      assertEquals(true, root.checkStorageGroup("root.laptop.d1"));
+      assertEquals(false, root.checkStorageGroup("root.laptop.d2"));
+
+      root.setStorageGroup("root.laptop.d2");
+      assertEquals(true, root.checkStorageGroup("root.laptop.d1"));
+      assertEquals(true, root.checkStorageGroup("root.laptop.d2"));
+      assertEquals(false, root.checkStorageGroup("root.laptop.d3"));
+    } catch (PathErrorException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
