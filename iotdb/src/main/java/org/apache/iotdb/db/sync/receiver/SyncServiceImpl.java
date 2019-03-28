@@ -77,9 +77,9 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ServerServiceImpl implements SyncService.Iface {
+public class SyncServiceImpl implements SyncService.Iface {
 
-  private static final Logger logger = LoggerFactory.getLogger(ServerServiceImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncServiceImpl.class);
 
   private static final FileNodeManager fileNodeManager = FileNodeManager.getInstance();
   /**

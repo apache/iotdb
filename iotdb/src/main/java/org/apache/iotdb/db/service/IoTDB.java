@@ -33,8 +33,8 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.sync.receiver.ServerManager;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.manager.WriteLogNodeManager;
 import org.slf4j.Logger;
@@ -46,7 +46,6 @@ public class IoTDB implements IoTDBMBean {
   private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
       IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
-  private ServerManager serverManager = ServerManager.getInstance();
 
   public static final IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
@@ -107,18 +106,17 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(BasicMemController.getInstance());
     registerManager.register(FileReaderManager.getInstance());
+    registerManager.register(SyncServerManager.getInstance());
 
     JMXService.registerMBean(getInstance(), mbeanName);
 
     initErrorInformation();
 
-    serverManager.startServer();
     LOGGER.info("IoTDB is set up.");
   }
 
   public void deactivate() {
     LOGGER.info("Deactivating IoTDB...");
-    serverManager.closeServer();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     LOGGER.info("IoTDB is deactivated.");
@@ -141,7 +139,7 @@ public class IoTDB implements IoTDBMBean {
    * Recover data using system log.
    *
    * @throws RecoverException if FileNode(Manager)Exception is encountered during the recovery.
-   * @throws IOException      if IOException is encountered during the recovery.
+   * @throws IOException if IOException is encountered during the recovery.
    */
   private void systemDataRecovery() throws RecoverException {
     LOGGER.info("{}: start checking write log...", IoTDBConstant.GLOBAL_DB_NAME);
