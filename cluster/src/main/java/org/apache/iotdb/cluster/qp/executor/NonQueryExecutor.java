@@ -220,7 +220,6 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    *
    * @param task request task
    * @param leader leader of the target raft group
-   * @param latch wait for results
    * @param taskRetryNum Number of task retries due to timeout and redirected.
    * @return request result
    */
@@ -234,8 +233,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     /** Call async method **/
     client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
     task.await();
-    if (task.getTaskState() == TaskState.INITIAL || task.getTaskState() == TaskState.REDIRECT
-        || task.getTaskState() == TaskState.EXCEPTION) {
+    if (task.getTaskState() != TaskState.FINISH) {
       task.setTaskNum(SUB_TASK_NUM);
       return asyncHandleTask(task, leader, taskRetryNum + 1);
     }
