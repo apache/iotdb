@@ -27,6 +27,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.query.control.QuerySession;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
@@ -188,7 +189,7 @@ public class IoTDBSequenceDataQueryIT {
     }
     assertEquals(1000, cnt);
 
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
   }
 
   @Test
@@ -214,7 +215,7 @@ public class IoTDBSequenceDataQueryIT {
     }
     assertEquals(350, cnt);
 
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
   }
 
   @Test
@@ -245,7 +246,7 @@ public class IoTDBSequenceDataQueryIT {
     }
     assertEquals(count, cnt);
 
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
   }
 
 }

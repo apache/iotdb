@@ -62,7 +62,7 @@ public class FileReaderManagerTest {
 
     Thread t1 = new Thread(() -> {
       try {
-        OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(1L);
+        OpenedFilePathsManager.getInstance().addJobId(1L);
 
         for (int i = 1; i <= 6; i++) {
           OpenedFilePathsManager.getInstance().addFilePathToMap(1L, filePath + i,
@@ -80,7 +80,7 @@ public class FileReaderManagerTest {
 
     Thread t2 = new Thread(() -> {
       try {
-        OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(2L);
+        OpenedFilePathsManager.getInstance().addJobId(2L);
 
         for (int i = 4; i <= MAX_FILE_SIZE; i++) {
           OpenedFilePathsManager.getInstance().addFilePathToMap(2L, filePath + i,
@@ -120,7 +120,7 @@ public class FileReaderManagerTest {
     // }
     // }
 
-    OpenedFilePathsManager.getInstance().removeUsedFilesForCurrentRequestThread();
+    OpenedFilePathsManager.getInstance().removeUsedFilesForGivenJob(QuerySession.getCurrentThreadJobId());
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = 1; i < MAX_FILE_SIZE; i++) {
       File file = new File(filePath + i);

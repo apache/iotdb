@@ -36,16 +36,11 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
  * <p>
  * Singleton pattern, to manage all query tokens. Each jdbc query request can query multiple series,
  * in the processing of querying different device id, the <code>FileNodeManager.getInstance().
- * beginQuery</code> and <code>FileNodeManager.getInstance().endQuery</code> must be invoked in the
+ * beginQuery</code> and <code>FileNodeManager.getInstance().endQueryForGivenJob</code> must be invoked in the
  * beginning and ending of jdbc request.
  * </p>
  */
 public class QueryTokenManager {
-
-  /**
-   * Each jdbc request has unique jod id, job id is stored in thread local variable jobContainer.
-   */
-  private ThreadLocal<Long> jobContainer;
 
   /**
    * Map&lt;jobId, Map&lt;deviceId, List&lt;token&gt;&gt;&gt;.
@@ -72,21 +67,21 @@ public class QueryTokenManager {
    * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> will be invoked again, it
    * returns result token `3` and `4` .
    *
-   * <code>FileNodeManager.getInstance().endQuery(device_1, 1)</code> and
-   * <code>FileNodeManager.getInstance().endQuery(device_2, 2)</code> must be invoked no matter how
+   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_1, 1)</code> and
+   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_2, 2)</code> must be invoked no matter how
    * query process Q1 exits normally or abnormally. So is Q2,
-   * <code>FileNodeManager.getInstance().endQuery(device_1, 3)</code> and
-   * <code>FileNodeManager.getInstance().endQuery(device_2, 4)</code> must be invoked
+   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_1, 3)</code> and
+   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_2, 4)</code> must be invoked
    *
    * Last but no least, to ensure the correctness of write process and query process of IoTDB,
    * <code>FileNodeManager.getInstance().beginQuery()</code> and
-   * <code>FileNodeManager.getInstance().endQuery()</code> must be executed rightly.
+   * <code>FileNodeManager.getInstance().endQueryForGivenJob()</code> must be executed rightly.
    * </p>
    */
   private ConcurrentHashMap<Long, ConcurrentHashMap<String, List<Integer>>> queryTokensMap;
 
+
   private QueryTokenManager() {
-    jobContainer = new ThreadLocal<>();
     queryTokensMap = new ConcurrentHashMap<>();
   }
 
@@ -98,8 +93,7 @@ public class QueryTokenManager {
    * Set job id for current request thread. When a query request is created firstly, this method
    * must be invoked.
    */
-  public void setJobIdForCurrentRequestThread(long jobId) {
-    jobContainer.set(jobId);
+  public void addJobId(long jobId) {
     queryTokensMap.put(jobId, new ConcurrentHashMap<>());
   }
 
@@ -136,18 +130,15 @@ public class QueryTokenManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All
    * query tokens created by this jdbc request must be cleared.
    */
-  public void endQueryForCurrentRequestThread() throws FileNodeManagerException {
-    if (jobContainer.get() != null) {
-      long jobId = jobContainer.get();
-      jobContainer.remove();
-
+  public void endQueryForGivenJob(long jobId) throws FileNodeManagerException {
       for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
         for (int token : entry.getValue()) {
           FileNodeManager.getInstance().endQuery(entry.getKey(), token);
         }
       }
       queryTokensMap.remove(jobId);
-    }
+    // remove usage of opened file paths of current thread
+    OpenedFilePathsManager.getInstance().removeUsedFilesForGivenJob(jobId);
   }
 
   private void getUniquePaths(IExpression expression, Set<String> deviceIdSet) {

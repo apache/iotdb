@@ -23,12 +23,12 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
+import org.apache.iotdb.db.query.control.QuerySession;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.executor.groupby.GroupByWithOnlyTimeFilterDataSetDataSet;
 import org.apache.iotdb.db.query.executor.groupby.GroupByWithValueFilterDataSetDataSet;
@@ -52,12 +52,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
  */
 public class EngineQueryRouter {
 
-  /**
-   * Each unique jdbc request(query, aggregation or others job) has an unique job id. This job id
-   * will always be maintained until the request is closed. In each job, the unique file will be
-   * only opened once to avoid too many opened files error.
-   */
-  private AtomicLong jobIdGenerator = new AtomicLong();
+
 
   /**
    * execute physical plan.
@@ -65,9 +60,9 @@ public class EngineQueryRouter {
   public QueryDataSet query(QueryExpression queryExpression)
       throws FileNodeManagerException {
 
-    long nextJobId = getNextJobId();
-    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
-    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    long nextJobId = QuerySession.getCurrentThreadJobId();
+    QueryTokenManager.getInstance().addJobId(nextJobId);
+    OpenedFilePathsManager.getInstance().addJobId(nextJobId);
 
     QueryContext context = new QueryContext();
 
@@ -107,9 +102,9 @@ public class EngineQueryRouter {
       IExpression expression) throws QueryFilterOptimizationException, FileNodeManagerException,
       IOException, PathErrorException, ProcessorException {
 
-    long nextJobId = getNextJobId();
-    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
-    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    long nextJobId = QuerySession.getCurrentThreadJobId();
+    QueryTokenManager.getInstance().addJobId(nextJobId);
+    OpenedFilePathsManager.getInstance().addJobId(nextJobId);
 
     QueryContext context = new QueryContext();
 
@@ -146,9 +141,10 @@ public class EngineQueryRouter {
       throws ProcessorException, QueryFilterOptimizationException, FileNodeManagerException,
       PathErrorException, IOException {
 
-    long nextJobId = getNextJobId();
-    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
-    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    long nextJobId = QuerySession.getCurrentThreadJobId();
+    QueryTokenManager.getInstance().addJobId(nextJobId);
+    OpenedFilePathsManager.getInstance().addJobId(nextJobId);
+
     QueryContext context = new QueryContext();
 
     // check the legitimacy of intervals
@@ -211,9 +207,9 @@ public class EngineQueryRouter {
    */
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType)
       throws FileNodeManagerException, PathErrorException, IOException {
-    long nextJobId = getNextJobId();
-    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
-    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    long nextJobId = QuerySession.getCurrentThreadJobId();
+    QueryTokenManager.getInstance().addJobId(nextJobId);
+    OpenedFilePathsManager.getInstance().addJobId(nextJobId);
 
     QueryContext context = new QueryContext();
     FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(nextJobId, fillPaths, queryTime,
@@ -244,7 +240,5 @@ public class EngineQueryRouter {
     return merged;
   }
 
-  private synchronized long getNextJobId() {
-    return jobIdGenerator.incrementAndGet();
-  }
+
 }

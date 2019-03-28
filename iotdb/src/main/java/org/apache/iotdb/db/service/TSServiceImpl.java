@@ -49,7 +49,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
+import org.apache.iotdb.db.query.control.QuerySession;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
@@ -185,10 +185,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     LOGGER.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
       // end query for all the query tokens created by current thread
-      QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
-
-      // remove usage of opened file paths of current thread
-      OpenedFilePathsManager.getInstance().removeUsedFilesForCurrentRequestThread();
+      QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
 
       clearAllStatusForCurrentRequest();
     } catch (FileNodeManagerException e) {

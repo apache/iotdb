@@ -29,6 +29,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.query.control.QuerySession;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
@@ -262,7 +263,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(23400, cnt);
 
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
   }
 
   @Test
@@ -290,7 +291,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(16440, cnt);
 
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
   }
 
   @Test
@@ -316,7 +317,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(3012, cnt);
 
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
   }
 
   @Test
@@ -343,7 +344,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(22800, cnt);
 
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
   }
 
   @Test

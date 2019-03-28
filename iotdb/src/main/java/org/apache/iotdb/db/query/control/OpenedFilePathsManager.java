@@ -32,10 +32,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
  */
 public class OpenedFilePathsManager {
 
-  /**
-   * Each jdbc request has an unique jod id, job id is stored in thread local variable jobIdContainer.
-   */
-  private ThreadLocal<Long> jobIdContainer;
+
 
   /**
    * Map<jobId, Set<filePaths>>
@@ -44,7 +41,6 @@ public class OpenedFilePathsManager {
   private ConcurrentHashMap<Long, Set<String>> unclosedFilePathsMap;
 
   private OpenedFilePathsManager() {
-    jobIdContainer = new ThreadLocal<>();
     closedFilePathsMap = new ConcurrentHashMap<>();
     unclosedFilePathsMap = new ConcurrentHashMap<>();
   }
@@ -56,8 +52,7 @@ public class OpenedFilePathsManager {
   /**
    * Set job id for current request thread. When a query request is created firstly, this method must be invoked.
    */
-  public void setJobIdForCurrentRequestThread(long jobId) {
-    jobIdContainer.set(jobId);
+  public void addJobId(long jobId) {
     closedFilePathsMap.put(jobId, new HashSet<>());
     unclosedFilePathsMap.put(jobId, new HashSet<>());
   }
@@ -65,7 +60,7 @@ public class OpenedFilePathsManager {
   /**
    * Add the unique file paths to closedFilePathsMap and unclosedFilePathsMap.
    */
-  void addUsedFilesForCurrentRequestThread(long jobId, QueryDataSource dataSource) {
+  public void addUsedFilesForGivenJob(long jobId, QueryDataSource dataSource) {
     for (TsFileResource tsFileResource : dataSource.getSeqDataSource().getSealedTsFiles()) {
       String sealedFilePath = tsFileResource.getFilePath();
       addFilePathToMap(jobId, sealedFilePath, true);
@@ -88,11 +83,7 @@ public class OpenedFilePathsManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All file paths used by
    * this jdbc request must be cleared and thus the usage reference must be decreased.
    */
-  public void removeUsedFilesForCurrentRequestThread() {
-    if (jobIdContainer.get() != null) {
-      long jobId = jobIdContainer.get();
-      jobIdContainer.remove();
-
+  public void removeUsedFilesForGivenJob(long jobId) {
       for (String filePath : closedFilePathsMap.get(jobId)) {
         FileReaderManager.getInstance().decreaseFileReaderReference(filePath, false);
       }
@@ -101,7 +92,6 @@ public class OpenedFilePathsManager {
         FileReaderManager.getInstance().decreaseFileReaderReference(filePath, true);
       }
       unclosedFilePathsMap.remove(jobId);
-    }
   }
 
   /**

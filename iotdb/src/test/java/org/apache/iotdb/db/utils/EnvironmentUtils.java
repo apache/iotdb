@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.control.QuerySession;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -60,7 +61,7 @@ public class EnvironmentUtils {
 
   public static void cleanEnv() throws IOException, FileNodeManagerException {
 
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
 
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();

@@ -46,7 +46,7 @@ public class QueryDataSourceManager {
 
     // add used files to current thread request cached map
     OpenedFilePathsManager.getInstance()
-        .addUsedFilesForCurrentRequestThread(jobId, queryDataSource);
+        .addUsedFilesForGivenJob(jobId, queryDataSource);
 
     return queryDataSource;
   }
