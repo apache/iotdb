@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.qp;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
@@ -33,7 +32,8 @@ public abstract class ClusterQPExecutor {
 
   protected static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
   protected Router router = Router.getInstance();
-  protected PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
+  protected PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
+      CLUSTER_CONFIG.getPort());
   protected OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
   protected MManager mManager = MManager.getInstance();
   /**
@@ -48,7 +48,7 @@ public abstract class ClusterQPExecutor {
   /**
    * Number of subtask in task segmentation
    */
-  protected static final int SUB_TASK_NUM = 1;
+  protected static int SUB_TASK_NUM = 1;
 
   /**
    * Get Storage Group Name by device name
@@ -71,17 +71,20 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
-   * Verify if the command can execute in local.
-   * 1. If this node belongs to the storage group
-   * 2. If this node is leader.
+   * Verify if the command can execute in local. 1. If this node belongs to the storage group 2. If
+   * this node is leader.
    */
   public boolean canHandle(String storageGroup) {
-    if(router.containPhysicalNode(storageGroup, localNode)){
+    if (router.containPhysicalNode(storageGroup, localNode)) {
       String groupId = getGroupIdBySG(storageGroup);
-      if(RaftUtils.convertPeerId(RaftUtils.getLeader(groupId)).equals(localNode)){
+      if (RaftUtils.convertPeerId(RaftUtils.getLeader(groupId)).equals(localNode)) {
         return true;
       }
     }
     return false;
+  }
+
+  public void shutdown() {
+    cliClientService.shutdown();
   }
 }

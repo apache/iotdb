@@ -27,6 +27,7 @@ import com.alipay.sofa.jraft.core.StateMachineAdapter;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
 import org.apache.iotdb.cluster.utils.RaftUtils;
@@ -113,6 +114,10 @@ public class MetadataStateManchine extends StateMachineAdapter {
 
   public void addStorageGroup(String sg) throws IOException, PathErrorException {
     mManager.setStorageLevelToMTree(sg);
+  }
+
+  public Set<String> getAllStorageGroups() throws PathErrorException {
+    return mManager.getAllStorageGroup();
   }
 
   @Override

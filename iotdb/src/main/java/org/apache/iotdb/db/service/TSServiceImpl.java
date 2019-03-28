@@ -93,8 +93,8 @@ import org.slf4j.LoggerFactory;
 public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
-  private static final String INFO_NOT_LOGIN = "{}: Not login.";
-  private static final String ERROR_NOT_LOGIN = "Not login";
+  protected static final String INFO_NOT_LOGIN = "{}: Not login.";
+  protected static final String ERROR_NOT_LOGIN = "Not login";
 
   private QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
   // Record the username for every rpc connection. Username.get() is null if

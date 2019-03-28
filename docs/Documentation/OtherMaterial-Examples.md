@@ -62,14 +62,14 @@ public class IotdbHelloWorld {
             boolean hasResultSet = statement.execute(sql);
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
             if (hasResultSet) {
-                ResultSet res = statement.getResultSet();
+                ResultSet metadataSet = statement.getResultSet();
                 System.out.println("                    Time" + "|" + path);
-                while (res.next()) {
-                    long time = Long.parseLong(res.getString("Time"));
+                while (metadataSet.next()) {
+                    long time = Long.parseLong(metadataSet.getString("Time"));
                     String dateTime = dateFormat.format(new Date(time));
-                    System.out.println(dateTime + " | " + res.getString(path));
+                    System.out.println(dateTime + " | " + metadataSet.getString(path));
                 }
-                res.close();
+                metadataSet.close();
             }
         }
         finally {
