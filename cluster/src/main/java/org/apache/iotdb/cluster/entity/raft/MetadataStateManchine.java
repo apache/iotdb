@@ -24,15 +24,21 @@ import com.alipay.sofa.jraft.Closure;
 import com.alipay.sofa.jraft.Iterator;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
+import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.rpc.request.ChangeMetadataRequest;
+import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
+import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
@@ -43,44 +49,60 @@ public class MetadataStateManchine extends StateMachineAdapter {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataStateManchine.class);
 
   /**
-   * manager of storage groups
+   * Manager of storage groups
    **/
   private MManager mManager = MManager.getInstance();
-
   /**
-   * manager of user profile
+   * Manager of user profile
    **/
   private IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
 
+  private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
+  private PeerId peerId;
+  private String groupId;
   private AtomicLong leaderTerm = new AtomicLong(-1);
 
-  public MetadataStateManchine() throws AuthException {
+  public MetadataStateManchine(String groupId, PeerId peerId) throws AuthException {
+    this.peerId = peerId;
+    this.groupId = groupId;
   }
 
-  // Update StrageGroup List and userProfileMap based on Task read from raft log
+  /**
+   * Update StrageGroup List and userProfileMap based on Task read from raft log
+   *
+   * @param iterator task iterator
+   */
   @Override
   public void onApply(Iterator iterator) {
     while (iterator.hasNext()) {
 
       Closure closure = null;
-      ChangeMetadataRequest request = null;
+      NonQueryRequest request = null;
       if (iterator.done() != null) {
         closure = iterator.done();
       }
       final ByteBuffer data = iterator.getData();
       try {
         request = SerializerManager.getSerializer(SerializerManager.Hessian2)
-            .deserialize(data.array(), ChangeMetadataRequest.class.getName());
+            .deserialize(data.array(), NonQueryRequest.class.getName());
       } catch (final CodecException e) {
         LOGGER.error("Fail to decode IncrementAndGetRequest", e);
       }
       try {
         assert request != null;
-        MetadataPlan plan = (MetadataPlan) PhysicalPlanLogTransfer
-            .logToOperator(request.getPhysicalPlanBytes());
-        addStorageGroup(plan.getPath().getFullPath());
+        if (request.getRequestType() == OperatorType.SET_STORAGE_GROUP) {
+          MetadataPlan plan = (MetadataPlan) PhysicalPlanLogTransfer
+              .logToOperator(request.getPhysicalPlanBytes());
+          addStorageGroup(plan.getPath().getFullPath());
+        } else {
+          AuthorPlan plan = (AuthorPlan) PhysicalPlanLogTransfer
+              .logToOperator(request.getPhysicalPlanBytes());
+          qpExecutor.processNonQuery(plan);
+        }
       } catch (IOException | PathErrorException e) {
         LOGGER.error("Execute metadata plan error", e);
+      } catch (ProcessorException e) {
+        LOGGER.error("Execute author plan error", e);
       }
       if (closure != null) {
         closure.run(Status.OK());
@@ -89,47 +111,13 @@ public class MetadataStateManchine extends StateMachineAdapter {
     }
   }
 
-
-  public boolean isStorageGroupLegal(String sg) {
-    try {
-      mManager.checkPathStorageLevelAndGetDataType(sg);
-    } catch (PathErrorException e) {
-      return false;
-    }
-    return true;
-  }
-
-  public boolean isUerProfileLegal(String username, String password) throws AuthException {
-    return authorizer.login(username, password);
-  }
-
   public void addStorageGroup(String sg) throws IOException, PathErrorException {
     mManager.setStorageLevelToMTree(sg);
   }
 
-  public void deleteStorageGroup(String sg) {
-    // TODO implement this method
-  }
-
-  public void addUser(String username, String password) throws AuthException {
-    authorizer.createUser(username, password);
-  }
-
-  public void deleteUSer(String username, String password) throws AuthException {
-    if (isUerProfileLegal(username, password)) {
-      authorizer.deleteUser(username);
-    }
-  }
-
-  public void updateUser(String username, String oldPassword, String newPassword)
-      throws AuthException {
-    if (isUerProfileLegal(username, oldPassword)) {
-      authorizer.updateUserPassword(username, newPassword);
-    }
-  }
-
   @Override
   public void onLeaderStart(final long term) {
+    RaftUtils.updateRaftGroupLeader(groupId, peerId);
     this.leaderTerm.set(term);
   }
 

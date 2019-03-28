@@ -27,12 +27,28 @@ import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 
 public abstract class ClusterQPExecutor {
 
-  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
-  private Router router = Router.getInstance();
-  private PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
+  protected static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
+  protected Router router = Router.getInstance();
+  protected PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
+  protected OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
+  protected MManager mManager = MManager.getInstance();
+  /**
+   * Rpc Service Client
+   */
+  protected BoltCliClientService cliClientService;
+
+  /**
+   * Count limit to redo a single task
+   */
+  protected static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getTaskRedoCount();
+  /**
+   * Number of subtask in task segmentation
+   */
+  protected static final int SUB_TASK_NUM = 1;
 
   /**
    * Get Storage Group Name by device name
@@ -59,10 +75,10 @@ public abstract class ClusterQPExecutor {
    * 1. If this node belongs to the storage group
    * 2. If this node is leader.
    */
-  public boolean canHandle(String storageGroup, BoltCliClientService cliClientService) throws RaftConnectionException {
+  public boolean canHandle(String storageGroup) {
     if(router.containPhysicalNode(storageGroup, localNode)){
       String groupId = getGroupIdBySG(storageGroup);
-      if(RaftUtils.convertPeerId(RaftUtils.getLeader(groupId, cliClientService)).equals(localNode)){
+      if(RaftUtils.convertPeerId(RaftUtils.getLeader(groupId)).equals(localNode)){
         return true;
       }
     }

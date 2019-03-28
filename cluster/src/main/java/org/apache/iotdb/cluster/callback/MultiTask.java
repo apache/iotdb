@@ -29,7 +29,7 @@ public class MultiTask extends Task {
 
   public MultiTask(boolean isSyncTask, int taskNum, BasicRequest request) {
     super(isSyncTask, taskNum, TaskState.INITIAL);
-    setRequest(request);
+    this.request = request;
   }
 
   /**

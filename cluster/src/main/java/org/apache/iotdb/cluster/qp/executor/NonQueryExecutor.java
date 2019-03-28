@@ -25,18 +25,14 @@ import java.io.IOException;
 import org.apache.iotdb.cluster.callback.SingleTask;
 import org.apache.iotdb.cluster.callback.Task;
 import org.apache.iotdb.cluster.callback.Task.TaskState;
-import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClient;
-import org.apache.iotdb.cluster.rpc.request.ChangeMetadataRequest;
+import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -56,27 +52,12 @@ import org.slf4j.LoggerFactory;
 public class NonQueryExecutor extends ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NonQueryExecutor.class);
-  private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
-  private MManager mManager = MManager.getInstance();
-  /**
-   * Rpc Service Client
-   */
-  private BoltCliClientService cliClientService;
-  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
-  /**
-   * Count limit to redo a single task
-   */
-  private static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getTaskRedoCount();
-  /**
-   * Number of subtask in task segmentation
-   */
-  private static final int SUB_TASK_NUM = 1;
 
   public NonQueryExecutor() {
 
   }
 
-  public void init(){
+  public void init() {
     this.cliClientService = new BoltCliClientService();
     this.cliClientService.init(new CliOptions());
   }
@@ -121,16 +102,18 @@ public class NonQueryExecutor extends ClusterQPExecutor {
               String.format("operation %s does not support", plan.getOperatorType()));
       }
     } catch (RaftConnectionException e) {
-      LOGGER.error("Raft connection occurs error.");
-      throw new ProcessorException(e);
+      throw new ProcessorException("Raft connection occurs error.", e);
     } catch (InterruptedException | PathErrorException | IOException e) {
       throw new ProcessorException(e);
     }
   }
 
-  //TODO
-  private boolean update(UpdatePlan updatePlan) {
-    return false;
+  private boolean update(UpdatePlan updatePlan)
+      throws PathErrorException, InterruptedException, RaftConnectionException, ProcessorException, IOException {
+    Path path = updatePlan.getPath();
+    String deviceId = path.getDevice();
+    String storageGroup = getStroageGroupByDevice(deviceId);
+    return handleRequest(storageGroup, updatePlan);
   }
 
   //TODO
@@ -148,9 +131,12 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     return handleRequest(storageGroup, insertPlan);
   }
 
-  //TODO
-  private boolean operateAuthor(AuthorPlan authorPlan) {
-    return false;
+  /**
+   * Handle author plan
+   */
+  private boolean operateAuthor(AuthorPlan authorPlan)
+      throws IOException, RaftConnectionException, InterruptedException {
+    return redirectMetadataGroupLeader(authorPlan);
   }
 
   //TODO
@@ -167,25 +153,17 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     Path path = metadataPlan.getPath();
     switch (namespaceType) {
       case ADD_PATH:
+      case DELETE_PATH:
         String deviceId = path.getDevice();
         String storageGroup = getStroageGroupByDevice(deviceId);
         return handleRequest(storageGroup, metadataPlan);
-      case DELETE_PATH:
-        //TODO
-        return false;
       case SET_FILE_LEVEL:
         boolean fileLevelExist = mManager.checkStorageLevelOfMTree(path.getFullPath());
         if (fileLevelExist) {
           throw new ProcessorException(
               String.format("File level %s already exists.", path.getFullPath()));
         } else {
-          ChangeMetadataRequest request = new ChangeMetadataRequest(
-              CLUSTER_CONFIG.METADATA_GROUP_ID,
-              metadataPlan);
-          PeerId leader = RaftUtils.getLeader(CLUSTER_CONFIG.METADATA_GROUP_ID, cliClientService);
-
-          SingleTask task = new SingleTask(false, request);
-          return asyncHandleTask(task, leader, 0);
+          return redirectMetadataGroupLeader(metadataPlan);
         }
       default:
         throw new ProcessorException("unknown namespace type:" + namespaceType);
@@ -203,12 +181,12 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   private boolean handleRequest(String storageGroup, PhysicalPlan plan)
       throws ProcessorException, IOException, RaftConnectionException, InterruptedException {
     /** Check if the plan can be executed locally. **/
-    if (canHandle(storageGroup, cliClientService)) {
+    if (canHandle(storageGroup)) {
       return qpExecutor.processNonQuery(plan);
     } else {
       String groupId = getGroupIdBySG(storageGroup);
-      ChangeMetadataRequest request = new ChangeMetadataRequest(groupId, plan);
-      PeerId leader = RaftUtils.getLeader(groupId, cliClientService);
+      NonQueryRequest request = new NonQueryRequest(groupId, plan);
+      PeerId leader = RaftUtils.getLeader(groupId);
 
       SingleTask task = new SingleTask(false, request);
       return asyncHandleTask(task, leader, 0);
@@ -234,14 +212,31 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
     task.await();
     if (task.getTaskState() != TaskState.FINISH) {
-      task.setTaskNum(SUB_TASK_NUM);
+      if (task.getTaskState() == TaskState.REDIRECT) {
+        /** redirect to the right leader **/
+        leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
+      }
+      task.setTaskNum();
       return asyncHandleTask(task, leader, taskRetryNum + 1);
     }
     return task.getResponse().isSuccess();
   }
 
-  public void shutdown(){
+  public void shutdown() {
     cliClientService.shutdown();
   }
 
+  /**
+   * Request need to broadcast in metadata group.
+   *
+   * @param plan Metadata Plan or Authoe Plan
+   */
+  public boolean redirectMetadataGroupLeader(PhysicalPlan plan)
+      throws IOException, RaftConnectionException, InterruptedException {
+    NonQueryRequest request = new NonQueryRequest(CLUSTER_CONFIG.METADATA_GROUP_ID, plan);
+    PeerId leader = RaftUtils.getLeader(CLUSTER_CONFIG.METADATA_GROUP_ID);
+
+    SingleTask task = new SingleTask(false, request);
+    return asyncHandleTask(task, leader, 0);
+  }
 }

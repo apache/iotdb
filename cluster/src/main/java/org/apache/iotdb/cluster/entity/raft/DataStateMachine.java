@@ -18,30 +18,79 @@
  */
 package org.apache.iotdb.cluster.entity.raft;
 
+import com.alipay.remoting.exception.CodecException;
+import com.alipay.remoting.serialization.SerializerManager;
+import com.alipay.sofa.jraft.Closure;
 import com.alipay.sofa.jraft.Iterator;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
+import com.alipay.sofa.jraft.entity.PeerId;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.engine.Processor;
+import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
+import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
+import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DataStateMachine extends StateMachineAdapter {
 
-  private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataStateMachine.class);
 
+  private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
+  private PeerId peerId;
+  private String groupId;
   private AtomicLong leaderTerm = new AtomicLong(-1);
 
-  public DataStateMachine() {
-    //TODO init @code{process}
+  public DataStateMachine(String groupId, PeerId peerId) {
+    this.peerId = peerId;
+    this.groupId = groupId;
   }
 
   @Override
   public void onApply(Iterator iterator) {
+    while (iterator.hasNext()) {
 
+      Closure closure = null;
+      NonQueryRequest request = null;
+      if (iterator.done() != null) {
+        closure = iterator.done();
+      }
+      final ByteBuffer data = iterator.getData();
+      try {
+        request = SerializerManager.getSerializer(SerializerManager.Hessian2)
+            .deserialize(data.array(), NonQueryRequest.class.getName());
+      } catch (final CodecException e) {
+        LOGGER.error("Fail to decode IncrementAndGetRequest", e);
+      }
+      Status status = Status.OK();
+      try {
+        assert request != null;
+          PhysicalPlan plan = PhysicalPlanLogTransfer
+              .logToOperator(request.getPhysicalPlanBytes());
+          qpExecutor.processNonQuery(plan);
+      } catch (ProcessorException | IOException e) {
+        LOGGER.error("Execute physical plan error", e);
+        status = new Status(1, e.toString());
+      }
+      if (closure != null) {
+        closure.run(status);
+      }
+      iterator.next();
+    }
   }
 
   @Override
   public void onLeaderStart(final long term) {
+    RaftUtils.updateRaftGroupLeader(groupId, peerId);
     this.leaderTerm.set(term);
   }
 

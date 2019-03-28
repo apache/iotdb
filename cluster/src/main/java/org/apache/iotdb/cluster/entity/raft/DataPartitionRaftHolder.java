@@ -33,7 +33,7 @@ public class DataPartitionRaftHolder extends DataPartitionHolder {
   public DataPartitionRaftHolder(String groupId, PeerId[] peerIds, PeerId serverId, RpcServer rpcServer, boolean startRpcServer) {
     this.groupId = groupId;
     this.serverId = serverId;
-    fsm = new DataStateMachine();
+    fsm = new DataStateMachine(groupId, serverId);
     service = new RaftService(groupId, peerIds, serverId, rpcServer, fsm, startRpcServer);
   }
 

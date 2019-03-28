@@ -27,25 +27,29 @@ public abstract class Task {
   /**
    * Task response
    */
-  private BasicResponse response;
+  protected BasicResponse response;
 
   /**
    * Task request
    */
-  private BasicRequest request;
+  protected BasicRequest request;
   /**
    * Whether it's a synchronization task or not.
    */
-  private boolean isSyncTask;
+  protected boolean isSyncTask;
 
   /**
    * Num of sub-task
    */
-  private CountDownLatch taskNum;
+  protected CountDownLatch taskNum;
   /**
    * Describe task type
    */
-  private TaskState taskState;
+  protected TaskState taskState;
+  /**
+   * Default task num
+   */
+  private static final int DEFAULT_TASK_NUM = 1;
 
   public Task(boolean isSyncTask, int taskNum, TaskState taskState) {
     this.isSyncTask = isSyncTask;
@@ -74,6 +78,10 @@ public abstract class Task {
 
   public void setTaskNum(int taskNum) {
     this.taskNum = new CountDownLatch(taskNum);
+  }
+
+  public void setTaskNum() {
+    this.taskNum = new CountDownLatch(DEFAULT_TASK_NUM);
   }
 
   public TaskState getTaskState() {

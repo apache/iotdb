@@ -18,15 +18,11 @@
  */
 package org.apache.iotdb.cluster.rpc.service;
 
-import com.alipay.sofa.jraft.option.CliOptions;
-import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.io.IOException;
-import java.time.ZoneId;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +40,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   }
 
   @Override
-  public void initClusterService(){
+  public void initClusterService() {
     nonQueryExecutor.set(new NonQueryExecutor());
     nonQueryExecutor.get().init();
   }

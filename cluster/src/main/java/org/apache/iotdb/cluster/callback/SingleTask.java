@@ -29,7 +29,7 @@ public class SingleTask extends Task {
 
   public SingleTask(boolean isSyncTask, BasicRequest request) {
     super(isSyncTask, 1, TaskState.INITIAL);
-    setRequest(request);
+    this.request = request;
   }
 
   /**
@@ -37,12 +37,12 @@ public class SingleTask extends Task {
    */
   @Override
   public void run(BasicResponse response) {
+    this.response = response;
     if (response.isRedirected()) {
-      setTaskState(TaskState.REDIRECT);
-    } else if(getTaskState() != TaskState.EXCEPTION){
-      setResponse(response);
-      setTaskState(TaskState.FINISH);
+      this.taskState = TaskState.REDIRECT;
+    } else if (taskState != TaskState.EXCEPTION) {
+      this.taskState = TaskState.FINISH;
     }
-    getTaskNum().countDown();
+    this.taskNum.countDown();
   }
 }

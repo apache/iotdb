@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.entity;
 import com.alipay.remoting.rpc.RpcServer;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.RaftRpcServerFactory;
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -30,7 +29,7 @@ import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
-import org.apache.iotdb.cluster.rpc.processor.ChangeMetadataAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.processor.NonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
@@ -45,6 +44,7 @@ public class Server {
   private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
   private MetadataHolder metadataHolder;
   private Map<String, DataPartitionHolder> dataPartitionHolderMap;
+  private PeerId serverId;
 
   public static void main(String[] args) throws AuthException {
     Server server = Server.getInstance();
@@ -57,11 +57,11 @@ public class Server {
     iotdb.active();
 
     PeerId[] peerIds = RaftUtils.convertStringArrayToPeerIdArray(CLUSTER_CONF.getNodes());
-    PeerId serverId = new PeerId(CLUSTER_CONF.getIp(), CLUSTER_CONF.getPort());
+    serverId = new PeerId(CLUSTER_CONF.getIp(), CLUSTER_CONF.getPort());
     RpcServer rpcServer = new RpcServer(serverId.getPort());
     RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
     // TODO processor
-    rpcServer.registerUserProcessor(new ChangeMetadataAsyncProcessor(this));
+    rpcServer.registerUserProcessor(new NonQueryAsyncProcessor(this));
     metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer,true);
     metadataHolder.init();
     metadataHolder.start();
@@ -96,6 +96,10 @@ public class Server {
     private ServerHolder() {
 
     }
+  }
+
+  public PeerId getServerId() {
+    return serverId;
   }
 
   public MetadataHolder getMetadataHolder() {

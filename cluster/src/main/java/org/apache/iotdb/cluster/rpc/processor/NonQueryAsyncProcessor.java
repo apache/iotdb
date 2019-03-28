@@ -30,64 +30,84 @@ import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
-import org.apache.iotdb.cluster.rpc.request.ChangeMatadataRequest;
-import org.apache.iotdb.cluster.rpc.response.ChangeMetadataResponse;
+import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
+import org.apache.iotdb.cluster.rpc.response.NonQueryResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Async handle change metadata request.
  */
-public class ChangeMetadataAsyncProcessor extends BasicAsyncUserProcessor<ChangeMatadataRequest> {
+public class NonQueryAsyncProcessor extends BasicAsyncUserProcessor<NonQueryRequest> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ChangeMetadataAsyncProcessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(NonQueryAsyncProcessor.class);
   private Server server;
 
-  public ChangeMetadataAsyncProcessor(Server server) {
+  public NonQueryAsyncProcessor(Server server) {
     this.server = server;
   }
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      ChangeMatadataRequest changeMatadataRequest) {
-    Operator.OperatorType requestType = changeMatadataRequest.getRequestType();
+      NonQueryRequest nonQueryRequest) {
+    Operator.OperatorType requestType = nonQueryRequest.getRequestType();
     /** Check if it's the leader of metadata **/
-    String groupId = changeMatadataRequest.getGroupID();
+    String groupId = nonQueryRequest.getGroupID();
     if (this.server.getServerId().equals(RaftUtils.getLeader(groupId))) {
       PeerId leader = RaftUtils.getLeader(groupId);
-      ChangeMetadataResponse response = new ChangeMetadataResponse(true, false, leader.toString(), null);
+      NonQueryResponse response = new NonQueryResponse(true, false, leader.toString(), null);
       asyncContext.sendResponse(response);
     }
+
     /** Apply Task to Raft Node **/
     final Task task = new Task();
     task.setDone((Status status) -> {
       asyncContext.sendResponse(
-          new ChangeMetadataResponse(false, status.isOk(), null, status.getErrorMsg()));
+          new NonQueryResponse(false, status.isOk(), null, status.getErrorMsg()));
     });
     try {
       task.setData(ByteBuffer
           .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
-              .serialize(changeMatadataRequest)));
+              .serialize(nonQueryRequest)));
     } catch (final CodecException e) {
-      asyncContext.sendResponse(new ChangeMetadataResponse(false, false, null, e.toString()));
+      asyncContext.sendResponse(new NonQueryResponse(false, false, null, e.toString()));
     }
+
     RaftService service;
-    if (requestType == OperatorType.SET_STORAGE_GROUP) {
-      MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
-      service = (RaftService) metadataHolder.getService();
-    } else {
-      DataPartitionRaftHolder dataRaftHolder = (DataPartitionRaftHolder) server
-          .getDataPartitionHolderMap().get(groupId);
-      service = (RaftService) dataRaftHolder.getService();
+    switch (requestType) {
+      case SET_STORAGE_GROUP:
+      case AUTHOR:
+      case CREATE_USER:
+      case CREATE_ROLE:
+      case DELETE_ROLE:
+      case DELETE_USER:
+      case GRANT_USER_ROLE:
+      case GRANT_USER_PRIVILEGE:
+      case REVOKE_USER_PRIVILEGE:
+      case REVOKE_USER_ROLE:
+      case GRANT_ROLE_PRIVILEGE:
+      case LIST_USER:
+      case LIST_ROLE:
+      case LIST_USER_PRIVILEGE:
+      case LIST_ROLE_PRIVILEGE:
+      case LIST_USER_ROLES:
+      case LIST_ROLE_USERS:
+      case MODIFY_PASSWORD:
+        MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
+        service = (RaftService) metadataHolder.getService();
+        break;
+      default:
+        DataPartitionRaftHolder dataRaftHolder = (DataPartitionRaftHolder) server
+            .getDataPartitionHolderMap().get(groupId);
+        service = (RaftService) dataRaftHolder.getService();
     }
     service.getNode().apply(task);
   }
 
   @Override
   public String interest() {
-    return ChangeMatadataRequest.class.getName();
+    return NonQueryRequest.class.getName();
   }
 }

@@ -22,7 +22,9 @@ import com.alipay.sofa.jraft.RouteTable;
 import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -41,6 +43,7 @@ public class RaftUtils {
   private RaftUtils() {
   }
 
+  @Deprecated
   /**
    * Get leader node according to the group id
    *
@@ -58,6 +61,27 @@ public class RaftUtils {
       throw new RaftConnectionException("Refresh leader failed");
     }
     return RouteTable.getInstance().selectLeader(groupId);
+  }
+
+  /**
+   * Get leader id by group id
+   * @return leader id
+   */
+  public static PeerId getLeader(String groupId) {
+    if(!groupLeaderCache.contains(groupId)){
+      RaftService service = (RaftService)server.getDataPartitionHolderMap().get(groupId).getService();
+      List<PeerId> peerIdList= service.getPeerIdList();
+      groupLeaderCache.put(groupId, getRandomPeerId(peerIdList));
+    }
+    return groupLeaderCache.get(groupId);
+  }
+
+  /**
+   * Get random peer id form a list of peer id.
+   */
+  public static PeerId getRandomPeerId(List<PeerId> peerIdList){
+    int randomIndex = ThreadLocalRandom.current().nextInt(peerIdList.size());
+    return peerIdList.get(randomIndex);
   }
 
   /**
@@ -120,6 +144,16 @@ public class RaftUtils {
       peerIds[i] = new PeerId(physicalNodes[i].getIp(), physicalNodes[i].getPort());
     }
     return peerIds;
+  }
+
+  /**
+   * Update raft group leader
+   *
+   * @param groupId group id
+   * @param peerId leader id
+   */
+  public static void updateRaftGroupLeader(String groupId, PeerId peerId) {
+    groupLeaderCache.put(groupId, peerId);
   }
 
 }

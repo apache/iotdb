@@ -22,6 +22,8 @@ import java.io.Serializable;
 
 public abstract class BasicRequest implements Serializable {
 
+  private static final long serialVersionUID = 8434915845259380829L;
+
   private String groupID;
 
   public BasicRequest(String groupID) {

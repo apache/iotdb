@@ -22,12 +22,29 @@ import java.io.Serializable;
 
 public abstract class BasicResponse implements Serializable {
 
+  private static final long serialVersionUID = 7509860476962493127L;
+  /**
+   * Mark if it's need to redirect to right leader
+   */
   private boolean redirected;
+  /**
+   * Mark if the request is success
+   */
   private boolean success;
+  /**
+   * Redirect leader id
+   */
+  private String leaderStr;
+  /**
+   * Error message
+   */
+  private String errorMsg;
 
-  public BasicResponse(boolean redirected, boolean success) {
+  public BasicResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
     this.redirected = redirected;
     this.success = success;
+    this.errorMsg = errorMsg;
+    this.leaderStr = leaderStr;
   }
 
   public boolean isRedirected() {
@@ -44,5 +61,21 @@ public abstract class BasicResponse implements Serializable {
 
   public void setSuccess(boolean success) {
     this.success = success;
+  }
+
+  public String getLeaderStr() {
+    return leaderStr;
+  }
+
+  public void setLeaderStr(String leaderStr) {
+    this.leaderStr = leaderStr;
+  }
+
+  public String getErrorMsg() {
+    return errorMsg;
+  }
+
+  public void setErrorMsg(String errorMsg) {
+    this.errorMsg = errorMsg;
   }
 }
