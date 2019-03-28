@@ -38,11 +38,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FileManager is used to pick up those tsfiles need to sync.
+ * SyncFileManager is used to pick up those tsfiles need to sync.
  */
-public class FileManager {
+public class SyncFileManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncFileManager.class);
 
   /**
    * Files that need to be synchronized
@@ -65,15 +65,15 @@ public class FileManager {
 
   private static final String RESTORE_SUFFIX = ".restore";
 
-  private FileManager() {
+  private SyncFileManager() {
   }
 
-  public static final FileManager getInstance() {
+  public static final SyncFileManager getInstance() {
     return FileManagerHolder.INSTANCE;
   }
 
   /**
-   * Initialize FileManager.
+   * Initialize SyncFileManager.
    */
   public void init() throws IOException {
     validAllFiles.clear();
@@ -199,6 +199,6 @@ public class FileManager {
 
   private static class FileManagerHolder {
 
-    private static final FileManager INSTANCE = new FileManager();
+    private static final SyncFileManager INSTANCE = new SyncFileManager();
   }
 }
