@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.qp.executor;
 
 import com.alipay.sofa.jraft.entity.PeerId;
+import com.alipay.sofa.jraft.option.CliOptions;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.io.IOException;
 import org.apache.iotdb.cluster.callback.SingleTask;
@@ -71,8 +72,13 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    */
   private static final int SUB_TASK_NUM = 1;
 
-  public NonQueryExecutor(BoltCliClientService cliClientService) {
-    this.cliClientService = cliClientService;
+  public NonQueryExecutor() {
+
+  }
+
+  public void init(){
+    this.cliClientService = new BoltCliClientService();
+    this.cliClientService.init(new CliOptions());
   }
 
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
@@ -234,6 +240,10 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       return asyncHandleTask(task, leader, taskRetryNum + 1);
     }
     return task.getResponse().isSuccess();
+  }
+
+  public void shutdown(){
+    cliClientService.shutdown();
   }
 
 }

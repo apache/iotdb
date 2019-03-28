@@ -37,21 +37,16 @@ public class TSServiceClusterImpl extends TSServiceImpl {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceClusterImpl.class);
 
-  /**
-   *
-   */
-  private BoltCliClientService cliClientService = new BoltCliClientService();
-  /**
-   *
-   */
-  private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor(cliClientService);
-
-  private ThreadLocal<String> username = new ThreadLocal<>();
-  private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
+  private ThreadLocal<NonQueryExecutor> nonQueryExecutor = new ThreadLocal<>();
 
   public TSServiceClusterImpl() throws IOException {
     super();
-    cliClientService.init(new CliOptions());
+  }
+
+  @Override
+  public void initClusterService(){
+    nonQueryExecutor.set(new NonQueryExecutor());
+    nonQueryExecutor.get().init();
   }
 
 //  //TODO
@@ -89,13 +84,13 @@ public class TSServiceClusterImpl extends TSServiceImpl {
 
   @Override
   public boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
-    return nonQueryExecutor.processNonQuery(plan);
+    return nonQueryExecutor.get().processNonQuery(plan);
   }
 
-  //TODO
-  public void handleClientExit() throws TException {
-    cliClientService.shutdown();
-    closeOperation(null);
-    closeSession(null);
+  /**
+   * Close cluster service
+   */
+  public void closeClusterService() {
+    nonQueryExecutor.get().shutdown();
   }
 }

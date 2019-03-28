@@ -114,6 +114,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     LOGGER.info("{}: receive open session request from username {}", IoTDBConstant.GLOBAL_DB_NAME,
         req.getUsername());
 
+    initClusterService();
     boolean status;
     IAuthorizer authorizer = null;
     try {
@@ -153,6 +154,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void initForOneSession() {
     queryStatus.set(new HashMap<>());
     queryRet.set(new HashMap<>());
+  }
+
+  public void initClusterService(){
+
   }
 
   @Override
@@ -744,8 +749,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   public void handleClientExit() throws TException {
+    closeClusterService();
     closeOperation(null);
     closeSession(null);
+  }
+
+  /**
+   * Close cluster service
+   */
+  public void closeClusterService(){
+
   }
 
   @Override
