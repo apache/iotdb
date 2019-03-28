@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.cluster.rpc.response;
 
-public class NonQueryResponse extends BasicResponse {
+public class ChangeMetadataResponse extends BasicResponse {
 
-  public NonQueryResponse(boolean redirected, boolean success) {
-    super(redirected, success);
+  public ChangeMetadataResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
+    super(redirected, success, leaderStr, errorMsg);
+  }
+
+  public ChangeMetadataResponse(boolean redirected, boolean success) {
+    super(redirected, success, null, null);
   }
 
 }

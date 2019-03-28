@@ -24,12 +24,18 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 
-public class ChangeMetadataRequest extends BasicRequest implements Serializable {
+public class ChangeMatadataRequest extends BasicRequest implements Serializable {
 
+  /**
+   * Serialized physical plan
+   */
   private byte[] physicalPlanBytes;
+  /**
+   * Request type
+   */
   private Operator.OperatorType requestType;
 
-  public ChangeMetadataRequest(String groupID, PhysicalPlan plan) throws IOException {
+  public ChangeMatadataRequest(String groupID, PhysicalPlan plan) throws IOException {
     super(groupID);
     this.physicalPlanBytes = PhysicalPlanLogTransfer.operatorToLog(plan);
     this.requestType = plan.getOperatorType();
@@ -39,15 +45,8 @@ public class ChangeMetadataRequest extends BasicRequest implements Serializable 
     return physicalPlanBytes;
   }
 
-  public void setPhysicalPlanBytes(byte[] physicalPlanBytes) {
-    this.physicalPlanBytes = physicalPlanBytes;
-  }
-
   public Operator.OperatorType getRequestType() {
     return requestType;
   }
 
-  public void setRequestType(Operator.OperatorType requestType) {
-    this.requestType = requestType;
-  }
 }
