@@ -23,10 +23,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.NoStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class PageHeader {
@@ -90,16 +90,16 @@ public class PageHeader {
   }
 
   /**
-   * deserialize from FileChannel.
+   * deserialize from TsFileInput.
    *
    * @param dataType data type
-   * @param channel FileChannel
+   * @param input TsFileInput
    * @param offset offset
    * @param markerRead read marker (boolean type)
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static PageHeader deserializeFrom(TSDataType dataType, FileChannel channel, long offset,
+  public static PageHeader deserializeFrom(TSDataType dataType, TsFileInput input, long offset,
       boolean markerRead)
       throws IOException {
     long offsetVar = offset;
@@ -110,16 +110,16 @@ public class PageHeader {
     if (dataType == TSDataType.TEXT) {
       int sizeWithoutStatistics = calculatePageHeaderSizeWithoutStatistics();
       ByteBuffer bufferWithoutStatistics = ByteBuffer.allocate(sizeWithoutStatistics);
-      ReadWriteIOUtils.readAsPossible(channel, offsetVar, bufferWithoutStatistics);
+      ReadWriteIOUtils.readAsPossible(input, offsetVar, bufferWithoutStatistics);
       bufferWithoutStatistics.flip();
       offsetVar += sizeWithoutStatistics;
 
-      Statistics statistics = Statistics.deserialize(channel, offsetVar, dataType);
+      Statistics statistics = Statistics.deserialize(input, offsetVar, dataType);
       return deserializePartFrom(statistics, bufferWithoutStatistics);
     } else {
       int size = calculatePageHeaderSize(dataType);
       ByteBuffer buffer = ByteBuffer.allocate(size);
-      ReadWriteIOUtils.readAsPossible(channel, offsetVar, buffer);
+      ReadWriteIOUtils.readAsPossible(input, offsetVar, buffer);
       buffer.flip();
       return deserializeFrom(buffer, dataType);
     }

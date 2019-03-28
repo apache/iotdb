@@ -24,7 +24,6 @@ import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -383,7 +382,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       if (!checkLogin()) {
         LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login", null);
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN, null);
       }
       List<String> statements = req.getStatements();
       List<Integer> result = new ArrayList<>();
@@ -432,8 +431,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) throws TException {
     try {
       if (!checkLogin()) {
-        LOGGER.info("{}: Not login.", IoTDBConstant.GLOBAL_DB_NAME);
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
+        LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
       }
       String statement = req.getStatement();
 
@@ -451,7 +450,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
         physicalPlan.setProposer(username.get());
       } catch (IllegalASTFormatException e) {
-        LOGGER.error("meet error while parsing SQL to physical plan.", e);
+        LOGGER.debug("meet error while parsing SQL to physical plan: {}", e.getMessage());
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
             "Statement format is not right:" + e.getMessage());
       } catch (NullPointerException e) {
@@ -553,7 +552,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             }
             break;
           default:
-            throw new RuntimeException("not support " + type + " in new read process");
+            throw new TException("not support " + type + " in new read process");
         }
       }
 
@@ -649,7 +648,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       execRet = executeNonQuery(plan);
     } catch (ProcessorException e) {
-      LOGGER.error("meet error while processing non-query.", e);
+      LOGGER.debug("meet error while processing non-query. {}", e.getMessage());
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
     TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;

@@ -342,6 +342,18 @@ public class MManager {
   }
 
   /**
+   * function for checking if the given path is storage level of mTree or not.
+   */
+  public boolean checkStorageLevelOfMTree(String path) {
+    lock.readLock().lock();
+    try {
+      return mgraph.checkStorageLevel(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * function for adding a pTree.
    */
   public void addAPTree(String ptreeRootName) throws IOException, MetadataArgsErrorException {

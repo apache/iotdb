@@ -91,8 +91,8 @@ public class FileReaderManager implements IService {
 
     executorService.scheduleAtFixedRate(() -> {
       synchronized (this) {
-        clearMap(unclosedFileReaderMap, unclosedReferenceMap);
         clearMap(closedFileReaderMap, closedReferenceMap);
+        clearMap(unclosedFileReaderMap, unclosedReferenceMap);
       }
     }, 0, examinePeriod, TimeUnit.MILLISECONDS);
   }

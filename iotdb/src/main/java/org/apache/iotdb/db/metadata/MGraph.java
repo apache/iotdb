@@ -145,6 +145,15 @@ public class MGraph implements Serializable {
   }
 
   /**
+   * Check whether the input path is storage level for current Metadata Tree or not.
+   *
+   * @param path Format: root.node.(node)*
+   */
+  public boolean checkStorageLevel(String path) {
+    return mtree.checkStorageGroup(path);
+  }
+
+  /**
    * Get all paths for given seriesPath regular expression if given seriesPath belongs to MTree, or
    * get all linked seriesPath for given seriesPath if given seriesPath belongs to PTree Notice:
    * Regular expression in this method is formed by the amalgamation of seriesPath and the character
