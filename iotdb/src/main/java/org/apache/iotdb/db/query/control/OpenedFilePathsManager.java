@@ -65,7 +65,7 @@ public class OpenedFilePathsManager {
   /**
    * Add the unique file paths to closedFilePathsMap and unclosedFilePathsMap.
    */
-  public void addUsedFilesForCurrentRequestThread(long jobId, QueryDataSource dataSource) {
+  void addUsedFilesForCurrentRequestThread(long jobId, QueryDataSource dataSource) {
     for (TsFileResource tsFileResource : dataSource.getSeqDataSource().getSealedTsFiles()) {
       String sealedFilePath = tsFileResource.getFilePath();
       addFilePathToMap(jobId, sealedFilePath, true);
@@ -110,9 +110,10 @@ public class OpenedFilePathsManager {
    * so <code>closedFilePathsMap.get(jobId)</code> or <code>unclosedFilePathsMap.get(jobId)</code>
    * must not return null.
    */
-  public void addFilePathToMap(long jobId, String filePath, boolean isClosed) {
+  void addFilePathToMap(long jobId, String filePath, boolean isClosed) {
     ConcurrentHashMap<Long, Set<String>> pathMap = !isClosed ? unclosedFilePathsMap :
         closedFilePathsMap;
+    //TODO this is not an atomic operation, is there concurrent problem?
     if (!pathMap.get(jobId).contains(filePath)) {
       pathMap.get(jobId).add(filePath);
       FileReaderManager.getInstance().increaseFileReaderReference(filePath, isClosed);
