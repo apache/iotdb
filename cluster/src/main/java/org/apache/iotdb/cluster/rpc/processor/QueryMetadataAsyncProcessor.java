@@ -22,9 +22,13 @@ import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
 import com.alipay.remoting.exception.CodecException;
 import com.alipay.remoting.serialization.SerializerManager;
+import com.alipay.sofa.jraft.Status;
+import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import com.alipay.sofa.jraft.entity.Task;
+import com.alipay.sofa.jraft.util.Bits;
 import java.nio.ByteBuffer;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
@@ -39,6 +43,7 @@ public class QueryMetadataAsyncProcessor extends BasicAsyncUserProcessor<QueryMe
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataAsyncProcessor.class);
   private Server server;
+  private final AtomicInteger requestId = new AtomicInteger(0);
 
   public QueryMetadataAsyncProcessor(Server server) {
     this.server = server;
@@ -58,8 +63,9 @@ public class QueryMetadataAsyncProcessor extends BasicAsyncUserProcessor<QueryMe
           task.setDone(status -> {
             if (!status.isOk()) {
               asyncContext.sendResponse(new QueryMetadataResponse(false, false));
+            } else {
+              asyncContext.sendResponse(new QueryMetadataResponse(false, true, storageGroupSet));
             }
-            asyncContext.sendResponse(new QueryMetadataResponse(false, true, storageGroupSet));
           });
           task.setData(ByteBuffer
               .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
@@ -70,8 +76,24 @@ public class QueryMetadataAsyncProcessor extends BasicAsyncUserProcessor<QueryMe
           asyncContext.sendResponse(new QueryMetadataResponse(false, false));
         }
       } else {
-        QueryMetadataResponse response = new QueryMetadataResponse(true, false);
-        asyncContext.sendResponse(response);
+        // TODO readIndex
+        final byte[] reqContext = new byte[4];
+        Bits.putInt(reqContext, 0, requestId.incrementAndGet());
+        ((RaftService) metadataHolder.getService()).getNode().readIndex(reqContext, new ReadIndexClosure() {
+
+          @Override
+          public void run(Status status, long index, byte[] reqCtx) {
+            if (status.isOk()) {
+              try {
+                asyncContext.sendResponse(new QueryMetadataResponse(false, true, metadataHolder.getFsm().getAllStorageGroups())));
+              } catch (final PathErrorException e) {
+                asyncContext.sendResponse(new QueryMetadataResponse(false, false));
+              }
+            } else {
+              asyncContext.sendResponse(new QueryMetadataResponse(false, false));
+            }
+          }
+        });
       }
     } else {
       //TODO deal with query time series
