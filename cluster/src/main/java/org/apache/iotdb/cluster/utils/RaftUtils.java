@@ -50,7 +50,8 @@ public class RaftUtils {
    * @param groupId group id of raft group
    * @return PeerId of leader
    */
-  public static PeerId getLeader(String groupId, BoltCliClientService cliClientService) throws RaftConnectionException {
+  public static PeerId getLeader(String groupId, BoltCliClientService cliClientService)
+      throws RaftConnectionException {
     Configuration conf = getConfiguration(groupId);
     RouteTable.getInstance().updateConfiguration(groupId, conf);
     try {
@@ -65,12 +66,14 @@ public class RaftUtils {
 
   /**
    * Get leader id by group id
+   *
    * @return leader id
    */
   public static PeerId getLeader(String groupId) {
-    if(!groupLeaderCache.contains(groupId)){
-      RaftService service = (RaftService)server.getDataPartitionHolderMap().get(groupId).getService();
-      List<PeerId> peerIdList= service.getPeerIdList();
+    if (!groupLeaderCache.contains(groupId)) {
+      RaftService service = (RaftService) server.getDataPartitionHolderMap().get(groupId)
+          .getService();
+      List<PeerId> peerIdList = service.getPeerIdList();
       groupLeaderCache.put(groupId, getRandomPeerId(peerIdList));
     }
     return groupLeaderCache.get(groupId);
@@ -79,7 +82,7 @@ public class RaftUtils {
   /**
    * Get random peer id form a list of peer id.
    */
-  public static PeerId getRandomPeerId(List<PeerId> peerIdList){
+  public static PeerId getRandomPeerId(List<PeerId> peerIdList) {
     int randomIndex = ThreadLocalRandom.current().nextInt(peerIdList.size());
     return peerIdList.get(randomIndex);
   }
