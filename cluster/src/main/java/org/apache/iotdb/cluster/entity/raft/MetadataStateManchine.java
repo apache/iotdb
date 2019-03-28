@@ -26,6 +26,7 @@ import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.request.ChangeMetadataRequest;
 import org.apache.iotdb.db.auth.AuthException;
@@ -109,6 +110,10 @@ public class MetadataStateManchine extends StateMachineAdapter {
 
   public void deleteStorageGroup(String sg) {
     // TODO implement this method
+  }
+
+  public Set<String> getAllStorageGroups() throws PathErrorException {
+    return mManager.getAllStorageGroup();
   }
 
   public void addUser(String username, String password) throws AuthException {

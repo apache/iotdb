@@ -18,31 +18,26 @@
  */
 package org.apache.iotdb.cluster.rpc.response;
 
-import java.io.Serializable;
+import java.util.Set;
 
-public abstract class BasicResponse implements Serializable {
+public class QueryMetadataResponse extends BasicResponse {
 
-  private boolean redirected;
-  private boolean success;
+  private Set<String> metadataSet;
 
-  public  BasicResponse(boolean redirected, boolean success) {
-    this.redirected = redirected;
-    this.success = success;
+  public QueryMetadataResponse(boolean redirected, boolean success) {
+    super(redirected, success);
   }
 
-  public boolean isRedirected() {
-    return redirected;
+  public QueryMetadataResponse(boolean redirected, boolean success, Set<String> metadataSet) {
+    super(redirected, success);
+    this.metadataSet = metadataSet;
   }
 
-  public void setRedirected(boolean redirected) {
-    this.redirected = redirected;
+  public Set<String> getMetadataSet() {
+    return metadataSet;
   }
 
-  public boolean isSuccess() {
-    return success;
-  }
-
-  public void setSuccess(boolean success) {
-    this.success = success;
+  public void setMetadataSet(Set<String> metadataSet) {
+    this.metadataSet = metadataSet;
   }
 }

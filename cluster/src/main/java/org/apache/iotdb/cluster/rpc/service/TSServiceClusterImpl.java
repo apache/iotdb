@@ -18,14 +18,22 @@
  */
 package org.apache.iotdb.cluster.rpc.service;
 
-import com.alipay.sofa.jraft.option.CliOptions;
-import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.io.IOException;
-import java.time.ZoneId;
+import java.util.Set;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
+import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
+import org.apache.iotdb.cluster.rpc.MetadataType;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TS_Status;
+import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +46,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceClusterImpl.class);
 
   private ThreadLocal<NonQueryExecutor> nonQueryExecutor = new ThreadLocal<>();
+  private ThreadLocal<QueryMetadataExecutor> queryMetadataExecutor = new ThreadLocal<>();
 
   public TSServiceClusterImpl() throws IOException {
     super();
@@ -47,6 +56,8 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   public void initClusterService(){
     nonQueryExecutor.set(new NonQueryExecutor());
     nonQueryExecutor.get().init();
+    queryMetadataExecutor.set(new QueryMetadataExecutor());
+    queryMetadataExecutor.get().init();
   }
 
 //  //TODO
@@ -90,7 +101,52 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   /**
    * Close cluster service
    */
+  @Override
   public void closeClusterService() {
     nonQueryExecutor.get().shutdown();
+    queryMetadataExecutor.get().shutdown();
+  }
+
+  @Override
+  public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) throws TException {
+    TS_Status status;
+    if (!checkLogin()) {
+      LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      status = getErrorStatus(ERROR_NOT_LOGIN);
+      return new TSFetchMetadataResp(status);
+    }
+    TSFetchMetadataResp resp = new TSFetchMetadataResp();
+    switch (req.getType()) {
+      case "SHOW_STORAGE_GROUP":
+        try {
+          Set<String> storageGroups = processMetadataQuery(MetadataType.STORAGE_GROUP);
+          resp.setShowStorageGroups(storageGroups);
+        } catch (RaftConnectionException | InterruptedException e) {
+          status = getErrorStatus(String.format("Failed to fetch storage groups' metadata because: %s", e));
+          resp.setStatus(status);
+          return resp;
+        } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
+          LOGGER.error("Failed to fetch storage groups' metadata", outOfMemoryError);
+          status = getErrorStatus(
+              String.format("Failed to fetch storage groups' metadata because: %s",
+                  outOfMemoryError));
+          resp.setStatus(status);
+          return resp;
+        }
+        status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+        break;
+      default:
+        status = new TS_Status(TS_StatusCode.ERROR_STATUS);
+        status
+            .setErrorMessage(String.format("Unsuport fetch metadata operation %s", req.getType()));
+        break;
+    }
+    resp.setStatus(status);
+    return resp;
+  }
+
+  public Set<String> processMetadataQuery(MetadataType type)
+      throws RaftConnectionException, InterruptedException {
+    return queryMetadataExecutor.get().processMetadataQuery(type);
   }
 }

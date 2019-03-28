@@ -56,21 +56,6 @@ import org.slf4j.LoggerFactory;
 public class NonQueryExecutor extends ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NonQueryExecutor.class);
-  private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
-  private MManager mManager = MManager.getInstance();
-  /**
-   * Rpc Service Client
-   */
-  private BoltCliClientService cliClientService;
-  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
-  /**
-   * Count limit to redo a single task
-   */
-  private static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getTaskRedoCount();
-  /**
-   * Number of subtask in task segmentation
-   */
-  private static final int SUB_TASK_NUM = 1;
 
   public NonQueryExecutor() {
 
@@ -79,6 +64,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   public void init(){
     this.cliClientService = new BoltCliClientService();
     this.cliClientService.init(new CliOptions());
+    SUB_TASK_NUM = 1;
   }
 
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
@@ -180,9 +166,9 @@ public class NonQueryExecutor extends ClusterQPExecutor {
               String.format("File level %s already exists.", path.getFullPath()));
         } else {
           ChangeMetadataRequest request = new ChangeMetadataRequest(
-              CLUSTER_CONFIG.METADATA_GROUP_ID,
+              ClusterConfig.METADATA_GROUP_ID,
               metadataPlan);
-          PeerId leader = RaftUtils.getLeader(CLUSTER_CONFIG.METADATA_GROUP_ID, cliClientService);
+          PeerId leader = RaftUtils.getLeader(ClusterConfig.METADATA_GROUP_ID, cliClientService);
 
           SingleTask task = new SingleTask(false, request);
           return asyncHandleTask(task, leader, 0);
@@ -239,9 +225,4 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     }
     return task.getResponse().isSuccess();
   }
-
-  public void shutdown(){
-    cliClientService.shutdown();
-  }
-
 }

@@ -16,33 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.response;
+package org.apache.iotdb.cluster.rpc.request;
 
 import java.io.Serializable;
+import org.apache.iotdb.cluster.rpc.MetadataType;
 
-public abstract class BasicResponse implements Serializable {
+public class QueryMetadataRequest extends BasicRequest implements Serializable {
 
-  private boolean redirected;
-  private boolean success;
+  private MetadataType metadataType;
 
-  public  BasicResponse(boolean redirected, boolean success) {
-    this.redirected = redirected;
-    this.success = success;
+  public QueryMetadataRequest(String groupID, MetadataType metadataType) {
+    super(groupID);
+    this.metadataType = metadataType;
   }
 
-  public boolean isRedirected() {
-    return redirected;
+  public MetadataType getMetadataType() {
+    return metadataType;
   }
 
-  public void setRedirected(boolean redirected) {
-    this.redirected = redirected;
-  }
-
-  public boolean isSuccess() {
-    return success;
-  }
-
-  public void setSuccess(boolean success) {
-    this.success = success;
+  public void setMetadataType(
+      MetadataType metadataType) {
+    this.metadataType = metadataType;
   }
 }

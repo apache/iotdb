@@ -16,33 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.response;
+package org.apache.iotdb.cluster.rpc;
 
-import java.io.Serializable;
-
-public abstract class BasicResponse implements Serializable {
-
-  private boolean redirected;
-  private boolean success;
-
-  public  BasicResponse(boolean redirected, boolean success) {
-    this.redirected = redirected;
-    this.success = success;
-  }
-
-  public boolean isRedirected() {
-    return redirected;
-  }
-
-  public void setRedirected(boolean redirected) {
-    this.redirected = redirected;
-  }
-
-  public boolean isSuccess() {
-    return success;
-  }
-
-  public void setSuccess(boolean success) {
-    this.success = success;
-  }
+public enum MetadataType {
+  STORAGE_GROUP, TIME_SERIES
 }
