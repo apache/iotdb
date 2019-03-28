@@ -23,10 +23,18 @@ import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.concurrent.TimeoutException;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.entity.Server;
+import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
+import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 
 public class RaftUtils {
+
+  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
+  private static final Server server = Server.getInstance();
 
   private RaftUtils() {
   }
@@ -50,9 +58,25 @@ public class RaftUtils {
     return RouteTable.getInstance().selectLeader(groupId);
   }
 
-
+  /**
+   * Get raft group configuration by group id
+   *
+   * @param groupID raft group id
+   * @return raft group configuration
+   */
   public static Configuration getConfiguration(String groupID) {
-    return null;
+    Configuration conf = new Configuration();
+    RaftService service;
+    if (groupID.equals(CLUSTER_CONFIG.METADATA_GROUP_ID)) {
+      service = (RaftService) server.getMetadataHolder().getService();
+      conf.setPeers(service.getPeerIdList());
+    } else {
+      DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
+          .getDataPartitionHolderMap().get(groupID);
+      service = (RaftService) dataPartitionHolder.getService();
+      conf.setPeers(service.getPeerIdList());
+    }
+    return conf;
   }
 
   public static PeerId convertPhysicalNode(PhysicalNode node) {

@@ -168,12 +168,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
         //TODO
         return false;
       case SET_FILE_LEVEL:
-        boolean fileLevelExist = false;
-//        try {
-//          PathCheckRet ret = mManager.checkPathStorageLevelAndGetDataType(path.getFullPath());
-//          fileLevelExist = !ret.isSuccessfully();
-//        } catch (PathErrorException e) {
-//        }
+        boolean fileLevelExist = mManager.checkStorageLevelOfMTree(path.getFullPath());
         if (fileLevelExist) {
           throw new ProcessorException(
               String.format("File level %s already exists.", path.getFullPath()));

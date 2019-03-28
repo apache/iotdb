@@ -78,6 +78,10 @@ public class RaftService implements IService {
     raftGroupService.shutdown();
   }
 
+  public List<PeerId> getPeerIdList() {
+    return peerIdList;
+  }
+
   public RaftGroupService getRaftGroupService() {
     return raftGroupService;
   }

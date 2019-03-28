@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.entity;
 import com.alipay.remoting.rpc.RpcServer;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.RaftRpcServerFactory;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -46,7 +47,7 @@ public class Server {
   private Map<String, DataPartitionHolder> dataPartitionHolderMap;
 
   public static void main(String[] args) throws AuthException {
-    Server server = new Server();
+    Server server = Server.getInstance();
     server.start();
   }
 
@@ -84,11 +85,24 @@ public class Server {
 
   }
 
+  public static final Server getInstance() {
+    return ServerHolder.INSTANCE;
+  }
+
+  private static class ServerHolder {
+
+    private static final Server INSTANCE = new Server();
+
+    private ServerHolder() {
+
+    }
+  }
+
   public MetadataHolder getMetadataHolder() {
     return metadataHolder;
   }
 
-  public void setMetadataHolder(MetadataHolder metadataHolder) {
-    this.metadataHolder = metadataHolder;
+  public Map<String, DataPartitionHolder> getDataPartitionHolderMap() {
+    return dataPartitionHolderMap;
   }
 }

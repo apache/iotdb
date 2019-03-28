@@ -38,4 +38,8 @@ public abstract class DataPartitionHolder implements IPartitionHolder {
   public void stop() {
     service.stop();
   }
+
+  public IService getService() {
+    return service;
+  }
 }
