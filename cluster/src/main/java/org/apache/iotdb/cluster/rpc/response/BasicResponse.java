@@ -24,7 +24,7 @@ public abstract class BasicResponse implements Serializable {
 
   private static final long serialVersionUID = 7509860476962493127L;
   /**
-   * Mark if it's need to redirect to right leader
+   * Mark if it needs to redirect to right leader
    */
   private boolean redirected;
   /**

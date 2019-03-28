@@ -61,7 +61,6 @@ public class QueryMetadataAsyncProcessor extends BasicAsyncUserProcessor<QueryMe
           final Task task = new Task();
           Set<String> storageGroupSet = metadataHolder.getFsm().getAllStorageGroups();
           task.setDone(status -> {
-            asyncContext.sendResponse();
             if (!status.isOk()) {
               asyncContext.sendResponse(
                   new QueryMetadataResponse(false, false, null, status.getErrorMsg()));
