@@ -20,16 +20,8 @@ package org.apache.iotdb.db.writelog.transfer;
 
 import java.io.IOException;
 import java.nio.BufferOverflowException;
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.WALOverSizedException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
-import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 
 public class PhysicalPlanLogTransfer {
 
@@ -38,23 +30,48 @@ public class PhysicalPlanLogTransfer {
 
   public static byte[] operatorToLog(PhysicalPlan plan) throws IOException {
     Codec<PhysicalPlan> codec;
-    if (plan instanceof InsertPlan) {
-      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.INSERT).codec;
-    } else if (plan instanceof UpdatePlan) {
-      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.UPDATE).codec;
-    } else if (plan instanceof DeletePlan) {
-      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.DELETE).codec;
-    } else if (plan instanceof MetadataPlan) {
-      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.METADATA).codec;
-    } else if (plan instanceof AuthorPlan) {
-      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.AUTHOR).codec;
-    } else if (plan instanceof LoadDataPlan) {
-      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.LOADDATA).codec;
-    } else if (plan instanceof PropertyPlan) {
-      codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.PROPERTY).codec;
-    } else{
-      throw new UnsupportedOperationException(
-          "SystemLogOperator given is not supported. " + plan.getOperatorType());
+    switch (plan.getOperatorType()) {
+      case INSERT:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.INSERT).codec;
+        break;
+      case UPDATE:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.UPDATE).codec;
+        break;
+      case DELETE:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.DELETE).codec;
+        break;
+      case DELETE_TIMESERIES:
+      case SET_STORAGE_GROUP:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.METADATA).codec;
+        break;
+      case AUTHOR:
+      case CREATE_USER:
+      case CREATE_ROLE:
+      case DELETE_ROLE:
+      case DELETE_USER:
+      case GRANT_USER_ROLE:
+      case GRANT_USER_PRIVILEGE:
+      case REVOKE_USER_PRIVILEGE:
+      case REVOKE_USER_ROLE:
+      case GRANT_ROLE_PRIVILEGE:
+      case LIST_USER:
+      case LIST_ROLE:
+      case LIST_USER_PRIVILEGE:
+      case LIST_ROLE_PRIVILEGE:
+      case LIST_USER_ROLES:
+      case LIST_ROLE_USERS:
+      case MODIFY_PASSWORD:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.AUTHOR).codec;
+        break;
+      case LOADDATA:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.LOADDATA).codec;
+        break;
+      case PROPERTY:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.PROPERTY).codec;
+        break;
+      default:
+        throw new UnsupportedOperationException(
+            "SystemLogOperator given is not supported. " + plan.getOperatorType());
     }
     try {
       return codec.encode(plan);
