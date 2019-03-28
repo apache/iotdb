@@ -150,7 +150,7 @@ public class FileReaderManager implements IService {
    * Increase the reference count of the reader specified by filePath. Only when the reference count
    * of a reader equals zero, the reader can be closed and removed.
    */
-  public synchronized void increaseFileReaderReference(String filePath, boolean isClosed) {
+  synchronized void increaseFileReaderReference(String filePath, boolean isClosed) {
     if (!isClosed) {
       unclosedReferenceMap.computeIfAbsent(filePath, k -> new AtomicInteger()).getAndIncrement();
     } else {
@@ -162,7 +162,7 @@ public class FileReaderManager implements IService {
    * Decrease the reference count of the reader specified by filePath. This method is latch-free.
    * Only when the reference count of a reader equals zero, the reader can be closed and removed.
    */
-  public synchronized void decreaseFileReaderReference(String filePath, boolean isClosed) {
+  synchronized void decreaseFileReaderReference(String filePath, boolean isClosed) {
     if (!isClosed && unclosedReferenceMap.containsKey(filePath)) {
       unclosedReferenceMap.get(filePath).getAndDecrement();
     } else if (closedReferenceMap.containsKey(filePath)){

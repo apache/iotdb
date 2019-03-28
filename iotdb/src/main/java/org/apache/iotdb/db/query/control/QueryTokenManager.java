@@ -161,10 +161,7 @@ public class QueryTokenManager {
   }
 
   private void putQueryTokenForCurrentRequestThread(long jobId, String deviceId, int queryToken) {
-    if (!queryTokensMap.get(jobId).containsKey(deviceId)) {
-      queryTokensMap.get(jobId).put(deviceId, new ArrayList<>());
-    }
-    queryTokensMap.get(jobId).get(deviceId).add(queryToken);
+    queryTokensMap.get(jobId).computeIfPresent(deviceId, (x, y) -> new ArrayList<>()).add(queryToken);
   }
 
   private static class QueryTokenManagerHelper {
