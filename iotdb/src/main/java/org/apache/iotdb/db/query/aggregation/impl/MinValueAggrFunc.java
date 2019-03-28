@@ -54,29 +54,21 @@ public class MinValueAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
-    Comparable<Object> minVal = null;
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        if (minVal == null || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
-          minVal = (Comparable<Object>) dataInThisPage.currentValue();
-        }
+        updateResult((Comparable<Object>) dataInThisPage.currentValue());
         dataInThisPage.next();
       } else if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        if (minVal == null
-            || minVal.compareTo(unsequenceReader.current().getValue().getValue()) > 0) {
-          minVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
-        }
+        updateResult((Comparable<Object>) unsequenceReader.current().getValue().getValue());
         dataInThisPage.next();
         unsequenceReader.next();
       } else {
-        if (minVal == null
-            || minVal.compareTo(unsequenceReader.current().getValue().getValue()) > 0) {
-          minVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
-        }
+        updateResult((Comparable<Object>) unsequenceReader.current().getValue().getValue());
         unsequenceReader.next();
       }
     }
 
+    Comparable<Object> minVal = null;
     while (dataInThisPage.hasNext()) {
       if (minVal == null
           || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
@@ -90,46 +82,28 @@ public class MinValueAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       long bound) throws IOException {
-    Comparable<Object> minVal = null;
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        if (dataInThisPage.currentTime() >= bound) {
-          break;
-        }
-        if (minVal == null || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
-          minVal = (Comparable<Object>) dataInThisPage.currentValue();
-        }
+      long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
+      if (time >= bound) {
+        break;
+      }
+
+      if (dataInThisPage.currentTime() == time) {
+        updateResult((Comparable<Object>) dataInThisPage.currentValue());
         dataInThisPage.next();
-      } else if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        if (dataInThisPage.currentTime() >= bound) {
-          break;
-        }
-        if (minVal == null
-            || minVal.compareTo(unsequenceReader.current().getValue().getValue()) > 0) {
-          minVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
-        }
-        dataInThisPage.next();
-        unsequenceReader.next();
-      } else {
-        if (unsequenceReader.current().getTimestamp() >= bound) {
-          break;
-        }
-        if (minVal == null
-            || minVal.compareTo(unsequenceReader.current().getValue().getValue()) > 0) {
-          minVal = (Comparable<Object>) unsequenceReader.current().getValue().getValue();
-        }
+      }
+
+      if (unsequenceReader.current().getTimestamp() == time) {
+        updateResult((Comparable<Object>) unsequenceReader.current().getValue().getValue());
         unsequenceReader.next();
       }
+
     }
 
     while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
-      if (minVal == null
-          || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
-        minVal = (Comparable<Object>) dataInThisPage.currentValue();
-      }
+      updateResult((Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
     }
-    updateResult(minVal);
   }
 
   @Override

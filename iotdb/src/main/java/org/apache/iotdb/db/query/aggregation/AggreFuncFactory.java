@@ -37,6 +37,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
  */
 public class AggreFuncFactory {
 
+  private AggreFuncFactory() {
+  }
+
   /**
    * construct AggregateFunction using factory pattern.
    *

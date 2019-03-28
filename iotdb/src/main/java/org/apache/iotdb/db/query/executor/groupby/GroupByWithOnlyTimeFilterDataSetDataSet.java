@@ -134,24 +134,12 @@ public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSe
     IAggregateReader sequenceReader = sequenceReaderList.get(idx);
     AggregateFunction function = functions.get(idx);
     function.init();
-    boolean finishCheckSequenceData = false;
 
     // skip the points with timestamp less than startTime
     skipBeforeStartTimeData(idx, sequenceReader, unsequenceReader);
 
-    BatchData batchData = batchDataList.get(idx);
-    boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
-    // there was unprocessed data in last batch
-    if (hasCachedSequenceData && batchData.hasNext()) {
-      function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
-    }
-
-    if (hasCachedSequenceData && batchData.hasNext()) {
-      finishCheckSequenceData = true;
-    } else {
-      hasCachedSequenceData = false;
-    }
-
+    // cal group by in batch data
+    boolean finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
     if (finishCheckSequenceData) {
       // check unsequence data
       function.calculateValueFromUnsequenceReader(unsequenceReader, endTime);
@@ -164,45 +152,64 @@ public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSe
 
       // memory data
       if (pageHeader == null) {
-        batchData = sequenceReader.nextBatch();
-        function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
-        // no point in sequence data with a timestamp less than endTime
-        if (batchData.hasNext()) {
-          hasCachedSequenceData = true;
-          break;
-        }
-      }
-
-      // page data
-      long minTime = pageHeader.getMinTimestamp();
-      long maxTime = pageHeader.getMaxTimestamp();
-      // no point in sequence data with a timestamp less than endTime
-      if (minTime >= endTime) {
-        hasCachedSequenceData = true;
-        batchData = sequenceReader.nextBatch();
-        break;
-      }
-
-      if (canUseHeader(minTime, maxTime, unsequenceReader, function)) {
-        // cal using page header
-        function.calculateValueFromPageHeader(pageHeader);
-        sequenceReader.skipPageData();
+        batchDataList.set(idx, sequenceReader.nextBatch());
+        hasCachedSequenceDataList.set(idx, true);
+        finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
       } else {
-        // cal using page data
-        batchData = sequenceReader.nextBatch();
-        function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
-        if (batchData.hasNext()) {
-          hasCachedSequenceData = true;
+        // page data
+        long minTime = pageHeader.getMinTimestamp();
+        long maxTime = pageHeader.getMaxTimestamp();
+        // no point in sequence data with a timestamp less than endTime
+        if (minTime >= endTime) {
+          finishCheckSequenceData = true;
+        } else if (canUseHeader(minTime, maxTime, unsequenceReader, function)) {
+          // cal using page header
+          function.calculateValueFromPageHeader(pageHeader);
+          sequenceReader.skipPageData();
+        } else {
+          // cal using page data
+          batchDataList.set(idx, sequenceReader.nextBatch());
+          hasCachedSequenceDataList.set(idx, true);
+          finishCheckSequenceData = calGroupByInBatchData(idx, function, unsequenceReader);
+        }
+
+        if (finishCheckSequenceData) {
           break;
         }
       }
+    }
+    // cal using unsequence data
+    function.calculateValueFromUnsequenceReader(unsequenceReader, endTime);
+    return function.getResult().deepCopy();
+  }
 
+  /**
+   * calculate groupBy's result in batch data.
+   *
+   * @param idx series index
+   * @param function aggregate function of the series
+   * @param unsequenceReader unsequence reader of the series
+   * @return if all sequential data been computed
+   */
+  private boolean calGroupByInBatchData(int idx, AggregateFunction function,
+      IPointReader unsequenceReader)
+      throws IOException, ProcessorException {
+    BatchData batchData = batchDataList.get(idx);
+    boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
+    boolean finishCheckSequenceData = false;
+    // there was unprocessed data in last batch
+    if (hasCachedSequenceData && batchData.hasNext()) {
+      function.calculateValueFromPageData(batchData, unsequenceReader, endTime);
     }
 
-    function.calculateValueFromUnsequenceReader(unsequenceReader, endTime);
-    hasCachedSequenceDataList.set(idx, hasCachedSequenceData);
+    if (hasCachedSequenceData && batchData.hasNext()) {
+      finishCheckSequenceData = true;
+    } else {
+      hasCachedSequenceData = false;
+    }
     batchDataList.set(idx, batchData);
-    return function.getResult().deepCopy();
+    hasCachedSequenceDataList.set(idx, hasCachedSequenceData);
+    return finishCheckSequenceData;
   }
 
   /**
@@ -216,23 +223,12 @@ public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSe
   private void skipBeforeStartTimeData(int idx, IAggregateReader sequenceReader,
       IPointReader unsequenceReader)
       throws IOException {
-    BatchData batchData = batchDataList.get(idx);
-    boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
 
     // skip the unsequenceReader points with timestamp less than startTime
-    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < startTime) {
-      unsequenceReader.next();
-    }
+    skipPointInUnsequenceData(unsequenceReader);
 
     // skip the cached batch data points with timestamp less than startTime
-    if (hasCachedSequenceData) {
-      while (batchData.hasNext() && batchData.currentTime() < startTime) {
-        batchData.next();
-      }
-    }
-    if (hasCachedSequenceData && !batchData.hasNext()) {
-      hasCachedSequenceData = false;
-    } else {
+    if (skipPointInBatchData(idx)) {
       return;
     }
 
@@ -241,38 +237,67 @@ public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSe
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       // memory data
       if (pageHeader == null) {
-        batchData = sequenceReader.nextBatch();
-        hasCachedSequenceData = true;
-        while (batchData.hasNext() && batchData.currentTime() < startTime) {
-          batchData.next();
+        batchDataList.set(idx, sequenceReader.nextBatch());
+        hasCachedSequenceDataList.set(idx, true);
+        if (skipPointInBatchData(idx)) {
+          return;
         }
-        if (batchData.hasNext()) {
-          break;
-        } else {
-          hasCachedSequenceData = false;
+      } else {
+        // page data
+
+        // timestamps of all points in the page are less than startTime
+        if (pageHeader.getMaxTimestamp() < startTime) {
+          sequenceReader.skipPageData();
           continue;
+        } else if (pageHeader.getMinTimestamp() >= startTime) {
+          // timestamps of all points in the page are greater or equal to startTime, needn't to skip
+          return;
+        }
+        // the page has overlap with startTime
+        batchDataList.set(idx, sequenceReader.nextBatch());
+        hasCachedSequenceDataList.set(idx, true);
+        if (skipPointInBatchData(idx)) {
+          return;
         }
       }
-      // timestamps of all points in the page are less than startTime
-      if (pageHeader.getMaxTimestamp() < startTime) {
-        sequenceReader.skipPageData();
-        continue;
-      }
-      // timestamps of all points in the page are greater or equal to startTime, don't need to skip
-      if (pageHeader.getMinTimestamp() >= startTime) {
-        break;
-      }
-      // the page has overlap with startTime
-      batchData = sequenceReader.nextBatch();
-      hasCachedSequenceData = true;
-      while (batchData.hasNext() && batchData.currentTime() < startTime) {
-        batchData.next();
-      }
-      break;
+    }
+  }
+
+  /**
+   * skip points in unsequence reader whose timestamp is less than startTime.
+   *
+   * @param unsequenceReader unsequence reader
+   */
+  private void skipPointInUnsequenceData(IPointReader unsequenceReader) throws IOException {
+    while (unsequenceReader.hasNext() && unsequenceReader.current().getTimestamp() < startTime) {
+      unsequenceReader.next();
+    }
+  }
+
+  /**
+   * skip points in batch data whose timestamp is less than startTime.
+   *
+   * @param idx series index
+   * @return whether has next in batch data
+   */
+  private boolean skipPointInBatchData(int idx) {
+    BatchData batchData = batchDataList.get(idx);
+    boolean hasCachedSequenceData = hasCachedSequenceDataList.get(idx);
+    if (!hasCachedSequenceData) {
+      return false;
     }
 
+    // skip the cached batch data points with timestamp less than startTime
+    while (batchData.hasNext() && batchData.currentTime() < startTime) {
+      batchData.next();
+    }
     batchDataList.set(idx, batchData);
-    hasCachedSequenceDataList.set(idx, hasCachedSequenceData);
+    if (batchData.hasNext()) {
+      return true;
+    } else {
+      hasCachedSequenceDataList.set(idx, false);
+      return false;
+    }
   }
 
   private boolean canUseHeader(long minTime, long maxTime, IPointReader unSequenceReader,
@@ -285,9 +310,6 @@ public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSe
     // cal unsequence data with timestamps between pages.
     function.calculateValueFromUnsequenceReader(unSequenceReader, minTime);
 
-    if (unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= maxTime) {
-      return false;
-    }
-    return true;
+    return !(unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= maxTime);
   }
 }

@@ -125,7 +125,8 @@ public class IOTDBFillIT {
     String[] retArray1 = new String[]{
         "3,3.3,false,33",
         "70,70.34,false,374",
-        "70,null,null,null"
+        "70,null,null,null",
+        "625,null,false,null"
     };
     Connection connection = null;
     try {
@@ -142,6 +143,7 @@ public class IOTDBFillIT {
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
             + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+        System.out.println(ans);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
       }
@@ -179,6 +181,21 @@ public class IOTDBFillIT {
       }
       statement.close();
 
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select temperature,status, hardware "
+          + "from root.ln.wf01.wt01 where time = 625 "
+          + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
+
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
+            + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
+        System.out.println(cnt + " " + ans);
+        Assert.assertEquals(retArray1[cnt], ans);
+        cnt++;
+      }
+      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -247,7 +264,7 @@ public class IOTDBFillIT {
         System.out.println(ans);
       }
       statement.close();
-
+      Assert.assertEquals(retArray1.length, cnt);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

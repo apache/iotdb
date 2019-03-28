@@ -69,6 +69,8 @@ public class PreviousFill extends IFill {
 
     if (beforePair != null) {
       beforePair.setTimestamp(queryTime);
+    } else {
+      beforePair = new TimeValuePair(queryTime, null);
     }
     return new TimeValuePairPointReader(beforePair);
   }

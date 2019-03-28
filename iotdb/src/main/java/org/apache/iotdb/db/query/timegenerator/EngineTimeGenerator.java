@@ -40,13 +40,13 @@ public class EngineTimeGenerator implements TimeGenerator {
    * Constructor of EngineTimeGenerator.
    */
   public EngineTimeGenerator(long jobId, IExpression expression, QueryContext context)
-      throws IOException, FileNodeManagerException {
+      throws FileNodeManagerException {
     this.jobId = jobId;
     this.expression = expression;
     initNode(context);
   }
 
-  private void initNode(QueryContext context) throws IOException, FileNodeManagerException {
+  private void initNode(QueryContext context) throws FileNodeManagerException {
     EngineNodeConstructor engineNodeConstructor = new EngineNodeConstructor(jobId);
     this.operatorNode = engineNodeConstructor.construct(expression, context);
   }

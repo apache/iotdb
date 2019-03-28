@@ -66,53 +66,39 @@ public class CountAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
-    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
-      if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        dataInThisPage.next();
-        unsequenceReader.next();
-      } else if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        dataInThisPage.next();
-      } else {
-        unsequenceReader.next();
-      }
-      long preValue = resultData.getLongRet();
-      preValue += 1;
-      resultData.setLongRet(preValue);
-    }
-
-    if (dataInThisPage.hasNext()) {
-      long preValue = resultData.getLongRet();
-      preValue += (dataInThisPage.length() - dataInThisPage.getCurIdx());
-      resultData.setLongRet(preValue);
-    }
+    calculateValueFromPageData(dataInThisPage, unsequenceReader, false, 0);
   }
 
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       long bound) throws IOException {
+    calculateValueFromPageData(dataInThisPage, unsequenceReader, true, bound);
+  }
+
+  private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
+      boolean hasBound, long bound) throws IOException {
     int cnt = 0;
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
+      long minTimestamp = Math
+          .min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
+      if (hasBound && minTimestamp >= bound) {
+        break;
+      }
       if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        if (dataInThisPage.currentTime() >= bound) {
-          break;
-        }
         dataInThisPage.next();
         unsequenceReader.next();
       } else if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        if (dataInThisPage.currentTime() >= bound) {
-          break;
-        }
         dataInThisPage.next();
       } else {
-        if (unsequenceReader.current().getTimestamp() >= bound) {
-          break;
-        }
         unsequenceReader.next();
       }
       cnt++;
     }
 
-    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
+    while (dataInThisPage.hasNext()) {
+      if (hasBound && dataInThisPage.currentTime() >= bound) {
+        break;
+      }
       dataInThisPage.next();
       cnt++;
     }

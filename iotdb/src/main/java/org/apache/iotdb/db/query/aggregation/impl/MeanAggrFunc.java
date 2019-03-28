@@ -66,8 +66,23 @@ public class MeanAggrFunc extends AggregateFunction {
   @Override
   public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader)
       throws IOException {
+    calculateValueFromPageData(dataInThisPage, unsequenceReader, false, 0);
+  }
+
+  @Override
+  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
+      long bound) throws IOException {
+    calculateValueFromPageData(dataInThisPage, unsequenceReader, true, bound);
+  }
+
+  private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
+      boolean hasBound, long bound) throws IOException {
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
       Object sumVal = null;
+      long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
+      if (hasBound && time >= bound) {
+        break;
+      }
       if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
         sumVal = dataInThisPage.currentValue();
         dataInThisPage.next();
@@ -83,40 +98,9 @@ public class MeanAggrFunc extends AggregateFunction {
     }
 
     while (dataInThisPage.hasNext()) {
-      updateMean(seriesDataType, dataInThisPage.currentValue());
-      dataInThisPage.next();
-    }
-  }
-
-  @Override
-  public void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
-      long bound) throws IOException {
-    while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
-      Object sumVal = null;
-      if (dataInThisPage.currentTime() < unsequenceReader.current().getTimestamp()) {
-        if (dataInThisPage.currentTime() >= bound) {
-          break;
-        }
-        sumVal = dataInThisPage.currentValue();
-        dataInThisPage.next();
-      } else if (dataInThisPage.currentTime() == unsequenceReader.current().getTimestamp()) {
-        if (dataInThisPage.currentTime() >= bound) {
-          break;
-        }
-        sumVal = unsequenceReader.current().getValue().getValue();
-        dataInThisPage.next();
-        unsequenceReader.next();
-      } else {
-        if (unsequenceReader.current().getTimestamp() >= bound) {
-          break;
-        }
-        sumVal = unsequenceReader.current().getValue().getValue();
-        unsequenceReader.next();
+      if (hasBound && dataInThisPage.currentTime() >= bound) {
+        break;
       }
-      updateMean(seriesDataType, sumVal);
-    }
-
-    while (dataInThisPage.hasNext() && dataInThisPage.currentTime() < bound) {
       updateMean(seriesDataType, dataInThisPage.currentValue());
       dataInThisPage.next();
     }

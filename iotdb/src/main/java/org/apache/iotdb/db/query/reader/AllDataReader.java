@@ -44,14 +44,68 @@ public class AllDataReader implements IPointReader {
 
   @Override
   public boolean hasNext() throws IOException {
-    //has value in batchData
+    if (hasNextInBatchDataOrBatchReader()) {
+      return true;
+    }
+    // has value in pointReader
+    return pointReader != null && pointReader.hasNext();
+  }
+
+  @Override
+  public TimeValuePair next() throws IOException {
+
+    // has next in both batch reader and point reader
+    if (hasNextInBothReader()) {
+      long timeInPointReader = pointReader.current().getTimestamp();
+      long timeInBatchData = batchData.currentTime();
+      if (timeInPointReader > timeInBatchData) {
+        TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
+        batchData.next();
+        return timeValuePair;
+      } else if (timeInPointReader == timeInBatchData) {
+        batchData.next();
+        return pointReader.next();
+      } else {
+        return pointReader.next();
+      }
+    }
+
+    // only has next in batch reader
+    if (hasNextInBatchDataOrBatchReader()) {
+      TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
+      batchData.next();
+      return timeValuePair;
+    }
+
+    // only has next in point reader
+    if (pointReader != null && pointReader.hasNext()) {
+      return pointReader.next();
+    }
+    return null;
+  }
+
+  /**
+   * judge if has next in both batch record and pointReader.
+   */
+  private boolean hasNextInBothReader() throws IOException {
+    if (!hasNextInBatchDataOrBatchReader()) {
+      return false;
+    }
+    return pointReader != null && pointReader.hasNext();
+  }
+
+  /**
+   * judge if has next in batch record, either in batch data or in batch reader.
+   */
+  private boolean hasNextInBatchDataOrBatchReader() throws IOException {
+    // has value in batchData
     if (hasCachedBatchData && batchData.hasNext()) {
       return true;
     } else {
       hasCachedBatchData = false;
     }
 
-    //has value in batchReader
+    // has value in batchReader
     while (batchReader.hasNext()) {
       batchData = batchReader.nextBatch();
       if (batchData.hasNext()) {
@@ -59,57 +113,7 @@ public class AllDataReader implements IPointReader {
         return true;
       }
     }
-
-    //has value in pointData
-    if (pointReader != null && pointReader.hasNext()) {
-      return true;
-    }
-
     return false;
-  }
-
-  @Override
-  public TimeValuePair next() throws IOException {
-    //construct batchData, and compare with value in pointReader
-    while (hasCachedBatchData || batchReader.hasNext()) {
-      //if batchData isn't initialized, then initialize it
-      if (!hasCachedBatchData) {
-        if (batchReader.hasNext()) {
-          batchData = batchReader.nextBatch();
-          hasCachedBatchData = true;
-        } else {
-          hasCachedBatchData = false;
-          break;
-        }
-      }
-
-      //if batchData is end, then jump to the entry of the while loop.
-      if (!batchData.hasNext()) {
-        hasCachedBatchData = false;
-        continue;
-      }
-
-      //pointReader has next, compare value in pointReader with value in batchData.
-      if (pointReader != null && pointReader.hasNext()) {
-        long timeInPointReader = pointReader.current().getTimestamp();
-        long timeInBatchData = batchData.currentTime();
-        if (timeInPointReader > timeInBatchData) {
-          TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
-          batchData.next();
-          return timeValuePair;
-        }
-        if (timeInPointReader == timeInBatchData) {
-          batchData.next();
-        }
-        return pointReader.next();
-      } else {
-        // pointReader doesn't have next time-value pair, return pair in batchData.
-        TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
-        batchData.next();
-        return timeValuePair;
-      }
-    }
-    return null;
   }
 
   @Override

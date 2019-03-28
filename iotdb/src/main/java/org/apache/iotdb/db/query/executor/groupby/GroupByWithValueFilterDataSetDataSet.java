@@ -103,21 +103,10 @@ public class GroupByWithValueFilterDataSetDataSet extends GroupByEngineDataSet {
     }
 
     while (timestampGenerator.hasNext()) {
-      // construct timestamp list
-      for (int cnt = 1; cnt < timeStampFetchSize; cnt++) {
-        if (!timestampGenerator.hasNext()) {
-          break;
-        }
-        timestamp = timestampGenerator.next();
-        if (timestamp < endTime) {
-          timestampArray[timeArrayLength++] = timestamp;
-        } else {
-          hasCachedTimestamp = true;
-          break;
-        }
-      }
+      // construct timestamp array
+      timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
 
-      // cal result using timestamp list
+      // cal result using timestamp array
       for (int i = 0; i < selectedSeries.size(); i++) {
         functions.get(i).calcAggregationUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
@@ -132,13 +121,34 @@ public class GroupByWithValueFilterDataSetDataSet extends GroupByEngineDataSet {
     }
 
     if (timeArrayLength > 0) {
-      // cal result using timestamp list
+      // cal result using timestamp array
       for (int i = 0; i < selectedSeries.size(); i++) {
         functions.get(i).calcAggregationUsingTimestamps(
             timestampArray, timeArrayLength, allDataReaderList.get(i));
       }
     }
     return constructRowRecord();
+  }
+
+  /**
+   * construct an array of timestamps for one batch of a group by partition calculating.
+   *
+   * @param timestampArray timestamp array
+   * @param timeArrayLength the current length of timestamp array
+   * @return time array length
+   */
+  private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
+      throws IOException {
+    for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
+      timestamp = timestampGenerator.next();
+      if (timestamp < endTime) {
+        timestampArray[timeArrayLength++] = timestamp;
+      } else {
+        hasCachedTimestamp = true;
+        break;
+      }
+    }
+    return timeArrayLength;
   }
 
   private RowRecord constructRowRecord() {

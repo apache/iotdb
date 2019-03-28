@@ -45,16 +45,6 @@ public class EngineLeafNode implements Node {
     return reader.next().getTimestamp();
   }
 
-//  /**
-//   * check if current time of current batch is equals to input time.
-//   */
-//  public boolean currentTimeIs(long time) {
-//    if (!reader.currentBatch().hasNext()) {
-//      return false;
-//    }
-//    return reader.currentBatch().currentTime() == time;
-//  }
-
   /**
    * check if current value is equals to input value.
    */

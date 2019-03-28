@@ -110,6 +110,9 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
   }
 
   private Field getField(TsPrimitiveType tsPrimitiveType, TSDataType dataType) {
+    if (tsPrimitiveType == null) {
+      return new Field(null);
+    }
     Field field = new Field(dataType);
     switch (dataType) {
       case INT32:

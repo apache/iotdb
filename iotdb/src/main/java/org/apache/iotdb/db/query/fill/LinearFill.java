@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
@@ -92,28 +93,21 @@ public class LinearFill extends IFill {
       return new TimeValuePairPointReader(beforePair);
     }
 
-    if (afterPair == null && !allDataReader.hasNext()) {
-      return new TimeValuePairPointReader(null);
-    }
-    if (afterPair == null) {
-      afterPair = allDataReader.next();
-    }
-
     // if afterRange equals -1, this means that there is no time-bound filling.
     if (afterRange == -1) {
       return new TimeValuePairPointReader(average(beforePair, afterPair));
     }
 
-    if (afterPair.getTimestamp() > queryTime + afterRange) {
-      return new TimeValuePairPointReader(null);
+    if (afterPair.getTimestamp() > queryTime + afterRange || afterPair.getTimestamp() < queryTime) {
+      return new TimeValuePairPointReader(new TimeValuePair(queryTime, null));
     }
     return new TimeValuePairPointReader(average(beforePair, afterPair));
   }
 
   // returns the average of two points
   private TimeValuePair average(TimeValuePair beforePair, TimeValuePair afterPair) {
-    double totalTimeLength = afterPair.getTimestamp() - beforePair.getTimestamp();
-    double beforeTimeLength = queryTime - beforePair.getTimestamp();
+    double totalTimeLength = (double) afterPair.getTimestamp() - beforePair.getTimestamp();
+    double beforeTimeLength = (double) (queryTime - beforePair.getTimestamp());
     switch (dataType) {
       case INT32:
         int startIntValue = beforePair.getValue().getInt();
@@ -143,7 +137,7 @@ public class LinearFill extends IFill {
         double startDoubleValue = beforePair.getValue().getDouble();
         double endDoubleValue = afterPair.getValue().getDouble();
         double fillDoubleValue =
-            startDoubleValue + (double) ((endDoubleValue - startDoubleValue) / totalTimeLength
+            startDoubleValue + ((endDoubleValue - startDoubleValue) / totalTimeLength
                 * beforeTimeLength);
         beforePair.setValue(TsPrimitiveType.getByType(TSDataType.DOUBLE, fillDoubleValue));
         break;

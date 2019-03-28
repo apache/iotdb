@@ -210,7 +210,7 @@ public class EngineQueryRouter {
    * @param fillType type IFill map
    */
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType)
-      throws FileNodeManagerException, PathErrorException, IOException, ProcessorException {
+      throws FileNodeManagerException, PathErrorException, IOException {
     long nextJobId = getNextJobId();
     QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
     OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);

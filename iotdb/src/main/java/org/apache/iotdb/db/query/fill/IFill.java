@@ -82,7 +82,7 @@ public abstract class IFill {
   }
 
   private Filter constructFilter(long beforeRange) {
-    //If the fill time range is not set, beforeRange will be set to -1.
+    // if the fill time range is not set, beforeRange will be set to -1.
     if (beforeRange == -1) {
       return null;
     }
@@ -117,7 +117,7 @@ public abstract class IFill {
 
     @Override
     public void close() {
-
+      // no need to close
     }
   }
 }

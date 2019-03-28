@@ -194,10 +194,8 @@ public class AggregateEngineExecutor {
     // cal unsequence data with timestamps between pages.
     function.calculateValueFromUnsequenceReader(unSequenceReader, minTime);
 
-    if (unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= maxTime) {
-      return false;
-    }
-    return true;
+    return !(unSequenceReader.hasNext() && unSequenceReader.current().getTimestamp() <= maxTime);
+
   }
 
   /**
@@ -212,7 +210,7 @@ public class AggregateEngineExecutor {
       SequenceDataReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
       throws IOException, ProcessorException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
-
+    boolean isChunkEnd = false;
     while (sequenceReader.hasNext()) {
       PageHeader pageHeader = sequenceReader.nextPageHeader();
       // judge if overlap with unsequence data
@@ -223,7 +221,7 @@ public class AggregateEngineExecutor {
 
         if (lastBatchTimeStamp > pageHeader.getMinTimestamp()) {
           // the chunk is end.
-          break;
+          isChunkEnd = true;
         } else {
           // current page and last page are in the same chunk.
           lastBatchTimeStamp = pageHeader.getMinTimestamp();
@@ -233,13 +231,15 @@ public class AggregateEngineExecutor {
         BatchData batchData = sequenceReader.nextBatch();
         if (lastBatchTimeStamp > batchData.currentTime()) {
           // the chunk is end.
-          break;
+          isChunkEnd = true;
         } else {
           // current page and last page are in the same chunk.
           lastBatchTimeStamp = batchData.currentTime();
         }
         function.calculateValueFromPageData(batchData, unSequenceReader);
-
+      }
+      if (isChunkEnd) {
+        break;
       }
     }
 

@@ -142,7 +142,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
 
     List<Modification> pathModifications = context.getPathModifications(fileNode.getModFile(),
         seriesPath.getFullPath());
-    if (pathModifications.size() > 0) {
+    if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
     }
 

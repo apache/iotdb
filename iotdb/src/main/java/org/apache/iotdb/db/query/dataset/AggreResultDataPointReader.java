@@ -42,12 +42,11 @@ public class AggreResultDataPointReader implements IPointReader {
 
   @Override
   public TimeValuePair current() {
-    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(aggreResultData);
-    return timeValuePair;
+    return TimeValuePairUtils.getCurrentTimeValuePair(aggreResultData);
   }
 
   @Override
   public void close() {
-    //batch data doesn't need to close.
+    // batch data doesn't need to close.
   }
 }
