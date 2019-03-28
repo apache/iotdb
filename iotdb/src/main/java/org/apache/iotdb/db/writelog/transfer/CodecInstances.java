@@ -203,10 +203,34 @@ public class CodecInstances {
       ByteBuffer buffer = localBuffer.get();
       buffer.clear();
       buffer.put((byte) type);
-      buffer.put((byte) plan.getNamespaceType().serialize());
-      buffer.put((byte) plan.getDataType().serialize());
-      buffer.put((byte) plan.getCompressor().serialize());
-      buffer.put((byte) plan.getEncoding().serialize());
+
+      MetadataOperator.NamespaceType namespaceType = plan.getNamespaceType();
+      if (namespaceType != null) {
+        buffer.put((byte) plan.getNamespaceType().serialize());
+      } else {
+        buffer.put((byte) -1);
+      }
+
+      TSDataType dataType = plan.getDataType();
+      if (dataType != null) {
+        buffer.put((byte) plan.getDataType().serialize());
+      } else {
+        buffer.put((byte) -1);
+      }
+
+      CompressionType compressionType = plan.getCompressor();
+      if (compressionType != null) {
+        buffer.put((byte) plan.getCompressor().serialize());
+      } else {
+        buffer.put((byte) -1);
+      }
+
+      TSEncoding tsEncoding = plan.getEncoding();
+      if (tsEncoding != null) {
+        buffer.put((byte) plan.getEncoding().serialize());
+      } else {
+        buffer.put((byte) -1);
+      }
 
       String path = plan.getPath().toString();
       ByteBufferUtils.putString(buffer, path);
@@ -222,10 +246,14 @@ public class CodecInstances {
       }
 
       Map<String, String> props = plan.getProps();
-      buffer.putInt(props.size());
-      for (Entry<String, String> entry : props.entrySet()) {
-        ByteBufferUtils.putString(buffer, entry.getKey());
-        ByteBufferUtils.putString(buffer, entry.getValue());
+      if (props != null) {
+        buffer.putInt(props.size());
+        for (Entry<String, String> entry : props.entrySet()) {
+          ByteBufferUtils.putString(buffer, entry.getKey());
+          ByteBufferUtils.putString(buffer, entry.getValue());
+        }
+      } else {
+        buffer.putInt(-1);
       }
 
       return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
@@ -237,11 +265,30 @@ public class CodecInstances {
 
       buffer.get(); // read and skip an int representing "type"
 
-      MetadataOperator.NamespaceType namespaceType = MetadataOperator.NamespaceType
-          .deserialize(buffer.get());
-      TSDataType dataType = TSDataType.deserialize(buffer.get());
-      CompressionType compressor = CompressionType.deserialize(buffer.get());
-      TSEncoding encoding = TSEncoding.deserialize(buffer.get());
+      byte namespaceTypeByte = buffer.get();
+      MetadataOperator.NamespaceType namespaceType = null;
+      if (namespaceTypeByte != -1) {
+        namespaceType = MetadataOperator.NamespaceType
+            .deserialize(namespaceTypeByte);
+      }
+
+      byte dataTypeByte = buffer.get();
+      TSDataType dataType = null;
+      if (dataTypeByte != -1) {
+        dataType = TSDataType.deserialize(dataTypeByte);
+      }
+
+      byte compressorByte = buffer.get();
+      CompressionType compressor = null;
+      if (compressorByte != -1) {
+        compressor = CompressionType.deserialize(compressorByte);
+      }
+
+      byte encodingByte = buffer.get();
+      TSEncoding encoding = null;
+      if (compressorByte != -1) {
+        encoding = TSEncoding.deserialize(encodingByte);
+      }
 
       String path = ByteBufferUtils.readString(buffer);
       int pathListLen = buffer.getInt();
@@ -254,9 +301,12 @@ public class CodecInstances {
       }
 
       int propsLen = buffer.getInt();
-      Map<String, String> props = new HashMap<>(propsLen);
-      for (int i = 0; i < propsLen; i++) {
-        props.put(ByteBufferUtils.readString(buffer), ByteBufferUtils.readString(buffer));
+      Map<String, String> props = null;
+      if (propsLen != -1) {
+        props = new HashMap<>(propsLen);
+        for (int i = 0; i < propsLen; i++) {
+          props.put(ByteBufferUtils.readString(buffer), ByteBufferUtils.readString(buffer));
+        }
       }
 
       return new MetadataPlan(namespaceType, new Path(path), dataType, compressor, encoding, props,

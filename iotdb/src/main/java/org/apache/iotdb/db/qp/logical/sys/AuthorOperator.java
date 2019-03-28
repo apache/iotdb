@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.db.qp.logical.sys.MetadataOperator.NamespaceType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
@@ -204,8 +203,8 @@ public class AuthorOperator extends RootOperator {
           return 15;
         case LIST_ROLE_USERS:
           return 16;
-          default:
-          return 0;
+        default:
+          return -1;
       }
     }
   }
