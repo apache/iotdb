@@ -53,7 +53,7 @@ if [ -z $JAVA ] ; then
 fi
 
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in ${IOTDB_HOME}/lib_cluster/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 classname=org.apache.iotdb.cluster.entity.Server

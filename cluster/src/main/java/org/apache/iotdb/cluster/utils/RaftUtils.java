@@ -78,8 +78,13 @@ public class RaftUtils {
    */
   public static PeerId getTargetPeerID(String groupId) {
     if (!groupLeaderCache.contains(groupId)) {
-      RaftService service = (RaftService) server.getDataPartitionHolderMap().get(groupId)
-          .getService();
+      RaftService service;
+      if (groupId.equals(CLUSTER_CONFIG.METADATA_GROUP_ID)) {
+        service = (RaftService) server.getMetadataHolder().getService();
+      }else {
+        service = (RaftService) server.getDataPartitionHolderMap().get(groupId)
+            .getService();
+      }
       List<PeerId> peerIdList = service.getPeerIdList();
       groupLeaderCache.put(groupId, getRandomPeerId(peerIdList));
     }
