@@ -209,10 +209,6 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     return response.isSuccess();
   }
 
-  public void shutdown() {
-    cliClientService.shutdown();
-  }
-
   /**
    * Request need to broadcast in metadata group.
    *
