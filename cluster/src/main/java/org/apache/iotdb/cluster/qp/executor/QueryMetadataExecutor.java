@@ -27,7 +27,6 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import org.apache.iotdb.cluster.callback.SingleTask;
 import org.apache.iotdb.cluster.callback.Task;
-import org.apache.iotdb.cluster.callback.Task.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
@@ -59,7 +58,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       throws RaftConnectionException, InterruptedException {
     QueryMetadataRequest request = new QueryMetadataRequest(
         ClusterConfig.METADATA_GROUP_ID, type);
-
     SingleTask task = new SingleTask(false, request);
     return asyncHandleTaskLocally(task);
   }

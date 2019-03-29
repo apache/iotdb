@@ -78,7 +78,7 @@
                 <configuration>
                     <filesets>
                         <fileset>
-                            <directory>${project.basedir}/../iotdb/lib</directory>
+                            <directory>${project.basedir}/../iotdb/lib_cluster</directory>
                             <includes>
                                 <include>**/*.jar</include>
                             </includes>
@@ -124,7 +124,7 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.basedir}/../iotdb/iotdb/lib</outputDirectory>
+                            <outputDirectory>${project.basedir}/../iotdb/iotdb/lib_cluster</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -133,7 +133,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <configuration>
-                    <outputDirectory>${project.basedir}/../iotdb/iotdb/lib</outputDirectory>
+                    <outputDirectory>${project.basedir}/../iotdb/iotdb/lib_cluster</outputDirectory>
                 </configuration>
             </plugin>
             <!--using `mvn test` to run UT, `mvn verify` to run ITs

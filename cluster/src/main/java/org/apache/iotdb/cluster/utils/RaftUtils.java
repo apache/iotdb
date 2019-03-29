@@ -38,6 +38,12 @@ public class RaftUtils {
 
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
   private static final Server server = Server.getInstance();
+  /**
+   * The cache will be update in two case: 1. When @onLeaderStart() method of state machine is
+   * called, the cache will be update. 2. When @getTargetPeerID() in this class is called and cache
+   * don't have the key, it's will get random peer and update. 3. When @redirected of BasicRequest
+   * is true, the task will be retry and the cache will update.
+   */
   private static final ConcurrentHashMap<String, PeerId> groupLeaderCache = new ConcurrentHashMap<>();
 
   private RaftUtils() {
@@ -50,7 +56,7 @@ public class RaftUtils {
    * @param groupId group id of raft group
    * @return PeerId of leader
    */
-  public static PeerId getLeader(String groupId, BoltCliClientService cliClientService)
+  public static PeerId getTargetPeerID(String groupId, BoltCliClientService cliClientService)
       throws RaftConnectionException {
     Configuration conf = getConfiguration(groupId);
     RouteTable.getInstance().updateConfiguration(groupId, conf);
@@ -65,14 +71,20 @@ public class RaftUtils {
   }
 
   /**
-   * Get leader id by group id
+   * Get peer id to send request. If groupLeaderCache has the group id, then return leader id of the
+   * group.Otherwise, random get a peer of the group.
    *
    * @return leader id
    */
-  public static PeerId getLeader(String groupId) {
+  public static PeerId getTargetPeerID(String groupId) {
     if (!groupLeaderCache.contains(groupId)) {
-      RaftService service = (RaftService) server.getDataPartitionHolderMap().get(groupId)
-          .getService();
+      RaftService service;
+      if (groupId.equals(CLUSTER_CONFIG.METADATA_GROUP_ID)) {
+        service = (RaftService) server.getMetadataHolder().getService();
+      }else {
+        service = (RaftService) server.getDataPartitionHolderMap().get(groupId)
+            .getService();
+      }
       List<PeerId> peerIdList = service.getPeerIdList();
       groupLeaderCache.put(groupId, getRandomPeerId(peerIdList));
     }

@@ -33,14 +33,14 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FileManagerTest {
+public class SyncFileManagerTest {
 
   private static final String POST_BACK_DIRECTORY_TEST = Constans.SYNC_CLIENT + File.separator;
   private static final String LAST_FILE_INFO_TEST =
       POST_BACK_DIRECTORY_TEST + Constans.LAST_LOCAL_FILE_NAME;
   private static final String SENDER_FILE_PATH_TEST = POST_BACK_DIRECTORY_TEST + "data";
-  private FileManager manager = FileManager.getInstance();
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileManagerTest.class);
+  private SyncFileManager manager = SyncFileManager.getInstance();
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncFileManagerTest.class);
 
   @Before
   public void setUp() throws IOException, InterruptedException {
