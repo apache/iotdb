@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.rpc.response.QueryStorageGroupResponse;
 import org.apache.iotdb.cluster.rpc.response.QueryTimeSeriesResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +71,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   }
 
   public List<List<String>> processTimeSeriesQuery(String path)
-      throws InterruptedException, PathErrorException, RaftConnectionException {
+      throws InterruptedException, PathErrorException, ProcessorException {
     String storageGroup = getStroageGroupByDevice(path);
     String groupId = getGroupIdBySG(storageGroup);
     QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, path);
@@ -81,7 +82,12 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     if (canHandle(storageGroup)) {
       return queryTimeSeriesLocally(path, groupId, task);
     } else {
-      return queryTimeSeries(task, leader);
+      try {
+        return queryTimeSeries(task, leader);
+      } catch (RaftConnectionException e) {
+        LOGGER.error(e.getMessage());
+        throw new ProcessorException("Raft connection occurs error.", e);
+      }
     }
   }
 

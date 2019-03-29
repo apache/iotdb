@@ -103,7 +103,7 @@ public abstract class ClusterQPExecutor {
    * @return basic response
    */
   public BasicResponse asyncHandleTaskGetRes(Task task, PeerId leader, int taskRetryNum)
-      throws RaftConnectionException, InterruptedException {
+      throws InterruptedException, RaftConnectionException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
       throw new RaftConnectionException(String.format("Task retries reach the upper bound %s",
           TASK_MAX_RETRY));
