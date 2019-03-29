@@ -51,36 +51,12 @@ public class QueryMetadataAsyncProcessor extends BasicAsyncUserProcessor<QueryMe
       QueryMetadataRequest queryMetadataRequest) {
     MetadataType metadataType = queryMetadataRequest.getMetadataType();
     if (metadataType == MetadataType.STORAGE_GROUP) {
-      readIndexForSG(asyncContext);
+      // TODO
     } else {
       //TODO deal with query time series
       QueryMetadataResponse response = new QueryMetadataResponse(false, false, null, null);
       asyncContext.sendResponse(response);
     }
-  }
-
-  private void readIndexForSG(AsyncContext asyncContext) {
-    final byte[] reqContext = new byte[4];
-    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
-    MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
-    ((RaftService) metadataHolder.getService()).getNode()
-        .readIndex(reqContext, new ReadIndexClosure() {
-
-          @Override
-          public void run(Status status, long index, byte[] reqCtx) {
-            if (status.isOk()) {
-              try {
-                asyncContext.sendResponse(new QueryMetadataResponse(false, true,
-                    metadataHolder.getFsm().getAllStorageGroups()));
-              } catch (final PathErrorException e) {
-                asyncContext
-                    .sendResponse(new QueryMetadataResponse(false, false, null, e.toString()));
-              }
-            } else {
-              asyncContext.sendResponse(new QueryMetadataResponse(false, false, null, null));
-            }
-          }
-        });
   }
 
   @Override

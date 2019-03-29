@@ -119,7 +119,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
         try {
           Set<String> storageGroups = processMetadataQuery(MetadataType.STORAGE_GROUP);
           resp.setShowStorageGroups(storageGroups);
-        } catch (RaftConnectionException | InterruptedException e) {
+        } catch (InterruptedException e) {
           status = getErrorStatus(
               String.format("Failed to fetch storage groups' metadata because: %s", e));
           resp.setStatus(status);
@@ -145,7 +145,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   }
 
   public Set<String> processMetadataQuery(MetadataType type)
-      throws RaftConnectionException, InterruptedException {
+      throws InterruptedException {
     return queryMetadataExecutor.get().processMetadataQuery(type);
   }
 }

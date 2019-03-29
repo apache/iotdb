@@ -18,22 +18,25 @@
  */
 package org.apache.iotdb.cluster.qp.executor;
 
-import com.alipay.remoting.InvokeCallback;
-import com.alipay.remoting.exception.RemotingException;
+import com.alipay.sofa.jraft.Status;
+import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.option.CliOptions;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
+import com.alipay.sofa.jraft.util.Bits;
 import java.util.Set;
-import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.callback.SingleTask;
-import org.apache.iotdb.cluster.callback.Task;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.entity.Server;
+import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
+import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.MetadataType;
 import org.apache.iotdb.cluster.rpc.request.QueryMetadataRequest;
-import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.response.QueryMetadataResponse;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,55 +47,56 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
 
+  private final AtomicInteger requestId = new AtomicInteger(0);
+  private final Server server = Server.getInstance();
+
   public QueryMetadataExecutor() {
 
   }
 
-  public void init(){
+  public void init() {
     this.cliClientService = new BoltCliClientService();
     this.cliClientService.init(new CliOptions());
     SUB_TASK_NUM = 1;
   }
 
   public Set<String> processMetadataQuery(MetadataType type)
-      throws RaftConnectionException, InterruptedException {
+      throws InterruptedException {
     QueryMetadataRequest request = new QueryMetadataRequest(
         ClusterConfig.METADATA_GROUP_ID, type);
     SingleTask task = new SingleTask(false, request);
     return asyncHandleTaskLocally(task);
   }
 
-  private Set<String> asyncHandleTaskLocally(SingleTask task)
-      throws RaftConnectionException, InterruptedException {
-    try {
-      cliClientService.getRpcClient()
-          .invokeWithCallback(localNode.toString(), task.getRequest(),
-              new InvokeCallback() {
-
-                @Override
-                public void onResponse(Object result) {
-                  BasicResponse response = (BasicResponse) result;
-                  task.run(response);
-                }
-
-                @Override
-                public void onException(Throwable e) {
-                  LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
-                  task.setTaskState(TaskState.EXCEPTION);
-                  task.run(null);
-
-                }
-
-                @Override
-                public Executor getExecutor() {
-                  return null;
-                }
-              }, CLUSTER_CONFIG.getTaskTimeoutMs());
-    } catch (RemotingException | InterruptedException e) {
-      throw new RaftConnectionException(e);
-    }
+  private Set<String> asyncHandleTaskLocally(SingleTask task) throws InterruptedException {
+    readIndexForSG(task);
 
     task.await();
     return ((QueryMetadataResponse) task.getResponse()).getMetadataSet();
+  }
+
+  private void readIndexForSG(SingleTask task) {
+    final byte[] reqContext = new byte[4];
+    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
+    MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
+    ((RaftService) metadataHolder.getService()).getNode()
+        .readIndex(reqContext, new ReadIndexClosure() {
+
+          @Override
+          public void run(Status status, long index, byte[] reqCtx) {
+            QueryMetadataResponse response = null;
+            if (status.isOk()) {
+              try {
+                response = new QueryMetadataResponse(false, true,
+                    metadataHolder.getFsm().getAllStorageGroups());
+              } catch (final PathErrorException e) {
+                response = new QueryMetadataResponse(false, false, null, e.toString());
+              }
+            } else {
+              response = new QueryMetadataResponse(false, false, null, null);
+            }
+            task.run(response);
+          }
+        });
   }
 }
