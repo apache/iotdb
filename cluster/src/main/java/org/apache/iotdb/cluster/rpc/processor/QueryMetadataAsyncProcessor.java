@@ -50,13 +50,6 @@ public class QueryMetadataAsyncProcessor extends BasicAsyncUserProcessor<QueryMe
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       QueryMetadataRequest queryMetadataRequest) {
     String groupId = queryMetadataRequest.getGroupID();
-    if (this.server.getServerId().equals(RaftUtils.getLeader(groupId))) {
-      PeerId leader = RaftUtils.getLeader(groupId);
-      QueryMetadataResponse response = new QueryMetadataResponse(true, false, leader.toString(),
-          null);
-      asyncContext.sendResponse(response);
-    }
-
     MetadataType metadataType = queryMetadataRequest.getMetadataType();
     if (metadataType == MetadataType.STORAGE_GROUP) {
       readIndexForSG(asyncContext);

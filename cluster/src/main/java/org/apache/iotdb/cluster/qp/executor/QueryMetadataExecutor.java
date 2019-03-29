@@ -24,13 +24,10 @@ import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.Set;
 import org.apache.iotdb.cluster.callback.SingleTask;
 import org.apache.iotdb.cluster.callback.Task;
-import org.apache.iotdb.cluster.callback.Task.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.MetadataType;
-import org.apache.iotdb.cluster.rpc.NodeAsClient;
-import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClient;
 import org.apache.iotdb.cluster.rpc.request.QueryMetadataRequest;
 import org.apache.iotdb.cluster.rpc.response.QueryMetadataResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
@@ -54,7 +51,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       throws RaftConnectionException, InterruptedException {
     QueryMetadataRequest request = new QueryMetadataRequest(
         ClusterConfig.METADATA_GROUP_ID, type);
-    PeerId leader = RaftUtils.getLeader(ClusterConfig.METADATA_GROUP_ID);
+    PeerId leader = RaftUtils.getTargetPeerID(ClusterConfig.METADATA_GROUP_ID);
 
     SingleTask task = new SingleTask(false, request);
     return asyncHandleTask(task, leader, 0);

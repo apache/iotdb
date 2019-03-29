@@ -23,9 +23,9 @@ import java.util.Set;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 
 /**
- * FileSender defines the methods of a sender in sync module.
+ * SyncSender defines the methods of a sender in sync module.
  */
-public interface FileSender {
+public interface SyncSender {
 
   /**
    * Connect to server.

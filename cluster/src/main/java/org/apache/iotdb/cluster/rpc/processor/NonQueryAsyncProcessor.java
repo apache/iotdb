@@ -55,8 +55,8 @@ public class NonQueryAsyncProcessor extends BasicAsyncUserProcessor<NonQueryRequ
     Operator.OperatorType requestType = nonQueryRequest.getRequestType();
     /** Check if it's the leader of metadata **/
     String groupId = nonQueryRequest.getGroupID();
-    if (this.server.getServerId().equals(RaftUtils.getLeader(groupId))) {
-      PeerId leader = RaftUtils.getLeader(groupId);
+    if (this.server.getServerId().equals(RaftUtils.getTargetPeerID(groupId))) {
+      PeerId leader = RaftUtils.getTargetPeerID(groupId);
       NonQueryResponse response = new NonQueryResponse(true, false, leader.toString(), null);
       asyncContext.sendResponse(response);
     }

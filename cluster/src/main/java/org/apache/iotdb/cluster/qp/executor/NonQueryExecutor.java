@@ -24,11 +24,8 @@ import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.io.IOException;
 import org.apache.iotdb.cluster.callback.SingleTask;
 import org.apache.iotdb.cluster.callback.Task;
-import org.apache.iotdb.cluster.callback.Task.TaskState;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
-import org.apache.iotdb.cluster.rpc.NodeAsClient;
-import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClient;
 import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
@@ -188,7 +185,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     } else {
       String groupId = getGroupIdBySG(storageGroup);
       NonQueryRequest request = new NonQueryRequest(groupId, plan);
-      PeerId leader = RaftUtils.getLeader(groupId);
+      PeerId leader = RaftUtils.getTargetPeerID(groupId);
 
       SingleTask task = new SingleTask(false, request);
       return asyncHandleTask(task, leader, 0);
@@ -221,7 +218,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   public boolean redirectMetadataGroupLeader(PhysicalPlan plan)
       throws IOException, RaftConnectionException, InterruptedException {
     NonQueryRequest request = new NonQueryRequest(CLUSTER_CONFIG.METADATA_GROUP_ID, plan);
-    PeerId leader = RaftUtils.getLeader(CLUSTER_CONFIG.METADATA_GROUP_ID);
+    PeerId leader = RaftUtils.getTargetPeerID(CLUSTER_CONFIG.METADATA_GROUP_ID);
 
     SingleTask task = new SingleTask(false, request);
     return asyncHandleTask(task, leader, 0);

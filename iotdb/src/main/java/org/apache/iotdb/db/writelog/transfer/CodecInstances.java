@@ -51,6 +51,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 public class CodecInstances {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final int NULL_VALUE_LEN = -1;
 
   private CodecInstances() {
   }
@@ -65,7 +66,7 @@ public class CodecInstances {
    */
   static void putString(ByteBuffer buffer, String value) {
     if(value == null){
-      buffer.putInt(-1);
+      buffer.putInt(NULL_VALUE_LEN);
     }else{
       ReadWriteIOUtils.write(value, buffer);
     }
@@ -80,8 +81,9 @@ public class CodecInstances {
    */
   static String readString(ByteBuffer buffer) {
     int valueLen = buffer.getInt();
-    if(valueLen == -1)
+    if (valueLen == NULL_VALUE_LEN) {
       return null;
+    }
     return ReadWriteIOUtils.readStringWithoutLength(buffer, valueLen);
   }
 
@@ -238,28 +240,28 @@ public class CodecInstances {
       if (namespaceType != null) {
         buffer.put((byte) plan.getNamespaceType().serialize());
       } else {
-        buffer.put((byte) -1);
+        buffer.put((byte) NULL_VALUE_LEN);
       }
 
       TSDataType dataType = plan.getDataType();
       if (dataType != null) {
         buffer.put((byte) plan.getDataType().serialize());
       } else {
-        buffer.put((byte) -1);
+        buffer.put((byte) NULL_VALUE_LEN);
       }
 
       CompressionType compressionType = plan.getCompressor();
       if (compressionType != null) {
         buffer.put((byte) plan.getCompressor().serialize());
       } else {
-        buffer.put((byte) -1);
+        buffer.put((byte) NULL_VALUE_LEN);
       }
 
       TSEncoding tsEncoding = plan.getEncoding();
       if (tsEncoding != null) {
         buffer.put((byte) plan.getEncoding().serialize());
       } else {
-        buffer.put((byte) -1);
+        buffer.put((byte) NULL_VALUE_LEN);
       }
 
       String path = plan.getPath().toString();
@@ -267,7 +269,7 @@ public class CodecInstances {
 
       List<Path> deletePathList = plan.getDeletePathList();
       if (deletePathList == null) {
-        buffer.putInt(-1);
+        buffer.putInt(NULL_VALUE_LEN);
       } else {
         buffer.putInt(deletePathList.size());
         for (Path deletePath : deletePathList) {
@@ -283,7 +285,7 @@ public class CodecInstances {
           putString(buffer, entry.getValue());
         }
       } else {
-        buffer.putInt(-1);
+        buffer.putInt(NULL_VALUE_LEN);
       }
 
       return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
@@ -297,33 +299,33 @@ public class CodecInstances {
 
       byte namespaceTypeByte = buffer.get();
       MetadataOperator.NamespaceType namespaceType = null;
-      if (namespaceTypeByte != -1) {
+      if (namespaceTypeByte != NULL_VALUE_LEN) {
         namespaceType = MetadataOperator.NamespaceType
             .deserialize(namespaceTypeByte);
       }
 
       byte dataTypeByte = buffer.get();
       TSDataType dataType = null;
-      if (dataTypeByte != -1) {
+      if (dataTypeByte != NULL_VALUE_LEN) {
         dataType = TSDataType.deserialize(dataTypeByte);
       }
 
       byte compressorByte = buffer.get();
       CompressionType compressor = null;
-      if (compressorByte != -1) {
+      if (compressorByte != NULL_VALUE_LEN) {
         compressor = CompressionType.deserialize(compressorByte);
       }
 
       byte encodingByte = buffer.get();
       TSEncoding encoding = null;
-      if (compressorByte != -1) {
+      if (compressorByte != NULL_VALUE_LEN) {
         encoding = TSEncoding.deserialize(encodingByte);
       }
 
       String path = readString(buffer);
       int pathListLen = buffer.getInt();
       List<Path> deletePathList = null;
-      if (pathListLen != -1) {
+      if (pathListLen != NULL_VALUE_LEN) {
         deletePathList = new ArrayList<>(pathListLen);
         for (int i = 0; i < pathListLen; i++) {
           deletePathList.add(new Path(readString(buffer)));
@@ -332,7 +334,7 @@ public class CodecInstances {
 
       int propsLen = buffer.getInt();
       Map<String, String> props = null;
-      if (propsLen != -1) {
+      if (propsLen != NULL_VALUE_LEN) {
         props = new HashMap<>(propsLen);
         for (int i = 0; i < propsLen; i++) {
           props.put(readString(buffer), readString(buffer));
@@ -364,7 +366,7 @@ public class CodecInstances {
 
       Set<Integer> permissions = plan.getPermissions();
       if (permissions == null) {
-        buffer.putInt(-1);
+        buffer.putInt(NULL_VALUE_LEN);
       } else {
         buffer.putInt(permissions.size());
         for (int permission : permissions) {
@@ -388,7 +390,7 @@ public class CodecInstances {
       Path nodeName = new Path(readString(buffer));
       Set<Integer> permissions = null;
       int permissionListLen = buffer.getInt();
-      if (permissionListLen != -1) {
+      if (permissionListLen != NULL_VALUE_LEN) {
         permissions = new HashSet<>(permissionListLen);
         for (int i = 0; i < permissionListLen; i++) {
           permissions.add(buffer.getInt());

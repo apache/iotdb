@@ -84,7 +84,7 @@ public abstract class ClusterQPExecutor {
   public boolean canHandle(String storageGroup) {
     if (router.containPhysicalNode(storageGroup, localNode)) {
       String groupId = getGroupIdBySG(storageGroup);
-      if (RaftUtils.convertPeerId(RaftUtils.getLeader(groupId)).equals(localNode)) {
+      if (RaftUtils.convertPeerId(RaftUtils.getTargetPeerID(groupId)).equals(localNode)) {
         return true;
       }
     }
@@ -113,6 +113,7 @@ public abstract class ClusterQPExecutor {
       if (task.getTaskState() == TaskState.REDIRECT) {
         /** redirect to the right leader **/
         leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
+        RaftUtils.updateRaftGroupLeader(task.getRequest().getGroupID(), leader);
       }
       task.resetTask();
       return asyncHandleTaskGetRes(task, leader, taskRetryNum + 1);
