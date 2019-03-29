@@ -32,7 +32,7 @@ public class QuerySession {
    * will always be maintained until the request is closed. In each job, the unique file will be
    * only opened once to avoid too many opened files error.
    */
-  private AtomicLong jobIdGenerator = new AtomicLong();
+  private static AtomicLong jobIdGenerator = new AtomicLong();
 
   private QuerySession() {
     this.jobId = new ThreadLocal<Long>(){
@@ -40,8 +40,6 @@ public class QuerySession {
       protected Long initialValue() {
         super.initialValue();
         long id = jobIdGenerator.incrementAndGet();
-        OpenedFilePathsManager.getInstance().addJobId(id);
-        QueryTokenManager.getInstance().addJobId(id);
         return id;
       }
     };

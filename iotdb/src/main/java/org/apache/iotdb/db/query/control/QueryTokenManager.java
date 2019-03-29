@@ -94,7 +94,7 @@ public class QueryTokenManager {
    * must be invoked.
    */
   public void addJobId(long jobId) {
-    queryTokensMap.put(jobId, new ConcurrentHashMap<>());
+    queryTokensMap.computeIfAbsent(jobId, x -> new ConcurrentHashMap<>());
   }
 
   /**
@@ -131,6 +131,10 @@ public class QueryTokenManager {
    * query tokens created by this jdbc request must be cleared.
    */
   public void endQueryForGivenJob(long jobId) throws FileNodeManagerException {
+    if (queryTokensMap.get(jobId) == null) {
+      // no resource need to be released.
+      return;
+    }
       for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
         for (int token : entry.getValue()) {
           FileNodeManager.getInstance().endQuery(entry.getKey(), token);
@@ -152,7 +156,7 @@ public class QueryTokenManager {
   }
 
   private void putQueryTokenForCurrentRequestThread(long jobId, String deviceId, int queryToken) {
-    queryTokensMap.get(jobId).computeIfPresent(deviceId, (x, y) -> new ArrayList<>()).add(queryToken);
+    queryTokensMap.get(jobId).computeIfAbsent(deviceId, x -> new ArrayList<>()).add(queryToken);
   }
 
   private static class QueryTokenManagerHelper {

@@ -37,12 +37,12 @@ public class OpenedFilePathsManager {
   /**
    * Map<jobId, Set<filePaths>>
    */
-  private ConcurrentHashMap<Long, Set<String>> closedFilePathsMap;
-  private ConcurrentHashMap<Long, Set<String>> unclosedFilePathsMap;
+  private ConcurrentHashMap<Long, Set<String>> sealedFilePathsMap;
+  private ConcurrentHashMap<Long, Set<String>> unsealedFilePathsMap;
 
   private OpenedFilePathsManager() {
-    closedFilePathsMap = new ConcurrentHashMap<>();
-    unclosedFilePathsMap = new ConcurrentHashMap<>();
+    sealedFilePathsMap = new ConcurrentHashMap<>();
+    unsealedFilePathsMap = new ConcurrentHashMap<>();
   }
 
   public static OpenedFilePathsManager getInstance() {
@@ -53,12 +53,12 @@ public class OpenedFilePathsManager {
    * Set job id for current request thread. When a query request is created firstly, this method must be invoked.
    */
   public void addJobId(long jobId) {
-    closedFilePathsMap.put(jobId, new HashSet<>());
-    unclosedFilePathsMap.put(jobId, new HashSet<>());
+    sealedFilePathsMap.computeIfAbsent(jobId, x -> new HashSet<>());
+    unsealedFilePathsMap.computeIfAbsent(jobId, x -> new HashSet<>());
   }
 
   /**
-   * Add the unique file paths to closedFilePathsMap and unclosedFilePathsMap.
+   * Add the unique file paths to sealedFilePathsMap and unsealedFilePathsMap.
    */
   public void addUsedFilesForGivenJob(long jobId, QueryDataSource dataSource) {
     for (TsFileResource tsFileResource : dataSource.getSeqDataSource().getSealedTsFiles()) {
@@ -83,30 +83,30 @@ public class OpenedFilePathsManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All file paths used by
    * this jdbc request must be cleared and thus the usage reference must be decreased.
    */
-  public void removeUsedFilesForGivenJob(long jobId) {
-      for (String filePath : closedFilePathsMap.get(jobId)) {
+  void removeUsedFilesForGivenJob(long jobId) {
+      for (String filePath : sealedFilePathsMap.get(jobId)) {
         FileReaderManager.getInstance().decreaseFileReaderReference(filePath, false);
       }
-      closedFilePathsMap.remove(jobId);
-      for (String filePath : unclosedFilePathsMap.get(jobId)) {
+      sealedFilePathsMap.remove(jobId);
+      for (String filePath : unsealedFilePathsMap.get(jobId)) {
         FileReaderManager.getInstance().decreaseFileReaderReference(filePath, true);
       }
-      unclosedFilePathsMap.remove(jobId);
+      unsealedFilePathsMap.remove(jobId);
   }
 
   /**
    * Increase the usage reference of filePath of job id. Before the invoking of this method,
    * <code>this.setJobIdForCurrentRequestThread</code> has been invoked,
-   * so <code>closedFilePathsMap.get(jobId)</code> or <code>unclosedFilePathsMap.get(jobId)</code>
+   * so <code>sealedFilePathsMap.get(jobId)</code> or <code>unsealedFilePathsMap.get(jobId)</code>
    * must not return null.
    */
-  void addFilePathToMap(long jobId, String filePath, boolean isClosed) {
-    ConcurrentHashMap<Long, Set<String>> pathMap = !isClosed ? unclosedFilePathsMap :
-        closedFilePathsMap;
+  void addFilePathToMap(long jobId, String filePath, boolean isSealed) {
+    ConcurrentHashMap<Long, Set<String>> pathMap = !isSealed ? unsealedFilePathsMap :
+        sealedFilePathsMap;
     //TODO this is not an atomic operation, is there concurrent problem?
     if (!pathMap.get(jobId).contains(filePath)) {
       pathMap.get(jobId).add(filePath);
-      FileReaderManager.getInstance().increaseFileReaderReference(filePath, isClosed);
+      FileReaderManager.getInstance().increaseFileReaderReference(filePath, isSealed);
     }
   }
 
