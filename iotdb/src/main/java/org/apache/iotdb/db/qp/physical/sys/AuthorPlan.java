@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
@@ -142,6 +143,10 @@ public class AuthorPlan extends PhysicalPlan {
     return permissions;
   }
 
+  public void setPermissions(Set<Integer> permissions) {
+    this.permissions = permissions;
+  }
+
   public Path getNodeName() {
     return nodeName;
   }
@@ -184,5 +189,30 @@ public class AuthorPlan extends PhysicalPlan {
       ret.add(nodeName);
     }
     return ret;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof AuthorPlan)) {
+      return false;
+    }
+    AuthorPlan that = (AuthorPlan) o;
+    return getAuthorType() == that.getAuthorType() &&
+        Objects.equals(getUserName(), that.getUserName()) &&
+        Objects.equals(getRoleName(), that.getRoleName()) &&
+        Objects.equals(getPassword(), that.getPassword()) &&
+        Objects.equals(getNewPassword(), that.getNewPassword()) &&
+        Objects.equals(getPermissions(), that.getPermissions()) &&
+        Objects.equals(getNodeName(), that.getNodeName());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects
+        .hash(getAuthorType(), getUserName(), getRoleName(), getPassword(), getNewPassword(),
+            getPermissions(), getNodeName());
   }
 }
