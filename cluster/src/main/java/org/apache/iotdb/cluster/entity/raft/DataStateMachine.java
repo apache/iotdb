@@ -27,11 +27,13 @@ import com.alipay.sofa.jraft.core.StateMachineAdapter;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -49,6 +51,7 @@ public class DataStateMachine extends StateMachineAdapter {
   private PeerId peerId;
   private String groupId;
   private AtomicLong leaderTerm = new AtomicLong(-1);
+  private MManager mManager = MManager.getInstance();
 
   public DataStateMachine(String groupId, PeerId peerId) {
     this.peerId = peerId;
@@ -101,5 +104,9 @@ public class DataStateMachine extends StateMachineAdapter {
 
   public boolean isLeader() {
     return this.leaderTerm.get() > 0;
+  }
+
+  public List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
+    return mManager.getShowTimeseriesPath(path);
   }
 }

@@ -20,24 +20,24 @@ package org.apache.iotdb.cluster.rpc.response;
 
 import java.util.Set;
 
-public class QueryMetadataResponse extends BasicResponse {
+public class QueryStorageGroupResponse extends BasicResponse {
 
-  private Set<String> metadataSet;
+  private Set<String> storageGroups;
 
-  public QueryMetadataResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
+  public QueryStorageGroupResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
     super(redirected, success, leaderStr, errorMsg);
   }
 
-  public QueryMetadataResponse(boolean redirected, boolean success, Set<String> metadataSet) {
+  public QueryStorageGroupResponse(boolean redirected, boolean success, Set<String> storageGroups) {
     super(redirected, success, null, null);
-    this.metadataSet = metadataSet;
+    this.storageGroups = storageGroups;
   }
 
-  public Set<String> getMetadataSet() {
-    return metadataSet;
+  public Set<String> getStorageGroups() {
+    return storageGroups;
   }
 
-  public void setMetadataSet(Set<String> metadataSet) {
-    this.metadataSet = metadataSet;
+  public void setStorageGroups(Set<String> storageGroups) {
+    this.storageGroups = storageGroups;
   }
 }

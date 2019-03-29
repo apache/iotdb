@@ -24,18 +24,23 @@ import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.option.CliOptions;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import com.alipay.sofa.jraft.util.Bits;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.callback.SingleTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.entity.Server;
+import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
-import org.apache.iotdb.cluster.rpc.MetadataType;
-import org.apache.iotdb.cluster.rpc.request.QueryMetadataRequest;
-import org.apache.iotdb.cluster.rpc.response.QueryMetadataResponse;
+import org.apache.iotdb.cluster.rpc.request.QueryStorageGroupRequest;
+import org.apache.iotdb.cluster.rpc.request.QueryTimeSeriesRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.response.QueryStorageGroupResponse;
+import org.apache.iotdb.cluster.rpc.response.QueryTimeSeriesResponse;
+import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,22 +65,63 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     SUB_TASK_NUM = 1;
   }
 
-  public Set<String> processMetadataQuery(MetadataType type)
-      throws InterruptedException {
-    QueryMetadataRequest request = new QueryMetadataRequest(
-        ClusterConfig.METADATA_GROUP_ID, type);
+  public Set<String> processStorageGroupQuery() throws InterruptedException {
+    return queryStorageGroupLocally();
+  }
+
+  public List<List<String>> processTimeSeriesQuery(String path)
+      throws InterruptedException, PathErrorException, RaftConnectionException {
+    String storageGroup = getStroageGroupByDevice(path);
+    String groupId = getGroupIdBySG(storageGroup);
+    QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, path);
+    PeerId leader = RaftUtils.getTargetPeerID(groupId);
     SingleTask task = new SingleTask(false, request);
-    return asyncHandleTaskLocally(task);
+
+    /** Check if the plan can be executed locally. **/
+    if (canHandle(storageGroup)) {
+      return queryTimeSeriesLocally(path, groupId, task);
+    } else {
+      return queryTimeSeries(task, leader);
+    }
   }
 
-  private Set<String> asyncHandleTaskLocally(SingleTask task) throws InterruptedException {
-    readIndexForSG(task);
+  private List<List<String>> queryTimeSeriesLocally(String path, String groupId, SingleTask task)
+      throws InterruptedException {
+    final byte[] reqContext = new byte[4];
+    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
+    DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server.getDataPartitionHolder(groupId);
+    ((RaftService) dataPartitionHolder.getService()).getNode()
+        .readIndex(reqContext, new ReadIndexClosure() {
 
+          @Override
+          public void run(Status status, long index, byte[] reqCtx) {
+            QueryTimeSeriesResponse response = null;
+            if (status.isOk()) {
+              try {
+                response = new QueryTimeSeriesResponse(false, true,
+                    dataPartitionHolder.getFsm().getShowTimeseriesPath(path));
+              } catch (final PathErrorException e) {
+                response = new QueryTimeSeriesResponse(false, false, null, e.toString());
+              }
+            } else {
+              response = new QueryTimeSeriesResponse(false, false, null, null);
+            }
+            task.run(response);
+          }
+        });
     task.await();
-    return ((QueryMetadataResponse) task.getResponse()).getMetadataSet();
+    return ((QueryTimeSeriesResponse) task.getResponse()).getTimeSeries();
   }
 
-  private void readIndexForSG(SingleTask task) {
+  private List<List<String>> queryTimeSeries(SingleTask task, PeerId leader)
+      throws InterruptedException, RaftConnectionException {
+    BasicResponse response = asyncHandleTaskGetRes(task, leader, 0);
+    return ((QueryTimeSeriesResponse) response).getTimeSeries();
+  }
+
+  private Set<String> queryStorageGroupLocally() throws InterruptedException {
+    QueryStorageGroupRequest request = new QueryStorageGroupRequest(ClusterConfig.METADATA_GROUP_ID);
+    SingleTask task = new SingleTask(false, request);
     final byte[] reqContext = new byte[4];
     Bits.putInt(reqContext, 0, requestId.incrementAndGet());
     MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
@@ -84,19 +130,21 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
           @Override
           public void run(Status status, long index, byte[] reqCtx) {
-            QueryMetadataResponse response = null;
+            QueryStorageGroupResponse response = null;
             if (status.isOk()) {
               try {
-                response = new QueryMetadataResponse(false, true,
+                response = new QueryStorageGroupResponse(false, true,
                     metadataHolder.getFsm().getAllStorageGroups());
               } catch (final PathErrorException e) {
-                response = new QueryMetadataResponse(false, false, null, e.toString());
+                response = new QueryStorageGroupResponse(false, false, null, e.toString());
               }
             } else {
-              response = new QueryMetadataResponse(false, false, null, null);
+              response = new QueryStorageGroupResponse(false, false, null, null);
             }
             task.run(response);
           }
         });
+    task.await();
+    return ((QueryStorageGroupResponse) task.getResponse()).getStorageGroups();
   }
 }

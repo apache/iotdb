@@ -16,26 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.request;
+package org.apache.iotdb.cluster.rpc.response;
 
-import java.io.Serializable;
-import org.apache.iotdb.cluster.rpc.MetadataType;
+import java.util.List;
 
-public class QueryMetadataRequest extends BasicRequest implements Serializable {
+public class QueryTimeSeriesResponse extends BasicResponse {
 
-  private MetadataType metadataType;
+  private List<List<String>> timeSeries;
 
-  public QueryMetadataRequest(String groupID, MetadataType metadataType) {
-    super(groupID);
-    this.metadataType = metadataType;
+  public QueryTimeSeriesResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
+    super(redirected, success, leaderStr, errorMsg);
   }
 
-  public MetadataType getMetadataType() {
-    return metadataType;
+  public QueryTimeSeriesResponse(boolean redirected, boolean success, List<List<String>> timeSeries) {
+    super(redirected, success, null, null);
+    this.timeSeries = timeSeries;
   }
 
-  public void setMetadataType(
-      MetadataType metadataType) {
-    this.metadataType = metadataType;
+  public List<List<String>> getTimeSeries() {
+    return timeSeries;
+  }
+
+  public void setTimeSeries(List<List<String>> timeSeries) {
+    this.timeSeries = timeSeries;
   }
 }

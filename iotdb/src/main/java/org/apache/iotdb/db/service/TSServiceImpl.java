@@ -230,10 +230,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case "SHOW_TIMESERIES":
         String path = req.getColumnPath();
         try {
-          List<List<String>> showTimeseriesList = MManager.getInstance()
-              .getShowTimeseriesPath(path);
+          List<List<String>> showTimeseriesList = getTimeSeriesForPath(path);
           resp.setShowTimeseriesList(showTimeseriesList);
-        } catch (PathErrorException e) {
+        } catch (PathErrorException | InterruptedException e) {
           status = getErrorStatus(
                   String.format("Failed to fetch timeseries %s's metadata because: %s",
                   req.getColumnPath(), e));
@@ -253,9 +252,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         break;
       case "SHOW_STORAGE_GROUP":
         try {
-          Set<String> storageGroups = MManager.getInstance().getAllStorageGroup();
+          Set<String> storageGroups = getAllStorageGroups();
           resp.setShowStorageGroups(storageGroups);
-        } catch (PathErrorException e) {
+        } catch (PathErrorException | InterruptedException e) {
           status = getErrorStatus(String.format("Failed to fetch storage groups' metadata because: %s", e));
           resp.setStatus(status);
           return resp;
@@ -342,6 +341,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     resp.setStatus(status);
     return resp;
+  }
+
+  protected Set<String> getAllStorageGroups() throws PathErrorException, InterruptedException {
+    return MManager.getInstance().getAllStorageGroup();
+  }
+
+  protected List<List<String>> getTimeSeriesForPath(String path)
+      throws PathErrorException, InterruptedException {
+    return MManager.getInstance().getShowTimeseriesPath(path);
   }
 
   /**
