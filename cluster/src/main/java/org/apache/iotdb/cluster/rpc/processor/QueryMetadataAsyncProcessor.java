@@ -22,6 +22,7 @@ import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.closure.ReadIndexClosure;
+import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.util.Bits;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.entity.Server;
@@ -30,6 +31,7 @@ import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.rpc.MetadataType;
 import org.apache.iotdb.cluster.rpc.request.QueryMetadataRequest;
 import org.apache.iotdb.cluster.rpc.response.QueryMetadataResponse;
+import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +49,14 @@ public class QueryMetadataAsyncProcessor extends BasicAsyncUserProcessor<QueryMe
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       QueryMetadataRequest queryMetadataRequest) {
+    String groupId = queryMetadataRequest.getGroupID();
+    if (this.server.getServerId().equals(RaftUtils.getLeader(groupId))) {
+      PeerId leader = RaftUtils.getLeader(groupId);
+      QueryMetadataResponse response = new QueryMetadataResponse(true, false, leader.toString(),
+          null);
+      asyncContext.sendResponse(response);
+    }
+
     MetadataType metadataType = queryMetadataRequest.getMetadataType();
     if (metadataType == MetadataType.STORAGE_GROUP) {
       readIndexForSG(asyncContext);

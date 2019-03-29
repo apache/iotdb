@@ -39,21 +39,24 @@ public abstract class Task {
   protected boolean isSyncTask;
 
   /**
+   * Count down latch for sub-tasks
+   */
+  protected CountDownLatch taskCountDownLatch;
+
+  /**
    * Num of sub-task
    */
-  protected CountDownLatch taskNum;
+  private int taskNum;
+
   /**
    * Describe task type
    */
   protected TaskState taskState;
-  /**
-   * Default task num
-   */
-  private static final int DEFAULT_TASK_NUM = 1;
 
   public Task(boolean isSyncTask, int taskNum, TaskState taskState) {
     this.isSyncTask = isSyncTask;
-    this.taskNum = new CountDownLatch(taskNum);
+    this.taskNum = taskNum;
+    this.taskCountDownLatch = new CountDownLatch(taskNum);
     this.taskState = taskState;
   }
 
@@ -72,16 +75,12 @@ public abstract class Task {
     isSyncTask = syncTask;
   }
 
-  public CountDownLatch getTaskNum() {
-    return taskNum;
+  public CountDownLatch getTaskCountDownLatch() {
+    return taskCountDownLatch;
   }
 
-  public void setTaskNum(int taskNum) {
-    this.taskNum = new CountDownLatch(taskNum);
-  }
-
-  public void setTaskNum() {
-    this.taskNum = new CountDownLatch(DEFAULT_TASK_NUM);
+  public void resetTask() {
+    this.taskCountDownLatch = new CountDownLatch(taskNum);
   }
 
   public TaskState getTaskState() {
@@ -114,6 +113,6 @@ public abstract class Task {
   }
 
   public void await() throws InterruptedException {
-    this.taskNum.await();
+    this.taskCountDownLatch.await();
   }
 }

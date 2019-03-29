@@ -26,9 +26,10 @@ import org.apache.iotdb.cluster.rpc.response.BasicResponse;
  */
 public class SingleTask extends Task {
 
+  private static final int TASK_NUM = 1;
 
   public SingleTask(boolean isSyncTask, BasicRequest request) {
-    super(isSyncTask, 1, TaskState.INITIAL);
+    super(isSyncTask, TASK_NUM, TaskState.INITIAL);
     this.request = request;
   }
 
@@ -43,6 +44,6 @@ public class SingleTask extends Task {
     } else if (taskState != TaskState.EXCEPTION) {
       this.taskState = TaskState.FINISH;
     }
-    this.taskNum.countDown();
+    this.taskCountDownLatch.countDown();
   }
 }

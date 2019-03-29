@@ -70,18 +70,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
    */
   private Set<String> asyncHandleTask(Task task, PeerId leader, int taskRetryNum)
       throws RaftConnectionException, InterruptedException {
-    if (taskRetryNum >= TASK_MAX_RETRY) {
-      throw new RaftConnectionException(String.format("Task retries reach the upper bound %s",
-          TASK_MAX_RETRY));
-    }
-    NodeAsClient client = new RaftNodeAsClient();
-    /** Call async method **/
-    client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
-    task.await();
-    if (task.getTaskState() != TaskState.FINISH) {
-      task.setTaskNum(SUB_TASK_NUM);
-      return asyncHandleTask(task, leader, taskRetryNum + 1);
-    }
-    return ((QueryMetadataResponse) task.getResponse()).getMetadataSet();
+    QueryMetadataResponse response = (QueryMetadataResponse) asyncHandleTaskGetRes(task, leader, taskRetryNum);
+    return response.getMetadataSet();
   }
 }

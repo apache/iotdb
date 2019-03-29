@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClient;
 import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -204,23 +205,8 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    */
   private boolean asyncHandleTask(Task task, PeerId leader, int taskRetryNum)
       throws RaftConnectionException, InterruptedException {
-    if (taskRetryNum >= TASK_MAX_RETRY) {
-      throw new RaftConnectionException(String.format("Task retries reach the upper bound %s",
-          TASK_MAX_RETRY));
-    }
-    NodeAsClient client = new RaftNodeAsClient();
-    /** Call async method **/
-    client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
-    task.await();
-    if (task.getTaskState() != TaskState.FINISH) {
-      if (task.getTaskState() == TaskState.REDIRECT) {
-        /** redirect to the right leader **/
-        leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
-      }
-      task.setTaskNum();
-      return asyncHandleTask(task, leader, taskRetryNum + 1);
-    }
-    return task.getResponse().isSuccess();
+    BasicResponse response = asyncHandleTaskGetRes(task, leader, taskRetryNum);
+    return response.isSuccess();
   }
 
   public void shutdown() {

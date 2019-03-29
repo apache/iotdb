@@ -18,9 +18,16 @@
  */
 package org.apache.iotdb.cluster.qp;
 
+import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
+import org.apache.iotdb.cluster.callback.Task;
+import org.apache.iotdb.cluster.callback.Task.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.rpc.NodeAsClient;
+import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClient;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
@@ -82,6 +89,35 @@ public abstract class ClusterQPExecutor {
       }
     }
     return false;
+  }
+
+  /**
+   * Async handle task by task and leader id
+   *
+   * @param task request task
+   * @param leader leader of the target raft group
+   * @param taskRetryNum Number of task retries due to timeout and redirected.
+   * @return basic response
+   */
+  public BasicResponse asyncHandleTaskGetRes(Task task, PeerId leader, int taskRetryNum)
+      throws RaftConnectionException, InterruptedException {
+    if (taskRetryNum >= TASK_MAX_RETRY) {
+      throw new RaftConnectionException(String.format("Task retries reach the upper bound %s",
+          TASK_MAX_RETRY));
+    }
+    NodeAsClient client = new RaftNodeAsClient();
+    /** Call async method **/
+    client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
+    task.await();
+    if (task.getTaskState() != TaskState.FINISH) {
+      if (task.getTaskState() == TaskState.REDIRECT) {
+        /** redirect to the right leader **/
+        leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
+      }
+      task.resetTask();
+      return asyncHandleTaskGetRes(task, leader, taskRetryNum + 1);
+    }
+    return task.getResponse();
   }
 
   public void shutdown() {
