@@ -33,11 +33,16 @@ import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
+import org.apache.iotdb.cluster.utils.hash.Router;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RaftUtils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(RaftUtils.class);
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
   private static final Server server = Server.getInstance();
+  private static final Router router = Router.getInstance();
   /**
    * The cache will be update in two case: 1. When @onLeaderStart() method of state machine is
    * called, the cache will be update. 2. When @getTargetPeerID() in this class is called and cache
@@ -77,26 +82,28 @@ public class RaftUtils {
    * @return leader id
    */
   public static PeerId getTargetPeerID(String groupId) {
-    if (!groupLeaderCache.contains(groupId)) {
-      RaftService service;
+    if (!groupLeaderCache.containsKey(groupId)) {
+      PeerId randomPeerId;
       if (groupId.equals(CLUSTER_CONFIG.METADATA_GROUP_ID)) {
-        service = (RaftService) server.getMetadataHolder().getService();
-      }else {
-        service = (RaftService) server.getDataPartitionHolderMap().get(groupId)
-            .getService();
+        RaftService service = (RaftService) server.getMetadataHolder().getService();
+        List<PeerId> peerIdList = service.getPeerIdList();
+        randomPeerId = peerIdList.get(getRandomInt(peerIdList.size()));
+      } else {
+        PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
+        PhysicalNode node = physicalNodes[getRandomInt(physicalNodes.length)];
+        randomPeerId = new PeerId(node.ip, node.port);
       }
-      List<PeerId> peerIdList = service.getPeerIdList();
-      groupLeaderCache.put(groupId, getRandomPeerId(peerIdList));
+      groupLeaderCache.put(groupId, randomPeerId);
     }
     return groupLeaderCache.get(groupId);
   }
 
   /**
-   * Get random peer id form a list of peer id.
+   * Get random int from [0, bound).
    */
-  public static PeerId getRandomPeerId(List<PeerId> peerIdList) {
-    int randomIndex = ThreadLocalRandom.current().nextInt(peerIdList.size());
-    return peerIdList.get(randomIndex);
+  public static int getRandomInt(int bound) {
+    int randomIndex = ThreadLocalRandom.current().nextInt(bound);
+    return randomIndex;
   }
 
   /**
@@ -169,6 +176,7 @@ public class RaftUtils {
    */
   public static void updateRaftGroupLeader(String groupId, PeerId peerId) {
     groupLeaderCache.put(groupId, peerId);
+    LOGGER.info("group leader cache:" + groupLeaderCache);
   }
 
 }

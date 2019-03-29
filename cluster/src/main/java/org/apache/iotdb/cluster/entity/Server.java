@@ -73,7 +73,7 @@ public class Server {
 
     dataPartitionHolderMap = new HashMap<>();
     Router router = Router.getInstance();
-    PhysicalNode[][] groups = router.generateGroups(serverId.getIp(), serverId.getPort());
+    PhysicalNode[][] groups = router.getGroupsNodes(serverId.getIp(), serverId.getPort());
 
     for (int i = 0; i < groups.length; i++) {
       PhysicalNode[] group = groups[i];
@@ -84,6 +84,7 @@ public class Server {
       dataPartitionHolder.start();
       dataPartitionHolderMap.put(groupId, dataPartitionHolder);
       LOGGER.info("{} group has started", groupId);
+      Router.getInstance().showPhysicalNodes(groupId);
     }
 
   }
