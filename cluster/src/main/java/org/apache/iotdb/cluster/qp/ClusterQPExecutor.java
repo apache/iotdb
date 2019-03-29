@@ -34,9 +34,12 @@ import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class ClusterQPExecutor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterQPExecutor.class);
   protected static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
   protected Router router = Router.getInstance();
   protected PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
@@ -113,6 +116,7 @@ public abstract class ClusterQPExecutor {
       if (task.getTaskState() == TaskState.REDIRECT) {
         /** redirect to the right leader **/
         leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
+        LOGGER.info("Redirect leader: {}, group id = {}" , leader, task.getRequest().getGroupID());
         RaftUtils.updateRaftGroupLeader(task.getRequest().getGroupID(), leader);
       }
       task.resetTask();

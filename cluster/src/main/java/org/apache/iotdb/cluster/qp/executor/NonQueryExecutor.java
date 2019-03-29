@@ -101,6 +101,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
               String.format("operation %s does not support", plan.getOperatorType()));
       }
     } catch (RaftConnectionException e) {
+      LOGGER.error(e.getMessage());
       throw new ProcessorException("Raft connection occurs error.", e);
     } catch (InterruptedException | PathErrorException | IOException e) {
       throw new ProcessorException(e);
@@ -162,6 +163,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           throw new ProcessorException(
               String.format("File level %s already exists.", path.getFullPath()));
         } else {
+          LOGGER.info("Execute set storage group statement.");
           return redirectMetadataGroupLeader(metadataPlan);
         }
       default:

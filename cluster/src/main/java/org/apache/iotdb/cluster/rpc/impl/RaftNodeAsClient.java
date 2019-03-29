@@ -55,6 +55,7 @@ public class RaftNodeAsClient implements NodeAsClient {
       throws RaftConnectionException {
     BoltCliClientService boltClientService = (BoltCliClientService) clientService;
     PeerId raftLeader = (PeerId) leader;
+    LOGGER.info("Node as client to send request to leader:" + leader);
     try {
       boltClientService.getRpcClient()
           .invokeWithCallback(raftLeader.getEndpoint().toString(), request,
@@ -80,6 +81,7 @@ public class RaftNodeAsClient implements NodeAsClient {
                 }
               }, TASK_TIMEOUT_MS);
     } catch (RemotingException | InterruptedException e) {
+      LOGGER.error(e.toString());
       throw new RaftConnectionException(e);
     }
   }

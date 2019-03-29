@@ -24,19 +24,16 @@ import com.alipay.sofa.jraft.Closure;
 import com.alipay.sofa.jraft.Iterator;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
+import com.alipay.sofa.jraft.entity.LeaderChangeContext;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +88,14 @@ public class DataStateMachine extends StateMachineAdapter {
   @Override
   public void onLeaderStart(final long term) {
     RaftUtils.updateRaftGroupLeader(groupId, peerId);
+    LOGGER.info("On leader start, {} starts to be leader of {}", peerId, groupId);
     this.leaderTerm.set(term);
+  }
+
+  @Override
+  public void onStartFollowing(LeaderChangeContext ctx) {
+    RaftUtils.updateRaftGroupLeader(groupId, ctx.getLeaderId());
+    LOGGER.info("Start following, {} starts to be leader of {}", ctx.getLeaderId(), groupId);
   }
 
   @Override

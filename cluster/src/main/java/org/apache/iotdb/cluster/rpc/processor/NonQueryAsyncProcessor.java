@@ -25,6 +25,8 @@ import com.alipay.remoting.serialization.SerializerManager;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.entity.Task;
+import com.alipay.sofa.jraft.option.CliOptions;
+import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
@@ -53,57 +55,64 @@ public class NonQueryAsyncProcessor extends BasicAsyncUserProcessor<NonQueryRequ
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       NonQueryRequest nonQueryRequest) {
     Operator.OperatorType requestType = nonQueryRequest.getRequestType();
+    LOGGER.info("Handle nonquery request.");
     /** Check if it's the leader of metadata **/
     String groupId = nonQueryRequest.getGroupID();
     if (!this.server.getServerId().equals(RaftUtils.getTargetPeerID(groupId))) {
       PeerId leader = RaftUtils.getTargetPeerID(groupId);
+      LOGGER.info("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
+      BoltCliClientService cliClientService = new BoltCliClientService();
+      cliClientService.init(new CliOptions());
+      LOGGER.info("Right leader is: {}, group id = {} ", leader, groupId);
       NonQueryResponse response = new NonQueryResponse(true, false, leader.toString(), null);
       asyncContext.sendResponse(response);
-    }
+    } else {
 
-    /** Apply Task to Raft Node **/
-    final Task task = new Task();
-    task.setDone((Status status) -> {
-      asyncContext.sendResponse(
-          new NonQueryResponse(false, status.isOk(), null, status.getErrorMsg()));
-    });
-    try {
-      task.setData(ByteBuffer
-          .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
-              .serialize(nonQueryRequest)));
-    } catch (final CodecException e) {
-      asyncContext.sendResponse(new NonQueryResponse(false, false, null, e.toString()));
-    }
+      LOGGER.info("Apply task to raft node");
+      /** Apply Task to Raft Node **/
+      final Task task = new Task();
+      task.setDone((Status status) -> {
+        asyncContext.sendResponse(
+            new NonQueryResponse(false, status.isOk(), null, status.getErrorMsg()));
+      });
+      try {
+        task.setData(ByteBuffer
+            .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
+                .serialize(nonQueryRequest)));
+      } catch (final CodecException e) {
+        asyncContext.sendResponse(new NonQueryResponse(false, false, null, e.toString()));
+      }
 
-    RaftService service;
-    switch (requestType) {
-      case SET_STORAGE_GROUP:
-      case AUTHOR:
-      case CREATE_USER:
-      case CREATE_ROLE:
-      case DELETE_ROLE:
-      case DELETE_USER:
-      case GRANT_USER_ROLE:
-      case GRANT_USER_PRIVILEGE:
-      case REVOKE_USER_PRIVILEGE:
-      case REVOKE_USER_ROLE:
-      case GRANT_ROLE_PRIVILEGE:
-      case LIST_USER:
-      case LIST_ROLE:
-      case LIST_USER_PRIVILEGE:
-      case LIST_ROLE_PRIVILEGE:
-      case LIST_USER_ROLES:
-      case LIST_ROLE_USERS:
-      case MODIFY_PASSWORD:
-        MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
-        service = (RaftService) metadataHolder.getService();
-        break;
-      default:
-        DataPartitionRaftHolder dataRaftHolder = (DataPartitionRaftHolder) server
-            .getDataPartitionHolderMap().get(groupId);
-        service = (RaftService) dataRaftHolder.getService();
+      RaftService service;
+      switch (requestType) {
+        case SET_STORAGE_GROUP:
+        case AUTHOR:
+        case CREATE_USER:
+        case CREATE_ROLE:
+        case DELETE_ROLE:
+        case DELETE_USER:
+        case GRANT_USER_ROLE:
+        case GRANT_USER_PRIVILEGE:
+        case REVOKE_USER_PRIVILEGE:
+        case REVOKE_USER_ROLE:
+        case GRANT_ROLE_PRIVILEGE:
+        case LIST_USER:
+        case LIST_ROLE:
+        case LIST_USER_PRIVILEGE:
+        case LIST_ROLE_PRIVILEGE:
+        case LIST_USER_ROLES:
+        case LIST_ROLE_USERS:
+        case MODIFY_PASSWORD:
+          MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
+          service = (RaftService) metadataHolder.getService();
+          break;
+        default:
+          DataPartitionRaftHolder dataRaftHolder = (DataPartitionRaftHolder) server
+              .getDataPartitionHolderMap().get(groupId);
+          service = (RaftService) dataRaftHolder.getService();
+      }
+      service.getNode().apply(task);
     }
-    service.getNode().apply(task);
   }
 
   @Override
