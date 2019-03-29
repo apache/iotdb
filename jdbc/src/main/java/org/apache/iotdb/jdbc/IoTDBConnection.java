@@ -427,7 +427,13 @@ public class IoTDBConnection implements Connection {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
       // validate connection
-      Utils.verifySuccess(openResp.getStatus());
+      try {
+        Utils.verifySuccess(openResp.getStatus());
+      } catch (IoTDBSQLException e) {
+        // failed to connect, disconnect from the server
+        transport.close();
+        throw e;
+      }
       if (!supportedProtocols.contains(openResp.getServerProtocolVersion())) {
         throw new TException("Unsupported TsFile protocol");
       }
