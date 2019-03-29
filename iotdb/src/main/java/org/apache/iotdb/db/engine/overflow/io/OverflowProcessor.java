@@ -51,6 +51,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -409,6 +410,7 @@ public class OverflowProcessor extends Processor {
 
   public void switchMergeToWork() throws IOException {
     if (mergeResource != null) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(mergeResource.getInsertFilePath());
       mergeResource.close();
       mergeResource.deleteResource();
       mergeResource = null;

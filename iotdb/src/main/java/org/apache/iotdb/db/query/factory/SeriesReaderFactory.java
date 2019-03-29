@@ -166,6 +166,7 @@ public class SeriesReaderFactory {
       SingleSeriesExpression singleSeriesExpression,
       QueryContext context)
       throws IOException {
+
     TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
         .get(fileNode.getFilePath(), true);
     ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileSequenceReader);

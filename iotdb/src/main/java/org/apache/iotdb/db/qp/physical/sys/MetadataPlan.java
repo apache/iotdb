@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -141,5 +142,30 @@ public class MetadataPlan extends PhysicalPlan {
       ret.add(path);
     }
     return ret;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof MetadataPlan)) {
+      return false;
+    }
+    MetadataPlan that = (MetadataPlan) o;
+    return getNamespaceType() == that.getNamespaceType() &&
+        Objects.equals(getPath(), that.getPath()) &&
+        getDataType() == that.getDataType() &&
+        getCompressor() == that.getCompressor() &&
+        getEncoding() == that.getEncoding() &&
+        Objects.equals(getProps(), that.getProps()) &&
+        Objects.equals(getDeletePathList(), that.getDeletePathList());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects
+        .hash(getNamespaceType(), getPath(), getDataType(), getCompressor(), getEncoding(),
+            getProps(), getDeletePathList());
   }
 }

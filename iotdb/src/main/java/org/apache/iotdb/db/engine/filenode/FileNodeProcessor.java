@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,10 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.engine.filenode;
 
+import static java.time.ZonedDateTime.ofInstant;
+
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -41,7 +44,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -57,6 +59,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.overflow.io.OverflowProcessor;
 import org.apache.iotdb.db.engine.pool.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
+import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -74,8 +77,10 @@ import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.sync.conf.Constans;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -101,8 +106,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static java.time.ZonedDateTime.ofInstant;
 
 public class FileNodeProcessor extends Processor implements IStatistic {
 
@@ -229,8 +232,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       statParamsHashMap.put(statConstant.name(), new AtomicLong(0));
     }
     statStorageDeltaName =
-        MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
-            + MonitorConstants.FILE_NODE_PATH + MonitorConstants.MONITOR_PATH_SEPERATOR
+        MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPARATOR
+            + MonitorConstants.FILE_NODE_PATH + MonitorConstants.MONITOR_PATH_SEPARATOR
             + processorName.replaceAll("\\.", "_");
 
     this.parameters = new HashMap<>();
@@ -287,8 +290,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     // RegistStatService
     if (TsFileDBConf.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
-      registStatMetadata();
-      statMonitor.registStatistics(statStorageDeltaName, this);
+      registerStatMetadata();
+      statMonitor.registerStatistics(statStorageDeltaName, this);
     }
     try {
       versionController = new SimpleFileVersionController(fileNodeDirPath);
@@ -303,15 +306,15 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   @Override
-  public void registStatMetadata() {
+  public void registerStatMetadata() {
     Map<String, String> hashMap = new HashMap<>();
     for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
         MonitorConstants.FileNodeProcessorStatConstants.values()) {
       hashMap
-          .put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
-              MonitorConstants.DATA_TYPE);
+          .put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPARATOR + statConstant.name(),
+              MonitorConstants.DATA_TYPE_INT64);
     }
-    StatMonitor.getInstance().registStatStorageGroup(hashMap);
+    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
   }
 
   @Override
@@ -320,7 +323,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
         MonitorConstants.FileNodeProcessorStatConstants.values()) {
       list.add(
-          statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name());
+          statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPARATOR + statConstant.name());
     }
     return list;
   }
@@ -725,8 +728,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       newMultiPassLock.readLock().unlock();
       newMultiPassTokenSet.remove(token);
       LOGGER.debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token,
-              getProcessorName(),
-              newMultiPassTokenSet, newMultiPassLock);
+          getProcessorName(),
+          newMultiPassTokenSet, newMultiPassLock);
       return true;
     } else if (oldMultiPassTokenSet != null && oldMultiPassTokenSet.contains(token)) {
       // remove token first, then unlock
@@ -747,7 +750,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * query data.
    */
   public <T extends Comparable<T>> QueryDataSource query(String deviceId, String measurementId,
-      QueryContext context) throws FileNodeProcessorException {
+         QueryContext context) throws FileNodeProcessorException {
     // query overflow data
     MeasurementSchema mSchema;
     TSDataType dataType;
@@ -838,9 +841,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                 appendFile.getFilePath()));
       }
       if (!originFile.renameTo(targetFile)) {
-        LOGGER.warn("File renaming failed when appending new file. Origin: {}, target: {}",
-            originFile.getPath(),
-            targetFile.getPath());
+        LOGGER.warn("File renaming failed when appending new file. Origin: {}, Target: {}",
+            originFile.getPath(), targetFile.getPath());
       }
       // append the new tsfile
       this.newFileNodes.add(appendFile);
@@ -886,8 +888,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           tsFileResource.getEndTime(entry.getKey()) >= entry.getValue()
           && tsFileResource.getStartTime(entry.getKey()) <= appendFile
           .getEndTime(entry.getKey())) {
-        String relativeFilePath = "postback" + File.separator + uuid + File.separator + "backup"
-            + File.separator + tsFileResource.getRelativePath();
+        String relativeFilePath =
+            Constans.SYNC_SERVER + File.separatorChar + uuid + File.separatorChar
+                + Constans.BACK_UP_DIRECTORY_NAME
+                + File.separatorChar + tsFileResource.getRelativePath();
         File newFile = new File(
             Directories.getInstance().getTsFileFolder(tsFileResource.getBaseDirIndex()),
             relativeFilePath);
@@ -1350,6 +1354,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
         // overflow switch from merge to work
         overflowProcessor.switchMergeToWork();
+
         // write status to file
         isMerging = FileNodeProcessorStatus.NONE;
         synchronized (fileNodeProcessorStore) {
@@ -1404,15 +1409,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  private void deleteBufferWriteFiles(List<File> bufferwriteDirList, Set<String> bufferFiles) {
+  private void deleteBufferWriteFiles(List<File> bufferwriteDirList, Set<String> bufferFiles)
+      throws IOException {
     for (File bufferwriteDir : bufferwriteDirList) {
       File[] files = bufferwriteDir.listFiles();
       if (files == null) {
         continue;
       }
       for (File file : files) {
-        if (!bufferFiles.contains(file.getPath()) && !file.delete()) {
-          LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
+        if (!bufferFiles.contains(file.getPath())) {
+          FileReaderManager.getInstance().closeFileAndRemoveReader(file.getPath());
+          if (!file.delete()) {
+            LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
+          }
         }
       }
     }
@@ -1440,6 +1449,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     mergeDeleteLock.lock();
     QueryContext context = new QueryContext();
     try {
+      FileReaderManager.getInstance().increaseFileReaderReference(backupIntervalFile.getFilePath(),
+          true);
       for (String deviceId : backupIntervalFile.getStartTimeMap().keySet()) {
         // query one deviceId
         List<Path> pathList = new ArrayList<>();
@@ -1469,11 +1480,17 @@ public class FileNodeProcessor extends Processor implements IStatistic {
               .and(TimeFilter.gtEq(backupIntervalFile.getStartTime(deviceId)),
                   TimeFilter.ltEq(backupIntervalFile.getEndTime(deviceId)));
           SingleSeriesExpression seriesFilter = new SingleSeriesExpression(path, timeFilter);
+
+          for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource.getOverflowInsertFileList()) {
+            FileReaderManager.getInstance().increaseFileReaderReference(overflowInsertFile.getFilePath(),
+                false);
+          }
+
           IReader seriesReader = SeriesReaderFactory.getInstance()
               .createSeriesReaderForMerge(backupIntervalFile,
                   overflowSeriesDataSource, seriesFilter, context);
           numOfChunk += queryAndWriteSeries(seriesReader, path, seriesFilter, dataType,
-              startTimeMap, endTimeMap);
+              startTimeMap, endTimeMap, overflowSeriesDataSource);
         }
         if (mergeIsChunkGroupHasData) {
           // end the new rowGroupMetadata
@@ -1483,6 +1500,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         }
       }
     } finally {
+      FileReaderManager.getInstance().decreaseFileReaderReference(backupIntervalFile.getFilePath(),
+          true);
+
       if (mergeDeleteLock.isLocked()) {
         mergeDeleteLock.unlock();
       }
@@ -1503,7 +1523,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   private int queryAndWriteSeries(IReader seriesReader, Path path,
       SingleSeriesExpression seriesFilter, TSDataType dataType,
-      Map<String, Long> startTimeMap, Map<String, Long> endTimeMap)
+      Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
+      OverflowSeriesDataSource overflowSeriesDataSource)
       throws IOException {
     int numOfChunk = 0;
     try {
@@ -1549,7 +1570,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         seriesWriterImpl.writeToFileWriter(mergeFileWriter);
       }
     } finally {
-      seriesReader.close();
+      for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource.getOverflowInsertFileList()) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(overflowInsertFile.getFilePath(),
+                false);
+      }
     }
     return numOfChunk;
   }
@@ -1765,7 +1789,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     if (TsFileDBConf.isEnableStatMonitor()) {
       // remove the monitor
       LOGGER.info("Deregister the filenode processor: {} from monitor.", getProcessorName());
-      StatMonitor.getInstance().deregistStatistics(statStorageDeltaName);
+      StatMonitor.getInstance().deregisterStatistics(statStorageDeltaName);
     }
     closeBufferWrite();
     closeOverflow();
@@ -1796,9 +1820,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreLock) {
-      SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
-      try {
-        serializeUtil.serialize(fileNodeProcessorStore, fileNodeRestoreFilePath);
+      try (FileOutputStream fileOutputStream = new FileOutputStream(fileNodeRestoreFilePath)) {
+        fileNodeProcessorStore.serialize(fileOutputStream);
         LOGGER.debug("The filenode processor {} writes restore information to the restore file",
             getProcessorName());
       } catch (IOException e) {
@@ -1810,17 +1833,21 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private FileNodeProcessorStore readStoreFromDisk() throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreLock) {
-      FileNodeProcessorStore processorStore;
-      SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
-      try {
-        processorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
-            .orElse(new FileNodeProcessorStore(false, new HashMap<>(),
-                new TsFileResource(OverflowChangeType.NO_CHANGE, null),
-                new ArrayList<>(), FileNodeProcessorStatus.NONE, 0));
+
+      File restoreFile = new File(fileNodeRestoreFilePath);
+      if (!restoreFile.exists() || restoreFile.length() == 0) {
+        return new FileNodeProcessorStore(false, new HashMap<>(),
+            new TsFileResource(OverflowChangeType.NO_CHANGE, null),
+            new ArrayList<>(), FileNodeProcessorStatus.NONE, 0);
+      }
+      try (FileInputStream inputStream = new FileInputStream(fileNodeRestoreFilePath)) {
+        return FileNodeProcessorStore.deSerialize(inputStream);
       } catch (IOException e) {
+        LOGGER
+            .error("Failed to deserialize the FileNodeRestoreFile {}, {}", fileNodeRestoreFilePath,
+                e);
         throw new FileNodeProcessorException(e);
       }
-      return processorStore;
     }
   }
 

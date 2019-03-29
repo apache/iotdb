@@ -19,6 +19,9 @@
 package org.apache.iotdb.tsfile.io;
 
 import java.io.File;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -26,8 +29,6 @@ import org.apache.iotdb.tsfile.common.utils.TsRandomAccessFileWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 /**
  * create a TSFile for test
@@ -111,11 +112,11 @@ public class CreateTSFile {
         TSEncoding.PLAIN.toString());
 
     JSONArray measureGroup = new JSONArray();
-    measureGroup.put(s1);
-    measureGroup.put(s2);
-    measureGroup.put(s3);
-    measureGroup.put(s4);
-    measureGroup.put(s5);
+    measureGroup.add(s1);
+    measureGroup.add(s2);
+    measureGroup.add(s3);
+    measureGroup.add(s4);
+    measureGroup.add(s5);
 
     JSONObject jsonSchema = new JSONObject();
     jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");

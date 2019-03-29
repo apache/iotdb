@@ -20,6 +20,9 @@ package org.apache.iotdb.tsfile.write.schema;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
@@ -27,8 +30,6 @@ import org.apache.iotdb.tsfile.exception.write.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +85,7 @@ public class JsonConverter {
       JSONObject jsonSchema)
       throws InvalidJsonSchemaException {
     Map<String, MeasurementSchema> result = new HashMap<>();
-    if (!jsonSchema.has(JsonFormatConstant.JSON_SCHEMA)) {
+    if (!jsonSchema.containsKey(JsonFormatConstant.JSON_SCHEMA)) {
       throw new InvalidJsonSchemaException("missing fields:" + JsonFormatConstant.JSON_SCHEMA);
     }
 
@@ -95,7 +96,7 @@ public class JsonConverter {
      * { "measurement_id": "s2", "data_type": "INT64", "encoding": "TS_2DIFF" }... ]
      */
     JSONArray schemaArray = jsonSchema.getJSONArray(JsonFormatConstant.JSON_SCHEMA);
-    for (int i = 0; i < schemaArray.length(); i++) {
+    for (int i = 0; i < schemaArray.size(); i++) {
       MeasurementSchema mdescriptor = convertJsonToMeasurementSchema(schemaArray.getJSONObject(i));
       result.put(mdescriptor.getMeasurementId(), mdescriptor);
     }
@@ -113,10 +114,10 @@ public class JsonConverter {
    * @return converted MeasurementSchema
    */
   public static MeasurementSchema convertJsonToMeasurementSchema(JSONObject measurementObj) {
-    if (!measurementObj.has(JsonFormatConstant.MEASUREMENT_UID) && !measurementObj
-        .has(JsonFormatConstant.DATA_TYPE)
-        && !measurementObj.has(JsonFormatConstant.MEASUREMENT_ENCODING)
-        && !measurementObj.has(JsonFormatConstant.COMPRESS_TYPE)) {
+    if (!measurementObj.containsKey(JsonFormatConstant.MEASUREMENT_UID) && !measurementObj
+        .containsKey(JsonFormatConstant.DATA_TYPE)
+        && !measurementObj.containsKey(JsonFormatConstant.MEASUREMENT_ENCODING)
+        && !measurementObj.containsKey(JsonFormatConstant.COMPRESS_TYPE)) {
       LOG.warn(
           "The format of given json is error. Give up to register this measurement. Given json:{}",
           measurementObj);
@@ -129,7 +130,7 @@ public class JsonConverter {
     // get encoding information
     TSEncoding encoding = TSEncoding
         .valueOf(measurementObj.getString(JsonFormatConstant.MEASUREMENT_ENCODING));
-    CompressionType compressionType = measurementObj.has(JsonFormatConstant.COMPRESS_TYPE)
+    CompressionType compressionType = measurementObj.containsKey(JsonFormatConstant.COMPRESS_TYPE)
         ? CompressionType.valueOf(measurementObj.getString(JsonFormatConstant.COMPRESS_TYPE))
         : CompressionType.valueOf(TSFileConfig.compressor);
     // all information of one series
@@ -151,7 +152,7 @@ public class JsonConverter {
    * function for converting chunk group size from jsonSchema.
    */
   public static long convertJsonToChunkGroupSize(JSONObject jsonSchema) {
-    if (jsonSchema.has(JsonFormatConstant.ROW_GROUP_SIZE)) {
+    if (jsonSchema.containsKey(JsonFormatConstant.ROW_GROUP_SIZE)) {
       return jsonSchema.getLong(JsonFormatConstant.ROW_GROUP_SIZE);
     }
     return 128L * 1024 * 1024;
@@ -170,7 +171,7 @@ public class JsonConverter {
     JSONArray jsonSchema = new JSONArray();
 
     for (MeasurementSchema measurementSchema : fileSchema.getAllMeasurementSchema().values()) {
-      jsonSchema.put(convertMeasurementSchemaToJson(measurementSchema));
+      jsonSchema.add(convertMeasurementSchemaToJson(measurementSchema));
     }
 
     ret.put(JsonFormatConstant.JSON_SCHEMA, jsonSchema);
