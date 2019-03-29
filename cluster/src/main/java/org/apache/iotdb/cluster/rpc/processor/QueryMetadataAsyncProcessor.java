@@ -49,7 +49,6 @@ public class QueryMetadataAsyncProcessor extends BasicAsyncUserProcessor<QueryMe
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       QueryMetadataRequest queryMetadataRequest) {
-    String groupId = queryMetadataRequest.getGroupID();
     MetadataType metadataType = queryMetadataRequest.getMetadataType();
     if (metadataType == MetadataType.STORAGE_GROUP) {
       readIndexForSG(asyncContext);

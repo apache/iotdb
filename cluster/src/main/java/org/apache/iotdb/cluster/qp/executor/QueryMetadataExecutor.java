@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.cluster.qp.executor;
 
+import com.alipay.remoting.InvokeCallback;
+import com.alipay.remoting.exception.RemotingException;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.option.CliOptions;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import org.apache.iotdb.cluster.callback.SingleTask;
 import org.apache.iotdb.cluster.callback.Task;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -29,13 +32,17 @@ import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.MetadataType;
 import org.apache.iotdb.cluster.rpc.request.QueryMetadataRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.response.QueryMetadataResponse;
-import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handle show all storage group logic
  */
 public class QueryMetadataExecutor extends ClusterQPExecutor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
 
   public QueryMetadataExecutor() {
 
@@ -51,23 +58,41 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       throws RaftConnectionException, InterruptedException {
     QueryMetadataRequest request = new QueryMetadataRequest(
         ClusterConfig.METADATA_GROUP_ID, type);
-    PeerId leader = RaftUtils.getTargetPeerID(ClusterConfig.METADATA_GROUP_ID);
-
     SingleTask task = new SingleTask(false, request);
-    return asyncHandleTask(task, leader, 0);
+    return asyncHandleTaskLocally(task);
   }
 
-  /**
-   * Async handle task by task and leader id.
-   *
-   * @param task request task
-   * @param leader leader of the target raft group
-   * @param taskRetryNum Number of task retries due to timeout and redirected.
-   * @return request result
-   */
-  private Set<String> asyncHandleTask(Task task, PeerId leader, int taskRetryNum)
+  private Set<String> asyncHandleTaskLocally(SingleTask task)
       throws RaftConnectionException, InterruptedException {
-    QueryMetadataResponse response = (QueryMetadataResponse) asyncHandleTaskGetRes(task, leader, taskRetryNum);
-    return response.getMetadataSet();
+    try {
+      cliClientService.getRpcClient()
+          .invokeWithCallback(localNode.toString(), task.getRequest(),
+              new InvokeCallback() {
+
+                @Override
+                public void onResponse(Object result) {
+                  BasicResponse response = (BasicResponse) result;
+                  task.run(response);
+                }
+
+                @Override
+                public void onException(Throwable e) {
+                  LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
+                  task.setTaskState(TaskState.EXCEPTION);
+                  task.run(null);
+
+                }
+
+                @Override
+                public Executor getExecutor() {
+                  return null;
+                }
+              }, CLUSTER_CONFIG.getTaskTimeoutMs());
+    } catch (RemotingException | InterruptedException e) {
+      throw new RaftConnectionException(e);
+    }
+
+    task.await();
+    return ((QueryMetadataResponse) task.getResponse()).getMetadataSet();
   }
 }
