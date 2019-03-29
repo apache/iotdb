@@ -111,6 +111,43 @@ public class MetadataOperator extends RootOperator {
   }
 
   public enum NamespaceType {
-    ADD_PATH, DELETE_PATH, SET_FILE_LEVEL
+    ADD_PATH, DELETE_PATH, SET_FILE_LEVEL;
+
+    /**
+     * deserialize short number.
+     *
+     * @param i short number
+     * @return NamespaceType
+     */
+    public static NamespaceType deserialize(short i) {
+      switch (i) {
+        case 0:
+          return ADD_PATH;
+        case 1:
+          return DELETE_PATH;
+        case 2:
+          return SET_FILE_LEVEL;
+        default:
+          return null;
+      }
+    }
+
+    /**
+     * serialize.
+     *
+     * @return short number
+     */
+    public short serialize() {
+      switch (this) {
+        case ADD_PATH:
+          return 0;
+        case DELETE_PATH:
+          return 1;
+        case SET_FILE_LEVEL:
+          return 2;
+        default:
+          return -1;
+      }
+    }
   }
 }

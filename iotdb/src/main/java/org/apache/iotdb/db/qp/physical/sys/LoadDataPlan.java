@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -53,5 +54,23 @@ public class LoadDataPlan extends PhysicalPlan {
 
   public String getMeasureType() {
     return measureType;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof LoadDataPlan)) {
+      return false;
+    }
+    LoadDataPlan that = (LoadDataPlan) o;
+    return Objects.equals(getInputFilePath(), that.getInputFilePath()) &&
+        Objects.equals(getMeasureType(), that.getMeasureType());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getInputFilePath(), getMeasureType());
   }
 }
