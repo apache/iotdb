@@ -75,11 +75,11 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     String storageGroup = getStroageGroupByDevice(path);
     String groupId = getGroupIdBySG(storageGroup);
     QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, path);
-    PeerId leader = RaftUtils.getTargetPeerID(groupId);
+    PeerId leader = RaftUtils.getRandomPeerID(groupId);
     SingleTask task = new SingleTask(false, request);
 
     /** Check if the plan can be executed locally. **/
-    if (canHandle(storageGroup)) {
+    if (canHandleQuery(storageGroup)) {
       return queryTimeSeriesLocally(path, groupId, task);
     } else {
       try {
@@ -91,17 +91,23 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     }
   }
 
+  /**
+   * Handle "show timeseries <path>" statement
+   *
+   * @param path column path
+   */
   private List<List<String>> queryTimeSeriesLocally(String path, String groupId, SingleTask task)
       throws InterruptedException {
     final byte[] reqContext = new byte[4];
     Bits.putInt(reqContext, 0, requestId.incrementAndGet());
-    DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server.getDataPartitionHolder(groupId);
+    DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
+        .getDataPartitionHolder(groupId);
     ((RaftService) dataPartitionHolder.getService()).getNode()
         .readIndex(reqContext, new ReadIndexClosure() {
 
           @Override
           public void run(Status status, long index, byte[] reqCtx) {
-            QueryTimeSeriesResponse response = null;
+            QueryTimeSeriesResponse response;
             if (status.isOk()) {
               try {
                 response = new QueryTimeSeriesResponse(false, true,
@@ -125,6 +131,11 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     return ((QueryTimeSeriesResponse) response).getTimeSeries();
   }
 
+  /**
+   * Handle "show storage group" statement locally
+   *
+   * @return Set of storage group name
+   */
   private Set<String> queryStorageGroupLocally() throws InterruptedException {
     QueryStorageGroupRequest request = new QueryStorageGroupRequest(ClusterConfig.METADATA_GROUP_ID);
     SingleTask task = new SingleTask(false, request);

@@ -33,6 +33,7 @@ public abstract class Task {
    * Task request
    */
   protected BasicRequest request;
+
   /**
    * Whether it's a synchronization task or not.
    */
@@ -112,6 +113,9 @@ public abstract class Task {
     INITIAL, REDIRECT, FINISH, EXCEPTION
   }
 
+  /**
+   * Wait until task is finished.
+   */
   public void await() throws InterruptedException {
     this.taskCountDownLatch.await();
   }

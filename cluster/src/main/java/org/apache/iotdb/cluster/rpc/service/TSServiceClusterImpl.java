@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
-import org.apache.iotdb.cluster.rpc.MetadataType;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -107,7 +106,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
 
   @Override
   protected List<List<String>> getTimeSeriesForPath(String path)
-      throws PathErrorException, InterruptedException {
+      throws PathErrorException, InterruptedException, ProcessorException {
     return queryMetadataExecutor.get().processTimeSeriesQuery(path);
   }
 }

@@ -83,19 +83,27 @@ public class RaftUtils {
    */
   public static PeerId getTargetPeerID(String groupId) {
     if (!groupLeaderCache.containsKey(groupId)) {
-      PeerId randomPeerId;
-      if (groupId.equals(CLUSTER_CONFIG.METADATA_GROUP_ID)) {
-        RaftService service = (RaftService) server.getMetadataHolder().getService();
-        List<PeerId> peerIdList = service.getPeerIdList();
-        randomPeerId = peerIdList.get(getRandomInt(peerIdList.size()));
-      } else {
-        PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
-        PhysicalNode node = physicalNodes[getRandomInt(physicalNodes.length)];
-        randomPeerId = new PeerId(node.ip, node.port);
-      }
+      PeerId randomPeerId = getRandomPeerID(groupId);
       groupLeaderCache.put(groupId, randomPeerId);
     }
     return groupLeaderCache.get(groupId);
+  }
+
+  /**
+   * Get random peer id
+   */
+  public static PeerId getRandomPeerID(String groupId) {
+    PeerId randomPeerId;
+    if (groupId.equals(CLUSTER_CONFIG.METADATA_GROUP_ID)) {
+      RaftService service = (RaftService) server.getMetadataHolder().getService();
+      List<PeerId> peerIdList = service.getPeerIdList();
+      randomPeerId = peerIdList.get(getRandomInt(peerIdList.size()));
+    } else {
+      PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
+      PhysicalNode node = physicalNodes[getRandomInt(physicalNodes.length)];
+      randomPeerId = convertPhysicalNode(node);
+    }
+    return randomPeerId;
   }
 
   /**

@@ -38,40 +38,57 @@ public class ClusterConfig {
   private static final String DEFAULT_RAFT_LOG_DIR = "log";
   private static final String DEFAULT_RAFT_SNAPSHOT_DIR = "snapshot";
 
-
-  // Cluster node: {ip1,ip2,...,ipn}
+  /**
+   * Cluster node: {ip1,ip2,...,ipn}
+   */
   private String[] nodes = {DEFAULT_NODE};
 
-  // Replication number
+  /**
+   * Replication number
+   */
   private int replication = 3;
 
-  private String ip = null;
+  private String ip = "127.0.0.1";
+
   private int port = 8888;
 
-  // Path for holder to store raft log
+  /**
+   * Path for holder to store raft log
+   */
   private String raftLogPath;
 
-  // Path for holder to store raft snapshot
+  /**
+   * Path for holder to store raft snapshot
+   */
   private String raftSnapshotPath;
 
-  // Path for holder to store raft metadata
+  /**
+   * Path for holder to store raft metadata
+   */
   private String raftMetadataPath;
 
-  // When the number of the difference between
-  // leader and follower log is less than this value, it is considered as 'catch-up'
+  /**
+   * When the number of the difference between leader and follower log is less than this value, it
+   * is considered as 'catch-up'
+   */
   private int maxCatchUpLogNum = 100000;
 
-  // Whether to enable the delayed snapshot mechanism or not
+  /**
+   * Whether to enable the delayed snapshot mechanism or not
+   */
   private boolean delaySnapshot = false;
-  // Maximum allowed delay hours
+
+  /**
+   * Maximin allowed delay hours
+   */
   private int delayHours = 24;
 
   /**
-   * count limit to redo a single task
+   * Count limit to redo a single task
    **/
   private int taskRedoCount = 3;
   /**
-   * timeout limit for a single task, the unit is milliseconds
+   * Timeout limit for a single task, the unit is milliseconds
    **/
   private int taskTimeoutMs = 1000;
 
@@ -81,7 +98,7 @@ public class ClusterConfig {
     // empty constructor
   }
 
-  public void updatePath(){
+  public void updatePath() {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     String iotdbDataDir = conf.getDataDir();
     iotdbDataDir = FilePathUtils.regularizePath(iotdbDataDir);

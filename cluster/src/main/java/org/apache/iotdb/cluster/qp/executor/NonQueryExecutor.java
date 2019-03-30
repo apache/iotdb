@@ -182,7 +182,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   private boolean handleRequest(String storageGroup, PhysicalPlan plan)
       throws ProcessorException, IOException, RaftConnectionException, InterruptedException {
     /** Check if the plan can be executed locally. **/
-    if (canHandle(storageGroup)) {
+    if (canHandleNonQuery(storageGroup)) {
       return qpExecutor.processNonQuery(plan);
     } else {
       String groupId = getGroupIdBySG(storageGroup);

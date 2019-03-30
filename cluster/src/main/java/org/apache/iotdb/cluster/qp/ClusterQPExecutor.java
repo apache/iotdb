@@ -46,6 +46,7 @@ public abstract class ClusterQPExecutor {
       CLUSTER_CONFIG.getPort());
   protected OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
   protected MManager mManager = MManager.getInstance();
+
   /**
    * Rpc Service Client
    */
@@ -55,6 +56,7 @@ public abstract class ClusterQPExecutor {
    * Count limit to redo a single task
    */
   protected static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getTaskRedoCount();
+
   /**
    * Number of subtask in task segmentation
    */
@@ -81,10 +83,10 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
-   * Verify if the command can execute in local. 1. If this node belongs to the storage group 2. If
+   * Verify if the non query command can execute in local. 1. If this node belongs to the storage group 2. If
    * this node is leader.
    */
-  public boolean canHandle(String storageGroup) {
+  public boolean canHandleNonQuery(String storageGroup) {
     if (router.containPhysicalNode(storageGroup, localNode)) {
       String groupId = getGroupIdBySG(storageGroup);
       if (RaftUtils.convertPeerId(RaftUtils.getTargetPeerID(groupId)).equals(localNode)) {
@@ -92,6 +94,13 @@ public abstract class ClusterQPExecutor {
       }
     }
     return false;
+  }
+
+  /**
+   * Verify if the query command can execute in local. Check if this node belongs to the storage group
+   */
+  public boolean canHandleQuery(String storageGroup) {
+    return router.containPhysicalNode(storageGroup, localNode);
   }
 
   /**

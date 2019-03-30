@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.utils.hash;
 
+import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +30,9 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ErrorConfigureExecption;
 
+/**
+ * Cluster router, it's responsible for hash mapping and routing to specified data groups
+ */
 public class Router {
 
   /**
@@ -126,6 +130,8 @@ public class Router {
 
   /**
    * Calculate the physical nodes corresponding to the replications where a data point is located
+   *
+   * @param objectKey storage group
    */
   public PhysicalNode[] routeGroup(String objectKey) {
     if (sgRouter.containsKey(objectKey)) {
@@ -145,6 +151,9 @@ public class Router {
     return this.getGroupsNodes(new PhysicalNode(ip, port));
   }
 
+  /**
+   * Add a new node to cluster
+   */
   private void addNode(PhysicalNode node, int virtualNum) {
     physicalRing.put(hashFunction.hash(node.getKey()), node);
     for (int i = 0; i < virtualNum; i++) {
@@ -181,14 +190,14 @@ public class Router {
     nodeMapGroupIdCache.clear();
   }
 
-  // only for test
+  @OnlyForTest
   public void showPhysicalRing() {
     for (Entry<Integer, PhysicalNode> entry : physicalRing.entrySet()) {
       System.out.println(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
     }
   }
 
-  //only for test
+  @OnlyForTest
   public void showVirtualRing() {
     for (Entry<Integer, VirtualNode> entry : virtualRing.entrySet()) {
       System.out.println(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));

@@ -19,7 +19,6 @@
 package org.apache.iotdb.cluster.rpc.request;
 
 import java.io.Serializable;
-import org.apache.iotdb.cluster.rpc.MetadataType;
 
 public class QueryTimeSeriesRequest extends BasicRequest implements Serializable {
 

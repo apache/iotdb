@@ -232,7 +232,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         try {
           List<List<String>> showTimeseriesList = getTimeSeriesForPath(path);
           resp.setShowTimeseriesList(showTimeseriesList);
-        } catch (PathErrorException | InterruptedException e) {
+        } catch (PathErrorException | InterruptedException | ProcessorException e) {
           status = getErrorStatus(
                   String.format("Failed to fetch timeseries %s's metadata because: %s",
                   req.getColumnPath(), e));
@@ -269,7 +269,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
         break;
       case "METADATA_IN_JSON":
-        String metadataInJson = null;
+        String metadataInJson;
         try {
           metadataInJson = MManager.getInstance().getMetadataInString();
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
@@ -348,7 +348,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   protected List<List<String>> getTimeSeriesForPath(String path)
-      throws PathErrorException, InterruptedException {
+      throws PathErrorException, InterruptedException, ProcessorException {
     return MManager.getInstance().getShowTimeseriesPath(path);
   }
 
