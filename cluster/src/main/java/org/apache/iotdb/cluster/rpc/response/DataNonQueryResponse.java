@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.cluster.rpc.response;
 
-public class NonQueryResponse extends BasicResponse {
+/**
+ * Handle response from data group leader
+ */
+public class DataNonQueryResponse extends BasicResponse {
 
-  public NonQueryResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
+  public DataNonQueryResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
     super(redirected, success, leaderStr, errorMsg);
   }
 
-  public NonQueryResponse(boolean redirected, boolean success) {
+  public DataNonQueryResponse(boolean redirected, boolean success) {
     super(redirected, success, null, null);
   }
 

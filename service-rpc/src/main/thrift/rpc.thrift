@@ -52,7 +52,7 @@ struct TSHandleIdentifier {
   2: required binary secret,
 }
 
-// Client-side reference to a task running asynchronously on the server.
+// Client-side reference to a QPTask running asynchronously on the server.
 struct TSOperationHandle {
   1: required TSHandleIdentifier operationId
 

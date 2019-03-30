@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.cluster.rpc;
 
-import org.apache.iotdb.cluster.callback.Task;
+import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 
@@ -32,18 +32,18 @@ public interface NodeAsClient {
    *
    * @param clientService client rpc service handle
    * @param leader leader node of the target group
-   * @param task the task to be executed
+   * @param QPTask the QPTask to be executed
    */
   void asyncHandleRequest(Object clientService, BasicRequest request, Object leader,
-      Task task) throws RaftConnectionException;
+      QPTask QPTask) throws RaftConnectionException;
 
   /**
    * Synchronous processing requests
    *
    * @param clientService client rpc service handle
    * @param leader leader node of the target group
-   * @param task the task to be executed
+   * @param QPTask the QPTask to be executed
    */
-  void syncHandleRequest(Object clientService, BasicRequest request, Object leader, Task task)
+  void syncHandleRequest(Object clientService, BasicRequest request, Object leader, QPTask QPTask)
       throws RaftConnectionException;
 }

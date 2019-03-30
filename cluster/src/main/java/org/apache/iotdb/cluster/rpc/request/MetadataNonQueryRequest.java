@@ -24,29 +24,24 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 
-public class NonQueryRequest extends BasicRequest implements Serializable {
+/**
+ * Handle request to metadata group leader
+ */
+public class MetadataNonQueryRequest extends BasicRequest implements Serializable {
 
   /**
    * Serialized physical plan
    */
   private byte[] physicalPlanBytes;
-  /**
-   * Request type
-   */
-  private Operator.OperatorType requestType;
 
-  public NonQueryRequest(String groupID, PhysicalPlan plan)
+  public MetadataNonQueryRequest(String groupID, PhysicalPlan plan)
       throws IOException {
     super(groupID);
     this.physicalPlanBytes = PhysicalPlanLogTransfer.operatorToLog(plan);
-    this.requestType = plan.getOperatorType();
   }
 
   public byte[] getPhysicalPlanBytes() {
     return physicalPlanBytes;
   }
 
-  public Operator.OperatorType getRequestType() {
-    return requestType;
-  }
 }

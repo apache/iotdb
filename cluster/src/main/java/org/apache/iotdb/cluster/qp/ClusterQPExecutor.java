@@ -20,10 +20,12 @@ package org.apache.iotdb.cluster.qp;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
-import org.apache.iotdb.cluster.callback.Task;
-import org.apache.iotdb.cluster.callback.Task.TaskState;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.callback.QPTask;
+import org.apache.iotdb.cluster.callback.QPTask.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.rpc.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClient;
@@ -33,7 +35,6 @@ import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +45,8 @@ public abstract class ClusterQPExecutor {
   protected Router router = Router.getInstance();
   protected PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
       CLUSTER_CONFIG.getPort());
-  protected OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
   protected MManager mManager = MManager.getInstance();
+  protected final Server server = Server.getInstance();
 
   /**
    * Rpc Service Client
@@ -61,6 +62,8 @@ public abstract class ClusterQPExecutor {
    * Number of subtask in task segmentation
    */
   protected static int SUB_TASK_NUM = 1;
+
+  protected final AtomicInteger requestId = new AtomicInteger(0);
 
   /**
    * Get Storage Group Name by device name
@@ -83,8 +86,8 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
-   * Verify if the non query command can execute in local. 1. If this node belongs to the storage group 2. If
-   * this node is leader.
+   * Verify if the non query command can execute in local. 1. If this node belongs to the storage
+   * group 2. If this node is leader.
    */
   public boolean canHandleNonQuery(String storageGroup) {
     if (router.containPhysicalNode(storageGroup, localNode)) {
@@ -97,41 +100,42 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
-   * Verify if the query command can execute in local. Check if this node belongs to the storage group
+   * Verify if the query command can execute in local. Check if this node belongs to the storage
+   * group
    */
   public boolean canHandleQuery(String storageGroup) {
     return router.containPhysicalNode(storageGroup, localNode);
   }
 
   /**
-   * Async handle task by task and leader id
+   * Async handle QPTask by QPTask and leader id
    *
-   * @param task request task
+   * @param QPTask request QPTask
    * @param leader leader of the target raft group
-   * @param taskRetryNum Number of task retries due to timeout and redirected.
+   * @param taskRetryNum Number of QPTask retries due to timeout and redirected.
    * @return basic response
    */
-  public BasicResponse asyncHandleTaskGetRes(Task task, PeerId leader, int taskRetryNum)
+  public BasicResponse asyncHandleTaskGetRes(QPTask QPTask, PeerId leader, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
-      throw new RaftConnectionException(String.format("Task retries reach the upper bound %s",
+      throw new RaftConnectionException(String.format("QPTask retries reach the upper bound %s",
           TASK_MAX_RETRY));
     }
     NodeAsClient client = new RaftNodeAsClient();
     /** Call async method **/
-    client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
-    task.await();
-    if (task.getTaskState() != TaskState.FINISH) {
-      if (task.getTaskState() == TaskState.REDIRECT) {
+    client.asyncHandleRequest(cliClientService, QPTask.getRequest(), leader, QPTask);
+    QPTask.await();
+    if (QPTask.getTaskState() != TaskState.FINISH) {
+      if (QPTask.getTaskState() == TaskState.REDIRECT) {
         /** redirect to the right leader **/
-        leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
-        LOGGER.info("Redirect leader: {}, group id = {}" , leader, task.getRequest().getGroupID());
-        RaftUtils.updateRaftGroupLeader(task.getRequest().getGroupID(), leader);
+        leader = PeerId.parsePeer(QPTask.getResponse().getLeaderStr());
+        LOGGER.info("Redirect leader: {}, group id = {}", leader, QPTask.getRequest().getGroupID());
+        RaftUtils.updateRaftGroupLeader(QPTask.getRequest().getGroupID(), leader);
       }
-      task.resetTask();
-      return asyncHandleTaskGetRes(task, leader, taskRetryNum + 1);
+      QPTask.resetTask();
+      return asyncHandleTaskGetRes(QPTask, leader, taskRetryNum + 1);
     }
-    return task.getResponse();
+    return QPTask.getResponse();
   }
 
   public void shutdown() {

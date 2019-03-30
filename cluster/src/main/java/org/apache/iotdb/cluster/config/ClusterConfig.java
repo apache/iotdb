@@ -31,7 +31,7 @@ public class ClusterConfig {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterConfig.class);
   public static final String CONFIG_NAME = "iotdb-cluster.properties";
-  public static final String DEFAULT_NODE = "127.0.0.1:8888";
+  public static final String DEFAULT_NODE = "192.168.130.19:8888,192.168.130.12:8888,192.168.130.14:8888,192.168.130.16:8888,192.168.130.18:8888";
   public static final String METADATA_GROUP_ID = "metadata";
   private static final String DEFAULT_RAFT_DIR = "raft";
   private static final String DEFAULT_RAFT_METADATA_DIR = "metadata";
@@ -41,14 +41,14 @@ public class ClusterConfig {
   /**
    * Cluster node: {ip1,ip2,...,ipn}
    */
-  private String[] nodes = {DEFAULT_NODE};
+  private String[] nodes = {"192.168.130.19:8888","192.168.130.12:8888","192.168.130.14:8888","192.168.130.16:8888","192.168.130.18:8888"};
 
   /**
    * Replication number
    */
   private int replication = 3;
 
-  private String ip = "127.0.0.1";
+  private String ip = "192.168.130.19";
 
   private int port = 8888;
 

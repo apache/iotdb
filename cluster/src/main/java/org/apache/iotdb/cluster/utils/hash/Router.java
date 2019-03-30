@@ -163,7 +163,7 @@ public class Router {
   }
 
   /**
-   * For a storage group, compute the nearest physical node on the hash ring Only for test
+   * For a storage group, compute the nearest physical node on the hash ring
    */
   public PhysicalNode routeNode(String objectKey) {
     int hashVal = hashFunction.hash(objectKey);
@@ -213,7 +213,7 @@ public class Router {
    * Show physical nodes by group id.
    */
   public void showPhysicalNodes(String groupId) {
-    PhysicalNode[] physicalPlans = Router.getInstance().routeGroup(groupId);
+    PhysicalNode[] physicalPlans = getNodesByGroupId(groupId);
     for (PhysicalNode node : physicalPlans) {
       System.out.println(node);
     }

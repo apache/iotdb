@@ -26,10 +26,8 @@ import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import com.alipay.sofa.jraft.util.Bits;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.callback.SingleTask;
+import org.apache.iotdb.cluster.callback.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
@@ -53,9 +51,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
 
-  private final AtomicInteger requestId = new AtomicInteger(0);
-  private final Server server = Server.getInstance();
-
   public QueryMetadataExecutor() {
 
   }
@@ -76,10 +71,12 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     String groupId = getGroupIdBySG(storageGroup);
     QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, path);
     PeerId leader = RaftUtils.getRandomPeerID(groupId);
-    SingleTask task = new SingleTask(false, request);
+    SingleQPTask task = new SingleQPTask(false, request);
 
+    LOGGER.info("Execute show timeseries {} statement.", path);
     /** Check if the plan can be executed locally. **/
     if (canHandleQuery(storageGroup)) {
+      LOGGER.info("Execute show timeseries {} statement locally.", path);
       return queryTimeSeriesLocally(path, groupId, task);
     } else {
       try {
@@ -96,8 +93,8 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
    *
    * @param path column path
    */
-  private List<List<String>> queryTimeSeriesLocally(String path, String groupId, SingleTask task)
-      throws InterruptedException {
+  private List<List<String>> queryTimeSeriesLocally(String path, String groupId, SingleQPTask task)
+      throws InterruptedException, ProcessorException {
     final byte[] reqContext = new byte[4];
     Bits.putInt(reqContext, 0, requestId.incrementAndGet());
     DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
@@ -110,22 +107,32 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
             QueryTimeSeriesResponse response;
             if (status.isOk()) {
               try {
+                LOGGER.info("start to read");
                 response = new QueryTimeSeriesResponse(false, true,
                     dataPartitionHolder.getFsm().getShowTimeseriesPath(path));
               } catch (final PathErrorException e) {
                 response = new QueryTimeSeriesResponse(false, false, null, e.toString());
               }
             } else {
+
+              System.out.println("false");
               response = new QueryTimeSeriesResponse(false, false, null, null);
             }
+            System.out.println(status.isOk());
+            System.out.println();
             task.run(response);
           }
         });
     task.await();
+    QueryTimeSeriesResponse response = (QueryTimeSeriesResponse) task.getResponse();
+    if (!response.isSuccess()) {
+      LOGGER.error("Execute show timeseries {} statement false.", path);
+      throw new ProcessorException();
+    }
     return ((QueryTimeSeriesResponse) task.getResponse()).getTimeSeries();
   }
 
-  private List<List<String>> queryTimeSeries(SingleTask task, PeerId leader)
+  private List<List<String>> queryTimeSeries(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
     BasicResponse response = asyncHandleTaskGetRes(task, leader, 0);
     return ((QueryTimeSeriesResponse) response).getTimeSeries();
@@ -137,10 +144,11 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
    * @return Set of storage group name
    */
   private Set<String> queryStorageGroupLocally() throws InterruptedException {
-    QueryStorageGroupRequest request = new QueryStorageGroupRequest(ClusterConfig.METADATA_GROUP_ID);
-    SingleTask task = new SingleTask(false, request);
     final byte[] reqContext = new byte[4];
     Bits.putInt(reqContext, 0, requestId.incrementAndGet());
+    QueryStorageGroupRequest request = new QueryStorageGroupRequest(
+        ClusterConfig.METADATA_GROUP_ID);
+    SingleQPTask task = new SingleQPTask(false, request);
     MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
     ((RaftService) metadataHolder.getService()).getNode()
         .readIndex(reqContext, new ReadIndexClosure() {

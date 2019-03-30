@@ -22,15 +22,15 @@ import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 
-public abstract class Task {
+public abstract class QPTask {
 
   /**
-   * Task response
+   * QPTask response
    */
   protected BasicResponse response;
 
   /**
-   * Task request
+   * QPTask request
    */
   protected BasicRequest request;
 
@@ -54,7 +54,7 @@ public abstract class Task {
    */
   protected TaskState taskState;
 
-  public Task(boolean isSyncTask, int taskNum, TaskState taskState) {
+  public QPTask(boolean isSyncTask, int taskNum, TaskState taskState) {
     this.isSyncTask = isSyncTask;
     this.taskNum = taskNum;
     this.taskCountDownLatch = new CountDownLatch(taskNum);

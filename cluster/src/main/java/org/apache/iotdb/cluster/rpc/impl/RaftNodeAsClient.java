@@ -23,8 +23,8 @@ import com.alipay.remoting.exception.RemotingException;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.concurrent.Executor;
-import org.apache.iotdb.cluster.callback.Task;
-import org.apache.iotdb.cluster.callback.Task.TaskState;
+import org.apache.iotdb.cluster.callback.QPTask;
+import org.apache.iotdb.cluster.callback.QPTask.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
@@ -51,7 +51,7 @@ public class RaftNodeAsClient implements NodeAsClient {
 
   @Override
   public void asyncHandleRequest(Object clientService, BasicRequest request, Object leader,
-      Task task)
+      QPTask QPTask)
       throws RaftConnectionException {
     BoltCliClientService boltClientService = (BoltCliClientService) clientService;
     PeerId raftLeader = (PeerId) leader;
@@ -64,14 +64,14 @@ public class RaftNodeAsClient implements NodeAsClient {
                 @Override
                 public void onResponse(Object result) {
                   BasicResponse response = (BasicResponse) result;
-                  task.run(response);
+                  QPTask.run(response);
                 }
 
                 @Override
                 public void onException(Throwable e) {
                   LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
-                  task.setTaskState(TaskState.EXCEPTION);
-                  task.run(null);
+                  QPTask.setTaskState(TaskState.EXCEPTION);
+                  QPTask.run(null);
 
                 }
 
@@ -88,14 +88,14 @@ public class RaftNodeAsClient implements NodeAsClient {
 
   @Override
   public void syncHandleRequest(Object clientService, BasicRequest request, Object leader,
-      Task task)
+      QPTask QPTask)
       throws RaftConnectionException {
     BoltCliClientService boltClientService = (BoltCliClientService) clientService;
     PeerId raftLeader = (PeerId) leader;
     try {
       BasicResponse response = (BasicResponse) boltClientService.getRpcClient()
           .invokeSync(raftLeader.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
-      task.run(response);
+      QPTask.run(response);
     } catch (RemotingException | InterruptedException e) {
       throw new RaftConnectionException(e);
     }

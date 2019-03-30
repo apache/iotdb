@@ -171,7 +171,7 @@ public class RaftUtils {
   public static PeerId[] convertPhysicalNodeArrayToPeerIdArray(PhysicalNode[] physicalNodes) {
     PeerId[] peerIds = new PeerId[physicalNodes.length];
     for (int i = 0; i < physicalNodes.length; i++) {
-      peerIds[i] = new PeerId(physicalNodes[i].getIp(), physicalNodes[i].getPort());
+      peerIds[i] = convertPhysicalNode(physicalNodes[i]);
     }
     return peerIds;
   }

@@ -24,11 +24,11 @@ import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 /**
  * Process single task.
  */
-public class SingleTask extends Task {
+public class SingleQPTask extends QPTask {
 
   private static final int TASK_NUM = 1;
 
-  public SingleTask(boolean isSyncTask, BasicRequest request) {
+  public SingleQPTask(boolean isSyncTask, BasicRequest request) {
     super(isSyncTask, TASK_NUM, TaskState.INITIAL);
     this.request = request;
   }

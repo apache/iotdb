@@ -16,29 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.callback;
+package org.apache.iotdb.cluster.rpc.request;
 
-import org.apache.iotdb.cluster.rpc.request.BasicRequest;
-import org.apache.iotdb.cluster.rpc.response.BasicResponse;
+import java.io.IOException;
+import java.io.Serializable;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 
-@Deprecated
 /**
- * Split a task to multi task closures.
+ * Handle request to data group
  */
-public class MultiTask extends Task {
-
-  public MultiTask(boolean isSyncTask, int taskNum, BasicRequest request) {
-    super(isSyncTask, taskNum, TaskState.INITIAL);
-    this.request = request;
-  }
+public class DataNonQueryRequest extends BasicRequest implements Serializable {
 
   /**
-   * Process response
-   *
-   * @param basicResponse response from receiver
+   * Serialized physical plan
    */
-  @Override
-  public void run(BasicResponse basicResponse) {
+  private byte[] physicalPlanBytes;
 
+  public DataNonQueryRequest(String groupID, PhysicalPlan plan)
+      throws IOException {
+    super(groupID);
+    this.physicalPlanBytes = PhysicalPlanLogTransfer.operatorToLog(plan);
   }
+
+  public byte[] getPhysicalPlanBytes() {
+    return physicalPlanBytes;
+  }
+
 }

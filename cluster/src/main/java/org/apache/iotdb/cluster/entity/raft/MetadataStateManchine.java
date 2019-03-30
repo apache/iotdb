@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.rpc.request.NonQueryRequest;
+import org.apache.iotdb.cluster.rpc.request.MetadataNonQueryRequest;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -70,7 +70,7 @@ public class MetadataStateManchine extends StateMachineAdapter {
   }
 
   /**
-   * Update StrageGroup List and userProfileMap based on Task read from raft log
+   * Update StrageGroup List and userProfileMap based on QPTask read from raft log
    *
    * @param iterator task iterator
    */
@@ -79,14 +79,14 @@ public class MetadataStateManchine extends StateMachineAdapter {
     while (iterator.hasNext()) {
 
       Closure closure = null;
-      NonQueryRequest request = null;
+      MetadataNonQueryRequest request = null;
       if (iterator.done() != null) {
         closure = iterator.done();
       }
       final ByteBuffer data = iterator.getData();
       try {
         request = SerializerManager.getSerializer(SerializerManager.Hessian2)
-            .deserialize(data.array(), NonQueryRequest.class.getName());
+            .deserialize(data.array(), MetadataNonQueryRequest.class.getName());
       } catch (final CodecException e) {
         LOGGER.error("Fail to decode IncrementAndGetRequest", e);
       }
@@ -131,6 +131,7 @@ public class MetadataStateManchine extends StateMachineAdapter {
   @Override
   public void onStartFollowing(LeaderChangeContext ctx) {
     RaftUtils.updateRaftGroupLeader(groupId, ctx.getLeaderId());
+    this.leaderTerm.set(-1);
     LOGGER.info("Start following, {} starts to be leader of {}", ctx.getLeaderId(), groupId);
   }
 
