@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.rpc.request.DataNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.request.MetadataNonQueryRequest;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -61,14 +62,14 @@ public class DataStateMachine extends StateMachineAdapter {
     while (iterator.hasNext()) {
 
       Closure closure = null;
-      MetadataNonQueryRequest request = null;
+      DataNonQueryRequest request = null;
       if (iterator.done() != null) {
         closure = iterator.done();
       }
       final ByteBuffer data = iterator.getData();
       try {
         request = SerializerManager.getSerializer(SerializerManager.Hessian2)
-            .deserialize(data.array(), MetadataNonQueryRequest.class.getName());
+            .deserialize(data.array(), DataNonQueryRequest.class.getName());
       } catch (final CodecException e) {
         LOGGER.error("Fail to decode IncrementAndGetRequest", e);
       }

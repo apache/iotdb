@@ -95,6 +95,6 @@ public class DataNonQueryAsyncProcessor extends BasicAsyncUserProcessor<DataNonQ
 
   @Override
   public String interest() {
-    return MetadataNonQueryRequest.class.getName();
+    return DataNonQueryRequest.class.getName();
   }
 }
