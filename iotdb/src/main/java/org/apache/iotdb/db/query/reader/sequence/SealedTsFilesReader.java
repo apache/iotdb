@@ -47,7 +47,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
 
   private Path seriesPath;
   private List<TsFileResource> sealedTsFiles;
-  private int usedIntervalFileIndex;
+  private int indexOfNextTsFileResource;
   private FileSeriesReader seriesReader;
   private Filter filter;
   private QueryContext context;
@@ -78,7 +78,7 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
     }
     this.seriesPath = seriesPath;
     this.sealedTsFiles = sealedTsFiles;
-    this.usedIntervalFileIndex = 0;
+    this.indexOfNextTsFileResource = 0;
     this.seriesReader = null;
     this.context = context;
     this.isReverse = isReverse;
@@ -102,11 +102,11 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
     }
 
     // init until reach a satisfied reader
-    while (usedIntervalFileIndex < sealedTsFiles.size()) {
+    while (indexOfNextTsFileResource < sealedTsFiles.size()) {
       // try to get next batch data from next reader
-      TsFileResource fileNode = sealedTsFiles.get(usedIntervalFileIndex++);
-      if (singleTsFileSatisfied(fileNode)) {
-        initSingleTsFileReader(fileNode, context);
+      TsFileResource tsfile = sealedTsFiles.get(indexOfNextTsFileResource++);
+      if (singleTsFileSatisfied(tsfile)) {
+        initSingleTsFileReader(tsfile, context);
       } else {
         continue;
       }
@@ -119,28 +119,28 @@ public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
     return false;
   }
 
-  private boolean singleTsFileSatisfied(TsFileResource fileNode) {
+  private boolean singleTsFileSatisfied(TsFileResource tsfile) {
 
     if (filter == null) {
       return true;
     }
 
-    long startTime = fileNode.getStartTime(seriesPath.getDevice());
-    long endTime = fileNode.getEndTime(seriesPath.getDevice());
+    long startTime = tsfile.getStartTime(seriesPath.getDevice());
+    long endTime = tsfile.getEndTime(seriesPath.getDevice());
     return filter.satisfyStartEndTime(startTime, endTime);
   }
 
-  private void initSingleTsFileReader(TsFileResource fileNode, QueryContext context)
+  private void initSingleTsFileReader(TsFileResource tsfile, QueryContext context)
       throws IOException {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(fileNode.getFilePath(), true);
+        .get(tsfile.getFilePath(), true);
 
     MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
     List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
 
-    List<Modification> pathModifications = context.getPathModifications(fileNode.getModFile(),
+    List<Modification> pathModifications = context.getPathModifications(tsfile.getModFile(),
         seriesPath.getFullPath());
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
