@@ -40,6 +40,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
@@ -92,13 +93,13 @@ public class MetadataStateManchine extends StateMachineAdapter {
       }
       try {
         assert request != null;
-        if (request.getRequestType() == OperatorType.SET_STORAGE_GROUP) {
-          MetadataPlan plan = (MetadataPlan) PhysicalPlanLogTransfer
-              .logToOperator(request.getPhysicalPlanBytes());
+        PhysicalPlan physicalPlan = PhysicalPlanLogTransfer
+            .logToOperator(request.getPhysicalPlanBytes());
+        if (physicalPlan.getOperatorType() == OperatorType.SET_STORAGE_GROUP) {
+          MetadataPlan plan = (MetadataPlan) physicalPlan;
           addStorageGroup(plan.getPath().getFullPath());
         } else {
-          AuthorPlan plan = (AuthorPlan) PhysicalPlanLogTransfer
-              .logToOperator(request.getPhysicalPlanBytes());
+          AuthorPlan plan = (AuthorPlan) physicalPlan;
           qpExecutor.processNonQuery(plan);
         }
       } catch (IOException | PathErrorException e) {
