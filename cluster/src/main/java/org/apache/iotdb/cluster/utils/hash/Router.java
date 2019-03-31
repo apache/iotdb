@@ -98,32 +98,29 @@ public class Router {
     }
     PhysicalNode[] nodes = physicalRing.values().toArray(new PhysicalNode[physicalRing.size()]);
     int len = nodes.length;
-    if (len == replicator) {
-      PhysicalNode first = nodes[0];
-      PhysicalNode[][] val = new PhysicalNode[1][len];
-      nodeMapGroupIdCache.put(first, DATA_GROUP_STR + "0");
-      groupIdMapNodeCache.put(DATA_GROUP_STR + "0", first);
-      for (int j = 0; j < len; j++) {
-        val[0][j] = nodes[j];
-      }
-      dataPartitionCache.put(first, val);
-    } else {
-      for (int i = 0; i < len; i++) {
-        PhysicalNode first = nodes[i];
-        if (len < replicator) {
-          throw new ErrorConfigureExecption(String.format("Replicator number %d is greater "
-              + "than cluster number %d", replicator, len));
-        } else {
-          PhysicalNode[][] val = new PhysicalNode[replicator][replicator];
-          nodeMapGroupIdCache.put(first, DATA_GROUP_STR + i);
-          groupIdMapNodeCache.put(DATA_GROUP_STR + i, first);
-          for (int j = 0; j < replicator; j++) {
-            for (int k = 0; k < replicator; k++) {
-              val[j][k] = nodes[(i - j + k + len) % len];
-            }
-          }
-          dataPartitionCache.put(first, val);
+    for (int i = 0; i < len; i++) {
+      PhysicalNode first = nodes[i];
+      if (len < replicator) {
+        throw new ErrorConfigureExecption(String.format("Replicator number %d is greater "
+            + "than cluster number %d", replicator, len));
+      } else if (len == replicator) {
+        PhysicalNode[][] val = new PhysicalNode[1][len];
+        nodeMapGroupIdCache.put(first, DATA_GROUP_STR + "0");
+        groupIdMapNodeCache.put(DATA_GROUP_STR + "0", first);
+        for (int j = 0; j < len; j++) {
+          val[0][j] = nodes[(i + j) % len];
         }
+        dataPartitionCache.put(first, val);
+      }  else {
+        PhysicalNode[][] val = new PhysicalNode[replicator][replicator];
+        nodeMapGroupIdCache.put(first, DATA_GROUP_STR + i);
+        groupIdMapNodeCache.put(DATA_GROUP_STR + i, first);
+        for (int j = 0; j < replicator; j++) {
+          for (int k = 0; k < replicator; k++) {
+            val[j][k] = nodes[(i - j + k + len) % len];
+          }
+        }
+        dataPartitionCache.put(first, val);
       }
     }
   }
