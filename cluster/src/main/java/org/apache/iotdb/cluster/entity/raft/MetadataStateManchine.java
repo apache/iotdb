@@ -71,7 +71,8 @@ public class MetadataStateManchine extends StateMachineAdapter {
   }
 
   /**
-   * Update StrageGroup List and userProfileMap based on QPTask read from raft log
+   * Update StrageGroup List and userProfileMap based on QPTask read from raft log.
+   * SG by {@code mManager}, User Info by {@code qpExecutor}
    *
    * @param iterator task iterator
    */
