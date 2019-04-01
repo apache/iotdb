@@ -45,6 +45,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,42 +85,33 @@ public class DataStateMachine extends StateMachineAdapter {
         closure = iterator.done();
       }
       Status status = Status.OK();
-      /** If the request is to set path, it needs to run null-read in meta group to avoid out of data sync **/
-      if (request.getOperatorType() == OperatorType.SET_STORAGE_GROUP) {
-        SingleQPTask nullReadTask = new SingleQPTask(false, null);
-        try {
-          LOGGER.info("handle add path request.");
-          handleNullReadToMetaGroup(nullReadTask, status);
-          nullReadTask.await();
-        } catch (InterruptedException e) {
-          status.setCode(1);
-          status.setErrorMsg(e.toString());
-        }
-      }
-      LOGGER.info("handle physical plan");
-      handlePhysicalPlan(status, request, closure);
-      iterator.next();
-    }
-  }
-
-  /**
-   * Handle Physical plan in state machine and return message if this node is leader of the group
-   */
-  private void handlePhysicalPlan(Status status, DataGroupNonQueryRequest request,
-      Closure closure) {
-    if (status.isOk()) {
+      PhysicalPlan plan;
       try {
         assert request != null;
-        PhysicalPlan plan = PhysicalPlanLogTransfer
+        plan = PhysicalPlanLogTransfer
             .logToOperator(request.getPhysicalPlanBytes());
+        /** If the request is to set path and sg of the path doesn't exist, it needs to run null-read in meta group to avoid out of data sync **/
+        if (plan.getOperatorType() == OperatorType.SET_STORAGE_GROUP && !MManager.getInstance()
+            .checkStorageExistOfPath(((MetadataPlan) plan).getPath().getFullPath())) {
+          SingleQPTask nullReadTask = new SingleQPTask(false, null);
+          try {
+            LOGGER.info("Handle null-read in meta group for adding path request.");
+            handleNullReadToMetaGroup(nullReadTask, status);
+            nullReadTask.await();
+          } catch (InterruptedException e) {
+            status.setCode(1);
+            status.setErrorMsg(e.toString());
+          }
+        }
         qpExecutor.processNonQuery(plan);
       } catch (ProcessorException | IOException e) {
         LOGGER.error("Execute physical plan error", e);
         status = new Status(1, e.toString());
       }
-    }
-    if (closure != null) {
-      closure.run(status);
+      if (closure != null) {
+        closure.run(status);
+      }
+      iterator.next();
     }
   }
 
