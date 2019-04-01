@@ -213,7 +213,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * check whether the input path is storage group or not
+   * Check whether the input path is storage group or not
    * @param path input path
    * @return if it is storage group, return true. Else return false
    */
@@ -237,6 +237,37 @@ public class MTree implements Serializable {
       return false;
     } else {
       return true;
+    }
+  }
+
+  /**
+   * Check whether the storage group of the input exists or not
+   * @param path input path
+   * @return if it's storage group exists, return true. Else return false
+   */
+  public boolean checkStorageExistOfPath(String path) {
+    String[] nodeNames = path.split(DOUB_SEPARATOR);
+    MNode cur = root;
+    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
+      return false;
+    }
+    int i = 1;
+    while (i < nodeNames.length - 1) {
+      MNode temp = cur.getChild(nodeNames[i]);
+      if (temp == null) {
+        return false;
+      }
+      if(temp.isStorageLevel()){
+        return true;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      i++;
+    }
+    MNode temp = cur.getChild(nodeNames[i]);
+    if(temp != null && temp.isStorageLevel()) {
+      return true;
+    } else {
+      return false;
     }
   }
 
