@@ -23,7 +23,16 @@ import static org.junit.Assert.assertEquals;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Stream;
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 import org.junit.Before;
@@ -31,7 +40,7 @@ import org.junit.Test;
 
 public class DeltaBinaryEncoderLongTest {
 
-  private static final int ROW_NUM = 10000;
+  private static int ROW_NUM = 10000;
   private final long BASIC_FACTOR = 1l << 32;
   ByteArrayOutputStream out;
   private DeltaBinaryEncoder writer;
@@ -92,6 +101,78 @@ public class DeltaBinaryEncoderLongTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
+  @Test
+  public void testRegularEncoding() throws IOException{
+    List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
+
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+    int kong = 0;
+    for(int i = 0; i < dates.size(); i++) {
+      if(i % 500 == 0) {
+        kong ++;
+      }
+    }
+
+    ROW_NUM = dates.size() - kong;
+
+    long[] data = new long[ROW_NUM];
+    int j = 0;
+    for(int i = 0; i < dates.size(); i++) {
+      if(i % 500 == 0) {
+        continue;
+      }
+
+      try {
+        Date date = dateFormat.parse(dates.get(i));
+        data[j++] = date.getTime();
+      } catch (ParseException e) {
+        e.printStackTrace();
+      }
+    }
+
+    shouldReadAndWrite(data, ROW_NUM);
+  }
+
+
+  @Test
+  public void testRegularWithMissingPoints() throws IOException{
+    List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
+
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+    ROW_NUM = dates.size();
+
+    long[] data = new long[ROW_NUM];
+    for(int i = 0; i < dates.size(); i++) {
+      try {
+        Date date = dateFormat.parse(dates.get(i));
+        data[i] =date.getTime();
+      } catch (ParseException e) {
+        e.printStackTrace();
+      }
+    }
+
+    shouldReadAndWrite(data, ROW_NUM);
+  }
+
+  private List<String> getBetweenDate(String start, String end){
+    List<String> list = new ArrayList<>();
+    LocalDate startDate = LocalDate.parse(start);
+    LocalDate endDate = LocalDate.parse(end);
+
+    long distance = ChronoUnit.DAYS.between(startDate, endDate);
+    if (distance < 1) {
+      return list;
+    }
+    Stream.iterate(startDate, d -> {
+      return d.plusDays(1);
+    }).limit(distance + 1).forEach(f -> {
+      list.add(f.toString());
+    });
+    return list;
+  }
+
   private void writeData(long[] data, int length) throws IOException {
     for (int i = 0; i < length; i++) {
       writer.encode(data[i], out);
@@ -100,7 +181,7 @@ public class DeltaBinaryEncoderLongTest {
   }
 
   private void shouldReadAndWrite(long[] data, int length) throws IOException {
-    System.out.println("source data size:" + 4 * length + " byte");
+    System.out.println("source data size:" + 8 * length + " byte");
     out = new ByteArrayOutputStream();
     writeData(data, length);
     byte[] page = out.toByteArray();

@@ -216,6 +216,7 @@ public class MTree implements Serializable {
    * Check whether the input path is storage group or not
    * @param path input path
    * @return if it is storage group, return true. Else return false
+   * @apiNote :for cluster
    */
   public boolean checkStorageGroup(String path) {
     String[] nodeNames = path.split(DOUB_SEPARATOR);
@@ -241,9 +242,10 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Check whether the storage group of the input exists or not
+   * Check whether the storage group of the path exists or not
    * @param path input path
-   * @return if it's storage group exists, return true. Else return false
+   * @return If it's storage group exists, return true. Else return false
+   * @apiNote :for cluster
    */
   public boolean checkStorageExistOfPath(String path) {
     String[] nodeNames = path.split(DOUB_SEPARATOR);
