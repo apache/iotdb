@@ -564,6 +564,7 @@ public class MTree implements Serializable {
       }
       if (cur.isStorageLevel()) {
         sgList.add(cur.getDataFileName());
+        return sgList;
       }
       cur = cur.getChild(nodes[i]);
     }
