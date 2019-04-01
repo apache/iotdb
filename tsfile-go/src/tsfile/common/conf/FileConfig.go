@@ -126,9 +126,22 @@ func loadProperties() {
 	}
 }
 
+var is_comment bool = false
+
 func loadItem(text string) (key string, value string) {
 	text = strings.TrimSpace(text)
-	if strings.HasPrefix(text, "#") {
+
+	if strings.HasPrefix(text, "/*") {
+		is_comment = true
+		return "", ""
+	} else if is_comment {
+		return "", ""
+	} else if strings.HasPrefix(text, "*/") && is_comment {
+		is_comment = false
+		return "", ""
+	}
+
+	if strings.HasPrefix(text, "#") || strings.HasPrefix(text, "//") {
 		return "", ""
 	} else if result := strings.Split(text, "="); len(result) > 1 {
 		return strings.TrimSpace(result[0]), strings.TrimSpace(result[1])
