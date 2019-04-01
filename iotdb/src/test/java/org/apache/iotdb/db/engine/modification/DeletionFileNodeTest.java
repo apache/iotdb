@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.engine.modification;
 
 import static junit.framework.TestCase.assertTrue;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
@@ -35,8 +37,9 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -67,7 +70,9 @@ public class DeletionFileNodeTest {
 
   @Before
   public void setup() throws MetadataArgsErrorException,
-      PathErrorException, IOException, FileNodeManagerException {
+      PathErrorException, IOException, FileNodeManagerException, StartupException {
+    EnvironmentUtils.envSetUp();
+
     MManager.getInstance().setStorageLevelToMTree(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
@@ -103,8 +108,10 @@ public class DeletionFileNodeTest {
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
-    QueryContext context = new QueryContext();
-    QueryDataSource dataSource = FileNodeManager.getInstance().query(expression, context);
+    QueryResourceManager.getInstance().beginQueryOfGivenExpression(TEST_QUERY_JOB_ID, expression);
+    QueryDataSource dataSource = QueryResourceManager.getInstance()
+        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
+
     Iterator<TimeValuePair> timeValuePairs =
         dataSource.getSeqDataSource().getReadableChunk().getIterator();
     int count = 0;
@@ -113,6 +120,7 @@ public class DeletionFileNodeTest {
       count++;
     }
     assertEquals(50, count);
+    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -185,8 +193,11 @@ public class DeletionFileNodeTest {
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
-    QueryContext context = new QueryContext();
-    QueryDataSource dataSource = FileNodeManager.getInstance().query(expression, context);
+
+    QueryResourceManager.getInstance().beginQueryOfGivenExpression(TEST_QUERY_JOB_ID, expression);
+    QueryDataSource dataSource = QueryResourceManager.getInstance()
+        .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
+
     Iterator<TimeValuePair> timeValuePairs =
         dataSource.getOverflowSeriesDataSource().getReadableMemChunk().getIterator();
     int count = 0;
@@ -195,6 +206,8 @@ public class DeletionFileNodeTest {
       count++;
     }
     assertEquals(50, count);
+
+    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
   }
 
   @Test

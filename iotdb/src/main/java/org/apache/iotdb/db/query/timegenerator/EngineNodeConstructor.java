@@ -27,7 +27,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.AllDataReader;
 import org.apache.iotdb.db.query.reader.IReader;
@@ -44,10 +44,8 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 
 public class EngineNodeConstructor {
 
-  private long jobId;
 
-  public EngineNodeConstructor(long jobId) {
-    this.jobId = jobId;
+  public EngineNodeConstructor() {
   }
 
   /**
@@ -89,7 +87,7 @@ public class EngineNodeConstructor {
       QueryContext context)
       throws IOException, FileNodeManagerException {
 
-    QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId,
+    QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(
         singleSeriesExpression.getSeriesPath(), context);
 
     Filter filter = singleSeriesExpression.getFilter();

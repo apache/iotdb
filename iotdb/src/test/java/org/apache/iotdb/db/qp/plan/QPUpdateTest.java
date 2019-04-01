@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -123,7 +124,8 @@ public class QPUpdateTest {
     // query to assert
     sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2);
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2,
+        TEST_QUERY_CONTEXT);
     String[] expect = {"10	33000	null", "20	null	10"};
     int i = 0;
     while (queryDataSet.hasNext()) {
@@ -145,7 +147,8 @@ public class QPUpdateTest {
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
     // RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
     // RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2);
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2,
+        TEST_QUERY_CONTEXT);
 
     String[] expect = {"20	null	10"};
     int i = 0;
@@ -168,7 +171,8 @@ public class QPUpdateTest {
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
     // RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
     // RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2);
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2,
+        TEST_QUERY_CONTEXT);
 
     String[] expect = {"20	null	10"};
     int i = 0;
@@ -193,7 +197,8 @@ public class QPUpdateTest {
     // query to assert
     sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2);
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) plan2,
+        TEST_QUERY_CONTEXT);
 
     String[] expect = {"13	50	40", "20	null	10"};
     int i = 0;

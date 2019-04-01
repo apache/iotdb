@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -56,7 +57,7 @@ public abstract class QueryProcessExecutor {
    * @param queryPlan QueryPlan
    * @return QueryDataSet
    */
-  public QueryDataSet processQuery(QueryPlan queryPlan)
+  public QueryDataSet processQuery(QueryPlan queryPlan, QueryContext context)
       throws IOException, FileNodeManagerException, PathErrorException,
       QueryFilterOptimizationException, ProcessorException {
 
@@ -66,19 +67,20 @@ public abstract class QueryProcessExecutor {
       GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
       return groupBy(groupByPlan.getPaths(), groupByPlan.getAggregations(),
           groupByPlan.getExpression(), groupByPlan.getUnit(), groupByPlan.getOrigin(),
-          groupByPlan.getIntervals());
+          groupByPlan.getIntervals(), context);
     }
 
     if (queryPlan instanceof AggregationPlan) {
       return aggregate(queryPlan.getPaths(), queryPlan.getAggregations(),
-          ((AggregationPlan) queryPlan).getExpression());
+          ((AggregationPlan) queryPlan).getExpression(), context);
     }
 
     if (queryPlan instanceof FillQueryPlan) {
       FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-      return fill(queryPlan.getPaths(), fillQueryPlan.getQueryTime(), fillQueryPlan.getFillType());
+      return fill(queryPlan.getPaths(), fillQueryPlan.getQueryTime(),
+          fillQueryPlan.getFillType(), context);
     }
-    return queryRouter.query(queryExpression);
+    return queryRouter.query(queryExpression, context);
   }
 
   public abstract TSDataType getSeriesType(Path fullPath) throws PathErrorException;
@@ -101,16 +103,16 @@ public abstract class QueryProcessExecutor {
   }
 
   public abstract QueryDataSet aggregate(List<Path> paths, List<String> aggres,
-      IExpression expression) throws ProcessorException, IOException, PathErrorException,
-      FileNodeManagerException, QueryFilterOptimizationException;
+      IExpression expression, QueryContext context) throws ProcessorException, IOException,
+      PathErrorException, FileNodeManagerException, QueryFilterOptimizationException;
 
   public abstract QueryDataSet groupBy(List<Path> paths, List<String> aggres,
-      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException,
-      QueryFilterOptimizationException;
+      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
+      QueryContext context) throws ProcessorException, IOException, PathErrorException,
+      FileNodeManagerException, QueryFilterOptimizationException;
 
   public abstract QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType,
-      IFill> fillTypes)
+      IFill> fillTypes, QueryContext context)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException;
 
   /**

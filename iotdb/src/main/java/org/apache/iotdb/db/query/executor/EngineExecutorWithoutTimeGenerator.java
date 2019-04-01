@@ -27,8 +27,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.AllDataReader;
@@ -48,10 +47,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class EngineExecutorWithoutTimeGenerator {
 
   private QueryExpression queryExpression;
-  private long jobId;
 
-  public EngineExecutorWithoutTimeGenerator(long jobId, QueryExpression queryExpression) {
-    this.jobId = jobId;
+  public EngineExecutorWithoutTimeGenerator(QueryExpression queryExpression) {
     this.queryExpression = queryExpression;
   }
 
@@ -66,12 +63,12 @@ public class EngineExecutorWithoutTimeGenerator {
     List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    QueryTokenManager.getInstance()
-        .beginQueryOfGivenQueryPaths(jobId, queryExpression.getSelectedSeries());
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
 
     for (Path path : queryExpression.getSelectedSeries()) {
 
-      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
           context);
 
       // add data type
@@ -120,12 +117,12 @@ public class EngineExecutorWithoutTimeGenerator {
     List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    QueryTokenManager.getInstance()
-        .beginQueryOfGivenQueryPaths(jobId, queryExpression.getSelectedSeries());
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
 
     for (Path path : queryExpression.getSelectedSeries()) {
 
-      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
           context);
 
       // add data type

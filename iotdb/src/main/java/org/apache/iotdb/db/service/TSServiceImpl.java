@@ -49,8 +49,8 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.query.control.QuerySession;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationResp;
@@ -104,6 +104,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
   private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private QueryContext context;
 
   public TSServiceImpl() throws IOException {
     // do nothing because there is no need
@@ -185,7 +186,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     LOGGER.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
       // end query for all the query tokens created by current thread
-      QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
+      if(context != null) {
+        QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
+      }
 
       clearAllStatusForCurrentRequest();
     } catch (FileNodeManagerException e) {
@@ -590,7 +593,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (!queryRet.get().containsKey(statement)) {
         PhysicalPlan physicalPlan = queryStatus.get().get(statement);
         processor.getExecutor().setFetchSize(fetchSize);
-        queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan);
+
+        context = new QueryContext();
+        context.setJobId(QueryResourceManager.getInstance().assignJobId());
+
+        queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan, context);
         queryRet.get().put(statement, queryDataSet);
       } else {
         queryDataSet = queryRet.get().get(statement);
