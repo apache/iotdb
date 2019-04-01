@@ -148,9 +148,20 @@ public class MGraph implements Serializable {
    * Check whether the input path is storage level for current Metadata Tree or not.
    *
    * @param path Format: root.node.(node)*
+   * @apiNote :for cluster
    */
   public boolean checkStorageLevel(String path) {
     return mtree.checkStorageGroup(path);
+  }
+
+  /**
+   * Check whether the storage group of the input path exists or not
+   *
+   * @param path Format: root.node.(node)*
+   * @apiNote :for cluster
+   */
+  public boolean checkStorageExistOfPath(String path) {
+    return mtree.checkStorageExistOfPath(path);
   }
 
   /**

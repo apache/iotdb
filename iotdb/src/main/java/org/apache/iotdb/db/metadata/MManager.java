@@ -343,11 +343,25 @@ public class MManager {
 
   /**
    * function for checking if the given path is storage level of mTree or not.
+   * @apiNote :for cluster
    */
   public boolean checkStorageLevelOfMTree(String path) {
     lock.readLock().lock();
     try {
       return mgraph.checkStorageLevel(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * function for checking if the storage group of given path exists in mTree or not.
+   * @apiNote :for cluster
+   */
+  public boolean checkStorageExistOfPath(String path) {
+    lock.readLock().lock();
+    try {
+      return mgraph.checkStorageExistOfPath(path);
     } finally {
       lock.readLock().unlock();
     }
