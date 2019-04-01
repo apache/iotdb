@@ -39,6 +39,7 @@ public class MTree implements Serializable {
 
   private static final long serialVersionUID = -4200394435237291964L;
   private static final String QUAD_SPACE = "    ";
+  private static final String SEPARATOR = ".";
   private static final String DOUB_SEPARATOR = "\\.";
   private static final String NO_CHILD_ERROR = "Timeseries is not correct. Node[%s] "
       + "doesn't have child named:%s";
@@ -543,6 +544,44 @@ public class MTree implements Serializable {
     }
     throw new PathErrorException(
         String.format(NOT_SERIES_PATH, path));
+  }
+
+  /**
+   * Get all the storage group seriesPaths for one seriesPath.
+   *
+   * @return List storage group seriesPath list
+   */
+  public List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+
+    List<String> sgList = new ArrayList<>();
+    String[] nodes = path.split(DOUB_SEPARATOR);
+    MNode cur = getRoot();
+    for (int i = 1; i < nodes.length; i++) {
+      if (cur == null) {
+        throw new PathErrorException(
+            String.format(NOT_SERIES_PATH,
+                path));
+      }
+      if (cur.isStorageLevel()) {
+        sgList.add(cur.getDataFileName());
+      }
+      cur = cur.getChild(nodes[i]);
+    }
+    if (sgList.isEmpty()) {
+      getAllStorageGroupsOfNode(cur, path, sgList);
+    }
+    return sgList;
+  }
+
+  private void getAllStorageGroupsOfNode(MNode node, String path, List<String> sgList) {
+    if (node.isStorageLevel()) {
+      sgList.add(path);
+      return;
+    }
+
+    for (MNode child : node.getChildren().values()) {
+      getAllStorageGroupsOfNode(child, path + SEPARATOR + child.getName(), sgList);
+    }
   }
 
   /**

@@ -287,4 +287,29 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testGetAllFileNamesByPath() {
+
+    MManager manager = MManager.getInstance();
+    try {
+      manager.setStorageLevelToMTree("root.laptop.d1");
+      manager.setStorageLevelToMTree("root.laptop.d2");
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.GZIP, null);
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.GZIP, null);
+
+      List<String> list = new ArrayList<>();
+
+      list.add("root.laptop.d1");
+      assertEquals(list, manager.getAllFileNamesByPath("root.laptop.d1.s1"));
+      assertEquals(list, manager.getAllFileNamesByPath("root.laptop.d1"));
+
+      list.add("root.laptop.d2");
+      assertEquals(list, manager.getAllFileNamesByPath("root.laptop"));
+      assertEquals(list, manager.getAllFileNamesByPath("root"));
+    } catch (PathErrorException | IOException | MetadataArgsErrorException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
