@@ -213,4 +213,33 @@ public class MTreeTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testCheckStorageExistOfPath() {
+    // set storage group first
+    MTree root = new MTree("root");
+    try {
+      assertEquals(false, root.checkStorageExistOfPath("root"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle.device"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle.device.sensor"));
+
+      root.setStorageGroup("root.vehicle");
+      assertEquals(true, root.checkStorageExistOfPath("root.vehicle"));
+      assertEquals(true, root.checkStorageExistOfPath("root.vehicle.device"));
+      assertEquals(true, root.checkStorageExistOfPath("root.vehicle.device.sensor"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device"));
+
+      root.setStorageGroup("root.vehicle1.device");
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device1"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device2"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device3"));
+      assertEquals(true, root.checkStorageExistOfPath("root.vehicle1.device"));
+    } catch (PathErrorException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
 }
