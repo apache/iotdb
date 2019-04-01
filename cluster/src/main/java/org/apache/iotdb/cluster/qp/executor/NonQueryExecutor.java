@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.qp.executor;
 
 import com.alipay.remoting.exception.CodecException;
 import com.alipay.remoting.serialization.SerializerManager;
+import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.entity.Task;
 import com.alipay.sofa.jraft.option.CliOptions;
@@ -33,10 +34,10 @@ import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
-import org.apache.iotdb.cluster.rpc.request.DataNonQueryRequest;
-import org.apache.iotdb.cluster.rpc.request.MetadataNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.request.MetaGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
-import org.apache.iotdb.cluster.rpc.response.DataNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.response.DataGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -192,7 +193,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       throws IOException, RaftConnectionException, InterruptedException {
     String groupId = getGroupIdBySG(storageGroup);
     PeerId leader = RaftUtils.getTargetPeerID(groupId);
-    DataNonQueryRequest request = new DataNonQueryRequest(groupId, plan);
+    DataGroupNonQueryRequest request = new DataGroupNonQueryRequest(groupId, plan);
     SingleQPTask qpTask = new SingleQPTask(false, request);
     /** Check if the plan can be executed locally. **/
     if (canHandleNonQuery(storageGroup)) {
@@ -207,13 +208,17 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    */
   private boolean handleDataGroupRequestLocally(String groupId, QPTask qpTask, BasicRequest request)
       throws InterruptedException {
-    final byte[] reqContext = new byte[4];
-    Task task = null;
+    Task task = new Task();
+    task.setDone((Status status) -> {
+      BasicResponse response = new DataGroupNonQueryResponse(false, status.isOk(), null,
+          status.getErrorMsg());
+      qpTask.run(response);
+    });
     /** Apply qpTask to Raft Node **/
     try {
       task.setData(ByteBuffer
           .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
-              .serialize(reqContext)));
+              .serialize(request)));
     } catch (final CodecException e) {
       return false;
     }
@@ -222,7 +227,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     RaftService service = (RaftService) dataRaftHolder.getService();
     service.getNode().apply(task);
     qpTask.await();
-    DataNonQueryResponse response = (DataNonQueryResponse) qpTask.getResponse();
+    DataGroupNonQueryResponse response = (DataGroupNonQueryResponse) qpTask.getResponse();
     return response.isSuccess();
   }
 
@@ -247,7 +252,8 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    */
   public boolean redirectMetadataGroupLeader(PhysicalPlan plan)
       throws IOException, RaftConnectionException, InterruptedException {
-    MetadataNonQueryRequest request = new MetadataNonQueryRequest(CLUSTER_CONFIG.METADATA_GROUP_ID,
+    MetaGroupNonQueryRequest request = new MetaGroupNonQueryRequest(
+        CLUSTER_CONFIG.METADATA_GROUP_ID,
         plan);
     PeerId leader = RaftUtils.getTargetPeerID(CLUSTER_CONFIG.METADATA_GROUP_ID);
 

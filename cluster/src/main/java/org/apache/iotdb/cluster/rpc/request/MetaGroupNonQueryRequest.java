@@ -27,14 +27,14 @@ import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 /**
  * Handle request to metadata group leader
  */
-public class MetadataNonQueryRequest extends BasicRequest implements Serializable {
+public class MetaGroupNonQueryRequest extends BasicRequest implements Serializable {
 
   /**
    * Serialized physical plan
    */
   private byte[] physicalPlanBytes;
 
-  public MetadataNonQueryRequest(String groupID, PhysicalPlan plan)
+  public MetaGroupNonQueryRequest(String groupID, PhysicalPlan plan)
       throws IOException {
     super(groupID);
     this.physicalPlanBytes = PhysicalPlanLogTransfer.operatorToLog(plan);

@@ -21,13 +21,13 @@ package org.apache.iotdb.cluster.rpc.response;
 /**
  * Handle response from data group leader
  */
-public class DataNonQueryResponse extends BasicResponse {
+public class DataGroupNonQueryResponse extends BasicResponse {
 
-  public DataNonQueryResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
+  public DataGroupNonQueryResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
     super(redirected, success, leaderStr, errorMsg);
   }
 
-  public DataNonQueryResponse(boolean redirected, boolean success) {
+  public DataGroupNonQueryResponse(boolean redirected, boolean success) {
     super(redirected, success, null, null);
   }
 

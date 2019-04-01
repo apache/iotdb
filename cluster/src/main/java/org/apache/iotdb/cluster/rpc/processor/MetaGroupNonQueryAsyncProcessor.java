@@ -31,32 +31,31 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
-import org.apache.iotdb.cluster.rpc.request.MetadataNonQueryRequest;
-import org.apache.iotdb.cluster.rpc.response.MetadataNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.request.MetaGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Async handle those requests which need to be applied in metadata group.
  */
-public class MetadataNonQueryAsyncProcessor extends BasicAsyncUserProcessor<MetadataNonQueryRequest> {
+public class MetaGroupNonQueryAsyncProcessor extends BasicAsyncUserProcessor<MetaGroupNonQueryRequest> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MetadataNonQueryAsyncProcessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetaGroupNonQueryAsyncProcessor.class);
   private Server server;
 
-  public MetadataNonQueryAsyncProcessor(Server server) {
+  public MetaGroupNonQueryAsyncProcessor(Server server) {
     this.server = server;
   }
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      MetadataNonQueryRequest metadataNonQueryRequest) {
+      MetaGroupNonQueryRequest metaGroupNonQueryRequest) {
     LOGGER.info("Handle metadata non query query request.");
 
     /** Check if it's the leader **/
-    String groupId = metadataNonQueryRequest.getGroupID();
+    String groupId = metaGroupNonQueryRequest.getGroupID();
     MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
     if (!metadataHolder.getFsm().isLeader()) {
       PeerId leader = RaftUtils.getTargetPeerID(groupId);
@@ -64,7 +63,7 @@ public class MetadataNonQueryAsyncProcessor extends BasicAsyncUserProcessor<Meta
       BoltCliClientService cliClientService = new BoltCliClientService();
       cliClientService.init(new CliOptions());
       LOGGER.info("Right leader is: {}, group id = {} ", leader, groupId);
-      MetadataNonQueryResponse response = new MetadataNonQueryResponse(true, false,
+      MetaGroupNonQueryResponse response = new MetaGroupNonQueryResponse(true, false,
           leader.toString(), null);
       asyncContext.sendResponse(response);
     } else {
@@ -74,14 +73,14 @@ public class MetadataNonQueryAsyncProcessor extends BasicAsyncUserProcessor<Meta
       final Task task = new Task();
       task.setDone((Status status) -> {
         asyncContext.sendResponse(
-            new MetadataNonQueryResponse(false, status.isOk(), null, status.getErrorMsg()));
+            new MetaGroupNonQueryResponse(false, status.isOk(), null, status.getErrorMsg()));
       });
       try {
         task.setData(ByteBuffer
             .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
-                .serialize(metadataNonQueryRequest)));
+                .serialize(metaGroupNonQueryRequest)));
       } catch (final CodecException e) {
-        asyncContext.sendResponse(new MetadataNonQueryResponse(false, false, null, e.toString()));
+        asyncContext.sendResponse(new MetaGroupNonQueryResponse(false, false, null, e.toString()));
       }
 
       RaftService service = (RaftService) metadataHolder.getService();
@@ -91,6 +90,6 @@ public class MetadataNonQueryAsyncProcessor extends BasicAsyncUserProcessor<Meta
 
   @Override
   public String interest() {
-    return MetadataNonQueryRequest.class.getName();
+    return MetaGroupNonQueryRequest.class.getName();
   }
 }

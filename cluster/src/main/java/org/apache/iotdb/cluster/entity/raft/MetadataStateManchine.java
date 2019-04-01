@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.rpc.request.MetadataNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.request.MetaGroupNonQueryRequest;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -80,14 +80,14 @@ public class MetadataStateManchine extends StateMachineAdapter {
     while (iterator.hasNext()) {
 
       Closure closure = null;
-      MetadataNonQueryRequest request = null;
+      MetaGroupNonQueryRequest request = null;
       if (iterator.done() != null) {
         closure = iterator.done();
       }
       final ByteBuffer data = iterator.getData();
       try {
         request = SerializerManager.getSerializer(SerializerManager.Hessian2)
-            .deserialize(data.array(), MetadataNonQueryRequest.class.getName());
+            .deserialize(data.array(), MetaGroupNonQueryRequest.class.getName());
       } catch (final CodecException e) {
         LOGGER.error("Fail to decode IncrementAndGetRequest", e);
       }

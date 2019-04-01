@@ -31,34 +31,32 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
-import org.apache.iotdb.cluster.rpc.request.DataNonQueryRequest;
-import org.apache.iotdb.cluster.rpc.request.MetadataNonQueryRequest;
-import org.apache.iotdb.cluster.rpc.response.DataNonQueryResponse;
-import org.apache.iotdb.cluster.rpc.response.MetadataNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.response.DataGroupNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Async handle those requests which need to be applied in data group.
  */
-public class DataNonQueryAsyncProcessor extends BasicAsyncUserProcessor<DataNonQueryRequest> {
+public class DataGroupNonQueryAsyncProcessor extends BasicAsyncUserProcessor<DataGroupNonQueryRequest> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNonQueryAsyncProcessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataGroupNonQueryAsyncProcessor.class);
   private Server server;
 
-  public DataNonQueryAsyncProcessor(Server server) {
+  public DataGroupNonQueryAsyncProcessor(Server server) {
     this.server = server;
   }
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      DataNonQueryRequest dataNonQueryRequest) {
+      DataGroupNonQueryRequest dataGroupNonQueryRequest) {
     LOGGER.info("Handle data non query request.");
 
     /** Check if it's the leader **/
-    String groupId = dataNonQueryRequest.getGroupID();
+    String groupId = dataGroupNonQueryRequest.getGroupID();
     DataPartitionRaftHolder dataPartitionRaftHolder = (DataPartitionRaftHolder) server
         .getDataPartitionHolderMap().get(groupId);
     if (!dataPartitionRaftHolder.getFsm().isLeader()) {
@@ -67,7 +65,7 @@ public class DataNonQueryAsyncProcessor extends BasicAsyncUserProcessor<DataNonQ
       BoltCliClientService cliClientService = new BoltCliClientService();
       cliClientService.init(new CliOptions());
       LOGGER.info("Right leader is: {}, group id = {} ", leader, groupId);
-      MetadataNonQueryResponse response = new MetadataNonQueryResponse(true, false,
+      MetaGroupNonQueryResponse response = new MetaGroupNonQueryResponse(true, false,
           leader.toString(), null);
       asyncContext.sendResponse(response);
     } else {
@@ -77,14 +75,14 @@ public class DataNonQueryAsyncProcessor extends BasicAsyncUserProcessor<DataNonQ
       final Task task = new Task();
       task.setDone((Status status) -> {
         asyncContext.sendResponse(
-            new DataNonQueryResponse(false, status.isOk(), null, status.getErrorMsg()));
+            new DataGroupNonQueryResponse(false, status.isOk(), null, status.getErrorMsg()));
       });
       try {
         task.setData(ByteBuffer
             .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
-                .serialize(dataNonQueryRequest)));
+                .serialize(dataGroupNonQueryRequest)));
       } catch (final CodecException e) {
-        asyncContext.sendResponse(new MetadataNonQueryResponse(false, false, null, e.toString()));
+        asyncContext.sendResponse(new MetaGroupNonQueryResponse(false, false, null, e.toString()));
       }
       DataPartitionRaftHolder dataRaftHolder = (DataPartitionRaftHolder) server
           .getDataPartitionHolderMap().get(groupId);
@@ -95,6 +93,6 @@ public class DataNonQueryAsyncProcessor extends BasicAsyncUserProcessor<DataNonQ
 
   @Override
   public String interest() {
-    return DataNonQueryRequest.class.getName();
+    return DataGroupNonQueryRequest.class.getName();
   }
 }

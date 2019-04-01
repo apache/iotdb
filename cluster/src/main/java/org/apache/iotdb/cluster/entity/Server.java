@@ -29,8 +29,8 @@ import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
-import org.apache.iotdb.cluster.rpc.processor.DataNonQueryAsyncProcessor;
-import org.apache.iotdb.cluster.rpc.processor.MetadataNonQueryAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.processor.DataGroupNonQueryAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.processor.MetaGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.processor.QueryTimeSeriesAsyncProcessor;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
@@ -63,8 +63,8 @@ public class Server {
     RpcServer rpcServer = new RpcServer(serverId.getPort());
     RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
 
-    rpcServer.registerUserProcessor(new DataNonQueryAsyncProcessor(this));
-    rpcServer.registerUserProcessor(new MetadataNonQueryAsyncProcessor(this));
+    rpcServer.registerUserProcessor(new DataGroupNonQueryAsyncProcessor(this));
+    rpcServer.registerUserProcessor(new MetaGroupNonQueryAsyncProcessor(this));
     rpcServer.registerUserProcessor(new QueryTimeSeriesAsyncProcessor(this));
 
     metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer, true);
