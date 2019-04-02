@@ -51,10 +51,10 @@ For the latest information about IoTDB, please visit our [IoTDB official website
 
 # Prerequisites
 
-To use IoTDB, you need to have Java (JRE >= 1.8) installed. 
+To use IoTDB, you need to install Java (JRE >= 1.8).
 If you want to compile and install IoTDB from source code, JDK is required.
 
-Maven is not mandatory to be installed, you can use the provided Maven wrapper (mvnw) to facilitate development.
+Maven (>= 3.0) is not mandatory to be installed, you can use the provided Maven wrapper (mvnw) to facilitate development.
 
 If you want to use Hadoop or Spark to analyze IoTDB data file (called as TsFile), you need to compile the hadoop and spark modules.
 
