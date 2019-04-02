@@ -101,36 +101,38 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     Set<String> groupIdSet = router.getAllGroupId();
 
     List<String> metadataList = new ArrayList<>(groupIdSet.size());
+    List<SingleQPTask> taskList = new ArrayList<>();
     for (String groupId : groupIdSet) {
       QueryMetadataInStringRequest request = new QueryMetadataInStringRequest(groupId);
       SingleQPTask task = new SingleQPTask(false, request);
+      taskList.add(task);
 
       LOGGER.info("Execute show metadata in string statement for group {}.", groupId);
       /** Check if the plan can be executed locally. **/
       if (router.insideGroup(groupId, localNode)) {
         LOGGER.info("Execute show metadata in string statement locally for group {}.", groupId);
-        metadataList.add(queryMetadataInStringLocally(groupId, task));
+        asyncQueryMetadataInStringLocally(groupId, task);
       } else {
         try {
           PeerId holder = RaftUtils.getRandomPeerID(groupId);
-          metadataList.add(queryMetadataInString(task, holder));
+          asyncSendTask(task, holder, 0);
         } catch (RaftConnectionException e) {
           LOGGER.error(e.getMessage());
           throw new ProcessorException("Raft connection occurs error.", e);
         }
       }
     }
+    for (int i = 0; i < taskList.size(); i++) {
+      SingleQPTask task = taskList.get(i);
+      task.await();
+      QueryMetadataInStringResponse response = (QueryMetadataInStringResponse) task.getResponse();
+      if (!response.isSuccess()) {
+        LOGGER.error("Execute show timeseries statement false.");
+        throw new ProcessorException();
+      }
+      return ((QueryMetadataInStringResponse) task.getResponse()).getMetadata();
+    }
     return combineMetadataInStringList(metadataList);
-  }
-
-  /**
-   * Combine multiple metadata in String format into single String
-   *
-   * @param metadataList
-   * @return single String of all metadata
-   */
-  private String combineMetadataInStringList(List<String> metadataList) {
-    return null; //TODO
   }
 
   /**
@@ -217,7 +219,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   /**
    * Handle "show timeseries" statement
    */
-  private String queryMetadataInStringLocally(String groupId, SingleQPTask task)
+  private void asyncQueryMetadataInStringLocally(String groupId, SingleQPTask task)
       throws InterruptedException, ProcessorException {
     final byte[] reqContext = new byte[4];
     Bits.putInt(reqContext, 0, requestId.incrementAndGet());
@@ -239,18 +241,21 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
             task.run(response);
           }
         });
-    task.await();
-    QueryMetadataInStringResponse response = (QueryMetadataInStringResponse) task.getResponse();
-    if (!response.isSuccess()) {
-      LOGGER.error("Execute show timeseries statement false.");
-      throw new ProcessorException();
-    }
-    return ((QueryMetadataInStringResponse) task.getResponse()).getMetadata();
   }
 
   private String queryMetadataInString(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
     BasicResponse response = asyncHandleTaskGetRes(task, leader, 0);
     return ((QueryMetadataInStringResponse) response).getMetadata();
+  }
+
+  /**
+   * Combine multiple metadata in String format into single String
+   *
+   * @param metadataList
+   * @return single String of all metadata
+   */
+  private String combineMetadataInStringList(List<String> metadataList) {
+    return null; //TODO
   }
 }

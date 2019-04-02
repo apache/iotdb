@@ -154,32 +154,42 @@ public abstract class ClusterQPExecutor {
   /**
    * Async handle QPTask by QPTask and leader id
    *
-   * @param QPTask request QPTask
+   * @param task request QPTask
    * @param leader leader of the target raft group
    * @param taskRetryNum Number of QPTask retries due to timeout and redirected.
    * @return basic response
    */
-  public BasicResponse asyncHandleTaskGetRes(QPTask QPTask, PeerId leader, int taskRetryNum)
+  public BasicResponse asyncHandleTaskGetRes(QPTask task, PeerId leader, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
+    asyncSendTask(task, leader, taskRetryNum);
+    return asyncGetRes(task, leader, taskRetryNum);
+  }
+
+  public void asyncSendTask(QPTask task, PeerId leader, int taskRetryNum)
+      throws RaftConnectionException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
       throw new RaftConnectionException(String.format("QPTask retries reach the upper bound %s",
           TASK_MAX_RETRY));
     }
     NodeAsClient client = new RaftNodeAsClient();
     /** Call async method **/
-    client.asyncHandleRequest(cliClientService, QPTask.getRequest(), leader, QPTask);
-    QPTask.await();
-    if (QPTask.getTaskState() != TaskState.FINISH) {
-      if (QPTask.getTaskState() == TaskState.REDIRECT) {
+    client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
+  }
+
+  public BasicResponse asyncGetRes(QPTask task, PeerId leader, int taskRetryNum)
+      throws InterruptedException, RaftConnectionException {
+    task.await();
+    if (task.getTaskState() != TaskState.FINISH) {
+      if (task.getTaskState() == TaskState.REDIRECT) {
         /** redirect to the right leader **/
-        leader = PeerId.parsePeer(QPTask.getResponse().getLeaderStr());
-        LOGGER.info("Redirect leader: {}, group id = {}", leader, QPTask.getRequest().getGroupID());
-        RaftUtils.updateRaftGroupLeader(QPTask.getRequest().getGroupID(), leader);
+        leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
+        LOGGER.info("Redirect leader: {}, group id = {}", leader, task.getRequest().getGroupID());
+        RaftUtils.updateRaftGroupLeader(task.getRequest().getGroupID(), leader);
       }
-      QPTask.resetTask();
-      return asyncHandleTaskGetRes(QPTask, leader, taskRetryNum + 1);
+      task.resetTask();
+      return asyncHandleTaskGetRes(task, leader, taskRetryNum + 1);
     }
-    return QPTask.getResponse();
+    return task.getResponse();
   }
 
   public void shutdown() {
