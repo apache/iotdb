@@ -20,6 +20,11 @@ package org.apache.iotdb.cluster.qp;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.callback.QPTask.TaskState;
@@ -79,6 +84,41 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
+   * Get all Storage Group Names by path
+   */
+  public List<String> getAllStroageGroupsByPath(String path) throws PathErrorException {
+    List<String> storageGroupList;
+    try {
+      storageGroupList = MManager.getInstance().getAllFileNamesByPath(path);
+    } catch (PathErrorException e) {
+      throw new PathErrorException(String.format("File level of %s doesn't exist.", path));
+    }
+    return storageGroupList;
+  }
+
+  /**
+   * Classify the input storage group list by which data group it belongs to.
+   *
+   * @param sgList
+   * @return key is groupId, value is all SGs belong to this data group
+   */
+  public Map<String, Set<String>> classifySGByGroupId(List<String> sgList) {
+    Map<String, Set<String>> map = new HashMap<>();
+    for (int i = 0; i < sgList.size(); i++) {
+      String sg = sgList.get(i);
+      String groupId = getGroupIdBySG(sg);
+      if (map.containsKey(groupId)) {
+        map.get(groupId).add(sg);
+      } else {
+        Set<String> set = new HashSet<>();
+        set.add(sg);
+        map.put(groupId, set);
+      }
+    }
+    return map;
+  }
+
+  /**
    * Get raft group id by storage group name
    */
   public String getGroupIdBySG(String storageGroup) {
@@ -105,6 +145,10 @@ public abstract class ClusterQPExecutor {
    */
   public boolean canHandleQuery(String storageGroup) {
     return router.containPhysicalNode(storageGroup, localNode);
+  }
+
+  private boolean isInsideGroup(String groupId) {
+    return groupId.equals(router.getGroupID(router.routeGroup(groupId)));
   }
 
   /**

@@ -223,4 +223,15 @@ public class Router {
     PhysicalNode node = groupIdMapNodeCache.get(groupId);
     return dataPartitionCache.get(node)[0];
   }
+
+  /**
+   * check if input node is inside the given data group
+   * @param groupId
+   * @param node
+   * @return if is inside, return true, vice versa.
+   */
+  public boolean insideGroup(String groupId, PhysicalNode node) {
+    PhysicalNode[] nodes = getNodesByGroupId(groupId);
+    return Arrays.asList(nodes).contains(node);
+  }
 }

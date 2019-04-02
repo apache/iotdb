@@ -24,8 +24,12 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -215,6 +219,30 @@ public class MTreeTest {
   }
 
   @Test
+  public void testGetAllFileNamesByPath() {
+    // set storage group first
+    MTree root = new MTree("root");
+    try {
+      root.setStorageGroup("root.laptop.d1");
+      root.setStorageGroup("root.laptop.d2");
+      root.addTimeseriesPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.GZIP, null);
+      root.addTimeseriesPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.GZIP, null);
+
+      List<String> list = new ArrayList<>();
+
+      list.add("root.laptop.d1");
+      assertEquals(list, root.getAllFileNamesByPath("root.laptop.d1.s1"));
+      assertEquals(list, root.getAllFileNamesByPath("root.laptop.d1"));
+
+      list.add("root.laptop.d2");
+      assertEquals(list, root.getAllFileNamesByPath("root.laptop"));
+      assertEquals(list, root.getAllFileNamesByPath("root"));
+    } catch (PathErrorException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   public void testCheckStorageExistOfPath() {
     // set storage group first
     MTree root = new MTree("root");

@@ -697,6 +697,23 @@ public class MManager {
   }
 
   /**
+   * Get all file names for given seriesPath
+   *
+   * @return List of String represented all file names
+   */
+  public List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+
+    lock.readLock().lock();
+    try {
+      return mgraph.getAllFileNamesByPath(path);
+    } catch (PathErrorException e) {
+      throw new PathErrorException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * return a HashMap contains all the paths separated by File Name.
    */
   public Map<String, ArrayList<String>> getAllPathGroupByFileName(String path)

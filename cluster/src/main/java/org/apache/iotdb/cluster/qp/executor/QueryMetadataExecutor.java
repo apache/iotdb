@@ -24,6 +24,7 @@ import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.option.CliOptions;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import com.alipay.sofa.jraft.util.Bits;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.callback.SingleQPTask;
@@ -67,25 +68,30 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   public List<List<String>> processTimeSeriesQuery(String path)
       throws InterruptedException, PathErrorException, ProcessorException {
-    String storageGroup = getStroageGroupByDevice(path);
-    String groupId = getGroupIdBySG(storageGroup);
-    QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, path);
-    PeerId holder = RaftUtils.getRandomPeerID(groupId);
-    SingleQPTask task = new SingleQPTask(false, request);
+    List<String> storageGroupList = getAllStroageGroupsByPath(path);
+    Set<String> groupIdSet = classifySGByGroupId(storageGroupList).keySet();
 
-    LOGGER.info("Execute show timeseries {} statement.", path);
-    /** Check if the plan can be executed locally. **/
-    if (canHandleQuery(storageGroup)) {
-      LOGGER.info("Execute show timeseries {} statement locally.", path);
-      return queryTimeSeriesLocally(path, groupId, task);
-    } else {
-      try {
-        return queryTimeSeries(task, holder);
-      } catch (RaftConnectionException e) {
-        LOGGER.error(e.getMessage());
-        throw new ProcessorException("Raft connection occurs error.", e);
+    List<List<String>> res = new ArrayList<>();
+    for (String groupId : groupIdSet) {
+      QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, path);
+      SingleQPTask task = new SingleQPTask(false, request);
+
+      LOGGER.info("Execute show timeseries {} statement for group {}.", path, groupId);
+      /** Check if the plan can be executed locally. **/
+      if (router.insideGroup(groupId, localNode)) {
+        LOGGER.info("Execute show timeseries {} statement locally for group {}.", path, groupId);
+        res.addAll(queryTimeSeriesLocally(path, groupId, task));
+      } else {
+        try {
+          PeerId holder = RaftUtils.getRandomPeerID(groupId);
+          res.addAll(queryTimeSeries(task, holder));
+        } catch (RaftConnectionException e) {
+          LOGGER.error(e.getMessage());
+          throw new ProcessorException("Raft connection occurs error.", e);
+        }
       }
     }
+    return res;
   }
 
   /**
