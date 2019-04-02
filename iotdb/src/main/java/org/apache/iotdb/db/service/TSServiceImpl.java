@@ -79,6 +79,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_Status;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
@@ -104,7 +105,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
   private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private QueryContext context;
+  private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
   public TSServiceImpl() throws IOException {
     // do nothing because there is no need
@@ -185,16 +186,30 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
     LOGGER.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
-      // end query for all the query tokens created by current thread
-      if(context != null) {
-        QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
-      }
+
+      releaseQueryResource(req);
 
       clearAllStatusForCurrentRequest();
     } catch (FileNodeManagerException e) {
       LOGGER.error("Error in closeOperation : {}", e.getMessage());
     }
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
+  }
+
+  private void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+    if (contextMap == null) {
+      return;
+    }
+    if(req == null || req.queryId == -1) {
+      // end query for all the query tokens created by current thread
+      for (QueryContext context : contextMap.values()) {
+        QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
+      }
+    } else {
+      QueryResourceManager.getInstance()
+          .endQueryForGivenJob(contextMap.remove(req.queryId).getJobId());
+    }
   }
 
   private void clearAllStatusForCurrentRequest() {
@@ -591,14 +606,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       int fetchSize = req.getFetch_size();
       QueryDataSet queryDataSet;
       if (!queryRet.get().containsKey(statement)) {
-        PhysicalPlan physicalPlan = queryStatus.get().get(statement);
-        processor.getExecutor().setFetchSize(fetchSize);
-
-        context = new QueryContext();
-        context.setJobId(QueryResourceManager.getInstance().assignJobId());
-
-        queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan, context);
-        queryRet.get().put(statement, queryDataSet);
+        queryDataSet = createNewDataSet(statement, fetchSize, req);
       } else {
         queryDataSet = queryRet.get().get(statement);
       }
@@ -616,6 +624,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
+  }
+
+  private QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
+      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
+      ProcessorException, IOException {
+    PhysicalPlan physicalPlan = queryStatus.get().get(statement);
+    processor.getExecutor().setFetchSize(fetchSize);
+
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+    if (contextMap == null) {
+      contextMap = new HashMap<>();
+      contextMapLocal.set(contextMap);
+    }
+    contextMap.put(req.queryId, context);
+
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
+        context);
+    queryRet.get().put(statement, queryDataSet);
+    return queryDataSet;
   }
 
   @Override
