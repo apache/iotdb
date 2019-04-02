@@ -60,7 +60,7 @@ public class DataGroupNonQueryAsyncProcessor extends BasicAsyncUserProcessor<Dat
     DataPartitionRaftHolder dataPartitionRaftHolder = (DataPartitionRaftHolder) server
         .getDataPartitionHolderMap().get(groupId);
     if (!dataPartitionRaftHolder.getFsm().isLeader()) {
-      PeerId leader = RaftUtils.getTargetPeerID(groupId);
+      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
       LOGGER.info("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
       BoltCliClientService cliClientService = new BoltCliClientService();
       cliClientService.init(new CliOptions());

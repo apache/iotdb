@@ -132,7 +132,7 @@ public abstract class ClusterQPExecutor {
   public boolean canHandleNonQuery(String storageGroup) {
     if (router.containPhysicalNode(storageGroup, localNode)) {
       String groupId = getGroupIdBySG(storageGroup);
-      if (RaftUtils.convertPeerId(RaftUtils.getTargetPeerID(groupId)).equals(localNode)) {
+      if (RaftUtils.getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
         return true;
       }
     }

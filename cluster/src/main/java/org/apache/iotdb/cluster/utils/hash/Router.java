@@ -86,7 +86,7 @@ public class Router {
   /**
    * Change this method to public for test, you should not invoke this method explicitly.
    */
-  public void init() {
+  void init() {
     reset();
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     String[] hosts = config.getNodes();
@@ -97,7 +97,7 @@ public class Router {
       PhysicalNode node = new PhysicalNode(values[0], Integer.parseInt(values[1]));
       addNode(node, numOfVirtualNodes);
     }
-    PhysicalNode[] nodes = physicalRing.values().toArray(new PhysicalNode[physicalRing.size()]);
+    PhysicalNode[] nodes = physicalRing.values().toArray(new PhysicalNode[0]);
     int len = nodes.length;
     for (int i = 0; i < len; i++) {
       PhysicalNode first = nodes[i];
@@ -129,15 +129,15 @@ public class Router {
   /**
    * Calculate the physical nodes corresponding to the replications where a data point is located
    *
-   * @param objectKey storage group
+   * @param storageGroupName storage group
    */
-  public PhysicalNode[] routeGroup(String objectKey) {
-    if (sgRouter.containsKey(objectKey)) {
-      return sgRouter.get(objectKey);
+  public PhysicalNode[] routeGroup(String storageGroupName) {
+    if (sgRouter.containsKey(storageGroupName)) {
+      return sgRouter.get(storageGroupName);
     }
-    PhysicalNode node = routeNode(objectKey);
+    PhysicalNode node = routeNode(storageGroupName);
     PhysicalNode[] nodes = dataPartitionCache.get(node)[0];
-    sgRouter.put(objectKey, nodes);
+    sgRouter.put(storageGroupName, nodes);
     return nodes;
   }
 

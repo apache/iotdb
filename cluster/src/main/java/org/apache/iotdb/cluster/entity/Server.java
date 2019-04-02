@@ -41,6 +41,9 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * each server represents a node in the physical world.
+ */
 public class Server {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
@@ -83,7 +86,7 @@ public class Server {
       PhysicalNode[] group = groups[i];
       String groupId = router.getGroupID(group);
       DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId,
-          RaftUtils.convertPhysicalNodeArrayToPeerIdArray(group), serverId, rpcServer, false);
+          RaftUtils.getPeerIdArrayFrom(group), serverId, rpcServer, false);
       dataPartitionHolder.init();
       dataPartitionHolder.start();
       dataPartitionHolderMap.put(groupId, dataPartitionHolder);
