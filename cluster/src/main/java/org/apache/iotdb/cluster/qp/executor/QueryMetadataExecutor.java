@@ -45,7 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Handle show all storage group logic
+ * Handle < show timeseries <path> > logic
  */
 public class QueryMetadataExecutor extends ClusterQPExecutor {
 
@@ -70,7 +70,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     String storageGroup = getStroageGroupByDevice(path);
     String groupId = getGroupIdBySG(storageGroup);
     QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, path);
-    PeerId leader = RaftUtils.getRandomPeerID(groupId);
+    PeerId holder = RaftUtils.getRandomPeerID(groupId);
     SingleQPTask task = new SingleQPTask(false, request);
 
     LOGGER.info("Execute show timeseries {} statement.", path);
@@ -80,7 +80,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       return queryTimeSeriesLocally(path, groupId, task);
     } else {
       try {
-        return queryTimeSeries(task, leader);
+        return queryTimeSeries(task, holder);
       } catch (RaftConnectionException e) {
         LOGGER.error(e.getMessage());
         throw new ProcessorException("Raft connection occurs error.", e);
@@ -114,12 +114,8 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
                 response = new QueryTimeSeriesResponse(false, false, null, e.toString());
               }
             } else {
-
-              System.out.println("false");
               response = new QueryTimeSeriesResponse(false, false, null, null);
             }
-            System.out.println(status.isOk());
-            System.out.println();
             task.run(response);
           }
         });

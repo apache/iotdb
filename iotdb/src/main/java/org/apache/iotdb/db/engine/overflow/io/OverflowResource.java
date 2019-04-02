@@ -106,31 +106,35 @@ public class OverflowResource {
     modificationFile = new ModificationFile(insertFilePath + ModificationFile.FILE_SUFFIX);
   }
 
-  private Pair<Long, Long> readPositionInfo() {
-    try(FileInputStream inputStream = new FileInputStream(positionFilePath)) {
-      byte[] insertPositionData = new byte[8];
-      byte[] updatePositionData = new byte[8];
-      int byteRead = inputStream.read(insertPositionData);
-      if (byteRead != 8) {
-        throw new IOException("Not enough bytes for insertPositionData");
+  private Pair<Long, Long> readPositionInfo() throws IOException {
+    File positionFile = new File(positionFilePath);
+    if (positionFile.exists()) {
+      try(FileInputStream inputStream = new FileInputStream(positionFile)) {
+        byte[] insertPositionData = new byte[8];
+        byte[] updatePositionData = new byte[8];
+        int byteRead = inputStream.read(insertPositionData);
+        if (byteRead != 8) {
+          throw new IOException("Not enough bytes for insertPositionData");
+        }
+        byteRead = inputStream.read(updatePositionData);
+        if (byteRead != 8) {
+          throw new IOException("Not enough bytes for updatePositionData");
+        }
+        long lastInsertPosition = BytesUtils.bytesToLong(insertPositionData);
+        long lastUpdatePosition = BytesUtils.bytesToLong(updatePositionData);
+        return new Pair<>(lastInsertPosition, lastUpdatePosition);
       }
-      byteRead = inputStream.read(updatePositionData);
-      if (byteRead != 8) {
-        throw new IOException("Not enough bytes for updatePositionData");
-      }
-      long lastInsertPosition = BytesUtils.bytesToLong(insertPositionData);
-      long lastUpdatePosition = BytesUtils.bytesToLong(updatePositionData);
-      return new Pair<>(lastInsertPosition, lastUpdatePosition);
-    } catch (IOException e) {
+    } else {
+      LOGGER.debug("No position info, returning a default value");
       long left = 0;
       long right = 0;
       File insertTempFile = new File(insertFilePath);
       if (insertTempFile.exists()) {
         left = insertTempFile.length();
       }
-      LOGGER.warn("Cannot read position info, returning a default value", e);
       return new Pair<>(left, right);
     }
+
   }
 
   private void writePositionInfo(long lastInsertPosition, long lastUpdatePosition)

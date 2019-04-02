@@ -20,21 +20,20 @@ package org.apache.iotdb.cluster.rpc.request;
 
 import java.io.IOException;
 import java.io.Serializable;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 
 /**
  * Handle request to data group
  */
-public class DataNonQueryRequest extends BasicRequest implements Serializable {
+public class DataGroupNonQueryRequest extends BasicRequest implements Serializable {
 
   /**
    * Serialized physical plan
    */
   private byte[] physicalPlanBytes;
 
-  public DataNonQueryRequest(String groupID, PhysicalPlan plan)
+  public DataGroupNonQueryRequest(String groupID, PhysicalPlan plan)
       throws IOException {
     super(groupID);
     this.physicalPlanBytes = PhysicalPlanLogTransfer.operatorToLog(plan);

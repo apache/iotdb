@@ -16,8 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc;
+package org.apache.iotdb.cluster.rpc.response;
 
-public enum MetadataType {
-  STORAGE_GROUP, TIME_SERIES
+/**
+ * Handle response from metadata group leader
+ */
+public class MetaGroupNonQueryResponse extends BasicResponse {
+
+  public MetaGroupNonQueryResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
+    super(redirected, success, leaderStr, errorMsg);
+  }
+
+  public MetaGroupNonQueryResponse(boolean redirected, boolean success) {
+    super(redirected, success, null, null);
+  }
+
 }

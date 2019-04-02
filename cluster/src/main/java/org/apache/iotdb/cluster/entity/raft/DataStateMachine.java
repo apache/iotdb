@@ -23,21 +23,29 @@ import com.alipay.remoting.serialization.SerializerManager;
 import com.alipay.sofa.jraft.Closure;
 import com.alipay.sofa.jraft.Iterator;
 import com.alipay.sofa.jraft.Status;
+import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import com.alipay.sofa.jraft.core.StateMachineAdapter;
 import com.alipay.sofa.jraft.entity.LeaderChangeContext;
 import com.alipay.sofa.jraft.entity.PeerId;
+import com.alipay.sofa.jraft.util.Bits;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.rpc.request.DataNonQueryRequest;
-import org.apache.iotdb.cluster.rpc.request.MetadataNonQueryRequest;
+import org.apache.iotdb.cluster.callback.QPTask;
+import org.apache.iotdb.cluster.callback.SingleQPTask;
+import org.apache.iotdb.cluster.entity.Server;
+import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,11 +54,13 @@ public class DataStateMachine extends StateMachineAdapter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataStateMachine.class);
 
+  private Server server = Server.getInstance();
   private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
   private PeerId peerId;
   private String groupId;
   private AtomicLong leaderTerm = new AtomicLong(-1);
   private MManager mManager = MManager.getInstance();
+  private final AtomicInteger requestId = new AtomicInteger(0);
 
   public DataStateMachine(String groupId, PeerId peerId) {
     this.peerId = peerId;
@@ -68,23 +78,38 @@ public class DataStateMachine extends StateMachineAdapter {
     while (iterator.hasNext()) {
 
       Closure closure = null;
-      DataNonQueryRequest request = null;
-      if (iterator.done() != null) {
-        closure = iterator.done();
-      }
+      DataGroupNonQueryRequest request = null;
       final ByteBuffer data = iterator.getData();
       try {
         request = SerializerManager.getSerializer(SerializerManager.Hessian2)
-            .deserialize(data.array(), DataNonQueryRequest.class.getName());
+            .deserialize(data.array(), DataGroupNonQueryRequest.class.getName());
       } catch (final CodecException e) {
         LOGGER.error("Fail to decode IncrementAndGetRequest", e);
       }
+      if (iterator.done() != null) {
+        /** It's leader to apply task **/
+        closure = iterator.done();
+      }
       Status status = Status.OK();
+      PhysicalPlan plan;
       try {
         assert request != null;
-          PhysicalPlan plan = PhysicalPlanLogTransfer
-              .logToOperator(request.getPhysicalPlanBytes());
-          qpExecutor.processNonQuery(plan);
+        plan = PhysicalPlanLogTransfer
+            .logToOperator(request.getPhysicalPlanBytes());
+        /** If the request is to set path and sg of the path doesn't exist, it needs to run null-read in meta group to avoid out of data sync **/
+        if (plan.getOperatorType() == OperatorType.SET_STORAGE_GROUP && !MManager.getInstance()
+            .checkStorageExistOfPath(((MetadataPlan) plan).getPath().getFullPath())) {
+          SingleQPTask nullReadTask = new SingleQPTask(false, null);
+          try {
+            LOGGER.info("Handle null-read in meta group for adding path request.");
+            handleNullReadToMetaGroup(nullReadTask, status);
+            nullReadTask.await();
+          } catch (InterruptedException e) {
+            status.setCode(1);
+            status.setErrorMsg(e.toString());
+          }
+        }
+        qpExecutor.processNonQuery(plan);
       } catch (ProcessorException | IOException e) {
         LOGGER.error("Execute physical plan error", e);
         status = new Status(1, e.toString());
@@ -94,6 +119,31 @@ public class DataStateMachine extends StateMachineAdapter {
       }
       iterator.next();
     }
+  }
+
+  /**
+   * Handle null-read process in metadata group if the request is to set path.
+   *
+   * @param qpTask null-read task
+   * @param originStatus status to return result if this node is leader of the data group
+   */
+  private void handleNullReadToMetaGroup(QPTask qpTask, Status originStatus) {
+    final byte[] reqContext = new byte[4];
+    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
+    MetadataRaftHolder metadataRaftHolder = (MetadataRaftHolder) server.getMetadataHolder();
+    ((RaftService) metadataRaftHolder.getService()).getNode()
+        .readIndex(reqContext, new ReadIndexClosure() {
+          @Override
+          public void run(Status status, long index, byte[] reqCtx) {
+            BasicResponse response = new BasicResponse(false, true, null, null) {
+            };
+            if (!status.isOk()) {
+              originStatus.setCode(1);
+              originStatus.setErrorMsg(status.getErrorMsg());
+            }
+            qpTask.run(response);
+          }
+        });
   }
 
   @Override

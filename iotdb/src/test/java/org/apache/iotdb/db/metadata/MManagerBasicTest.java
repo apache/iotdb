@@ -287,4 +287,32 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testCheckStorageExistOfPath() {
+    MManager manager = MManager.getInstance();
+
+    try {
+      assertEquals(false, manager.checkStorageExistOfPath("root"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle.device"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle.device.sensor"));
+
+      manager.setStorageLevelToMTree("root.vehicle");
+      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle"));
+      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle.device"));
+      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle.device.sensor"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device"));
+
+      manager.setStorageLevelToMTree("root.vehicle1.device");
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device1"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device2"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device3"));
+      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle1.device"));
+    } catch (PathErrorException | IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

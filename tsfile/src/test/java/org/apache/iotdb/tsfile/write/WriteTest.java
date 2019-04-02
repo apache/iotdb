@@ -74,9 +74,9 @@ public class WriteTest {
 
   @Before
   public void prepare() throws IOException, WriteProcessException {
-    inputDataFile = "src/test/resources/writeTestInputData";
-    outputDataFile = "src/test/resources/writeTestOutputData.tsfile";
-    errorOutputDataFile = "src/test/resources/writeTestErrorOutputData.tsfile";
+    inputDataFile = "target/writeTestInputData";
+    outputDataFile = "target/writeTestOutputData.tsfile";
+    errorOutputDataFile = "target/writeTestErrorOutputData.tsfile";
     schemaFile = "src/test/resources/test_write_schema.json";
     // for each row, flush page forcely
     prePageSize = conf.pageSizeInByte;
