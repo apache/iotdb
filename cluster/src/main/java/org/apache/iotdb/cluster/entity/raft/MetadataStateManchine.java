@@ -28,13 +28,13 @@ import com.alipay.sofa.jraft.entity.LeaderChangeContext;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.MetaGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -55,17 +55,13 @@ public class MetadataStateManchine extends StateMachineAdapter {
    * Manager of storage groups
    **/
   private MManager mManager = MManager.getInstance();
-  /**
-   * Manager of user profile
-   **/
-  private IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
 
   private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
   private PeerId peerId;
   private String groupId;
   private AtomicLong leaderTerm = new AtomicLong(-1);
 
-  public MetadataStateManchine(String groupId, PeerId peerId) throws AuthException {
+  public MetadataStateManchine(String groupId, PeerId peerId) {
     this.peerId = peerId;
     this.groupId = groupId;
   }
@@ -81,8 +77,11 @@ public class MetadataStateManchine extends StateMachineAdapter {
 
       Closure closure = null;
       MetaGroupNonQueryRequest request = null;
+      BasicResponse response = null;
+      /** Check if the node is leader **/
       if (iterator.done() != null) {
         closure = iterator.done();
+        response = ((ResponseClosure) closure).getResponse();
       }
       final ByteBuffer data = iterator.getData();
       try {
@@ -91,24 +90,41 @@ public class MetadataStateManchine extends StateMachineAdapter {
       } catch (final CodecException e) {
         LOGGER.error("Fail to decode IncrementAndGetRequest", e);
       }
-      try {
-        assert request != null;
-        PhysicalPlan physicalPlan = PhysicalPlanLogTransfer
-            .logToOperator(request.getPhysicalPlanBytes());
-        if (physicalPlan.getOperatorType() == OperatorType.SET_STORAGE_GROUP) {
-          MetadataPlan plan = (MetadataPlan) physicalPlan;
-          addStorageGroup(plan.getPath().getFullPath());
-        } else {
-          AuthorPlan plan = (AuthorPlan) physicalPlan;
-          qpExecutor.processNonQuery(plan);
+      Status status = new Status();
+      assert request != null;
+
+      List<byte[]> planBytes = request.getPhysicalPlanBytes();
+      /** handle batch plans(planBytes.size() > 0) or single plan(planBytes.size()==1) **/
+      for (byte[] planByte : planBytes) {
+        try {
+          PhysicalPlan physicalPlan = PhysicalPlanLogTransfer
+              .logToOperator(planByte);
+          if (physicalPlan.getOperatorType() == OperatorType.SET_STORAGE_GROUP) {
+            MetadataPlan plan = (MetadataPlan) physicalPlan;
+            addStorageGroup(plan.getPath().getFullPath());
+          } else {
+            AuthorPlan plan = (AuthorPlan) physicalPlan;
+            qpExecutor.processNonQuery(plan);
+          }
+          if (closure != null) {
+            response.addResult(true);
+          }
+        } catch (IOException | PathErrorException e) {
+          LOGGER.error("Execute metadata plan error", e);
+          status = new Status(-1, e.toString());
+          if (closure != null) {
+            response.addResult(false);
+          }
+        } catch (ProcessorException e) {
+          LOGGER.error("Execute author plan error", e);
+          status = new Status(-1, e.toString());
+          if (closure != null) {
+            response.addResult(false);
+          }
         }
-      } catch (IOException | PathErrorException e) {
-        LOGGER.error("Execute metadata plan error", e);
-      } catch (ProcessorException e) {
-        LOGGER.error("Execute author plan error", e);
       }
       if (closure != null) {
-        closure.run(Status.OK());
+        closure.run(status);
       }
       iterator.next();
     }

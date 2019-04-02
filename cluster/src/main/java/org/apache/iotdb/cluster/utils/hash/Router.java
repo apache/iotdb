@@ -201,8 +201,13 @@ public class Router {
     }
   }
 
-  public boolean containPhysicalNode(String storageGroup, PhysicalNode node) {
+  public boolean containPhysicalNodeBySG(String storageGroup, PhysicalNode node) {
     PhysicalNode[] nodes = routeGroup(storageGroup);
+    return Arrays.asList(nodes).contains(node);
+  }
+
+  public boolean containPhysicalNodeByGroupId(String groupId, PhysicalNode node) {
+    PhysicalNode[] nodes = getNodesByGroupId(groupId);
     return Arrays.asList(nodes).contains(node);
   }
 

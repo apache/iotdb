@@ -19,18 +19,25 @@
 package org.apache.iotdb.cluster.rpc.response;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class BasicResponse implements Serializable {
 
   private static final long serialVersionUID = 7509860476962493127L;
+
+  /**
+   * Group ID
+   */
+  private String groupId;
   /**
    * Mark if it needs to redirect to right leader
    */
   private boolean redirected;
   /**
-   * Mark if the request is success
+   * Mark if item of a request is success
    */
-  private boolean success;
+  private List<Boolean> results;
   /**
    * Redirect leader id
    */
@@ -40,11 +47,20 @@ public abstract class BasicResponse implements Serializable {
    */
   private String errorMsg;
 
-  public BasicResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
+  public BasicResponse(String groupId, boolean redirected, String leaderStr, String errorMsg) {
+    this.groupId = groupId;
     this.redirected = redirected;
-    this.success = success;
+    this.results = new ArrayList<>();
     this.errorMsg = errorMsg;
     this.leaderStr = leaderStr;
+  }
+
+  public String getGroupId() {
+    return groupId;
+  }
+
+  public void setGroupId(String groupId) {
+    this.groupId = groupId;
   }
 
   public boolean isRedirected() {
@@ -53,14 +69,6 @@ public abstract class BasicResponse implements Serializable {
 
   public void setRedirected(boolean redirected) {
     this.redirected = redirected;
-  }
-
-  public boolean isSuccess() {
-    return success;
-  }
-
-  public void setSuccess(boolean success) {
-    this.success = success;
   }
 
   public String getLeaderStr() {
@@ -77,5 +85,25 @@ public abstract class BasicResponse implements Serializable {
 
   public void setErrorMsg(String errorMsg) {
     this.errorMsg = errorMsg;
+  }
+
+  public void addResult(boolean success) {
+    results.add(success);
+  }
+
+  public List<Boolean> getResults() {
+    return results;
+  }
+
+  public boolean isSuccess() {
+    if (errorMsg != null) {
+      return false;
+    }
+    for (boolean result : results) {
+      if (!result) {
+        return false;
+      }
+    }
+    return true;
   }
 }

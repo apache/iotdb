@@ -18,13 +18,37 @@
  */
 package org.apache.iotdb.cluster.rpc.request;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 
 public abstract class BasicRequest implements Serializable {
 
   private static final long serialVersionUID = 8434915845259380829L;
 
+  /**
+   * Group ID
+   */
   private String groupID;
+
+  /**
+   * Serialized physical plans
+   */
+  protected List<byte[]> physicalPlanBytes;
+
+  protected void init(List<PhysicalPlan> physicalPlanBytes) throws IOException {
+    this.physicalPlanBytes = new ArrayList<>(physicalPlanBytes.size());
+    for (PhysicalPlan plan : physicalPlanBytes) {
+      this.physicalPlanBytes.add(PhysicalPlanLogTransfer.operatorToLog(plan));
+    }
+  }
+
+  public List<byte[]> getPhysicalPlanBytes() {
+    return physicalPlanBytes;
+  }
 
   public BasicRequest(String groupID) {
     this.groupID = groupID;

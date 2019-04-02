@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.callback;
 
 import java.util.concurrent.CountDownLatch;
+import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 
@@ -53,6 +54,8 @@ public abstract class QPTask {
    * Describe task type
    */
   protected TaskState taskState;
+
+  protected Server server = Server.getInstance();
 
   public QPTask(boolean isSyncTask, int taskNum, TaskState taskState) {
     this.isSyncTask = isSyncTask;

@@ -19,14 +19,24 @@
 package org.apache.iotdb.cluster.rpc.service;
 
 import java.io.IOException;
+import java.sql.Statement;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,38 +62,128 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     queryMetadataExecutor.get().init();
   }
 
-//  //TODO
-//  @Override
-//  public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) throws TException {
-//    throw new TException("not support");
-//  }
-//
-//  //TODO
-//
-//  /**
-//   * Judge whether the statement is ADMIN COMMAND and if true, executeWithGlobalTimeFilter it.
-//   *
-//   * @param statement command
-//   * @return true if the statement is ADMIN COMMAND
-//   * @throws IOException exception
-//   */
-//  @Override
-//  public boolean execAdminCommand(String statement) throws IOException {
-//    throw new IOException("exec admin command not support");
-//  }
-//
-//  //TODO
-//  @Override
-//  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) throws TException {
-//    throw new TException("query not support");
-//  }
-//
-//
-//  //TODO
-//  @Override
-//  public TSFetchResultsResp fetchResults(TSFetchResultsReq req) throws TException {
-//    throw new TException("not support");
-//  }
+  @Override
+  public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req)
+      throws TException {
+    try {
+      if (!checkLogin()) {
+        LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN, null);
+      }
+      List<String> statements = req.getStatements();
+      PhysicalPlan[] physicalPlans = new PhysicalPlan[statements.size()];
+      int[] result = new int[statements.size()];
+      String batchErrorMessage = "";
+      boolean isAllSuccessful = true;
+
+      /** find all valid physical plans **/
+      for (int i = 0; i < statements.size(); i++) {
+        try {
+          PhysicalPlan plan = processor
+              .parseSQLToPhysicalPlan(statements.get(i), zoneIds.get());
+          plan.setProposer(username.get());
+
+          /** if meet a query, handle all requests before the query request. **/
+          if (plan.isQuery()) {
+            int[] resultTemp = new int[i];
+            PhysicalPlan[] physicalPlansTemp = new PhysicalPlan[i];
+            System.arraycopy(result, 0, resultTemp, 0, i);
+            System.arraycopy(physicalPlans, 0, physicalPlansTemp, 0, i);
+            result = resultTemp;
+            physicalPlans = physicalPlansTemp;
+            BatchResult batchResult = new BatchResult(isAllSuccessful, batchErrorMessage, result);
+            nonQueryExecutor.get().processBatch(physicalPlans, batchResult);
+            return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+                "statement is query :" + statements.get(i), Arrays.stream(result).boxed().collect(
+                    Collectors.toList()));
+          }
+
+          // check permissions
+          List<Path> paths = plan.getPaths();
+          if (!checkAuthorization(paths, plan)) {
+            String errMessage = String.format("No permissions for this operation %s",
+                plan.getOperatorType());
+            result[i] = Statement.EXECUTE_FAILED;
+            isAllSuccessful = false;
+            batchErrorMessage = errMessage;
+          } else {
+            physicalPlans[i] = plan;
+          }
+        } catch (AuthException e) {
+          LOGGER.error("meet error while checking authorization.", e);
+          String errMessage = String.format("Uninitialized authorizer" + " beacuse %s",
+              e.getMessage());
+          result[i] = Statement.EXECUTE_FAILED;
+          isAllSuccessful = false;
+          batchErrorMessage = errMessage;
+        } catch (Exception e) {
+          String errMessage = String.format("Fail to generate physcial plan" + "%s beacuse %s",
+              statements.get(i), e.getMessage());
+          result[i] = Statement.EXECUTE_FAILED;
+          isAllSuccessful = false;
+          batchErrorMessage = errMessage;
+        }
+      }
+
+      BatchResult batchResult = new BatchResult(isAllSuccessful, batchErrorMessage, result);
+      nonQueryExecutor.get().processBatch(physicalPlans, batchResult);
+      batchErrorMessage = batchResult.batchErrorMessage;
+      isAllSuccessful = batchResult.isAllSuccessful;
+
+      if (isAllSuccessful) {
+        return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
+            "Execute batch statements successfully", Arrays.stream(result).boxed().collect(
+                Collectors.toList()));
+      } else {
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, batchErrorMessage,
+            Arrays.stream(result).boxed().collect(
+                Collectors.toList()));
+      }
+    } catch (Exception e) {
+      LOGGER.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
+    }
+  }
+
+  /**
+   * Present batch results.
+   */
+  public class BatchResult {
+
+    private boolean isAllSuccessful;
+    private String batchErrorMessage;
+    private int[] result;
+
+    public BatchResult(boolean isAllSuccessful, String batchErrorMessage, int[] result) {
+      this.isAllSuccessful = isAllSuccessful;
+      this.batchErrorMessage = batchErrorMessage;
+      this.result = result;
+    }
+
+    public boolean isAllSuccessful() {
+      return isAllSuccessful;
+    }
+
+    public void setAllSuccessful(boolean allSuccessful) {
+      isAllSuccessful = allSuccessful;
+    }
+
+    public String getBatchErrorMessage() {
+      return batchErrorMessage;
+    }
+
+    public void setBatchErrorMessage(String batchErrorMessage) {
+      this.batchErrorMessage = batchErrorMessage;
+    }
+
+    public int[] getResult() {
+      return result;
+    }
+
+    public void setResult(int[] result) {
+      this.result = result;
+    }
+  }
 
   @Override
   public boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {

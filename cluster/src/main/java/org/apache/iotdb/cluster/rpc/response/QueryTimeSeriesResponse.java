@@ -24,13 +24,15 @@ public class QueryTimeSeriesResponse extends BasicResponse {
 
   private List<List<String>> timeSeries;
 
-  public QueryTimeSeriesResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
-    super(redirected, success, leaderStr, errorMsg);
+  public QueryTimeSeriesResponse(String groupId, boolean redirected, boolean success, String leaderStr, String errorMsg) {
+    super(groupId, redirected, leaderStr, errorMsg);
+    this.addResult(success);
   }
 
-  public QueryTimeSeriesResponse(boolean redirected, boolean success, List<List<String>> timeSeries) {
-    super(redirected, success, null, null);
+  public QueryTimeSeriesResponse(String groupId, boolean redirected, boolean success, List<List<String>> timeSeries) {
+    super(groupId, redirected, null, null);
     this.timeSeries = timeSeries;
+    this.addResult(success);
   }
 
   public List<List<String>> getTimeSeries() {

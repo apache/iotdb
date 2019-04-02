@@ -16,29 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.callback;
+package org.apache.iotdb.cluster.rpc.closure;
 
-import org.apache.iotdb.cluster.rpc.request.BasicRequest;
+import com.alipay.sofa.jraft.Closure;
+import com.alipay.sofa.jraft.Status;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 
-@Deprecated
-/**
- * Split a task to multi task closures.
- */
-public class MultiQPTask extends QPTask {
+public class ResponseClosure implements Closure {
 
-  public MultiQPTask(boolean isSyncTask, int taskNum, BasicRequest request) {
-    super(isSyncTask, taskNum, TaskState.INITIAL);
-    this.request = request;
+  private BasicResponse response;
+  private Closure closure;
+
+  public ResponseClosure(BasicResponse response, Closure closure) {
+    this.response = response;
+    this.closure = closure;
   }
 
-  /**
-   * Process response
-   *
-   * @param basicResponse response from receiver
-   */
   @Override
-  public void run(BasicResponse basicResponse) {
+  public void run(Status status) {
+    if (this.closure != null) {
+      closure.run(status);
+    }
+  }
 
+  public BasicResponse getResponse() {
+    return response;
+  }
+
+  public void setResponse(BasicResponse response) {
+    this.response = response;
   }
 }

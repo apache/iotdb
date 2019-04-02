@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.callback.SingleQPTask;
 import org.apache.iotdb.cluster.entity.Server;
+import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
@@ -73,6 +74,7 @@ public class DataStateMachine extends StateMachineAdapter {
 
       Closure closure = null;
       DataGroupNonQueryRequest request = null;
+      BasicResponse response = null;
       final ByteBuffer data = iterator.getData();
       try {
         request = SerializerManager.getSerializer(SerializerManager.Hessian2)
@@ -83,30 +85,40 @@ public class DataStateMachine extends StateMachineAdapter {
       if (iterator.done() != null) {
         /** It's leader to apply task **/
         closure = iterator.done();
+        response = ((ResponseClosure) closure).getResponse();
       }
       Status status = Status.OK();
-      PhysicalPlan plan;
-      try {
-        assert request != null;
-        plan = PhysicalPlanLogTransfer
-            .logToOperator(request.getPhysicalPlanBytes());
-        /** If the request is to set path and sg of the path doesn't exist, it needs to run null-read in meta group to avoid out of data sync **/
-        if (plan.getOperatorType() == OperatorType.SET_STORAGE_GROUP && !MManager.getInstance()
-            .checkStorageExistOfPath(((MetadataPlan) plan).getPath().getFullPath())) {
-          SingleQPTask nullReadTask = new SingleQPTask(false, null);
-          try {
-            LOGGER.info("Handle null-read in meta group for adding path request.");
-            handleNullReadToMetaGroup(nullReadTask, status);
-            nullReadTask.await();
-          } catch (InterruptedException e) {
-            status.setCode(1);
-            status.setErrorMsg(e.toString());
+      assert request != null;
+
+      List<byte[]> planBytes = request.getPhysicalPlanBytes();
+      /** handle batch plans(planBytes.size() > 0) or single plan(planBytes.size()==1) **/
+      for (byte[] planByte : planBytes) {
+        try {
+          PhysicalPlan plan = PhysicalPlanLogTransfer.logToOperator(planByte);
+          /** If the request is to set path and sg of the path doesn't exist, it needs to run null-read in meta group to avoid out of data sync **/
+          if (plan.getOperatorType() == OperatorType.SET_STORAGE_GROUP && !MManager.getInstance()
+              .checkStorageExistOfPath(((MetadataPlan) plan).getPath().getFullPath())) {
+            SingleQPTask nullReadTask = new SingleQPTask(false, null);
+            try {
+              LOGGER.info("Handle null-read in meta group for adding path request.");
+              handleNullReadToMetaGroup(nullReadTask, status);
+              nullReadTask.await();
+            } catch (InterruptedException e) {
+              status.setCode(-1);
+              status.setErrorMsg(e.toString());
+            }
+          }
+          qpExecutor.processNonQuery(plan);
+          if (closure != null) {
+            response.addResult(true);
+          }
+        } catch (ProcessorException | IOException e) {
+          LOGGER.error("Execute physical plan error", e);
+          status = new Status(-1, e.toString());
+          if (closure != null) {
+            response.addResult(false);
           }
         }
-        qpExecutor.processNonQuery(plan);
-      } catch (ProcessorException | IOException e) {
-        LOGGER.error("Execute physical plan error", e);
-        status = new Status(1, e.toString());
       }
       if (closure != null) {
         closure.run(status);
@@ -129,10 +141,10 @@ public class DataStateMachine extends StateMachineAdapter {
         .readIndex(reqContext, new ReadIndexClosure() {
           @Override
           public void run(Status status, long index, byte[] reqCtx) {
-            BasicResponse response = new BasicResponse(false, true, null, null) {
+            BasicResponse response = new BasicResponse(null, false, null, null) {
             };
             if (!status.isOk()) {
-              originStatus.setCode(1);
+              originStatus.setCode(-1);
               originStatus.setErrorMsg(status.getErrorMsg());
             }
             qpTask.run(response);

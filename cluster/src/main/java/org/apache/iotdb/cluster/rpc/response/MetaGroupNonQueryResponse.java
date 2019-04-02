@@ -23,12 +23,12 @@ package org.apache.iotdb.cluster.rpc.response;
  */
 public class MetaGroupNonQueryResponse extends BasicResponse {
 
-  public MetaGroupNonQueryResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
-    super(redirected, success, leaderStr, errorMsg);
+  public MetaGroupNonQueryResponse(String groupId, boolean redirected, String leaderStr, String errorMsg) {
+    super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public MetaGroupNonQueryResponse(boolean redirected, boolean success) {
-    super(redirected, success, null, null);
+  public MetaGroupNonQueryResponse(String groupId, boolean redirected) {
+    super(groupId, redirected, null, null);
   }
 
 }

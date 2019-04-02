@@ -22,16 +22,15 @@ import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
 import com.alipay.remoting.exception.CodecException;
 import com.alipay.remoting.serialization.SerializerManager;
-import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.entity.Task;
-import com.alipay.sofa.jraft.option.CliOptions;
-import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
+import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.MetaGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.slf4j.Logger;
@@ -40,9 +39,11 @@ import org.slf4j.LoggerFactory;
 /**
  * Async handle those requests which need to be applied in metadata group.
  */
-public class MetaGroupNonQueryAsyncProcessor extends BasicAsyncUserProcessor<MetaGroupNonQueryRequest> {
+public class MetaGroupNonQueryAsyncProcessor extends
+    BasicAsyncUserProcessor<MetaGroupNonQueryRequest> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MetaGroupNonQueryAsyncProcessor.class);
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(MetaGroupNonQueryAsyncProcessor.class);
   private Server server;
 
   public MetaGroupNonQueryAsyncProcessor(Server server) {
@@ -60,10 +61,7 @@ public class MetaGroupNonQueryAsyncProcessor extends BasicAsyncUserProcessor<Met
     if (!metadataHolder.getFsm().isLeader()) {
       PeerId leader = RaftUtils.getTargetPeerID(groupId);
       LOGGER.info("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
-      BoltCliClientService cliClientService = new BoltCliClientService();
-      cliClientService.init(new CliOptions());
-      LOGGER.info("Right leader is: {}, group id = {} ", leader, groupId);
-      MetaGroupNonQueryResponse response = new MetaGroupNonQueryResponse(true, false,
+      MetaGroupNonQueryResponse response = new MetaGroupNonQueryResponse(groupId, true,
           leader.toString(), null);
       asyncContext.sendResponse(response);
     } else {
@@ -71,16 +69,23 @@ public class MetaGroupNonQueryAsyncProcessor extends BasicAsyncUserProcessor<Met
       LOGGER.info("Apply task to metadata raft node");
       /** Apply QPTask to Raft Node **/
       final Task task = new Task();
-      task.setDone((Status status) -> {
-        asyncContext.sendResponse(
-            new MetaGroupNonQueryResponse(false, status.isOk(), null, status.getErrorMsg()));
+      BasicResponse response = new MetaGroupNonQueryResponse(groupId, false, null, null);
+      ResponseClosure closure = new ResponseClosure(response, status -> {
+        response.addResult(status.isOk());
+        if (!status.isOk()) {
+          response.setErrorMsg(status.getErrorMsg());
+        }
+        asyncContext.sendResponse(response);
       });
+      task.setDone(closure);
       try {
         task.setData(ByteBuffer
             .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
                 .serialize(metaGroupNonQueryRequest)));
       } catch (final CodecException e) {
-        asyncContext.sendResponse(new MetaGroupNonQueryResponse(false, false, null, e.toString()));
+        response.addResult(false);
+        response.setErrorMsg(e.toString());
+        asyncContext.sendResponse(response);
       }
 
       RaftService service = (RaftService) metadataHolder.getService();

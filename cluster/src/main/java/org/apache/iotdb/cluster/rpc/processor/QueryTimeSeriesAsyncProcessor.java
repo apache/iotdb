@@ -59,14 +59,14 @@ public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<Query
             QueryTimeSeriesResponse response;
             if (status.isOk()) {
               try {
-                response = new QueryTimeSeriesResponse(false, true,
+                response = new QueryTimeSeriesResponse(groupId, false, true,
                     dataPartitionHolder.getFsm()
                         .getShowTimeseriesPath(queryMetadataRequest.getPath()));
               } catch (final PathErrorException e) {
-                response = new QueryTimeSeriesResponse(false, false, null, e.toString());
+                response = new QueryTimeSeriesResponse(groupId, false, false, null, e.toString());
               }
             } else {
-              response = new QueryTimeSeriesResponse(false, false, null, null);
+              response = new QueryTimeSeriesResponse(groupId, false, false, null, null);
             }
             asyncContext.sendResponse(response);
           }

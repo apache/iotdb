@@ -108,13 +108,13 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
             if (status.isOk()) {
               try {
                 LOGGER.info("start to read");
-                response = new QueryTimeSeriesResponse(false, true,
+                response = new QueryTimeSeriesResponse(groupId, false, true,
                     dataPartitionHolder.getFsm().getShowTimeseriesPath(path));
               } catch (final PathErrorException e) {
-                response = new QueryTimeSeriesResponse(false, false, null, e.toString());
+                response = new QueryTimeSeriesResponse(groupId, false, false, null, e.toString());
               }
             } else {
-              response = new QueryTimeSeriesResponse(false, false, null, null);
+              response = new QueryTimeSeriesResponse(groupId, false, false, null, null);
             }
             task.run(response);
           }
@@ -151,7 +151,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
           @Override
           public void run(Status status, long index, byte[] reqCtx) {
-            QueryStorageGroupResponse response = null;
+            QueryStorageGroupResponse response;
             if (status.isOk()) {
               try {
                 response = new QueryStorageGroupResponse(false, true,

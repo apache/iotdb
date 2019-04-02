@@ -96,13 +96,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected static final String INFO_NOT_LOGIN = "{}: Not login.";
   protected static final String ERROR_NOT_LOGIN = "Not login";
 
-  private QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+  protected QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
   // Record the username for every rpc connection. Username.get() is null if
   // login is failed.
-  private ThreadLocal<String> username = new ThreadLocal<>();
+  protected ThreadLocal<String> username = new ThreadLocal<>();
   private ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
   private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
-  private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
+  protected ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public TSServiceImpl() throws IOException {
@@ -156,7 +156,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     queryRet.set(new HashMap<>());
   }
 
-  public void initClusterService(){
+  public void initClusterService() {
 
   }
 
@@ -211,7 +211,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  public TS_Status getErrorStatus(String message){
+  public TS_Status getErrorStatus(String message) {
     TS_Status status = new TS_Status(TS_StatusCode.ERROR_STATUS);
     status.setErrorMessage(message);
     return status;
@@ -234,7 +234,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setShowTimeseriesList(showTimeseriesList);
         } catch (PathErrorException | InterruptedException | ProcessorException e) {
           status = getErrorStatus(
-                  String.format("Failed to fetch timeseries %s's metadata because: %s",
+              String.format("Failed to fetch timeseries %s's metadata because: %s",
                   req.getColumnPath(), e));
           resp.setStatus(status);
           return resp;
@@ -243,8 +243,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
                   outOfMemoryError);
           status = getErrorStatus(
-                  String.format("Failed to fetch timeseries %s's metadata because: %s",
-                          req.getColumnPath(), outOfMemoryError));
+              String.format("Failed to fetch timeseries %s's metadata because: %s",
+                  req.getColumnPath(), outOfMemoryError));
           resp.setStatus(status);
           return resp;
         }
@@ -255,14 +255,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           Set<String> storageGroups = getAllStorageGroups();
           resp.setShowStorageGroups(storageGroups);
         } catch (PathErrorException | InterruptedException e) {
-          status = getErrorStatus(String.format("Failed to fetch storage groups' metadata because: %s", e));
+          status = getErrorStatus(
+              String.format("Failed to fetch storage groups' metadata because: %s", e));
           resp.setStatus(status);
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
           LOGGER.error("Failed to fetch storage groups' metadata", outOfMemoryError);
           status = getErrorStatus(
-                  String.format("Failed to fetch storage groups' metadata because: %s",
-                          outOfMemoryError));
+              String.format("Failed to fetch storage groups' metadata because: %s",
+                  outOfMemoryError));
           resp.setStatus(status);
           return resp;
         }
@@ -274,7 +275,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           metadataInJson = MManager.getInstance().getMetadataInString();
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
           LOGGER.error("Failed to fetch all metadata in json", outOfMemoryError);
-          status = getErrorStatus(String.format("Failed to fetch all metadata in json because: %s", outOfMemoryError));
+          status = getErrorStatus(
+              String.format("Failed to fetch all metadata in json because: %s", outOfMemoryError));
           resp.setStatus(status);
           return resp;
         }
@@ -299,7 +301,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
           LOGGER.error("Failed to get delta object map", outOfMemoryError);
-          status = getErrorStatus(String.format("Failed to get delta object map because: %s", outOfMemoryError));
+          status = getErrorStatus(
+              String.format("Failed to get delta object map because: %s", outOfMemoryError));
           break;
         }
         status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
@@ -321,7 +324,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         try {
           resp.setColumnsList(MManager.getInstance().getPaths(req.getColumnPath()));
         } catch (PathErrorException e) {
-          status = getErrorStatus(String.format("Failed to fetch %s's all columns because: %s", req.getColumnPath(), e));
+          status = getErrorStatus(String
+              .format("Failed to fetch %s's all columns because: %s", req.getColumnPath(), e));
           resp.setStatus(status);
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
@@ -765,7 +769,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * Close cluster service
    */
-  public void closeClusterService(){
+  public void closeClusterService() {
 
   }
 

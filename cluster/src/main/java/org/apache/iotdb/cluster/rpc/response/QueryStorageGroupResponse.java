@@ -25,12 +25,14 @@ public class QueryStorageGroupResponse extends BasicResponse {
   private Set<String> storageGroups;
 
   public QueryStorageGroupResponse(boolean redirected, boolean success, String leaderStr, String errorMsg) {
-    super(redirected, success, leaderStr, errorMsg);
+    super(null, redirected, leaderStr, errorMsg);
+    this.addResult(success);
   }
 
   public QueryStorageGroupResponse(boolean redirected, boolean success, Set<String> storageGroups) {
-    super(redirected, success, null, null);
+    super(null, redirected, null, null);
     this.storageGroups = storageGroups;
+    this.addResult(success);
   }
 
   public Set<String> getStorageGroups() {
