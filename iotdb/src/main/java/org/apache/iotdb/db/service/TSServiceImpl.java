@@ -271,7 +271,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case "METADATA_IN_JSON":
         String metadataInJson;
         try {
-          metadataInJson = MManager.getInstance().getMetadataInString();
+          metadataInJson = getMetadataInString();
+        } catch (PathErrorException | InterruptedException | ProcessorException e) {
+          status = getErrorStatus(
+              String.format("Failed to fetch all metadata in json because: %s", e));
+          resp.setStatus(status);
+          return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
           LOGGER.error("Failed to fetch all metadata in json", outOfMemoryError);
           status = getErrorStatus(String.format("Failed to fetch all metadata in json because: %s", outOfMemoryError));
@@ -350,6 +355,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected List<List<String>> getTimeSeriesForPath(String path)
       throws PathErrorException, InterruptedException, ProcessorException {
     return MManager.getInstance().getShowTimeseriesPath(path);
+  }
+
+  protected String getMetadataInString()
+      throws InterruptedException, PathErrorException, ProcessorException {
+    return MManager.getInstance().getMetadataInString();
   }
 
   /**

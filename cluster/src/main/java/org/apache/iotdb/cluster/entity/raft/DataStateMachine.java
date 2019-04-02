@@ -172,4 +172,8 @@ public class DataStateMachine extends StateMachineAdapter {
   public List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
     return mManager.getShowTimeseriesPath(path);
   }
+
+  public String getMetadataInString() {
+    return mManager.getMetadataInString();
+  }
 }

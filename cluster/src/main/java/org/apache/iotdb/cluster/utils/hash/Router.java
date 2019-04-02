@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -233,5 +234,9 @@ public class Router {
   public boolean insideGroup(String groupId, PhysicalNode node) {
     PhysicalNode[] nodes = getNodesByGroupId(groupId);
     return Arrays.asList(nodes).contains(node);
+  }
+
+  public Set<String> getAllGroupId() {
+    return groupIdMapNodeCache.keySet();
   }
 }

@@ -109,4 +109,10 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       throws PathErrorException, InterruptedException, ProcessorException {
     return queryMetadataExecutor.get().processTimeSeriesQuery(path);
   }
+
+  @Override
+  protected String getMetadataInString()
+      throws InterruptedException, PathErrorException, ProcessorException {
+    return queryMetadataExecutor.get().processMetadataInStringQuery();
+  }
 }

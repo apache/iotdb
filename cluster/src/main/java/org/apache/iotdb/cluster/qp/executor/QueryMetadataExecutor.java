@@ -34,9 +34,11 @@ import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
+import org.apache.iotdb.cluster.rpc.request.QueryMetadataInStringRequest;
 import org.apache.iotdb.cluster.rpc.request.QueryStorageGroupRequest;
 import org.apache.iotdb.cluster.rpc.request.QueryTimeSeriesRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.response.QueryMetadataInStringResponse;
 import org.apache.iotdb.cluster.rpc.response.QueryStorageGroupResponse;
 import org.apache.iotdb.cluster.rpc.response.QueryTimeSeriesResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
@@ -92,6 +94,43 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       }
     }
     return res;
+  }
+
+  public String processMetadataInStringQuery()
+      throws InterruptedException, PathErrorException, ProcessorException {
+    Set<String> groupIdSet = router.getAllGroupId();
+
+    List<String> metadataList = new ArrayList<>(groupIdSet.size());
+    for (String groupId : groupIdSet) {
+      QueryMetadataInStringRequest request = new QueryMetadataInStringRequest(groupId);
+      SingleQPTask task = new SingleQPTask(false, request);
+
+      LOGGER.info("Execute show metadata in string statement for group {}.", groupId);
+      /** Check if the plan can be executed locally. **/
+      if (router.insideGroup(groupId, localNode)) {
+        LOGGER.info("Execute show metadata in string statement locally for group {}.", groupId);
+        metadataList.add(queryMetadataInStringLocally(groupId, task));
+      } else {
+        try {
+          PeerId holder = RaftUtils.getRandomPeerID(groupId);
+          metadataList.add(queryMetadataInString(task, holder));
+        } catch (RaftConnectionException e) {
+          LOGGER.error(e.getMessage());
+          throw new ProcessorException("Raft connection occurs error.", e);
+        }
+      }
+    }
+    return combineMetadataInStringList(metadataList);
+  }
+
+  /**
+   * Combine multiple metadata in String format into single String
+   *
+   * @param metadataList
+   * @return single String of all metadata
+   */
+  private String combineMetadataInStringList(List<String> metadataList) {
+    return null; //TODO
   }
 
   /**
@@ -173,5 +212,45 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
         });
     task.await();
     return ((QueryStorageGroupResponse) task.getResponse()).getStorageGroups();
+  }
+
+  /**
+   * Handle "show timeseries" statement
+   */
+  private String queryMetadataInStringLocally(String groupId, SingleQPTask task)
+      throws InterruptedException, ProcessorException {
+    final byte[] reqContext = new byte[4];
+    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
+    DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
+        .getDataPartitionHolder(groupId);
+    ((RaftService) dataPartitionHolder.getService()).getNode()
+        .readIndex(reqContext, new ReadIndexClosure() {
+
+          @Override
+          public void run(Status status, long index, byte[] reqCtx) {
+            QueryMetadataInStringResponse response;
+            if (status.isOk()) {
+              LOGGER.info("start to read");
+              response = new QueryMetadataInStringResponse(false, true,
+                  dataPartitionHolder.getFsm().getMetadataInString());
+            } else {
+              response = new QueryMetadataInStringResponse(false, false, null, null);
+            }
+            task.run(response);
+          }
+        });
+    task.await();
+    QueryMetadataInStringResponse response = (QueryMetadataInStringResponse) task.getResponse();
+    if (!response.isSuccess()) {
+      LOGGER.error("Execute show timeseries statement false.");
+      throw new ProcessorException();
+    }
+    return ((QueryMetadataInStringResponse) task.getResponse()).getMetadata();
+  }
+
+  private String queryMetadataInString(SingleQPTask task, PeerId leader)
+      throws InterruptedException, RaftConnectionException {
+    BasicResponse response = asyncHandleTaskGetRes(task, leader, 0);
+    return ((QueryMetadataInStringResponse) response).getMetadata();
   }
 }
