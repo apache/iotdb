@@ -32,7 +32,7 @@
 
 # Overview
 
-IoTDB(Internet of Things Database) is an integrated data management engine designed for time series data, which can provide users specific services for data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its intense integration with Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high-speed data input and complex data analysis in the IoT industrial field.
+IoTDB (Internet of Things Database) is an integrated data management engine designed for time series data, which can provide users specific services for data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its intense integration with Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high-speed data input and complex data analysis in the IoT industrial field.
 
 # Main Features
 
@@ -51,10 +51,10 @@ For the latest information about IoTDB, please visit our [IoTDB official website
 
 # Prerequisites
 
-To use IoTDB, you need to have:
+To use IoTDB, you need to have Java (JRE >= 1.8) installed. 
+If you want to compile and install IoTDB from source code, JDK is required.
 
-1. Java >= 1.8
-2. Maven >= 3.0 (If you want to compile and install IoTDB from source code)
+Maven is not mandatory to be installed, you can use the provided Maven wrapper (mvnw) to facilitate development.
 
 If you want to use Hadoop or Spark to analyze IoTDB data file (called as TsFile), you need to compile the hadoop and spark modules.
 
@@ -67,13 +67,13 @@ This short guide will walk you through the basic process of using IoTDB. For a m
 Use git to get IoTDB source code:
 
 ```
-Shell > git clone https://github.com/apache/incubator-iotdb.git
+> git clone https://github.com/apache/incubator-iotdb.git
 ```
 
-Or:
+Or use the following command if you have configured SSH key on GitHub:
 
 ```
-Shell > git clone git@github.com:apache/incubator-iotdb.git
+> git clone git@github.com:apache/incubator-iotdb.git
 ```
 
 Now suppose your directory is like this:
@@ -97,6 +97,7 @@ incubator-iotdb/     <-- root path
 ```
 
 Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb/
+
 Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli
 
 If you are not the first time that building IoTDB, remember deleting the following files:
@@ -112,7 +113,7 @@ Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 > pwd
 /workspace/incubator-iotdb
 
-> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
+> ./mvnw clean package -pl iotdb -am -Dmaven.test.skip=true
 ```
 
 If successful, you will see the the following text in the terminal:
@@ -135,7 +136,7 @@ Otherwise, you may need to check the error statements and fix the problems.
 After build, the IoTDB project will be at the folder "iotdb/iotdb". The folder will include the following contents:
 
 ```
-iotdb/iotdb/     <-- root path
+iotdb/iotdb/  <-- root path
 |
 +- bin/       <-- script files
 |
@@ -173,7 +174,7 @@ After that we start the server. Running the startup script:
 The server can be stopped with ctrl-C or the following script:
 
 ```
-# Unix/ OS X
+# Unix/OS X
 > $IOTDB_HOME/bin/stop-server.sh
 
 # Windows
@@ -189,7 +190,7 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 > pwd
 /workspace/incubator-iotdb
 
-> mvn clean package -pl iotdb-cli -am -Dmaven.test.skip=true
+> ./mvnw clean package -pl iotdb-cli -am -Dmaven.test.skip=true
 
 # Unix/OS X
 > $IOTDB_CLI_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
@@ -282,11 +283,9 @@ CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ```
+
 ### Run import shell
-
 ```
-
-
 # Unix/OS X
 > $IOTDB_CLI_HOME/bin/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 
@@ -296,7 +295,7 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 
 ### Error data file
 
-csvInsertError.error
+`csvInsertError.error`
 
 # Usage of export-csv.sh
 
