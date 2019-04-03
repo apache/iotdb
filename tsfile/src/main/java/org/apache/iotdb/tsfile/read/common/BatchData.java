@@ -38,18 +38,30 @@ public class BatchData {
   private TSDataType dataType;
   private int curIdx;
 
-  /** the number of ArrayList in timeRet **/
+  /**
+   * the number of ArrayList in timeRet
+   **/
   private int timeArrayIdx;
-  /** the index of current ArrayList in timeRet **/
+  /**
+   * the index of current ArrayList in timeRet
+   **/
   private int curTimeIdx;
-  /** the insert timestamp number of timeRet **/
+  /**
+   * the insert timestamp number of timeRet
+   **/
   private int timeLength;
 
-  /** the number of ArrayList in valueRet **/
+  /**
+   * the number of ArrayList in valueRet
+   **/
   private int valueArrayIdx;
-  /** the index of current ArrayList in valueRet **/
+  /**
+   * the index of current ArrayList in valueRet
+   **/
   private int curValueIdx;
-  /** the insert value number of valueRet **/
+  /**
+   * the insert value number of valueRet
+   **/
   private int valueLength;
 
   private ArrayList<long[]> timeRet;
@@ -532,12 +544,12 @@ public class BatchData {
     return curIdx;
   }
 
-  public long getTimeByIndex(int idx){
+  public long getTimeByIndex(int idx) {
     rangeCheckForTime(idx);
     return this.timeRet.get(idx / timeCapacity)[idx % timeCapacity];
   }
 
-  public long getLongByIndex(int idx){
+  public long getLongByIndex(int idx) {
     rangeCheck(idx);
     return this.longRet.get(idx / timeCapacity)[idx % timeCapacity];
   }
@@ -584,5 +596,20 @@ public class BatchData {
       default:
         return null;
     }
+  }
+
+  public Object getValueInTimestamp(long time) {
+    while (hasNext()) {
+      if (currentTime() < time) {
+        next();
+      } else if (currentTime() == time) {
+        Object value = currentValue();
+        next();
+        return value;
+      } else {
+        return null;
+      }
+    }
+    return null;
   }
 }

@@ -36,12 +36,14 @@ import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
+import org.apache.iotdb.db.query.reader.mem.MemChunkReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SealedTsFilesReader;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
+import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
+import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReaderByTimestamp;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -55,6 +57,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
@@ -205,26 +208,62 @@ public class SeriesReaderFactory {
       PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
 
       // reader for sequence data
-      SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-          null, context);
+      SequenceDataReaderByTimestamp tsFilesReader = new SequenceDataReaderByTimestamp(
+          queryDataSource.getSeqDataSource(), context);
+      mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
 
       // reader for unSequence data
-      PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
-          .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
-
-      if (!tsFilesReader.hasNext()) {
-        mergeReaderByTimestamp
-            .addReaderWithPriority(unSeqMergeReader, PriorityMergeReader.HIGH_PRIORITY);
-      } else {
-        mergeReaderByTimestamp
-            .addReaderWithPriority(new AllDataReader(tsFilesReader, unSeqMergeReader),
-                PriorityMergeReader.HIGH_PRIORITY);
-      }
+      PriorityMergeReaderByTimestamp unSeqMergeReader = SeriesReaderFactory.getInstance()
+          .createUnSeqMergeReaderByTimestamp(queryDataSource.getOverflowSeriesDataSource());
+      mergeReaderByTimestamp.addReaderWithPriority(unSeqMergeReader, 2);
 
       readersOfSelectedSeries.add(mergeReaderByTimestamp);
     }
 
     return readersOfSelectedSeries;
+  }
+
+  /**
+   * This method is used to create unsequence insert reader by timestamp for IoTDB request, such as
+   * query, aggregation and groupby request.
+   */
+  public PriorityMergeReaderByTimestamp createUnSeqMergeReaderByTimestamp(
+      OverflowSeriesDataSource overflowSeriesDataSource)
+      throws IOException {
+
+    PriorityMergeReaderByTimestamp unSeqMergeReader = new PriorityMergeReaderByTimestamp();
+
+    int priorityValue = 1;
+
+    for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource
+        .getOverflowInsertFileList()) {
+
+      // store only one opened file stream into manager, to avoid too many opened files
+      TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
+          .get(overflowInsertFile.getFilePath(), false);
+
+      ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
+
+      for (ChunkMetaData chunkMetaData : overflowInsertFile.getChunkMetaDataList()) {
+
+        Chunk chunk = chunkLoader.getChunk(chunkMetaData);
+        ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk);
+
+        unSeqMergeReader
+            .addReaderWithPriority(new EngineChunkReaderByTimestamp(chunkReader), priorityValue);
+        priorityValue++;
+      }
+    }
+
+    // add reader for MemTable
+    if (overflowSeriesDataSource.hasRawChunk()) {
+      unSeqMergeReader.addReaderWithPriority(
+          new MemChunkReaderByTimestamp(overflowSeriesDataSource.getReadableMemChunk()),
+          priorityValue);
+    }
+
+    // TODO add external sort when needed
+    return unSeqMergeReader;
   }
 
   private static class SeriesReaderFactoryHelper {
