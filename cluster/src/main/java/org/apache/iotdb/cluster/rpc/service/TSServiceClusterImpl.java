@@ -186,7 +186,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   }
 
   @Override
-  public boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
+  protected boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
     return nonQueryExecutor.get().processNonQuery(plan);
   }
 

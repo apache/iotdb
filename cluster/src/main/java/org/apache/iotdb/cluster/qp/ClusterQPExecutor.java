@@ -145,7 +145,7 @@ public abstract class ClusterQPExecutor {
    */
   public boolean canHandleNonQueryByGroupId(String groupId) {
     if (router.containPhysicalNodeByGroupId(groupId, localNode)) {
-      if (RaftUtils.convertPeerId(RaftUtils.getTargetPeerID(groupId)).equals(localNode)) {
+      if (RaftUtils.getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
         return true;
       }
     }
@@ -156,12 +156,15 @@ public abstract class ClusterQPExecutor {
    * Verify if the query command can execute in local. Check if this node belongs to the storage
    * group
    */
-  public boolean canHandleQuery(String storageGroup) {
+  public boolean canHandleQueryBySG(String storageGroup) {
     return router.containPhysicalNodeBySG(storageGroup, localNode);
   }
 
-  private boolean isInsideGroup(String groupId) {
-    return groupId.equals(router.getGroupID(router.routeGroup(groupId)));
+  /**
+   * Verify if the query command can execute in local. Check if this node belongs to the group id
+   */
+  public boolean canHandleQueryByGroupId(String groupId) {
+    return router.containPhysicalNodeByGroupId(groupId, localNode);
   }
 
   /**

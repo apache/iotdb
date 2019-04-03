@@ -123,6 +123,7 @@ public class RaftUtils {
    * @param groupID raft group id
    * @return raft group configuration
    */
+  @Deprecated
   public static Configuration getConfiguration(String groupID) {
     //TODO can we reuse Configuration instance?
     Configuration conf = new Configuration();

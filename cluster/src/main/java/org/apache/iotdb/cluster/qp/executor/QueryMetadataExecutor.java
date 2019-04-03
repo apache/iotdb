@@ -68,6 +68,9 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     return queryStorageGroupLocally();
   }
 
+  /**
+   * Handle show timeseries <path> statement
+   */
   public List<List<String>> processTimeSeriesQuery(String path)
       throws InterruptedException, PathErrorException, ProcessorException {
     List<String> storageGroupList = getAllStroageGroupsByPath(path);
@@ -80,7 +83,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
       LOGGER.info("Execute show timeseries {} statement for group {}.", path, groupId);
       /** Check if the plan can be executed locally. **/
-      if (router.insideGroup(groupId, localNode)) {
+      if (canHandleQueryByGroupId(groupId)) {
         LOGGER.info("Execute show timeseries {} statement locally for group {}.", path, groupId);
         res.addAll(queryTimeSeriesLocally(path, groupId, task));
       } else {
@@ -109,7 +112,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
       LOGGER.info("Execute show metadata in string statement for group {}.", groupId);
       /** Check if the plan can be executed locally. **/
-      if (router.insideGroup(groupId, localNode)) {
+      if (canHandleQueryByGroupId(groupId)) {
         LOGGER.info("Execute show metadata in string statement locally for group {}.", groupId);
         asyncQueryMetadataInStringLocally(groupId, task);
       } else {
@@ -219,8 +222,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   /**
    * Handle "show timeseries" statement
    */
-  private void asyncQueryMetadataInStringLocally(String groupId, SingleQPTask task)
-      throws InterruptedException, ProcessorException {
+  private void asyncQueryMetadataInStringLocally(String groupId, SingleQPTask task) {
     final byte[] reqContext = new byte[4];
     Bits.putInt(reqContext, 0, requestId.incrementAndGet());
     DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
@@ -233,10 +235,12 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
             QueryMetadataInStringResponse response;
             if (status.isOk()) {
               LOGGER.info("start to read");
-              response = new QueryMetadataInStringResponse(false, true,
+              response = new QueryMetadataInStringResponse(groupId, false,
                   dataPartitionHolder.getFsm().getMetadataInString());
+              response.addResult(true);
             } else {
-              response = new QueryMetadataInStringResponse(false, false, null, null);
+              response = new QueryMetadataInStringResponse(groupId, false, null, null);
+              response.addResult(false);
             }
             task.run(response);
           }
@@ -252,7 +256,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   /**
    * Combine multiple metadata in String format into single String
    *
-   * @param metadataList
    * @return single String of all metadata
    */
   private String combineMetadataInStringList(List<String> metadataList) {

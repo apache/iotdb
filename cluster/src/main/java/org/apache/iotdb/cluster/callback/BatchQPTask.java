@@ -85,7 +85,7 @@ public class BatchQPTask extends QPTask {
   public void execute(NonQueryExecutor executor) {
     for (Entry<String, SingleQPTask> entry : taskMap.entrySet()) {
       String groupId = entry.getKey();
-      PeerId leader = RaftUtils.getTargetPeerID(groupId);
+      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
       SingleQPTask subTask = entry.getValue();
       Thread thread;
       if (executor.canHandleNonQueryByGroupId(groupId)) {

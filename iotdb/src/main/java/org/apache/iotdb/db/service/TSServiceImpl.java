@@ -690,11 +690,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  public boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
+  protected boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
     return processor.getExecutor().processNonQuery(plan);
   }
 
-  public TSExecuteStatementResp executeUpdateStatement(String statement)
+  private TSExecuteStatementResp executeUpdateStatement(String statement)
       throws ProcessorException {
 
     PhysicalPlan physicalPlan;
