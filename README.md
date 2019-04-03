@@ -112,7 +112,7 @@ Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 > pwd
 /workspace/incubator-iotdb
 
-> ./mvnw clean package -pl iotdb -am -Dmaven.test.skip=true
+> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
 ```
 
 If successful, you will see the the following text in the terminal:
@@ -189,7 +189,7 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 > pwd
 /workspace/incubator-iotdb
 
-> ./mvnw clean package -pl iotdb-cli -am -Dmaven.test.skip=true
+> mvn clean package -pl iotdb-cli -am -Dmaven.test.skip=true
 
 # Unix/OS X
 > $IOTDB_CLI_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
