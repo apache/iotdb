@@ -16,23 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.hash;
+package org.apache.iotdb.cluster.rpc.response;
 
-public class VirtualNode {
-  //the index of the virtual node in the physicalNode
-  private final int replicaIndex;
-  private final PhysicalNode physicalNode;
+public class QueryMetadataInStringResponse extends BasicResponse {
 
-  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
-    this.replicaIndex = replicaIndex;
-    this.physicalNode = physicalNode;
+  private String metadata;
+
+  public QueryMetadataInStringResponse(String groupId, boolean redirected, String leaderStr,
+      String errorMsg) {
+    super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  PhysicalNode getPhysicalNode() {
-    return this.physicalNode;
+  public QueryMetadataInStringResponse(String groupId, boolean redirected, String metadata) {
+    super(groupId, redirected, null, null);
+    this.metadata = metadata;
   }
 
-  String getKey() {
-    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
+  public String getMetadata() {
+    return metadata;
   }
 }

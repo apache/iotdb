@@ -323,7 +323,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   private boolean handleDataGroupRequest(String storageGroup, PhysicalPlan plan)
       throws IOException, RaftConnectionException, InterruptedException {
     String groupId = getGroupIdBySG(storageGroup);
-    PeerId leader = RaftUtils.getTargetPeerID(groupId);
+    PeerId leader = RaftUtils.getLeaderPeerID(groupId);
     List<PhysicalPlan> plans = new ArrayList<>();
     plans.add(plan);
     DataGroupNonQueryRequest request = new DataGroupNonQueryRequest(groupId, plans);
@@ -392,9 +392,8 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     List<PhysicalPlan> plans = new ArrayList<>();
     plans.add(plan);
     MetaGroupNonQueryRequest request = new MetaGroupNonQueryRequest(
-        CLUSTER_CONFIG.METADATA_GROUP_ID,
-        plans);
-    PeerId leader = RaftUtils.getTargetPeerID(CLUSTER_CONFIG.METADATA_GROUP_ID);
+        CLUSTER_CONFIG.METADATA_GROUP_ID, plans);
+    PeerId leader = RaftUtils.getLeaderPeerID(CLUSTER_CONFIG.METADATA_GROUP_ID);
 
     SingleQPTask task = new SingleQPTask(false, request);
     return asyncHandleTask(task, leader);

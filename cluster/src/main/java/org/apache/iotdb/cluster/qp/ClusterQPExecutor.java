@@ -20,6 +20,11 @@ package org.apache.iotdb.cluster.qp;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.callback.QPTask.TaskState;
@@ -79,6 +84,41 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
+   * Get all Storage Group Names by path
+   */
+  public List<String> getAllStroageGroupsByPath(String path) throws PathErrorException {
+    List<String> storageGroupList;
+    try {
+      storageGroupList = MManager.getInstance().getAllFileNamesByPath(path);
+    } catch (PathErrorException e) {
+      throw new PathErrorException(String.format("File level of %s doesn't exist.", path));
+    }
+    return storageGroupList;
+  }
+
+  /**
+   * Classify the input storage group list by which data group it belongs to.
+   *
+   * @param sgList
+   * @return key is groupId, value is all SGs belong to this data group
+   */
+  public Map<String, Set<String>> classifySGByGroupId(List<String> sgList) {
+    Map<String, Set<String>> map = new HashMap<>();
+    for (int i = 0; i < sgList.size(); i++) {
+      String sg = sgList.get(i);
+      String groupId = getGroupIdBySG(sg);
+      if (map.containsKey(groupId)) {
+        map.get(groupId).add(sg);
+      } else {
+        Set<String> set = new HashSet<>();
+        set.add(sg);
+        map.put(groupId, set);
+      }
+    }
+    return map;
+  }
+
+  /**
    * Get raft group id by storage group name
    */
   public String getGroupIdBySG(String storageGroup) {
@@ -92,7 +132,7 @@ public abstract class ClusterQPExecutor {
   public boolean canHandleNonQueryBySG(String storageGroup) {
     if (router.containPhysicalNodeBySG(storageGroup, localNode)) {
       String groupId = getGroupIdBySG(storageGroup);
-      if (RaftUtils.convertPeerId(RaftUtils.getTargetPeerID(groupId)).equals(localNode)) {
+      if (RaftUtils.getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
         return true;
       }
     }
@@ -120,35 +160,49 @@ public abstract class ClusterQPExecutor {
     return router.containPhysicalNodeBySG(storageGroup, localNode);
   }
 
+  private boolean isInsideGroup(String groupId) {
+    return groupId.equals(router.getGroupID(router.routeGroup(groupId)));
+  }
+
   /**
    * Async handle QPTask by QPTask and leader id
    *
-   * @param QPTask request QPTask
+   * @param task request QPTask
    * @param leader leader of the target raft group
    * @param taskRetryNum Number of QPTask retries due to timeout and redirected.
    * @return basic response
    */
-  public BasicResponse asyncHandleTaskGetRes(QPTask QPTask, PeerId leader, int taskRetryNum)
+  public BasicResponse asyncHandleTaskGetRes(QPTask task, PeerId leader, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
+    asyncSendTask(task, leader, taskRetryNum);
+    return asyncGetRes(task, leader, taskRetryNum);
+  }
+
+  public void asyncSendTask(QPTask task, PeerId leader, int taskRetryNum)
+      throws RaftConnectionException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
       throw new RaftConnectionException(String.format("QPTask retries reach the upper bound %s",
           TASK_MAX_RETRY));
     }
     NodeAsClient client = new RaftNodeAsClient();
     /** Call async method **/
-    client.asyncHandleRequest(cliClientService, QPTask.getRequest(), leader, QPTask);
-    QPTask.await();
-    if (QPTask.getTaskState() != TaskState.FINISH) {
-      if (QPTask.getTaskState() == TaskState.REDIRECT) {
+    client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
+  }
+
+  public BasicResponse asyncGetRes(QPTask task, PeerId leader, int taskRetryNum)
+      throws InterruptedException, RaftConnectionException {
+    task.await();
+    if (task.getTaskState() != TaskState.FINISH) {
+      if (task.getTaskState() == TaskState.REDIRECT) {
         /** redirect to the right leader **/
-        leader = PeerId.parsePeer(QPTask.getResponse().getLeaderStr());
-        LOGGER.info("Redirect leader: {}, group id = {}", leader, QPTask.getRequest().getGroupID());
-        RaftUtils.updateRaftGroupLeader(QPTask.getRequest().getGroupID(), leader);
+        leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
+        LOGGER.info("Redirect leader: {}, group id = {}", leader, task.getRequest().getGroupID());
+        RaftUtils.updateRaftGroupLeader(task.getRequest().getGroupID(), leader);
       }
-      QPTask.resetTask();
-      return asyncHandleTaskGetRes(QPTask, leader, taskRetryNum + 1);
+      task.resetTask();
+      return asyncHandleTaskGetRes(task, leader, taskRetryNum + 1);
     }
-    return QPTask.getResponse();
+    return task.getResponse();
   }
 
   public void shutdown() {

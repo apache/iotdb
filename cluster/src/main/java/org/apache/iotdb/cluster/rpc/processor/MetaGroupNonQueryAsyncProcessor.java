@@ -59,7 +59,7 @@ public class MetaGroupNonQueryAsyncProcessor extends
     String groupId = metaGroupNonQueryRequest.getGroupID();
     MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
     if (!metadataHolder.getFsm().isLeader()) {
-      PeerId leader = RaftUtils.getTargetPeerID(groupId);
+      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
       LOGGER.info("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
       MetaGroupNonQueryResponse response = new MetaGroupNonQueryResponse(groupId, true,
           leader.toString(), null);

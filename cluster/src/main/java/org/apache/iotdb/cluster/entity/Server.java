@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.rpc.processor.DataGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.processor.MetaGroupNonQueryAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.processor.QueryMetadataInStringAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.processor.QueryTimeSeriesAsyncProcessor;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
@@ -40,6 +41,9 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * each server represents a node in the physical world.
+ */
 public class Server {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
@@ -66,6 +70,7 @@ public class Server {
     rpcServer.registerUserProcessor(new DataGroupNonQueryAsyncProcessor(this));
     rpcServer.registerUserProcessor(new MetaGroupNonQueryAsyncProcessor(this));
     rpcServer.registerUserProcessor(new QueryTimeSeriesAsyncProcessor(this));
+    rpcServer.registerUserProcessor(new QueryMetadataInStringAsyncProcessor(this));
 
     metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer, true);
     metadataHolder.init();
@@ -81,7 +86,7 @@ public class Server {
       PhysicalNode[] group = groups[i];
       String groupId = router.getGroupID(group);
       DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId,
-          RaftUtils.convertPhysicalNodeArrayToPeerIdArray(group), serverId, rpcServer, false);
+          RaftUtils.getPeerIdArrayFrom(group), serverId, rpcServer, false);
       dataPartitionHolder.init();
       dataPartitionHolder.start();
       dataPartitionHolderMap.put(groupId, dataPartitionHolder);

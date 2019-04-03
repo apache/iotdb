@@ -68,6 +68,12 @@ public class DataStateMachine extends StateMachineAdapter {
     this.groupId = groupId;
   }
 
+  /**
+   * Only deal with non query operation.
+   * The operation is completed by {@code qpExecutor}.
+   *
+   * @param iterator
+   */
   @Override
   public void onApply(Iterator iterator) {
     while (iterator.hasNext()) {
@@ -177,5 +183,9 @@ public class DataStateMachine extends StateMachineAdapter {
 
   public List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
     return mManager.getShowTimeseriesPath(path);
+  }
+
+  public String getMetadataInString() {
+    return mManager.getMetadataInString();
   }
 }

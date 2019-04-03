@@ -45,7 +45,7 @@ public class RaftUtils {
   private static final Router router = Router.getInstance();
   /**
    * The cache will be update in two case: 1. When @onLeaderStart() method of state machine is
-   * called, the cache will be update. 2. When @getTargetPeerID() in this class is called and cache
+   * called, the cache will be update. 2. When @getLeaderPeerID() in this class is called and cache
    * don't have the key, it's will get random peer and update. 3. When @redirected of BasicRequest
    * is true, the task will be retry and the cache will update.
    */
@@ -54,14 +54,17 @@ public class RaftUtils {
   private RaftUtils() {
   }
 
-  @Deprecated
+
   /**
-   * Get leader node according to the group id
+   * @deprecated
+   * Get leader node according to the group id.
+   * <br/> This method will connect to one of nodes in the group to get the correct leader.
    *
    * @param groupId group id of raft group
    * @return PeerId of leader
    */
-  public static PeerId getTargetPeerID(String groupId, BoltCliClientService cliClientService)
+  @Deprecated
+  public static PeerId getLeaderPeerID(String groupId, BoltCliClientService cliClientService)
       throws RaftConnectionException {
     Configuration conf = getConfiguration(groupId);
     RouteTable.getInstance().updateConfiguration(groupId, conf);
@@ -81,7 +84,7 @@ public class RaftUtils {
    *
    * @return leader id
    */
-  public static PeerId getTargetPeerID(String groupId) {
+  public static PeerId getLeaderPeerID(String groupId) {
     if (!groupLeaderCache.containsKey(groupId)) {
       PeerId randomPeerId = getRandomPeerID(groupId);
       groupLeaderCache.put(groupId, randomPeerId);
@@ -101,7 +104,7 @@ public class RaftUtils {
     } else {
       PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
       PhysicalNode node = physicalNodes[getRandomInt(physicalNodes.length)];
-      randomPeerId = convertPhysicalNode(node);
+      randomPeerId = getPeerIDFrom(node);
     }
     return randomPeerId;
   }
@@ -121,6 +124,7 @@ public class RaftUtils {
    * @return raft group configuration
    */
   public static Configuration getConfiguration(String groupID) {
+    //TODO can we reuse Configuration instance?
     Configuration conf = new Configuration();
     RaftService service;
     if (groupID.equals(CLUSTER_CONFIG.METADATA_GROUP_ID)) {
@@ -135,14 +139,19 @@ public class RaftUtils {
     return conf;
   }
 
-  public static PeerId convertPhysicalNode(PhysicalNode node) {
+  public static PeerId getPeerIDFrom(PhysicalNode node) {
     return new PeerId(node.ip, node.port);
   }
 
-  public static PhysicalNode convertPeerId(PeerId peer) {
+  public static PhysicalNode getPhysicalNodeFrom(PeerId peer) {
     return new PhysicalNode(peer.getIp(), peer.getPort());
   }
 
+  /**
+   *
+   * @param nodes each node string is in the format of "ip:port:idx",
+   * @return
+   */
   public static PeerId[] convertStringArrayToPeerIdArray(String[] nodes) {
     PeerId[] peerIds = new PeerId[nodes.length];
     for (int i = 0; i < nodes.length; i++) {
@@ -160,7 +169,7 @@ public class RaftUtils {
     return -1;
   }
 
-  public static PhysicalNode[] convertPeerIdArrayToPhysicalNodeArray(PeerId[] peerIds) {
+  public static PhysicalNode[] getPhysicalNodeArrayFrom(PeerId[] peerIds) {
     PhysicalNode[] physicalNodes = new PhysicalNode[peerIds.length];
     for (int i = 0; i < peerIds.length; i++) {
       physicalNodes[i] = new PhysicalNode(peerIds[i].getIp(), peerIds[i].getPort());
@@ -168,10 +177,10 @@ public class RaftUtils {
     return physicalNodes;
   }
 
-  public static PeerId[] convertPhysicalNodeArrayToPeerIdArray(PhysicalNode[] physicalNodes) {
+  public static PeerId[] getPeerIdArrayFrom(PhysicalNode[] physicalNodes) {
     PeerId[] peerIds = new PeerId[physicalNodes.length];
     for (int i = 0; i < physicalNodes.length; i++) {
-      peerIds[i] = convertPhysicalNode(physicalNodes[i]);
+      peerIds[i] = getPeerIDFrom(physicalNodes[i]);
     }
     return peerIds;
   }
