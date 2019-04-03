@@ -54,6 +54,11 @@ public abstract class ClusterQPExecutor {
   protected final Server server = Server.getInstance();
 
   /**
+   * The task in progress.
+   */
+  protected QPTask currentTask;
+
+  /**
    * Rpc Service Client
    */
   protected BoltCliClientService cliClientService;

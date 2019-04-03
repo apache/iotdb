@@ -23,12 +23,21 @@ package org.apache.iotdb.cluster.rpc.response;
  */
 public class DataGroupNonQueryResponse extends BasicResponse {
 
-  public DataGroupNonQueryResponse(String groupId, boolean redirected, String leaderStr, String errorMsg) {
+  public DataGroupNonQueryResponse(String groupId, boolean redirected, String leaderStr,
+      String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public DataGroupNonQueryResponse(String groupId, boolean redirected) {
-    super(groupId, redirected, null, null);
+  public static DataGroupNonQueryResponse createRedirectedInstance(String groupId, String leaderStr) {
+    return new DataGroupNonQueryResponse(groupId, true, leaderStr, null);
+  }
+
+  public static DataGroupNonQueryResponse createEmptyInstance(String groupId) {
+    return new DataGroupNonQueryResponse(groupId, false, null, null);
+  }
+
+  public static DataGroupNonQueryResponse createErrorInstance(String groupId, String errorMsg) {
+    return new DataGroupNonQueryResponse(groupId, false, null, errorMsg);
   }
 
 }

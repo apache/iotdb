@@ -46,4 +46,9 @@ public class SingleQPTask extends QPTask {
     }
     this.taskCountDownLatch.countDown();
   }
+
+  @Override
+  public void cancel() {
+
+  }
 }

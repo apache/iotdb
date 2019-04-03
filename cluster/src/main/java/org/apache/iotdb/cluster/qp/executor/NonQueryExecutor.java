@@ -243,6 +243,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     }
     /** Execute multi task **/
     BatchQPTask task = new BatchQPTask(subTaskMap.size(), batchResult, subTaskMap, planIndexMap);
+    currentTask = task;
     task.execute(this);
     task.await();
     batchResult.setAllSuccessful(task.isAllSuccessful());
@@ -250,7 +251,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   }
 
   private boolean update(UpdatePlan updatePlan)
-      throws PathErrorException, InterruptedException, RaftConnectionException, ProcessorException, IOException {
+      throws PathErrorException, InterruptedException, RaftConnectionException, IOException {
     Path path = updatePlan.getPath();
     String deviceId = path.getDevice();
     String storageGroup = getStroageGroupByDevice(deviceId);
@@ -266,7 +267,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    * Handle insert plan
    */
   private boolean insert(InsertPlan insertPlan)
-      throws ProcessorException, PathErrorException, InterruptedException, IOException, RaftConnectionException {
+      throws PathErrorException, InterruptedException, IOException, RaftConnectionException {
     String deviceId = insertPlan.getDeviceId();
     String storageGroup = getStroageGroupByDevice(deviceId);
     return handleDataGroupRequest(storageGroup, insertPlan);
@@ -328,6 +329,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     plans.add(plan);
     DataGroupNonQueryRequest request = new DataGroupNonQueryRequest(groupId, plans);
     SingleQPTask qpTask = new SingleQPTask(false, request);
+    currentTask = qpTask;
     /** Check if the plan can be executed locally. **/
     if (canHandleNonQueryBySG(storageGroup)) {
       return handleDataGroupRequestLocally(groupId, qpTask);
@@ -342,7 +344,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   public boolean handleDataGroupRequestLocally(String groupId, QPTask qpTask)
       throws InterruptedException {
     final Task task = new Task();
-    BasicResponse response = new DataGroupNonQueryResponse(groupId, false, null, null);
+    BasicResponse response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
     ResponseClosure closure = new ResponseClosure(response, status -> {
       response.addResult(status.isOk());
       if (!status.isOk()) {

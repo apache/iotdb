@@ -61,15 +61,15 @@ public class MetaGroupNonQueryAsyncProcessor extends
     if (!metadataHolder.getFsm().isLeader()) {
       PeerId leader = RaftUtils.getLeaderPeerID(groupId);
       LOGGER.info("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
-      MetaGroupNonQueryResponse response = new MetaGroupNonQueryResponse(groupId, true,
-          leader.toString(), null);
+      MetaGroupNonQueryResponse response = MetaGroupNonQueryResponse
+          .createRedirectedInstance(groupId, leader.toString());
       asyncContext.sendResponse(response);
     } else {
 
       LOGGER.info("Apply task to metadata raft node");
       /** Apply QPTask to Raft Node **/
       final Task task = new Task();
-      BasicResponse response = new MetaGroupNonQueryResponse(groupId, false, null, null);
+      BasicResponse response = MetaGroupNonQueryResponse.createEmptyInstance(groupId);
       ResponseClosure closure = new ResponseClosure(response, status -> {
         response.addResult(status.isOk());
         if (!status.isOk()) {

@@ -95,7 +95,7 @@ public class BatchQPTask extends QPTask {
             this.run(subTask.getResponse());
           } catch (InterruptedException e) {
             LOGGER.info("Handle sub task locally failed.");
-            this.run(new DataGroupNonQueryResponse(groupId, false, null, e.toString()));
+            this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.toString()));
           }
         });
         thread.start();
@@ -106,7 +106,7 @@ public class BatchQPTask extends QPTask {
             this.run(subTask.getResponse());
           } catch (RaftConnectionException | InterruptedException e) {
             LOGGER.info("Async handle sub task failed.");
-            this.run(new DataGroupNonQueryResponse(groupId, false, null, e.toString()));
+            this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.toString()));
           }
         });
         thread.start();
@@ -142,6 +142,11 @@ public class BatchQPTask extends QPTask {
       lock.unlock();
     }
     taskCountDownLatch.countDown();
+  }
+
+  @Override
+  public void cancel() {
+
   }
 
   public boolean isAllSuccessful() {

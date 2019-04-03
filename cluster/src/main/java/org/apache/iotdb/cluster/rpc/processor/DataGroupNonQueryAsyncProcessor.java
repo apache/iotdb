@@ -62,16 +62,15 @@ public class DataGroupNonQueryAsyncProcessor extends
     if (!dataPartitionRaftHolder.getFsm().isLeader()) {
       PeerId leader = RaftUtils.getLeaderPeerID(groupId);
       LOGGER.info("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
-      DataGroupNonQueryResponse response = new DataGroupNonQueryResponse(groupId, true,
-          leader.toString(),
-          null);
+      DataGroupNonQueryResponse response = DataGroupNonQueryResponse
+          .createRedirectedInstance(groupId, leader.toString());
       asyncContext.sendResponse(response);
     } else {
 
       LOGGER.info("Apply task to raft node");
       /** Apply QPTask to Raft Node **/
       final Task task = new Task();
-      BasicResponse response = new DataGroupNonQueryResponse(groupId, false, null, null);
+      BasicResponse response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
       ResponseClosure closure = new ResponseClosure(response, status -> {
         response.addResult(status.isOk());
         if (!status.isOk()) {

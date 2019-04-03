@@ -27,8 +27,12 @@ public class MetaGroupNonQueryResponse extends BasicResponse {
     super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public MetaGroupNonQueryResponse(String groupId, boolean redirected) {
-    super(groupId, redirected, null, null);
+  public static MetaGroupNonQueryResponse createRedirectedInstance(String groupId, String leaderStr) {
+    return new MetaGroupNonQueryResponse(groupId, true, leaderStr, null);
+  }
+
+  public static MetaGroupNonQueryResponse createEmptyInstance(String groupId) {
+    return new MetaGroupNonQueryResponse(groupId, false, null, null);
   }
 
 }

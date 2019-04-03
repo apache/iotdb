@@ -122,4 +122,6 @@ public abstract class QPTask {
   public void await() throws InterruptedException {
     this.taskCountDownLatch.await();
   }
+
+  public abstract void cancel();
 }
