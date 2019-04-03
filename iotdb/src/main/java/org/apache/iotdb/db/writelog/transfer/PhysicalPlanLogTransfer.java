@@ -41,6 +41,7 @@ public class PhysicalPlanLogTransfer {
         codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.DELETE).codec;
         break;
       case DELETE_TIMESERIES:
+      case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
         codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.METADATA).codec;
         break;

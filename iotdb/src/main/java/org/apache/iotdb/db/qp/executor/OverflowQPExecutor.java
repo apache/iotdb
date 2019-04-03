@@ -143,6 +143,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             MManager.getInstance());
         return true;
       case DELETE_TIMESERIES:
+      case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
       case METADATA:
         MetadataPlan metadata = (MetadataPlan) plan;
