@@ -46,7 +46,7 @@ public class ClusterConfig {
   /**
    * Replication number
    */
-  private int replication = 3;
+  private int replication = 1;
 
   private String ip = "127.0.0.1";
 

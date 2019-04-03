@@ -48,7 +48,7 @@ public class SingleQPTask extends QPTask {
   }
 
   @Override
-  public void cancel() {
+  public void shutdown() {
 
   }
 }

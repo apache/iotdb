@@ -123,5 +123,5 @@ public abstract class QPTask {
     this.taskCountDownLatch.await();
   }
 
-  public abstract void cancel();
+  public abstract void shutdown();
 }
