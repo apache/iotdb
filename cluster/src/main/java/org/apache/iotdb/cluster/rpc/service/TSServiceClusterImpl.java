@@ -154,7 +154,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     private String batchErrorMessage;
     private int[] result;
 
-    public BatchResult(boolean isAllSuccessful, String batchErrorMessage, int[] result) {
+    private BatchResult(boolean isAllSuccessful, String batchErrorMessage, int[] result) {
       this.isAllSuccessful = isAllSuccessful;
       this.batchErrorMessage = batchErrorMessage;
       this.result = result;
@@ -212,7 +212,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
 
   @Override
   protected String getMetadataInString()
-      throws InterruptedException, PathErrorException, ProcessorException {
+      throws InterruptedException, ProcessorException {
     return queryMetadataExecutor.get().processMetadataInStringQuery();
   }
 }
