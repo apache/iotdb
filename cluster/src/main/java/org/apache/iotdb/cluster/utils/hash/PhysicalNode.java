@@ -57,7 +57,7 @@ public class PhysicalNode {
       return false;
     }
     if (this.ip == null) {
-      return other.ip == null ? true : false;
+      return other.ip == null ;
     }
     return this.ip.equals(other.ip);
   }

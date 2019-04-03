@@ -37,7 +37,7 @@ public abstract class BasicRequest implements Serializable {
   /**
    * Serialized physical plans
    */
-  protected List<byte[]> physicalPlanBytes;
+  private List<byte[]> physicalPlanBytes;
 
   protected void init(List<PhysicalPlan> physicalPlanBytes) throws IOException {
     this.physicalPlanBytes = new ArrayList<>(physicalPlanBytes.size());

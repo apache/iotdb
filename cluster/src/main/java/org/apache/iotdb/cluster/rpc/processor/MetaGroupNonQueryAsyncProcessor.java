@@ -67,7 +67,7 @@ public class MetaGroupNonQueryAsyncProcessor extends
     } else {
 
       LOGGER.info("Apply task to metadata raft node");
-      /** Apply QPTask to Raft Node **/
+      /** Apply Task to Raft Node **/
       final Task task = new Task();
       BasicResponse response = MetaGroupNonQueryResponse.createEmptyInstance(groupId);
       ResponseClosure closure = new ResponseClosure(response, status -> {

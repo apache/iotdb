@@ -146,7 +146,7 @@ public class BatchQPTask extends QPTask {
 
   @Override
   public void shutdown() {
-
+    //TODO
   }
 
   public boolean isAllSuccessful() {

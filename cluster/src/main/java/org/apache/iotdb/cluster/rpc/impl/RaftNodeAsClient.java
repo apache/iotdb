@@ -51,7 +51,7 @@ public class RaftNodeAsClient implements NodeAsClient {
 
   @Override
   public void asyncHandleRequest(Object clientService, BasicRequest request, Object leader,
-      QPTask QPTask)
+      QPTask qpTask)
       throws RaftConnectionException {
     BoltCliClientService boltClientService = (BoltCliClientService) clientService;
     PeerId raftLeader = (PeerId) leader;
@@ -64,14 +64,14 @@ public class RaftNodeAsClient implements NodeAsClient {
                 @Override
                 public void onResponse(Object result) {
                   BasicResponse response = (BasicResponse) result;
-                  QPTask.run(response);
+                  qpTask.run(response);
                 }
 
                 @Override
                 public void onException(Throwable e) {
                   LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
-                  QPTask.setTaskState(TaskState.EXCEPTION);
-                  QPTask.run(null);
+                  qpTask.setTaskState(TaskState.EXCEPTION);
+                  qpTask.run(null);
 
                 }
 

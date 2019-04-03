@@ -61,7 +61,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   public void init() {
     this.cliClientService = new BoltCliClientService();
     this.cliClientService.init(new CliOptions());
-    SUB_TASK_NUM = 1;
+    this.subTaskNum = 1;
   }
 
   public Set<String> processStorageGroupQuery() throws InterruptedException {
@@ -100,7 +100,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   }
 
   public String processMetadataInStringQuery()
-      throws InterruptedException, PathErrorException, ProcessorException {
+      throws InterruptedException, ProcessorException {
     Set<String> groupIdSet = router.getAllGroupId();
 
     List<String> metadataList = new ArrayList<>(groupIdSet.size());

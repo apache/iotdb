@@ -76,7 +76,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   public void init() {
     this.cliClientService = new BoltCliClientService();
     this.cliClientService.init(new CliOptions());
-    SUB_TASK_NUM = 1;
+    subTaskNum = 1;
   }
 
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
@@ -174,7 +174,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
             case LIST_ROLE_USERS:
             case LIST_USER_PRIVILEGE:
             case LIST_USER_ROLES:
-              groupId = CLUSTER_CONFIG.METADATA_GROUP_ID;
+              groupId = METADATA_GROUP_ID;
               break;
             case LOADDATA:
               //TODO
@@ -190,7 +190,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
                   groupId = getGroupIdBySG(storageGroup);
                   break;
                 case SET_FILE_LEVEL:
-                  groupId = CLUSTER_CONFIG.METADATA_GROUP_ID;
+                  groupId = METADATA_GROUP_ID;
                   break;
                 default:
                   batchResult.setAllSuccessful(false);
@@ -394,8 +394,8 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     List<PhysicalPlan> plans = new ArrayList<>();
     plans.add(plan);
     MetaGroupNonQueryRequest request = new MetaGroupNonQueryRequest(
-        CLUSTER_CONFIG.METADATA_GROUP_ID, plans);
-    PeerId leader = RaftUtils.getLeaderPeerID(CLUSTER_CONFIG.METADATA_GROUP_ID);
+        METADATA_GROUP_ID, plans);
+    PeerId leader = RaftUtils.getLeaderPeerID(METADATA_GROUP_ID);
 
     SingleQPTask task = new SingleQPTask(false, request);
     return asyncHandleTask(task, leader);

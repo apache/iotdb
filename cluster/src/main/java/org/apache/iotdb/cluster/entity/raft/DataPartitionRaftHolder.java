@@ -19,8 +19,6 @@
 package org.apache.iotdb.cluster.entity.raft;
 
 import com.alipay.remoting.rpc.RpcServer;
-import com.alipay.sofa.jraft.RaftGroupService;
-import com.alipay.sofa.jraft.StateMachine;
 import com.alipay.sofa.jraft.entity.PeerId;
 import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 

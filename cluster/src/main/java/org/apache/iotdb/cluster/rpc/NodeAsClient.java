@@ -32,10 +32,10 @@ public interface NodeAsClient {
    *
    * @param clientService client rpc service handle
    * @param leader leader node of the target group
-   * @param QPTask the QPTask to be executed
+   * @param qpTask the QPTask to be executed
    */
   void asyncHandleRequest(Object clientService, BasicRequest request, Object leader,
-      QPTask QPTask) throws RaftConnectionException;
+      QPTask qpTask) throws RaftConnectionException;
 
   /**
    * Synchronous processing requests
@@ -44,6 +44,6 @@ public interface NodeAsClient {
    * @param leader leader node of the target group
    * @param QPTask the QPTask to be executed
    */
-  void syncHandleRequest(Object clientService, BasicRequest request, Object leader, QPTask QPTask)
+  void syncHandleRequest(Object clientService, BasicRequest request, Object leader, QPTask qpTask)
       throws RaftConnectionException;
 }

@@ -21,9 +21,7 @@ package org.apache.iotdb.cluster.rpc.request;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 
 /**
  * Handle request to metadata group leader

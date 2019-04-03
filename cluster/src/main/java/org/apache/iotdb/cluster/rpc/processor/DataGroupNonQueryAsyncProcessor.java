@@ -68,7 +68,7 @@ public class DataGroupNonQueryAsyncProcessor extends
     } else {
 
       LOGGER.info("Apply task to raft node");
-      /** Apply QPTask to Raft Node **/
+      /** Apply Task to Raft Node **/
       final Task task = new Task();
       BasicResponse response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
       ResponseClosure closure = new ResponseClosure(response, status -> {

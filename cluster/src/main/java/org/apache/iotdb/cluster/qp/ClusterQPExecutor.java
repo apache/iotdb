@@ -47,8 +47,9 @@ public abstract class ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterQPExecutor.class);
   protected static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
+  protected static final String METADATA_GROUP_ID = CLUSTER_CONFIG.METADATA_GROUP_ID;
   protected Router router = Router.getInstance();
-  protected PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
+  private PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
       CLUSTER_CONFIG.getPort());
   protected MManager mManager = MManager.getInstance();
   protected final Server server = Server.getInstance();
@@ -66,12 +67,12 @@ public abstract class ClusterQPExecutor {
   /**
    * Count limit to redo a single task
    */
-  protected static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getTaskRedoCount();
+  private static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getTaskRedoCount();
 
   /**
    * Number of subtask in task segmentation
    */
-  protected static int SUB_TASK_NUM = 1;
+  protected int subTaskNum = 1;
 
   protected final AtomicInteger requestId = new AtomicInteger(0);
 
@@ -149,10 +150,9 @@ public abstract class ClusterQPExecutor {
    * group 2. If this node is leader.
    */
   public boolean canHandleNonQueryByGroupId(String groupId) {
-    if (router.containPhysicalNodeByGroupId(groupId, localNode)) {
-      if (RaftUtils.getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
-        return true;
-      }
+    if (router.containPhysicalNodeByGroupId(groupId, localNode) && RaftUtils
+        .getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
+      return true;
     }
     return false;
   }

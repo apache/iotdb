@@ -20,10 +20,8 @@ package org.apache.iotdb.cluster.rpc.request;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 
 /**
  * Handle request to data group
