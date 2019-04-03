@@ -88,7 +88,7 @@ incubator-iotdb/     <-- root path
 |
 +- jdbc/
 |
-+- tsile/
++- tsfile/
 |
 ...
 |
