@@ -24,7 +24,6 @@ import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -139,12 +138,12 @@ public class MinValueAggrFunc extends AggregateFunction {
       EngineReaderByTimeStamp dataReader) throws IOException {
     Comparable<Object> minVal = null;
     for (int i = 0; i < length; i++) {
-      TsPrimitiveType value = dataReader.getValueInTimestamp(timestamps[i]);
+      Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value == null) {
         continue;
       }
-      if (minVal == null || minVal.compareTo(value.getValue()) > 0) {
-        minVal = (Comparable<Object>) value.getValue();
+      if (minVal == null || minVal.compareTo(value) > 0) {
+        minVal = (Comparable<Object>) value;
       }
     }
     updateResult(minVal);

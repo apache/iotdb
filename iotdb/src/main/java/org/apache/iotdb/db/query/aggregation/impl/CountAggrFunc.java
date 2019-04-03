@@ -24,7 +24,6 @@ import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -138,7 +137,7 @@ public class CountAggrFunc extends AggregateFunction {
       EngineReaderByTimeStamp dataReader) throws IOException {
     int cnt = 0;
     for (int i = 0; i < length; i++) {
-      TsPrimitiveType value = dataReader.getValueInTimestamp(timestamps[i]);
+      Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
         cnt++;
       }

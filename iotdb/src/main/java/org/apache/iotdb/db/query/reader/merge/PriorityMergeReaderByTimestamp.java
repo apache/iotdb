@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.reader.merge;
 
 import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 
 /**
  * TODO the process of PriorityMergeReaderByTimestamp can be optimized.
@@ -33,12 +32,12 @@ public class PriorityMergeReaderByTimestamp extends PriorityMergeReader implemen
   private TimeValuePair cachedTimeValuePair;
 
   @Override
-  public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
+  public Object getValueInTimestamp(long timestamp) throws IOException {
 
     if (hasCachedTimeValuePair) {
       if (cachedTimeValuePair.getTimestamp() == timestamp) {
         hasCachedTimeValuePair = false;
-        return cachedTimeValuePair.getValue();
+        return cachedTimeValuePair.getValue().getValue();
       } else if (cachedTimeValuePair.getTimestamp() > timestamp) {
         return null;
       }
@@ -48,7 +47,7 @@ public class PriorityMergeReaderByTimestamp extends PriorityMergeReader implemen
       cachedTimeValuePair = next();
       if (cachedTimeValuePair.getTimestamp() == timestamp) {
         hasCachedTimeValuePair = false;
-        return cachedTimeValuePair.getValue();
+        return cachedTimeValuePair.getValue().getValue();
       } else if (cachedTimeValuePair.getTimestamp() > timestamp) {
         hasCachedTimeValuePair = true;
         return null;

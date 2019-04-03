@@ -25,7 +25,6 @@ import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -150,9 +149,9 @@ public class MeanAggrFunc extends AggregateFunction {
   public void calcAggregationUsingTimestamps(long[] timestamps, int length,
       EngineReaderByTimeStamp dataReader) throws IOException {
     for (int i = 0; i < length; i++) {
-      TsPrimitiveType value = dataReader.getValueInTimestamp(timestamps[i]);
+      Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        updateMean(seriesDataType, value.getValue());
+        updateMean(seriesDataType, value);
       }
     }
   }

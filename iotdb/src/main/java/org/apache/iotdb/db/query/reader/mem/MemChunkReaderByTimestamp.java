@@ -23,7 +23,6 @@ import java.util.Iterator;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 
 public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
 
@@ -43,8 +42,7 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
     return timeValuePairIterator.hasNext();
   }
 
-  @Override
-  public TimeValuePair next() {
+  private TimeValuePair next() {
     if (hasCachedTimeValuePair) {
       hasCachedTimeValuePair = false;
       return cachedTimeValuePair;
@@ -53,20 +51,15 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
     }
   }
 
-  @Override
-  public void close() {
-    // Do nothing because mem chunk reader will not open files
-  }
-
   // TODO consider change timeValuePairIterator to List structure, and use binary search instead of
   // sequential search
   @Override
-  public TsPrimitiveType getValueInTimestamp(long timestamp) {
+  public Object getValueInTimestamp(long timestamp) {
     while (hasNext()) {
       TimeValuePair timeValuePair = next();
       long time = timeValuePair.getTimestamp();
       if (time == timestamp) {
-        return timeValuePair.getValue();
+        return timeValuePair.getValue().getValue();
       } else if (time > timestamp) {
         hasCachedTimeValuePair = true;
         cachedTimeValuePair = timeValuePair;

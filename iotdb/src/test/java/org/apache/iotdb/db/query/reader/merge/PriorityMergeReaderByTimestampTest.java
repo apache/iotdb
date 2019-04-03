@@ -50,7 +50,7 @@ public class PriorityMergeReaderByTimestampTest {
 
     Random random = new Random();
     for (long time = 4; time < 1080 + 200 * 13 + 600; ) {
-      TsPrimitiveType value = priorityReader.getValueInTimestamp(time);
+      Object value = priorityReader.getValueInTimestamp(time);
       // System.out.println("time = " + time + " value = " + value);
       if (time < 100) {
         // null
@@ -58,14 +58,14 @@ public class PriorityMergeReaderByTimestampTest {
       } else if (time < 850) {
         // reader 1
         if ((time - 100) % 5 == 0) {
-          Assert.assertEquals(time % 11, value.getLong());
+          Assert.assertEquals(time % 11, value);
         }
       } else if (time < 1080) {
         // reader 2, reader 1
         if (time >= 850 && (time - 850) % 7 == 0) {
-          Assert.assertEquals(time % 19, value.getLong());
+          Assert.assertEquals(time % 19, value);
         } else if (time < 1100 && (time - 100) % 5 == 0) {
-          Assert.assertEquals(time % 11, value.getLong());
+          Assert.assertEquals(time % 11, value);
         } else {
           Assert.assertNull(value);
         }
@@ -73,11 +73,11 @@ public class PriorityMergeReaderByTimestampTest {
       } else if (time < 1080 + 200 * 13) {
         // reader 3, reader 2, reader 1
         if (time >= 1080 && (time - 1080) % 13 == 0) {
-          Assert.assertEquals(time % 31, value.getLong());
+          Assert.assertEquals(time % 31, value);
         } else if (time < 850 + 200 * 7 && (time - 850) % 7 == 0) {
-          Assert.assertEquals(time % 19, value.getLong());
+          Assert.assertEquals(time % 19, value);
         } else if (time < 1100 && (time - 100) % 5 == 0) {
-          Assert.assertEquals(time % 11, value.getLong());
+          Assert.assertEquals(time % 11, value);
         } else {
           Assert.assertNull(value);
         }
@@ -164,17 +164,17 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     @Override
-    public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
+    public Object getValueInTimestamp(long timestamp) throws IOException {
       this.currentTimeStamp = timestamp;
       if (hasCachedTimeValuePair && cachedTimeValuePair.getTimestamp() == timestamp) {
         hasCachedTimeValuePair = false;
-        return cachedTimeValuePair.getValue();
+        return cachedTimeValuePair.getValue().getValue();
       }
 
       if (hasNext()) {
         cachedTimeValuePair = next();
         if (cachedTimeValuePair.getTimestamp() == timestamp) {
-          return cachedTimeValuePair.getValue();
+          return cachedTimeValuePair.getValue().getValue();
         } else if (cachedTimeValuePair.getTimestamp() > timestamp) {
           hasCachedTimeValuePair = true;
         }

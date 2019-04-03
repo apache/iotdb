@@ -45,11 +45,11 @@ public class FakedSeriesReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   @Override
-  public TsPrimitiveType getValueInTimestamp(long timestamp) {
+  public Object getValueInTimestamp(long timestamp) {
     if (hasCachedTimeValuePair) {
       if (timestamp == cachedTimeValuePair.getTimestamp()) {
         hasCachedTimeValuePair = false;
-        return cachedTimeValuePair.getValue();
+        return cachedTimeValuePair.getValue().getValue();
       } else if (timestamp > cachedTimeValuePair.getTimestamp()) {
         hasCachedTimeValuePair = false;
       } else {
@@ -59,7 +59,7 @@ public class FakedSeriesReaderByTimestamp implements EngineReaderByTimeStamp {
     while (iterator.hasNext()) {
       cachedTimeValuePair = iterator.next();
       if (timestamp == cachedTimeValuePair.getTimestamp()) {
-        return cachedTimeValuePair.getValue();
+        return cachedTimeValuePair.getValue().getValue();
       } else if (timestamp < cachedTimeValuePair.getTimestamp()) {
         hasCachedTimeValuePair = true;
         break;
@@ -71,20 +71,6 @@ public class FakedSeriesReaderByTimestamp implements EngineReaderByTimeStamp {
   @Override
   public boolean hasNext() {
     return hasCachedTimeValuePair || iterator.hasNext();
-  }
-
-  @Override
-  public TimeValuePair next() {
-    if (hasCachedTimeValuePair) {
-      hasCachedTimeValuePair = false;
-      return cachedTimeValuePair;
-    }
-    return iterator.next();
-  }
-
-  @Override
-  public void close() {
-
   }
 }
 
