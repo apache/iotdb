@@ -28,7 +28,7 @@
 ![](https://img.shields.io/github/downloads/apache/incubator-iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
-[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](http://iotdb.apache.org/)
+[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 
 # Overview
 
@@ -46,23 +46,22 @@ IoTDB's features are as following:
 6. Easy to get start. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
 7. Intense integration with Open Source Ecosystem. IoTDB supports Hadoop, Spark, etc. analysis ecosystems and Grafana visualization tool.
 
-
-For the latest information about IoTDB, please visit our [IoTDB official website](http://iotdb.apache.org/#/).
+For the latest information about IoTDB, please visit our [IoTDB official website](https://iotdb.apache.org/).
 
 # Prerequisites
 
-To use IoTDB, you need to install Java (JRE >= 1.8).
-If you want to compile and install IoTDB from source code, JDK is required.
+IoTDB requires Java (>= 1.8), To use IoTDB, JRE should be installed.
 
-Maven (>= 3.0) is not mandatory to be installed, you can use the provided Maven wrapper (mvnw) to facilitate development.
+If you want to compile and install IoTDB from source code, JDK and Maven (>= 3.1) are required.
+While Maven is not mandatory to be installed standalone, you can use the provided Maven wrapper, `./mvnw.sh` on Linux/OS X or `.\mvnw.cmd` on Windows, to facilitate development.
 
 If you want to use Hadoop or Spark to analyze IoTDB data file (called as TsFile), you need to compile the hadoop and spark modules.
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [Document Part](http://iotdb.apache.org/#/Documents/Quick%20Start).
+This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/latest/sec1).
 
-### Installation from source code
+## Installation from source code
 
 Use git to get IoTDB source code:
 
@@ -153,7 +152,7 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 
 In total, we provide users three kinds of configurations module: environment config module (iotdb-env.bat, iotdb-env.sh), system config module (tsfile-format.properties, iotdb-engine.properties) and log config module (logback.xml). All of these kinds of configuration files are put in iotdb/config folder.
 
-For more, you are advised to check our website [document page](http://iotdb.apache.org/#/Documents/Quick%20Start). The forth chapter in User Guide Document will give you the details.
+For more, you are advised to check our documentation [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/latest/sec4) in detail.
 
 ## Start
 
@@ -267,7 +266,7 @@ execute successfully.
 
 If your session looks similar to what's above, congrats, your IoTDB is operational!
 
-For more on what commands are supported by IoTDB SQL, see our website [document page](http://iotdb.apache.org/#/Documents/Quick%20Start). The eighth chapter in User Guide Document will give you help.
+For more on what commands are supported by IoTDB SQL, see our documentation [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/latest/sec5).
 
 
 # Usage of import-csv.sh
