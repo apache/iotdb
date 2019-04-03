@@ -26,6 +26,8 @@ import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import com.alipay.sofa.jraft.util.Bits;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.cluster.callback.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -54,6 +56,11 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
 
+  /**
+   * Template of <show timeseries <storage group>>
+   */
+  private static final String SHOW_TIMESERIES_TEMPLETE = "show timeseries %s";
+
   public QueryMetadataExecutor() {
 
   }
@@ -73,30 +80,53 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
    */
   public List<List<String>> processTimeSeriesQuery(String path)
       throws InterruptedException, PathErrorException, ProcessorException {
-    List<String> storageGroupList = getAllStroageGroupsByPath(path);
-    Set<String> groupIdSet = classifySGByGroupId(storageGroupList).keySet();
-
     List<List<String>> res = new ArrayList<>();
-    for (String groupId : groupIdSet) {
-      QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, path);
-      SingleQPTask task = new SingleQPTask(false, request);
-
-      LOGGER.info("Execute show timeseries {} statement for group {}.", path, groupId);
-      /** Check if the plan can be executed locally. **/
-      if (canHandleQueryByGroupId(groupId)) {
-        LOGGER.info("Execute show timeseries {} statement locally for group {}.", path, groupId);
-        res.addAll(queryTimeSeriesLocally(path, groupId, task));
-      } else {
-        try {
-          PeerId holder = RaftUtils.getRandomPeerID(groupId);
-          res.addAll(queryTimeSeries(task, holder));
-        } catch (RaftConnectionException e) {
-          LOGGER.error(e.getMessage());
-          throw new ProcessorException("Raft connection occurs error.", e);
+    /** Check whether it's related to one storage group **/
+    if (checkStorageExistOfPath(path)) {
+      String storageGroup = mManager.getFileNameByPath(path);
+      String groupId = getGroupIdBySG(storageGroup);
+      List<String> paths = new ArrayList<>();
+      paths.add(path);
+      handleTimseriesQuery(groupId, paths, res);
+    } else {
+      List<String> storageGroupList = getAllStroageGroupsByPath(path);
+      Map<String, Set<String>> groupIdSGMap = classifySGByGroupId(storageGroupList);
+      for (Entry<String, Set<String>> entry : groupIdSGMap.entrySet()) {
+        List<String> paths = new ArrayList<>();
+        for (String storageGroup : entry.getValue()) {
+          paths.add(String.format(SHOW_TIMESERIES_TEMPLETE, storageGroup));
         }
+        String groupId = entry.getKey();
+        handleTimseriesQuery(groupId, paths, res);
       }
     }
     return res;
+  }
+
+  /**
+   * Handle query timeseries in one data group
+   *
+   * @param groupId data group id
+   */
+  private void handleTimseriesQuery(String groupId, List<String> pathList, List<List<String>> res)
+      throws ProcessorException, InterruptedException {
+    QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, pathList);
+    SingleQPTask task = new SingleQPTask(false, request);
+
+    LOGGER.info("Execute show timeseries {} statement for group {}.", pathList, groupId);
+    /** Check if the plan can be executed locally. **/
+    if (canHandleQueryByGroupId(groupId)) {
+      LOGGER.info("Execute show timeseries {} statement locally for group {}.", pathList, groupId);
+      res.addAll(queryTimeSeriesLocally(pathList, groupId, task));
+    } else {
+      try {
+        PeerId holder = RaftUtils.getRandomPeerID(groupId);
+        res.addAll(queryTimeSeries(task, holder));
+      } catch (RaftConnectionException e) {
+        LOGGER.error(e.getMessage());
+        throw new ProcessorException("Raft connection occurs error.", e);
+      }
+    }
   }
 
   public String processMetadataInStringQuery()
@@ -141,9 +171,9 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   /**
    * Handle "show timeseries <path>" statement
    *
-   * @param path column path
+   * @param pathList column path
    */
-  private List<List<String>> queryTimeSeriesLocally(String path, String groupId, SingleQPTask task)
+  private List<List<String>> queryTimeSeriesLocally(List<String> pathList, String groupId, SingleQPTask task)
       throws InterruptedException, ProcessorException {
     final byte[] reqContext = new byte[4];
     Bits.putInt(reqContext, 0, requestId.incrementAndGet());
@@ -154,17 +184,18 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
           @Override
           public void run(Status status, long index, byte[] reqCtx) {
-            QueryTimeSeriesResponse response;
+            QueryTimeSeriesResponse response = QueryTimeSeriesResponse.createEmptyInstance(groupId);
             if (status.isOk()) {
               try {
                 LOGGER.info("start to read");
-                response = new QueryTimeSeriesResponse(groupId, false, true,
-                    dataPartitionHolder.getFsm().getShowTimeseriesPath(path));
+                for(String path:pathList){
+                  response.addTimeSeries(dataPartitionHolder.getFsm().getShowTimeseriesPath(path));
+                }
               } catch (final PathErrorException e) {
-                response = new QueryTimeSeriesResponse(groupId, false, false, null, e.toString());
+                response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.toString());
               }
             } else {
-              response = new QueryTimeSeriesResponse(groupId, false, false, null, null);
+              response = QueryTimeSeriesResponse.createErrorInstance(groupId, status.getErrorMsg());
             }
             task.run(response);
           }
@@ -172,7 +203,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     task.await();
     QueryTimeSeriesResponse response = (QueryTimeSeriesResponse) task.getResponse();
     if (!response.isSuccess()) {
-      LOGGER.error("Execute show timeseries {} statement false.", path);
+      LOGGER.error("Execute show timeseries {} statement false.", pathList);
       throw new ProcessorException();
     }
     return ((QueryTimeSeriesResponse) task.getResponse()).getTimeSeries();
@@ -204,13 +235,13 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
             QueryStorageGroupResponse response;
             if (status.isOk()) {
               try {
-                response = new QueryStorageGroupResponse(false, true,
-                    metadataHolder.getFsm().getAllStorageGroups());
+                response = QueryStorageGroupResponse
+                    .createSuccessInstance(metadataHolder.getFsm().getAllStorageGroups());
               } catch (final PathErrorException e) {
-                response = new QueryStorageGroupResponse(false, false, null, e.toString());
+                response = QueryStorageGroupResponse.createErrorInstance(e.toString());
               }
             } else {
-              response = new QueryStorageGroupResponse(false, false, null, null);
+              response = QueryStorageGroupResponse.createErrorInstance(status.getErrorMsg());
             }
             task.run(response);
           }

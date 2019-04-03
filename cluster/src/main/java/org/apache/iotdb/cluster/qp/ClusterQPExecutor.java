@@ -95,11 +95,18 @@ public abstract class ClusterQPExecutor {
   public List<String> getAllStroageGroupsByPath(String path) throws PathErrorException {
     List<String> storageGroupList;
     try {
-      storageGroupList = MManager.getInstance().getAllFileNamesByPath(path);
+      storageGroupList = mManager.getAllFileNamesByPath(path);
     } catch (PathErrorException e) {
       throw new PathErrorException(String.format("File level of %s doesn't exist.", path));
     }
     return storageGroupList;
+  }
+
+  /**
+   * Check if the storage group of given path exists in mTree or not.
+   */
+  public boolean checkStorageExistOfPath(String path) {
+    return mManager.checkStorageExistOfPath(path);
   }
 
   /**

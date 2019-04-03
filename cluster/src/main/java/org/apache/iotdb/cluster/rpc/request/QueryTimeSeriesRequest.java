@@ -19,17 +19,18 @@
 package org.apache.iotdb.cluster.rpc.request;
 
 import java.io.Serializable;
+import java.util.List;
 
 public class QueryTimeSeriesRequest extends BasicRequest implements Serializable {
 
-  private String path;
+  private List<String> path;
 
-  public QueryTimeSeriesRequest(String groupID, String path) {
+  public QueryTimeSeriesRequest(String groupID, List<String> path) {
     super(groupID);
     this.path = path;
   }
 
-  public String getPath() {
+  public List<String> getPath() {
     return path;
   }
 }

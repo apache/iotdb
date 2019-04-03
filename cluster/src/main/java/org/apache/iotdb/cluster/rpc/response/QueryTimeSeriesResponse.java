@@ -24,19 +24,25 @@ public class QueryTimeSeriesResponse extends BasicResponse {
 
   private List<List<String>> timeSeries;
 
-  public QueryTimeSeriesResponse(String groupId, boolean redirected, boolean success, String leaderStr, String errorMsg) {
+  private QueryTimeSeriesResponse(String groupId, boolean redirected, boolean success, String leaderStr, String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
     this.addResult(success);
   }
 
-  public QueryTimeSeriesResponse(String groupId, boolean redirected, boolean success, List<List<String>> timeSeries) {
-    super(groupId, redirected, null, null);
-    this.timeSeries = timeSeries;
-    this.addResult(success);
+  public static QueryTimeSeriesResponse createEmptyInstance(String groupId){
+    return new QueryTimeSeriesResponse(groupId, false, true, null, null);
+  }
+
+  public static QueryTimeSeriesResponse createErrorInstance(String groupId, String errorMsg) {
+    return new QueryTimeSeriesResponse(groupId, false, false, null, errorMsg);
   }
 
   public List<List<String>> getTimeSeries() {
     return timeSeries;
+  }
+
+  public void addTimeSeries(List<List<String>> timeSeries){
+    this.timeSeries.addAll(timeSeries);
   }
 
   public void setTimeSeries(List<List<String>> timeSeries) {

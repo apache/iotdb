@@ -56,17 +56,18 @@ public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<Query
 
           @Override
           public void run(Status status, long index, byte[] reqCtx) {
-            QueryTimeSeriesResponse response;
+            QueryTimeSeriesResponse response = QueryTimeSeriesResponse.createEmptyInstance(groupId);
             if (status.isOk()) {
               try {
-                response = new QueryTimeSeriesResponse(groupId, false, true,
-                    dataPartitionHolder.getFsm()
-                        .getShowTimeseriesPath(queryMetadataRequest.getPath()));
+                for (String path : queryMetadataRequest.getPath()) {
+                  response.addTimeSeries(dataPartitionHolder.getFsm()
+                      .getShowTimeseriesPath(path));
+                }
               } catch (final PathErrorException e) {
-                response = new QueryTimeSeriesResponse(groupId, false, false, null, e.toString());
+                response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.toString());
               }
             } else {
-              response = new QueryTimeSeriesResponse(groupId, false, false, null, null);
+              response = QueryTimeSeriesResponse.createErrorInstance(groupId, status.getErrorMsg());
             }
             asyncContext.sendResponse(response);
           }
