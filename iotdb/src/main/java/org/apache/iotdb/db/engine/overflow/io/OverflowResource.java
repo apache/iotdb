@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.overflow.io;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -98,8 +99,9 @@ public class OverflowResource {
       // the tail is at least the len of magic string
       insertIO = new OverflowIO(readWriter);
       readMetadata();
+    } catch (FileNotFoundException e){
+      LOGGER.debug("Failed to construct the OverflowIO.", e);
     } catch (IOException e) {
-      LOGGER.error("Failed to construct the OverflowIO.", e);
       throw e;
     }
     this.versionController = versionController;
