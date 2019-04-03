@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.rpc.response;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class QueryTimeSeriesResponse extends BasicResponse {
@@ -27,6 +28,7 @@ public class QueryTimeSeriesResponse extends BasicResponse {
   private QueryTimeSeriesResponse(String groupId, boolean redirected, boolean success, String leaderStr, String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
     this.addResult(success);
+    timeSeries = new ArrayList<>();
   }
 
   public static QueryTimeSeriesResponse createEmptyInstance(String groupId){

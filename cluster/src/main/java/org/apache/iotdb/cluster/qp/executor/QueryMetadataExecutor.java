@@ -56,11 +56,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
 
-  /**
-   * Template of <show timeseries <storage group>>
-   */
-  private static final String SHOW_TIMESERIES_TEMPLETE = "show timeseries %s";
-
   public QueryMetadataExecutor() {
 
   }
@@ -94,7 +89,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       for (Entry<String, Set<String>> entry : groupIdSGMap.entrySet()) {
         List<String> paths = new ArrayList<>();
         for (String storageGroup : entry.getValue()) {
-          paths.add(String.format(SHOW_TIMESERIES_TEMPLETE, storageGroup));
+          paths.add(storageGroup);
         }
         String groupId = entry.getKey();
         handleTimseriesQuery(groupId, paths, res);
@@ -113,10 +108,10 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId, pathList);
     SingleQPTask task = new SingleQPTask(false, request);
 
-    LOGGER.info("Execute show timeseries {} statement for group {}.", pathList, groupId);
+    LOGGER.debug("Execute show timeseries {} statement for group {}.", pathList, groupId);
     /** Check if the plan can be executed locally. **/
     if (canHandleQueryByGroupId(groupId)) {
-      LOGGER.info("Execute show timeseries {} statement locally for group {}.", pathList, groupId);
+      LOGGER.debug("Execute show timeseries {} statement locally for group {}.", pathList, groupId);
       res.addAll(queryTimeSeriesLocally(pathList, groupId, task));
     } else {
       try {
@@ -140,10 +135,10 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       SingleQPTask task = new SingleQPTask(false, request);
       taskList.add(task);
 
-      LOGGER.info("Execute show metadata in string statement for group {}.", groupId);
+      LOGGER.debug("Execute show metadata in string statement for group {}.", groupId);
       /** Check if the plan can be executed locally. **/
       if (canHandleQueryByGroupId(groupId)) {
-        LOGGER.info("Execute show metadata in string statement locally for group {}.", groupId);
+        LOGGER.debug("Execute show metadata in string statement locally for group {}.", groupId);
         asyncQueryMetadataInStringLocally(groupId, task);
       } else {
         try {
@@ -187,7 +182,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
             QueryTimeSeriesResponse response = QueryTimeSeriesResponse.createEmptyInstance(groupId);
             if (status.isOk()) {
               try {
-                LOGGER.info("start to read");
+                LOGGER.debug("start to read");
                 for(String path:pathList){
                   response.addTimeSeries(dataPartitionHolder.getFsm().getShowTimeseriesPath(path));
                 }
@@ -206,7 +201,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       LOGGER.error("Execute show timeseries {} statement false.", pathList);
       throw new ProcessorException();
     }
-    return ((QueryTimeSeriesResponse) task.getResponse()).getTimeSeries();
+    return response.getTimeSeries();
   }
 
   private List<List<String>> queryTimeSeries(SingleQPTask task, PeerId leader)
