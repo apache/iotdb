@@ -86,6 +86,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   private int rowsLimit = 0;
   // 0 means it is not constrained in sql, or the offset position has been reached
   private int rowsOffset = 0;
+  private long queryId;
 
   /*
    * Combine maxRows and the LIMIT constraints. maxRowsOrRowsLimit = 0 means that neither maxRows
@@ -107,7 +108,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   public IoTDBQueryResultSet(Statement statement, List<String> columnName, TSIService.Iface client,
       TSOperationHandle operationHandle,
       String sql, String aggregations,
-      List<String> columnTypeList) throws SQLException {
+      List<String> columnTypeList, long queryId) throws SQLException {
     this.statement = statement;
     this.maxRows = statement.getMaxRows();
     this.fetchSize = statement.getFetchSize();
@@ -121,6 +122,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     this.columnInfoList.add(TIMESTAMP_STR);
     this.columnInfoMap = new HashMap<>();
     this.columnInfoMap.put(TIMESTAMP_STR, 1);
+    this.queryId = queryId;
     int index = 2;
     for (String name : columnName) {
       columnInfoList.add(name);
@@ -209,7 +211,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   private void closeOperationHandle() throws SQLException {
     try {
       if (operationHandle != null) {
-        TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle);
+        TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, queryId);
         TSCloseOperationResp closeResp = client.closeOperation(closeReq);
         Utils.verifySuccess(closeResp.getStatus());
       }
@@ -700,7 +702,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   // the next record rule without constraints
   private boolean nextWithoutConstraints() throws SQLException {
     if ((recordItr == null || !recordItr.hasNext()) && !emptyResultSet) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize);
+      TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize, queryId);
 
       try {
         TSFetchResultsResp resp = client.fetchResults(req);

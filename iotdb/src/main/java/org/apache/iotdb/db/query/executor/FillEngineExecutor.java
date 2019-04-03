@@ -28,8 +28,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
@@ -60,13 +59,13 @@ public class FillEngineExecutor {
    */
   public QueryDataSet execute(QueryContext context)
       throws FileNodeManagerException, PathErrorException, IOException {
-    QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
+    QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
 
     List<IFill> fillList = new ArrayList<>();
     List<TSDataType> dataTypeList = new ArrayList<>();
     for (Path path : selectedSeries) {
-      QueryDataSource queryDataSource = QueryDataSourceManager
-          .getQueryDataSource(jobId, path, context);
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(path, context);
       TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
       dataTypeList.add(dataType);
       IFill fill = null;

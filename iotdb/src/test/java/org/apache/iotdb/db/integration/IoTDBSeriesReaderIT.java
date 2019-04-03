@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -29,8 +31,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.query.control.QuerySession;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -254,7 +256,9 @@ public class IoTDBSeriesReaderIT {
     queryExpression.addSelectedPath(new Path(Constant.d1s1));
     queryExpression.setExpression(null);
 
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -263,7 +267,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(23400, cnt);
 
-    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
+    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -280,7 +284,9 @@ public class IoTDBSeriesReaderIT {
         ValueFilter.gtEq(20));
     queryExpression.setExpression(singleSeriesExpression);
 
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -291,7 +297,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(16440, cnt);
 
-    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
+    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -306,7 +312,9 @@ public class IoTDBSeriesReaderIT {
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
     queryExpression.setExpression(expression);
 
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -317,7 +325,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(3012, cnt);
 
-    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
+    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -333,7 +341,9 @@ public class IoTDBSeriesReaderIT {
         ValueFilter.lt(111));
     queryExpression.setExpression(singleSeriesExpression);
 
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -344,7 +354,7 @@ public class IoTDBSeriesReaderIT {
     }
     assertEquals(22800, cnt);
 
-    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
+    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
   }
 
   @Test

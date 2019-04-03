@@ -34,9 +34,9 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.control.QuerySession;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -59,9 +59,12 @@ public class EnvironmentUtils {
   private static Directories directories = Directories.getInstance();
   private static TSFileConfig tsfileConfig = TSFileDescriptor.getInstance().getConfig();
 
+  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+  public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+
   public static void cleanEnv() throws IOException, FileNodeManagerException {
 
-    QueryTokenManager.getInstance().endQueryForGivenJob(QuerySession.getCurrentThreadJobId());
+    QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
 
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
@@ -169,5 +172,7 @@ public class EnvironmentUtils {
     }
     FileNodeManager.getInstance().resetFileNodeManager();
     MultiFileLogNodeManager.getInstance().start();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 }
