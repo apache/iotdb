@@ -87,7 +87,9 @@ public class SeriesReaderByTimestamp {
 
       if (data.hasNext()) {
         if (data.currentTime() == timestamp) {
-          return data.currentValue();
+          Object value = data.currentValue();
+          data.next();
+          return value;
         }
         return null;
       } else {
@@ -100,6 +102,35 @@ public class SeriesReaderByTimestamp {
     }
 
     return null;
+  }
+
+  /**
+   * Judge if the series reader has next time-value pair.
+   *
+   * @return true if has next, false if not.
+   */
+  public boolean hasNext() throws IOException {
+
+    if (chunkReader != null) {
+      if (data != null && data.hasNext()) {
+        return true;
+      }
+      while (chunkReader.hasNextBatch()) {
+        data = chunkReader.nextBatch();
+        if (data != null && data.hasNext()) {
+          return true;
+        }
+      }
+    }
+    while (constructNextSatisfiedChunkReader()) {
+      while (chunkReader.hasNextBatch()) {
+        data = chunkReader.nextBatch();
+        if (data != null && data.hasNext()) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private boolean constructNextSatisfiedChunkReader() throws IOException {

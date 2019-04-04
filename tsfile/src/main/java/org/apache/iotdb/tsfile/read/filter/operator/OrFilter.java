@@ -55,4 +55,10 @@ public class OrFilter extends BinaryFilter implements Serializable {
         .satisfyStartEndTime(startTime, endTime);
   }
 
+  @Override
+  public boolean containStartEndTime(long startTime, long endTime) {
+    return left.containStartEndTime(startTime, endTime) || right
+        .containStartEndTime(startTime, endTime);
+  }
+
 }

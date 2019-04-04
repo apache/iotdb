@@ -53,4 +53,12 @@ public interface Filter {
    *            end time of a page, series or device
    */
   boolean satisfyStartEndTime(long startTime, long endTime);
+
+  /**
+   * To examine whether the partition [startTime, endTime] is subsets of filter.
+   *
+   * @param startTime start time of a partition
+   * @param endTime end time of a partition
+   */
+  boolean containStartEndTime(long startTime, long endTime);
 }

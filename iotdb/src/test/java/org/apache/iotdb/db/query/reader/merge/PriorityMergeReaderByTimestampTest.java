@@ -23,10 +23,10 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -46,26 +46,28 @@ public class PriorityMergeReaderByTimestampTest {
     priorityReader.addReaderWithPriority(reader2, 2);
     priorityReader.addReaderWithPriority(reader3, 3);
 
-    int cnt = 0;
-
     Random random = new Random();
     for (long time = 4; time < 1080 + 200 * 13 + 600; ) {
-      TsPrimitiveType value = priorityReader.getValueInTimestamp(time);
-      // System.out.println("time = " + time + " value = " + value);
+      Long value = (Long) priorityReader.getValueInTimestamp(time);
+      if (time < 1080 + 199 * 13) {
+        Assert.assertTrue(priorityReader.hasNext());
+      }
+
+      //System.out.println("time = " + time + " value = " + value);
       if (time < 100) {
         // null
         Assert.assertNull(value);
       } else if (time < 850) {
         // reader 1
         if ((time - 100) % 5 == 0) {
-          Assert.assertEquals(time % 11, value.getLong());
+          Assert.assertEquals(time % 11, value.longValue());
         }
       } else if (time < 1080) {
         // reader 2, reader 1
         if (time >= 850 && (time - 850) % 7 == 0) {
-          Assert.assertEquals(time % 19, value.getLong());
+          Assert.assertEquals(time % 19, value.longValue());
         } else if (time < 1100 && (time - 100) % 5 == 0) {
-          Assert.assertEquals(time % 11, value.getLong());
+          Assert.assertEquals(time % 11, value.longValue());
         } else {
           Assert.assertNull(value);
         }
@@ -73,11 +75,11 @@ public class PriorityMergeReaderByTimestampTest {
       } else if (time < 1080 + 200 * 13) {
         // reader 3, reader 2, reader 1
         if (time >= 1080 && (time - 1080) % 13 == 0) {
-          Assert.assertEquals(time % 31, value.getLong());
+          Assert.assertEquals(time % 31, value.longValue());
         } else if (time < 850 + 200 * 7 && (time - 850) % 7 == 0) {
-          Assert.assertEquals(time % 19, value.getLong());
+          Assert.assertEquals(time % 19, value.longValue());
         } else if (time < 1100 && (time - 100) % 5 == 0) {
-          Assert.assertEquals(time % 11, value.getLong());
+          Assert.assertEquals(time % 11, value.longValue());
         } else {
           Assert.assertNull(value);
         }
@@ -88,23 +90,10 @@ public class PriorityMergeReaderByTimestampTest {
       time += random.nextInt(50) + 1;
     }
 
-    while (priorityReader.hasNext()) {
-      TimeValuePair timeValuePair = priorityReader.next();
-      long time = timeValuePair.getTimestamp();
-      long value = timeValuePair.getValue().getLong();
-      if (time < 850) {
-        Assert.assertEquals(time % 11, value);
-      } else if (time < 1080) {
-        Assert.assertEquals(time % 19, value);
-      } else {
-        Assert.assertEquals(time % 31, value);
-      }
-      cnt++;
-    }
-
   }
 
-  public static class FakedPrioritySeriesReaderByTimestamp implements EngineReaderByTimeStamp {
+  public static class FakedPrioritySeriesReaderByTimestamp implements EngineReaderByTimeStamp,
+      IPointReader {
 
     private Iterator<TimeValuePair> iterator;
     private long currentTimeStamp = Long.MIN_VALUE;
@@ -124,7 +113,7 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     @Override
-    public boolean hasNext() throws IOException {
+    public boolean hasNext() {
       if (hasCachedTimeValuePair && cachedTimeValuePair.getTimestamp() >= currentTimeStamp) {
         return true;
       }
@@ -150,8 +139,12 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     @Override
-    public void skipCurrentTimeValuePair() throws IOException {
-      next();
+    public TimeValuePair current() throws IOException {
+      if (hasCachedTimeValuePair) {
+        return cachedTimeValuePair;
+      } else {
+        throw new IOException(" to end! " + iterator.next());
+      }
     }
 
     @Override
@@ -159,36 +152,21 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     @Override
-    public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
+    public Object getValueInTimestamp(long timestamp) throws IOException {
       this.currentTimeStamp = timestamp;
       if (hasCachedTimeValuePair && cachedTimeValuePair.getTimestamp() == timestamp) {
         hasCachedTimeValuePair = false;
-        return cachedTimeValuePair.getValue();
+        return cachedTimeValuePair.getValue().getValue();
       }
 
       if (hasNext()) {
         cachedTimeValuePair = next();
         if (cachedTimeValuePair.getTimestamp() == timestamp) {
-          return cachedTimeValuePair.getValue();
+          return cachedTimeValuePair.getValue().getValue();
         } else if (cachedTimeValuePair.getTimestamp() > timestamp) {
           hasCachedTimeValuePair = true;
         }
       }
-      return null;
-    }
-
-    @Override
-    public boolean hasNextBatch() {
-      return false;
-    }
-
-    @Override
-    public BatchData nextBatch() {
-      return null;
-    }
-
-    @Override
-    public BatchData currentBatch() {
       return null;
     }
   }
