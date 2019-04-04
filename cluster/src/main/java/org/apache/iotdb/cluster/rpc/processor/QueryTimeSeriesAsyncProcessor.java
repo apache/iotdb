@@ -68,7 +68,7 @@ public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<Query
                   response.addTimeSeries(mManager.getShowTimeseriesPath(path));
                 }
               } catch (final PathErrorException e) {
-                response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.toString());
+                response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.getMessage());
               }
             } else {
               response = QueryTimeSeriesResponse.createErrorInstance(groupId, status.getErrorMsg());

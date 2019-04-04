@@ -84,7 +84,7 @@ public class MetaGroupNonQueryAsyncProcessor extends
                 .serialize(metaGroupNonQueryRequest)));
       } catch (final CodecException e) {
         response.addResult(false);
-        response.setErrorMsg(e.toString());
+        response.setErrorMsg(e.getMessage());
         asyncContext.sendResponse(response);
       }
 

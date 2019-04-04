@@ -49,6 +49,6 @@ public class SingleQPTask extends QPTask {
 
   @Override
   public void shutdown() {
-
+    this.taskCountDownLatch.countDown();
   }
 }

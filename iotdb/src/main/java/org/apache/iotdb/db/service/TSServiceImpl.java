@@ -472,6 +472,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
       }
 
+      try{
+        if (execSetConsistencyLevel(statement)) {
+          return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
+              "Execute set consistency level successfully");
+        }
+      }catch (Exception e){
+        LOGGER.error("meet error while executing set consistency level command!", e);
+        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+      }
+
       PhysicalPlan physicalPlan;
       try {
         physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
@@ -493,6 +503,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.error("meet error while executing statement.", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
+  }
+
+  /**
+   * Set consistency level
+   */
+  public boolean execSetConsistencyLevel(String statement) throws Exception {
+    return false;
   }
 
   @Override

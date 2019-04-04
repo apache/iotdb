@@ -201,7 +201,7 @@ public class RaftNodeAsClientManager {
                   }
                 }, TASK_TIMEOUT_MS);
       } catch (RemotingException | InterruptedException e) {
-        LOGGER.error(e.toString());
+        LOGGER.error(e.getMessage());
         throw new RaftConnectionException(e);
       }
       releaseClient();

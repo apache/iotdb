@@ -181,7 +181,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
                   response.addTimeSeries(mManager.getShowTimeseriesPath(path));
                 }
               } catch (final PathErrorException e) {
-                response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.toString());
+                response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.getMessage());
               }
             } else {
               response = QueryTimeSeriesResponse.createErrorInstance(groupId, status.getErrorMsg());
@@ -227,7 +227,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
                 response = QueryStorageGroupResponse
                     .createSuccessInstance(metadataHolder.getFsm().getAllStorageGroups());
               } catch (final PathErrorException e) {
-                response = QueryStorageGroupResponse.createErrorInstance(e.toString());
+                response = QueryStorageGroupResponse.createErrorInstance(e.getMessage());
               }
             } else {
               response = QueryStorageGroupResponse.createErrorInstance(status.getErrorMsg());

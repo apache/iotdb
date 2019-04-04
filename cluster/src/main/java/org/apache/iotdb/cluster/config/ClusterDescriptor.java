@@ -49,7 +49,7 @@ public class ClusterDescriptor {
    * load an property file and set ClusterConfig variables.
    */
   private void loadProps() {
-    conf.updatePath();
+    conf.setDefaultPath();
     InputStream inputStream;
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
@@ -61,6 +61,7 @@ public class ClusterDescriptor {
             "Cannot find IOTDB_HOME or CLUSTER_CONF environment variable when loading "
                 + "config file {}, use default configuration",
             ClusterConfig.CONFIG_NAME);
+        conf.createAllPath();
         return;
       }
     } else {
@@ -71,6 +72,7 @@ public class ClusterDescriptor {
       inputStream = new FileInputStream(new File(url));
     } catch (FileNotFoundException e) {
       LOGGER.warn("Fail to find config file {}", url, e);
+      conf.createAllPath();
       return;
     }
 
@@ -141,6 +143,7 @@ public class ClusterDescriptor {
     } catch (Exception e) {
       LOGGER.warn("Incorrect format in config file, use default configuration", e);
     } finally {
+      conf.createAllPath();
       try {
         inputStream.close();
       } catch (IOException e) {

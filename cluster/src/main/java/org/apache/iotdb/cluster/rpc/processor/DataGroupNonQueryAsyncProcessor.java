@@ -84,7 +84,7 @@ public class DataGroupNonQueryAsyncProcessor extends
             .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
                 .serialize(dataGroupNonQueryRequest)));
       } catch (final CodecException e) {
-        response.setErrorMsg(e.toString());
+        response.setErrorMsg(e.getMessage());
         response.addResult(false);
         asyncContext.sendResponse(response);
       }

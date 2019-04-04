@@ -122,7 +122,7 @@ public class ClusterConfig {
     // empty constructor
   }
 
-  public void updatePath() {
+  public void setDefaultPath() {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     String iotdbDataDir = conf.getDataDir();
     iotdbDataDir = FilePathUtils.regularizePath(iotdbDataDir);
@@ -130,12 +130,19 @@ public class ClusterConfig {
     this.raftSnapshotPath = raftDir + File.separatorChar + DEFAULT_RAFT_SNAPSHOT_DIR;
     this.raftLogPath = raftDir + File.separatorChar + DEFAULT_RAFT_LOG_DIR;
     this.raftMetadataPath = raftDir + File.separatorChar + DEFAULT_RAFT_METADATA_DIR;
+  }
+
+  public void createAllPath(){
+    createPath(this.raftSnapshotPath);
+    createPath(this.raftLogPath);
+    createPath(this.raftMetadataPath);
+  }
+
+  private void createPath(String path){
     try {
-      FileUtils.forceMkdir(new File(this.raftSnapshotPath));
-      FileUtils.forceMkdir(new File(this.raftLogPath));
-      FileUtils.forceMkdir(new File(this.raftMetadataPath));
+      FileUtils.forceMkdir(new File(path));
     } catch (IOException e) {
-      LOGGER.warn("Raft dir already exists.");
+      LOGGER.warn("Path {} already exists.", path);
     }
   }
 

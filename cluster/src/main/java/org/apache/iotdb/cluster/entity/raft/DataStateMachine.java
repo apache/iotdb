@@ -127,7 +127,7 @@ public class DataStateMachine extends StateMachineAdapter {
               nullReadTask.await();
             } catch (InterruptedException e) {
               status.setCode(-1);
-              status.setErrorMsg(e.toString());
+              status.setErrorMsg(e.getMessage());
             }
           }
           qpExecutor.processNonQuery(plan);
@@ -136,7 +136,7 @@ public class DataStateMachine extends StateMachineAdapter {
           }
         } catch (ProcessorException | IOException e) {
           LOGGER.error("Execute physical plan error", e);
-          status = new Status(-1, e.toString());
+          status = new Status(-1, e.getMessage());
           if (closure != null) {
             response.addResult(false);
           }

@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.cluster.rpc.service;
 
+import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.io.IOException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
 import org.apache.iotdb.db.auth.AuthException;
@@ -184,6 +187,28 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   }
 
   @Override
+  public boolean execSetConsistencyLevel(String statement) throws Exception {
+    if (statement == null) {
+      return false;
+    }
+    statement = statement.toLowerCase().trim();
+    if (Pattern.matches(ClusterConstant.SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
+      String[] splits = statement.split("\\s+");
+      int level = Integer.valueOf(splits[splits.length-1]);
+        nonQueryExecutor.get().setReadMetadataConsistencyLevel(level);
+      return true;
+    } else if (Pattern
+        .matches(ClusterConstant.SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
+      String[] splits = statement.split("\\s+");
+      int level = Integer.valueOf(splits[splits.length-1]);
+      nonQueryExecutor.get().setReadDataConsistencyLevel(level);
+      return true;
+    } else{
+      return false;
+    }
+  }
+
+  @Override
   protected boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
     return nonQueryExecutor.get().processNonQuery(plan);
   }
@@ -212,5 +237,10 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   protected String getMetadataInString()
       throws InterruptedException, ProcessorException {
     return queryMetadataExecutor.get().processMetadataInStringQuery();
+  }
+
+  @OnlyForTest
+  public NonQueryExecutor getNonQueryExecutor() {
+    return nonQueryExecutor.get();
   }
 }

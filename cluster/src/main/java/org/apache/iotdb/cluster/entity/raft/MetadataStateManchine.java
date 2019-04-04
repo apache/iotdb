@@ -117,13 +117,13 @@ public class MetadataStateManchine extends StateMachineAdapter {
           }
         } catch (IOException | PathErrorException e) {
           LOGGER.error("Execute metadata plan error", e);
-          status = new Status(-1, e.toString());
+          status = new Status(-1, e.getMessage());
           if (closure != null) {
             response.addResult(false);
           }
         } catch (ProcessorException e) {
           LOGGER.error("Execute author plan error", e);
-          status = new Status(-1, e.toString());
+          status = new Status(-1, e.getMessage());
           if (closure != null) {
             response.addResult(false);
           }

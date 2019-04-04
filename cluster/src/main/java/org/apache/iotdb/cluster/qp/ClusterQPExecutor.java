@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.callback.QPTask.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
@@ -45,14 +46,24 @@ import org.slf4j.LoggerFactory;
 public abstract class ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterQPExecutor.class);
+
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
+
   protected static final String METADATA_GROUP_ID = CLUSTER_CONFIG.METADATA_GROUP_ID;
+
+  /**
+   * Raft as client manager.
+   */
   protected static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager
       .getInstance();
+
   protected Router router = Router.getInstance();
+
   private PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
       CLUSTER_CONFIG.getPort());
+
   protected MManager mManager = MManager.getInstance();
+
   protected final Server server = Server.getInstance();
 
   /**
@@ -252,5 +263,29 @@ public abstract class ClusterQPExecutor {
     if (currentTask != null) {
       currentTask.shutdown();
     }
+  }
+
+  public void setReadMetadataConsistencyLevel(int level) throws Exception {
+    if (level <= ClusterConstant.MAX_CONSISTENCY_LEVEL) {
+      this.readMetadataConsistencyLevel = level;
+    } else {
+      throw new Exception(String.format("Consistency level %d not support", level));
+    }
+  }
+
+  public void setReadDataConsistencyLevel(int level) throws Exception {
+    if (level <= ClusterConstant.MAX_CONSISTENCY_LEVEL) {
+      this.readDataConsistencyLevel = level;
+    } else {
+      throw new Exception(String.format("Consistency level %d not support", level));
+    }
+  }
+
+  public int getReadMetadataConsistencyLevel() {
+    return readMetadataConsistencyLevel;
+  }
+
+  public int getReadDataConsistencyLevel() {
+    return readDataConsistencyLevel;
   }
 }

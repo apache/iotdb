@@ -53,6 +53,11 @@ public class BatchQPTask extends QPTask {
   private Map<String, List<Integer>> planIndexMap;
 
   /**
+   * Task thread map
+   */
+  private Map<String, Thread> taskThreadMap;
+
+  /**
    * Batch result
    */
   private int[] batchResult;
@@ -146,7 +151,12 @@ public class BatchQPTask extends QPTask {
 
   @Override
   public void shutdown() {
-    //TODO
+    for(Thread taskThread:taskThreadMap.values()){
+      if(taskThread.isAlive()){
+        taskThread.interrupt();
+      }
+    }
+    this.taskCountDownLatch.countDown();
   }
 
   public boolean isAllSuccessful() {

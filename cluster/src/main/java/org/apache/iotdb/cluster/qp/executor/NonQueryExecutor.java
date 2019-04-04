@@ -212,7 +212,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
         } catch (Exception e) {
           result[i] = Statement.EXECUTE_FAILED;
           batchResult.setAllSuccessful(false);
-          batchResult.setBatchErrorMessage(e.toString());
+          batchResult.setBatchErrorMessage(e.getMessage());
         }
       }
     }
@@ -229,7 +229,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
         subTaskMap.put(groupId, singleQPTask);
       } catch (IOException e) {
         batchResult.setAllSuccessful(false);
-        batchResult.setBatchErrorMessage(e.toString());
+        batchResult.setBatchErrorMessage(e.getMessage());
         for (int index : planIndexMap.get(groupId)) {
           result[index] = Statement.EXECUTE_FAILED;
         }
