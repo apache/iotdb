@@ -30,7 +30,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.AllDataReader;
 import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -190,19 +190,18 @@ public class SeriesReaderFactory {
   /**
    * construct ByTimestampReader, include sequential data and unsequential data.
    *
-   * @param jobId query jobId
    * @param paths selected series path
    * @param context query context
    * @return the list of EngineReaderByTimeStamp
    */
-  public static List<EngineReaderByTimeStamp> getByTimestampReadersOfSelectedPaths(long jobId,
+  public static List<EngineReaderByTimeStamp> getByTimestampReadersOfSelectedPaths(
       List<Path> paths, QueryContext context) throws IOException, FileNodeManagerException {
 
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
     for (Path path : paths) {
 
-      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
           context);
 
       PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();

@@ -27,9 +27,6 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
-import org.apache.iotdb.db.query.control.QuerySession;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.executor.groupby.GroupByWithOnlyTimeFilterDataSetDataSet;
 import org.apache.iotdb.db.query.executor.groupby.GroupByWithValueFilterDataSetDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -57,14 +54,8 @@ public class EngineQueryRouter {
   /**
    * execute physical plan.
    */
-  public QueryDataSet query(QueryExpression queryExpression)
+  public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
       throws FileNodeManagerException {
-
-    long nextJobId = QuerySession.getCurrentThreadJobId();
-    QueryTokenManager.getInstance().addJobId(nextJobId);
-    OpenedFilePathsManager.getInstance().addJobId(nextJobId);
-
-    QueryContext context = new QueryContext();
 
     if (queryExpression.hasQueryFilter()) {
       try {
@@ -74,12 +65,10 @@ public class EngineQueryRouter {
 
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           EngineExecutorWithoutTimeGenerator engineExecutor =
-              new EngineExecutorWithoutTimeGenerator(
-                  nextJobId, queryExpression);
+              new EngineExecutorWithoutTimeGenerator(queryExpression);
           return engineExecutor.executeWithGlobalTimeFilter(context);
         } else {
           EngineExecutorWithTimeGenerator engineExecutor = new EngineExecutorWithTimeGenerator(
-              nextJobId,
               queryExpression);
           return engineExecutor.execute(context);
         }
@@ -89,7 +78,6 @@ public class EngineQueryRouter {
       }
     } else {
       EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
-          nextJobId,
           queryExpression);
       return engineExecutor.executeWithoutFilter(context);
     }
@@ -99,19 +87,13 @@ public class EngineQueryRouter {
    * execute aggregation query.
    */
   public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression) throws QueryFilterOptimizationException, FileNodeManagerException,
-      IOException, PathErrorException, ProcessorException {
-
-    long nextJobId = QuerySession.getCurrentThreadJobId();
-    QueryTokenManager.getInstance().addJobId(nextJobId);
-    OpenedFilePathsManager.getInstance().addJobId(nextJobId);
-
-    QueryContext context = new QueryContext();
+      IExpression expression, QueryContext context) throws QueryFilterOptimizationException,
+      FileNodeManagerException, IOException, PathErrorException, ProcessorException {
 
     if (expression != null) {
       IExpression optimizedExpression = ExpressionOptimizer.getInstance()
           .optimize(expression, selectedSeries);
-      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(nextJobId,
+      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
           selectedSeries, aggres, optimizedExpression);
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
         return engineExecutor.executeWithOutTimeGenerator(context);
@@ -119,7 +101,7 @@ public class EngineQueryRouter {
         return engineExecutor.executeWithTimeGenerator(context);
       }
     } else {
-      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(nextJobId,
+      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
           selectedSeries, aggres, null);
       return engineExecutor.executeWithOutTimeGenerator(context);
     }
@@ -137,15 +119,12 @@ public class EngineQueryRouter {
    * @param intervals time intervals, closed interval.
    */
   public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
-      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals)
+      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
+      QueryContext context)
       throws ProcessorException, QueryFilterOptimizationException, FileNodeManagerException,
       PathErrorException, IOException {
 
-    long nextJobId = QuerySession.getCurrentThreadJobId();
-    QueryTokenManager.getInstance().addJobId(nextJobId);
-    OpenedFilePathsManager.getInstance().addJobId(nextJobId);
-
-    QueryContext context = new QueryContext();
+    long nextJobId = context.getJobId();
 
     // check the legitimacy of intervals
     for (Pair<Long, Long> pair : intervals) {
@@ -205,13 +184,12 @@ public class EngineQueryRouter {
    * @param queryTime timestamp
    * @param fillType type IFill map
    */
-  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType)
+  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
+      QueryContext context)
       throws FileNodeManagerException, PathErrorException, IOException {
-    long nextJobId = QuerySession.getCurrentThreadJobId();
-    QueryTokenManager.getInstance().addJobId(nextJobId);
-    OpenedFilePathsManager.getInstance().addJobId(nextJobId);
 
-    QueryContext context = new QueryContext();
+    long nextJobId = context.getJobId();
+
     FillEngineExecutor fillEngineExecutor = new FillEngineExecutor(nextJobId, fillPaths, queryTime,
         fillType);
     return fillEngineExecutor.execute(context);

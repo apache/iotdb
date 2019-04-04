@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithTimeGenerator;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
@@ -42,10 +42,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class EngineExecutorWithTimeGenerator {
 
   private QueryExpression queryExpression;
-  private long jobId;
 
-  EngineExecutorWithTimeGenerator(long jobId, QueryExpression queryExpression) {
-    this.jobId = jobId;
+  EngineExecutorWithTimeGenerator(QueryExpression queryExpression) {
     this.queryExpression = queryExpression;
   }
 
@@ -58,18 +56,17 @@ public class EngineExecutorWithTimeGenerator {
    */
   public QueryDataSet execute(QueryContext context) throws FileNodeManagerException {
 
-    QueryTokenManager.getInstance()
-        .beginQueryOfGivenQueryPaths(jobId, queryExpression.getSelectedSeries());
-    QueryTokenManager.getInstance()
-        .beginQueryOfGivenExpression(jobId, queryExpression.getExpression());
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenExpression(context.getJobId(), queryExpression.getExpression());
 
     EngineTimeGenerator timestampGenerator;
     List<EngineReaderByTimeStamp> readersOfSelectedSeries;
     try {
-      timestampGenerator = new EngineTimeGenerator(jobId, queryExpression.getExpression(), context);
+      timestampGenerator = new EngineTimeGenerator(queryExpression.getExpression(), context);
       readersOfSelectedSeries = SeriesReaderFactory
-          .getByTimestampReadersOfSelectedPaths(jobId, queryExpression.getSelectedSeries(),
-              context);
+          .getByTimestampReadersOfSelectedPaths(queryExpression.getSelectedSeries(), context);
     } catch (IOException ex) {
       throw new FileNodeManagerException(ex);
     }

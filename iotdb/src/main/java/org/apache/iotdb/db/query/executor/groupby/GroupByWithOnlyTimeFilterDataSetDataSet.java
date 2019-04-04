@@ -29,8 +29,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -78,13 +77,13 @@ public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSe
       throws FileNodeManagerException, PathErrorException, ProcessorException, IOException {
     initAggreFuction(aggres);
     // init reader
-    QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
+    QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
     for (int i = 0; i < selectedSeries.size(); i++) {
-      QueryDataSource queryDataSource = QueryDataSourceManager
-          .getQueryDataSource(jobId, selectedSeries.get(i), context);
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(selectedSeries.get(i), context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       SequenceDataReader sequenceReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),

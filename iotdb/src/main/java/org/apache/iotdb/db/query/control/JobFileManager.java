@@ -27,12 +27,10 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 
 /**
  * <p>
- * Singleton pattern, to manage all query tokens. Each jdbc request has an unique job id, in this jdbc request,
- * OpenedFilePathsManager manage all the opened files, and store in the set of current job id.
+ * JobFileManager records the paths of files that every query job uses for QueryResourceManager.
+ * <p>
  */
-public class OpenedFilePathsManager {
-
-
+public class JobFileManager {
 
   /**
    * Map<jobId, Set<filePaths>>
@@ -40,17 +38,14 @@ public class OpenedFilePathsManager {
   private ConcurrentHashMap<Long, Set<String>> sealedFilePathsMap;
   private ConcurrentHashMap<Long, Set<String>> unsealedFilePathsMap;
 
-  private OpenedFilePathsManager() {
+  public JobFileManager() {
     sealedFilePathsMap = new ConcurrentHashMap<>();
     unsealedFilePathsMap = new ConcurrentHashMap<>();
   }
 
-  public static OpenedFilePathsManager getInstance() {
-    return OpenedFilePathsManagerHelper.INSTANCE;
-  }
-
   /**
-   * Set job id for current request thread. When a query request is created firstly, this method must be invoked.
+   * Set job id for current request thread. When a query request is created firstly,
+   * this method must be invoked.
    */
   public void addJobId(long jobId) {
     sealedFilePathsMap.computeIfAbsent(jobId, x -> new HashSet<>());
@@ -107,14 +102,6 @@ public class OpenedFilePathsManager {
     if (!pathMap.get(jobId).contains(filePath)) {
       pathMap.get(jobId).add(filePath);
       FileReaderManager.getInstance().increaseFileReaderReference(filePath, isSealed);
-    }
-  }
-
-  private static class OpenedFilePathsManagerHelper {
-    private static final OpenedFilePathsManager INSTANCE = new OpenedFilePathsManager();
-
-    private OpenedFilePathsManagerHelper() {
-
     }
   }
 }

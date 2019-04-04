@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.control;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.fail;
 
 import java.io.File;
@@ -54,6 +55,7 @@ public class FileReaderManagerTest {
     String filePath = "target/test.file";
 
     FileReaderManager manager = FileReaderManager.getInstance();
+    JobFileManager testManager = new JobFileManager();
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
       File file = new File(filePath + i);
@@ -62,10 +64,10 @@ public class FileReaderManagerTest {
 
     Thread t1 = new Thread(() -> {
       try {
-        OpenedFilePathsManager.getInstance().addJobId(1L);
+        testManager.addJobId(1L);
 
         for (int i = 1; i <= 6; i++) {
-          OpenedFilePathsManager.getInstance().addFilePathToMap(1L, filePath + i,
+          testManager.addFilePathToMap(1L, filePath + i,
               false);
           manager.get(filePath + i, false);
           Assert.assertTrue(manager.contains(filePath + i, false));
@@ -80,10 +82,10 @@ public class FileReaderManagerTest {
 
     Thread t2 = new Thread(() -> {
       try {
-        OpenedFilePathsManager.getInstance().addJobId(2L);
+        testManager.addJobId(2L);
 
         for (int i = 4; i <= MAX_FILE_SIZE; i++) {
-          OpenedFilePathsManager.getInstance().addFilePathToMap(2L, filePath + i,
+          testManager.addFilePathToMap(2L, filePath + i,
               false);
           manager.get(filePath + i, false);
           Assert.assertTrue(manager.contains(filePath + i, false));
@@ -120,7 +122,6 @@ public class FileReaderManagerTest {
     // }
     // }
 
-    OpenedFilePathsManager.getInstance().removeUsedFilesForGivenJob(QuerySession.getCurrentThreadJobId());
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = 1; i < MAX_FILE_SIZE; i++) {
       File file = new File(filePath + i);

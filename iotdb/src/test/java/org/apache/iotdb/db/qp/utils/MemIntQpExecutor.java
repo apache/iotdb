@@ -36,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -108,7 +109,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression)
+  public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
+      QueryContext context)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException,
       QueryFilterOptimizationException {
     return null;
@@ -116,14 +118,15 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
 
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
-      long unit, long origin, List<Pair<Long, Long>> intervals)
+      long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException,
       QueryFilterOptimizationException {
     return null;
   }
 
   @Override
-  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes)
+  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
+      QueryContext context)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException {
     return null;
   }

@@ -34,8 +34,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.LastAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrFunc;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
@@ -55,7 +54,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class AggregateEngineExecutor {
 
-  private long jobId;
   private List<Path> selectedSeries;
   private List<String> aggres;
   private IExpression expression;
@@ -68,9 +66,8 @@ public class AggregateEngineExecutor {
   /**
    * constructor.
    */
-  public AggregateEngineExecutor(long jobId, List<Path> selectedSeries, List<String> aggres,
+  public AggregateEngineExecutor(List<Path> selectedSeries, List<String> aggres,
       IExpression expression) {
-    this.jobId = jobId;
     this.selectedSeries = selectedSeries;
     this.aggres = aggres;
     this.expression = expression;
@@ -88,7 +85,8 @@ public class AggregateEngineExecutor {
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
-    QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
+    QueryResourceManager
+        .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
 
     List<SequenceDataReader> readersOfSequenceData = new ArrayList<>();
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
@@ -101,8 +99,8 @@ public class AggregateEngineExecutor {
       function.init();
       aggregateFunctions.add(function);
 
-      QueryDataSource queryDataSource = QueryDataSourceManager
-          .getQueryDataSource(jobId, selectedSeries.get(i), context);
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(selectedSeries.get(i), context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       SequenceDataReader sequenceReader;
@@ -258,12 +256,13 @@ public class AggregateEngineExecutor {
    */
   public QueryDataSet executeWithTimeGenerator(QueryContext context)
       throws FileNodeManagerException, PathErrorException, IOException, ProcessorException {
-    QueryTokenManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
-    QueryTokenManager.getInstance().beginQueryOfGivenExpression(jobId, expression);
+    QueryResourceManager
+        .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
+    QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
 
-    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(jobId, expression, context);
+    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = SeriesReaderFactory
-        .getByTimestampReadersOfSelectedPaths(jobId, selectedSeries, context);
+        .getByTimestampReadersOfSelectedPaths(selectedSeries, context);
 
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
