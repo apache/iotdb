@@ -94,7 +94,7 @@ public class Router {
     int numOfVirtualNodes = config.getNumOfVirtualNodes();
     for (String host : hosts) {
       String[] values = host.split(":");
-      PhysicalNode node = new PhysicalNode(values[0], Integer.parseInt(values[1]));
+      PhysicalNode node = new PhysicalNode(values[0].trim(), Integer.parseInt(values[1].trim()));
       addNode(node, numOfVirtualNodes);
     }
     PhysicalNode[] nodes = physicalRing.values().toArray(new PhysicalNode[0]);
