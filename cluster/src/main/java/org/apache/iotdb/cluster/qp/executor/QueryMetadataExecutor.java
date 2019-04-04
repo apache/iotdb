@@ -56,7 +56,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
 
   public QueryMetadataExecutor() {
-
+    super();
   }
 
   public Set<String> processStorageGroupQuery() throws InterruptedException {
@@ -305,6 +305,8 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     }
   }
 
+  // TODO
+  // Remove this method?
   private String queryMetadataInString(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
     BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);

@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
@@ -40,7 +39,6 @@ import org.slf4j.LoggerFactory;
 public class RaftUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RaftUtils.class);
-  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
   private static final Server server = Server.getInstance();
   private static final Router router = Router.getInstance();
   /**
@@ -113,8 +111,7 @@ public class RaftUtils {
    * Get random int from [0, bound).
    */
   public static int getRandomInt(int bound) {
-    int randomIndex = ThreadLocalRandom.current().nextInt(bound);
-    return randomIndex;
+    return ThreadLocalRandom.current().nextInt(bound);
   }
 
   @Deprecated
@@ -194,7 +191,7 @@ public class RaftUtils {
    */
   public static void updateRaftGroupLeader(String groupId, PeerId peerId) {
     groupLeaderCache.put(groupId, peerId);
-    LOGGER.info(String.format("group leader cache:%s", groupLeaderCache));
+    LOGGER.info("group leader cache:{}", groupLeaderCache);
   }
 
 }

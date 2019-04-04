@@ -64,8 +64,10 @@ public class NonQueryExecutor extends ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NonQueryExecutor.class);
 
-  public NonQueryExecutor() {
+  private static final String OPERATION_NOT_SUPPORTED = "Operation %s does not support";
 
+  public NonQueryExecutor() {
+    super();
   }
 
   /**
@@ -155,7 +157,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     switch (plan.getOperatorType()) {
       case DELETE:
         throw new UnsupportedOperationException(
-            String.format("operation %s does not support", plan.getOperatorType()));
+            String.format(OPERATION_NOT_SUPPORTED, plan.getOperatorType()));
       case UPDATE:
         Path path = ((UpdatePlan) plan).getPath();
         storageGroup = getStroageGroupByDevice(path.getDevice());
@@ -186,7 +188,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
         break;
       case LOADDATA:
         throw new UnsupportedOperationException(
-            String.format("operation %s does not support", plan.getOperatorType()));
+            String.format(OPERATION_NOT_SUPPORTED, plan.getOperatorType()));
       case DELETE_TIMESERIES:
       case SET_STORAGE_GROUP:
       case METADATA:
@@ -194,10 +196,10 @@ public class NonQueryExecutor extends ClusterQPExecutor {
         break;
       case PROPERTY:
         throw new UnsupportedOperationException(
-            String.format("operation %s does not support", plan.getOperatorType()));
+            String.format(OPERATION_NOT_SUPPORTED, plan.getOperatorType()));
       default:
         throw new UnsupportedOperationException(
-            String.format("operation %s does not support", plan.getOperatorType()));
+            String.format(OPERATION_NOT_SUPPORTED, plan.getOperatorType()));
     }
     return groupId;
   }

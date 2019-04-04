@@ -32,8 +32,7 @@ import org.apache.iotdb.cluster.rpc.request.QueryTimeSeriesRequest;
 import org.apache.iotdb.cluster.rpc.response.QueryTimeSeriesResponse;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<QueryTimeSeriesRequest> {
 

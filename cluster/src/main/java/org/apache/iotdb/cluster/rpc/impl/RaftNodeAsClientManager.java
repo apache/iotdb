@@ -174,7 +174,7 @@ public class RaftNodeAsClientManager {
     public void asyncHandleRequest(BasicRequest request, PeerId leader,
         QPTask qpTask)
         throws RaftConnectionException {
-      LOGGER.debug(String.format("Node as client to send request to leader:%s", leader));
+      LOGGER.debug("Node as client to send request to leader: {}", leader);
       try {
         boltClientService.getRpcClient()
             .invokeWithCallback(leader.getEndpoint().toString(), request,

@@ -31,8 +31,6 @@ import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.rpc.request.QueryMetadataInStringRequest;
 import org.apache.iotdb.cluster.rpc.response.QueryMetadataInStringResponse;
 import org.apache.iotdb.db.metadata.MManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class QueryMetadataInStringAsyncProcessor  extends BasicAsyncUserProcessor<QueryMetadataInStringRequest> {
 

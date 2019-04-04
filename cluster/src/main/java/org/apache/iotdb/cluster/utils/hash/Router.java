@@ -39,10 +39,6 @@ import org.slf4j.LoggerFactory;
 public class Router {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Router.class);
-  /**
-   * Replication number
-   */
-  private int replicator;
 
   /**
    * A local cache to store Which nodes do a storage group correspond to
@@ -93,13 +89,9 @@ public class Router {
     reset();
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     String[] hosts = config.getNodes();
-    this.replicator = config.getReplication();
+    int replicator = config.getReplication();
     int numOfVirtualNodes = config.getNumOfVirtualNodes();
-    for (String host : hosts) {
-      String[] values = host.split(":");
-      PhysicalNode node = new PhysicalNode(values[0].trim(), Integer.parseInt(values[1].trim()));
-      addNode(node, numOfVirtualNodes);
-    }
+    createHashRing(hosts, numOfVirtualNodes);
     PhysicalNode[] nodes = physicalRing.values().toArray(new PhysicalNode[0]);
     int len = nodes.length;
     for (int i = 0; i < len; i++) {
@@ -126,6 +118,14 @@ public class Router {
         }
         dataPartitionCache.put(first, val);
       }
+    }
+  }
+
+  private void createHashRing(String[] hosts, int numOfVirtualNodes){
+    for (String host : hosts) {
+      String[] values = host.split(":");
+      PhysicalNode node = new PhysicalNode(values[0].trim(), Integer.parseInt(values[1].trim()));
+      addNode(node, numOfVirtualNodes);
     }
   }
 
@@ -194,14 +194,14 @@ public class Router {
   @OnlyForTest
   public void showPhysicalRing() {
     for (Entry<Integer, PhysicalNode> entry : physicalRing.entrySet()) {
-      LOGGER.info(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
+      LOGGER.info("{}-{}", entry.getKey(), entry.getValue().getKey());
     }
   }
 
   @OnlyForTest
   public void showVirtualRing() {
     for (Entry<Integer, VirtualNode> entry : virtualRing.entrySet()) {
-      LOGGER.info(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
+      LOGGER.info("{}-{}", entry.getKey(), entry.getValue().getKey());
     }
   }
 
@@ -221,7 +221,7 @@ public class Router {
   public void showPhysicalNodes(String groupId) {
     PhysicalNode[] physicalPlans = getNodesByGroupId(groupId);
     for (PhysicalNode node : physicalPlans) {
-      LOGGER.info(String.valueOf(node));
+      LOGGER.info("{}", node);
     }
   }
 
