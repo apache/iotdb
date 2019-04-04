@@ -56,15 +56,21 @@ public abstract class QPTask {
   TaskState taskState;
 
   /**
+   * Describe task type
+   */
+  TaskType taskType;
+
+  /**
    * Server instance
    */
   protected Server server = Server.getInstance();
 
-  public QPTask(boolean isSyncTask, int taskNum, TaskState taskState) {
+  public QPTask(boolean isSyncTask, int taskNum, TaskState taskState, TaskType taskType) {
     this.isSyncTask = isSyncTask;
     this.taskNum = taskNum;
     this.taskCountDownLatch = new CountDownLatch(taskNum);
     this.taskState = taskState;
+    this.taskType = taskType;
   }
 
   /**
@@ -117,6 +123,10 @@ public abstract class QPTask {
 
   public enum TaskState {
     INITIAL, REDIRECT, FINISH, EXCEPTION
+  }
+
+  public enum TaskType {
+    SINGLE, BATCH, DELETE
   }
 
   /**

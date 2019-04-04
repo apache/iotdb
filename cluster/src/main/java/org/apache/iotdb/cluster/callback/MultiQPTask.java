@@ -18,37 +18,31 @@
  */
 package org.apache.iotdb.cluster.callback;
 
-import org.apache.iotdb.cluster.rpc.request.BasicRequest;
-import org.apache.iotdb.cluster.rpc.response.BasicResponse;
+import java.util.Map;
 
-/**
- * Process single task.
- */
-public class SingleQPTask extends QPTask {
-
-  private static final int TASK_NUM = 1;
-
-  public SingleQPTask(boolean isSyncTask, BasicRequest request) {
-    super(isSyncTask, TASK_NUM, TaskState.INITIAL, TaskType.SINGLE);
-    this.request = request;
-  }
+public abstract class MultiQPTask extends QPTask {
 
   /**
-   * Process response. If it's necessary to redirect leader, redo the task.
+   * Each request is corresponding to a group id. String: group id
    */
-  @Override
-  public void run(BasicResponse response) {
-    this.response = response;
-    if (response.isRedirected()) {
-      this.taskState = TaskState.REDIRECT;
-    } else if (taskState != TaskState.EXCEPTION) {
-      this.taskState = TaskState.FINISH;
-    }
-    this.taskCountDownLatch.countDown();
+  Map<String, QPTask> taskMap;
+
+  /**
+   * Task thread map
+   */
+  Map<String, Thread> taskThreadMap;
+
+  public MultiQPTask(boolean isSyncTask, int taskNum, TaskState taskState, TaskType taskType) {
+    super(isSyncTask, taskNum, TaskState.INITIAL, taskType);
   }
 
   @Override
   public void shutdown() {
+    for (Thread taskThread : taskThreadMap.values()) {
+      if (taskThread.isAlive() && !taskThread.isInterrupted()) {
+        taskThread.interrupt();
+      }
+    }
     this.taskCountDownLatch.countDown();
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.callback;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -36,26 +37,16 @@ import org.slf4j.LoggerFactory;
 /**
  * Execute batch statement task. It's thread-safe.
  */
-public class BatchQPTask extends QPTask {
+public class BatchQPTask extends MultiQPTask {
 
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BatchQPTask.class);
-
-  /**
-   * Each request is corresponding to a group id. String: group id
-   */
-  private Map<String, SingleQPTask> taskMap;
 
   /**
    * Record the index of physical plans in a data group. The index means the position in batchResult
    * String: group id
    */
   private Map<String, List<Integer>> planIndexMap;
-
-  /**
-   * Task thread map
-   */
-  private Map<String, Thread> taskThreadMap;
 
   /**
    * Batch result
@@ -77,21 +68,22 @@ public class BatchQPTask extends QPTask {
    */
   private ReentrantLock lock = new ReentrantLock();
 
-  public BatchQPTask(int taskNum, BatchResult batchResult, Map<String, SingleQPTask> taskMap,
+  public BatchQPTask(int taskNum, BatchResult batchResult, Map<String, QPTask> taskMap,
       Map<String, List<Integer>> planIndexMap) {
-    super(false, taskNum, TaskState.INITIAL);
+    super(false, taskNum, TaskState.INITIAL, TaskType.BATCH);
     this.batchResult = batchResult.getResult();
     this.isAllSuccessful = batchResult.isAllSuccessful();
     this.batchErrorMessage = batchResult.getBatchErrorMessage();
     this.taskMap = taskMap;
     this.planIndexMap = planIndexMap;
+    this.taskThreadMap = new HashMap<>();
   }
 
   public void execute(NonQueryExecutor executor) {
-    for (Entry<String, SingleQPTask> entry : taskMap.entrySet()) {
+    for (Entry<String, QPTask> entry : taskMap.entrySet()) {
       String groupId = entry.getKey();
       PeerId leader = RaftUtils.getLeaderPeerID(groupId);
-      SingleQPTask subTask = entry.getValue();
+      QPTask subTask = entry.getValue();
       Thread thread;
       if (executor.canHandleNonQueryByGroupId(groupId)) {
         thread = new Thread(() -> {
@@ -118,6 +110,7 @@ public class BatchQPTask extends QPTask {
         });
         thread.start();
       }
+      taskThreadMap.put(groupId, thread);
     }
   }
 
@@ -141,7 +134,7 @@ public class BatchQPTask extends QPTask {
               results.get(i) ? Statement.SUCCESS_NO_INFO : Statement.EXECUTE_FAILED;
         }
       }
-      if(!basicResponse.isSuccess()){
+      if (!basicResponse.isSuccess()) {
         isAllSuccessful = false;
         batchErrorMessage = basicResponse.getErrorMsg();
       }
@@ -149,16 +142,6 @@ public class BatchQPTask extends QPTask {
       lock.unlock();
     }
     taskCountDownLatch.countDown();
-  }
-
-  @Override
-  public void shutdown() {
-    for(Thread taskThread:taskThreadMap.values()){
-      if(taskThread.isAlive() && !taskThread.isInterrupted()){
-        taskThread.interrupt();
-      }
-    }
-    this.taskCountDownLatch.countDown();
   }
 
   public boolean isAllSuccessful() {

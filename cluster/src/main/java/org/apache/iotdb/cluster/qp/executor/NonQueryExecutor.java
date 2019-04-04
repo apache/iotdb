@@ -41,8 +41,10 @@ import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.request.MetaGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.response.DataGroupNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.rpc.service.TSServiceClusterImpl.BatchResult;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -76,7 +78,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     try {
       String groupId = getGroupIdFromPhysicalPlan(plan);
-      return handleNonQueryRequest(groupId, plan);
+      return handleNonQuerySingleRequest(groupId, plan);
     } catch (RaftConnectionException e) {
       LOGGER.error(e.getMessage());
       throw new ProcessorException("Raft connection occurs error.", e);
@@ -120,13 +122,17 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     }
 
     /** 2. Construct Multiple Requests **/
-    Map<String, SingleQPTask> subTaskMap = new HashMap<>();
+    Map<String, QPTask> subTaskMap = new HashMap<>();
     for (Entry<String, List<PhysicalPlan>> entry : physicalPlansMap.entrySet()) {
       String groupId = entry.getKey();
       SingleQPTask singleQPTask;
       BasicRequest request;
       try {
-        request = new DataGroupNonQueryRequest(groupId, entry.getValue());
+        if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
+          request = new MetaGroupNonQueryRequest(groupId, entry.getValue());
+        }else {
+          request = new DataGroupNonQueryRequest(groupId, entry.getValue());
+        }
         singleQPTask = new SingleQPTask(false, request);
         subTaskMap.put(groupId, singleQPTask);
       } catch (IOException e) {
@@ -242,14 +248,19 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   }
 
   /**
-   * Handle non query request by group id and physical plan
+   * Handle non query single request by group id and physical plan
    */
-  private boolean handleNonQueryRequest(String groupId, PhysicalPlan plan)
+  private boolean handleNonQuerySingleRequest(String groupId, PhysicalPlan plan)
       throws IOException, RaftConnectionException, InterruptedException {
     List<PhysicalPlan> plans = new ArrayList<>();
     plans.add(plan);
-    DataGroupNonQueryRequest request = new DataGroupNonQueryRequest(groupId, plans);
-    SingleQPTask qpTask = new SingleQPTask(false, request);
+    BasicRequest request;
+    if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
+      request = new MetaGroupNonQueryRequest(groupId, plans);
+    } else {
+      request = new DataGroupNonQueryRequest(groupId, plans);
+    }
+    QPTask qpTask = new SingleQPTask(false, request);
     currentTask = qpTask;
     /** Check if the plan can be executed locally. **/
     if (canHandleNonQueryByGroupId(groupId)) {
@@ -266,7 +277,12 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   public boolean handleNonQueryRequestLocally(String groupId, QPTask qpTask)
       throws InterruptedException {
     final Task task = new Task();
-    BasicResponse response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
+    BasicResponse response;
+    if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
+      response = MetaGroupNonQueryResponse.createEmptyInstance(groupId);
+    }else{
+      response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
+    }
     ResponseClosure closure = new ResponseClosure(response, status -> {
       response.addResult(status.isOk());
       if (!status.isOk()) {

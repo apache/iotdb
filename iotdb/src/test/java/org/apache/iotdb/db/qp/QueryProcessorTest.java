@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.junit.Test;
@@ -54,6 +55,10 @@ public class QueryProcessorTest {
     String propertyStatement = "add label label1021 to property propropro";
     PhysicalPlan plan5 = processor.parseSQLToPhysicalPlan(propertyStatement);
     assertEquals(OperatorType.PROPERTY, plan5.getOperatorType());
+
+    String deleteStatement = "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
+    PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
+    assertEquals(OperatorType.DELETE, plan6.getOperatorType());
 
   }
 }

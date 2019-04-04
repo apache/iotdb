@@ -18,37 +18,25 @@
  */
 package org.apache.iotdb.cluster.callback;
 
-import org.apache.iotdb.cluster.rpc.request.BasicRequest;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 
-/**
- * Process single task.
- */
-public class SingleQPTask extends QPTask {
+public class DeleteQPTask extends MultiQPTask {
 
-  private static final int TASK_NUM = 1;
-
-  public SingleQPTask(boolean isSyncTask, BasicRequest request) {
-    super(isSyncTask, TASK_NUM, TaskState.INITIAL, TaskType.SINGLE);
-    this.request = request;
+  public DeleteQPTask(int taskNum, Map<String, QPTask> taskMap) {
+    super(false, taskNum, TaskState.INITIAL, TaskType.BATCH);
+    this.taskMap = taskMap;
+    this.taskThreadMap = new HashMap<>();
   }
 
   /**
-   * Process response. If it's necessary to redirect leader, redo the task.
+   * Process response
+   *
+   * @param basicResponse response from receiver
    */
   @Override
-  public void run(BasicResponse response) {
-    this.response = response;
-    if (response.isRedirected()) {
-      this.taskState = TaskState.REDIRECT;
-    } else if (taskState != TaskState.EXCEPTION) {
-      this.taskState = TaskState.FINISH;
-    }
-    this.taskCountDownLatch.countDown();
-  }
+  public void run(BasicResponse basicResponse) {
 
-  @Override
-  public void shutdown() {
-    this.taskCountDownLatch.countDown();
   }
 }
