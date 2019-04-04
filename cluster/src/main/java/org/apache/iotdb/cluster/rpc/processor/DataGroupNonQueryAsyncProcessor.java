@@ -88,9 +88,8 @@ public class DataGroupNonQueryAsyncProcessor extends
         response.addResult(false);
         asyncContext.sendResponse(response);
       }
-      DataPartitionRaftHolder dataRaftHolder = (DataPartitionRaftHolder) server
-          .getDataPartitionHolderMap().get(groupId);
-      RaftService service = (RaftService) dataRaftHolder.getService();
+
+      RaftService service = (RaftService) dataPartitionRaftHolder.getService();
       service.getNode().apply(task);
     }
   }

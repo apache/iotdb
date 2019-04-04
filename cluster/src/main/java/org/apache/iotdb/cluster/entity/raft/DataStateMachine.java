@@ -40,7 +40,6 @@ import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
@@ -73,8 +72,6 @@ public class DataStateMachine extends StateMachineAdapter {
   private String groupId;
 
   private AtomicLong leaderTerm = new AtomicLong(-1);
-
-  private MManager mManager = MManager.getInstance();
 
   private final AtomicInteger requestId = new AtomicInteger(0);
 
@@ -121,14 +118,7 @@ public class DataStateMachine extends StateMachineAdapter {
           if (plan.getOperatorType() == OperatorType.SET_STORAGE_GROUP && !MManager.getInstance()
               .checkStorageExistOfPath(((MetadataPlan) plan).getPath().getFullPath())) {
             SingleQPTask nullReadTask = new SingleQPTask(false, null);
-            try {
-              LOGGER.info("Handle null-read in meta group for adding path request.");
-              handleNullReadToMetaGroup(nullReadTask, status);
-              nullReadTask.await();
-            } catch (InterruptedException e) {
-              status.setCode(-1);
-              status.setErrorMsg(e.getMessage());
-            }
+            handleNullReadToMetaGroup(nullReadTask, status, nullReadTask);
           }
           qpExecutor.processNonQuery(plan);
           if (closure != null) {
@@ -155,23 +145,30 @@ public class DataStateMachine extends StateMachineAdapter {
    * @param qpTask null-read task
    * @param originStatus status to return result if this node is leader of the data group
    */
-  private void handleNullReadToMetaGroup(QPTask qpTask, Status originStatus) {
-    final byte[] reqContext = new byte[4];
-    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
-    MetadataRaftHolder metadataRaftHolder = (MetadataRaftHolder) server.getMetadataHolder();
-    ((RaftService) metadataRaftHolder.getService()).getNode()
-        .readIndex(reqContext, new ReadIndexClosure() {
-          @Override
-          public void run(Status status, long index, byte[] reqCtx) {
-            BasicResponse response = new BasicResponse(null, false, null, null) {
-            };
-            if (!status.isOk()) {
-              originStatus.setCode(-1);
-              originStatus.setErrorMsg(status.getErrorMsg());
+  private void handleNullReadToMetaGroup(QPTask qpTask, Status originStatus, SingleQPTask nullReadTask) {
+    try {
+      LOGGER.info("Handle null-read in meta group for adding path request.");
+      final byte[] reqContext = new byte[4];
+      Bits.putInt(reqContext, 0, requestId.incrementAndGet());
+      MetadataRaftHolder metadataRaftHolder = (MetadataRaftHolder) server.getMetadataHolder();
+      ((RaftService) metadataRaftHolder.getService()).getNode()
+          .readIndex(reqContext, new ReadIndexClosure() {
+            @Override
+            public void run(Status status, long index, byte[] reqCtx) {
+              BasicResponse response = new BasicResponse(null, false, null, null) {
+              };
+              if (!status.isOk()) {
+                originStatus.setCode(-1);
+                originStatus.setErrorMsg(status.getErrorMsg());
+              }
+              qpTask.run(response);
             }
-            qpTask.run(response);
-          }
-        });
+          });
+      nullReadTask.await();
+    } catch (InterruptedException e) {
+      originStatus.setCode(-1);
+      originStatus.setErrorMsg(e.getMessage());
+    }
   }
 
   @Override

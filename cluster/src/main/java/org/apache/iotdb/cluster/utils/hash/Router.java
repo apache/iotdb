@@ -30,12 +30,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ErrorConfigureExecption;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Cluster router, it's responsible for hash mapping and routing to specified data groups
  */
 public class Router {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(Router.class);
   /**
    * Replication number
    */
@@ -191,14 +194,14 @@ public class Router {
   @OnlyForTest
   public void showPhysicalRing() {
     for (Entry<Integer, PhysicalNode> entry : physicalRing.entrySet()) {
-      System.out.println(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
+      LOGGER.info(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
     }
   }
 
   @OnlyForTest
   public void showVirtualRing() {
     for (Entry<Integer, VirtualNode> entry : virtualRing.entrySet()) {
-      System.out.println(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
+      LOGGER.info(String.format("%d-%s", entry.getKey(), entry.getValue().getKey()));
     }
   }
 
@@ -218,7 +221,7 @@ public class Router {
   public void showPhysicalNodes(String groupId) {
     PhysicalNode[] physicalPlans = getNodesByGroupId(groupId);
     for (PhysicalNode node : physicalPlans) {
-      System.out.println(node);
+      LOGGER.info(String.valueOf(node));
     }
   }
 

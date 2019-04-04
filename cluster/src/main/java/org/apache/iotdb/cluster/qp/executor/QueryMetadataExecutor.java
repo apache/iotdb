@@ -138,7 +138,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       } else {
         try {
           PeerId holder = RaftUtils.getRandomPeerID(groupId);
-          asyncSendTask(task, holder, 0);
+          asyncSendNonQueryTask(task, holder, 0);
         } catch (RaftConnectionException e) {
           LOGGER.error(e.getMessage());
           throw new ProcessorException("Raft connection occurs error.", e);
@@ -153,7 +153,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
         LOGGER.error("Execute show timeseries statement false.");
         throw new ProcessorException();
       }
-      return ((QueryMetadataInStringResponse) task.getResponse()).getMetadata();
+      metadataList.add(response.getMetadata());
     }
     return combineMetadataInStringList(metadataList);
   }
@@ -219,7 +219,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private List<List<String>> queryTimeSeries(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
     return ((QueryTimeSeriesResponse) response).getTimeSeries();
   }
 
@@ -307,7 +307,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private String queryMetadataInString(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
     return ((QueryMetadataInStringResponse) response).getMetadata();
   }
 

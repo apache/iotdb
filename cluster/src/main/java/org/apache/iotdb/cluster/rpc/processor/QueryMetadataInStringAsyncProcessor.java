@@ -36,8 +36,6 @@ import org.slf4j.LoggerFactory;
 
 public class QueryMetadataInStringAsyncProcessor  extends BasicAsyncUserProcessor<QueryMetadataInStringRequest> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataInStringAsyncProcessor.class);
-
   private final AtomicInteger requestId = new AtomicInteger(0);
 
   private MManager mManager = MManager.getInstance();

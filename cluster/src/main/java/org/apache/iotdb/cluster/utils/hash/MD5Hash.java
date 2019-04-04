@@ -20,15 +20,21 @@ package org.apache.iotdb.cluster.utils.hash;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import org.apache.iotdb.cluster.callback.BatchQPTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MD5Hash implements HashFunction {
 
-  MessageDigest instance;
+  private static final Logger LOGGER = LoggerFactory.getLogger(MD5Hash.class);
+
+  private MessageDigest instance;
 
   public MD5Hash() {
     try {
       instance = MessageDigest.getInstance("MD5");
     } catch (NoSuchAlgorithmException e) {
+      LOGGER.error("can not find algorithm {}", "MD5");
     }
   }
 

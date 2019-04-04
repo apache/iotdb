@@ -96,22 +96,24 @@ public class BatchQPTask extends QPTask {
       if (executor.canHandleNonQueryByGroupId(groupId)) {
         thread = new Thread(() -> {
           try {
-            executor.handleDataGroupRequestLocally(groupId, subTask);
+            executor.handleNonQueryRequestLocally(groupId, subTask);
             this.run(subTask.getResponse());
           } catch (InterruptedException e) {
             LOGGER.error("Handle sub task locally failed.");
-            this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.toString()));
+            this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
+            Thread.currentThread().interrupt();
           }
         });
         thread.start();
       } else {
         thread = new Thread(() -> {
           try {
-            executor.asyncHandleTask(subTask, leader);
+            executor.asyncHandleNonQueryTask(subTask, leader);
             this.run(subTask.getResponse());
           } catch (RaftConnectionException | InterruptedException e) {
             LOGGER.error("Async handle sub task failed.");
-            this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.toString()));
+            this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
+            Thread.currentThread().interrupt();
           }
         });
         thread.start();
@@ -152,7 +154,7 @@ public class BatchQPTask extends QPTask {
   @Override
   public void shutdown() {
     for(Thread taskThread:taskThreadMap.values()){
-      if(taskThread.isAlive()){
+      if(taskThread.isAlive() && !taskThread.isInterrupted()){
         taskThread.interrupt();
       }
     }

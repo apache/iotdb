@@ -31,6 +31,8 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
+import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
+import org.apache.iotdb.cluster.exception.ConsistencyLevelException;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.rpc.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClientManager;
@@ -48,8 +50,6 @@ public abstract class ClusterQPExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterQPExecutor.class);
 
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
-
-  protected static final String METADATA_GROUP_ID = CLUSTER_CONFIG.METADATA_GROUP_ID;
 
   /**
    * Raft as client manager.
@@ -153,34 +153,17 @@ public abstract class ClusterQPExecutor {
    * Verify if the non query command can execute in local. 1. If this node belongs to the storage
    * group 2. If this node is leader.
    */
-  public boolean canHandleNonQueryBySG(String storageGroup) {
-    if (router.containPhysicalNodeBySG(storageGroup, localNode)) {
-      String groupId = getGroupIdBySG(storageGroup);
-      if (RaftUtils.getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
-        return true;
+  public boolean canHandleNonQueryByGroupId(String groupId) {
+    boolean canHandle = false;
+    if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
+      canHandle = ((MetadataRaftHolder) (server.getMetadataHolder())).getFsm().isLeader();
+    }else {
+      if (router.containPhysicalNodeByGroupId(groupId, localNode) && RaftUtils
+          .getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
+        canHandle = true;
       }
     }
-    return false;
-  }
-
-  /**
-   * Verify if the non query command can execute in local. 1. If this node belongs to the storage
-   * group 2. If this node is leader.
-   */
-  public boolean canHandleNonQueryByGroupId(String groupId) {
-    if (router.containPhysicalNodeByGroupId(groupId, localNode) && RaftUtils
-        .getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * Verify if the query command can execute in local. Check if this node belongs to the storage
-   * group
-   */
-  public boolean canHandleQueryBySG(String storageGroup) {
-    return router.containPhysicalNodeBySG(storageGroup, localNode);
+    return canHandle;
   }
 
   /**
@@ -198,10 +181,10 @@ public abstract class ClusterQPExecutor {
    * @param taskRetryNum Number of QPTask retries due to timeout and redirected.
    * @return basic response
    */
-  public BasicResponse asyncHandleTaskGetRes(QPTask task, PeerId leader, int taskRetryNum)
+  public BasicResponse asyncHandleNonQueryTaskGetRes(QPTask task, PeerId leader, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
-    asyncSendTask(task, leader, taskRetryNum);
-    return asyncGetRes(task, leader, taskRetryNum);
+    asyncSendNonQueryTask(task, leader, taskRetryNum);
+    return asyncGetNonQueryRes(task, leader, taskRetryNum);
   }
 
   /**
@@ -211,7 +194,7 @@ public abstract class ClusterQPExecutor {
    * @param leader leader node of the group
    * @param taskRetryNum Retry time of the task
    */
-  public void asyncSendTask(QPTask task, PeerId leader, int taskRetryNum)
+  public void asyncSendNonQueryTask(QPTask task, PeerId leader, int taskRetryNum)
       throws RaftConnectionException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
       throw new RaftConnectionException(String.format("QPTask retries reach the upper bound %s",
@@ -243,7 +226,7 @@ public abstract class ClusterQPExecutor {
    * @param leader leader node of the group
    * @param taskRetryNum Retry time of the task
    */
-  public BasicResponse asyncGetRes(QPTask task, PeerId leader, int taskRetryNum)
+  public BasicResponse asyncGetNonQueryRes(QPTask task, PeerId leader, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
     task.await();
     if (task.getTaskState() != TaskState.FINISH) {
@@ -254,7 +237,7 @@ public abstract class ClusterQPExecutor {
         RaftUtils.updateRaftGroupLeader(task.getRequest().getGroupID(), leader);
       }
       task.resetTask();
-      return asyncHandleTaskGetRes(task, leader, taskRetryNum + 1);
+      return asyncHandleNonQueryTaskGetRes(task, leader, taskRetryNum + 1);
     }
     return task.getResponse();
   }
@@ -265,19 +248,19 @@ public abstract class ClusterQPExecutor {
     }
   }
 
-  public void setReadMetadataConsistencyLevel(int level) throws Exception {
+  public void setReadMetadataConsistencyLevel(int level) throws ConsistencyLevelException {
     if (level <= ClusterConstant.MAX_CONSISTENCY_LEVEL) {
       this.readMetadataConsistencyLevel = level;
     } else {
-      throw new Exception(String.format("Consistency level %d not support", level));
+      throw new ConsistencyLevelException(String.format("Consistency level %d not support", level));
     }
   }
 
-  public void setReadDataConsistencyLevel(int level) throws Exception {
+  public void setReadDataConsistencyLevel(int level) throws ConsistencyLevelException {
     if (level <= ClusterConstant.MAX_CONSISTENCY_LEVEL) {
       this.readDataConsistencyLevel = level;
     } else {
-      throw new Exception(String.format("Consistency level %d not support", level));
+      throw new ConsistencyLevelException(String.format("Consistency level %d not support", level));
     }
   }
 

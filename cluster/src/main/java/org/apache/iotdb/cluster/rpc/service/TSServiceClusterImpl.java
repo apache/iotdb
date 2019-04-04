@@ -194,13 +194,13 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     statement = statement.toLowerCase().trim();
     if (Pattern.matches(ClusterConstant.SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
       String[] splits = statement.split("\\s+");
-      int level = Integer.valueOf(splits[splits.length-1]);
+      int level = Integer.parseInt(splits[splits.length-1]);
         nonQueryExecutor.get().setReadMetadataConsistencyLevel(level);
       return true;
     } else if (Pattern
         .matches(ClusterConstant.SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
       String[] splits = statement.split("\\s+");
-      int level = Integer.valueOf(splits[splits.length-1]);
+      int level = Integer.parseInt(splits[splits.length-1]);
       nonQueryExecutor.get().setReadDataConsistencyLevel(level);
       return true;
     } else{

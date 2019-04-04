@@ -16,22 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.config;
+package org.apache.iotdb.cluster.exception;
 
-public class ClusterConstant {
+public class ConsistencyLevelException extends Exception {
 
-  private ClusterConstant(){
+  private static final long serialVersionUID = -6909575387553857034L;
 
+  public ConsistencyLevelException() {
+    super();
   }
 
-  public static final String SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN = "set\\s+read\\s+metadata\\s+level\\s+\\d+";
+  public ConsistencyLevelException(Exception pathExcp) {
+    super(pathExcp.getMessage());
+  }
 
-  public static final String SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN = "set\\s+read\\s+data\\s+level\\s+\\d+";
+  public ConsistencyLevelException(String msg) {
+    super(msg);
+  }
 
-  public static final int MAX_CONSISTENCY_LEVEL = 2;
-
-  public static final int STRONG_CONSISTENCY_LEVEL = 1;
-
-  public static final int WEAK_CONSISTENCY_LEVEL = 2;
+  public ConsistencyLevelException(Throwable throwable) {
+    super(throwable.getMessage());
+  }
 
 }

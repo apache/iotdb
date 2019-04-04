@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
 
 public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<QueryTimeSeriesRequest> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(QueryTimeSeriesAsyncProcessor.class);
-
   private final AtomicInteger requestId = new AtomicInteger(0);
 
   private MManager mManager = MManager.getInstance();

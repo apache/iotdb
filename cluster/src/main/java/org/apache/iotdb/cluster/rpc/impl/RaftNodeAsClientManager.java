@@ -22,7 +22,6 @@ import com.alipay.remoting.InvokeCallback;
 import com.alipay.remoting.exception.RemotingException;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.option.CliOptions;
-import com.alipay.sofa.jraft.option.RpcOptions;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,7 +64,7 @@ public class RaftNodeAsClientManager {
   /**
    * RaftNodeAsClient singleton
    */
-  private final RaftNodeAsClient CLIENT = new RaftNodeAsClient();
+  private final RaftNodeAsClient client = new RaftNodeAsClient();
 
   /**
    * Number of clients in use
@@ -94,7 +93,7 @@ public class RaftNodeAsClientManager {
       numLock.lock();
       if (validClientNum.get() < MAX_VALID_CLIENT_NUM) {
         validClientNum.incrementAndGet();
-        return CLIENT;
+        return client;
       }
       if (queueClientNum >= MAX_QUEUE_CLIENT_NUM) {
         return null;
@@ -117,7 +116,7 @@ public class RaftNodeAsClientManager {
           if(validClientNum.get() < MAX_VALID_CLIENT_NUM){
             validClientNum.incrementAndGet();
             queueClientNum--;
-            return CLIENT;
+            return client;
           }
         }finally {
           numLock.unlock();
@@ -131,11 +130,11 @@ public class RaftNodeAsClientManager {
   }
 
   public void init(){
-    CLIENT.init();
+    client.init();
   }
 
   public void shutdown(){
-    CLIENT.shutdown();
+    client.shutdown();
   }
 
   public static final RaftNodeAsClientManager getInstance() {

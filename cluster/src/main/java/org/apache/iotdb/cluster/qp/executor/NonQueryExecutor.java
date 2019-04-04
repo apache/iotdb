@@ -22,8 +22,6 @@ import com.alipay.remoting.exception.CodecException;
 import com.alipay.remoting.serialization.SerializerManager;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.entity.Task;
-import com.alipay.sofa.jraft.option.CliOptions;
-import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.Statement;
@@ -35,6 +33,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.cluster.callback.BatchQPTask;
 import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.callback.SingleQPTask;
+import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
@@ -42,7 +41,6 @@ import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
 import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
-import org.apache.iotdb.cluster.rpc.request.MetaGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.response.DataGroupNonQueryResponse;
 import org.apache.iotdb.cluster.rpc.service.TSServiceClusterImpl.BatchResult;
@@ -54,10 +52,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
-import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,45 +68,13 @@ public class NonQueryExecutor extends ClusterQPExecutor {
 
   }
 
+  /**
+   * Execute single non query request.
+   */
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     try {
-      switch (plan.getOperatorType()) {
-        case DELETE:
-          return delete((DeletePlan) plan);
-        case UPDATE:
-          return update((UpdatePlan) plan);
-        case INSERT:
-          return insert((InsertPlan) plan);
-        case CREATE_ROLE:
-        case DELETE_ROLE:
-        case CREATE_USER:
-        case REVOKE_USER_ROLE:
-        case REVOKE_ROLE_PRIVILEGE:
-        case REVOKE_USER_PRIVILEGE:
-        case GRANT_ROLE_PRIVILEGE:
-        case GRANT_USER_PRIVILEGE:
-        case GRANT_USER_ROLE:
-        case MODIFY_PASSWORD:
-        case DELETE_USER:
-        case LIST_ROLE:
-        case LIST_USER:
-        case LIST_ROLE_PRIVILEGE:
-        case LIST_ROLE_USERS:
-        case LIST_USER_PRIVILEGE:
-        case LIST_USER_ROLES:
-          return operateAuthor((AuthorPlan) plan);
-        case LOADDATA:
-          return loadData((LoadDataPlan) plan);
-        case DELETE_TIMESERIES:
-        case SET_STORAGE_GROUP:
-        case METADATA:
-          return operateMetadata((MetadataPlan) plan);
-        case PROPERTY:
-          return operateProperty((PropertyPlan) plan);
-        default:
-          throw new UnsupportedOperationException(
-              String.format("operation %s does not support", plan.getOperatorType()));
-      }
+      String groupId = getGroupIdFromPhysicalPlan(plan);
+      return handleNonQueryRequest(groupId, plan);
     } catch (RaftConnectionException e) {
       LOGGER.error(e.getMessage());
       throw new ProcessorException("Raft connection occurs error.", e);
@@ -130,86 +93,23 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       throws InterruptedException {
     int[] result = batchResult.getResult();
 
+    /** 1. Classify physical plan by group id **/
     Map<String, List<PhysicalPlan>> physicalPlansMap = new HashMap<>();
     Map<String, List<Integer>> planIndexMap = new HashMap<>();
     for (int i = 0; i < result.length; i++) {
+      /** Check if the request has failed. If it has failed, ignore it. **/
       if (result[i] != Statement.EXECUTE_FAILED) {
         PhysicalPlan plan = physicalPlans[i];
-        String storageGroup;
-        String groupId = null;
         try {
-          switch (plan.getOperatorType()) {
-            case DELETE:
-              //TODO
-              break;
-            case UPDATE:
-              Path path = ((UpdatePlan) plan).getPath();
-              storageGroup = getStroageGroupByDevice(path.getDevice());
-              groupId = getGroupIdBySG(storageGroup);
-              break;
-            case INSERT:
-              storageGroup = getStroageGroupByDevice(((InsertPlan) plan).getDeviceId());
-              groupId = getGroupIdBySG(storageGroup);
-              break;
-            case CREATE_ROLE:
-            case DELETE_ROLE:
-            case CREATE_USER:
-            case REVOKE_USER_ROLE:
-            case REVOKE_ROLE_PRIVILEGE:
-            case REVOKE_USER_PRIVILEGE:
-            case GRANT_ROLE_PRIVILEGE:
-            case GRANT_USER_PRIVILEGE:
-            case GRANT_USER_ROLE:
-            case MODIFY_PASSWORD:
-            case DELETE_USER:
-            case LIST_ROLE:
-            case LIST_USER:
-            case LIST_ROLE_PRIVILEGE:
-            case LIST_ROLE_USERS:
-            case LIST_USER_PRIVILEGE:
-            case LIST_USER_ROLES:
-              groupId = METADATA_GROUP_ID;
-              break;
-            case LOADDATA:
-              //TODO
-              break;
-            case DELETE_TIMESERIES:
-            case SET_STORAGE_GROUP:
-            case METADATA:
-              switch (((MetadataPlan) plan).getNamespaceType()) {
-                case ADD_PATH:
-                case DELETE_PATH:
-                  String deviceId = ((MetadataPlan) plan).getPath().getDevice();
-                  storageGroup = getStroageGroupByDevice(deviceId);
-                  groupId = getGroupIdBySG(storageGroup);
-                  break;
-                case SET_FILE_LEVEL:
-                  groupId = METADATA_GROUP_ID;
-                  break;
-                default:
-                  batchResult.setAllSuccessful(false);
-                  batchResult.setBatchErrorMessage(
-                      String.format("operation %s does not support", plan.getOperatorType()));
-                  continue;
-              }
-              break;
-            case PROPERTY:
-              //TODO
-            default:
-              batchResult.setAllSuccessful(false);
-              batchResult.setBatchErrorMessage(
-                  String.format("operation %s does not support", plan.getOperatorType()));
-              continue;
-          }
+          String groupId = getGroupIdFromPhysicalPlan(plan);
 
-          /** Divide into groups **/
           if (!physicalPlansMap.containsKey(groupId)) {
             physicalPlansMap.put(groupId, new ArrayList<>());
             planIndexMap.put(groupId, new ArrayList<>());
           }
           physicalPlansMap.get(groupId).add(plan);
           planIndexMap.get(groupId).add(i);
-        } catch (Exception e) {
+        } catch (PathErrorException|ProcessorException e) {
           result[i] = Statement.EXECUTE_FAILED;
           batchResult.setAllSuccessful(false);
           batchResult.setBatchErrorMessage(e.getMessage());
@@ -217,7 +117,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       }
     }
 
-    /** Construct request **/
+    /** 2. Construct Multiple Requests **/
     Map<String, SingleQPTask> subTaskMap = new HashMap<>();
     for (Entry<String, List<PhysicalPlan>> entry : physicalPlansMap.entrySet()) {
       String groupId = entry.getKey();
@@ -235,7 +135,8 @@ public class NonQueryExecutor extends ClusterQPExecutor {
         }
       }
     }
-    /** Execute multi task **/
+
+    /** 3. Execute Multiple Tasks **/
     BatchQPTask task = new BatchQPTask(subTaskMap.size(), batchResult, subTaskMap, planIndexMap);
     currentTask = task;
     task.execute(this);
@@ -244,12 +145,61 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     batchResult.setBatchErrorMessage(task.getBatchErrorMessage());
   }
 
-  private boolean update(UpdatePlan updatePlan)
-      throws PathErrorException, InterruptedException, RaftConnectionException, IOException {
-    Path path = updatePlan.getPath();
-    String deviceId = path.getDevice();
-    String storageGroup = getStroageGroupByDevice(deviceId);
-    return handleDataGroupRequest(storageGroup, updatePlan);
+  /**
+   * Get group id from physical plan
+   */
+  private String getGroupIdFromPhysicalPlan(PhysicalPlan plan)
+      throws PathErrorException, ProcessorException {
+    String storageGroup;
+    String groupId;
+    switch (plan.getOperatorType()) {
+      case DELETE:
+        throw new UnsupportedOperationException(
+            String.format("operation %s does not support", plan.getOperatorType()));
+      case UPDATE:
+        Path path = ((UpdatePlan) plan).getPath();
+        storageGroup = getStroageGroupByDevice(path.getDevice());
+        groupId = getGroupIdBySG(storageGroup);
+        break;
+      case INSERT:
+        storageGroup = getStroageGroupByDevice(((InsertPlan) plan).getDeviceId());
+        groupId = getGroupIdBySG(storageGroup);
+        break;
+      case CREATE_ROLE:
+      case DELETE_ROLE:
+      case CREATE_USER:
+      case REVOKE_USER_ROLE:
+      case REVOKE_ROLE_PRIVILEGE:
+      case REVOKE_USER_PRIVILEGE:
+      case GRANT_ROLE_PRIVILEGE:
+      case GRANT_USER_PRIVILEGE:
+      case GRANT_USER_ROLE:
+      case MODIFY_PASSWORD:
+      case DELETE_USER:
+      case LIST_ROLE:
+      case LIST_USER:
+      case LIST_ROLE_PRIVILEGE:
+      case LIST_ROLE_USERS:
+      case LIST_USER_PRIVILEGE:
+      case LIST_USER_ROLES:
+        groupId = ClusterConfig.METADATA_GROUP_ID;
+        break;
+      case LOADDATA:
+        throw new UnsupportedOperationException(
+            String.format("operation %s does not support", plan.getOperatorType()));
+      case DELETE_TIMESERIES:
+      case SET_STORAGE_GROUP:
+      case METADATA:
+        groupId = getGroupIdFromMetadataPlan((MetadataPlan) plan);
+        break;
+      case PROPERTY:
+        throw new UnsupportedOperationException(
+            String.format("operation %s does not support", plan.getOperatorType()));
+      default:
+        throw new UnsupportedOperationException(
+            String.format("operation %s does not support", plan.getOperatorType()));
+    }
+    return groupId;
   }
 
   //TODO
@@ -258,84 +208,59 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   }
 
   /**
-   * Handle insert plan
+   * Get group id from metadata plan
    */
-  private boolean insert(InsertPlan insertPlan)
-      throws PathErrorException, InterruptedException, IOException, RaftConnectionException {
-    String deviceId = insertPlan.getDeviceId();
-    String storageGroup = getStroageGroupByDevice(deviceId);
-    return handleDataGroupRequest(storageGroup, insertPlan);
-  }
-
-  /**
-   * Handle author plan
-   */
-  private boolean operateAuthor(AuthorPlan authorPlan)
-      throws IOException, RaftConnectionException, InterruptedException {
-    return redirectMetadataGroupLeader(authorPlan);
-  }
-
-  //TODO
-  private boolean loadData(LoadDataPlan loadDataPlan) {
-    return false;
-  }
-
-  /**
-   * Handle metadata plan
-   */
-  private boolean operateMetadata(MetadataPlan metadataPlan)
-      throws RaftConnectionException, ProcessorException, IOException, PathErrorException, InterruptedException {
+  private String getGroupIdFromMetadataPlan(MetadataPlan metadataPlan)
+      throws ProcessorException, PathErrorException {
     MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
     Path path = metadataPlan.getPath();
+    String groupId;
     switch (namespaceType) {
       case ADD_PATH:
       case DELETE_PATH:
         String deviceId = path.getDevice();
         String storageGroup = getStroageGroupByDevice(deviceId);
-        return handleDataGroupRequest(storageGroup, metadataPlan);
+        groupId = getGroupIdBySG(storageGroup);
+        break;
       case SET_FILE_LEVEL:
         boolean fileLevelExist = mManager.checkStorageLevelOfMTree(path.getFullPath());
         if (fileLevelExist) {
           throw new ProcessorException(
               String.format("File level %s already exists.", path.getFullPath()));
         } else {
-          LOGGER.info("Execute set storage group statement.");
-          return redirectMetadataGroupLeader(metadataPlan);
+          LOGGER.debug("Execute set storage group statement.");
+          groupId = ClusterConfig.METADATA_GROUP_ID;
         }
+        break;
       default:
         throw new ProcessorException("unknown namespace type:" + namespaceType);
     }
-  }
-
-  //TODO
-  private boolean operateProperty(PropertyPlan propertyPlan) {
-    return false;
+    return groupId;
   }
 
   /**
-   * Handle request to data group by storage group and physical plan
+   * Handle non query request by group id and physical plan
    */
-  private boolean handleDataGroupRequest(String storageGroup, PhysicalPlan plan)
+  private boolean handleNonQueryRequest(String groupId, PhysicalPlan plan)
       throws IOException, RaftConnectionException, InterruptedException {
-    String groupId = getGroupIdBySG(storageGroup);
-    PeerId leader = RaftUtils.getLeaderPeerID(groupId);
     List<PhysicalPlan> plans = new ArrayList<>();
     plans.add(plan);
     DataGroupNonQueryRequest request = new DataGroupNonQueryRequest(groupId, plans);
     SingleQPTask qpTask = new SingleQPTask(false, request);
     currentTask = qpTask;
     /** Check if the plan can be executed locally. **/
-    if (canHandleNonQueryBySG(storageGroup)) {
-      return handleDataGroupRequestLocally(groupId, qpTask);
+    if (canHandleNonQueryByGroupId(groupId)) {
+      return handleNonQueryRequestLocally(groupId, qpTask);
     } else {
-      return asyncHandleTask(qpTask, leader);
+      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
+      return asyncHandleNonQueryTask(qpTask, leader);
     }
   }
 
   /**
    * Handle data group request locally.
    */
-  public boolean handleDataGroupRequestLocally(String groupId, QPTask qpTask)
+  public boolean handleNonQueryRequestLocally(String groupId, QPTask qpTask)
       throws InterruptedException {
     final Task task = new Task();
     BasicResponse response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
@@ -349,6 +274,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     task.setDone(closure);
 
     BasicRequest request = qpTask.getRequest();
+
     /** Apply qpTask to Raft Node **/
     try {
       task.setData(ByteBuffer
@@ -372,26 +298,10 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    * @param leader leader of the target raft group
    * @return request result
    */
-  public boolean asyncHandleTask(QPTask task, PeerId leader)
+  public boolean asyncHandleNonQueryTask(QPTask task, PeerId leader)
       throws RaftConnectionException, InterruptedException {
-    BasicResponse response = asyncHandleTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
     return response.isSuccess();
   }
 
-  /**
-   * Request need to broadcast in metadata group.
-   *
-   * @param plan Metadata Plan or Authoe Plan
-   */
-  public boolean redirectMetadataGroupLeader(PhysicalPlan plan)
-      throws IOException, RaftConnectionException, InterruptedException {
-    List<PhysicalPlan> plans = new ArrayList<>();
-    plans.add(plan);
-    MetaGroupNonQueryRequest request = new MetaGroupNonQueryRequest(
-        METADATA_GROUP_ID, plans);
-    PeerId leader = RaftUtils.getLeaderPeerID(METADATA_GROUP_ID);
-
-    SingleQPTask task = new SingleQPTask(false, request);
-    return asyncHandleTask(task, leader);
-  }
 }

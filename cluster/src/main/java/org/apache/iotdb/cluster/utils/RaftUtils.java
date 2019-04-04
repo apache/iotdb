@@ -55,6 +55,7 @@ public class RaftUtils {
   }
 
 
+  @Deprecated
   /**
    * @deprecated
    * Get leader node according to the group id.
@@ -63,7 +64,6 @@ public class RaftUtils {
    * @param groupId group id of raft group
    * @return PeerId of leader
    */
-  @Deprecated
   public static PeerId getLeaderPeerID(String groupId, BoltCliClientService cliClientService)
       throws RaftConnectionException {
     Configuration conf = getConfiguration(groupId);
@@ -97,7 +97,7 @@ public class RaftUtils {
    */
   public static PeerId getRandomPeerID(String groupId) {
     PeerId randomPeerId;
-    if (groupId.equals(CLUSTER_CONFIG.METADATA_GROUP_ID)) {
+    if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
       RaftService service = (RaftService) server.getMetadataHolder().getService();
       List<PeerId> peerIdList = service.getPeerIdList();
       randomPeerId = peerIdList.get(getRandomInt(peerIdList.size()));
@@ -117,18 +117,18 @@ public class RaftUtils {
     return randomIndex;
   }
 
+  @Deprecated
   /**
    * Get raft group configuration by group id
    *
    * @param groupID raft group id
    * @return raft group configuration
    */
-  @Deprecated
   public static Configuration getConfiguration(String groupID) {
     //TODO can we reuse Configuration instance?
     Configuration conf = new Configuration();
     RaftService service;
-    if (groupID.equals(CLUSTER_CONFIG.METADATA_GROUP_ID)) {
+    if (groupID.equals(ClusterConfig.METADATA_GROUP_ID)) {
       service = (RaftService) server.getMetadataHolder().getService();
       conf.setPeers(service.getPeerIdList());
     } else {
@@ -194,7 +194,7 @@ public class RaftUtils {
    */
   public static void updateRaftGroupLeader(String groupId, PeerId peerId) {
     groupLeaderCache.put(groupId, peerId);
-    LOGGER.info("group leader cache:" + groupLeaderCache);
+    LOGGER.info(String.format("group leader cache:%s", groupLeaderCache));
   }
 
 }
