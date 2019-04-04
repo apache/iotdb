@@ -1025,7 +1025,9 @@ public class MTree implements Serializable {
   }
 
   private JSONObject toJson() {
-    return mnodeToJSON(getRoot());
+    JSONObject jsonObject = new JSONObject();
+    jsonObject.put(getRoot().getName(), mnodeToJSON(getRoot()));
+    return jsonObject;
   }
 
   private JSONObject mnodeToJSON(MNode node) {
