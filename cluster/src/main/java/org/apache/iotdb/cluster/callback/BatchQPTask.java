@@ -94,7 +94,7 @@ public class BatchQPTask extends QPTask {
             executor.handleDataGroupRequestLocally(groupId, subTask);
             this.run(subTask.getResponse());
           } catch (InterruptedException e) {
-            LOGGER.info("Handle sub task locally failed.");
+            LOGGER.error("Handle sub task locally failed.");
             this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.toString()));
           }
         });
@@ -105,7 +105,7 @@ public class BatchQPTask extends QPTask {
             executor.asyncHandleTask(subTask, leader);
             this.run(subTask.getResponse());
           } catch (RaftConnectionException | InterruptedException e) {
-            LOGGER.info("Async handle sub task failed.");
+            LOGGER.error("Async handle sub task failed.");
             this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.toString()));
           }
         });

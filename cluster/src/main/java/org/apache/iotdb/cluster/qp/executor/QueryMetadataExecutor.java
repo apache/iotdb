@@ -60,12 +60,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   }
 
-  public void init() {
-    this.cliClientService = new BoltCliClientService();
-    this.cliClientService.init(new CliOptions());
-    this.subTaskNum = 1;
-  }
-
   public Set<String> processStorageGroupQuery() throws InterruptedException {
     return queryStorageGroupLocally();
   }
@@ -184,7 +178,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
               try {
                 LOGGER.debug("start to read");
                 for(String path:pathList){
-                  response.addTimeSeries(dataPartitionHolder.getFsm().getShowTimeseriesPath(path));
+                  response.addTimeSeries(mManager.getShowTimeseriesPath(path));
                 }
               } catch (final PathErrorException e) {
                 response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.toString());
@@ -262,7 +256,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
             if (status.isOk()) {
               LOGGER.info("start to read");
               response = new QueryMetadataInStringResponse(groupId, false,
-                  dataPartitionHolder.getFsm().getMetadataInString());
+                  mManager.getMetadataInString());
               response.addResult(true);
             } else {
               response = new QueryMetadataInStringResponse(groupId, false, null, null);

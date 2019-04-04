@@ -19,7 +19,6 @@
 package org.apache.iotdb.cluster.qp;
 
 import com.alipay.sofa.jraft.entity.PeerId;
-import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,7 +32,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.rpc.NodeAsClient;
-import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClient;
+import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
@@ -46,8 +45,10 @@ import org.slf4j.LoggerFactory;
 public abstract class ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterQPExecutor.class);
-  protected static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
+  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
   protected static final String METADATA_GROUP_ID = CLUSTER_CONFIG.METADATA_GROUP_ID;
+  protected static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager
+      .getInstance();
   protected Router router = Router.getInstance();
   private PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
       CLUSTER_CONFIG.getPort());
@@ -60,19 +61,9 @@ public abstract class ClusterQPExecutor {
   protected QPTask currentTask;
 
   /**
-   * Rpc Service Client
-   */
-  protected BoltCliClientService cliClientService;
-
-  /**
    * Count limit to redo a single task
    */
   private static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getTaskRedoCount();
-
-  /**
-   * Number of subtask in task segmentation
-   */
-  protected int subTaskNum = 1;
 
   /**
    * ReadMetadataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
@@ -122,7 +113,6 @@ public abstract class ClusterQPExecutor {
   /**
    * Classify the input storage group list by which data group it belongs to.
    *
-   * @param sgList
    * @return key is groupId, value is all SGs belong to this data group
    */
   public Map<String, Set<String>> classifySGByGroupId(List<String> sgList) {
@@ -203,17 +193,45 @@ public abstract class ClusterQPExecutor {
     return asyncGetRes(task, leader, taskRetryNum);
   }
 
+  /**
+   * Asynchronous send rpc task via client
+   *
+   * @param task rpc task
+   * @param leader leader node of the group
+   * @param taskRetryNum Retry time of the task
+   */
   public void asyncSendTask(QPTask task, PeerId leader, int taskRetryNum)
       throws RaftConnectionException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
       throw new RaftConnectionException(String.format("QPTask retries reach the upper bound %s",
           TASK_MAX_RETRY));
     }
-    NodeAsClient client = new RaftNodeAsClient();
+    NodeAsClient client = getRaftNodeAsClient();
     /** Call async method **/
-    client.asyncHandleRequest(cliClientService, task.getRequest(), leader, task);
+    client.asyncHandleRequest(task.getRequest(), leader, task);
   }
 
+  /**
+   * try to get raft rpc client
+   */
+  private NodeAsClient getRaftNodeAsClient() throws RaftConnectionException {
+    NodeAsClient client = CLIENT_MANAGER.getRaftNodeAsClient();
+    if (client == null) {
+      throw new RaftConnectionException(String
+          .format("Raft inner rpc clients have reached the max numbers %s",
+              CLUSTER_CONFIG.getMaxNumOfInnerRpcClient() + CLUSTER_CONFIG
+                  .getMaxQueueNumOfInnerRpcClient()));
+    }
+    return client;
+  }
+
+  /**
+   * Asynchronous get task response. If it's redirected, the task needs to be resent.
+   *
+   * @param task rpc task
+   * @param leader leader node of the group
+   * @param taskRetryNum Retry time of the task
+   */
   public BasicResponse asyncGetRes(QPTask task, PeerId leader, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
     task.await();
@@ -221,7 +239,7 @@ public abstract class ClusterQPExecutor {
       if (task.getTaskState() == TaskState.REDIRECT) {
         /** redirect to the right leader **/
         leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
-        LOGGER.info("Redirect leader: {}, group id = {}", leader, task.getRequest().getGroupID());
+        LOGGER.debug("Redirect leader: {}, group id = {}", leader, task.getRequest().getGroupID());
         RaftUtils.updateRaftGroupLeader(task.getRequest().getGroupID(), leader);
       }
       task.resetTask();
@@ -231,6 +249,8 @@ public abstract class ClusterQPExecutor {
   }
 
   public void shutdown() {
-    cliClientService.shutdown();
+    if (currentTask != null) {
+      currentTask.shutdown();
+    }
   }
 }

@@ -30,13 +30,18 @@ import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.rpc.request.QueryTimeSeriesRequest;
 import org.apache.iotdb.cluster.rpc.response.QueryTimeSeriesResponse;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<QueryTimeSeriesRequest> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryTimeSeriesAsyncProcessor.class);
+
   private final AtomicInteger requestId = new AtomicInteger(0);
+
+  private MManager mManager = MManager.getInstance();
+
   private Server server;
 
   public QueryTimeSeriesAsyncProcessor(Server server) {
@@ -60,8 +65,7 @@ public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<Query
             if (status.isOk()) {
               try {
                 for (String path : queryMetadataRequest.getPath()) {
-                  response.addTimeSeries(dataPartitionHolder.getFsm()
-                      .getShowTimeseriesPath(path));
+                  response.addTimeSeries(mManager.getShowTimeseriesPath(path));
                 }
               } catch (final PathErrorException e) {
                 response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.toString());

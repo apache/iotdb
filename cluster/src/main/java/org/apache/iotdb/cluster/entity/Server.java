@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
+import org.apache.iotdb.cluster.rpc.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.processor.DataGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.processor.MetaGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.processor.QueryMetadataInStringAsyncProcessor;
@@ -42,26 +43,46 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * each server represents a node in the physical world.
+ * Each server represents a node in the physical world.
  */
 public class Server {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
+
   private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
+
+  private static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager.getInstance();
+
+  /**
+   * Metadata Group Holder
+   */
   private MetadataHolder metadataHolder;
+
+  /**
+   * Data Group Holder Map
+   * String: group id
+   */
   private Map<String, DataPartitionHolder> dataPartitionHolderMap;
+
+  /**
+   * PeerId of this physical node
+   */
   private PeerId serverId;
 
-  public static void main(String[] args) throws AuthException {
+  public static void main(String[] args) {
     Server server = Server.getInstance();
     server.start();
   }
 
-  public void start() throws AuthException {
-    // Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version
+  public void start() {
+    /** Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version **/
     IoTDB iotdb = new IoTDB();
     iotdb.active();
 
+    /** Init client manager **/
+    CLIENT_MANAGER.init();
+
+    /** Init raft groups **/
     PeerId[] peerIds = RaftUtils.convertStringArrayToPeerIdArray(CLUSTER_CONF.getNodes());
     serverId = new PeerId(CLUSTER_CONF.getIp(), CLUSTER_CONF.getPort());
     RpcServer rpcServer = new RpcServer(serverId.getPort());
@@ -96,16 +117,11 @@ public class Server {
 
   }
 
-  public static final Server getInstance() {
-    return ServerHolder.INSTANCE;
-  }
-
-  private static class ServerHolder {
-
-    private static final Server INSTANCE = new Server();
-
-    private ServerHolder() {
-
+  public void stop() {
+    CLIENT_MANAGER.shutdown();
+    metadataHolder.stop();
+    for (DataPartitionHolder dataPartitionHolder : dataPartitionHolderMap.values()) {
+      dataPartitionHolder.stop();
     }
   }
 
@@ -123,5 +139,18 @@ public class Server {
 
   public DataPartitionHolder getDataPartitionHolder(String groupId) {
     return dataPartitionHolderMap.get(groupId);
+  }
+
+  public static final Server getInstance() {
+    return ServerHolder.INSTANCE;
+  }
+
+  private static class ServerHolder {
+
+    private static final Server INSTANCE = new Server();
+
+    private ServerHolder() {
+
+    }
   }
 }

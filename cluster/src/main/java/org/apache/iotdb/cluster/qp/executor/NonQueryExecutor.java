@@ -73,12 +73,6 @@ public class NonQueryExecutor extends ClusterQPExecutor {
 
   }
 
-  public void init() {
-    this.cliClientService = new BoltCliClientService();
-    this.cliClientService.init(new CliOptions());
-    subTaskNum = 1;
-  }
-
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     try {
       switch (plan.getOperatorType()) {

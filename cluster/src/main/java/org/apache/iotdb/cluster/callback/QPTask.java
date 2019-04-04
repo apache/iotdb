@@ -38,12 +38,12 @@ public abstract class QPTask {
   /**
    * Whether it's a synchronization task or not.
    */
-  protected boolean isSyncTask;
+  boolean isSyncTask;
 
   /**
    * Count down latch for sub-tasks
    */
-  protected CountDownLatch taskCountDownLatch;
+  CountDownLatch taskCountDownLatch;
 
   /**
    * Num of sub-task
@@ -53,8 +53,11 @@ public abstract class QPTask {
   /**
    * Describe task type
    */
-  protected TaskState taskState;
+  TaskState taskState;
 
+  /**
+   * Server instance
+   */
   protected Server server = Server.getInstance();
 
   public QPTask(boolean isSyncTask, int taskNum, TaskState taskState) {

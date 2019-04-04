@@ -57,9 +57,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   @Override
   public void initClusterService() {
     nonQueryExecutor.set(new NonQueryExecutor());
-    nonQueryExecutor.get().init();
     queryMetadataExecutor.set(new QueryMetadataExecutor());
-    queryMetadataExecutor.get().init();
   }
 
   @Override

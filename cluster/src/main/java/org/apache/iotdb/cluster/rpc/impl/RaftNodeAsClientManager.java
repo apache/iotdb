@@ -21,8 +21,12 @@ package org.apache.iotdb.cluster.rpc.impl;
 import com.alipay.remoting.InvokeCallback;
 import com.alipay.remoting.exception.RemotingException;
 import com.alipay.sofa.jraft.entity.PeerId;
+import com.alipay.sofa.jraft.option.CliOptions;
+import com.alipay.sofa.jraft.option.RpcOptions;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.callback.QPTask.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -48,19 +52,91 @@ public class RaftNodeAsClientManager {
   private static final int TASK_TIMEOUT_MS = CLUSTER_CONFIG.getTaskTimeoutMs();
 
   /**
-   * RaftNodeAsClient singleton
+   * Max valid number of @NodeAsClient usage, represent the number can run simultaneously at the
+   * same time
    */
-  private static final RaftNodeAsClient client = new RaftNodeAsClient();
+  private static final int MAX_VALID_CLIENT_NUM = CLUSTER_CONFIG.getMaxNumOfInnerRpcClient();
 
   /**
-   * Max number of @NodeAsClient usage
-   */
-  private static final int MAX_CLIENT_NUM = CLUSTER_CONFIG.getMaxNumOfInnerRpcClient();
-
-  /**
-   *
+   * Max request number in queue
    */
   private static final int MAX_QUEUE_CLIENT_NUM = CLUSTER_CONFIG.getMaxNumOfInnerRpcClient();
+
+  /**
+   * RaftNodeAsClient singleton
+   */
+  private final RaftNodeAsClient CLIENT = new RaftNodeAsClient();
+
+  /**
+   * Number of clients in use
+   */
+  private AtomicInteger validClientNum = new AtomicInteger(0);
+
+  /**
+   * Number of requests for clients in queue
+   */
+  private int queueClientNum = 0;
+
+  /**
+   * Lock to update validClientNum
+   */
+  private ReentrantLock numLock = new ReentrantLock();
+
+  private RaftNodeAsClientManager(){
+
+  }
+
+  /**
+   * Try to get client, return null if num of queue client exceeds threshold.
+   */
+  public RaftNodeAsClient getRaftNodeAsClient() {
+    try {
+      numLock.lock();
+      if (validClientNum.get() < MAX_VALID_CLIENT_NUM) {
+        validClientNum.incrementAndGet();
+        return CLIENT;
+      }
+      if (queueClientNum >= MAX_QUEUE_CLIENT_NUM) {
+        return null;
+      }
+      queueClientNum++;
+    }finally {
+      numLock.unlock();
+    }
+    return tryToGetClient();
+  }
+
+  /**
+   * Check whether it can get the client
+   */
+  private RaftNodeAsClient tryToGetClient() {
+    for(;;){
+      if(validClientNum.get() < MAX_VALID_CLIENT_NUM){
+        try{
+          numLock.lock();
+          if(validClientNum.get() < MAX_VALID_CLIENT_NUM){
+            validClientNum.incrementAndGet();
+            queueClientNum--;
+            return CLIENT;
+          }
+        }finally {
+          numLock.unlock();
+        }
+      }
+    }
+  }
+
+  public void releaseClient() {
+    validClientNum.decrementAndGet();
+  }
+
+  public void init(){
+    CLIENT.init();
+  }
+
+  public void shutdown(){
+    CLIENT.shutdown();
+  }
 
   public static final RaftNodeAsClientManager getInstance() {
     return RaftNodeAsClientManager.ClientManagerHolder.INSTANCE;
@@ -80,24 +156,29 @@ public class RaftNodeAsClientManager {
    *
    * @see org.apache.iotdb.cluster.rpc.NodeAsClient
    */
-  public static class RaftNodeAsClient implements NodeAsClient {
+  public class RaftNodeAsClient implements NodeAsClient {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RaftNodeAsClient.class);
+    /**
+     * Rpc Service Client
+     */
+    private BoltCliClientService boltClientService;
 
     private RaftNodeAsClient(){
+    }
 
+    private void init(){
+      boltClientService = new BoltCliClientService();
+      boltClientService.init(new CliOptions());
     }
 
     @Override
-    public void asyncHandleRequest(Object clientService, BasicRequest request, Object leader,
+    public void asyncHandleRequest(BasicRequest request, PeerId leader,
         QPTask qpTask)
         throws RaftConnectionException {
-      BoltCliClientService boltClientService = (BoltCliClientService) clientService;
-      PeerId raftLeader = (PeerId) leader;
-      LOGGER.debug("Node as client to send request to leader:" + leader);
+      LOGGER.debug(String.format("Node as client to send request to leader:%s", leader));
       try {
         boltClientService.getRpcClient()
-            .invokeWithCallback(raftLeader.getEndpoint().toString(), request,
+            .invokeWithCallback(leader.getEndpoint().toString(), request,
                 new InvokeCallback() {
 
                   @Override
@@ -123,22 +204,31 @@ public class RaftNodeAsClientManager {
         LOGGER.error(e.toString());
         throw new RaftConnectionException(e);
       }
+      releaseClient();
     }
 
     @Override
-    public void syncHandleRequest(Object clientService, BasicRequest request, Object leader,
-        QPTask QPTask)
+    public void syncHandleRequest(BasicRequest request, PeerId leader,
+        QPTask qpTask)
         throws RaftConnectionException {
-      BoltCliClientService boltClientService = (BoltCliClientService) clientService;
-      PeerId raftLeader = (PeerId) leader;
       try {
         BasicResponse response = (BasicResponse) boltClientService.getRpcClient()
-            .invokeSync(raftLeader.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
-        QPTask.run(response);
+            .invokeSync(leader.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
+        qpTask.run(response);
       } catch (RemotingException | InterruptedException e) {
         throw new RaftConnectionException(e);
       }
+      releaseClient();
     }
+
+    /**
+     * Shut down client
+     */
+    @Override
+    public void shutdown() {
+      boltClientService.shutdown();
+    }
+
   }
 
 

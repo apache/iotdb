@@ -29,13 +29,18 @@ import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.rpc.request.QueryMetadataInStringRequest;
 import org.apache.iotdb.cluster.rpc.response.QueryMetadataInStringResponse;
+import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class QueryMetadataInStringAsyncProcessor  extends BasicAsyncUserProcessor<QueryMetadataInStringRequest> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataInStringAsyncProcessor.class);
+
   private final AtomicInteger requestId = new AtomicInteger(0);
+
+  private MManager mManager = MManager.getInstance();
+
   private Server server;
 
   public QueryMetadataInStringAsyncProcessor(Server server) {
@@ -57,7 +62,7 @@ public class QueryMetadataInStringAsyncProcessor  extends BasicAsyncUserProcesso
           public void run(Status status, long index, byte[] reqCtx) {
             QueryMetadataInStringResponse response;
             if (status.isOk()) {
-              response = new QueryMetadataInStringResponse(groupId, false,  dataPartitionHolder.getFsm().getMetadataInString());
+              response = new QueryMetadataInStringResponse(groupId, false,  mManager.getMetadataInString());
               response.addResult(true);
             } else {
               response = new QueryMetadataInStringResponse(groupId,false, null, null);

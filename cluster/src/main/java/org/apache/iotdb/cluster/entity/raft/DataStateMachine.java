@@ -51,16 +51,31 @@ import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * StateMachine of data group node.
+ */
 public class DataStateMachine extends StateMachineAdapter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataStateMachine.class);
 
+  /**
+   * Server instance
+   */
   private Server server = Server.getInstance();
+
+  /**
+   * QP executor to apply task
+   */
   private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
+
   private PeerId peerId;
+
   private String groupId;
+
   private AtomicLong leaderTerm = new AtomicLong(-1);
+
   private MManager mManager = MManager.getInstance();
+
   private final AtomicInteger requestId = new AtomicInteger(0);
 
   public DataStateMachine(String groupId, PeerId peerId) {
@@ -69,10 +84,9 @@ public class DataStateMachine extends StateMachineAdapter {
   }
 
   /**
-   * Only deal with non query operation.
-   * The operation is completed by {@code qpExecutor}.
+   * Only deal with non query operation. The operation is completed by {@code qpExecutor}.
    *
-   * @param iterator
+   * @param iterator task iterator
    */
   @Override
   public void onApply(Iterator iterator) {
@@ -97,10 +111,12 @@ public class DataStateMachine extends StateMachineAdapter {
       assert request != null;
 
       List<byte[]> planBytes = request.getPhysicalPlanBytes();
+
       /** handle batch plans(planBytes.size() > 0) or single plan(planBytes.size()==1) **/
       for (byte[] planByte : planBytes) {
         try {
           PhysicalPlan plan = PhysicalPlanLogTransfer.logToOperator(planByte);
+
           /** If the request is to set path and sg of the path doesn't exist, it needs to run null-read in meta group to avoid out of data sync **/
           if (plan.getOperatorType() == OperatorType.SET_STORAGE_GROUP && !MManager.getInstance()
               .checkStorageExistOfPath(((MetadataPlan) plan).getPath().getFullPath())) {
@@ -179,13 +195,5 @@ public class DataStateMachine extends StateMachineAdapter {
 
   public boolean isLeader() {
     return this.leaderTerm.get() > 0;
-  }
-
-  public List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
-    return mManager.getShowTimeseriesPath(path);
-  }
-
-  public String getMetadataInString() {
-    return mManager.getMetadataInString();
   }
 }

@@ -57,8 +57,11 @@ public class MetadataStateManchine extends StateMachineAdapter {
   private MManager mManager = MManager.getInstance();
 
   private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();
+
   private PeerId peerId;
+
   private String groupId;
+
   private AtomicLong leaderTerm = new AtomicLong(-1);
 
   public MetadataStateManchine(String groupId, PeerId peerId) {
@@ -79,6 +82,7 @@ public class MetadataStateManchine extends StateMachineAdapter {
       Closure closure = null;
       MetaGroupNonQueryRequest request = null;
       BasicResponse response = null;
+
       /** Check if the node is leader **/
       if (iterator.done() != null) {
         closure = iterator.done();
@@ -95,6 +99,7 @@ public class MetadataStateManchine extends StateMachineAdapter {
       assert request != null;
 
       List<byte[]> planBytes = request.getPhysicalPlanBytes();
+
       /** handle batch plans(planBytes.size() > 0) or single plan(planBytes.size()==1) **/
       for (byte[] planByte : planBytes) {
         try {
