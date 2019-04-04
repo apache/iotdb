@@ -188,6 +188,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
         throw new UnsupportedOperationException(
             String.format("operation %s does not support", plan.getOperatorType()));
       case DELETE_TIMESERIES:
+      case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
       case METADATA:
         groupId = getGroupIdFromMetadataPlan((MetadataPlan) plan);
