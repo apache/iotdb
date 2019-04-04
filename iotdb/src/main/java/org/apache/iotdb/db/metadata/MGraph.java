@@ -20,12 +20,14 @@ package org.apache.iotdb.db.metadata;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -39,6 +41,7 @@ public class MGraph implements Serializable {
   private static final long serialVersionUID = 8214849219614352834L;
   private static final String DOUB_SEPARATOR = "\\.";
   private static final String TIME_SERIES_INCORRECT = "Timeseries's root is not Correct. RootName: ";
+  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
   private MTree mtree;
   private HashMap<String, PTree> ptreeMap;
 
@@ -59,12 +62,24 @@ public class MGraph implements Serializable {
   }
 
   /**
+   * this is just for compatibility
+   */
+  public void addPathToMTree(String path, String dataType, String encoding)
+      throws PathErrorException {
+    TSDataType tsDataType = TSDataType.valueOf(dataType);
+    TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
+    CompressionType compressionType = CompressionType.valueOf(TSFileConfig.compressor);
+    addPathToMTree(path, tsDataType, tsEncoding, compressionType,
+        Collections.emptyMap());
+  }
+
+  /**
    * Add a seriesPath to Metadata Tree.
    *
    * @param path Format: root.node.(node)*
    */
   public void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props) throws PathErrorException, MetadataArgsErrorException {
+      CompressionType compressor, Map<String, String> props) throws PathErrorException {
     String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null");
@@ -366,8 +381,19 @@ public class MGraph implements Serializable {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("===  Timeseries Tree  ===\n\n");
+    sb.append(TIME_SERIES_TREE_HEADER);
     sb.append(mtree.toString());
     return sb.toString();
+  }
+
+  /**
+   * combine multiple metadata in string format
+   */
+  public static String combineMetadataInStrings(String[] metadatas) {
+    for (int i = 0; i < metadatas.length; i++) {
+      metadatas[i] = metadatas[i].replace(TIME_SERIES_TREE_HEADER, "");
+    }
+    String res = MTree.combineMetadataInStrings(metadatas);
+    return TIME_SERIES_TREE_HEADER + res;
   }
 }

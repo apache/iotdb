@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -67,6 +71,7 @@ public class MTree implements Serializable {
     addTimeseriesPath(timeseriesPath, tsDataType, tsEncoding, compressionType,
         Collections.emptyMap());
   }
+
   /**
    * function for adding timeseries.It should check whether seriesPath exists.
    */
@@ -1012,59 +1017,71 @@ public class MTree implements Serializable {
 
   @Override
   public String toString() {
-    return mnodeToString(getRoot(), 0);
+    return jsonToString(toJson());
   }
 
-  private String mnodeToString(MNode node, int tab) {
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < tab; i++) {
-      builder.append(QUAD_SPACE);
-    }
-    builder.append(node.getName());
+  private static String jsonToString(JSONObject jsonObject) {
+    return JSON.toJSONString(jsonObject, SerializerFeature.PrettyFormat);
+  }
+
+  private JSONObject toJson() {
+    return mnodeToJSON(getRoot());
+  }
+
+  private JSONObject mnodeToJSON(MNode node) {
+    JSONObject jsonObject = new JSONObject();
     if (!node.isLeaf() && node.getChildren().size() > 0) {
-      builder.append(":{\n");
-      int first = 0;
       for (MNode child : node.getChildren().values()) {
-        if (first == 0) {
-          first = 1;
-        } else {
-          builder.append(",\n");
-        }
-        builder.append(mnodeToString(child, tab + 1));
+        jsonObject.put(child.getName(), mnodeToJSON(child));
       }
-      builder.append("\n");
-      for (int i = 0; i < tab; i++) {
-        builder.append(QUAD_SPACE);
-      }
-      builder.append("}");
     } else if (node.isLeaf()) {
-      builder.append(":{\n");
-      builder
-          .append(String.format("%s DataType: %s,\n", getTabs(tab + 1), node.getSchema().getType()));
-      builder
-          .append(String.format("%s Encoding: %s,\n", getTabs(tab + 1), node.getSchema().getEncodingType()));
-
-      builder
-          .append(String.format("%s Compressor: %s,\n", getTabs(tab + 1), node.getSchema().getCompressor()));
-      builder
-          .append(String.format("%s args: %s,\n", getTabs(tab + 1), node.getSchema().getProps()));
-      builder.append(
-          String.format("%s StorageGroup: %s\n", getTabs(tab + 1), node.getDataFileName()));
-      builder.append(getTabs(tab));
-      builder.append("}");
+      jsonObject.put("DataType", node.getSchema().getType());
+      jsonObject.put("Encoding", node.getSchema().getEncodingType());
+      jsonObject.put("Compressor", node.getSchema().getCompressor());
+      jsonObject.put("args", node.getSchema().getProps().toString());
+      jsonObject.put("StorageGroup", node.getDataFileName());
     }
-    return builder.toString();
-  }
-
-  private String getTabs(int count) {
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < count; i++) {
-      sb.append(QUAD_SPACE);
-    }
-    return sb.toString();
+    return jsonObject;
   }
 
   public MNode getRoot() {
     return root;
+  }
+
+  /**
+   * combine multiple metadata in string format
+   */
+  public static String combineMetadataInStrings(String[] metadatas) {
+    JSONObject[] jsonObjects = new JSONObject[metadatas.length];
+    for (int i = 0; i < jsonObjects.length; i++) {
+      jsonObjects[i] = JSONObject.parseObject(metadatas[i]);
+    }
+
+    JSONObject root = jsonObjects[0];
+    for (int i = 1; i < jsonObjects.length; i++) {
+      root = combineJSONObjects(root, jsonObjects[i]);
+    }
+    return jsonToString(root);
+  }
+
+  private static JSONObject combineJSONObjects(JSONObject a, JSONObject b) {
+    JSONObject res = new JSONObject();
+
+    Set<String> retainSet = new HashSet<>(a.keySet());
+    retainSet.retainAll(b.keySet());
+    Set<String> aCha = new HashSet<>(a.keySet());
+    Set<String> bCha = new HashSet<>(b.keySet());
+    aCha.removeAll(retainSet);
+    bCha.removeAll(retainSet);
+    for (String key : aCha) {
+      res.put(key, a.getJSONObject(key));
+    }
+    for (String key : bCha) {
+      res.put(key, b.get(key));
+    }
+    for (String key : retainSet) {
+      res.put(key, combineJSONObjects(a.getJSONObject(key), b.getJSONObject(key)));
+    }
+    return res;
   }
 }
