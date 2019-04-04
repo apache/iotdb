@@ -994,13 +994,8 @@ public class MManager {
   /**
    * combine multiple metadata in string format
    */
-  private String combineMetadataInStrings(String[] metadatas) {
-    lock.readLock().lock();
-    try {
-      return MGraph.combineMetadataInStrings(metadatas);
-    } finally {
-      lock.readLock().unlock();
-    }
+  private static String combineMetadataInStrings(String[] metadatas) {
+    return MGraph.combineMetadataInStrings(metadatas);
   }
 
   /**
