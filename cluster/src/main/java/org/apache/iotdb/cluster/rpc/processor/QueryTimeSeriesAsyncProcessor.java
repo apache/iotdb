@@ -24,6 +24,7 @@ import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import com.alipay.sofa.jraft.util.Bits;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
@@ -50,32 +51,54 @@ public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<Query
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      QueryTimeSeriesRequest queryMetadataRequest) {
-    String groupId = queryMetadataRequest.getGroupID();
+      QueryTimeSeriesRequest request) {
+    String groupId = request.getGroupID();
     final byte[] reqContext = new byte[4];
     Bits.putInt(reqContext, 0, requestId.incrementAndGet());
     DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
         .getDataPartitionHolder(groupId);
-    ((RaftService) dataPartitionHolder.getService()).getNode()
-        .readIndex(reqContext, new ReadIndexClosure() {
 
-          @Override
-          public void run(Status status, long index, byte[] reqCtx) {
-            QueryTimeSeriesResponse response = QueryTimeSeriesResponse.createEmptyInstance(groupId);
-            if (status.isOk()) {
-              try {
-                for (String path : queryMetadataRequest.getPath()) {
-                  response.addTimeSeries(mManager.getShowTimeseriesPath(path));
+    if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
+      QueryTimeSeriesResponse response = QueryTimeSeriesResponse
+          .createEmptyInstance(groupId);
+      try {
+        queryTimeSeries(request, response);
+      } catch (final PathErrorException e) {
+        response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.getMessage());
+      }
+      asyncContext.sendResponse(response);
+    } else {
+      ((RaftService) dataPartitionHolder.getService()).getNode()
+          .readIndex(reqContext, new ReadIndexClosure() {
+
+            @Override
+            public void run(Status status, long index, byte[] reqCtx) {
+              QueryTimeSeriesResponse response = QueryTimeSeriesResponse
+                  .createEmptyInstance(groupId);
+              if (status.isOk()) {
+                try {
+                  queryTimeSeries(request, response);
+                } catch (final PathErrorException e) {
+                  response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.getMessage());
                 }
-              } catch (final PathErrorException e) {
-                response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.getMessage());
+              } else {
+                response = QueryTimeSeriesResponse
+                    .createErrorInstance(groupId, status.getErrorMsg());
               }
-            } else {
-              response = QueryTimeSeriesResponse.createErrorInstance(groupId, status.getErrorMsg());
+              asyncContext.sendResponse(response);
             }
-            asyncContext.sendResponse(response);
-          }
-        });
+          });
+    }
+  }
+
+  /**
+   * Query timeseries
+   */
+  private void queryTimeSeries(QueryTimeSeriesRequest queryMetadataRequest,
+      QueryTimeSeriesResponse response) throws PathErrorException {
+    for (String path : queryMetadataRequest.getPath()) {
+      response.addTimeSeries(mManager.getShowTimeseriesPath(path));
+    }
   }
 
   @Override

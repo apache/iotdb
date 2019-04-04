@@ -24,6 +24,7 @@ import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import com.alipay.sofa.jraft.util.Bits;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
@@ -55,22 +56,32 @@ public class QueryMetadataInStringAsyncProcessor  extends BasicAsyncUserProcesso
     Bits.putInt(reqContext, 0, requestId.incrementAndGet());
     DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
         .getDataPartitionHolder(groupId);
-    ((RaftService) dataPartitionHolder.getService()).getNode()
-        .readIndex(reqContext, new ReadIndexClosure() {
 
-          @Override
-          public void run(Status status, long index, byte[] reqCtx) {
-            QueryMetadataInStringResponse response;
-            if (status.isOk()) {
-              response = new QueryMetadataInStringResponse(groupId, false,  mManager.getMetadataInString());
-              response.addResult(true);
-            } else {
-              response = new QueryMetadataInStringResponse(groupId,false, null, null);
-              response.addResult(false);
+    if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
+      QueryMetadataInStringResponse response = QueryMetadataInStringResponse
+            .createSuccessInstance(groupId, mManager.getMetadataInString());
+        response.addResult(true);
+      asyncContext.sendResponse(response);
+    } else {
+      ((RaftService) dataPartitionHolder.getService()).getNode()
+          .readIndex(reqContext, new ReadIndexClosure() {
+
+            @Override
+            public void run(Status status, long index, byte[] reqCtx) {
+              QueryMetadataInStringResponse response;
+              if (status.isOk()) {
+                response = QueryMetadataInStringResponse
+                    .createSuccessInstance(groupId, mManager.getMetadataInString());
+                response.addResult(true);
+              } else {
+                response = QueryMetadataInStringResponse
+                    .createErrorInstance(groupId, status.getErrorMsg());
+                response.addResult(false);
+              }
+              asyncContext.sendResponse(response);
             }
-            asyncContext.sendResponse(response);
-          }
-        });
+          });
+    }
   }
 
   @Override

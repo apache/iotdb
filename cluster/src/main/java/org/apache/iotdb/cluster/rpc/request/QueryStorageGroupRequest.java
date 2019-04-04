@@ -20,9 +20,9 @@ package org.apache.iotdb.cluster.rpc.request;
 
 import java.io.Serializable;
 
-public class QueryStorageGroupRequest extends BasicRequest implements Serializable {
+public class QueryStorageGroupRequest extends BasicQueryRequest implements Serializable {
 
-  public QueryStorageGroupRequest(String groupID) {
-    super(groupID);
+  public QueryStorageGroupRequest(String groupID, int readConsistencyLevel) {
+    super(groupID, readConsistencyLevel);
   }
 }

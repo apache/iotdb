@@ -16,30 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.response;
+package org.apache.iotdb.cluster.rpc.request;
 
-public class QueryMetadataInStringResponse extends BasicResponse {
+public abstract class BasicQueryRequest extends BasicRequest {
 
-  private String metadata;
+  /**
+   * Read Consistency Level
+   */
+  private int readConsistencyLevel;
 
-  private QueryMetadataInStringResponse(String groupId, boolean redirected, String leaderStr,
-      String errorMsg) {
-    super(groupId, redirected, leaderStr, errorMsg);
+  public BasicQueryRequest(String groupID, int readConsistencyLevel) {
+    super(groupID);
+    this.readConsistencyLevel = readConsistencyLevel;
   }
 
-  public static QueryMetadataInStringResponse createSuccessInstance(String groupId,
-      String metadata) {
-    QueryMetadataInStringResponse response = new QueryMetadataInStringResponse(groupId, false, null,
-        null);
-    response.metadata = metadata;
-    return response;
+  public int getReadConsistencyLevel() {
+    return readConsistencyLevel;
   }
 
-  public static QueryMetadataInStringResponse createErrorInstance(String groupId, String errorMsg) {
-    return new QueryMetadataInStringResponse(groupId, false, null, errorMsg);
-  }
-
-  public String getMetadata() {
-    return metadata;
+  public void setReadConsistencyLevel(int readConsistencyLevel) {
+    this.readConsistencyLevel = readConsistencyLevel;
   }
 }

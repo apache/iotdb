@@ -20,9 +20,9 @@ package org.apache.iotdb.cluster.rpc.request;
 
 import java.io.Serializable;
 
-public class QueryMetadataInStringRequest extends BasicRequest implements Serializable {
+public class QueryMetadataInStringRequest extends BasicQueryRequest implements Serializable {
 
-  public QueryMetadataInStringRequest(String groupID) {
-    super(groupID);
+  public QueryMetadataInStringRequest(String groupID, int readConsistencyLevel) {
+    super(groupID, readConsistencyLevel);
   }
 }

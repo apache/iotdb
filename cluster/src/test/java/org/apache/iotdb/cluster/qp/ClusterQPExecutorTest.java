@@ -95,19 +95,19 @@ public class ClusterQPExecutorTest {
     assertEquals(1, executor.getReadDataConsistencyLevel());
     assertFalse(exec);
 
-    exec= impl.execSetConsistencyLevel("set read metadata level 2");
+    exec= impl.execSetConsistencyLevel("set read data level 2");
     assertTrue(exec);
-    assertEquals(2, executor.getReadMetadataConsistencyLevel());
+    assertEquals(2, executor.getReadDataConsistencyLevel());
 
-    exec = impl.execSetConsistencyLevel("set read metadata level -2");
-    assertEquals(2, executor.getReadMetadataConsistencyLevel());
+    exec = impl.execSetConsistencyLevel("set read data level -2");
+    assertEquals(2, executor.getReadDataConsistencyLevel());
     assertFalse(exec);
 
     try {
-      impl.execSetConsistencyLevel("set read metadata level 90");
+      impl.execSetConsistencyLevel("set read data level 90");
     } catch (Exception e) {
       assertEquals("Consistency level 90 not support", e.getMessage());
     }
-    assertEquals(2, executor.getReadMetadataConsistencyLevel());
+    assertEquals(2, executor.getReadDataConsistencyLevel());
   }
 }

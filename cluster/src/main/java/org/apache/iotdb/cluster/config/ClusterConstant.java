@@ -25,4 +25,9 @@ public class ClusterConstant {
   public static final String SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN = "set\\s+read\\s+data\\s+level\\s+\\d+";
 
   public static final int MAX_CONSISTENCY_LEVEL = 2;
+
+  public static final int STRONG_CONSISTENCY_LEVEL = 1;
+
+  public static final int WEAK_CONSISTENCY_LEVEL = 1;
+
 }
