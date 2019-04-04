@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -29,7 +30,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
+import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -197,10 +198,8 @@ public class IoTDBEngineTimeGeneratorIT {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(pd0s0,
         FilterFactory.and(valueGtEq, timeGt));
-    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(0);
-    QueryContext context = new QueryContext();
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, singleSeriesExpression,
-        context);
+    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(singleSeriesExpression,
+        TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -222,11 +221,9 @@ public class IoTDBEngineTimeGeneratorIT {
     Path pd1s0 = new Path(Constant.d1s0);
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(5);
 
-    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(0);
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
-    QueryContext context = new QueryContext();
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, singleSeriesExpression,
-        context);
+    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(singleSeriesExpression,
+        TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -258,9 +255,8 @@ public class IoTDBEngineTimeGeneratorIT {
     IExpression andExpression = BinaryExpression
         .and(singleSeriesExpression1, singleSeriesExpression2);
 
-    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(0);
-    QueryContext context = new QueryContext();
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, andExpression, context);
+    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(andExpression,
+        TEST_QUERY_CONTEXT);
     int cnt = 0;
     while (timeGenerator.hasNext()) {
       long time = timeGenerator.next();

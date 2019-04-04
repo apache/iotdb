@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
@@ -47,6 +48,31 @@ public class TimeValuePairUtils {
       case BOOLEAN:
         return new TimeValuePair(data.currentTime(),
             new TsPrimitiveType.TsBoolean(data.getBoolean()));
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(data.getDataType()));
+    }
+  }
+
+  /**
+   * get given data's current (time,value) pair.
+   *
+   * @param data -AggreResultData
+   * @return -given data's (time,value) pair
+   */
+  public static TimeValuePair getCurrentTimeValuePair(AggreResultData data) {
+    switch (data.getDataType()) {
+      case INT32:
+        return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsInt(data.getIntRet()));
+      case INT64:
+        return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsLong(data.getLongRet()));
+      case FLOAT:
+        return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsFloat(data.getFloatRet()));
+      case DOUBLE:
+        return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsDouble(data.getDoubleRet()));
+      case TEXT:
+        return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsBinary(data.getBinaryRet()));
+      case BOOLEAN:
+        return new TimeValuePair(data.getTimestamp(), new TsPrimitiveType.TsBoolean(data.isBooleanRet()));
       default:
         throw new UnSupportedDataTypeException(String.valueOf(data.getDataType()));
     }

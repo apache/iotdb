@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader;
 
 import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
- * Vital read interface. Batch method is used to increase query speed. Getting a batch of data
- * a time is faster than getting one point a time.
+ * Vital read interface. Batch method is used to increase query speed. Getting a batch of data a
+ * time is faster than getting one point a time.
  */
 public interface IReader {
 
@@ -32,13 +32,5 @@ public interface IReader {
 
   TimeValuePair next() throws IOException;
 
-  void skipCurrentTimeValuePair() throws IOException;
-
   void close() throws IOException;
-
-  boolean hasNextBatch();
-
-  BatchData nextBatch();
-
-  BatchData currentBatch();
 }

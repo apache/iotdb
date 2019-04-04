@@ -34,20 +34,18 @@ public class EngineTimeGenerator implements TimeGenerator {
 
   private IExpression expression;
   private Node operatorNode;
-  private long jobId;
 
   /**
    * Constructor of EngineTimeGenerator.
    */
-  public EngineTimeGenerator(long jobId, IExpression expression, QueryContext context)
-      throws IOException, FileNodeManagerException {
-    this.jobId = jobId;
+  public EngineTimeGenerator(IExpression expression, QueryContext context)
+      throws FileNodeManagerException {
     this.expression = expression;
     initNode(context);
   }
 
-  private void initNode(QueryContext context) throws IOException, FileNodeManagerException {
-    EngineNodeConstructor engineNodeConstructor = new EngineNodeConstructor(jobId);
+  private void initNode(QueryContext context) throws FileNodeManagerException {
+    EngineNodeConstructor engineNodeConstructor = new EngineNodeConstructor();
     this.operatorNode = engineNodeConstructor.construct(expression, context);
   }
 

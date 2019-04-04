@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
@@ -23,7 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
-import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -34,11 +35,11 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 /**
- * TODO implement this class as TsFile DataSetWithoutTimeGenerator
+ * TODO implement this class as TsFile DataSetWithoutTimeGenerator.
  */
 public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
 
-  private List<IReader> readers;
+  private List<IPointReader> readers;
 
   private TimeValuePair[] cacheTimeValueList;
 
@@ -55,7 +56,7 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
    * @throws IOException IOException
    */
   public EngineDataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
-      List<IReader> readers)
+      List<IPointReader> readers)
       throws IOException {
     super(paths, dataTypes);
     this.readers = readers;
@@ -68,7 +69,7 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
     cacheTimeValueList = new TimeValuePair[readers.size()];
 
     for (int i = 0; i < readers.size(); i++) {
-      IReader reader = readers.get(i);
+      IPointReader reader = readers.get(i);
       if (reader.hasNext()) {
         TimeValuePair timeValuePair = reader.next();
         cacheTimeValueList[i] = timeValuePair;
@@ -89,7 +90,7 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
     RowRecord record = new RowRecord(minTime);
 
     for (int i = 0; i < readers.size(); i++) {
-      IReader reader = readers.get(i);
+      IPointReader reader = readers.get(i);
       if (cacheTimeValueList[i] == null) {
         record.addField(new Field(null));
       } else {
@@ -109,6 +110,9 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
   }
 
   private Field getField(TsPrimitiveType tsPrimitiveType, TSDataType dataType) {
+    if (tsPrimitiveType == null) {
+      return new Field(null);
+    }
     Field field = new Field(dataType);
     switch (dataType) {
       case INT32:
