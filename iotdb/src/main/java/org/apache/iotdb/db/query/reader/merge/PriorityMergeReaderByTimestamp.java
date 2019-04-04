@@ -16,44 +16,54 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.merge;
 
 import java.io.IOException;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * TODO the process of PriorityMergeReaderByTimestamp can be optimized.
+ * <p>
+ * Usage: Get value in timestamp by sorting time-value pair in multiple readers with time and
+ * priority. (1) merge multiple chunk group readers in the unsequence file (2）merge sequence reader,
+ * unsequence reader and mem reader
+ * </p>
  */
-public class PriorityMergeReaderByTimestamp extends PriorityMergeReader implements
-    EngineReaderByTimeStamp {
+public class PriorityMergeReaderByTimestamp implements EngineReaderByTimeStamp {
 
-  private boolean hasCachedTimeValuePair;
-  private TimeValuePair cachedTimeValuePair;
+  private List<EngineReaderByTimeStamp> readerList = new ArrayList<>();
+  private List<Integer> priorityList = new ArrayList<>();
+
+  /**
+   * This function doesn't sort reader by priority. So you have to call this function in order of
+   * reader priority from small to large.
+   */
+  public void addReaderWithPriority(EngineReaderByTimeStamp reader, int priority) {
+    readerList.add(reader);
+    priorityList.add(priority);
+  }
 
   @Override
-  public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
-
-    if (hasCachedTimeValuePair) {
-      if (cachedTimeValuePair.getTimestamp() == timestamp) {
-        hasCachedTimeValuePair = false;
-        return cachedTimeValuePair.getValue();
-      } else if (cachedTimeValuePair.getTimestamp() > timestamp) {
-        return null;
+  public Object getValueInTimestamp(long timestamp) throws IOException {
+    Object value = null;
+    for (int i = readerList.size() - 1; i >= 0; i--) {
+      value = readerList.get(i).getValueInTimestamp(timestamp);
+      if (value != null) {
+        return value;
       }
     }
-
-    while (hasNext()) {
-      cachedTimeValuePair = next();
-      if (cachedTimeValuePair.getTimestamp() == timestamp) {
-        hasCachedTimeValuePair = false;
-        return cachedTimeValuePair.getValue();
-      } else if (cachedTimeValuePair.getTimestamp() > timestamp) {
-        hasCachedTimeValuePair = true;
-        return null;
-      }
-    }
-
-    return null;
+    return value;
   }
+
+  @Override
+  public boolean hasNext() throws IOException {
+    for (int i = readerList.size() - 1; i >= 0; i--) {
+      if (readerList.get(i).hasNext()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
 }

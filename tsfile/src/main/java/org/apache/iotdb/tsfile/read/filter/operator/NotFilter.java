@@ -53,6 +53,11 @@ public class NotFilter implements Filter, Serializable {
     return !that.satisfyStartEndTime(startTime, endTime);
   }
 
+  @Override
+  public boolean containStartEndTime(long startTime, long endTime) {
+    return !that.satisfyStartEndTime(startTime, endTime);
+  }
+
   public Filter getFilter() {
     return this.that;
   }

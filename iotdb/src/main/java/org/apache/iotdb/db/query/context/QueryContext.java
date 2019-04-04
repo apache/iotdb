@@ -44,6 +44,15 @@ public class QueryContext {
    */
   private Map<String, List<Modification>> fileModCache = new HashMap<>();
 
+  private long jobId;
+
+  public QueryContext() {
+  }
+
+  public QueryContext(long jobId) {
+    this.jobId = jobId;
+  }
+
   /**
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
@@ -74,5 +83,13 @@ public class QueryContext {
     }
 
     return pathModifications;
+  }
+
+  public long getJobId() {
+    return jobId;
+  }
+
+  public void setJobId(long jobId) {
+    this.jobId = jobId;
   }
 }

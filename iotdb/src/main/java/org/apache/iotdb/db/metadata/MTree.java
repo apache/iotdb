@@ -970,7 +970,7 @@ public class MTree implements Serializable {
     if (node.isLeaf()) {
       if (nodes.length <= idx) {
         String nodePath = parent + node;
-        List<String> tsRow = new ArrayList<>(4);// get [name,storage group,dataType,encoding]
+        List<String> tsRow = new ArrayList<>(4);// get [name,storage group,resultDataType,encoding]
         tsRow.add(nodePath);
         MeasurementSchema measurementSchema = node.getSchema();
         tsRow.add(node.getDataFileName());

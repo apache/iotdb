@@ -173,6 +173,7 @@ struct TSCancelOperationResp {
 // CloseOperation()
 struct TSCloseOperationReq {
   1: required TSOperationHandle operationHandle
+  2: required i64 queryId
 }
 
 struct TSCloseOperationResp {
@@ -203,6 +204,7 @@ struct TSQueryDataSet{
 struct TSFetchResultsReq{
 	1: required string statement
 	2: required i32 fetch_size
+	3: required i64 queryId
 }
 
 struct TSFetchResultsResp{

@@ -49,8 +49,8 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationResp;
@@ -79,6 +79,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_Status;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
@@ -104,6 +105,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
   protected ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
   public TSServiceImpl() throws IOException {
     // do nothing because there is no need
@@ -189,17 +191,30 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
     LOGGER.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
-      // end query for all the query tokens created by current thread
-      QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
 
-      // remove usage of opened file paths of current thread
-      OpenedFilePathsManager.getInstance().removeUsedFilesForCurrentRequestThread();
+      releaseQueryResource(req);
 
       clearAllStatusForCurrentRequest();
     } catch (FileNodeManagerException e) {
       LOGGER.error("Error in closeOperation : {}", e.getMessage());
     }
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
+  }
+
+  private void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+    if (contextMap == null) {
+      return;
+    }
+    if(req == null || req.queryId == -1) {
+      // end query for all the query tokens created by current thread
+      for (QueryContext context : contextMap.values()) {
+        QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
+      }
+    } else {
+      QueryResourceManager.getInstance()
+          .endQueryForGivenJob(contextMap.remove(req.queryId).getJobId());
+    }
   }
 
   private void clearAllStatusForCurrentRequest() {
@@ -631,10 +646,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       int fetchSize = req.getFetch_size();
       QueryDataSet queryDataSet;
       if (!queryRet.get().containsKey(statement)) {
-        PhysicalPlan physicalPlan = queryStatus.get().get(statement);
-        processor.getExecutor().setFetchSize(fetchSize);
-        queryDataSet = processor.getExecutor().processQuery(physicalPlan);
-        queryRet.get().put(statement, queryDataSet);
+        queryDataSet = createNewDataSet(statement, fetchSize, req);
       } else {
         queryDataSet = queryRet.get().get(statement);
       }
@@ -652,6 +664,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
+  }
+
+  private QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
+      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
+      ProcessorException, IOException {
+    PhysicalPlan physicalPlan = queryStatus.get().get(statement);
+    processor.getExecutor().setFetchSize(fetchSize);
+
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+    if (contextMap == null) {
+      contextMap = new HashMap<>();
+      contextMapLocal.set(contextMap);
+    }
+    contextMap.put(req.queryId, context);
+
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
+        context);
+    queryRet.get().put(statement, queryDataSet);
+    return queryDataSet;
   }
 
   @Override
@@ -802,8 +834,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSGetTimeZoneResp getTimeZone() throws TException {
-    TS_Status tsStatus = null;
-    TSGetTimeZoneResp resp = null;
+    TS_Status tsStatus;
+    TSGetTimeZoneResp resp;
     try {
       tsStatus = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
       resp = new TSGetTimeZoneResp(tsStatus, zoneIds.get().toString());
@@ -818,7 +850,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSSetTimeZoneResp setTimeZone(TSSetTimeZoneReq req) throws TException {
-    TS_Status tsStatus = null;
+    TS_Status tsStatus;
     try {
       String timeZoneID = req.getTimeZone();
       zoneIds.set(ZoneId.of(timeZoneID));
