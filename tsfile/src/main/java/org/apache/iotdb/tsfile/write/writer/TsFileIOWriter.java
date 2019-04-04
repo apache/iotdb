@@ -326,6 +326,9 @@ public class TsFileIOWriter {
    * close the inputstream or file channel in force. This is just used for Testing.
    */
   void forceClose() throws IOException {
+    if (!this.canWrite) {
+      return;
+    }
     canWrite = false;
     out.close();
   }

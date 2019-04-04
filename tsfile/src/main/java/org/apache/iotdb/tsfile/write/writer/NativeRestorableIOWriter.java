@@ -64,14 +64,12 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
     if (file.exists()) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
         if (reader.isComplete() && !append) {
-          canWrite = false;
-          out.close();
+          forceClose();
           return;
         }
         truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetaDataList, !append);
         if (truncatedPosition == TsFileCheckStatus.COMPLETE_FILE && !append) {
-            this.canWrite = false;
-            out.close();
+          forceClose();
         } else if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
           throw new IOException(
