@@ -105,7 +105,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CloseMergeService.getInstance());
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(BasicMemController.getInstance());
-    registerManager.register(FileReaderManager.getInstance());
     registerManager.register(SyncServerManager.getInstance());
 
     JMXService.registerMBean(getInstance(), mbeanName);

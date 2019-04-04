@@ -70,6 +70,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -587,10 +588,13 @@ public class TsFileProcessor extends Processor {
   /**
    * query data.
    */
-  public GlobalSortedSeriesDataSource query(String deviceId, String measurementId,
+  public GlobalSortedSeriesDataSource query(SingleSeriesExpression expression,
       QueryContext context) throws IOException {
     MeasurementSchema mSchema;
     TSDataType dataType;
+
+    String deviceId = expression.getSeriesPath().getDevice();
+    String measurementId = expression.getSeriesPath().getMeasurement();
 
     mSchema = fileSchemaRef.getMeasurementSchema(measurementId);
     dataType = mSchema.getType();

@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.integration;
 
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
+
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -28,7 +31,8 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -53,6 +57,8 @@ public class QueryDataFromUnclosedTsFileIT {
   @Before
   public void setUp() throws IOException, FileNodeManagerException {
     EnvironmentUtils.cleanEnv();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     bufferWriteFileSize = IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold();
     //IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(100);
     sgManager  = FileNodeManager.getInstance();
@@ -63,7 +69,6 @@ public class QueryDataFromUnclosedTsFileIT {
   @After
   public void tearDown() throws FileNodeManagerException, IOException {
     IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(bufferWriteFileSize);;
-    System.out.println(bufferWriteFileSize);
     //sgManager.deleteAll();
     //mManager.clear();
     EnvironmentUtils.cleanEnv();
@@ -83,20 +88,18 @@ public class QueryDataFromUnclosedTsFileIT {
     sgManager.addTimeSeries(new Path("root.test.d2", "s1"), TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY, Collections
         .emptyMap());
     long time = System.currentTimeMillis();
-    for (int i=0; i < 200000; i++) {
+    for (int i=0; i < 20000; i++) {
       sgManager.insert(new TSRecord(i, "root.test.d1").addTuple(new IntDataPoint("s1", i)), false);
       sgManager.insert(new TSRecord(i, "root.test.d2").addTuple(new IntDataPoint("s1", i)), false);
     }
-    System.out.println((System.currentTimeMillis() - time));
     //for (int i=0; i< 2; i++) {
       QueryExpression qe = QueryExpression
           .create(Collections.singletonList(new Path("root.test.d1", "s1")), null);
-      QueryDataSet result = queryManager.query(qe);
+      QueryDataSet result = queryManager.query(qe, TEST_QUERY_CONTEXT);
       while (result.hasNext()) {
         RowRecord record = result.next();
         //System.out.println(record.getTimestamp() + "," + record.getFields().get(0).getIntV());
       }
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
     //}
 
   }

@@ -287,7 +287,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     try {
       Files.delete(Paths.get(restoreFilePath));
     } catch (IOException e) {
-      LOGGER.info("delete restore file {} failed, because ", restoreFilePath, e);
+      LOGGER.info("delete restore file {} failed, because {}", restoreFilePath, e.getMessage());
     }
   }
 

@@ -65,6 +65,20 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   }
 
   @Override
+  public boolean containStartEndTime(long startTime, long endTime) {
+    if (filterType == FilterType.TIME_FILTER) {
+      long time = (Long) value;
+      if (time == startTime && time == endTime) {
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      return true;
+    }
+  }
+
+  @Override
   public String toString() {
     return getFilterType() + " == " + value;
   }

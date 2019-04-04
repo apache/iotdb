@@ -18,21 +18,21 @@
  */
 package org.apache.iotdb.db.query.fill;
 
-import org.apache.iotdb.db.exception.ProcessorException;
+import java.io.IOException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class PreviousFill extends IFill {
 
   private long beforeRange;
 
-  private BatchData result;
-
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
-    result = new BatchData(dataType, true, true);
   }
 
   public PreviousFill(long beforeRange) {
@@ -44,12 +44,34 @@ public class PreviousFill extends IFill {
     return new PreviousFill(dataType, queryTime, beforeRange);
   }
 
+  @Override
+  public void constructReaders(QueryDataSource queryDataSource, QueryContext context)
+      throws IOException {
+    super.constructReaders(queryDataSource, context, beforeRange);
+  }
+
   public long getBeforeRange() {
     return beforeRange;
   }
 
   @Override
-  public BatchData getFillResult() throws ProcessorException {
-    return result;
+  public IPointReader getFillResult() throws IOException {
+    TimeValuePair beforePair = null;
+    TimeValuePair cachedPair = null;
+    while (allDataReader.hasNext()) {
+      cachedPair = allDataReader.next();
+      if (cachedPair.getTimestamp() <= queryTime) {
+        beforePair = cachedPair;
+      } else {
+        break;
+      }
+    }
+
+    if (beforePair != null) {
+      beforePair.setTimestamp(queryTime);
+    } else {
+      beforePair = new TimeValuePair(queryTime, null);
+    }
+    return new TimeValuePairPointReader(beforePair);
   }
 }

@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.engine.tsfiledata;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,7 +39,8 @@ import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.ImmediateFuture;
@@ -74,6 +78,8 @@ public class TsFileProcessorTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanEnv();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 //  now we do not support wal because it need to modify the wal module.
 //  IoTDBDescriptor.getInstance().getConfig().setEnableWal(true);
     IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(2*1024*1024);
@@ -96,12 +102,11 @@ public class TsFileProcessorTest {
   @After
   public void tearDown() throws Exception {
     //processor.close();
-    processor.writeLock();
+    // processor.writeLock();
    processor.removeMe();
-   processor.writeUnlock();
    EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
-    IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(oldBufferwriteFileSizeThreshold);
+   IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
+   IoTDBDescriptor.getInstance().getConfig().setBufferwriteFileSizeThreshold(oldBufferwriteFileSizeThreshold);
   }
 
   @Test
@@ -135,7 +140,7 @@ public class TsFileProcessorTest {
 
 
     QueryExpression qe = QueryExpression.create(Collections.singletonList(new Path("root.test.d1", "s1")), null);
-    QueryDataSet result = queryManager.query(qe, processor);
+    QueryDataSet result = queryManager.query(qe, processor, TEST_QUERY_CONTEXT);
     while (result.hasNext()) {
       RowRecord record = result.next();
       System.out.println(record.getTimestamp() +"," + record.getFields().get(0).getFloatV());
@@ -205,11 +210,12 @@ public class TsFileProcessorTest {
         try {
           for (int j = 0; j < totalsize * 2 && goon[0]; j++) {
             processor.lock(false);
-            QueryDataSet result = queryManager.query(qe, processor);
+            QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
+            QueryDataSet result = queryManager.query(qe, processor, context);
             while (result.hasNext()) {
               result.next();
             }
-            QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+            QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
             processor.readUnlock();
           }
         } catch (IOException | FileNodeManagerException e) {
@@ -229,13 +235,12 @@ public class TsFileProcessorTest {
     Assert.assertFalse(exception[0]);
     Assert.assertFalse(exception[1]);
     Assert.assertFalse(exception[2]);
-    QueryDataSet result = queryManager.query(qe, processor);
+    QueryDataSet result = queryManager.query(qe, processor, TEST_QUERY_CONTEXT);
     int size =0;
     while (result.hasNext()) {
       RowRecord record = result.next();
       size ++;
     }
-    QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
     //Assert.assertEquals(count[0], size);
   }
 

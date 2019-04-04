@@ -242,6 +242,7 @@ public class PhysicalGenerator {
       ((GroupByPlan) queryPlan).setUnit(queryOperator.getUnit());
       ((GroupByPlan) queryPlan).setOrigin(queryOperator.getOrigin());
       ((GroupByPlan) queryPlan).setIntervals(queryOperator.getIntervals());
+      ((GroupByPlan) queryPlan).setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isFill()) {
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
