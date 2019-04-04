@@ -1,4 +1,5 @@
 iotdb/data/*
+cluster/data/*
 iotdb/derby.log
 iotdb/iotdb/data/*
 iotdb/iotdb/derby.log
