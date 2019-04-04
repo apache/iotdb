@@ -44,8 +44,6 @@ import org.junit.Test;
 public class IoTDBLargeDataIT {
 
   private static IoTDB daemon;
-
-  private static boolean testFlag = Constant.testFlag;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -74,8 +72,6 @@ public class IoTDBLargeDataIT {
 
     Thread.sleep(5000);
     insertData();
-
-
   }
 
   @AfterClass

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.executor;
 
 import java.io.IOException;
@@ -26,11 +27,11 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
-import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.query.reader.AllDataReader;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,10 +47,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class EngineExecutorWithoutTimeGenerator {
 
   private QueryExpression queryExpression;
-  private long jobId;
 
-  public EngineExecutorWithoutTimeGenerator(long jobId, QueryExpression queryExpression) {
-    this.jobId = jobId;
+  public EngineExecutorWithoutTimeGenerator(QueryExpression queryExpression) {
     this.queryExpression = queryExpression;
   }
 
@@ -61,15 +60,15 @@ public class EngineExecutorWithoutTimeGenerator {
 
     Filter timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
 
-    List<IReader> readersOfSelectedSeries = new ArrayList<>();
+    List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    QueryTokenManager.getInstance()
-        .beginQueryOfGivenQueryPaths(jobId, queryExpression.getSelectedSeries());
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
 
     for (Path path : queryExpression.getSelectedSeries()) {
 
-      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
           context);
 
       // add data type
@@ -79,14 +78,11 @@ public class EngineExecutorWithoutTimeGenerator {
         throw new FileNodeManagerException(e);
       }
 
-      PriorityMergeReader priorityReader = new PriorityMergeReader();
-
       // sequence reader for one sealed tsfile
       SequenceDataReader tsFilesReader;
       try {
         tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
             timeFilter, context);
-        priorityReader.addReaderWithPriority(tsFilesReader, PriorityMergeReader.LOW_PRIORITY);
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }
@@ -96,12 +92,12 @@ public class EngineExecutorWithoutTimeGenerator {
       try {
         unSeqMergeReader = SeriesReaderFactory.getInstance()
             .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
-        priorityReader.addReaderWithPriority(unSeqMergeReader, PriorityMergeReader.HIGH_PRIORITY);
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }
 
-      readersOfSelectedSeries.add(priorityReader);
+      // merge sequence data with unsequence data.
+      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
     }
 
     try {
@@ -118,15 +114,15 @@ public class EngineExecutorWithoutTimeGenerator {
   public QueryDataSet executeWithoutFilter(QueryContext context)
       throws FileNodeManagerException {
 
-    List<IReader> readersOfSelectedSeries = new ArrayList<>();
+    List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    QueryTokenManager.getInstance()
-        .beginQueryOfGivenQueryPaths(jobId, queryExpression.getSelectedSeries());
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
 
     for (Path path : queryExpression.getSelectedSeries()) {
 
-      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
           context);
 
       // add data type
@@ -136,14 +132,11 @@ public class EngineExecutorWithoutTimeGenerator {
         throw new FileNodeManagerException(e);
       }
 
-      PriorityMergeReader priorityReader = new PriorityMergeReader();
-
       // sequence insert data
       SequenceDataReader tsFilesReader;
       try {
         tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
             null, context);
-        priorityReader.addReaderWithPriority(tsFilesReader, 1);
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }
@@ -153,12 +146,12 @@ public class EngineExecutorWithoutTimeGenerator {
       try {
         unSeqMergeReader = SeriesReaderFactory.getInstance()
             .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
-        priorityReader.addReaderWithPriority(unSeqMergeReader, 2);
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }
 
-      readersOfSelectedSeries.add(priorityReader);
+      // merge sequence data with unsequence data.
+      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
     }
 
     try {

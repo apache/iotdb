@@ -16,26 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.mem;
 
 import java.util.Iterator;
-import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.query.reader.IAggregateReader;
+import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class MemChunkReaderWithFilter implements IReader {
+public class MemChunkReader implements IPointReader, IBatchReader, IAggregateReader {
 
   private Iterator<TimeValuePair> timeValuePairIterator;
   private Filter filter;
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
-  public MemChunkReaderWithFilter(ReadOnlyMemChunk readableChunk, Filter filter) {
+  private TSDataType dataType;
+
+  /**
+   * memory data reader.
+   */
+  public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
     timeValuePairIterator = readableChunk.getIterator();
     this.filter = filter;
+    this.dataType = readableChunk.getDataType();
   }
 
   @Override
@@ -45,7 +55,8 @@ public class MemChunkReaderWithFilter implements IReader {
     }
     while (timeValuePairIterator.hasNext()) {
       TimeValuePair timeValuePair = timeValuePairIterator.next();
-      if (filter.satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+      if (filter == null || filter
+          .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
         hasCachedTimeValuePair = true;
         cachedTimeValuePair = timeValuePair;
         break;
@@ -65,8 +76,31 @@ public class MemChunkReaderWithFilter implements IReader {
   }
 
   @Override
-  public void skipCurrentTimeValuePair() {
-    next();
+  public TimeValuePair current() {
+    if (!hasCachedTimeValuePair) {
+      cachedTimeValuePair = timeValuePairIterator.next();
+      hasCachedTimeValuePair = true;
+    }
+    return cachedTimeValuePair;
+  }
+
+  @Override
+  public BatchData nextBatch() {
+    BatchData batchData = new BatchData(dataType, true);
+    if (hasCachedTimeValuePair) {
+      hasCachedTimeValuePair = false;
+      batchData.putTime(cachedTimeValuePair.getTimestamp());
+      batchData.putAnObject(cachedTimeValuePair.getValue().getValue());
+    }
+    while (timeValuePairIterator.hasNext()) {
+      TimeValuePair timeValuePair = timeValuePairIterator.next();
+      if (filter == null || filter
+          .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+        batchData.putTime(timeValuePair.getTimestamp());
+        batchData.putAnObject(timeValuePair.getValue().getValue());
+      }
+    }
+    return batchData;
   }
 
   @Override
@@ -75,17 +109,12 @@ public class MemChunkReaderWithFilter implements IReader {
   }
 
   @Override
-  public boolean hasNextBatch() {
-    return false;
-  }
-
-  @Override
-  public BatchData nextBatch() {
+  public PageHeader nextPageHeader() {
     return null;
   }
 
   @Override
-  public BatchData currentBatch() {
-    return null;
+  public void skipPageData() {
+    nextBatch();
   }
 }

@@ -80,6 +80,7 @@ public class PhysicalGenerator {
         LoadDataOperator loadData = (LoadDataOperator) operator;
         return new LoadDataPlan(loadData.getInputFilePath(), loadData.getMeasureType());
       case SET_STORAGE_GROUP:
+      case CREATE_TIMESERIES:
       case DELETE_TIMESERIES:
       case METADATA:
         MetadataOperator metadata = (MetadataOperator) operator;
@@ -242,6 +243,7 @@ public class PhysicalGenerator {
       ((GroupByPlan) queryPlan).setUnit(queryOperator.getUnit());
       ((GroupByPlan) queryPlan).setOrigin(queryOperator.getOrigin());
       ((GroupByPlan) queryPlan).setIntervals(queryOperator.getIntervals());
+      ((GroupByPlan) queryPlan).setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isFill()) {
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
