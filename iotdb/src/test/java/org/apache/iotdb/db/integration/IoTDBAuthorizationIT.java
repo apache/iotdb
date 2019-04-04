@@ -125,6 +125,7 @@ public class IoTDBAuthorizationIT {
     userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (100, 100)");
     userStmt.execute("SELECT * from root.a");
     userStmt.execute("GRANT USER tempuser PRIVILEGES 'SET_STORAGE_GROUP' ON root.a");
+    userStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.b.b");
 
     adminStmt.execute("REVOKE USER tempuser PRIVILEGES 'ALL' ON root");
 
@@ -371,6 +372,7 @@ public class IoTDBAuthorizationIT {
 
     adminStmt.execute("GRANT USER tempuser PRIVILEGES 'SET_STORAGE_GROUP' ON root.a");
     userStmt.execute("SET STORAGE GROUP TO root.a");
+    adminStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.a.b");
     userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
 
     caught = false;
@@ -396,6 +398,34 @@ public class IoTDBAuthorizationIT {
     try {
       // no privilege to create this one any more
       userStmt.execute("SET STORAGE GROUP TO root.a");
+    } catch (SQLException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+
+    caught = false;
+    try {
+      // no privilege to create timeseries
+      userStmt.execute("CREATE TIMESERIES root.b.a WITH DATATYPE=INT32,ENCODING=PLAIN");
+    } catch (SQLException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+
+    caught = false;
+    try {
+      // privilege already exists
+      adminStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.a.b");
+    } catch (SQLException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+
+    adminStmt.execute("REVOKE USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.a.b");
+    caught = false;
+    try {
+      // no privilege to create this one any more
+      userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
     } catch (SQLException e) {
       caught = true;
     }
@@ -523,7 +553,7 @@ public class IoTDBAuthorizationIT {
     assertTrue(caught);
     adminStmt.execute("CREATE ROLE admin");
     adminStmt.execute(
-        "GRANT ROLE admin PRIVILEGES 'SET_STORAGE_GROUP','DELETE_TIMESERIES','READ_TIMESERIES','INSERT_TIMESERIES' on root");
+        "GRANT ROLE admin PRIVILEGES 'SET_STORAGE_GROUP','CREATE_TIMESERIES','DELETE_TIMESERIES','READ_TIMESERIES','INSERT_TIMESERIES' on root");
     adminStmt.execute("GRANT admin TO tempuser");
 
     userStmt.execute("SET STORAGE GROUP TO root.a");
