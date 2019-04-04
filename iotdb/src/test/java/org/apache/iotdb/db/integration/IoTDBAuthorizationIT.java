@@ -481,6 +481,7 @@ public class IoTDBAuthorizationIT {
 
     adminStmt.execute("GRANT USER tempuser PRIVILEGES 'SET_STORAGE_GROUP' ON root.a");
     userStmt.execute("SET STORAGE GROUP TO root.a");
+    adminStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.a.b");
     userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
 
     // grant privilege to insert
