@@ -62,6 +62,7 @@ public class DefaultTsFileOutput implements TsFileOutput {
 
   @Override
   public void close() throws IOException {
+    outputStream.getChannel().force(true);
     outputStream.close();
   }
 
@@ -73,6 +74,7 @@ public class DefaultTsFileOutput implements TsFileOutput {
   @Override
   public void flush() throws IOException {
     this.outputStream.flush();
+    this.outputStream.getChannel().force(true);
   }
 
   @Override

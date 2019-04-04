@@ -167,7 +167,13 @@ public class OverflowIO extends TsFileIOWriter {
 
     @Override
     public void close() throws IOException {
+      raf.getChannel().force(true);
       raf.close();
+    }
+
+    @Override
+    public void flush() throws IOException {
+      raf.getChannel().force(true);
     }
   }
 }
