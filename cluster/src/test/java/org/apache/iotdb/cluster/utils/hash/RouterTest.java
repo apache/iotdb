@@ -39,14 +39,14 @@ public class RouterTest {
   public void setUp() throws Exception {
     ipListOld = config.getNodes();
     replicatorOld = config.getReplication();
-    numOfVirtulaNodesOld = config.getNumOfVirtulaNodes();
+    numOfVirtulaNodesOld = config.getNumOfVirtualNodes();
   }
 
   @After
   public void tearDown() throws Exception {
     config.setNodes(ipListOld);
     config.setReplication(replicatorOld);
-    config.setNumOfVirtulaNodes(numOfVirtulaNodesOld);
+    config.setNumOfVirtualNodes(numOfVirtulaNodesOld);
   }
 
   @Test
@@ -58,7 +58,7 @@ public class RouterTest {
     int numOfVirtulaNodes = 2;
     config.setNodes(ipList);
     config.setReplication(replicator);
-    config.setNumOfVirtulaNodes(numOfVirtulaNodes);
+    config.setNumOfVirtualNodes(numOfVirtulaNodes);
     Router router = Router.getInstance();
     router.init();
 //    router.showPhysicalRing();
@@ -98,7 +98,7 @@ public class RouterTest {
 
     config.setNodes(ipList);
     config.setReplication(replicator);
-    config.setNumOfVirtulaNodes(numOfVirtulaNodes);
+    config.setNumOfVirtualNodes(numOfVirtulaNodes);
 
     Router router = Router.getInstance();
     router.init();
@@ -142,7 +142,7 @@ public class RouterTest {
 
     config.setNodes(ipList);
     config.setReplication(replicator);
-    config.setNumOfVirtulaNodes(numOfVirtulaNodes);
+    config.setNumOfVirtualNodes(numOfVirtulaNodes);
 
     Router router = Router.getInstance();
     router.init();
@@ -188,7 +188,7 @@ public class RouterTest {
 
     config.setNodes(ipList);
     config.setReplication(replicator);
-    config.setNumOfVirtulaNodes(numOfVirtulaNodes);
+    config.setNumOfVirtualNodes(numOfVirtulaNodes);
 
     Router router = Router.getInstance();
     router.init();

@@ -91,7 +91,7 @@ public class Router {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     String[] hosts = config.getNodes();
     this.replicator = config.getReplication();
-    int numOfVirtualNodes = config.getNumOfVirtulaNodes();
+    int numOfVirtualNodes = config.getNumOfVirtualNodes();
     for (String host : hosts) {
       String[] values = host.split(":");
       PhysicalNode node = new PhysicalNode(values[0], Integer.parseInt(values[1]));

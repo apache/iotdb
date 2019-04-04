@@ -39,7 +39,7 @@ public class ClusterConfig {
   private static final String DEFAULT_RAFT_SNAPSHOT_DIR = "snapshot";
 
   /**
-   * Cluster node: {ip1,ip2,...,ipn}
+   * Cluster node: {ip1:port,ip2:port,...,ipn:port}
    */
   private String[] nodes = {DEFAULT_NODE};
 
@@ -79,7 +79,7 @@ public class ClusterConfig {
   private boolean delaySnapshot = false;
 
   /**
-   * Maximin allowed delay hours
+   * Maximin allowed delay hours of snapshot
    */
   private int delayHours = 24;
 
@@ -92,7 +92,31 @@ public class ClusterConfig {
    **/
   private int taskTimeoutMs = 1000;
 
-  private int numOfVirtulaNodes = 2;
+  /**
+   * Number of virtual nodes
+   */
+  private int numOfVirtualNodes = 2;
+
+  /**
+   * Max number of @NodeAsClient usage
+   */
+  private int maxNumOfInnerRpcClient = 50;
+
+  /**
+   * Max number of queue length to use @NodeAsClient, the request which exceed to this
+   * number will be rejected.
+   */
+  private int maxQueueNumOfInnerRpcClient = 50;
+
+  /**
+   * ReadMetadataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
+   */
+  private int readMetadataConsistencyLevel = 1;
+
+  /**
+   * ReadDataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
+   */
+  private int readDataConsistencyLevel = 1;
 
   public ClusterConfig() {
     // empty constructor
@@ -211,12 +235,43 @@ public class ClusterConfig {
     this.taskTimeoutMs = taskTimeoutMs;
   }
 
-  public int getNumOfVirtulaNodes() {
-    return numOfVirtulaNodes;
+  public int getNumOfVirtualNodes() {
+    return numOfVirtualNodes;
   }
 
-  public void setNumOfVirtulaNodes(int numOfVirtulaNodes) {
-    this.numOfVirtulaNodes = numOfVirtulaNodes;
+  public void setNumOfVirtualNodes(int numOfVirtualNodes) {
+    this.numOfVirtualNodes = numOfVirtualNodes;
   }
 
+  public int getMaxNumOfInnerRpcClient() {
+    return maxNumOfInnerRpcClient;
+  }
+
+  public void setMaxNumOfInnerRpcClient(int maxNumOfInnerRpcClient) {
+    this.maxNumOfInnerRpcClient = maxNumOfInnerRpcClient;
+  }
+
+  public int getMaxQueueNumOfInnerRpcClient() {
+    return maxQueueNumOfInnerRpcClient;
+  }
+
+  public void setMaxQueueNumOfInnerRpcClient(int maxQueueNumOfInnerRpcClient) {
+    this.maxQueueNumOfInnerRpcClient = maxQueueNumOfInnerRpcClient;
+  }
+
+  public int getReadMetadataConsistencyLevel() {
+    return readMetadataConsistencyLevel;
+  }
+
+  public void setReadMetadataConsistencyLevel(int readMetadataConsistencyLevel) {
+    this.readMetadataConsistencyLevel = readMetadataConsistencyLevel;
+  }
+
+  public int getReadDataConsistencyLevel() {
+    return readDataConsistencyLevel;
+  }
+
+  public void setReadDataConsistencyLevel(int readDataConsistencyLevel) {
+    this.readDataConsistencyLevel = readDataConsistencyLevel;
+  }
 }

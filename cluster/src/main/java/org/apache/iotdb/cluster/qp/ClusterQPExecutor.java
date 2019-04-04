@@ -74,6 +74,16 @@ public abstract class ClusterQPExecutor {
    */
   protected int subTaskNum = 1;
 
+  /**
+   * ReadMetadataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
+   */
+  protected int readMetadataConsistencyLevel = CLUSTER_CONFIG.getReadMetadataConsistencyLevel();
+
+  /**
+   * ReadDataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
+   */
+  protected int readDataConsistencyLevel = CLUSTER_CONFIG.getReadDataConsistencyLevel();
+
   protected final AtomicInteger requestId = new AtomicInteger(0);
 
   /**

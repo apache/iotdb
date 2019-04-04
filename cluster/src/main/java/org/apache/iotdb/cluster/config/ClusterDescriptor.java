@@ -116,9 +116,25 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("task_timeout_ms",
               Integer.toString(conf.getTaskTimeoutMs()))));
 
-      conf.setNumOfVirtulaNodes(Integer
+      conf.setNumOfVirtualNodes(Integer
           .parseInt(properties.getProperty("num_of_virtula_nodes",
-              Integer.toString(conf.getNumOfVirtulaNodes()))));
+              Integer.toString(conf.getNumOfVirtualNodes()))));
+
+      conf.setMaxNumOfInnerRpcClient(Integer
+          .parseInt(properties.getProperty("max_num_of_inner_rpc_client",
+              Integer.toString(conf.getMaxNumOfInnerRpcClient()))));
+
+      conf.setMaxQueueNumOfInnerRpcClient(Integer
+          .parseInt(properties.getProperty("max_queue_num_of_inner_rpc_client",
+              Integer.toString(conf.getMaxQueueNumOfInnerRpcClient()))));
+
+      conf.setReadMetadataConsistencyLevel(Integer
+          .parseInt(properties.getProperty("read_metadata_consistency_level",
+              Integer.toString(conf.getReadMetadataConsistencyLevel()))));
+
+      conf.setReadDataConsistencyLevel(Integer
+          .parseInt(properties.getProperty("read_data_consistency_level",
+              Integer.toString(conf.getReadDataConsistencyLevel()))));
 
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because, use default configuration", e);
