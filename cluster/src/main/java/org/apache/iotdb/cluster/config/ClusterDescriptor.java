@@ -46,9 +46,11 @@ public class ClusterDescriptor {
   }
 
   /**
-   * load an property file and set ClusterConfig variables.
+   * Load an property file and set ClusterConfig variables.
+   * Change this method to public only for test.
+   * In most case, you should invoke this method.
    */
-  private void loadProps() {
+  public void loadProps() {
     conf.setDefaultPath();
     InputStream inputStream;
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);

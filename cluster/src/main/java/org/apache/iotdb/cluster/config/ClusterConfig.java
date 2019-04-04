@@ -27,6 +27,8 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.alipay.sofa.jraft.util.OnlyForTest;
+
 public class ClusterConfig {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterConfig.class);
@@ -132,18 +134,25 @@ public class ClusterConfig {
     this.raftMetadataPath = raftDir + File.separatorChar + DEFAULT_RAFT_METADATA_DIR;
   }
 
-  public void createAllPath(){
+  public void createAllPath() {
     createPath(this.raftSnapshotPath);
     createPath(this.raftLogPath);
     createPath(this.raftMetadataPath);
   }
 
-  private void createPath(String path){
+  private void createPath(String path) {
     try {
       FileUtils.forceMkdir(new File(path));
     } catch (IOException e) {
       LOGGER.warn("Path {} already exists.", path);
     }
+  }
+
+  @OnlyForTest
+  public void deleteAllPath() throws IOException {
+    FileUtils.deleteDirectory(new File(this.raftSnapshotPath));
+    FileUtils.deleteDirectory(new File(this.raftLogPath));
+    FileUtils.deleteDirectory(new File(this.raftMetadataPath));
   }
 
   public String[] getNodes() {
