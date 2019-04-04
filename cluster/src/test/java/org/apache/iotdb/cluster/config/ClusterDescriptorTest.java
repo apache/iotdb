@@ -94,13 +94,13 @@ public class ClusterDescriptorTest {
 
   @Test
   public void test() throws IOException {
-    System.out.println(absoultePath);
     System.setProperty(IoTDBConstant.IOTDB_CONF, absoultePath);
     ClusterDescriptor.getInstance().loadProps();
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     StringBuilder builder = new StringBuilder();
     for (String node : config.getNodes()) {
-      builder.append(node.trim() + ",");
+      builder.append(node.trim());
+      builder.append(',');
     }
     assertEquals(testNodesNew, builder.toString().substring(0, builder.length() - 1));
     assertEquals(testReplicationNew, config.getReplication() + "");
