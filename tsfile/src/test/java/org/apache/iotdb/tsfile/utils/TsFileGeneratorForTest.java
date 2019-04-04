@@ -51,7 +51,7 @@ public class TsFileGeneratorForTest {
   private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForTest.class);
   public static TsFileWriter innerWriter;
   public static String inputDataFile;
-  public static String outputDataFile = "src/test/resources/testTsFile.tsfile";
+  public static String outputDataFile = "target/testTsFile.tsfile";
   public static String errorOutputDataFile;
   private static int rowCount;
   private static int chunkGroupSize;
@@ -72,8 +72,8 @@ public class TsFileGeneratorForTest {
   }
 
   public static void prepare(int minrowCount, int maxRowCount) throws IOException {
-    inputDataFile = "src/test/resources/perTestInputData";
-    errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
+    inputDataFile = "target/perTestInputData";
+    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
     generateSampleInputDataFile(minrowCount, maxRowCount);
   }
 
@@ -95,7 +95,7 @@ public class TsFileGeneratorForTest {
   static private void generateSampleInputDataFile(int minRowCount, int maxRowCount) throws IOException {
     File file = new File(inputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file.getParentFile().mkdirs();
     FileWriter fw = new FileWriter(file);
@@ -149,10 +149,10 @@ public class TsFileGeneratorForTest {
     File file = new File(outputDataFile);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     if (errorFile.exists()) {
-      errorFile.delete();
+      Assert.assertTrue(errorFile.delete());
     }
 
     // LOG.info(jsonSchema.toString());

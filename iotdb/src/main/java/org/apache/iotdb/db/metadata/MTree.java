@@ -39,6 +39,7 @@ public class MTree implements Serializable {
 
   private static final long serialVersionUID = -4200394435237291964L;
   private static final String QUAD_SPACE = "    ";
+  private static final String SEPARATOR = ".";
   private static final String DOUB_SEPARATOR = "\\.";
   private static final String NO_CHILD_ERROR = "Timeseries is not correct. Node[%s] "
       + "doesn't have child named:%s";
@@ -210,6 +211,67 @@ public class MTree implements Serializable {
     cur = cur.getChild(nodeNames[i]);
     cur.setStorageLevel(true);
     setDataFileName(path, cur);
+  }
+
+  /**
+   * check whether the input path is storage group or not
+   * @param path input path
+   * @return if it is storage group, return true. Else return false
+   * @apiNote :for cluster
+   */
+  public boolean checkStorageGroup(String path) {
+    String[] nodeNames = path.split(DOUB_SEPARATOR);
+    MNode cur = root;
+    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
+      return false;
+    }
+    int i = 1;
+    while (i < nodeNames.length - 1) {
+      MNode temp = cur.getChild(nodeNames[i]);
+      if (temp == null || temp.isStorageLevel()) {
+        return false;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      i++;
+    }
+    MNode temp = cur.getChild(nodeNames[i]);
+    if (temp == null || !temp.isStorageLevel()) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  /**
+   * Check whether the storage group of the path exists or not
+   * @param path input path
+   * @return If it's storage group exists, return true. Else return false
+   * @apiNote :for cluster
+   */
+  public boolean checkStorageExistOfPath(String path) {
+    String[] nodeNames = path.split(DOUB_SEPARATOR);
+    MNode cur = root;
+    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
+      return false;
+    }
+    int i = 1;
+    while (i < nodeNames.length - 1) {
+      MNode temp = cur.getChild(nodeNames[i]);
+      if (temp == null) {
+        return false;
+      }
+      if(temp.isStorageLevel()){
+        return true;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      i++;
+    }
+    MNode temp = cur.getChild(nodeNames[i]);
+    if(temp != null && temp.isStorageLevel()) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   /**
@@ -515,6 +577,45 @@ public class MTree implements Serializable {
     }
     throw new PathErrorException(
         String.format(NOT_SERIES_PATH, path));
+  }
+
+  /**
+   * Get all the storage group seriesPaths for one seriesPath.
+   *
+   * @return List storage group seriesPath list
+   */
+  public List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+
+    List<String> sgList = new ArrayList<>();
+    String[] nodes = path.split(DOUB_SEPARATOR);
+    MNode cur = getRoot();
+    for (int i = 1; i < nodes.length; i++) {
+      if (cur == null) {
+        throw new PathErrorException(
+            String.format(NOT_SERIES_PATH,
+                path));
+      }
+      if (cur.isStorageLevel()) {
+        sgList.add(cur.getDataFileName());
+        return sgList;
+      }
+      cur = cur.getChild(nodes[i]);
+    }
+    if (sgList.isEmpty()) {
+      getAllStorageGroupsOfNode(cur, path, sgList);
+    }
+    return sgList;
+  }
+
+  private void getAllStorageGroupsOfNode(MNode node, String path, List<String> sgList) {
+    if (node.isStorageLevel()) {
+      sgList.add(path);
+      return;
+    }
+
+    for (MNode child : node.getChildren().values()) {
+      getAllStorageGroupsOfNode(child, path + SEPARATOR + child.getName(), sgList);
+    }
   }
 
   /**

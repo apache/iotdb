@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SingleClientSyncTest {
 
-  FileSenderImpl fileSenderImpl = FileSenderImpl.getInstance();
+  SyncSenderImpl fileSenderImpl = SyncSenderImpl.getInstance();
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   private String serverIpTest = "192.168.130.7";
   private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();

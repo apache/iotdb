@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +51,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
       .getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
   public static TsFileWriter innerWriter;
   public static String inputDataFile;
-  public static String outputDataFile = "src/test/resources/testTsFile.tsfile";
+  public static String outputDataFile = "target/testTsFile.tsfile";
   public static String errorOutputDataFile;
   public static JSONObject jsonSchema;
   private static int rowCount;
@@ -69,8 +70,8 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   }
 
   public static void prepare() throws IOException {
-    inputDataFile = "src/test/resources/perTestInputData";
-    errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
+    inputDataFile = "target/perTestInputData";
+    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
     jsonSchema = generateTestData();
     generateSampleInputDataFile();
   }
@@ -80,22 +81,22 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage = prePageSize;
     File file = new File(inputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file = new File(outputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file = new File(errorOutputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
   }
 
   static private void generateSampleInputDataFile() throws IOException {
     File file = new File(inputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file.getParentFile().mkdirs();
     FileWriter fw = new FileWriter(file);
@@ -149,10 +150,10 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     File file = new File(outputDataFile);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     if (errorFile.exists()) {
-      errorFile.delete();
+      Assert.assertTrue(errorFile.delete());
     }
 
     // LOG.info(jsonSchema.toString());

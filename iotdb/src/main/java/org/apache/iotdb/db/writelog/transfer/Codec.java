@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.writelog.transfer;
 
 import java.io.IOException;
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 interface Codec<T extends PhysicalPlan> {

@@ -33,7 +33,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -62,11 +61,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FileSenderImpl is used to transfer tsfiles that needs to sync to receiver.
+ * SyncSenderImpl is used to transfer tsfiles that needs to sync to receiver.
  */
-public class FileSenderImpl implements FileSender {
+public class SyncSenderImpl implements SyncSender {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileSenderImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderImpl.class);
   private TTransport transport;
   private SyncService.Client serviceClient;
   private List<String> schema = new ArrayList<>();
@@ -96,7 +95,7 @@ public class FileSenderImpl implements FileSender {
    **/
   private Map<String, Set<String>> validFileSnapshot = new HashMap<>();
 
-  private FileManager fileManager = FileManager.getInstance();
+  private SyncFileManager syncFileManager = SyncFileManager.getInstance();
   private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
 
   /**
@@ -119,10 +118,10 @@ public class FileSenderImpl implements FileSender {
     }
   };
 
-  private FileSenderImpl() {
+  private SyncSenderImpl() {
   }
 
-  public static final FileSenderImpl getInstance() {
+  public static final SyncSenderImpl getInstance() {
     return InstanceHolder.INSTANCE;
   }
 
@@ -134,7 +133,7 @@ public class FileSenderImpl implements FileSender {
   public static void main(String[] args)
       throws InterruptedException, IOException, SyncConnectionException {
     Thread.currentThread().setName(ThreadName.SYNC_CLIENT.getName());
-    FileSenderImpl fileSenderImpl = new FileSenderImpl();
+    SyncSenderImpl fileSenderImpl = new SyncSenderImpl();
     fileSenderImpl.verifySingleton();
     fileSenderImpl.startMonitor();
     fileSenderImpl.timedTask();
@@ -185,9 +184,9 @@ public class FileSenderImpl implements FileSender {
     }
 
     // 2. Acquire valid files and check
-    fileManager.init();
-    validAllFiles = fileManager.getValidAllFiles();
-    currentLocalFiles = fileManager.getCurrentLocalFiles();
+    syncFileManager.init();
+    validAllFiles = syncFileManager.getValidAllFiles();
+    currentLocalFiles = syncFileManager.getCurrentLocalFiles();
     if (SyncUtils.isEmpty(validAllFiles)) {
       LOGGER.info("There has no file to sync !");
       return;
@@ -255,8 +254,8 @@ public class FileSenderImpl implements FileSender {
       syncData(validSnapshot);
       if (afterSynchronization()) {
         currentLocalFiles.get(entry.getKey()).addAll(validFiles);
-        fileManager.setCurrentLocalFiles(currentLocalFiles);
-        fileManager.backupNowLocalFileInfo(config.getLastFileInfo());
+        syncFileManager.setCurrentLocalFiles(currentLocalFiles);
+        syncFileManager.backupNowLocalFileInfo(config.getLastFileInfo());
         LOGGER.info("Sync process has finished storage group {}.", entry.getKey());
       } else {
         LOGGER.error("Receiver cannot sync data, abandon this synchronization of storage group {}", entry.getKey());
@@ -531,7 +530,7 @@ public class FileSenderImpl implements FileSender {
 
   private static class InstanceHolder {
 
-    private static final FileSenderImpl INSTANCE = new FileSenderImpl();
+    private static final SyncSenderImpl INSTANCE = new SyncSenderImpl();
   }
 
   public void setConfig(SyncSenderConfig config) {

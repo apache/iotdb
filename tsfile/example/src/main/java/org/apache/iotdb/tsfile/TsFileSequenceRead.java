@@ -70,6 +70,7 @@ public class TsFileSequenceRead {
           Decoder valueDecoder = Decoder
               .getDecoderByType(header.getEncodingType(), header.getDataType());
           for (int j = 0; j < header.getNumOfPages(); j++) {
+            valueDecoder.reset();
             System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());
             PageHeader pageHeader = reader.readPageHeader(header.getDataType());
             System.out.println("\t\tPage data position: " + reader.position());

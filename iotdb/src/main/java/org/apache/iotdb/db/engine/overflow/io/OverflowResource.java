@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.overflow.io;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -97,39 +99,44 @@ public class OverflowResource {
       // the tail is at least the len of magic string
       insertIO = new OverflowIO(readWriter);
       readMetadata();
+    } catch (FileNotFoundException e){
+      LOGGER.debug("Failed to construct the OverflowIO.", e);
     } catch (IOException e) {
-      LOGGER.error("Failed to construct the OverflowIO.", e);
       throw e;
     }
     this.versionController = versionController;
     modificationFile = new ModificationFile(insertFilePath + ModificationFile.FILE_SUFFIX);
   }
 
-  private Pair<Long, Long> readPositionInfo() {
-    try(FileInputStream inputStream = new FileInputStream(positionFilePath)) {
-      byte[] insertPositionData = new byte[8];
-      byte[] updatePositionData = new byte[8];
-      int byteRead = inputStream.read(insertPositionData);
-      if (byteRead != 8) {
-        throw new IOException("Not enough bytes for insertPositionData");
+  private Pair<Long, Long> readPositionInfo() throws IOException {
+    File positionFile = new File(positionFilePath);
+    if (positionFile.exists()) {
+      try(FileInputStream inputStream = new FileInputStream(positionFile)) {
+        byte[] insertPositionData = new byte[8];
+        byte[] updatePositionData = new byte[8];
+        int byteRead = inputStream.read(insertPositionData);
+        if (byteRead != 8) {
+          throw new IOException("Not enough bytes for insertPositionData");
+        }
+        byteRead = inputStream.read(updatePositionData);
+        if (byteRead != 8) {
+          throw new IOException("Not enough bytes for updatePositionData");
+        }
+        long lastInsertPosition = BytesUtils.bytesToLong(insertPositionData);
+        long lastUpdatePosition = BytesUtils.bytesToLong(updatePositionData);
+        return new Pair<>(lastInsertPosition, lastUpdatePosition);
       }
-      byteRead = inputStream.read(updatePositionData);
-      if (byteRead != 8) {
-        throw new IOException("Not enough bytes for updatePositionData");
-      }
-      long lastInsertPosition = BytesUtils.bytesToLong(insertPositionData);
-      long lastUpdatePosition = BytesUtils.bytesToLong(updatePositionData);
-      return new Pair<>(lastInsertPosition, lastUpdatePosition);
-    } catch (IOException e) {
+    } else {
+      LOGGER.debug("No position info, returning a default value");
       long left = 0;
       long right = 0;
       File insertTempFile = new File(insertFilePath);
       if (insertTempFile.exists()) {
         left = insertTempFile.length();
       }
-      LOGGER.warn("Cannot read position info, returning a default value", e);
       return new Pair<>(left, right);
     }
+
   }
 
   private void writePositionInfo(long lastInsertPosition, long lastUpdatePosition)

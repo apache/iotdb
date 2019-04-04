@@ -210,9 +210,9 @@ public class PerfTest {
     ch.qos.logback.classic.Logger logger = loggerContext.getLogger("root");
     logger.setLevel(Level.toLevel("info"));
 
-    inputDataFile = "src/test/resources/perTestInputData";
-    outputDataFile = "src/test/resources/perTestOutputData.tsfile";
-    errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
+    inputDataFile = "target/perTestInputData";
+    outputDataFile = "target/perTestOutputData.tsfile";
+    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
     jsonSchema = generateTestData();
     generateSampleInputDataFile();
   }
