@@ -276,6 +276,9 @@ public class DeletionQueryTest {
 
     FileNodeManager.getInstance().closeAll();
 
+    // wait for the file sync
+    Thread.sleep(3000);
+
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));
     pathList.add(new Path(processorName, measurements[4]));
