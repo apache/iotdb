@@ -315,6 +315,7 @@ public class MManagerBasicTest {
     }
   }
 
+  @Test
   public void testCheckStorageExistOfPath() {
     MManager manager = MManager.getInstance();
 

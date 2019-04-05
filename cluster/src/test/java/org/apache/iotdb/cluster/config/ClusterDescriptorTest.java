@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.config;
 
 import static org.junit.Assert.*;
 
+import com.sun.tools.javac.comp.Env;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.junit.After;
 import org.junit.Before;
@@ -99,6 +101,7 @@ public class ClusterDescriptorTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
     deleteConfigFile();
     createTestConfigFile();
     storeOldConfig();
@@ -108,6 +111,7 @@ public class ClusterDescriptorTest {
   public void tearDown() throws Exception {
     restoreOldConfig();
     deleteConfigFile();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

@@ -28,6 +28,8 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.rpc.service.TSServiceClusterImpl;
+import org.apache.iotdb.cluster.utils.EnvironmentUtils;
+import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,6 +44,7 @@ public class ClusterQPExecutorTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
     impl = new TSServiceClusterImpl();
     impl.initClusterService();
 
@@ -49,8 +52,9 @@ public class ClusterQPExecutorTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws Exception {
     impl.closeClusterService();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

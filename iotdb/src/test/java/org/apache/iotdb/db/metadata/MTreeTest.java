@@ -243,6 +243,7 @@ public class MTreeTest {
     }
   }
 
+  @Test
   public void testCheckStorageExistOfPath() {
     // set storage group first
     MTree root = new MTree("root");

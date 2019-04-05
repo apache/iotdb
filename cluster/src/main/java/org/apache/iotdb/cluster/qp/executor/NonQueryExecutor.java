@@ -27,9 +27,11 @@ import java.nio.ByteBuffer;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.iotdb.cluster.callback.BatchQPTask;
 import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.callback.SingleQPTask;
@@ -78,7 +80,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     try {
       String groupId = getGroupIdFromPhysicalPlan(plan);
-      return handleNonQuerySingleRequest(groupId, plan);
+      return handleNonQueryRequest(groupId, plan);
     } catch (RaftConnectionException e) {
       LOGGER.error(e.getMessage());
       throw new ProcessorException("Raft connection occurs error.", e);
@@ -156,14 +158,15 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   /**
    * Get group id from physical plan
    */
-  private String getGroupIdFromPhysicalPlan(PhysicalPlan plan)
+  public String getGroupIdFromPhysicalPlan(PhysicalPlan plan)
       throws PathErrorException, ProcessorException {
     String storageGroup;
     String groupId;
     switch (plan.getOperatorType()) {
       case DELETE:
-        throw new UnsupportedOperationException(
-            String.format(OPERATION_NOT_SUPPORTED, plan.getOperatorType()));
+        storageGroup = getStorageGroupFromDeletePlan((DeletePlan) plan);
+        groupId = getGroupIdBySG(storageGroup);
+        break;
       case UPDATE:
         Path path = ((UpdatePlan) plan).getPath();
         storageGroup = getStroageGroupByDevice(path.getDevice());
@@ -211,15 +214,40 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     return groupId;
   }
 
-  //TODO
-  private boolean delete(DeletePlan deletePlan) {
-    return false;
+  /**
+   * Get storage group from delete plan
+   */
+  public String getStorageGroupFromDeletePlan(DeletePlan deletePlan)
+      throws PathErrorException, ProcessorException {
+    List<Path> paths = deletePlan.getPaths();
+    Set<String> sgSet = new HashSet<>();
+    for (Path path : paths) {
+      if (mManager.checkStorageExistOfPath(path.getFullPath())) {
+        sgSet.add(mManager.getFileNameByPath(path.getFullPath()));
+        if (sgSet.size() > 1) {
+          throw new ProcessorException(
+              "Delete function in distributed iotdb only supports single storage group");
+        }
+      } else {
+        List<String> storageGroups = mManager.getAllFileNamesByPath(path.getFullPath());
+        if (!storageGroups.isEmpty()) {
+          throw new ProcessorException(
+              "Delete function in distributed iotdb only supports single storage group");
+        } else {
+          throw new ProcessorException(
+              String.format("The path %s doesn't exist.", path.getFullPath()));
+        }
+
+      }
+    }
+    List<String> sgList = new ArrayList<>(sgSet);
+    return sgList.get(0);
   }
 
   /**
    * Get group id from metadata plan
    */
-  private String getGroupIdFromMetadataPlan(MetadataPlan metadataPlan)
+  public String getGroupIdFromMetadataPlan(MetadataPlan metadataPlan)
       throws ProcessorException, PathErrorException {
     MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
     Path path = metadataPlan.getPath();
@@ -250,7 +278,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   /**
    * Handle non query single request by group id and physical plan
    */
-  private boolean handleNonQuerySingleRequest(String groupId, PhysicalPlan plan)
+  private boolean handleNonQueryRequest(String groupId, PhysicalPlan plan)
       throws IOException, RaftConnectionException, InterruptedException {
     List<PhysicalPlan> plans = new ArrayList<>();
     plans.add(plan);

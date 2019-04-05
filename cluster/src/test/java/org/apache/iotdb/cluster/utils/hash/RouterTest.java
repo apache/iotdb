@@ -22,6 +22,7 @@ import static org.junit.Assert.*;
 
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,6 +38,7 @@ public class RouterTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
     ipListOld = config.getNodes();
     replicatorOld = config.getReplication();
     numOfVirtulaNodesOld = config.getNumOfVirtualNodes();
@@ -47,6 +49,7 @@ public class RouterTest {
     config.setNodes(ipListOld);
     config.setReplication(replicatorOld);
     config.setNumOfVirtualNodes(numOfVirtulaNodesOld);
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

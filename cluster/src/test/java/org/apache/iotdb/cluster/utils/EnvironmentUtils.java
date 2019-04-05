@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.cluster.utils;
 
 import java.io.File;
 import java.io.IOException;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -38,26 +40,18 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p>
- * This class is used for cleaning test environment in unit test and integration test
- * </p>
- *
- * @author liukun
- *
+ * This class is used for cleaning cluster test environment in unit test and integration test
  */
 public class EnvironmentUtils {
-
   private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentUtils.class);
 
+  private static ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static Directories directories = Directories.getInstance();
-  private static TSFileConfig tsfileConfig = TSFileDescriptor.getInstance().getConfig();
 
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
@@ -118,6 +112,8 @@ public class EnvironmentUtils {
     cleanDir(config.getDerbyHome());
     // delete index
     cleanDir(config.getIndexFileDir());
+    // delete raft
+    clusterConfig.deleteAllPath();
     // delte data
     cleanDir("data");
     // delte derby log
@@ -136,22 +132,6 @@ public class EnvironmentUtils {
         throw new IOException(String.format("The file %s can't be deleted", dir));
       }
     }
-  }
-
-  /**
-   * disable the system monitor</br>
-   * this function should be called before all code in the setup
-   */
-  public static void closeStatMonitor() {
-    config.setEnableStatMonitor(false);
-  }
-
-  /**
-   * disable memory control</br>
-   * this function should be called before all code in the setup
-   */
-  public static void closeMemControl() {
-    config.setEnableMemMonitor(false);
   }
 
   public static void envSetUp() throws StartupException {
