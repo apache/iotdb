@@ -276,14 +276,11 @@ public class IoTDBConfig {
    * Examining period of cache file reader : 100 seconds.
    */
   private long cacheFileReaderClearPeriod = 100000;
-  /**
-   * Is cluster enable
-   */
-  private boolean enableCluster = false;
+
   /**
    * Replace implementation class of JDBC service
    */
-  private String jdbcServiceImplClassName = TSServiceImpl.class.getName();
+  private String rpcImplClassName = TSServiceImpl.class.getName();
 
   public IoTDBConfig() {
     // empty constructor
@@ -825,19 +822,11 @@ public class IoTDBConfig {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
   }
 
-  public boolean isEnableCluster() {
-    return enableCluster;
+  public String getRpcImplClassName() {
+    return rpcImplClassName;
   }
 
-  public void setEnableCluster(boolean enableCluster) {
-    this.enableCluster = enableCluster;
-  }
-
-  public String getJdbcServiceImplClassName() {
-    return jdbcServiceImplClassName;
-  }
-
-  public void setJdbcServiceImplClassName(String jdbcServiceImplClassName) {
-    this.jdbcServiceImplClassName = jdbcServiceImplClassName;
+  public void setRpcImplClassName(String rpcImplClassName) {
+    this.rpcImplClassName = rpcImplClassName;
   }
 }

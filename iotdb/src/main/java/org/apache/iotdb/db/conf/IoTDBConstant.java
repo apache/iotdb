@@ -20,7 +20,8 @@ package org.apache.iotdb.db.conf;
 
 public class IoTDBConstant {
 
-  private IoTDBConstant() {}
+  private IoTDBConstant() {
+  }
 
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
@@ -34,6 +35,8 @@ public class IoTDBConstant {
   public static final String JMX_REMOTE_RMI_PORT = "com.sun.management.jmxremote.rmi.port";
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String JMX_TYPE = "type";
+  public static final String IOTDB_TYPE = "IOTDB_TYPE";
+  public static final String IOTDB_CLUSTER_TYPE = "CLUSTER";
 
   public static final long GB = 1024 * 1024 * 1024L;
   public static final long MB = 1024 * 1024L;

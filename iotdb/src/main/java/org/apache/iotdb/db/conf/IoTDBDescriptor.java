@@ -51,6 +51,14 @@ public class IoTDBDescriptor {
    */
   private void loadProps() {
     InputStream inputStream;
+
+    /** IoTDB Type: Single or Cluster **/
+    String iotdbType = System.getProperty(IoTDBConstant.IOTDB_TYPE, null);
+    if (iotdbType != null && iotdbType.equals(IoTDBConstant.IOTDB_CLUSTER_TYPE)) {
+      conf.setRpcImplClassName(IoTDBConstant.CLUSTER_RPC_IMPL_CALSS);
+      conf.setEnableWal(false);
+    }
+
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -114,9 +122,10 @@ public class IoTDBDescriptor {
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
               Integer.toString(conf.getRpcPort()))));
 
-      conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
-              Boolean.toString(conf.isEnableWal()))));
-
+      if (iotdbType == null || !iotdbType.equals(IoTDBConstant.IOTDB_CLUSTER_TYPE)) {
+        conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
+            Boolean.toString(conf.isEnableWal()))));
+      }
       conf.setFlushWalThreshold(Integer
           .parseInt(properties.getProperty("flush_wal_threshold",
                   Integer.toString(conf.getFlushWalThreshold()))));
@@ -240,12 +249,6 @@ public class IoTDBDescriptor {
 
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());
-
-      conf.setEnableCluster(Boolean.parseBoolean(
-          properties.getProperty("enable_cluster", Boolean.toString(conf.isEnableCluster()))));
-      if(conf.isEnableCluster()){
-        conf.setJdbcServiceImplClassName(IoTDBConstant.CLUSTER_RPC_IMPL_CALSS);
-      }
 
       String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
       try {

@@ -18,19 +18,19 @@
  */
 package org.apache.iotdb.cluster.config;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
-import com.sun.tools.javac.comp.Env;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -99,6 +99,10 @@ public class ClusterDescriptorTest {
     }
   };
 
+  static {
+    System.setProperty(IoTDBConstant.IOTDB_TYPE, "CLUSTER");
+  }
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
@@ -141,6 +145,8 @@ public class ClusterDescriptorTest {
     assertEquals(testQueueLenNew, config.getMaxQueueNumOfInnerRpcClient() + "");
     assertEquals(testMetadataConsistencyNew, config.getReadMetadataConsistencyLevel() + "");
     assertEquals(testDataConsistencyNew, config.getReadDataConsistencyLevel() + "");
+    assertEquals(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName(),
+        IoTDBConstant.CLUSTER_RPC_IMPL_CALSS);
 
     System.setProperty(IoTDBConstant.IOTDB_CONF, "");
     config.deleteAllPath();

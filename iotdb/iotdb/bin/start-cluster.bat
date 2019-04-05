@@ -56,6 +56,7 @@ popd
 
 set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
+set IOTDB_TYPE=CLUSTER
 
 IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
     CALL "%IOTDB_CONF%\iotdb-env.bat"

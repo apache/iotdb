@@ -191,7 +191,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
         throws IOException, ClassNotFoundException, IllegalAccessException, InstantiationException {
       protocolFactory = new TBinaryProtocol.Factory();
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      impl = (TSServiceImpl) Class.forName(config.getJdbcServiceImplClassName()).newInstance();
+      impl = (TSServiceImpl) Class.forName(config.getRpcImplClassName()).newInstance();
       processor = new TSIService.Processor<>(impl);
       this.threadStartLatch = threadStartLatch;
       this.threadStopLatch = threadStopLatch;
