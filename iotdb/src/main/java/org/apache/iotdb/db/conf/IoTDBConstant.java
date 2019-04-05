@@ -35,8 +35,6 @@ public class IoTDBConstant {
   public static final String JMX_REMOTE_RMI_PORT = "com.sun.management.jmxremote.rmi.port";
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String JMX_TYPE = "type";
-  public static final String IOTDB_TYPE = "IOTDB_TYPE";
-  public static final String IOTDB_CLUSTER_TYPE = "CLUSTER";
 
   public static final long GB = 1024 * 1024 * 1024L;
   public static final long MB = 1024 * 1024L;
@@ -59,5 +57,4 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
-  public static final String CLUSTER_RPC_IMPL_CALSS = "org.apache.iotdb.cluster.rpc.service.TSServiceClusterImpl";
 }

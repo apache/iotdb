@@ -24,13 +24,19 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import org.apache.iotdb.cluster.rpc.service.TSServiceClusterImpl;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClusterDescriptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterDescriptor.class);
+
+  private IoTDBConfig ioTDBConf = IoTDBDescriptor.getInstance().getConfig();
+
   private ClusterConfig conf = new ClusterConfig();
 
   private ClusterDescriptor() {
@@ -51,6 +57,8 @@ public class ClusterDescriptor {
    * In most case, you should invoke this method.
    */
   public void loadProps() {
+    ioTDBConf.setRpcImplClassName(TSServiceClusterImpl.class.getName());
+    ioTDBConf.setEnableWal(false);
     conf.setDefaultPath();
     InputStream inputStream;
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);

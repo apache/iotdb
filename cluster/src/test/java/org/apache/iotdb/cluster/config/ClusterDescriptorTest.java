@@ -99,10 +99,6 @@ public class ClusterDescriptorTest {
     }
   };
 
-  static {
-    System.setProperty(IoTDBConstant.IOTDB_TYPE, "CLUSTER");
-  }
-
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
@@ -145,8 +141,6 @@ public class ClusterDescriptorTest {
     assertEquals(testQueueLenNew, config.getMaxQueueNumOfInnerRpcClient() + "");
     assertEquals(testMetadataConsistencyNew, config.getReadMetadataConsistencyLevel() + "");
     assertEquals(testDataConsistencyNew, config.getReadDataConsistencyLevel() + "");
-    assertEquals(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName(),
-        IoTDBConstant.CLUSTER_RPC_IMPL_CALSS);
 
     System.setProperty(IoTDBConstant.IOTDB_CONF, "");
     config.deleteAllPath();

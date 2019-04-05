@@ -28,7 +28,6 @@ if [ -z "${IOTDB_HOME}" ]; then
 fi
 
 IOTDB_CONF=${IOTDB_HOME}/conf
-IOTDB_TYPE=CLUSTER
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 
 if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
