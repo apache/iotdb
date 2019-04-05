@@ -47,8 +47,10 @@ public class MetadataOperator extends RootOperator {
     namespaceType = type;
     switch (type) {
       case SET_FILE_LEVEL:
-      case ADD_PATH:
         operatorType = OperatorType.SET_STORAGE_GROUP;
+        break;
+      case ADD_PATH:
+        operatorType = OperatorType.CREATE_TIMESERIES;
         break;
       case DELETE_PATH:
         operatorType = OperatorType.DELETE_TIMESERIES;

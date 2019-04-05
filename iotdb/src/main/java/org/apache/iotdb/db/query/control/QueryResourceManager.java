@@ -93,8 +93,6 @@ public class QueryResourceManager {
   private ConcurrentHashMap<Long, ConcurrentHashMap<String, List<Integer>>> queryTokensMap;
   private JobFileManager filePathsManager;
   private AtomicLong maxJobId;
-
-
   private QueryResourceManager() {
     queryTokensMap = new ConcurrentHashMap<>();
     filePathsManager = new JobFileManager();
