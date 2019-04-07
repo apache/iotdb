@@ -83,7 +83,7 @@ public class TsFileReadWriteTest {
   @Test
   public void floatTest() throws IOException, WriteProcessException {
     writeData(TSDataType.FLOAT, (i) -> new FloatDataPoint("sensor_1", (float) i));
-    readData((i, field, delta) -> assertEquals(i, field.getFloatV()));
+    readData((i, field, delta) -> assertEquals(i, field.getFloatV(), delta));
   }
 
   @Test
