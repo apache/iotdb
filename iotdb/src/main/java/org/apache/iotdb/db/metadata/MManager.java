@@ -994,7 +994,7 @@ public class MManager {
   /**
    * combine multiple metadata in string format
    */
-  private static String combineMetadataInStrings(String[] metadatas) {
+  public static String combineMetadataInStrings(String[] metadatas) {
     return MGraph.combineMetadataInStrings(metadatas);
   }
 
