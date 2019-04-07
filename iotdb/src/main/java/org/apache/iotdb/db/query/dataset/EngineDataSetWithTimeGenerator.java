@@ -34,6 +34,7 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
 
   private EngineTimeGenerator timeGenerator;
   private List<EngineReaderByTimeStamp> readers;
+  private RowRecord cachedRowRecord;
 
   /**
    * constructor of EngineDataSetWithTimeGenerator.
@@ -52,24 +53,49 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
 
   @Override
   public boolean hasNext() throws IOException {
-    return timeGenerator.hasNext();
+    if (cachedRowRecord != null) {
+      return true;
+    }
+    return cacheRowRecord();
   }
 
   @Override
   public RowRecord next() throws IOException {
-    long timestamp = timeGenerator.next();
-    RowRecord rowRecord = new RowRecord(timestamp);
-    for (int i = 0; i < readers.size(); i++) {
-      EngineReaderByTimeStamp reader = readers.get(i);
-      Object value = reader.getValueInTimestamp(timestamp);
-      if (value == null) {
-        rowRecord.addField(new Field(null));
-      } else {
-        rowRecord.addField(getField(value, dataTypes.get(i)));
+    if (cachedRowRecord == null) {
+      cacheRowRecord();
+    }
+    RowRecord tempRecord = cachedRowRecord;
+    cachedRowRecord = null;
+    return tempRecord;
+  }
+
+  /**
+   * Cache row record
+   *
+   * @return if there has next row record.
+   */
+  private boolean cacheRowRecord() throws IOException {
+    while (timeGenerator.hasNext()) {
+      boolean markNull = true;
+      long timestamp = timeGenerator.next();
+      RowRecord rowRecord = new RowRecord(timestamp);
+      for (int i = 0; i < readers.size(); i++) {
+        EngineReaderByTimeStamp reader = readers.get(i);
+        Object value = reader.getValueInTimestamp(timestamp);
+        if (value == null) {
+          rowRecord.addField(new Field(null));
+        } else {
+          markNull = false;
+          rowRecord.addField(getField(value, dataTypes.get(i)));
+        }
+      }
+      if (!markNull) {
+        cachedRowRecord = rowRecord;
+        return true;
       }
     }
-
-    return rowRecord;
+    cachedRowRecord = null;
+    return false;
   }
 
   private Field getField(Object value, TSDataType dataType) {
