@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,11 +78,7 @@ public class SimpleFileVersionController implements VersionController {
   private void persist() throws IOException {
     File oldFile = new File(directoryPath, FILE_PREFIX + prevVersion);
     File newFile = new File(directoryPath, FILE_PREFIX + currVersion);
-    if (!oldFile.renameTo(newFile)) {
-      throw new IOException(String
-          .format("can not rename file %s to file %s", oldFile.getAbsolutePath(),
-              newFile.getAbsolutePath()));
-    }
+    FileUtils.moveFile(oldFile, newFile);
     prevVersion = currVersion;
   }
 
