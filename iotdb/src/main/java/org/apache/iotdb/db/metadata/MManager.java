@@ -259,7 +259,7 @@ public class MManager {
    */
   public void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props)
-      throws PathErrorException, IOException, MetadataArgsErrorException {
+      throws PathErrorException, IOException {
 
     lock.writeLock().lock();
     try {
@@ -292,7 +292,7 @@ public class MManager {
    * @param encoding the encoding function {@code Encoding} for the timeseries
    */
   public void addPathToMTree(String path, String dataType, String encoding)
-      throws PathErrorException, IOException, MetadataArgsErrorException {
+      throws PathErrorException, IOException {
     TSDataType tsDataType = TSDataType.valueOf(dataType);
     TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
     CompressionType type = CompressionType.valueOf(TSFileConfig.compressor);
@@ -989,6 +989,13 @@ public class MManager {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  /**
+   * combine multiple metadata in string format
+   */
+  private static String combineMetadataInStrings(String[] metadatas) {
+    return MGraph.combineMetadataInStrings(metadatas);
   }
 
   /**
