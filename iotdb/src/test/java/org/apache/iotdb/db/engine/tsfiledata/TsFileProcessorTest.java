@@ -235,6 +235,11 @@ public class TsFileProcessorTest {
     Assert.assertFalse(exception[0]);
     Assert.assertFalse(exception[1]);
     Assert.assertFalse(exception[2]);
+    synchronized (this) {
+      while (queryThread.isAlive()) {
+        this.wait(50);
+      }
+    }
     QueryDataSet result = queryManager.query(qe, processor, TEST_QUERY_CONTEXT);
     int size =0;
     while (result.hasNext()) {
@@ -243,7 +248,4 @@ public class TsFileProcessorTest {
     }
     //Assert.assertEquals(count[0], size);
   }
-
-
-
 }

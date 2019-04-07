@@ -1665,8 +1665,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       return false;
     }
     if (!newMultiPassLock.writeLock().tryLock()) {
-      LOGGER.info("The filenode {} can't be closed, because it can't get newMultiPassLock {}",
-          getProcessorName(), newMultiPassLock);
+      LOGGER.warn(
+          "The filenode {} can't be closed, because it can't get newMultiPassLock {}. The newMultiPassTokenSet is {}",
+          getProcessorName(), newMultiPassLock, newMultiPassTokenSet);
       return false;
     }
 
