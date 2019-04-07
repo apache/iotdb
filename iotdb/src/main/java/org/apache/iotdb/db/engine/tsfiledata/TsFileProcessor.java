@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -699,6 +701,14 @@ public class TsFileProcessor extends Processor {
    * remove all data of this processor. Used For UT
    */
   public void removeMe() throws BufferWriteProcessorException, IOException {
+    try {
+      flushFuture.get(10000, TimeUnit.MILLISECONDS);
+    } catch (ExecutionException | TimeoutException e) {
+      LOGGER.error("can not end running flush task in 10 seconds: {}", e.getMessage());
+    } catch (InterruptedException e) {
+      LOGGER.error("current running flush task is interrupted.", e);
+      Thread.currentThread().interrupt();
+    }
     close();
     for (String folder : Directories.getInstance().getAllTsFileFolders()) {
       File dataFolder = new File(folder, processorName);
