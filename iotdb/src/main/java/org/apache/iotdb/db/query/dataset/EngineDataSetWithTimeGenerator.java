@@ -34,6 +34,7 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
 
   private EngineTimeGenerator timeGenerator;
   private List<EngineReaderByTimeStamp> readers;
+  private boolean hasCachedRowRecord;
   private RowRecord cachedRowRecord;
 
   /**
@@ -53,7 +54,7 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
 
   @Override
   public boolean hasNext() throws IOException {
-    if (cachedRowRecord != null) {
+    if (hasCachedRowRecord) {
       return true;
     }
     return cacheRowRecord();
@@ -61,12 +62,11 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
 
   @Override
   public RowRecord next() throws IOException {
-    if (cachedRowRecord == null) {
-      cacheRowRecord();
+    if (!hasCachedRowRecord && !cacheRowRecord()) {
+      return null;
     }
-    RowRecord tempRecord = cachedRowRecord;
-    cachedRowRecord = null;
-    return tempRecord;
+    hasCachedRowRecord = false;
+    return cachedRowRecord;
   }
 
   /**
@@ -76,7 +76,7 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
    */
   private boolean cacheRowRecord() throws IOException {
     while (timeGenerator.hasNext()) {
-      boolean markNull = true;
+      boolean hasField = false;
       long timestamp = timeGenerator.next();
       RowRecord rowRecord = new RowRecord(timestamp);
       for (int i = 0; i < readers.size(); i++) {
@@ -85,17 +85,17 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
         if (value == null) {
           rowRecord.addField(new Field(null));
         } else {
-          markNull = false;
+          hasField = true;
           rowRecord.addField(getField(value, dataTypes.get(i)));
         }
       }
-      if (!markNull) {
+      if (hasField) {
+        hasCachedRowRecord = true;
         cachedRowRecord = rowRecord;
-        return true;
+        break;
       }
     }
-    cachedRowRecord = null;
-    return false;
+    return hasCachedRowRecord;
   }
 
   private Field getField(Object value, TSDataType dataType) {

@@ -151,7 +151,7 @@ public class IoTDBLimitSlimitIT {
             + "1000,1000.11,\n",
 
         "select * from root.vehicle.d0 where s1>190 or s2 < 10.0 limit 3 offset 1 slimit 1 soffset 2 ",
-        "2,2.22,\n" + "3,3.33,\n" + "4,4.44,\n"
+        "3,3.33,\n" + "4,4.44,\n" + "105,11.11,\n"
 
     };
     executeSQL(sqlS);
@@ -167,7 +167,7 @@ public class IoTDBLimitSlimitIT {
       connection = DriverManager
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       for (String sql : sqls) {
-        // System.out.println("----" + sql);
+//         System.out.println("----" + sql);
         if (cmp) {
           Assert.assertEquals(sql, result);
           cmp = false;
