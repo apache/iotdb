@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.metadata;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -320,23 +322,23 @@ public class MManagerBasicTest {
     MManager manager = MManager.getInstance();
 
     try {
-      assertEquals(false, manager.checkStorageExistOfPath("root"));
-      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle"));
-      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle.device"));
-      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle.device.sensor"));
+      assertTrue(manager.getAllPathGroupByFileName("root").keySet().isEmpty());
+      assertTrue(manager.getAllFileNamesByPath("root.vehicle").isEmpty());
+      assertTrue(manager.getAllFileNamesByPath("root.vehicle.device").isEmpty());
+      assertTrue(manager.getAllFileNamesByPath("root.vehicle.device.sensor").isEmpty());
 
       manager.setStorageLevelToMTree("root.vehicle");
-      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle"));
-      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle.device"));
-      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle.device.sensor"));
-      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1"));
-      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device"));
+      assertFalse(manager.getAllFileNamesByPath("root.vehicle").isEmpty());
+      assertFalse(manager.getAllFileNamesByPath("root.vehicle.device").isEmpty());
+      assertFalse(manager.getAllFileNamesByPath("root.vehicle.device.sensor").isEmpty());
+      assertTrue(manager.getAllFileNamesByPath("root.vehicle1").isEmpty());
+      assertTrue(manager.getAllFileNamesByPath("root.vehicle1.device").isEmpty());
 
       manager.setStorageLevelToMTree("root.vehicle1.device");
-      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device1"));
-      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device2"));
-      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device3"));
-      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle1.device"));
+      assertTrue(manager.getAllFileNamesByPath("root.vehicle1.device1").isEmpty());
+      assertTrue(manager.getAllFileNamesByPath("root.vehicle1.device2").isEmpty());
+      assertTrue(manager.getAllFileNamesByPath("root.vehicle1.device3").isEmpty());
+      assertFalse(manager.getAllFileNamesByPath("root.vehicle1.device").isEmpty());
     } catch (PathErrorException | IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

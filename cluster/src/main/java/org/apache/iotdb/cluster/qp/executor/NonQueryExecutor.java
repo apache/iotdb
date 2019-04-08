@@ -218,22 +218,11 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     List<Path> paths = deletePlan.getPaths();
     Set<String> sgSet = new HashSet<>();
     for (Path path : paths) {
-      if (mManager.checkStorageExistOfPath(path.getFullPath())) {
-        sgSet.add(mManager.getFileNameByPath(path.getFullPath()));
-        if (sgSet.size() > 1) {
-          throw new ProcessorException(
-              "Delete function in distributed iotdb only supports single storage group");
-        }
-      } else {
-        List<String> storageGroups = mManager.getAllFileNamesByPath(path.getFullPath());
-        if (!storageGroups.isEmpty()) {
-          throw new ProcessorException(
-              "Delete function in distributed iotdb only supports single storage group");
-        } else {
-          throw new ProcessorException(
-              String.format("The path %s doesn't exist.", path.getFullPath()));
-        }
-
+      List<String> storageGroupList = mManager.getAllFileNamesByPath(path.getFullPath());
+      sgSet.addAll(storageGroupList);
+      if (sgSet.size() > 1) {
+        throw new ProcessorException(
+            "Delete function in distributed iotdb only supports single storage group");
       }
     }
     List<String> sgList = new ArrayList<>(sgSet);

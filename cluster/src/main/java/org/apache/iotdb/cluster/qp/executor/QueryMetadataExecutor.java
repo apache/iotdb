@@ -70,21 +70,13 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   public List<List<String>> processTimeSeriesQuery(String path)
       throws InterruptedException, PathErrorException, ProcessorException {
     List<List<String>> res = new ArrayList<>();
-    /** Check whether it's related to one storage group **/
-    if (checkStorageExistOfPath(path)) {
-      String storageGroup = mManager.getFileNameByPath(path);
-      String groupId = getGroupIdBySG(storageGroup);
-      List<String> paths = new ArrayList<>();
-      paths.add(path);
-      handleTimseriesQuery(groupId, paths, res);
+    List<String> storageGroupList = mManager.getAllFileNamesByPath(path);
+    if (storageGroupList.isEmpty()) {
+      throw new PathErrorException(String.format("The path %s doesn't exist", path));
     } else {
-      List<String> storageGroupList = getAllStroageGroupsByPath(path);
       Map<String, Set<String>> groupIdSGMap = classifySGByGroupId(storageGroupList);
       for (Entry<String, Set<String>> entry : groupIdSGMap.entrySet()) {
-        List<String> paths = new ArrayList<>();
-        for (String storageGroup : entry.getValue()) {
-          paths.add(storageGroup);
-        }
+        List<String> paths = new ArrayList<>(entry.getValue());
         String groupId = entry.getKey();
         handleTimseriesQuery(groupId, paths, res);
       }
