@@ -87,10 +87,10 @@ public class Server {
     RpcServer rpcServer = new RpcServer(serverId.getPort());
     RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
 
-    rpcServer.registerUserProcessor(new DataGroupNonQueryAsyncProcessor(this));
-    rpcServer.registerUserProcessor(new MetaGroupNonQueryAsyncProcessor(this));
-    rpcServer.registerUserProcessor(new QueryTimeSeriesAsyncProcessor(this));
-    rpcServer.registerUserProcessor(new QueryMetadataInStringAsyncProcessor(this));
+    rpcServer.registerUserProcessor(new DataGroupNonQueryAsyncProcessor());
+    rpcServer.registerUserProcessor(new MetaGroupNonQueryAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryTimeSeriesAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryMetadataInStringAsyncProcessor());
 
     metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer, true);
     metadataHolder.init();

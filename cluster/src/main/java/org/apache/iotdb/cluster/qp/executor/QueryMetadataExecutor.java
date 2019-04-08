@@ -167,10 +167,8 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   private List<List<String>> queryTimeSeriesLocally(List<String> pathList, String groupId,
       SingleQPTask task)
       throws InterruptedException, ProcessorException {
-    final byte[] reqContext = new byte[4];
-    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
-    DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
-        .getDataPartitionHolder(groupId);
+    final byte[] reqContext = RaftUtils.createRaftRequestContext(requestId.incrementAndGet());
+    DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
 
     /** Check consistency level**/
     if(readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL){

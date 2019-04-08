@@ -20,15 +20,9 @@ package org.apache.iotdb.cluster.rpc.processor;
 
 import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
-import com.alipay.remoting.exception.CodecException;
-import com.alipay.remoting.serialization.SerializerManager;
 import com.alipay.sofa.jraft.entity.PeerId;
-import com.alipay.sofa.jraft.entity.Task;
-import java.nio.ByteBuffer;
-import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
-import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.response.DataGroupNonQueryResponse;
@@ -44,53 +38,32 @@ public class DataGroupNonQueryAsyncProcessor extends
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(DataGroupNonQueryAsyncProcessor.class);
-  private Server server;
 
-  public DataGroupNonQueryAsyncProcessor(Server server) {
-    this.server = server;
+  public DataGroupNonQueryAsyncProcessor() {
   }
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      DataGroupNonQueryRequest dataGroupNonQueryRequest) {
-    LOGGER.info("Handle data non query request.");
+      DataGroupNonQueryRequest request) {
+    LOGGER.debug("Handle data non query request");
 
     /** Check if it's the leader **/
-    String groupId = dataGroupNonQueryRequest.getGroupID();
-    DataPartitionRaftHolder dataPartitionRaftHolder = (DataPartitionRaftHolder) server
-        .getDataPartitionHolderMap().get(groupId);
+    String groupId = request.getGroupID();
+    DataPartitionRaftHolder dataPartitionRaftHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
     if (!dataPartitionRaftHolder.getFsm().isLeader()) {
       PeerId leader = RaftUtils.getLeaderPeerID(groupId);
-      LOGGER.info("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
+      LOGGER.debug("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
+
       DataGroupNonQueryResponse response = DataGroupNonQueryResponse
           .createRedirectedInstance(groupId, leader.toString());
       asyncContext.sendResponse(response);
     } else {
+      LOGGER.debug("Apply task to raft node");
 
-      LOGGER.info("Apply task to raft node");
       /** Apply Task to Raft Node **/
-      final Task task = new Task();
       BasicResponse response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
-      ResponseClosure closure = new ResponseClosure(response, status -> {
-        response.addResult(status.isOk());
-        if (!status.isOk()) {
-          response.setErrorMsg(status.getErrorMsg());
-        }
-        asyncContext.sendResponse(response);
-      });
-      task.setDone(closure);
-      try {
-        task.setData(ByteBuffer
-            .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
-                .serialize(dataGroupNonQueryRequest)));
-      } catch (final CodecException e) {
-        response.setErrorMsg(e.getMessage());
-        response.addResult(false);
-        asyncContext.sendResponse(response);
-      }
-
       RaftService service = (RaftService) dataPartitionRaftHolder.getService();
-      service.getNode().apply(task);
+      RaftUtils.executeRaftTaskForRpcProcessor(service, asyncContext, request, response);
     }
   }
 

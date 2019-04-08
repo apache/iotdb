@@ -22,14 +22,13 @@ import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.closure.ReadIndexClosure;
-import com.alipay.sofa.jraft.util.Bits;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.rpc.request.QueryTimeSeriesRequest;
 import org.apache.iotdb.cluster.rpc.response.QueryTimeSeriesResponse;
+import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 
@@ -40,20 +39,12 @@ public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<Query
 
   private MManager mManager = MManager.getInstance();
 
-  private Server server;
-
-  public QueryTimeSeriesAsyncProcessor(Server server) {
-    this.server = server;
-  }
-
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       QueryTimeSeriesRequest request) {
     String groupId = request.getGroupID();
-    final byte[] reqContext = new byte[4];
-    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
-    DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
-        .getDataPartitionHolder(groupId);
+    final byte[] reqContext = RaftUtils.createRaftRequestContext(requestId.incrementAndGet());
+    DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryTimeSeriesResponse response = QueryTimeSeriesResponse
