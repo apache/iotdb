@@ -116,7 +116,7 @@ public class DataStateMachine extends StateMachineAdapter {
           PhysicalPlan plan = PhysicalPlanLogTransfer.logToOperator(planByte);
 
           /** If the request is to set path and sg of the path doesn't exist, it needs to run null-read in meta group to avoid out of data sync **/
-          if (plan.getOperatorType() == OperatorType.CREATE_TIMESERIES && checkPathExistence(
+          if (plan.getOperatorType() == OperatorType.CREATE_TIMESERIES && !checkPathExistence(
               ((MetadataPlan) plan).getPath().getFullPath())) {
             SingleQPTask nullReadTask = new SingleQPTask(false, null);
             handleNullReadToMetaGroup(nullReadTask, status, nullReadTask);
