@@ -18,19 +18,30 @@
  */
 package org.apache.iotdb.cluster.utils;
 
+import com.alipay.remoting.AsyncContext;
+import com.alipay.remoting.exception.CodecException;
+import com.alipay.remoting.serialization.SerializerManager;
 import com.alipay.sofa.jraft.RouteTable;
 import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.entity.PeerId;
+import com.alipay.sofa.jraft.entity.Task;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
+import com.alipay.sofa.jraft.util.Bits;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
+import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
+import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
+import org.apache.iotdb.cluster.rpc.request.BasicRequest;
+import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.slf4j.Logger;
@@ -146,9 +157,7 @@ public class RaftUtils {
   }
 
   /**
-   *
    * @param nodes each node string is in the format of "ip:port:idx",
-   * @return
    */
   public static PeerId[] convertStringArrayToPeerIdArray(String[] nodes) {
     PeerId[] peerIds = new PeerId[nodes.length];
@@ -194,4 +203,84 @@ public class RaftUtils {
     LOGGER.info("group leader cache:{}", groupLeaderCache);
   }
 
+  /**
+   * Execute raft task for local processor
+   *
+   * @param service raft service
+   */
+  public static boolean executeRaftTaskForLocalProcessor(RaftService service, QPTask qpTask,
+      BasicResponse response) throws InterruptedException {
+    BasicRequest request = qpTask.getRequest();
+
+    Task task = new Task();
+    ResponseClosure closure = new ResponseClosure(response, status -> {
+      response.addResult(status.isOk());
+      if (!status.isOk()) {
+        response.setErrorMsg(status.getErrorMsg());
+      }
+      qpTask.run(response);
+    });
+    task.setDone(closure);
+    try {
+      task.setData(ByteBuffer
+          .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2).serialize(request)));
+    } catch (CodecException e) {
+      return false;
+    }
+    service.getNode().apply(task);
+    qpTask.await();
+    return qpTask.getResponse().isSuccess();
+  }
+
+
+  /**
+   * Execute raft task for rpc processor
+   *
+   * @param service raft service
+   */
+  public static void executeRaftTaskForRpcProcessor(RaftService service, AsyncContext asyncContext,
+      BasicRequest request, BasicResponse response) {
+    final Task task = new Task();
+    ResponseClosure closure = new ResponseClosure(response, status -> {
+      response.addResult(status.isOk());
+      if (!status.isOk()) {
+        response.setErrorMsg(status.getErrorMsg());
+      }
+      asyncContext.sendResponse(response);
+    });
+    task.setDone(closure);
+    try {
+      task.setData(ByteBuffer
+          .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
+              .serialize(request)));
+      service.getNode().apply(task);
+    } catch (final CodecException e) {
+      response.setErrorMsg(e.getMessage());
+      response.addResult(false);
+      asyncContext.sendResponse(response);
+    }
+  }
+
+  /**
+   * Get data partition raft holder by group id
+   */
+  public static DataPartitionRaftHolder getDataPartitonRaftHolder(String groupId) {
+    return (DataPartitionRaftHolder) server.getDataPartitionHolderMap().get(groupId);
+  }
+
+  /**
+   * Get metadata raft holder
+   */
+  public static MetadataRaftHolder getMetadataRaftHolder() {
+    return (MetadataRaftHolder) server.getMetadataHolder();
+  }
+
+  /**
+   * Create a new raft request context by request id
+   */
+  public static byte[] createRaftRequestContext(int requestId) {
+    final byte[] reqContext = new byte[4];
+    Bits.putInt(reqContext, 0, requestId);
+    return reqContext;
+  }
 }

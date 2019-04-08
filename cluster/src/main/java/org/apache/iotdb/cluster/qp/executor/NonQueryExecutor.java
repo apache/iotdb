@@ -18,12 +18,8 @@
  */
 package org.apache.iotdb.cluster.qp.executor;
 
-import com.alipay.remoting.exception.CodecException;
-import com.alipay.remoting.serialization.SerializerManager;
 import com.alipay.sofa.jraft.entity.PeerId;
-import com.alipay.sofa.jraft.entity.Task;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,7 +37,6 @@ import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
-import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.request.MetaGroupNonQueryRequest;
@@ -291,6 +286,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     }
     QPTask qpTask = new SingleQPTask(false, request);
     currentTask = qpTask;
+
     /** Check if the plan can be executed locally. **/
     if (canHandleNonQueryByGroupId(groupId)) {
       return handleNonQueryRequestLocally(groupId, qpTask);
@@ -309,41 +305,19 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     RaftService service;
     if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
       response = MetaGroupNonQueryResponse.createEmptyInstance(groupId);
-      MetadataRaftHolder metadataRaftHolder = (MetadataRaftHolder) server
-          .getMetadataHolder();
+      MetadataRaftHolder metadataRaftHolder = RaftUtils.getMetadataRaftHolder();
       service = (RaftService) metadataRaftHolder.getService();
     } else {
       response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
-      DataPartitionRaftHolder dataRaftHolder = (DataPartitionRaftHolder) server
-          .getDataPartitionHolderMap().get(groupId);
+      DataPartitionRaftHolder dataRaftHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
       service = (RaftService) dataRaftHolder.getService();
     }
 
-    /** set task **/
-    final Task task = new Task();
-    ResponseClosure closure = new ResponseClosure(response, status -> {
-      response.addResult(status.isOk());
-      if (!status.isOk()) {
-        response.setErrorMsg(status.getErrorMsg());
-      }
-      qpTask.run(response);
-    });
-    task.setDone(closure);
-
-    BasicRequest request = qpTask.getRequest();
-
     /** Apply qpTask to Raft Node **/
-    try {
-      task.setData(ByteBuffer
-          .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2)
-              .serialize(request)));
-    } catch (final CodecException e) {
-      return false;
-    }
-    service.getNode().apply(task);
-    qpTask.await();
-    return qpTask.getResponse().isSuccess();
+    return RaftUtils.executeRaftTaskForLocalProcessor(service, qpTask, response);
   }
+
+
 
   /**
    * Async handle task by QPTask and leader id.
