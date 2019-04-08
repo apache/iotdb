@@ -129,7 +129,7 @@ public class ClusterDescriptor {
               Integer.toString(conf.getTaskTimeoutMs()))));
 
       conf.setNumOfVirtualNodes(Integer
-          .parseInt(properties.getProperty("num_of_virtula_nodes",
+          .parseInt(properties.getProperty("num_of_virtual_nodes",
               Integer.toString(conf.getNumOfVirtualNodes()))));
 
       conf.setMaxNumOfInnerRpcClient(Integer
