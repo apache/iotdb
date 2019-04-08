@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.qp.executor;
 
+import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import java.sql.Statement;
@@ -66,6 +67,12 @@ public class NonQueryExecutor extends ClusterQPExecutor {
 
   private static final String OPERATION_NOT_SUPPORTED = "Operation %s does not support";
 
+  /**
+   * When executing Metadata Plan, it's necessary to do null-read in single non query request or do
+   * the first null-read in batch non query request
+   */
+  private boolean nullReaderEnable = false;
+
   public NonQueryExecutor() {
     super();
   }
@@ -75,6 +82,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    */
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     try {
+      nullReaderEnable = true;
       String groupId = getGroupIdFromPhysicalPlan(plan);
       return handleNonQueryRequest(groupId, plan);
     } catch (RaftConnectionException e) {
@@ -94,6 +102,9 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   public void processBatch(PhysicalPlan[] physicalPlans, BatchResult batchResult)
       throws InterruptedException {
     int[] result = batchResult.getResult();
+
+    Status nullReadTaskStatus = Status.OK();
+    RaftUtils.handleNullReadToMetaGroup(nullReadTaskStatus);
 
     /** 1. Classify physical plan by group id **/
     Map<String, List<PhysicalPlan>> physicalPlansMap = new HashMap<>();
@@ -115,6 +126,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           result[i] = Statement.EXECUTE_FAILED;
           batchResult.setAllSuccessful(false);
           batchResult.setBatchErrorMessage(e.getMessage());
+          LOGGER.error(e.getMessage());
         }
       }
     }
@@ -127,8 +139,12 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       BasicRequest request;
       try {
         if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
+          LOGGER.debug(
+              String.format("METADATA_GROUP_ID Send batch size() : %d", entry.getValue().size()));
           request = new MetaGroupNonQueryRequest(groupId, entry.getValue());
         }else {
+          LOGGER.debug(
+              String.format("DATA_GROUP_ID Send batch size() : %d", entry.getValue().size()));
           request = new DataGroupNonQueryRequest(groupId, entry.getValue());
         }
         singleQPTask = new SingleQPTask(false, request);
@@ -198,6 +214,14 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
       case METADATA:
+        if(nullReaderEnable){
+          Status nullReadTaskStatus = Status.OK();
+          RaftUtils.handleNullReadToMetaGroup(nullReadTaskStatus);
+          if(!nullReadTaskStatus.isOk()){
+            throw new ProcessorException("Null read to metadata group failed");
+          }
+          nullReaderEnable = false;
+        }
         groupId = getGroupIdFromMetadataPlan((MetadataPlan) plan);
         break;
       case PROPERTY:
@@ -250,7 +274,6 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           throw new ProcessorException(
               String.format("File level %s already exists.", path.getFullPath()));
         } else {
-          LOGGER.debug("Execute set storage group statement.");
           groupId = ClusterConfig.METADATA_GROUP_ID;
         }
         break;

@@ -74,8 +74,6 @@ public class DataStateMachine extends StateMachineAdapter {
 
   private AtomicLong leaderTerm = new AtomicLong(-1);
 
-  private final AtomicInteger requestId = new AtomicInteger(0);
-
   public DataStateMachine(String groupId, PeerId peerId) {
     this.peerId = peerId;
     this.groupId = groupId;
@@ -110,16 +108,21 @@ public class DataStateMachine extends StateMachineAdapter {
 
       List<byte[]> planBytes = request.getPhysicalPlanBytes();
 
+      LOGGER.debug(String.format("State machine batch size(): %d", planBytes.size()));
+
       /** handle batch plans(planBytes.size() > 0) or single plan(planBytes.size()==1) **/
       for (byte[] planByte : planBytes) {
         try {
           PhysicalPlan plan = PhysicalPlanLogTransfer.logToOperator(planByte);
 
+          LOGGER.debug(String.format("OperatorType :%s", plan.getOperatorType()));
           /** If the request is to set path and sg of the path doesn't exist, it needs to run null-read in meta group to avoid out of data sync **/
           if (plan.getOperatorType() == OperatorType.CREATE_TIMESERIES && !checkPathExistence(
               ((MetadataPlan) plan).getPath().getFullPath())) {
-            SingleQPTask nullReadTask = new SingleQPTask(false, null);
-            handleNullReadToMetaGroup(nullReadTask, status, nullReadTask);
+            RaftUtils.handleNullReadToMetaGroup(status);
+            if(!status.isOk()){
+              continue;
+            }
           }
           qpExecutor.processNonQuery(plan);
           if (closure != null) {
@@ -145,39 +148,6 @@ public class DataStateMachine extends StateMachineAdapter {
    */
   private boolean checkPathExistence(String path) throws PathErrorException {
     return !MManager.getInstance().getAllFileNamesByPath(path).isEmpty();
-  }
-
-  /**
-   * Handle null-read process in metadata group if the request is to set path.
-   *
-   * @param qpTask null-read task
-   * @param originStatus status to return result if this node is leader of the data group
-   */
-  private void handleNullReadToMetaGroup(QPTask qpTask, Status originStatus,
-      SingleQPTask nullReadTask) {
-    try {
-      LOGGER.info("Handle null-read in meta group for adding path request.");
-      final byte[] reqContext = new byte[4];
-      Bits.putInt(reqContext, 0, requestId.incrementAndGet());
-      MetadataRaftHolder metadataRaftHolder = (MetadataRaftHolder) server.getMetadataHolder();
-      ((RaftService) metadataRaftHolder.getService()).getNode()
-          .readIndex(reqContext, new ReadIndexClosure() {
-            @Override
-            public void run(Status status, long index, byte[] reqCtx) {
-              BasicResponse response = new BasicResponse(null, false, null, null) {
-              };
-              if (!status.isOk()) {
-                originStatus.setCode(-1);
-                originStatus.setErrorMsg(status.getErrorMsg());
-              }
-              qpTask.run(response);
-            }
-          });
-      nullReadTask.await();
-    } catch (InterruptedException e) {
-      originStatus.setCode(-1);
-      originStatus.setErrorMsg(e.getMessage());
-    }
   }
 
   @Override

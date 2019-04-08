@@ -58,7 +58,7 @@ public abstract class ClusterQPExecutor {
   /**
    * Raft as client manager.
    */
-  protected static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager
+  private static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager
       .getInstance();
 
   protected Router router = Router.getInstance();
@@ -89,8 +89,6 @@ public abstract class ClusterQPExecutor {
    * ReadDataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
    */
   protected int readDataConsistencyLevel = CLUSTER_CONFIG.getReadDataConsistencyLevel();
-
-  protected final AtomicInteger requestId = new AtomicInteger(0);
 
   /**
    * Get Storage Group Name by device name

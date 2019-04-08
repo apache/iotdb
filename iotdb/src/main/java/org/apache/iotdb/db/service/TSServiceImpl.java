@@ -206,7 +206,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (contextMap == null) {
       return;
     }
-    if(req == null || req.queryId == -1) {
+    if (req == null || req.queryId == -1) {
       // end query for all the query tokens created by current thread
       for (QueryContext context : contextMap.values()) {
         QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
@@ -487,13 +487,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
       }
 
-      try{
+      try {
         if (execSetConsistencyLevel(statement)) {
           return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
               "Execute set consistency level successfully");
         }
-      }catch (Exception e){
-        LOGGER.error("meet error while executing set consistency level command!", e);
+      } catch (Exception e) {
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
       }
 
@@ -524,7 +523,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * Set consistency level
    */
   public boolean execSetConsistencyLevel(String statement) throws Exception {
-    return false;
+    throw new Exception(
+        "IoTDB Stand-alone version does not support setting read-write consistency level");
   }
 
   @Override

@@ -116,17 +116,18 @@ public class BatchQPTask extends MultiQPTask {
   public void execute(NonQueryExecutor executor) {
     this.executor = executor;
     // Check if it has metadata group task
+    LOGGER.debug("Check if it has metadata group task");
     checkMetadataGroupTask();
 
     for (Entry<String, QPTask> entry : taskMap.entrySet()) {
       String groupId = entry.getKey();
-      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
       QPTask subTask = entry.getValue();
       Thread thread;
       if (executor.canHandleNonQueryByGroupId(groupId)) {
-        thread = new Thread(()->executeLocalSubTask(subTask, groupId));
+        thread = new Thread(() -> executeLocalSubTask(subTask, groupId));
         thread.start();
       } else {
+        PeerId leader = RaftUtils.getLeaderPeerID(groupId);
         thread = new Thread(() -> executeRpcSubTask(subTask, leader, groupId));
         thread.start();
       }

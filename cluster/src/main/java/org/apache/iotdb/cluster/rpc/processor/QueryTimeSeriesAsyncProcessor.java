@@ -35,15 +35,13 @@ import org.apache.iotdb.db.metadata.MManager;
 
 public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<QueryTimeSeriesRequest> {
 
-  private final AtomicInteger requestId = new AtomicInteger(0);
-
   private MManager mManager = MManager.getInstance();
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       QueryTimeSeriesRequest request) {
     String groupId = request.getGroupID();
-    final byte[] reqContext = RaftUtils.createRaftRequestContext(requestId.incrementAndGet());
+    final byte[] reqContext = RaftUtils.createRaftRequestContext();
     DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {

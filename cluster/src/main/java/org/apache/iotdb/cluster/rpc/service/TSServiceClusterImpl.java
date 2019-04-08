@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.exception.ConsistencyLevelException;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
 import org.apache.iotdb.db.auth.AuthException;
@@ -192,19 +193,23 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       return false;
     }
     statement = statement.toLowerCase().trim();
-    if (Pattern.matches(ClusterConstant.SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
-      String[] splits = statement.split("\\s+");
-      int level = Integer.parseInt(splits[splits.length-1]);
+    try {
+      if (Pattern.matches(ClusterConstant.SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
+        String[] splits = statement.split("\\s+");
+        int level = Integer.parseInt(splits[splits.length - 1]);
         nonQueryExecutor.get().setReadMetadataConsistencyLevel(level);
-      return true;
-    } else if (Pattern
-        .matches(ClusterConstant.SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
-      String[] splits = statement.split("\\s+");
-      int level = Integer.parseInt(splits[splits.length-1]);
-      nonQueryExecutor.get().setReadDataConsistencyLevel(level);
-      return true;
-    } else{
-      return false;
+        return true;
+      } else if (Pattern
+          .matches(ClusterConstant.SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
+        String[] splits = statement.split("\\s+");
+        int level = Integer.parseInt(splits[splits.length - 1]);
+        nonQueryExecutor.get().setReadDataConsistencyLevel(level);
+        return true;
+      } else {
+        return false;
+      }
+    } catch (ConsistencyLevelException e){
+      throw new Exception("meet error while executing set consistency level command!", e);
     }
   }
 

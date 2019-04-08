@@ -163,7 +163,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   private List<List<String>> queryTimeSeriesLocally(List<String> pathList, String groupId,
       SingleQPTask task)
       throws InterruptedException, ProcessorException {
-    final byte[] reqContext = RaftUtils.createRaftRequestContext(requestId.incrementAndGet());
+    final byte[] reqContext = RaftUtils.createRaftRequestContext();
     DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
 
     /** Check consistency level**/
@@ -224,8 +224,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
    * @return Set of storage group name
    */
   private Set<String> queryStorageGroupLocally() throws InterruptedException {
-    final byte[] reqContext = new byte[4];
-    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
+    final byte[] reqContext = RaftUtils.createRaftRequestContext();
     QueryStorageGroupRequest request = new QueryStorageGroupRequest(
         ClusterConfig.METADATA_GROUP_ID, readMetadataConsistencyLevel);
     SingleQPTask task = new SingleQPTask(false, request);
@@ -268,8 +267,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
    * Handle "show timeseries" statement
    */
   private void asyncQueryMetadataInStringLocally(String groupId, SingleQPTask task) {
-    final byte[] reqContext = new byte[4];
-    Bits.putInt(reqContext, 0, requestId.incrementAndGet());
+    final byte[] reqContext = RaftUtils.createRaftRequestContext();
     DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
         .getDataPartitionHolder(groupId);
     if(readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL){
@@ -298,14 +296,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
             }
           });
     }
-  }
-
-  // TODO
-  // Remove this method?
-  private String queryMetadataInString(SingleQPTask task, PeerId leader)
-      throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
-    return ((QueryMetadataInStringResponse) response).getMetadata();
   }
 
   /**

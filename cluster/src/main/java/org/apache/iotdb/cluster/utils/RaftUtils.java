@@ -21,24 +21,23 @@ package org.apache.iotdb.cluster.utils;
 import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.exception.CodecException;
 import com.alipay.remoting.serialization.SerializerManager;
-import com.alipay.sofa.jraft.RouteTable;
-import com.alipay.sofa.jraft.conf.Configuration;
+import com.alipay.sofa.jraft.Status;
+import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.entity.Task;
-import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import com.alipay.sofa.jraft.util.Bits;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.callback.QPTask;
+import org.apache.iotdb.cluster.callback.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
-import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
@@ -52,6 +51,8 @@ public class RaftUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(RaftUtils.class);
   private static final Server server = Server.getInstance();
   private static final Router router = Router.getInstance();
+  private static final AtomicInteger requestId = new AtomicInteger(0);
+
   /**
    * The cache will be update in two case: 1. When @onLeaderStart() method of state machine is
    * called, the cache will be update. 2. When @getLeaderPeerID() in this class is called and cache
@@ -201,6 +202,8 @@ public class RaftUtils {
       }
       asyncContext.sendResponse(response);
     });
+    LOGGER.debug(
+        String.format("Processor batch size() : %d", request.getPhysicalPlanBytes().size()));
     task.setDone(closure);
     try {
       task.setData(ByteBuffer
@@ -212,6 +215,13 @@ public class RaftUtils {
       response.addResult(false);
       asyncContext.sendResponse(response);
     }
+  }
+
+  /**
+   * Get read index request id
+   */
+  public static int getReadIndexRequestId(){
+    return requestId.incrementAndGet();
   }
 
   /**
@@ -231,9 +241,40 @@ public class RaftUtils {
   /**
    * Create a new raft request context by request id
    */
-  public static byte[] createRaftRequestContext(int requestId) {
+  public static byte[] createRaftRequestContext() {
     final byte[] reqContext = new byte[4];
-    Bits.putInt(reqContext, 0, requestId);
+    Bits.putInt(reqContext, 0, RaftUtils.getReadIndexRequestId());
     return reqContext;
+  }
+
+  /**
+   * Handle null-read process in metadata group if the request is to set path.
+   *
+   * @param status status to return result if this node is leader of the data group
+   */
+  public static void handleNullReadToMetaGroup(Status status) {
+    SingleQPTask nullReadTask = new SingleQPTask(false, null);
+    try {
+      LOGGER.debug("Handle null-read in meta group for adding path request.");
+      final byte[] reqContext = RaftUtils.createRaftRequestContext();
+      MetadataRaftHolder metadataRaftHolder = (MetadataRaftHolder) server.getMetadataHolder();
+      ((RaftService) metadataRaftHolder.getService()).getNode()
+          .readIndex(reqContext, new ReadIndexClosure() {
+            @Override
+            public void run(Status status, long index, byte[] reqCtx) {
+              BasicResponse response = new BasicResponse(null, false, null, null) {
+              };
+              if (!status.isOk()) {
+                status.setCode(-1);
+                status.setErrorMsg(status.getErrorMsg());
+              }
+              nullReadTask.run(response);
+            }
+          });
+      nullReadTask.await();
+    } catch (InterruptedException e) {
+      status.setCode(-1);
+      status.setErrorMsg(e.getMessage());
+    }
   }
 }
