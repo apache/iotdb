@@ -183,7 +183,7 @@ public class RaftUtils {
     }
     service.getNode().apply(task);
     qpTask.await();
-    return qpTask.getResponse().isSuccess();
+    return qpTask.getResponse() != null && qpTask.getResponse().isSuccess();
   }
 
 

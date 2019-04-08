@@ -162,7 +162,6 @@ public class BatchQPTask extends MultiQPTask {
       } catch (InterruptedException e) {
         LOGGER.error("Handle sub task locally failed.");
         this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
-        Thread.currentThread().interrupt();
       }
     }
 
@@ -176,7 +175,6 @@ public class BatchQPTask extends MultiQPTask {
       } catch (RaftConnectionException | InterruptedException e) {
         LOGGER.error("Async handle sub task failed.");
         this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
-        Thread.currentThread().interrupt();
       }
     }
 

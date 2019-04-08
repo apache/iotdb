@@ -38,11 +38,13 @@ public class SingleQPTask extends QPTask {
    */
   @Override
   public void run(BasicResponse response) {
-    this.response = response;
-    if (response.isRedirected()) {
-      this.taskState = TaskState.REDIRECT;
-    } else if (taskState != TaskState.EXCEPTION) {
-      this.taskState = TaskState.FINISH;
+    if(response != null) {
+      this.response = response;
+      if (response.isRedirected()) {
+        this.taskState = TaskState.REDIRECT;
+      } else if (taskState != TaskState.EXCEPTION) {
+        this.taskState = TaskState.FINISH;
+      }
     }
     this.taskCountDownLatch.countDown();
   }

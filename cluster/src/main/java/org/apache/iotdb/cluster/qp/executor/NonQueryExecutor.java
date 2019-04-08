@@ -341,7 +341,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   public boolean asyncHandleNonQueryTask(QPTask task, PeerId leader)
       throws RaftConnectionException, InterruptedException {
     BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
-    return response.isSuccess();
+    return response != null && response.isSuccess();
   }
 
 }

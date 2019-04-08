@@ -205,7 +205,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     }
     task.await();
     QueryTimeSeriesResponse response = (QueryTimeSeriesResponse) task.getResponse();
-    if (!response.isSuccess()) {
+    if (response == null || !response.isSuccess()) {
       LOGGER.error("Execute show timeseries {} statement false.", pathList);
       throw new ProcessorException();
     }

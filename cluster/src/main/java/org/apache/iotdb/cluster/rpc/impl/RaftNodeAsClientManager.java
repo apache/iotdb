@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.rpc.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.response.DataGroupNonQueryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -192,8 +193,8 @@ public class RaftNodeAsClientManager {
                     LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
                     qpTask.setTaskState(TaskState.EXCEPTION);
                     releaseClient();
-                    qpTask.run(null);
-
+                    qpTask.run(DataGroupNonQueryResponse
+                        .createErrorInstance(request.getGroupID(), e.getMessage()));
                   }
 
                   @Override
@@ -203,7 +204,10 @@ public class RaftNodeAsClientManager {
                 }, TASK_TIMEOUT_MS);
       } catch (RemotingException | InterruptedException e) {
         LOGGER.error(e.getMessage());
+        qpTask.setTaskState(TaskState.EXCEPTION);
         releaseClient();
+        qpTask.run(DataGroupNonQueryResponse
+            .createErrorInstance(request.getGroupID(), e.getMessage()));
         throw new RaftConnectionException(e);
       }
     }
@@ -217,6 +221,9 @@ public class RaftNodeAsClientManager {
             .invokeSync(leader.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
         qpTask.run(response);
       } catch (RemotingException | InterruptedException e) {
+        qpTask.setTaskState(TaskState.EXCEPTION);
+        qpTask.run(DataGroupNonQueryResponse
+            .createErrorInstance(request.getGroupID(), e.getMessage()));
         throw new RaftConnectionException(e);
       } finally {
         releaseClient();
@@ -232,6 +239,5 @@ public class RaftNodeAsClientManager {
     }
 
   }
-
 
 }
