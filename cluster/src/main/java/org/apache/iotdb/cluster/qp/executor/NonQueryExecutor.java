@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.callback.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
+import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
@@ -304,13 +305,22 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    */
   public boolean handleNonQueryRequestLocally(String groupId, QPTask qpTask)
       throws InterruptedException {
-    final Task task = new Task();
     BasicResponse response;
-    if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
+    RaftService service;
+    if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
       response = MetaGroupNonQueryResponse.createEmptyInstance(groupId);
-    }else{
+      MetadataRaftHolder metadataRaftHolder = (MetadataRaftHolder) server
+          .getMetadataHolder();
+      service = (RaftService) metadataRaftHolder.getService();
+    } else {
       response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
+      DataPartitionRaftHolder dataRaftHolder = (DataPartitionRaftHolder) server
+          .getDataPartitionHolderMap().get(groupId);
+      service = (RaftService) dataRaftHolder.getService();
     }
+
+    /** set task **/
+    final Task task = new Task();
     ResponseClosure closure = new ResponseClosure(response, status -> {
       response.addResult(status.isOk());
       if (!status.isOk()) {
@@ -330,9 +340,6 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     } catch (final CodecException e) {
       return false;
     }
-    DataPartitionRaftHolder dataRaftHolder = (DataPartitionRaftHolder) server
-        .getDataPartitionHolderMap().get(groupId);
-    RaftService service = (RaftService) dataRaftHolder.getService();
     service.getNode().apply(task);
     qpTask.await();
     return qpTask.getResponse().isSuccess();
