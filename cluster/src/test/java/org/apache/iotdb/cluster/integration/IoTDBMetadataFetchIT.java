@@ -80,7 +80,7 @@ public class IoTDBMetadataFetchIT {
     Connection connection = null;
     try {
       connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      insertSQL(connection, true);
+      insertSQL(connection, false);
       testShowTimeseries(connection);
       testShowTimeseriesPath(connection);
     } finally {
@@ -151,36 +151,36 @@ public class IoTDBMetadataFetchIT {
     Statement statement = connection.createStatement();
     String[] sqls = new String[]{
         "show timeseries root.ln.wf01.wt01.status", // full seriesPath
-//        "show timeseries root.ln", // prefix seriesPath
-//        "show timeseries root.ln.wf01.wt01", // prefix seriesPath
-//        "show timeseries root.ln.*.wt01.status", // seriesPath with stars
-//        "show timeseries root.ln.*.wt01.*", // seriesPath with stars
-//        "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
-//        "show timeseries root.ln,root.ln",
+        "show timeseries root.ln", // prefix seriesPath
+        "show timeseries root.ln.wf01.wt01", // prefix seriesPath
+        "show timeseries root.ln.*.wt01.status", // seriesPath with stars
+        "show timeseries root.ln.*.wt01.*", // seriesPath with stars
+        "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
+        "show timeseries root.ln,root.ln",
         // SHOW TIMESERIES <PATH> only accept single seriesPath, thus
         // returning ""
     };
     String[] standards = new String[]{
         "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n",
-//        "root.ln.wf04.wt04.status,root.ln.wf04,TEXT,PLAIN,\n"
-//          +"root.ln.wf04.wt05.temperature,root.ln.wf04,FLOAT,GORILLA,\n"
-//          +"root.ln.wf03.wt02.status,root.ln.wf03,INT64,PLAIN,\n"
-//          +"root.ln.wf03.wt03.temperature,root.ln.wf03,FLOAT,TS_2DIFF,\n"
-//          +"root.ln.wf02.wt03.status,root.ln.wf02,INT32,PLAIN,\n"
-//          +"root.ln.wf02.wt04.temperature,root.ln.wf02,FLOAT,RLE,\n"
-//          +"root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-//          +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
-//          +"root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
-//          +"root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
-//        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-//          +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n",
-//        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-//          + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
-//        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-//          + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,PLAIN,\n"
-//          + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
-//        "",
-//        ""
+        "root.ln.wf04.wt04.status,root.ln.wf04,TEXT,PLAIN,\n"
+          +"root.ln.wf04.wt05.temperature,root.ln.wf04,FLOAT,GORILLA,\n"
+          +"root.ln.wf03.wt02.status,root.ln.wf03,INT64,PLAIN,\n"
+          +"root.ln.wf03.wt03.temperature,root.ln.wf03,FLOAT,TS_2DIFF,\n"
+          +"root.ln.wf02.wt03.status,root.ln.wf02,INT32,PLAIN,\n"
+          +"root.ln.wf02.wt04.temperature,root.ln.wf02,FLOAT,RLE,\n"
+          +"root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+          +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
+          +"root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
+          +"root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+          +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n",
+        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+          + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+          + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
+          + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+        "",
+        ""
     };
     checkCorrectness(sqls, standards, statement);
   }

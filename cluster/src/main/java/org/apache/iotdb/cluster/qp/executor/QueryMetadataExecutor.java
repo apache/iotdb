@@ -55,6 +55,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
   private static final String DOUB_SEPARATOR = "\\.";
+  private static final char SINGLE_SEPARATOR = '.';
 
   public QueryMetadataExecutor() {
     super();
@@ -93,7 +94,17 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       if (storageGroup.length() >= queryPath.length()) {
         paths.add(storageGroup);
       } else {
-        paths.add(storageGroup + queryPath.substring(storageGroup.length()));
+        StringBuilder path = new StringBuilder();
+        String[] storageGroupNodes = storageGroup.split(DOUB_SEPARATOR);
+        String[] queryPathNodes = queryPath.split(DOUB_SEPARATOR);
+        for(int  i = 0 ; i < queryPathNodes.length ; i++){
+          if(i >= storageGroupNodes.length){
+            path.append(queryPathNodes[i]).append(SINGLE_SEPARATOR);
+          } else {
+            path.append(storageGroupNodes[i]).append(SINGLE_SEPARATOR);
+          }
+        }
+        paths.add(path.deleteCharAt(path.length()-1).toString());
       }
     }
     return paths;
