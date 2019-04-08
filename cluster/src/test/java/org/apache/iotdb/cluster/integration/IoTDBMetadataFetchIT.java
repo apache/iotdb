@@ -26,6 +26,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -37,11 +39,14 @@ import org.junit.Test;
 public class IoTDBMetadataFetchIT {
 
   private Server server;
+  private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
+    config.createAllPath();
     server = Server.getInstance();
     server.start();
     EnvironmentUtils.envSetUp();
@@ -55,24 +60,26 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void showTimeseriesTest1() throws SQLException {
+  public void showTimeseriesTest() throws SQLException {
     Connection connection = null;
     try {
       connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       insertSQL(connection, false);
-      checkCorretness(connection);
+      testShowTimeseries(connection);
+      testShowTimeseriesPath(connection);
     } finally {
       connection.close();
     }
   }
 
-//  @Test
-  public void showTimeseriesTest1Batch() throws SQLException {
+  //Test
+  public void showTimeseriesTestBatch() throws SQLException {
     Connection connection = null;
     try {
       connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       insertSQL(connection, true);
-      checkCorretness(connection);
+      testShowTimeseries(connection);
+      testShowTimeseriesPath(connection);
     } finally {
       connection.close();
     }
@@ -80,10 +87,27 @@ public class IoTDBMetadataFetchIT {
 
   private void insertSQL(Connection connection, boolean isBatch) throws SQLException {
     Statement statement = connection.createStatement();
-    String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.ln.wf01.wt01",
-        "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
-        "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-            + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"};
+    String[] insertSqls = new String[]{
+      "SET STORAGE GROUP TO root.ln.wf01",
+      "SET STORAGE GROUP TO root.ln.wf02",
+      "SET STORAGE GROUP TO root.ln.wf03",
+      "SET STORAGE GROUP TO root.ln.wf04",
+      "SET STORAGE GROUP TO root.ln.wf05",
+      "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
+      "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+      "CREATE TIMESERIES root.ln.wf01.wt02.humidity WITH DATATYPE = DOUBLE, ENCODING = RLE",
+
+      "CREATE TIMESERIES root.ln.wf02.wt03.status WITH DATATYPE = INT32, ENCODING = PLAIN",
+      "CREATE TIMESERIES root.ln.wf02.wt04.temperature WITH DATATYPE = FLOAT, ENCODING = RLE",
+
+      "CREATE TIMESERIES root.ln.wf03.wt02.status WITH DATATYPE = INT64, ENCODING = PLAIN",
+      "CREATE TIMESERIES root.ln.wf03.wt03.temperature WITH DATATYPE = FLOAT, ENCODING = TS_2DIFF, MAX_POINT_NUMBER = 5",
+
+      "CREATE TIMESERIES root.ln.wf04.wt04.status WITH DATATYPE = TEXT, ENCODING = PLAIN",
+      "CREATE TIMESERIES root.ln.wf04.wt05.temperature WITH DATATYPE = FLOAT, ENCODING = GORILLA",
+
+      "CREATE TIMESERIES root.ln.wf05.wt01.status WITH DATATYPE = DOUBLE, ENCODING = PLAIN",
+    };
     if (isBatch) {
       for (String sql : insertSqls) {
         statement.addBatch(sql);
@@ -98,25 +122,45 @@ public class IoTDBMetadataFetchIT {
     statement.close();
   }
 
-  private void checkCorretness(Connection connection) throws SQLException{
+  private void testShowStorageGroup(Connection connection) throws SQLException {
+    Statement statement = connection.createStatement();
+
+  }
+
+  private void testShowTimeseriesPath(Connection connection) throws SQLException{
     Statement statement = connection.createStatement();
     String[] sqls = new String[]{
-        "show timeseries root.ln.wf01.wt01.status", // full seriesPath
-        "show timeseries root.ln", // prefix seriesPath
-        "show timeseries root.ln.*.wt01", // seriesPath with stars
-        "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
-        "show timeseries root.ln,root.ln",
+//        "show timeseries root.ln.wf01.wt01.status", // full seriesPath
+//        "show timeseries root.ln", // prefix seriesPath
+//        "show timeseries root.ln.wf01.wt01", // prefix seriesPath
+        "show timeseries root.ln.*.wt01.status", // seriesPath with stars
+//        "show timeseries root.ln.*.wt01.*", // seriesPath with stars
+//        "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
+//        "show timeseries root.ln,root.ln",
         // SHOW TIMESERIES <PATH> only accept single seriesPath, thus
         // returning ""
     };
     String[] standards = new String[]{
-        "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n",
-        "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-            + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
-        "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
-        "",
-        ""
+//        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n",
+//        "root.ln.wf04.wt04.status,root.ln.wf04,TEXT,PLAIN,\n"
+//          +"root.ln.wf04.wt05.temperature,root.ln.wf04,FLOAT,GORILLA,\n"
+//          +"root.ln.wf03.wt02.status,root.ln.wf03,INT64,PLAIN,\n"
+//          +"root.ln.wf03.wt03.temperature,root.ln.wf03,FLOAT,TS_2DIFF,\n"
+//          +"root.ln.wf02.wt03.status,root.ln.wf02,INT32,PLAIN,\n"
+//          +"root.ln.wf02.wt04.temperature,root.ln.wf02,FLOAT,RLE,\n"
+//          +"root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+//          +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
+//          +"root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
+//          +"root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+//        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+//          +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n",
+        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+          + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+//        "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+//          + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,PLAIN,\n"
+//          + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+//        "",
+//        ""
     };
     for (int i = 0; i < sqls.length; i++) {
       String sql = sqls[i];
@@ -142,7 +186,19 @@ public class IoTDBMetadataFetchIT {
         statement.close();
       }
     }
+  }
 
+  private void testShowTimeseries(Connection connection) throws SQLException {
+    Statement statement = connection.createStatement();
+    try {
+      statement.execute("show timeseries");
+    } catch (SQLException e){
+      return;
+    } catch (Exception e){
+      fail(e.getMessage());
+    } finally {
+      statement.close();
+    }
   }
 
 }
