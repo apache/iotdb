@@ -628,7 +628,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);
       }
-    } catch (PathErrorException | IOException | ArgsErrorException | FileNodeManagerException e) {
+    } catch (PathErrorException | IOException | FileNodeManagerException e) {
       throw new ProcessorException(e.getMessage());
     }
     return true;

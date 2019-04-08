@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.rpc.response.QueryTimeSeriesResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -319,6 +320,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
    * @return single String of all metadata
    */
   private String combineMetadataInStringList(List<String> metadataList) {
-    return null; //TODO
+    return MManager.combineMetadataInStrings((String[]) metadataList.toArray());
   }
 }
