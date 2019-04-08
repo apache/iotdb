@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
+import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
@@ -68,6 +69,9 @@ public class BatchQPTask extends MultiQPTask {
    */
   private ReentrantLock lock = new ReentrantLock();
 
+  private NonQueryExecutor executor;
+
+
   public BatchQPTask(int taskNum, BatchResult batchResult, Map<String, QPTask> taskMap,
       Map<String, List<Integer>> planIndexMap) {
     super(false, taskNum, TaskState.INITIAL, TaskType.BATCH);
@@ -77,41 +81,6 @@ public class BatchQPTask extends MultiQPTask {
     this.taskMap = taskMap;
     this.planIndexMap = planIndexMap;
     this.taskThreadMap = new HashMap<>();
-  }
-
-  public void execute(NonQueryExecutor executor) {
-    for (Entry<String, QPTask> entry : taskMap.entrySet()) {
-      String groupId = entry.getKey();
-      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
-      QPTask subTask = entry.getValue();
-      Thread thread;
-      if (executor.canHandleNonQueryByGroupId(groupId)) {
-        thread = new Thread(() -> {
-          try {
-            executor.handleNonQueryRequestLocally(groupId, subTask);
-            this.run(subTask.getResponse());
-          } catch (InterruptedException e) {
-            LOGGER.error("Handle sub task locally failed.");
-            this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
-            Thread.currentThread().interrupt();
-          }
-        });
-        thread.start();
-      } else {
-        thread = new Thread(() -> {
-          try {
-            executor.asyncHandleNonQueryTask(subTask, leader);
-            this.run(subTask.getResponse());
-          } catch (RaftConnectionException | InterruptedException e) {
-            LOGGER.error("Async handle sub task failed.");
-            this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
-            Thread.currentThread().interrupt();
-          }
-        });
-        thread.start();
-      }
-      taskThreadMap.put(groupId, thread);
-    }
   }
 
   /**
@@ -143,6 +112,72 @@ public class BatchQPTask extends MultiQPTask {
     }
     taskCountDownLatch.countDown();
   }
+
+  public void execute(NonQueryExecutor executor) {
+    this.executor = executor;
+    // Check if it has metadata group task
+    checkMetadataGroupTask();
+
+    for (Entry<String, QPTask> entry : taskMap.entrySet()) {
+      String groupId = entry.getKey();
+      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
+      QPTask subTask = entry.getValue();
+      Thread thread;
+      if (executor.canHandleNonQueryByGroupId(groupId)) {
+        thread = new Thread(()->executeLocalSubTask(subTask, groupId));
+        thread.start();
+      } else {
+        thread = new Thread(() -> executeRpcSubTask(subTask, leader, groupId));
+        thread.start();
+      }
+      taskThreadMap.put(groupId, thread);
+    }
+  }
+
+  /**
+   * Check whether has metadata group task, it has the highest priority than others.
+   */
+  private void checkMetadataGroupTask(){
+    String groupId = ClusterConfig.METADATA_GROUP_ID;
+    if(taskMap.containsKey(groupId)){
+      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
+      QPTask subTask = taskMap.get(groupId);
+      if(executor.canHandleNonQueryByGroupId(groupId)) {
+        executeLocalSubTask(subTask, groupId);
+      }else{
+        executeRpcSubTask(subTask, leader, groupId);
+      }
+      taskMap.remove(groupId);
+    }
+  }
+
+  /**
+   * Execute local sub task
+   */
+  private void executeLocalSubTask(QPTask subTask, String groupId) {
+       try {
+        executor.handleNonQueryRequestLocally(groupId, subTask);
+        this.run(subTask.getResponse());
+      } catch (InterruptedException e) {
+        LOGGER.error("Handle sub task locally failed.");
+        this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
+        Thread.currentThread().interrupt();
+      }
+    }
+
+  /**
+   * Execute RPC sub task
+   */
+  private void executeRpcSubTask(QPTask subTask, PeerId leader, String groupId) {
+      try {
+        executor.asyncHandleNonQueryTask(subTask, leader);
+        this.run(subTask.getResponse());
+      } catch (RaftConnectionException | InterruptedException e) {
+        LOGGER.error("Async handle sub task failed.");
+        this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
+        Thread.currentThread().interrupt();
+      }
+    }
 
   public boolean isAllSuccessful() {
     return isAllSuccessful;

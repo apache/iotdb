@@ -120,8 +120,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     }
 
     /** 2. Construct Multiple Requests **/
-    Map<String, QPTask> subDataTaskMap = new HashMap<>();
-    QPTask subMetadataTask = null;
+    Map<String, QPTask> subTaskMap = new HashMap<>();
     for (Entry<String, List<PhysicalPlan>> entry : physicalPlansMap.entrySet()) {
       String groupId = entry.getKey();
       SingleQPTask singleQPTask;
@@ -129,12 +128,11 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       try {
         if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
           request = new MetaGroupNonQueryRequest(groupId, entry.getValue());
-          subMetadataTask = new SingleQPTask(false, request);
         }else {
           request = new DataGroupNonQueryRequest(groupId, entry.getValue());
-          singleQPTask = new SingleQPTask(false, request);
-          subDataTaskMap.put(groupId, singleQPTask);
         }
+        singleQPTask = new SingleQPTask(false, request);
+        subTaskMap.put(groupId, singleQPTask);
       } catch (IOException e) {
         batchResult.setAllSuccessful(false);
         batchResult.setBatchErrorMessage(e.getMessage());
@@ -144,11 +142,8 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       }
     }
 
-    PeerId leader = RaftUtils.getLeaderPeerID(ClusterConfig.METADATA_GROUP_ID);
-//    return asyncHandleNonQueryTask(subMetadataTask, leader);
-
     /** 3. Execute Multiple Tasks **/
-    BatchQPTask task = new BatchQPTask(subDataTaskMap.size(), batchResult, subDataTaskMap, planIndexMap);
+    BatchQPTask task = new BatchQPTask(subTaskMap.size(), batchResult, subTaskMap, planIndexMap);
     currentTask = task;
     task.execute(this);
     task.await();
