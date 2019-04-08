@@ -115,14 +115,19 @@ public class NonQueryExecutor extends ClusterQPExecutor {
         PhysicalPlan plan = physicalPlans[i];
         try {
           String groupId = getGroupIdFromPhysicalPlan(plan);
-
-          if (!physicalPlansMap.containsKey(groupId)) {
-            physicalPlansMap.put(groupId, new ArrayList<>());
-            planIndexMap.put(groupId, new ArrayList<>());
+          if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
+            LOGGER.debug("Execute metadata group task");
+            result[i] = handleNonQueryRequest(groupId, plan) ? Statement.SUCCESS_NO_INFO
+                : Statement.EXECUTE_FAILED;
+          }else {
+            if (!physicalPlansMap.containsKey(groupId)) {
+              physicalPlansMap.put(groupId, new ArrayList<>());
+              planIndexMap.put(groupId, new ArrayList<>());
+            }
+            physicalPlansMap.get(groupId).add(plan);
+            planIndexMap.get(groupId).add(i);
           }
-          physicalPlansMap.get(groupId).add(plan);
-          planIndexMap.get(groupId).add(i);
-        } catch (PathErrorException|ProcessorException e) {
+        } catch (PathErrorException | ProcessorException | IOException | RaftConnectionException e) {
           result[i] = Statement.EXECUTE_FAILED;
           batchResult.setAllSuccessful(false);
           batchResult.setBatchErrorMessage(e.getMessage());
@@ -131,22 +136,16 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       }
     }
 
-    /** 2. Construct Multiple Requests **/
+    /** 2. Construct Multiple Data Group Requests **/
     Map<String, QPTask> subTaskMap = new HashMap<>();
     for (Entry<String, List<PhysicalPlan>> entry : physicalPlansMap.entrySet()) {
       String groupId = entry.getKey();
       SingleQPTask singleQPTask;
       BasicRequest request;
       try {
-        if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
-          LOGGER.debug(
-              String.format("METADATA_GROUP_ID Send batch size() : %d", entry.getValue().size()));
-          request = new MetaGroupNonQueryRequest(groupId, entry.getValue());
-        }else {
-          LOGGER.debug(
-              String.format("DATA_GROUP_ID Send batch size() : %d", entry.getValue().size()));
-          request = new DataGroupNonQueryRequest(groupId, entry.getValue());
-        }
+        LOGGER.debug(
+            String.format("DATA_GROUP_ID Send batch size() : %d", entry.getValue().size()));
+        request = new DataGroupNonQueryRequest(groupId, entry.getValue());
         singleQPTask = new SingleQPTask(false, request);
         subTaskMap.put(groupId, singleQPTask);
       } catch (IOException e) {

@@ -115,9 +115,6 @@ public class BatchQPTask extends MultiQPTask {
 
   public void execute(NonQueryExecutor executor) {
     this.executor = executor;
-    // Check if it has metadata group task
-    LOGGER.debug("Check if it has metadata group task");
-    checkMetadataGroupTask();
 
     for (Entry<String, QPTask> entry : taskMap.entrySet()) {
       String groupId = entry.getKey();
@@ -132,23 +129,6 @@ public class BatchQPTask extends MultiQPTask {
         thread.start();
       }
       taskThreadMap.put(groupId, thread);
-    }
-  }
-
-  /**
-   * Check whether has metadata group task, it has the highest priority than others.
-   */
-  private void checkMetadataGroupTask(){
-    String groupId = ClusterConfig.METADATA_GROUP_ID;
-    if(taskMap.containsKey(groupId)){
-      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
-      QPTask subTask = taskMap.get(groupId);
-      if(executor.canHandleNonQueryByGroupId(groupId)) {
-        executeLocalSubTask(subTask, groupId);
-      }else{
-        executeRpcSubTask(subTask, leader, groupId);
-      }
-      taskMap.remove(groupId);
     }
   }
 

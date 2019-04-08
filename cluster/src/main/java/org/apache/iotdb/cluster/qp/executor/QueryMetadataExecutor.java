@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.qp.executor;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import com.alipay.sofa.jraft.entity.PeerId;
-import com.alipay.sofa.jraft.util.Bits;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +54,7 @@ import org.slf4j.LoggerFactory;
 public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
+  private static final String DOUB_SEPARATOR = "\\.";
 
   public QueryMetadataExecutor() {
     super();
@@ -73,19 +73,30 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     List<String> storageGroupList = mManager.getAllFileNamesByPath(path);
     if (storageGroupList.isEmpty()) {
       return new ArrayList<>();
-    } if(storageGroupList.size() == 1){
-      List<String> paths = new ArrayList<>();
-      paths.add(path);
-      handleTimseriesQuery(getGroupIdBySG(path), paths, res);
     } else {
       Map<String, Set<String>> groupIdSGMap = classifySGByGroupId(storageGroupList);
       for (Entry<String, Set<String>> entry : groupIdSGMap.entrySet()) {
-        List<String> paths = new ArrayList<>(entry.getValue());
+        List<String> paths = getSubQueryPaths(entry.getValue(), path);
         String groupId = entry.getKey();
         handleTimseriesQuery(groupId, paths, res);
       }
     }
     return res;
+  }
+
+  /**
+   * Get all query path in storage group relatively to query path
+   */
+  private List<String> getSubQueryPaths(Set<String> stoageGroupList, String queryPath) {
+    List<String> paths = new ArrayList<>();
+    for (String storageGroup : stoageGroupList) {
+      if (storageGroup.length() >= queryPath.length()) {
+        paths.add(storageGroup);
+      } else {
+        paths.add(storageGroup + queryPath.substring(storageGroup.length()));
+      }
+    }
+    return paths;
   }
 
   /**
@@ -167,7 +178,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
 
     /** Check consistency level**/
-    if(readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL){
+    if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryTimeSeriesResponse response = QueryTimeSeriesResponse
           .createEmptyInstance(groupId);
       try {
@@ -231,12 +242,12 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
     if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryStorageGroupResponse response;
-        try {
-          response = QueryStorageGroupResponse
-              .createSuccessInstance(metadataHolder.getFsm().getAllStorageGroups());
-        } catch (final PathErrorException e) {
-          response = QueryStorageGroupResponse.createErrorInstance(e.getMessage());
-        }
+      try {
+        response = QueryStorageGroupResponse
+            .createSuccessInstance(metadataHolder.getFsm().getAllStorageGroups());
+      } catch (final PathErrorException e) {
+        response = QueryStorageGroupResponse.createErrorInstance(e.getMessage());
+      }
       task.run(response);
     } else {
       ((RaftService) metadataHolder.getService()).getNode()
@@ -270,10 +281,10 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     final byte[] reqContext = RaftUtils.createRaftRequestContext();
     DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
         .getDataPartitionHolder(groupId);
-    if(readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL){
+    if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryMetadataInStringResponse response = QueryMetadataInStringResponse
-            .createSuccessInstance(groupId, mManager.getMetadataInString());
-        response.addResult(true);
+          .createSuccessInstance(groupId, mManager.getMetadataInString());
+      response.addResult(true);
       task.run(response);
     } else {
       ((RaftService) dataPartitionHolder.getService()).getNode()

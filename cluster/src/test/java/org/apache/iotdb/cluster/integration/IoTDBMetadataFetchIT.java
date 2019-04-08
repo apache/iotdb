@@ -60,33 +60,33 @@ public class IoTDBMetadataFetchIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  @Test
-  public void test() throws SQLException {
-    Connection connection = null;
-    try {
-      connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      insertSQL(connection, false);
-//      testShowStorageGroup(connection);
-      testDatabaseMetadata(connection);
-//      testShowTimeseries(connection);
-//      testShowTimeseriesPath(connection);
-    } finally {
-      connection.close();
-    }
-  }
-
-  //Test
-//  public void testBatch() throws SQLException {
+//  @Test
+//  public void test() throws SQLException {
 //    Connection connection = null;
 //    try {
 //      connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-//      insertSQL(connection, true);
-//      testShowTimeseries(connection);
-//      testShowTimeseriesPath(connection);
+//      insertSQL(connection, false);
+////      testShowStorageGroup(connection);
+//      testDatabaseMetadata(connection);
+////      testShowTimeseries(connection);
+////      testShowTimeseriesPath(connection);
 //    } finally {
 //      connection.close();
 //    }
 //  }
+
+  @Test
+  public void testBatch() throws SQLException {
+    Connection connection = null;
+    try {
+      connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+      insertSQL(connection, true);
+      testShowTimeseries(connection);
+      testShowTimeseriesPath(connection);
+    } finally {
+      connection.close();
+    }
+  }
 
   private void insertSQL(Connection connection, boolean isBatch) throws SQLException {
     Statement statement = connection.createStatement();
