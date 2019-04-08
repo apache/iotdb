@@ -220,7 +220,7 @@ public class RaftUtils {
   /**
    * Get read index request id
    */
-  public static int getReadIndexRequestId(){
+  public static int getReadIndexRequestId() {
     return requestId.incrementAndGet();
   }
 

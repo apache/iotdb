@@ -60,6 +60,7 @@ public class RaftService implements IService {
     nodeOptions.setLogUri(FilePathUtils.regularizePath(config.getRaftLogPath()) + groupId);
     nodeOptions.setRaftMetaUri(FilePathUtils.regularizePath(config.getRaftMetadataPath()) + groupId);
     nodeOptions.setSnapshotUri(FilePathUtils.regularizePath(config.getRaftSnapshotPath()) + groupId);
+    nodeOptions.setElectionTimeoutMs(config.getElectionTimeoutMs());
     final Configuration initConf = new Configuration();
     initConf.setPeers(peerIdList);
     nodeOptions.setInitialConf(initConf);
