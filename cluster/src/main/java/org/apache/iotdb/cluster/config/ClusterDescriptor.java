@@ -109,6 +109,10 @@ public class ClusterDescriptor {
       conf.setRaftMetadataPath(properties.getProperty("raft_metadata_path", conf.getRaftMetadataPath()));
 
       conf.setMaxCatchUpLogNum(Integer
+          .parseInt(properties.getProperty("election_timeout_ms",
+              Integer.toString(conf.getElectionTimeoutMs()))));
+
+      conf.setMaxCatchUpLogNum(Integer
           .parseInt(properties.getProperty("max_catch_up_log_num",
               Integer.toString(conf.getMaxCatchUpLogNum()))));
 

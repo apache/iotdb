@@ -70,6 +70,13 @@ public class ClusterConfig {
   private String raftMetadataPath;
 
   /**
+   * A follower would become a candidate if it doesn't receive any message
+   * from the leader in {@code electionTimeoutMs} milliseconds
+   * Default: 1000 (1s)
+   */
+  private int electionTimeoutMs = 1000;
+
+  /**
    * When the number of the difference between leader and follower log is less than this value, it
    * is considered as 'catch-up'
    */
@@ -209,6 +216,14 @@ public class ClusterConfig {
 
   public void setRaftMetadataPath(String raftMetadataPath) {
     this.raftMetadataPath = raftMetadataPath;
+  }
+
+  public int getElectionTimeoutMs() {
+    return electionTimeoutMs;
+  }
+
+  public void setElectionTimeoutMs(int electionTimeoutMs) {
+    this.electionTimeoutMs = electionTimeoutMs;
   }
 
   public int getMaxCatchUpLogNum() {
