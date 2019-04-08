@@ -91,7 +91,7 @@ public class ClusterDescriptorTest {
       put("delay_hours", testDelayHoursNew);
       put("task_redo_count", testTaskRedoCountNew);
       put("task_timeout_ms", testTaskTimeoutMSNew);
-      put("num_of_virtula_nodes", testVNodesNew);
+      put("num_of_virtual_nodes", testVNodesNew);
       put("max_num_of_inner_rpc_client", testClientNumNew);
       put("max_queue_num_of_inner_rpc_client", testQueueLenNew);
       put("read_metadata_consistency_level", testMetadataConsistencyNew);
