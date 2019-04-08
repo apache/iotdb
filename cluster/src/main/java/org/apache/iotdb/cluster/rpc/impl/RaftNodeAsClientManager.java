@@ -183,6 +183,7 @@ public class RaftNodeAsClientManager {
                   @Override
                   public void onResponse(Object result) {
                     BasicResponse response = (BasicResponse) result;
+                    releaseClient();
                     qpTask.run(response);
                   }
 
@@ -190,6 +191,7 @@ public class RaftNodeAsClientManager {
                   public void onException(Throwable e) {
                     LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
                     qpTask.setTaskState(TaskState.EXCEPTION);
+                    releaseClient();
                     qpTask.run(null);
 
                   }
@@ -201,9 +203,9 @@ public class RaftNodeAsClientManager {
                 }, TASK_TIMEOUT_MS);
       } catch (RemotingException | InterruptedException e) {
         LOGGER.error(e.getMessage());
+        releaseClient();
         throw new RaftConnectionException(e);
       }
-      releaseClient();
     }
 
     @Override
@@ -216,8 +218,9 @@ public class RaftNodeAsClientManager {
         qpTask.run(response);
       } catch (RemotingException | InterruptedException e) {
         throw new RaftConnectionException(e);
+      } finally {
+        releaseClient();
       }
-      releaseClient();
     }
 
     /**
