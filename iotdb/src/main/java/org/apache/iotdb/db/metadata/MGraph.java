@@ -170,16 +170,6 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Check whether the storage group of the input path exists or not
-   *
-   * @param path Format: root.node.(node)*
-   * @apiNote :for cluster
-   */
-  public boolean checkStorageExistOfPath(String path) {
-    return mtree.checkStorageExistOfPath(path);
-  }
-
-  /**
    * Get all paths for given seriesPath regular expression if given seriesPath belongs to MTree, or
    * get all linked seriesPath for given seriesPath if given seriesPath belongs to PTree Notice:
    * Regular expression in this method is formed by the amalgamation of seriesPath and the character

@@ -63,30 +63,6 @@ public class RaftUtils {
   private RaftUtils() {
   }
 
-
-  @Deprecated
-  /**
-   * @deprecated
-   * Get leader node according to the group id.
-   * <br/> This method will connect to one of nodes in the group to get the correct leader.
-   *
-   * @param groupId group id of raft group
-   * @return PeerId of leader
-   */
-  public static PeerId getLeaderPeerID(String groupId, BoltCliClientService cliClientService)
-      throws RaftConnectionException {
-    Configuration conf = getConfiguration(groupId);
-    RouteTable.getInstance().updateConfiguration(groupId, conf);
-    try {
-      if (!RouteTable.getInstance().refreshLeader(cliClientService, groupId, 1000).isOk()) {
-        throw new RaftConnectionException("Refresh leader failed");
-      }
-    } catch (InterruptedException | TimeoutException e) {
-      throw new RaftConnectionException("Refresh leader failed");
-    }
-    return RouteTable.getInstance().selectLeader(groupId);
-  }
-
   /**
    * Get peer id to send request. If groupLeaderCache has the group id, then return leader id of the
    * group.Otherwise, random get a peer of the group.
@@ -123,29 +99,6 @@ public class RaftUtils {
    */
   public static int getRandomInt(int bound) {
     return ThreadLocalRandom.current().nextInt(bound);
-  }
-
-  @Deprecated
-  /**
-   * Get raft group configuration by group id
-   *
-   * @param groupID raft group id
-   * @return raft group configuration
-   */
-  public static Configuration getConfiguration(String groupID) {
-    //TODO can we reuse Configuration instance?
-    Configuration conf = new Configuration();
-    RaftService service;
-    if (groupID.equals(ClusterConfig.METADATA_GROUP_ID)) {
-      service = (RaftService) server.getMetadataHolder().getService();
-      conf.setPeers(service.getPeerIdList());
-    } else {
-      DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
-          .getDataPartitionHolderMap().get(groupID);
-      service = (RaftService) dataPartitionHolder.getService();
-      conf.setPeers(service.getPeerIdList());
-    }
-    return conf;
   }
 
   public static PeerId getPeerIDFrom(PhysicalNode node) {

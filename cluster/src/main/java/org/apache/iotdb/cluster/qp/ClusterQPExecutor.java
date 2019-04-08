@@ -119,13 +119,6 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
-   * Check if the storage group of given path exists in mTree or not.
-   */
-  public boolean checkStorageExistOfPath(String path) {
-    return mManager.checkStorageExistOfPath(path);
-  }
-
-  /**
    * Classify the input storage group list by which data group it belongs to.
    *
    * @return key is groupId, value is all SGs belong to this data group

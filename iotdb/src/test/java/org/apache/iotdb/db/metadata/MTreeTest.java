@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -291,23 +292,23 @@ public class MTreeTest {
     // set storage group first
     MTree root = new MTree("root");
     try {
-      assertEquals(false, root.checkStorageExistOfPath("root"));
-      assertEquals(false, root.checkStorageExistOfPath("root.vehicle"));
-      assertEquals(false, root.checkStorageExistOfPath("root.vehicle.device"));
-      assertEquals(false, root.checkStorageExistOfPath("root.vehicle.device.sensor"));
+      assertTrue(root.getAllFileNamesByPath("root").isEmpty());
+      assertTrue(root.getAllFileNamesByPath("root.vehicle").isEmpty());
+      assertTrue(root.getAllFileNamesByPath("root.vehicle.device").isEmpty());
+      assertTrue(root.getAllFileNamesByPath("root.vehicle.device.sensor").isEmpty());
 
       root.setStorageGroup("root.vehicle");
-      assertEquals(true, root.checkStorageExistOfPath("root.vehicle"));
-      assertEquals(true, root.checkStorageExistOfPath("root.vehicle.device"));
-      assertEquals(true, root.checkStorageExistOfPath("root.vehicle.device.sensor"));
-      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1"));
-      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device"));
+      assertFalse(root.getAllFileNamesByPath("root.vehicle").isEmpty());
+      assertFalse(root.getAllFileNamesByPath("root.vehicle.device").isEmpty());
+      assertFalse(root.getAllFileNamesByPath("root.vehicle.device.sensor").isEmpty());
+      assertTrue(root.getAllFileNamesByPath("root.vehicle1").isEmpty());
+      assertTrue(root.getAllFileNamesByPath("root.vehicle1.device").isEmpty());
 
       root.setStorageGroup("root.vehicle1.device");
-      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device1"));
-      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device2"));
-      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device3"));
-      assertEquals(true, root.checkStorageExistOfPath("root.vehicle1.device"));
+      assertTrue(root.getAllFileNamesByPath("root.vehicle1.device1").isEmpty());
+      assertTrue(root.getAllFileNamesByPath("root.vehicle1.device2").isEmpty());
+      assertTrue(root.getAllFileNamesByPath("root.vehicle1.device3").isEmpty());
+      assertFalse(root.getAllFileNamesByPath("root.vehicle1.device").isEmpty());
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
