@@ -40,6 +40,7 @@ import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.DataGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
@@ -115,8 +116,8 @@ public class DataStateMachine extends StateMachineAdapter {
           PhysicalPlan plan = PhysicalPlanLogTransfer.logToOperator(planByte);
 
           /** If the request is to set path and sg of the path doesn't exist, it needs to run null-read in meta group to avoid out of data sync **/
-          if (plan.getOperatorType() == OperatorType.CREATE_TIMESERIES && !MManager.getInstance()
-              .checkStorageExistOfPath(((MetadataPlan) plan).getPath().getFullPath())) {
+          if (plan.getOperatorType() == OperatorType.CREATE_TIMESERIES && checkPathExistence(
+              ((MetadataPlan) plan).getPath().getFullPath())) {
             SingleQPTask nullReadTask = new SingleQPTask(false, null);
             handleNullReadToMetaGroup(nullReadTask, status, nullReadTask);
           }
@@ -124,7 +125,7 @@ public class DataStateMachine extends StateMachineAdapter {
           if (closure != null) {
             response.addResult(true);
           }
-        } catch (ProcessorException | IOException e) {
+        } catch (ProcessorException | IOException | PathErrorException e) {
           LOGGER.error("Execute physical plan error", e);
           status = new Status(-1, e.getMessage());
           if (closure != null) {
@@ -140,12 +141,20 @@ public class DataStateMachine extends StateMachineAdapter {
   }
 
   /**
+   * Check the existence of a specific path
+   */
+  private boolean checkPathExistence(String path) throws PathErrorException {
+    return !MManager.getInstance().getAllFileNamesByPath(path).isEmpty();
+  }
+
+  /**
    * Handle null-read process in metadata group if the request is to set path.
    *
    * @param qpTask null-read task
    * @param originStatus status to return result if this node is leader of the data group
    */
-  private void handleNullReadToMetaGroup(QPTask qpTask, Status originStatus, SingleQPTask nullReadTask) {
+  private void handleNullReadToMetaGroup(QPTask qpTask, Status originStatus,
+      SingleQPTask nullReadTask) {
     try {
       LOGGER.info("Handle null-read in meta group for adding path request.");
       final byte[] reqContext = new byte[4];

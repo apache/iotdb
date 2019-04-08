@@ -248,38 +248,6 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Check whether the storage group of the path exists or not
-   * @param path input path
-   * @return If it's storage group exists, return true. Else return false
-   * @apiNote :for cluster
-   */
-  public boolean checkStorageExistOfPath(String path) {
-    String[] nodeNames = path.split(DOUB_SEPARATOR);
-    MNode cur = root;
-    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
-      return false;
-    }
-    int i = 1;
-    while (i < nodeNames.length - 1) {
-      MNode temp = cur.getChild(nodeNames[i]);
-      if (temp == null) {
-        return false;
-      }
-      if(temp.isStorageLevel()){
-        return true;
-      }
-      cur = cur.getChild(nodeNames[i]);
-      i++;
-    }
-    MNode temp = cur.getChild(nodeNames[i]);
-    if(temp != null && temp.isStorageLevel()) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  /**
    * Check whether set file seriesPath for this node or not. If not, throw an exception
    */
   private void checkStorageGroup(MNode node) throws PathErrorException {
@@ -588,28 +556,45 @@ public class MTree implements Serializable {
    * Get all the storage group seriesPaths for one seriesPath.
    *
    * @return List storage group seriesPath list
+   * @apiNote :for cluster
    */
-  public List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+  public List<String> getAllFileNamesByPath(String pathReg) throws PathErrorException {
+    ArrayList<String> fileNames = new ArrayList<>();
+    String[] nodes = pathReg.split(DOUB_SEPARATOR);
+    if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
+      throw new PathErrorException(String.format(SERIES_NOT_CORRECT, pathReg));
+    }
+    findFileName(getRoot(), nodes, 1, "", fileNames);
+    return fileNames;
+  }
 
-    List<String> sgList = new ArrayList<>();
-    String[] nodes = path.split(DOUB_SEPARATOR);
-    MNode cur = getRoot();
-    for (int i = 1; i < nodes.length; i++) {
-      if (cur == null) {
-        throw new PathErrorException(
-            String.format(NOT_SERIES_PATH,
-                path));
-      }
-      if (cur.isStorageLevel()) {
-        sgList.add(cur.getDataFileName());
-        return sgList;
-      }
-      cur = cur.getChild(nodes[i]);
+  /**
+   * Recursively find all fileName according to a specific path
+   * @apiNote :for cluster
+   */
+  private void findFileName(MNode node, String[] nodes, int idx, String parent,
+      ArrayList<String> paths) {
+    if (node.isStorageLevel()) {
+      paths.add(node.getDataFileName());
+      return;
     }
-    if (sgList.isEmpty()) {
-      getAllStorageGroupsOfNode(cur, path, sgList);
+    String nodeReg;
+    if (idx >= nodes.length) {
+      nodeReg = "*";
+    } else {
+      nodeReg = nodes[idx];
     }
-    return sgList;
+
+    if (!("*").equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        findFileName(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths);
+      }
+    } else {
+      for (MNode child : node.getChildren().values()) {
+        findFileName(child, nodes, idx + 1, parent + node.getName() + ".", paths);
+      }
+    }
+    return;
   }
 
   private void getAllStorageGroupsOfNode(MNode node, String path, List<String> sgList) {
