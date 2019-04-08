@@ -85,21 +85,20 @@ public class IoTDBMetadataFetchIT {
     String[] sqls = new String[]{
         "show timeseries root.ln.wf01.wt01.status", // full seriesPath
         "show timeseries root.ln", // prefix seriesPath
-//          "show timeseries root.ln.*.wt01", // seriesPath with stars
-//          "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
-//          "show timeseries root.ln,root.ln",
+        "show timeseries root.ln.*.wt01", // seriesPath with stars
+        "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
+        "show timeseries root.ln,root.ln",
         // SHOW TIMESERIES <PATH> only accept single seriesPath, thus
         // returning ""
     };
     String[] standards = new String[]{
         "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n",
-
         "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
             + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
-//          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
-//              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
-//          "",
-//          ""
+        "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
+              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n",
+        "",
+        ""
     };
     for (int i = 0; i < sqls.length; i++) {
       String sql = sqls[i];
@@ -117,10 +116,8 @@ public class IoTDBMetadataFetchIT {
             builder.append("\n");
           }
         }
-
         Assert.assertEquals(standard, builder.toString());
       } catch (SQLException e) {
-        System.out.println(sql);
         e.printStackTrace();
         fail();
       } finally {
