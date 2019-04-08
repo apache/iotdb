@@ -72,7 +72,11 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     List<List<String>> res = new ArrayList<>();
     List<String> storageGroupList = mManager.getAllFileNamesByPath(path);
     if (storageGroupList.isEmpty()) {
-      throw new PathErrorException(String.format("The path %s doesn't exist", path));
+      return null;
+    } if(storageGroupList.size() == 1){
+      List<String> paths = new ArrayList<>();
+      paths.add(path);
+      handleTimseriesQuery(storageGroupList.get(0), paths, res);
     } else {
       Map<String, Set<String>> groupIdSGMap = classifySGByGroupId(storageGroupList);
       for (Entry<String, Set<String>> entry : groupIdSGMap.entrySet()) {
