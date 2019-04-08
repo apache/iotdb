@@ -68,6 +68,11 @@ public class Server {
    */
   private PeerId serverId;
 
+  /**
+   * IoTDB stand-alone instance
+   */
+  private IoTDB iotdb;
+
   public static void main(String[] args) {
     Server server = Server.getInstance();
     server.start();
@@ -75,7 +80,7 @@ public class Server {
 
   public void start() {
     /** Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version **/
-    IoTDB iotdb = new IoTDB();
+    iotdb = new IoTDB();
     iotdb.active();
 
     /** Init client manager **/
@@ -117,6 +122,7 @@ public class Server {
   }
 
   public void stop() {
+    iotdb.deactivate();
     CLIENT_MANAGER.shutdown();
     metadataHolder.stop();
     for (DataPartitionHolder dataPartitionHolder : dataPartitionHolderMap.values()) {
