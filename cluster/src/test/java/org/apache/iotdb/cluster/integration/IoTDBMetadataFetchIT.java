@@ -60,20 +60,20 @@ public class IoTDBMetadataFetchIT {
     EnvironmentUtils.cleanEnv();
   }
 
-//  @Test
-//  public void test() throws SQLException {
-//    Connection connection = null;
-//    try {
-//      connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-//      insertSQL(connection, false);
-////      testShowStorageGroup(connection);
-//      testDatabaseMetadata(connection);
-////      testShowTimeseries(connection);
-////      testShowTimeseriesPath(connection);
-//    } finally {
-//      connection.close();
-//    }
-//  }
+  @Test
+  public void test() throws SQLException {
+    Connection connection = null;
+    try {
+      connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+      insertSQL(connection, false);
+//      testShowStorageGroup(connection);
+      testDatabaseMetadata(connection);
+//      testShowTimeseries(connection);
+//      testShowTimeseriesPath(connection);
+    } finally {
+      connection.close();
+    }
+  }
 
   @Test
   public void testBatch() throws SQLException {
@@ -239,18 +239,98 @@ public class IoTDBMetadataFetchIT {
             + "{\n"
             + "\t\"root\":{\n"
             + "\t\t\"ln\":{\n"
+            + "\t\t\t\"wf05\":{\n"
+            + "\t\t\t\t\"wt01\":{\n"
+            + "\t\t\t\t\t\"status\":{\n"
+            + "\t\t\t\t\t\t\"args\":\"{}\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf05\",\n"
+            + "\t\t\t\t\t\t\"DataType\":\"DOUBLE\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"
+            + "\t\t\t\t\t}\n"
+            + "\t\t\t\t}\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"wf04\":{\n"
+            + "\t\t\t\t\"wt05\":{\n"
+            + "\t\t\t\t\t\"temperature\":{\n"
+            + "\t\t\t\t\t\t\"args\":\"{}\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf04\",\n"
+            + "\t\t\t\t\t\t\"DataType\":\"FLOAT\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Encoding\":\"GORILLA\"\n"
+            + "\t\t\t\t\t}\n"
+            + "\t\t\t\t},\n"
+            + "\t\t\t\t\"wt04\":{\n"
+            + "\t\t\t\t\t\"status\":{\n"
+            + "\t\t\t\t\t\t\"args\":\"{}\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf04\",\n"
+            + "\t\t\t\t\t\t\"DataType\":\"TEXT\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"
+            + "\t\t\t\t\t}\n"
+            + "\t\t\t\t}\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"wf03\":{\n"
+            + "\t\t\t\t\"wt03\":{\n"
+            + "\t\t\t\t\t\"temperature\":{\n"
+            + "\t\t\t\t\t\t\"args\":\"{max_point_number=5}\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf03\",\n"
+            + "\t\t\t\t\t\t\"DataType\":\"FLOAT\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Encoding\":\"TS_2DIFF\"\n"
+            + "\t\t\t\t\t}\n"
+            + "\t\t\t\t},\n"
+            + "\t\t\t\t\"wt02\":{\n"
+            + "\t\t\t\t\t\"status\":{\n"
+            + "\t\t\t\t\t\t\"args\":\"{}\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf03\",\n"
+            + "\t\t\t\t\t\t\"DataType\":\"INT64\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"
+            + "\t\t\t\t\t}\n"
+            + "\t\t\t\t}\n"
+            + "\t\t\t},\n"
+            + "\t\t\t\"wf02\":{\n"
+            + "\t\t\t\t\"wt04\":{\n"
+            + "\t\t\t\t\t\"temperature\":{\n"
+            + "\t\t\t\t\t\t\"args\":\"{}\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf02\",\n"
+            + "\t\t\t\t\t\t\"DataType\":\"FLOAT\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Encoding\":\"RLE\"\n"
+            + "\t\t\t\t\t}\n"
+            + "\t\t\t\t},\n"
+            + "\t\t\t\t\"wt03\":{\n"
+            + "\t\t\t\t\t\"status\":{\n"
+            + "\t\t\t\t\t\t\"args\":\"{}\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf02\",\n"
+            + "\t\t\t\t\t\t\"DataType\":\"INT32\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"
+            + "\t\t\t\t\t}\n"
+            + "\t\t\t\t}\n"
+            + "\t\t\t},\n"
             + "\t\t\t\"wf01\":{\n"
+            + "\t\t\t\t\"wt02\":{\n"
+            + "\t\t\t\t\t\"humidity\":{\n"
+            + "\t\t\t\t\t\t\"args\":\"{}\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01\",\n"
+            + "\t\t\t\t\t\t\"DataType\":\"DOUBLE\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Encoding\":\"RLE\"\n"
+            + "\t\t\t\t\t}\n"
+            + "\t\t\t\t},\n"
             + "\t\t\t\t\"wt01\":{\n"
             + "\t\t\t\t\t\"temperature\":{\n"
             + "\t\t\t\t\t\t\"args\":\"{max_point_number=3}\",\n"
-            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01\",\n"
             + "\t\t\t\t\t\t\"DataType\":\"FLOAT\",\n"
             + "\t\t\t\t\t\t\"Compressor\":\"SNAPPY\",\n"
             + "\t\t\t\t\t\t\"Encoding\":\"RLE\"\n"
             + "\t\t\t\t\t},\n"
             + "\t\t\t\t\t\"status\":{\n"
             + "\t\t\t\t\t\t\"args\":\"{}\",\n"
-            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
+            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01\",\n"
             + "\t\t\t\t\t\t\"DataType\":\"BOOLEAN\",\n"
             + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
             + "\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"
