@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -523,8 +524,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * Set consistency level
    */
   public boolean execSetConsistencyLevel(String statement) throws Exception {
-    throw new Exception(
-        "IoTDB Stand-alone version does not support setting read-write consistency level");
+    if (statement == null) {
+      return false;
+    }
+    statement = statement.toLowerCase().trim();
+    if (Pattern.matches(IoTDBConstant.SET_READ_CONSISTENCY_LEVEL_PATTERN, statement)) {
+      throw new Exception(
+          "IoTDB Stand-alone version does not support setting read-write consistency level");
+    } else {
+      return false;
+    }
   }
 
   @Override

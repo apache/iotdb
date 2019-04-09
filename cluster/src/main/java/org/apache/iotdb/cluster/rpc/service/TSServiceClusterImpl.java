@@ -209,7 +209,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
         return false;
       }
     } catch (ConsistencyLevelException e){
-      throw new Exception("meet error while executing set consistency level command!", e);
+      throw new Exception(e.getMessage());
     }
   }
 

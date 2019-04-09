@@ -80,7 +80,7 @@ public class IoTDBMetadataFetchIT {
     Connection connection = null;
     try {
       connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      insertSQL(connection, false);
+      insertSQL(connection, true);
       testShowTimeseries(connection);
       testShowTimeseriesPath(connection);
     } finally {

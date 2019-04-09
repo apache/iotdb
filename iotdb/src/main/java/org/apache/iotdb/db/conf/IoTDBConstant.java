@@ -57,4 +57,6 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
+  // for cluster, set read consistency level
+  public static final String SET_READ_CONSISTENCY_LEVEL_PATTERN = "set\\s+read.*level.*";
 }

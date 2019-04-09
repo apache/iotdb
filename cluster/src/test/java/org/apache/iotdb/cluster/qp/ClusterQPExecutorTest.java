@@ -62,7 +62,7 @@ public class ClusterQPExecutorTest {
     assertEquals(CLUSTER_CONFIG.getReadMetadataConsistencyLevel(),
         executor.getReadMetadataConsistencyLevel());
     boolean exec;
-    exec= impl.execSetConsistencyLevel("set read metadata level 1");
+    exec= impl.execSetConsistencyLevel("set read metadata level to 1");
     assertTrue(exec);
     assertEquals(1, executor.getReadMetadataConsistencyLevel());
 
@@ -70,16 +70,16 @@ public class ClusterQPExecutorTest {
     assertEquals(1, executor.getReadMetadataConsistencyLevel());
     assertFalse(exec);
 
-    exec= impl.execSetConsistencyLevel("set read metadata level 2");
+    exec= impl.execSetConsistencyLevel("set read metadata level to 2");
     assertTrue(exec);
     assertEquals(2, executor.getReadMetadataConsistencyLevel());
 
-    exec = impl.execSetConsistencyLevel("set read metadata level -2");
+    exec = impl.execSetConsistencyLevel("set read metadata level to -2");
     assertEquals(2, executor.getReadMetadataConsistencyLevel());
     assertFalse(exec);
 
     try {
-      impl.execSetConsistencyLevel("set read metadata level 90");
+      impl.execSetConsistencyLevel("set read metadata level to 90");
     } catch (Exception e) {
       assertEquals("Consistency level 90 not support", e.getMessage());
     }
@@ -91,7 +91,7 @@ public class ClusterQPExecutorTest {
     assertEquals(CLUSTER_CONFIG.getReadDataConsistencyLevel(),
         executor.getReadDataConsistencyLevel());
     boolean exec;
-    exec= impl.execSetConsistencyLevel("set read data level 1");
+    exec= impl.execSetConsistencyLevel("set read data level to 1");
     assertTrue(exec);
     assertEquals(1, executor.getReadDataConsistencyLevel());
 
@@ -99,16 +99,16 @@ public class ClusterQPExecutorTest {
     assertEquals(1, executor.getReadDataConsistencyLevel());
     assertFalse(exec);
 
-    exec= impl.execSetConsistencyLevel("set read data level 2");
+    exec= impl.execSetConsistencyLevel("set read data level  to 2");
     assertTrue(exec);
     assertEquals(2, executor.getReadDataConsistencyLevel());
 
-    exec = impl.execSetConsistencyLevel("set read data level -2");
+    exec = impl.execSetConsistencyLevel("set read data level  to -2");
     assertEquals(2, executor.getReadDataConsistencyLevel());
     assertFalse(exec);
 
     try {
-      impl.execSetConsistencyLevel("set read data level 90");
+      impl.execSetConsistencyLevel("set read data level  to 90");
     } catch (Exception e) {
       assertEquals("Consistency level 90 not support", e.getMessage());
     }
