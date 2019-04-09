@@ -83,9 +83,6 @@ public class Server {
     iotdb = new IoTDB();
     iotdb.active();
 
-    /** Init client manager **/
-    CLIENT_MANAGER.init();
-
     /** Init raft groups **/
     PeerId[] peerIds = RaftUtils.convertStringArrayToPeerIdArray(CLUSTER_CONF.getNodes());
     serverId = new PeerId(CLUSTER_CONF.getIp(), CLUSTER_CONF.getPort());

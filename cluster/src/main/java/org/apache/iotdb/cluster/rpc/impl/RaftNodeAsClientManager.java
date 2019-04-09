@@ -130,10 +130,6 @@ public class RaftNodeAsClientManager {
     validClientNum.decrementAndGet();
   }
 
-  public void init(){
-    client.init();
-  }
-
   public void shutdown(){
     client.shutdown();
   }
@@ -164,6 +160,7 @@ public class RaftNodeAsClientManager {
     private BoltCliClientService boltClientService;
 
     private RaftNodeAsClient(){
+      init();
     }
 
     private void init(){

@@ -105,6 +105,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
 
     Status nullReadTaskStatus = Status.OK();
     RaftUtils.handleNullReadToMetaGroup(nullReadTaskStatus);
+    nullReaderEnable = false;
 
     /** 1. Classify physical plans by group id **/
     Map<String, List<PhysicalPlan>> physicalPlansMap = new HashMap<>();
@@ -118,6 +119,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
             LOGGER.debug("Execute metadata group task");
             boolean executeResult = handleNonQueryRequest(groupId, plan);
+            nullReaderEnable = true;
             result[i] =  executeResult ? Statement.SUCCESS_NO_INFO
                 : Statement.EXECUTE_FAILED;
             batchResult.setAllSuccessful(executeResult);
