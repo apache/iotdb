@@ -28,9 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,6 +45,7 @@ public class ClusterDescriptorTest {
   private String testRaftLogPathNew = "/tmp/log";
   private String testRaftSnapshotPathNew = "/tmp/snapshot";
   private String testRaftMetadataPathNew = "/tmp/metadata";
+  private String testElectionTimeOutNew = "1234";
   private String testMaxCatchUpLogNumNew = "50000";
   private String testDelaySnapshotNew = "true";
   private String testDelayHoursNew = "1111";
@@ -65,6 +64,7 @@ public class ClusterDescriptorTest {
   private String testRaftLogPathOld;
   private String testRaftSnapshotPathOld;
   private String testRaftMetadataPathOld;
+  private int testElectionTimeOutOld;
   private int testMaxCatchUpLogNumOld;
   private boolean testDelaySnapshotOld;
   private int testDelayHoursOld;
@@ -86,6 +86,7 @@ public class ClusterDescriptorTest {
       put("raft_log_path", testRaftLogPathNew);
       put("raft_snapshot_path", testRaftSnapshotPathNew);
       put("raft_metadata_path", testRaftMetadataPathNew);
+      put("election_timeout_ms", testElectionTimeOutNew);
       put("max_catch_up_log_num", testMaxCatchUpLogNumNew);
       put("delay_snapshot", testDelaySnapshotNew);
       put("delay_hours", testDelayHoursNew);
@@ -101,7 +102,6 @@ public class ClusterDescriptorTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
     deleteConfigFile();
     createTestConfigFile();
     storeOldConfig();
@@ -111,7 +111,6 @@ public class ClusterDescriptorTest {
   public void tearDown() throws Exception {
     restoreOldConfig();
     deleteConfigFile();
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
@@ -131,6 +130,7 @@ public class ClusterDescriptorTest {
     assertEquals(testRaftLogPathNew, config.getRaftLogPath() + "");
     assertEquals(testRaftSnapshotPathNew, config.getRaftSnapshotPath() + "");
     assertEquals(testRaftMetadataPathNew, config.getRaftMetadataPath() + "");
+    assertEquals(testElectionTimeOutNew, config.getElectionTimeoutMs()+"");
     assertEquals(testMaxCatchUpLogNumNew, config.getMaxCatchUpLogNum() + "");
     assertEquals(testDelaySnapshotNew, config.isDelaySnapshot() + "");
     assertEquals(testDelayHoursNew, config.getDelayHours() + "");
@@ -180,6 +180,7 @@ public class ClusterDescriptorTest {
     testRaftLogPathOld = config.getRaftLogPath();
     testRaftSnapshotPathOld = config.getRaftSnapshotPath();
     testRaftMetadataPathOld = config.getRaftMetadataPath();
+    testElectionTimeOutOld = config.getElectionTimeoutMs();
     testMaxCatchUpLogNumOld = config.getMaxCatchUpLogNum();
     testDelaySnapshotOld = config.isDelaySnapshot();
     testDelayHoursOld = config.getDelayHours();
@@ -201,6 +202,7 @@ public class ClusterDescriptorTest {
     config.setRaftLogPath(testRaftLogPathOld);
     config.setRaftMetadataPath(testRaftMetadataPathOld);
     config.setRaftSnapshotPath(testRaftSnapshotPathOld);
+    config.setElectionTimeoutMs(testElectionTimeOutOld);
     config.setMaxCatchUpLogNum(testMaxCatchUpLogNumOld);
     config.setDelayHours(testDelayHoursOld);
     config.setDelaySnapshot(testDelaySnapshotOld);
@@ -212,5 +214,4 @@ public class ClusterDescriptorTest {
     config.setReadMetadataConsistencyLevel(testMetadataConsistencyOld);
     config.setReadDataConsistencyLevel(testDataConsistencyOld);
   }
-
 }

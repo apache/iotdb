@@ -27,46 +27,16 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.entity.Server;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
-public class IoTDBMetadataFetchIT {
-
-  private Server server;
-  private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
-    config.createAllPath();
-    server = Server.getInstance();
-    server.start();
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    server.stop();
-    EnvironmentUtils.cleanEnv();
-  }
-
-  @Test
-  public void test() throws SQLException {
+public abstract class IoTDBMetadataFetchAbstract{
+  protected void test(String url, boolean isBatch) throws SQLException{
     Connection connection = null;
     try {
-      connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      insertSQL(connection, false);
+      connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + url, "root", "root");
+      insertSQL(connection, isBatch);
       testShowStorageGroup(connection);
       testDatabaseMetadata(connection);
       testShowTimeseries(connection);
@@ -76,43 +46,29 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
-  @Test
-  public void testBatch() throws SQLException {
-    Connection connection = null;
-    try {
-      connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      insertSQL(connection, true);
-      testShowStorageGroup(connection);
-      testDatabaseMetadata(connection);
-      testShowTimeseries(connection);
-      testShowTimeseriesPath(connection);
-    } finally {
-      connection.close();
-    }
-  }
 
-  private void insertSQL(Connection connection, boolean isBatch) throws SQLException {
+  protected void insertSQL(Connection connection, boolean isBatch) throws SQLException {
     Statement statement = connection.createStatement();
     String[] insertSqls = new String[]{
-      "SET STORAGE GROUP TO root.ln.wf01",
-      "SET STORAGE GROUP TO root.ln.wf02",
-      "SET STORAGE GROUP TO root.ln.wf03",
-      "SET STORAGE GROUP TO root.ln.wf04",
-      "SET STORAGE GROUP TO root.ln.wf05",
-      "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
-      "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, compressor = SNAPPY, MAX_POINT_NUMBER = 3",
-      "CREATE TIMESERIES root.ln.wf01.wt02.humidity WITH DATATYPE = DOUBLE, ENCODING = RLE",
+        "SET STORAGE GROUP TO root.ln.wf01",
+        "SET STORAGE GROUP TO root.ln.wf02",
+        "SET STORAGE GROUP TO root.ln.wf03",
+        "SET STORAGE GROUP TO root.ln.wf04",
+        "SET STORAGE GROUP TO root.ln.wf05",
+        "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
+        "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+        "CREATE TIMESERIES root.ln.wf01.wt02.humidity WITH DATATYPE = DOUBLE, ENCODING = RLE",
 
-      "CREATE TIMESERIES root.ln.wf02.wt03.status WITH DATATYPE = INT32, ENCODING = PLAIN",
-      "CREATE TIMESERIES root.ln.wf02.wt04.temperature WITH DATATYPE = FLOAT, ENCODING = RLE",
+        "CREATE TIMESERIES root.ln.wf02.wt03.status WITH DATATYPE = INT32, ENCODING = PLAIN",
+        "CREATE TIMESERIES root.ln.wf02.wt04.temperature WITH DATATYPE = FLOAT, ENCODING = RLE",
 
-      "CREATE TIMESERIES root.ln.wf03.wt02.status WITH DATATYPE = INT64, ENCODING = PLAIN",
-      "CREATE TIMESERIES root.ln.wf03.wt03.temperature WITH DATATYPE = FLOAT, ENCODING = TS_2DIFF, MAX_POINT_NUMBER = 5",
+        "CREATE TIMESERIES root.ln.wf03.wt02.status WITH DATATYPE = INT64, ENCODING = PLAIN",
+        "CREATE TIMESERIES root.ln.wf03.wt03.temperature WITH DATATYPE = FLOAT, ENCODING = TS_2DIFF, MAX_POINT_NUMBER = 5",
 
-      "CREATE TIMESERIES root.ln.wf04.wt04.status WITH DATATYPE = TEXT, ENCODING = PLAIN",
-      "CREATE TIMESERIES root.ln.wf04.wt05.temperature WITH DATATYPE = FLOAT, ENCODING = GORILLA",
+        "CREATE TIMESERIES root.ln.wf04.wt04.status WITH DATATYPE = TEXT, ENCODING = PLAIN",
+        "CREATE TIMESERIES root.ln.wf04.wt05.temperature WITH DATATYPE = FLOAT, ENCODING = GORILLA",
 
-      "CREATE TIMESERIES root.ln.wf05.wt01.status WITH DATATYPE = DOUBLE, ENCODING = PLAIN",
+        "CREATE TIMESERIES root.ln.wf05.wt01.status WITH DATATYPE = DOUBLE, ENCODING = PLAIN",
     };
     if (isBatch) {
       for (String sql : insertSqls) {
@@ -128,7 +84,7 @@ public class IoTDBMetadataFetchIT {
     statement.close();
   }
 
-  private void testShowStorageGroup(Connection connection) throws SQLException {
+  protected void testShowStorageGroup(Connection connection) throws SQLException {
     Statement statement = connection.createStatement();
     String[] sqls = new String[]{
         "show storage group",
@@ -136,15 +92,15 @@ public class IoTDBMetadataFetchIT {
     };
     String[] standards = new String[]{
         "root.ln.wf04,\n"
-          + "root.ln.wf03,\n"
-          + "root.ln.wf02,\n"
-          + "root.ln.wf01,\n"
-          + "root.ln.wf05,\n",
+            + "root.ln.wf03,\n"
+            + "root.ln.wf02,\n"
+            + "root.ln.wf01,\n"
+            + "root.ln.wf05,\n",
     };
     checkCorrectness(sqls, standards, statement);
   }
 
-  private void testShowTimeseriesPath(Connection connection) throws SQLException{
+  protected void testShowTimeseriesPath(Connection connection) throws SQLException{
     Statement statement = connection.createStatement();
     String[] sqls = new String[]{
         "show timeseries root.ln.wf01.wt01.status", // full seriesPath
@@ -160,29 +116,29 @@ public class IoTDBMetadataFetchIT {
     String[] standards = new String[]{
         "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n",
         "root.ln.wf04.wt04.status,root.ln.wf04,TEXT,PLAIN,\n"
-          +"root.ln.wf04.wt05.temperature,root.ln.wf04,FLOAT,GORILLA,\n"
-          +"root.ln.wf03.wt02.status,root.ln.wf03,INT64,PLAIN,\n"
-          +"root.ln.wf03.wt03.temperature,root.ln.wf03,FLOAT,TS_2DIFF,\n"
-          +"root.ln.wf02.wt03.status,root.ln.wf02,INT32,PLAIN,\n"
-          +"root.ln.wf02.wt04.temperature,root.ln.wf02,FLOAT,RLE,\n"
-          +"root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-          +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
-          +"root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
-          +"root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+            +"root.ln.wf04.wt05.temperature,root.ln.wf04,FLOAT,GORILLA,\n"
+            +"root.ln.wf03.wt02.status,root.ln.wf03,INT64,PLAIN,\n"
+            +"root.ln.wf03.wt03.temperature,root.ln.wf03,FLOAT,TS_2DIFF,\n"
+            +"root.ln.wf02.wt03.status,root.ln.wf02,INT32,PLAIN,\n"
+            +"root.ln.wf02.wt04.temperature,root.ln.wf02,FLOAT,RLE,\n"
+            +"root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+            +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
+            +"root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
+            +"root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
         "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-          +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n",
+            +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n",
         "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-          + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+            + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
         "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-          + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
-          + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+            + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
+            + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
         "",
         ""
     };
     checkCorrectness(sqls, standards, statement);
   }
 
-  private void testShowTimeseries(Connection connection) throws SQLException {
+  protected void testShowTimeseries(Connection connection) throws SQLException {
     Statement statement = connection.createStatement();
     try {
       statement.execute("show timeseries");
@@ -195,7 +151,7 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
-  private void testDatabaseMetadata(Connection connection) throws SQLException{
+  protected void testDatabaseMetadata(Connection connection) throws SQLException{
     DatabaseMetaData databaseMetaData = connection.getMetaData();
     showTimeseriesInJson(databaseMetaData);
     showStorageGroup(databaseMetaData);
@@ -204,7 +160,7 @@ public class IoTDBMetadataFetchIT {
     showTimeseriesInfo(databaseMetaData);
   }
 
-  private void checkCorrectness(String[] sqls, String[] standards, Statement statement) throws SQLException{
+  protected void checkCorrectness(String[] sqls, String[] standards, Statement statement) throws SQLException {
     for (int i = 0; i < sqls.length; i++) {
       String sql = sqls[i];
       String standard = standards[i];
@@ -231,19 +187,19 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
-  private void showTimeseriesInfo(DatabaseMetaData databaseMetaData) throws SQLException {
+  protected void showTimeseriesInfo(DatabaseMetaData databaseMetaData) throws SQLException {
     String standard =
         "Timeseries,Storage Group,DataType,Encoding,\n"
-        + "root.ln.wf04.wt04.status,root.ln.wf04,TEXT,PLAIN,\n"
-        + "root.ln.wf04.wt05.temperature,root.ln.wf04,FLOAT,GORILLA,\n"
-        + "root.ln.wf03.wt02.status,root.ln.wf03,INT64,PLAIN,\n"
-        + "root.ln.wf03.wt03.temperature,root.ln.wf03,FLOAT,TS_2DIFF,\n"
-        + "root.ln.wf02.wt03.status,root.ln.wf02,INT32,PLAIN,\n"
-        + "root.ln.wf02.wt04.temperature,root.ln.wf02,FLOAT,RLE,\n"
-        + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-        + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
-        + "root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
-        + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n";
+            + "root.ln.wf04.wt04.status,root.ln.wf04,TEXT,PLAIN,\n"
+            + "root.ln.wf04.wt05.temperature,root.ln.wf04,FLOAT,GORILLA,\n"
+            + "root.ln.wf03.wt02.status,root.ln.wf03,INT64,PLAIN,\n"
+            + "root.ln.wf03.wt03.temperature,root.ln.wf03,FLOAT,TS_2DIFF,\n"
+            + "root.ln.wf02.wt03.status,root.ln.wf02,INT32,PLAIN,\n"
+            + "root.ln.wf02.wt04.temperature,root.ln.wf02,FLOAT,RLE,\n"
+            + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+            + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
+            + "root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
+            + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n";
     ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
@@ -254,31 +210,31 @@ public class IoTDBMetadataFetchIT {
 
     standard =
         "Timeseries,Storage Group,DataType,Encoding,\n"
-      + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-      + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
-      + "root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n";
+            + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+            + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
+            + "root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n";
     resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root.ln.wf01", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
 
     standard =
         "Timeseries,Storage Group,DataType,Encoding,\n"
-      + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-      + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
-      + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n";
+            + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+            + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
+            + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n";
     resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root.ln.*.wt01", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
 
     standard =
         "Timeseries,Storage Group,DataType,Encoding,\n"
-      + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n";
+            + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n";
     resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root.ln.wf01.wt01.status", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
   }
 
-  private void showTimeseriesInJson(DatabaseMetaData databaseMetaData) {
+  protected void showTimeseriesInJson(DatabaseMetaData databaseMetaData) {
     String metadataInJson = databaseMetaData.toString();
     String standard =
         "===  Timeseries Tree  ===\n"
@@ -391,30 +347,30 @@ public class IoTDBMetadataFetchIT {
     Assert.assertEquals(standard, metadataInJson);
   }
 
-  private void showStorageGroup(DatabaseMetaData databaseMetaData) throws SQLException {
+  protected void showStorageGroup(DatabaseMetaData databaseMetaData) throws SQLException {
     String standard =
         "Storage Group,\n"
-      + "root.ln.wf04,\n"
-      + "root.ln.wf03,\n"
-      + "root.ln.wf02,\n"
-      + "root.ln.wf01,\n"
-      + "root.ln.wf05,\n";
+            + "root.ln.wf04,\n"
+            + "root.ln.wf03,\n"
+            + "root.ln.wf02,\n"
+            + "root.ln.wf01,\n"
+            + "root.ln.wf05,\n";
     ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
     checkCorrectness(resultSet, standard);
   }
 
-  private void showDeltaObject(DatabaseMetaData databaseMetaData) throws SQLException {
+  protected void showDeltaObject(DatabaseMetaData databaseMetaData) throws SQLException {
     String standard =
         "Column,\n"
-      + "root.ln.wf02.wt04,\n"
-      + "root.ln.wf02.wt03,\n"
-      + "root.ln.wf04.wt05,\n"
-      + "root.ln.wf04.wt04,\n"
-      + "root.ln.wf01.wt01,\n"
-      + "root.ln.wf05.wt01,\n"
-      + "root.ln.wf01.wt02,\n"
-      + "root.ln.wf03.wt03,\n"
-      + "root.ln.wf03.wt02,\n";
+            + "root.ln.wf02.wt04,\n"
+            + "root.ln.wf02.wt03,\n"
+            + "root.ln.wf04.wt05,\n"
+            + "root.ln.wf04.wt04,\n"
+            + "root.ln.wf01.wt01,\n"
+            + "root.ln.wf05.wt01,\n"
+            + "root.ln.wf01.wt02,\n"
+            + "root.ln.wf03.wt03,\n"
+            + "root.ln.wf03.wt02,\n";
     ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICE, "ln", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
@@ -425,42 +381,42 @@ public class IoTDBMetadataFetchIT {
     resultSet.close();
   }
 
-  private void showAllColumns(DatabaseMetaData databaseMetaData) throws SQLException {
+  protected void showAllColumns(DatabaseMetaData databaseMetaData) throws SQLException {
     String standard =
         "Column,\n"
-      + "root.ln.wf04.wt04.status,\n"
-      + "root.ln.wf04.wt05.temperature,\n"
-      + "root.ln.wf03.wt02.status,\n"
-      + "root.ln.wf03.wt03.temperature,\n"
-      + "root.ln.wf02.wt03.status,\n"
-      + "root.ln.wf02.wt04.temperature,\n"
-      + "root.ln.wf01.wt01.status,\n"
-      + "root.ln.wf01.wt01.temperature,\n"
-      + "root.ln.wf01.wt02.humidity,\n"
-      + "root.ln.wf05.wt01.status,\n";
+            + "root.ln.wf04.wt04.status,\n"
+            + "root.ln.wf04.wt05.temperature,\n"
+            + "root.ln.wf03.wt02.status,\n"
+            + "root.ln.wf03.wt03.temperature,\n"
+            + "root.ln.wf02.wt03.status,\n"
+            + "root.ln.wf02.wt04.temperature,\n"
+            + "root.ln.wf01.wt01.status,\n"
+            + "root.ln.wf01.wt01.temperature,\n"
+            + "root.ln.wf01.wt02.humidity,\n"
+            + "root.ln.wf05.wt01.status,\n";
     ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
 
     standard =
         "Column,\n"
-      + "root.ln.wf01.wt01.status,\n"
-      + "root.ln.wf01.wt01.temperature,\n"
-      + "root.ln.wf01.wt02.humidity,\n";
+            + "root.ln.wf01.wt01.status,\n"
+            + "root.ln.wf01.wt01.temperature,\n"
+            + "root.ln.wf01.wt02.humidity,\n";
     resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root.ln.wf01", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
 
     standard =
         "Column,\n"
-      + "root.ln.wf03.wt02.status,\n"
-      + "root.ln.wf01.wt02.humidity,\n";
+            + "root.ln.wf03.wt02.status,\n"
+            + "root.ln.wf01.wt02.humidity,\n";
     resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root.ln.*.wt02", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
   }
 
-  private void checkCorrectness(ResultSet resultSet, String standard) throws SQLException{
+  protected void checkCorrectness(ResultSet resultSet, String standard) throws SQLException{
     ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
     int colCount = resultSetMetaData.getColumnCount();
     StringBuilder resultStr = new StringBuilder();
