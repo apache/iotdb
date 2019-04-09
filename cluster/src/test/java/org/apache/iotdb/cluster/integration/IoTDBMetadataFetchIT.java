@@ -197,8 +197,7 @@ public class IoTDBMetadataFetchIT {
 
   private void testDatabaseMetadata(Connection connection) throws SQLException{
     DatabaseMetaData databaseMetaData = connection.getMetaData();
-    // TODO Error
-//    showTimeseriesInJson(databaseMetaData);
+    showTimeseriesInJson(databaseMetaData);
     showStorageGroup(databaseMetaData);
     showAllColumns(databaseMetaData);
     showDeltaObject(databaseMetaData);
