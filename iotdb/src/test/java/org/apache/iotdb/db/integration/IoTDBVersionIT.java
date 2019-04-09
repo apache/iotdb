@@ -18,20 +18,15 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.integration.Constant.TIMESTAMP_STR;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -75,13 +70,12 @@ public class IoTDBVersionIT {
               .format("INSERT INTO root.versionTest1(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
         }
         statement.execute("FLUSH");
-      }
-      for (int i = 0; i < 3 * SimpleFileVersionController.getSaveInterval(); i ++) {
         for (int j = 1; j <= 100; j ++) {
           statement.execute(String
               .format("INSERT INTO root.versionTest2(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
         }
         statement.execute("FLUSH");
+        statement.execute("MERGE");
       }
 
       statement.close();
