@@ -26,11 +26,12 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.junit.Test;
 
 public class QueryProcessorTest {
 
-  private QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+  private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
 
   @Test
   public void parseSQLToPhysicalPlan()
