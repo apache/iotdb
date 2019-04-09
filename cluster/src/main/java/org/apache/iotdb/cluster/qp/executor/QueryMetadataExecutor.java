@@ -327,6 +327,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
    * @return single String of all metadata
    */
   private String combineMetadataInStringList(List<String> metadataList) {
-    return MManager.combineMetadataInStrings((String[]) metadataList.toArray());
+    return MManager.combineMetadataInStrings(metadataList.toArray(new String[metadataList.size()]));
   }
 }
