@@ -22,14 +22,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.rpc.service.TSServiceClusterImpl;
-import org.apache.iotdb.cluster.utils.EnvironmentUtils;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
