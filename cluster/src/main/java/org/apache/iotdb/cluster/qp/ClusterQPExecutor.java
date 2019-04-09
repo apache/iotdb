@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.callback.QPTask;
 import org.apache.iotdb.cluster.callback.QPTask.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -84,12 +83,12 @@ public abstract class ClusterQPExecutor {
   /**
    * ReadDataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
    */
-  protected int readDataConsistencyLevel = CLUSTER_CONFIG.getReadDataConsistencyLevel();
+  private int readDataConsistencyLevel = CLUSTER_CONFIG.getReadDataConsistencyLevel();
 
   /**
    * Get Storage Group Name by device name
    */
-  public String getStroageGroupByDevice(String device) throws PathErrorException {
+  protected String getStroageGroupByDevice(String device) throws PathErrorException {
     String storageGroup;
     try {
       storageGroup = MManager.getInstance().getFileNameByPath(device);
@@ -117,7 +116,7 @@ public abstract class ClusterQPExecutor {
    *
    * @return key is groupId, value is all SGs belong to this data group
    */
-  public Map<String, Set<String>> classifySGByGroupId(List<String> sgList) {
+  protected Map<String, Set<String>> classifySGByGroupId(List<String> sgList) {
     Map<String, Set<String>> map = new HashMap<>();
     for (int i = 0; i < sgList.size(); i++) {
       String sg = sgList.get(i);
@@ -136,12 +135,12 @@ public abstract class ClusterQPExecutor {
   /**
    * Get raft group id by storage group name
    */
-  public String getGroupIdBySG(String storageGroup) {
+  protected String getGroupIdBySG(String storageGroup) {
     return router.getGroupID(router.routeGroup(storageGroup));
   }
 
   /**
-   * Verify if the non query command can execute in local. 1. If this node belongs to the storage
+   * Check if the non query command can execute in local. 1. If this node belongs to the storage
    * group 2. If this node is leader.
    */
   public boolean canHandleNonQueryByGroupId(String groupId) {
@@ -158,9 +157,9 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
-   * Verify if the query command can execute in local. Check if this node belongs to the group id
+   * Check if the query command can execute in local. Check if this node belongs to the group id
    */
-  public boolean canHandleQueryByGroupId(String groupId) {
+  protected boolean canHandleQueryByGroupId(String groupId) {
     return router.containPhysicalNodeByGroupId(groupId, localNode);
   }
 
@@ -172,7 +171,8 @@ public abstract class ClusterQPExecutor {
    * @param taskRetryNum Number of QPTask retries due to timeout and redirected.
    * @return basic response
    */
-  public BasicResponse asyncHandleNonQueryTaskGetRes(QPTask task, PeerId leader, int taskRetryNum)
+  protected BasicResponse asyncHandleNonQueryTaskGetRes(QPTask task, PeerId leader,
+      int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
     asyncSendNonQueryTask(task, leader, taskRetryNum);
     return asyncGetNonQueryRes(task, leader, taskRetryNum);
@@ -211,13 +211,15 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
-   * Asynchronous get task response. If it's redirected, the task needs to be resent.
+   * Asynchronous get task response. If it's redirected or status is exception, the task needs to be
+   * resent. Note: If status is Exception, it marks that an exception occurred during the task is
+   * being sent instead of executed.
    *
    * @param task rpc task
    * @param leader leader node of the group
    * @param taskRetryNum Retry time of the task
    */
-  public BasicResponse asyncGetNonQueryRes(QPTask task, PeerId leader, int taskRetryNum)
+  private BasicResponse asyncGetNonQueryRes(QPTask task, PeerId leader, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
     task.await();
     if (task.getTaskState() != TaskState.FINISH) {

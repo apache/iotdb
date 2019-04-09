@@ -27,7 +27,7 @@ public class QueryMetadataInStringResponse extends BasicResponse {
     super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public static QueryMetadataInStringResponse createSuccessInstance(String groupId,
+  public static QueryMetadataInStringResponse createSuccessResponse(String groupId,
       String metadata) {
     QueryMetadataInStringResponse response = new QueryMetadataInStringResponse(groupId, false, null,
         null);
@@ -35,7 +35,7 @@ public class QueryMetadataInStringResponse extends BasicResponse {
     return response;
   }
 
-  public static QueryMetadataInStringResponse createErrorInstance(String groupId, String errorMsg) {
+  public static QueryMetadataInStringResponse createErrorResponse(String groupId, String errorMsg) {
     return new QueryMetadataInStringResponse(groupId, false, null, errorMsg);
   }
 

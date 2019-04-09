@@ -22,7 +22,6 @@ import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.closure.ReadIndexClosure;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
@@ -45,7 +44,7 @@ public class QueryMetadataInStringAsyncProcessor extends
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryMetadataInStringResponse response = QueryMetadataInStringResponse
-          .createSuccessInstance(groupId, mManager.getMetadataInString());
+          .createSuccessResponse(groupId, mManager.getMetadataInString());
       response.addResult(true);
       asyncContext.sendResponse(response);
     } else {
@@ -57,11 +56,11 @@ public class QueryMetadataInStringAsyncProcessor extends
               QueryMetadataInStringResponse response;
               if (status.isOk()) {
                 response = QueryMetadataInStringResponse
-                    .createSuccessInstance(groupId, mManager.getMetadataInString());
+                    .createSuccessResponse(groupId, mManager.getMetadataInString());
                 response.addResult(true);
               } else {
                 response = QueryMetadataInStringResponse
-                    .createErrorInstance(groupId, status.getErrorMsg());
+                    .createErrorResponse(groupId, status.getErrorMsg());
                 response.addResult(false);
               }
               asyncContext.sendResponse(response);

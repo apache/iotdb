@@ -95,7 +95,7 @@ public class ClusterConfig {
   /**
    * Count limit to redo a single task
    **/
-  private int taskRedoCount = 3;
+  private int taskRedoCount = 10;
   /**
    * Timeout limit for a single task, the unit is milliseconds
    **/
@@ -109,13 +109,13 @@ public class ClusterConfig {
   /**
    * Max number of @NodeAsClient usage
    */
-  private int maxNumOfInnerRpcClient = 50;
+  private int maxNumOfInnerRpcClient = 500;
 
   /**
    * Max number of queue length to use @NodeAsClient, the request which exceed to this
    * number will be rejected.
    */
-  private int maxQueueNumOfInnerRpcClient = 50;
+  private int maxQueueNumOfInnerRpcClient = 500;
 
   /**
    * ReadMetadataConsistencyLevel: 1 Strong consistency, 2 Weak consistency

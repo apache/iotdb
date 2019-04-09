@@ -31,11 +31,11 @@ public class QueryTimeSeriesResponse extends BasicResponse {
     timeSeries = new ArrayList<>();
   }
 
-  public static QueryTimeSeriesResponse createEmptyInstance(String groupId){
+  public static QueryTimeSeriesResponse createEmptyResponse(String groupId){
     return new QueryTimeSeriesResponse(groupId, false, true, null, null);
   }
 
-  public static QueryTimeSeriesResponse createErrorInstance(String groupId, String errorMsg) {
+  public static QueryTimeSeriesResponse createErrorResponse(String groupId, String errorMsg) {
     return new QueryTimeSeriesResponse(groupId, false, false, null, errorMsg);
   }
 
@@ -47,7 +47,4 @@ public class QueryTimeSeriesResponse extends BasicResponse {
     this.timeSeries.addAll(timeSeries);
   }
 
-  public void setTimeSeries(List<List<String>> timeSeries) {
-    this.timeSeries = timeSeries;
-  }
 }

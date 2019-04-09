@@ -126,7 +126,7 @@ public abstract class QPTask {
   }
 
   public enum TaskType {
-    SINGLE, BATCH, DELETE
+    SINGLE, BATCH
   }
 
   /**

@@ -20,11 +20,15 @@ package org.apache.iotdb.cluster.callback;
 
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Process single task.
  */
 public class SingleQPTask extends QPTask {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SingleQPTask.class);
 
   private static final int TASK_NUM = 1;
 
@@ -38,11 +42,13 @@ public class SingleQPTask extends QPTask {
    */
   @Override
   public void run(BasicResponse response) {
-    if(response != null) {
+    if(taskState != TaskState.EXCEPTION) {
       this.response = response;
-      if (response.isRedirected()) {
+      if(response == null){
+        LOGGER.error("Response is null");
+      } else if (response.isRedirected()) {
         this.taskState = TaskState.REDIRECT;
-      } else if (taskState != TaskState.EXCEPTION) {
+      } else {
         this.taskState = TaskState.FINISH;
       }
     }

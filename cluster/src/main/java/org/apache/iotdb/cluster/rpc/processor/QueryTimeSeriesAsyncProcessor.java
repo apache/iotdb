@@ -22,7 +22,6 @@ import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.closure.ReadIndexClosure;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
@@ -46,11 +45,11 @@ public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<Query
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryTimeSeriesResponse response = QueryTimeSeriesResponse
-          .createEmptyInstance(groupId);
+          .createEmptyResponse(groupId);
       try {
         queryTimeSeries(request, response);
       } catch (final PathErrorException e) {
-        response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.getMessage());
+        response = QueryTimeSeriesResponse.createErrorResponse(groupId, e.getMessage());
       }
       asyncContext.sendResponse(response);
     } else {
@@ -60,16 +59,16 @@ public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<Query
             @Override
             public void run(Status status, long index, byte[] reqCtx) {
               QueryTimeSeriesResponse response = QueryTimeSeriesResponse
-                  .createEmptyInstance(groupId);
+                  .createEmptyResponse(groupId);
               if (status.isOk()) {
                 try {
                   queryTimeSeries(request, response);
                 } catch (final PathErrorException e) {
-                  response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.getMessage());
+                  response = QueryTimeSeriesResponse.createErrorResponse(groupId, e.getMessage());
                 }
               } else {
                 response = QueryTimeSeriesResponse
-                    .createErrorInstance(groupId, status.getErrorMsg());
+                    .createErrorResponse(groupId, status.getErrorMsg());
               }
               asyncContext.sendResponse(response);
             }

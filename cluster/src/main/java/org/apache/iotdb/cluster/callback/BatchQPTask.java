@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
@@ -141,7 +140,7 @@ public class BatchQPTask extends MultiQPTask {
         this.run(subTask.getResponse());
       } catch (InterruptedException e) {
         LOGGER.error("Handle sub task locally failed.");
-        this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
+        this.run(DataGroupNonQueryResponse.createErrorResponse(groupId, e.getMessage()));
       }
     }
 
@@ -154,7 +153,7 @@ public class BatchQPTask extends MultiQPTask {
         this.run(subTask.getResponse());
       } catch (RaftConnectionException | InterruptedException e) {
         LOGGER.error("Async handle sub task failed.");
-        this.run(DataGroupNonQueryResponse.createErrorInstance(groupId, e.getMessage()));
+        this.run(DataGroupNonQueryResponse.createErrorResponse(groupId, e.getMessage()));
       }
     }
 

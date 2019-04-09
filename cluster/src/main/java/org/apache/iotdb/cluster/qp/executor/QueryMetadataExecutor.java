@@ -167,12 +167,12 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     for (int i = 0; i < taskList.size(); i++) {
       SingleQPTask task = taskList.get(i);
       task.await();
-      QueryMetadataInStringResponse response = (QueryMetadataInStringResponse) task.getResponse();
-      if (!response.isSuccess()) {
+      BasicResponse response = task.getResponse();
+      if (response == null || !response.isSuccess()) {
         LOGGER.error("Execute show timeseries statement false.");
         throw new ProcessorException();
       }
-      metadataList.add(response.getMetadata());
+      metadataList.add(((QueryMetadataInStringResponse)response).getMetadata());
     }
     return combineMetadataInStringList(metadataList);
   }
@@ -191,13 +191,13 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     /** Check consistency level**/
     if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryTimeSeriesResponse response = QueryTimeSeriesResponse
-          .createEmptyInstance(groupId);
+          .createEmptyResponse(groupId);
       try {
         for (String path : pathList) {
           response.addTimeSeries(mManager.getShowTimeseriesPath(path));
         }
       } catch (final PathErrorException e) {
-        response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.getMessage());
+        response = QueryTimeSeriesResponse.createErrorResponse(groupId, e.getMessage());
       }
       task.run(response);
     } else {
@@ -207,7 +207,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
             @Override
             public void run(Status status, long index, byte[] reqCtx) {
               QueryTimeSeriesResponse response = QueryTimeSeriesResponse
-                  .createEmptyInstance(groupId);
+                  .createEmptyResponse(groupId);
               if (status.isOk()) {
                 try {
                   LOGGER.debug("start to read");
@@ -215,11 +215,11 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
                     response.addTimeSeries(mManager.getShowTimeseriesPath(path));
                   }
                 } catch (final PathErrorException e) {
-                  response = QueryTimeSeriesResponse.createErrorInstance(groupId, e.getMessage());
+                  response = QueryTimeSeriesResponse.createErrorResponse(groupId, e.getMessage());
                 }
               } else {
                 response = QueryTimeSeriesResponse
-                    .createErrorInstance(groupId, status.getErrorMsg());
+                    .createErrorResponse(groupId, status.getErrorMsg());
               }
               task.run(response);
             }
@@ -237,7 +237,8 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   private List<List<String>> queryTimeSeries(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
     BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
-    return ((QueryTimeSeriesResponse) response).getTimeSeries();
+    return response == null ? new ArrayList<>()
+        : ((QueryTimeSeriesResponse) response).getTimeSeries();
   }
 
   /**
@@ -255,9 +256,9 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       QueryStorageGroupResponse response;
       try {
         response = QueryStorageGroupResponse
-            .createSuccessInstance(metadataHolder.getFsm().getAllStorageGroups());
+            .createSuccessResponse(metadataHolder.getFsm().getAllStorageGroups());
       } catch (final PathErrorException e) {
-        response = QueryStorageGroupResponse.createErrorInstance(e.getMessage());
+        response = QueryStorageGroupResponse.createErrorResponse(e.getMessage());
       }
       task.run(response);
     } else {
@@ -270,12 +271,12 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
               if (status.isOk()) {
                 try {
                   response = QueryStorageGroupResponse
-                      .createSuccessInstance(metadataHolder.getFsm().getAllStorageGroups());
+                      .createSuccessResponse(metadataHolder.getFsm().getAllStorageGroups());
                 } catch (final PathErrorException e) {
-                  response = QueryStorageGroupResponse.createErrorInstance(e.getMessage());
+                  response = QueryStorageGroupResponse.createErrorResponse(e.getMessage());
                 }
               } else {
-                response = QueryStorageGroupResponse.createErrorInstance(status.getErrorMsg());
+                response = QueryStorageGroupResponse.createErrorResponse(status.getErrorMsg());
               }
               task.run(response);
             }
@@ -294,7 +295,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
         .getDataPartitionHolder(groupId);
     if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryMetadataInStringResponse response = QueryMetadataInStringResponse
-          .createSuccessInstance(groupId, mManager.getMetadataInString());
+          .createSuccessResponse(groupId, mManager.getMetadataInString());
       response.addResult(true);
       task.run(response);
     } else {
@@ -307,11 +308,11 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
               if (status.isOk()) {
                 LOGGER.debug("start to read");
                 response = QueryMetadataInStringResponse
-                    .createSuccessInstance(groupId, mManager.getMetadataInString());
+                    .createSuccessResponse(groupId, mManager.getMetadataInString());
                 response.addResult(true);
               } else {
                 response = QueryMetadataInStringResponse
-                    .createErrorInstance(groupId, status.getErrorMsg());
+                    .createErrorResponse(groupId, status.getErrorMsg());
                 response.addResult(false);
               }
               task.run(response);
