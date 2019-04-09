@@ -106,7 +106,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     Status nullReadTaskStatus = Status.OK();
     RaftUtils.handleNullReadToMetaGroup(nullReadTaskStatus);
 
-    /** 1. Classify physical plan by group id **/
+    /** 1. Classify physical plans by group id **/
     Map<String, List<PhysicalPlan>> physicalPlansMap = new HashMap<>();
     Map<String, List<Integer>> planIndexMap = new HashMap<>();
     for (int i = 0; i < result.length; i++) {
@@ -117,8 +117,10 @@ public class NonQueryExecutor extends ClusterQPExecutor {
           String groupId = getGroupIdFromPhysicalPlan(plan);
           if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
             LOGGER.debug("Execute metadata group task");
-            result[i] = handleNonQueryRequest(groupId, plan) ? Statement.SUCCESS_NO_INFO
+            boolean executeResult = handleNonQueryRequest(groupId, plan);
+            result[i] =  executeResult ? Statement.SUCCESS_NO_INFO
                 : Statement.EXECUTE_FAILED;
+            batchResult.setAllSuccessful(executeResult);
           }else {
             if (!physicalPlansMap.containsKey(groupId)) {
               physicalPlansMap.put(groupId, new ArrayList<>());
@@ -157,7 +159,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       }
     }
 
-    /** 3. Execute Multiple Tasks **/
+    /** 3. Execute Multiple Sub Tasks **/
     BatchQPTask task = new BatchQPTask(subTaskMap.size(), batchResult, subTaskMap, planIndexMap);
     currentTask = task;
     task.execute(this);
@@ -169,7 +171,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
   /**
    * Get group id from physical plan
    */
-  public String getGroupIdFromPhysicalPlan(PhysicalPlan plan)
+  private String getGroupIdFromPhysicalPlan(PhysicalPlan plan)
       throws PathErrorException, ProcessorException {
     String storageGroup;
     String groupId;
@@ -315,11 +317,11 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     BasicResponse response;
     RaftService service;
     if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
-      response = MetaGroupNonQueryResponse.createEmptyInstance(groupId);
+      response = MetaGroupNonQueryResponse.createEmptyResponse(groupId);
       MetadataRaftHolder metadataRaftHolder = RaftUtils.getMetadataRaftHolder();
       service = (RaftService) metadataRaftHolder.getService();
     } else {
-      response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
+      response = DataGroupNonQueryResponse.createEmptyResponse(groupId);
       DataPartitionRaftHolder dataRaftHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
       service = (RaftService) dataRaftHolder.getService();
     }

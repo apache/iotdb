@@ -55,13 +55,13 @@ public class DataGroupNonQueryAsyncProcessor extends
       LOGGER.debug("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
 
       DataGroupNonQueryResponse response = DataGroupNonQueryResponse
-          .createRedirectedInstance(groupId, leader.toString());
+          .createRedirectedResponse(groupId, leader.toString());
       asyncContext.sendResponse(response);
     } else {
       LOGGER.debug("Apply task to raft node");
 
       /** Apply Task to Raft Node **/
-      BasicResponse response = DataGroupNonQueryResponse.createEmptyInstance(groupId);
+      BasicResponse response = DataGroupNonQueryResponse.createEmptyResponse(groupId);
       RaftService service = (RaftService) dataPartitionRaftHolder.getService();
       RaftUtils.executeRaftTaskForRpcProcessor(service, asyncContext, request, response);
     }

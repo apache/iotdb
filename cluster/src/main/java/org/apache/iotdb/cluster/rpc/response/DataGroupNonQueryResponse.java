@@ -28,15 +28,15 @@ public class DataGroupNonQueryResponse extends BasicResponse {
     super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public static DataGroupNonQueryResponse createRedirectedInstance(String groupId, String leaderStr) {
+  public static DataGroupNonQueryResponse createRedirectedResponse(String groupId, String leaderStr) {
     return new DataGroupNonQueryResponse(groupId, true, leaderStr, null);
   }
 
-  public static DataGroupNonQueryResponse createEmptyInstance(String groupId) {
+  public static DataGroupNonQueryResponse createEmptyResponse(String groupId) {
     return new DataGroupNonQueryResponse(groupId, false, null, null);
   }
 
-  public static DataGroupNonQueryResponse createErrorInstance(String groupId, String errorMsg) {
+  public static DataGroupNonQueryResponse createErrorResponse(String groupId, String errorMsg) {
     return new DataGroupNonQueryResponse(groupId, false, null, errorMsg);
   }
 

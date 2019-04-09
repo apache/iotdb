@@ -52,13 +52,13 @@ public class MetaGroupNonQueryAsyncProcessor extends
       LOGGER.debug("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
 
       MetaGroupNonQueryResponse response = MetaGroupNonQueryResponse
-          .createRedirectedInstance(groupId, leader.toString());
+          .createRedirectedResponse(groupId, leader.toString());
       asyncContext.sendResponse(response);
     } else {
       LOGGER.debug("Apply task to metadata raft node");
 
       /** Apply Task to Raft Node **/
-      BasicResponse response = MetaGroupNonQueryResponse.createEmptyInstance(groupId);
+      BasicResponse response = MetaGroupNonQueryResponse.createEmptyResponse(groupId);
       RaftService service = (RaftService) metadataHolder.getService();
       RaftUtils.executeRaftTaskForRpcProcessor(service, asyncContext, request, response);
     }

@@ -41,6 +41,7 @@ import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.rpc.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.slf4j.Logger;
@@ -262,8 +263,8 @@ public class RaftUtils {
           .readIndex(reqContext, new ReadIndexClosure() {
             @Override
             public void run(Status status, long index, byte[] reqCtx) {
-              BasicResponse response = new BasicResponse(null, false, null, null) {
-              };
+              BasicResponse response = MetaGroupNonQueryResponse
+                  .createEmptyResponse(ClusterConfig.METADATA_GROUP_ID);
               if (!status.isOk()) {
                 status.setCode(-1);
                 status.setErrorMsg(status.getErrorMsg());

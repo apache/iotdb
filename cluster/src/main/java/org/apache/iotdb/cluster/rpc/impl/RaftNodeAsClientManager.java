@@ -193,8 +193,7 @@ public class RaftNodeAsClientManager {
                     LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
                     qpTask.setTaskState(TaskState.EXCEPTION);
                     releaseClient();
-                    qpTask.run(DataGroupNonQueryResponse
-                        .createErrorInstance(request.getGroupID(), e.getMessage()));
+                    qpTask.run(null);
                   }
 
                   @Override
@@ -206,8 +205,7 @@ public class RaftNodeAsClientManager {
         LOGGER.error(e.getMessage());
         qpTask.setTaskState(TaskState.EXCEPTION);
         releaseClient();
-        qpTask.run(DataGroupNonQueryResponse
-            .createErrorInstance(request.getGroupID(), e.getMessage()));
+        qpTask.run(null);
         throw new RaftConnectionException(e);
       }
     }
@@ -222,8 +220,7 @@ public class RaftNodeAsClientManager {
         qpTask.run(response);
       } catch (RemotingException | InterruptedException e) {
         qpTask.setTaskState(TaskState.EXCEPTION);
-        qpTask.run(DataGroupNonQueryResponse
-            .createErrorInstance(request.getGroupID(), e.getMessage()));
+        qpTask.run(null);
         throw new RaftConnectionException(e);
       } finally {
         releaseClient();

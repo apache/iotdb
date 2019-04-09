@@ -29,13 +29,13 @@ public class QueryStorageGroupResponse extends BasicResponse {
     this.addResult(success);
   }
 
-  public static QueryStorageGroupResponse createSuccessInstance(Set<String> storageGroups) {
+  public static QueryStorageGroupResponse createSuccessResponse(Set<String> storageGroups) {
     QueryStorageGroupResponse response = new QueryStorageGroupResponse(true, null, null);
     response.setStorageGroups(storageGroups);
     return response;
   }
 
-  public static QueryStorageGroupResponse createErrorInstance(String errorMsg) {
+  public static QueryStorageGroupResponse createErrorResponse(String errorMsg) {
     return new QueryStorageGroupResponse(false, null, errorMsg);
   }
 
