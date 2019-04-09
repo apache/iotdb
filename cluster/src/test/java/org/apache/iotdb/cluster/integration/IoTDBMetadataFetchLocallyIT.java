@@ -37,24 +37,7 @@ public class IoTDBMetadataFetchLocallyIT extends IoTDBMetadataFetchAbstract{
   private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
 
   private final String URL = "127.0.0.1:6667/";
-  private Map<String, String> testConfigMap = new HashMap<String, String>() {
-    private static final long serialVersionUID = 7832408957178621132L;
-    {
 
-      put("port", "8888");
-      put("election_timeout_ms", "1000");
-      put("max_catch_up_log_num", "100000");
-      put("delay_snapshot", "false");
-      put("delay_hours", "2");
-      put("task_redo_count", "3");
-      put("task_timeout_ms", "1000");
-      put("num_of_virtual_nodes", "2");
-      put("max_num_of_inner_rpc_client", "50");
-      put("max_queue_num_of_inner_rpc_client", "50");
-      put("read_metadata_consistency_level", "1");
-      put("read_data_consistency_level", "1");
-    }
-  };
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanEnv();
