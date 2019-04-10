@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.engine.version;
 
+
+import static org.junit.Assert.assertEquals;
+
 import java.io.File;
 import java.io.IOException;
-
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
-
-import static org.apache.iotdb.db.engine.version.SimpleFileVersionController.SAVE_INTERVAL;
-import static org.junit.Assert.assertEquals;
 
 public class SimpleFileVersionControllerTest {
   @Test
@@ -39,13 +38,15 @@ public class SimpleFileVersionControllerTest {
         Assert.fail("can not create version.tmp folder");
       }
       VersionController versionController = new SimpleFileVersionController(tempFilePath);
-      assertEquals(SAVE_INTERVAL, versionController.currVersion());
+      assertEquals(SimpleFileVersionController.getSaveInterval(), versionController.currVersion());
       for (int i = 0; i < 150; i++) {
         versionController.nextVersion();
       }
-      assertEquals(SAVE_INTERVAL + 150, versionController.currVersion());
+      assertEquals(SimpleFileVersionController.getSaveInterval() + 150,
+          versionController.currVersion());
       versionController = new SimpleFileVersionController(tempFilePath);
-      assertEquals(SAVE_INTERVAL + 200, versionController.currVersion());
+      assertEquals(SimpleFileVersionController.getSaveInterval() + 200,
+          versionController.currVersion());
     } finally {
       FileUtils.deleteDirectory(new File(tempFilePath));
     }
