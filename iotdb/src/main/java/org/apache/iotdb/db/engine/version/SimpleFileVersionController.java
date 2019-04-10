@@ -22,8 +22,6 @@ package org.apache.iotdb.db.engine.version;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,12 +31,13 @@ import org.slf4j.LoggerFactory;
  */
 public class SimpleFileVersionController implements VersionController {
   private static final Logger LOGGER = LoggerFactory.getLogger(SimpleFileVersionController.class);
+
   /**
-   * Every time currVersion - prevVersion >= SAVE_INTERVAL, currVersion is persisted and prevVersion
+   * Every time currVersion - prevVersion >= saveInterval, currVersion is persisted and prevVersion
    * is set to currVersion. When recovering from file, the version number is automatically increased
-   * by SAVE_INTERVAL to avoid conflicts.
+   * by saveInterval to avoid conflicts.
    */
-  public static final long SAVE_INTERVAL = 100;
+  private static long saveInterval = 100;
   private static final String FILE_PREFIX = "Version-";
   private long prevVersion;
   private long currVersion;
@@ -70,7 +69,7 @@ public class SimpleFileVersionController implements VersionController {
   }
 
   private void checkPersist() throws IOException {
-    if ((currVersion - prevVersion) >= SAVE_INTERVAL) {
+    if ((currVersion - prevVersion) >= saveInterval) {
       persist();
     }
   }
@@ -79,6 +78,8 @@ public class SimpleFileVersionController implements VersionController {
     File oldFile = new File(directoryPath, FILE_PREFIX + prevVersion);
     File newFile = new File(directoryPath, FILE_PREFIX + currVersion);
     FileUtils.moveFile(oldFile, newFile);
+    LOGGER.info("Version file updated, previous: {}, current: {}",
+        oldFile.getAbsolutePath(), newFile.getAbsolutePath());
     prevVersion = currVersion;
   }
 
@@ -109,7 +110,16 @@ public class SimpleFileVersionController implements VersionController {
       new FileOutputStream(versionFile).close();
     }
     // prevent overlapping in case of failure
-    currVersion = prevVersion + SAVE_INTERVAL;
+    currVersion = prevVersion + saveInterval;
     persist();
+  }
+
+  // test only method
+  public static void setSaveInterval(long saveInterval) {
+    SimpleFileVersionController.saveInterval = saveInterval;
+  }
+
+  public static long getSaveInterval() {
+    return saveInterval;
   }
 }
