@@ -36,9 +36,6 @@ public class ClusterConfigureGenerator {
   private static Map<String, String> configMap = new HashMap<String, String>() {
     {
       put("port", config.getPort() + "");
-      put("raft_log_path", config.getRaftLogPath() + "");
-      put("raft_snapshot_path", config.getRaftSnapshotPath() + "");
-      put("raft_metadata_path", config.getRaftMetadataPath() + "");
       put("election_timeout_ms", config.getElectionTimeoutMs() + "");
       put("max_catch_up_log_num", config.getMaxCatchUpLogNum() + "");
       put("delay_snapshot", config.isDelaySnapshot() + "");
