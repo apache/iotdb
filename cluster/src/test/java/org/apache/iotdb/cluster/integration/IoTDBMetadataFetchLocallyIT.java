@@ -18,14 +18,11 @@
  */
 package org.apache.iotdb.cluster.integration;
 
-
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
@@ -65,10 +62,4 @@ public class IoTDBMetadataFetchLocallyIT extends IoTDBMetadataFetchAbstract{
   public void testBatchLocal() throws SQLException {
     test(URL, true);
   }
-
-
-
-
-
-
 }
