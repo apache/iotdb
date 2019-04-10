@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +75,7 @@ public class EnvironmentUtils {
     try {
       if (!FileNodeManager.getInstance().deleteAll()) {
         LOGGER.error("Can't close the filenode manager in EnvironmentUtils");
-        System.exit(1);
+        Assert.fail();
       }
     } catch (FileNodeManagerException e) {
       throw new IOException(e);
