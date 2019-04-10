@@ -56,7 +56,7 @@
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
-            <version>2.12.8</version>
+            <version>${scala.version}</version>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
@@ -89,9 +89,6 @@
                         </goals>
                     </execution>
                 </executions>
-                <configuration>
-                    <scalaVersion>2.12.8</scalaVersion>
-                </configuration>
             </plugin>
         </plugins>
     </build>
