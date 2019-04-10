@@ -64,7 +64,7 @@ matrix:
         - choco install maven
       script:
         - java -version
-        - mvn clean integration-test
+        - mvn -B clean integration-test
 #    - os: windows
 #      language: c
 #      name: win-oraclejdk11
