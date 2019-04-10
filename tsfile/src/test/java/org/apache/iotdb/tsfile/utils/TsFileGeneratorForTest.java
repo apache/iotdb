@@ -51,7 +51,7 @@ public class TsFileGeneratorForTest {
   private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForTest.class);
   public static TsFileWriter innerWriter;
   public static String inputDataFile;
-  public static String outputDataFile = "src/test/resources/testTsFile.tsfile";
+  public static String outputDataFile = "target/testTsFile.tsfile";
   public static String errorOutputDataFile;
   private static int rowCount;
   private static int chunkGroupSize;
@@ -72,8 +72,8 @@ public class TsFileGeneratorForTest {
   }
 
   public static void prepare(int minrowCount, int maxRowCount) throws IOException {
-    inputDataFile = "src/test/resources/perTestInputData";
-    errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
+    inputDataFile = "target/perTestInputData";
+    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
     generateSampleInputDataFile(minrowCount, maxRowCount);
   }
 
@@ -95,7 +95,7 @@ public class TsFileGeneratorForTest {
   static private void generateSampleInputDataFile(int minRowCount, int maxRowCount) throws IOException {
     File file = new File(inputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file.getParentFile().mkdirs();
     FileWriter fw = new FileWriter(file);
@@ -149,10 +149,10 @@ public class TsFileGeneratorForTest {
     File file = new File(outputDataFile);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     if (errorFile.exists()) {
-      errorFile.delete();
+      Assert.assertTrue(errorFile.delete());
     }
 
     // LOG.info(jsonSchema.toString());
@@ -164,10 +164,33 @@ public class TsFileGeneratorForTest {
     innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
-    try {
-      writeToFile(schema);
+    try (Scanner in = new Scanner(new File(inputDataFile))) {
+      long lineCount = 0;
+      long startTime = System.currentTimeMillis();
+      long endTime = System.currentTimeMillis();
+      assert in != null;
+      while (in.hasNextLine()) {
+        if (lineCount % 1000000 == 0) {
+          endTime = System.currentTimeMillis();
+          // logger.info("write line:{},inner space consumer:{},use
+          // time:{}",lineCount,innerWriter.calculateMemSizeForEachGroup(),endTime);
+          LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
+        }
+        String str = in.nextLine();
+        TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
+        innerWriter.write(record);
+        lineCount++;
+      }
+      endTime = System.currentTimeMillis();
+      LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
+      endTime = System.currentTimeMillis();
+      LOG.info("write total:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
+      LOG.info("src file size:{}GB", FileUtils.getLocalFileByte(inputDataFile, FileUtils.Unit.GB));
+      LOG.info("out file size:{}MB", FileUtils.getLocalFileByte(outputDataFile, FileUtils.Unit.MB));
     } catch (WriteProcessException e) {
       e.printStackTrace();
+    } finally {
+      innerWriter.close();
     }
     LOG.info("write to file successfully!!");
   }
@@ -233,43 +256,4 @@ public class TsFileGeneratorForTest {
     return schemaBuilder.build();
   }
 
-  static public void writeToFile(FileSchema schema)
-      throws InterruptedException, IOException, WriteProcessException {
-    Scanner in = getDataFile(inputDataFile);
-    long lineCount = 0;
-    long startTime = System.currentTimeMillis();
-    long endTime = System.currentTimeMillis();
-    assert in != null;
-    while (in.hasNextLine()) {
-      if (lineCount % 1000000 == 0) {
-        endTime = System.currentTimeMillis();
-        // logger.info("write line:{},inner space consumer:{},use
-        // time:{}",lineCount,innerWriter.calculateMemSizeForEachGroup(),endTime);
-        LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-      }
-      String str = in.nextLine();
-      TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
-      innerWriter.write(record);
-      lineCount++;
-    }
-    endTime = System.currentTimeMillis();
-    LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-    innerWriter.close();
-    in.close();
-    endTime = System.currentTimeMillis();
-    LOG.info("write total:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-    LOG.info("src file size:{}GB", FileUtils.getLocalFileByte(inputDataFile, FileUtils.Unit.GB));
-    LOG.info("out file size:{}MB", FileUtils.getLocalFileByte(outputDataFile, FileUtils.Unit.MB));
-  }
-
-  static private Scanner getDataFile(String path) {
-    File file = new File(path);
-    try {
-      Scanner in = new Scanner(file);
-      return in;
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-      return null;
-    }
-  }
 }

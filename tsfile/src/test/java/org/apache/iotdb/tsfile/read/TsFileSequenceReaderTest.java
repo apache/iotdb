@@ -113,28 +113,5 @@ public class TsFileSequenceReaderTest {
     reader.close();
   }
 
-  @Test
-  public void testToReadDamagedFileAndRepair() throws IOException {
-    File file = new File(FILE_PATH);
 
-    IncompleteFileTestUtil.writeFileWithOneIncompleteChunkHeader(file);
-
-    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH, true, true);
-    String tailMagic = reader.readTailMagic();
-    reader.close();
-
-    // Check if the file was repaired
-    assertEquals(TSFileConfig.MAGIC_STRING, tailMagic);
-    assertTrue(file.delete());
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testToReadDamagedFileNoRepair() throws IOException {
-    File file = new File(FILE_PATH);
-
-    IncompleteFileTestUtil.writeFileWithOneIncompleteChunkHeader(file);
-
-    // This should throw an Illegal Argument Exception
-    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH, true, false);
-  }
 }

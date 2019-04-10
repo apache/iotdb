@@ -39,6 +39,7 @@ public class OperatorTest {
     Assert.assertEquals(true, filter2.satisfy(100, 50));
     Assert.assertEquals(false, filter2.satisfy(100, 51));
 
+
     Filter filter3 = ValueFilter.eq(true);
     Assert.assertEquals(true, filter3.satisfy(100, true));
     Assert.assertEquals(false, filter3.satisfy(100, false));

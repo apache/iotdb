@@ -24,8 +24,12 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -188,5 +192,81 @@ public class MTreeTest {
     assertEquals(root.isPathExist("root.laptop"), true);
     assertEquals(root.isPathExist("root.laptop.d2"), true);
     assertEquals(root.isPathExist("root.laptop.d2.s0"), true);
+  }
+
+  @Test
+  public void testCheckStorageGroup() {
+    // set storage group first
+    MTree root = new MTree("root");
+    try {
+      assertEquals(false, root.checkStorageGroup("root"));
+      assertEquals(false, root.checkStorageGroup("root1.laptop.d2"));
+
+      root.setStorageGroup("root.laptop.d1");
+      assertEquals(true, root.checkStorageGroup("root.laptop.d1"));
+      assertEquals(false, root.checkStorageGroup("root.laptop.d2"));
+      assertEquals(false, root.checkStorageGroup("root.laptop"));
+      assertEquals(false, root.checkStorageGroup("root.laptop.d1.s1"));
+
+      root.setStorageGroup("root.laptop.d2");
+      assertEquals(true, root.checkStorageGroup("root.laptop.d1"));
+      assertEquals(true, root.checkStorageGroup("root.laptop.d2"));
+      assertEquals(false, root.checkStorageGroup("root.laptop.d3"));
+    } catch (PathErrorException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testGetAllFileNamesByPath() {
+    // set storage group first
+    MTree root = new MTree("root");
+    try {
+      root.setStorageGroup("root.laptop.d1");
+      root.setStorageGroup("root.laptop.d2");
+      root.addTimeseriesPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.GZIP, null);
+      root.addTimeseriesPath("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.GZIP, null);
+
+      List<String> list = new ArrayList<>();
+
+      list.add("root.laptop.d1");
+      assertEquals(list, root.getAllFileNamesByPath("root.laptop.d1.s1"));
+      assertEquals(list, root.getAllFileNamesByPath("root.laptop.d1"));
+
+      list.add("root.laptop.d2");
+      assertEquals(list, root.getAllFileNamesByPath("root.laptop"));
+      assertEquals(list, root.getAllFileNamesByPath("root"));
+    } catch (PathErrorException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public void testCheckStorageExistOfPath() {
+    // set storage group first
+    MTree root = new MTree("root");
+    try {
+      assertEquals(false, root.checkStorageExistOfPath("root"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle.device"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle.device.sensor"));
+
+      root.setStorageGroup("root.vehicle");
+      assertEquals(true, root.checkStorageExistOfPath("root.vehicle"));
+      assertEquals(true, root.checkStorageExistOfPath("root.vehicle.device"));
+      assertEquals(true, root.checkStorageExistOfPath("root.vehicle.device.sensor"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device"));
+
+      root.setStorageGroup("root.vehicle1.device");
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device1"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device2"));
+      assertEquals(false, root.checkStorageExistOfPath("root.vehicle1.device3"));
+      assertEquals(true, root.checkStorageExistOfPath("root.vehicle1.device"));
+    } catch (PathErrorException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

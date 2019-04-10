@@ -342,6 +342,32 @@ public class MManager {
   }
 
   /**
+   * function for checking if the given path is storage level of mTree or not.
+   * @apiNote :for cluster
+   */
+  public boolean checkStorageLevelOfMTree(String path) {
+    lock.readLock().lock();
+    try {
+      return mgraph.checkStorageLevel(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * function for checking if the storage group of given path exists in mTree or not.
+   * @apiNote :for cluster
+   */
+  public boolean checkStorageExistOfPath(String path) {
+    lock.readLock().lock();
+    try {
+      return mgraph.checkStorageExistOfPath(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * function for adding a pTree.
    */
   public void addAPTree(String ptreeRootName) throws IOException, MetadataArgsErrorException {
@@ -665,6 +691,23 @@ public class MManager {
     try {
       Map<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
       return new ArrayList<>(res.keySet());
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get all file names for given seriesPath
+   *
+   * @return List of String represented all file names
+   */
+  public List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+
+    lock.readLock().lock();
+    try {
+      return mgraph.getAllFileNamesByPath(path);
+    } catch (PathErrorException e) {
+      throw new PathErrorException(e);
     } finally {
       lock.readLock().unlock();
     }

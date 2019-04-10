@@ -261,4 +261,84 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testSetStorageLevelAndExist() {
+
+    MManager manager = MManager.getInstance();
+
+    try {
+      assertEquals(false, manager.checkStorageLevelOfMTree("root"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root1.laptop.d2"));
+
+      manager.setStorageLevelToMTree("root.laptop.d1");
+      assertEquals(true, manager.checkStorageLevelOfMTree("root.laptop.d1"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop.d2"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop.d1.s1"));
+
+      manager.setStorageLevelToMTree("root.laptop.d2");
+      assertEquals(true, manager.checkStorageLevelOfMTree("root.laptop.d1"));
+      assertEquals(true, manager.checkStorageLevelOfMTree("root.laptop.d2"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop.d3"));
+      assertEquals(false, manager.checkStorageLevelOfMTree("root.laptop"));
+    } catch (PathErrorException | IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testGetAllFileNamesByPath() {
+
+    MManager manager = MManager.getInstance();
+    try {
+      manager.setStorageLevelToMTree("root.laptop.d1");
+      manager.setStorageLevelToMTree("root.laptop.d2");
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+
+      List<String> list = new ArrayList<>();
+
+      list.add("root.laptop.d1");
+      assertEquals(list, manager.getAllFileNamesByPath("root.laptop.d1.s1"));
+      assertEquals(list, manager.getAllFileNamesByPath("root.laptop.d1"));
+
+      list.add("root.laptop.d2");
+      assertEquals(list, manager.getAllFileNamesByPath("root.laptop"));
+      assertEquals(list, manager.getAllFileNamesByPath("root"));
+    } catch (PathErrorException | IOException | MetadataArgsErrorException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  public void testCheckStorageExistOfPath() {
+    MManager manager = MManager.getInstance();
+
+    try {
+      assertEquals(false, manager.checkStorageExistOfPath("root"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle.device"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle.device.sensor"));
+
+      manager.setStorageLevelToMTree("root.vehicle");
+      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle"));
+      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle.device"));
+      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle.device.sensor"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device"));
+
+      manager.setStorageLevelToMTree("root.vehicle1.device");
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device1"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device2"));
+      assertEquals(false, manager.checkStorageExistOfPath("root.vehicle1.device3"));
+      assertEquals(true, manager.checkStorageExistOfPath("root.vehicle1.device"));
+    } catch (PathErrorException | IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

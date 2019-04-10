@@ -25,7 +25,8 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public class PhysicalPlanLogTransfer {
 
-  private PhysicalPlanLogTransfer(){}
+  private PhysicalPlanLogTransfer() {
+  }
 
   public static byte[] operatorToLog(PhysicalPlan plan) throws IOException {
     Codec<PhysicalPlan> codec;
@@ -38,6 +39,36 @@ public class PhysicalPlanLogTransfer {
         break;
       case DELETE:
         codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.DELETE).codec;
+        break;
+      case DELETE_TIMESERIES:
+      case CREATE_TIMESERIES:
+      case SET_STORAGE_GROUP:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.METADATA).codec;
+        break;
+      case AUTHOR:
+      case CREATE_USER:
+      case CREATE_ROLE:
+      case DELETE_ROLE:
+      case DELETE_USER:
+      case GRANT_USER_ROLE:
+      case GRANT_USER_PRIVILEGE:
+      case REVOKE_USER_PRIVILEGE:
+      case REVOKE_USER_ROLE:
+      case GRANT_ROLE_PRIVILEGE:
+      case LIST_USER:
+      case LIST_ROLE:
+      case LIST_USER_PRIVILEGE:
+      case LIST_ROLE_PRIVILEGE:
+      case LIST_USER_ROLES:
+      case LIST_ROLE_USERS:
+      case MODIFY_PASSWORD:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.AUTHOR).codec;
+        break;
+      case LOADDATA:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.LOADDATA).codec;
+        break;
+      case PROPERTY:
+        codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.PROPERTY).codec;
         break;
       default:
         throw new UnsupportedOperationException(

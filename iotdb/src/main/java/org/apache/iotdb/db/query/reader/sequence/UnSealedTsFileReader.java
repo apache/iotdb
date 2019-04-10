@@ -16,14 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.UnsealedTsFile;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.IReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TimeValuePairUtils;
+import org.apache.iotdb.db.query.reader.IAggregateReader;
+import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -34,58 +38,43 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
-public class UnSealedTsFileReader implements IReader {
+public class UnSealedTsFileReader implements IBatchReader, IAggregateReader {
 
   protected Path seriesPath;
   private FileSeriesReader unSealedReader;
-  private BatchData data;
 
   /**
    * Construct funtion for UnSealedTsFileReader.
    *
    * @param unsealedTsFile -param to initial
    * @param filter -filter
+   * @param isReverse true-traverse chunks from behind forward; false-traverse chunks from front to
+   * back;
    */
-  public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile, Filter filter) throws IOException {
+  public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile, Filter filter, boolean isReverse)
+      throws IOException {
 
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
         .get(unsealedTsFile.getFilePath(),
             false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
-    if (filter == null) {
-      unSealedReader = new FileSeriesReaderWithoutFilter(chunkLoader,
-          unsealedTsFile.getChunkMetaDataList());
-    } else {
-      unSealedReader = new FileSeriesReaderWithFilter(chunkLoader,
-          unsealedTsFile.getChunkMetaDataList(),
-          filter);
+    List<ChunkMetaData> metaDataList = unsealedTsFile.getChunkMetaDataList();
+    //reverse chunk metadata list if traversing chunks from behind forward
+    if (isReverse && metaDataList != null && !metaDataList.isEmpty()) {
+      Collections.reverse(metaDataList);
     }
 
+    if (filter == null) {
+      unSealedReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
+    } else {
+      unSealedReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
+    }
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    if (data == null || !data.hasNext()) {
-      if (!unSealedReader.hasNextBatch()) {
-        return false;
-      }
-      data = unSealedReader.nextBatch();
-    }
-
-    return data.hasNext();
-  }
-
-  @Override
-  public TimeValuePair next() {
-    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(data);
-    data.next();
-    return timeValuePair;
-  }
-
-  @Override
-  public void skipCurrentTimeValuePair() {
-    data.next();
+    return unSealedReader.hasNextBatch();
   }
 
   @Override
@@ -96,17 +85,17 @@ public class UnSealedTsFileReader implements IReader {
   }
 
   @Override
-  public boolean hasNextBatch() {
-    return false;
+  public BatchData nextBatch() throws IOException {
+    return unSealedReader.nextBatch();
   }
 
   @Override
-  public BatchData nextBatch() {
-    return null;
+  public PageHeader nextPageHeader() throws IOException {
+    return unSealedReader.nextPageHeader();
   }
 
   @Override
-  public BatchData currentBatch() {
-    return null;
+  public void skipPageData() {
+    unSealedReader.skipPageData();
   }
 }

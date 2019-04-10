@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
 import java.io.IOException;
@@ -48,6 +49,9 @@ public abstract class ChunkReader {
 
   private BatchData data;
 
+  private PageHeader pageHeader;
+  private boolean hasCachedPageHeader;
+
   /**
    * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
    */
@@ -72,10 +76,30 @@ public abstract class ChunkReader {
     valueDecoder = Decoder
         .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
     data = new BatchData(chunkHeader.getDataType());
+    hasCachedPageHeader = false;
   }
 
-  public boolean hasNextBatch() {
-    return chunkDataBuffer.remaining() > 0;
+  /**
+   * judge if has nextBatch.
+   */
+  public boolean hasNextBatch() throws IOException {
+    if (hasCachedPageHeader) {
+      return true;
+    }
+    // construct next satisfied page header
+    while (chunkDataBuffer.remaining() > 0) {
+      // deserialize a PageHeader from chunkDataBuffer
+      pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+
+      // if the current page satisfies
+      if (pageSatisfied(pageHeader)) {
+        hasCachedPageHeader = true;
+        return true;
+      } else {
+        skipBytesInStreamByLength(pageHeader.getCompressedSize());
+      }
+    }
+    return false;
   }
 
   /**
@@ -85,30 +109,26 @@ public abstract class ChunkReader {
    * @throws IOException IOException
    */
   public BatchData nextBatch() throws IOException {
-
-    // construct next satisfied page header
-    while (chunkDataBuffer.remaining() > 0) {
-      // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader = PageHeader
-          .deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-
-      // if the current page satisfies
-      if (pageSatisfied(pageHeader)) {
-        PageReader pageReader = constructPageReaderForNextPage(pageHeader.getCompressedSize());
-        if (pageReader.hasNextBatch()) {
-          data = pageReader.nextBatch();
-          return data;
-        }
-      } else {
-        skipBytesInStreamByLength(pageHeader.getCompressedSize());
-      }
+    PageReader pageReader = constructPageReaderForNextPage(pageHeader.getCompressedSize());
+    hasCachedPageHeader = false;
+    if (pageReader.hasNextBatch()) {
+      data = pageReader.nextBatch();
+      return data;
     }
-
     return data;
   }
 
   public BatchData currentBatch() {
     return data;
+  }
+
+  public PageHeader nextPageHeader() throws IOException {
+    return pageHeader;
+  }
+
+  public void skipPageData() {
+    skipBytesInStreamByLength(pageHeader.getCompressedSize());
+    hasCachedPageHeader = false;
   }
 
   private void skipBytesInStreamByLength(long length) {
