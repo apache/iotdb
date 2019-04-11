@@ -19,7 +19,6 @@
 package org.apache.iotdb.cluster.concurrent.pool;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -35,7 +34,7 @@ public class QPTaskManagerTest {
 
   private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
 
-  private int blockTimeOut = 500;
+  private int blockTimeOut = 10;
 
   private volatile boolean mark = true;
 
@@ -63,23 +62,16 @@ public class QPTaskManagerTest {
   }
 
   @Test
-  public void testSubmitAndClose() {
+  public void testSubmitAndClose() throws InterruptedException {
 
     assertEquals(clusterConfig.getConcurrentQPTaskThread(), qpTaskManager.getThreadCnt());
 
-    int ThradCnt = qpTaskManager.getThreadCnt();
-
-    // test reopen
-    try {
-      qpTaskManager.reopen();
-    } catch (ProcessorException e) {
-      assertEquals("QP task Pool is not terminated!", e.getMessage());
-    }
-
+    int threadCnt = qpTaskManager.getThreadCnt();
     // test thread num
-    for (int i = 1; i <= ThradCnt + 2; i++) {
+    for (int i = 1; i <= threadCnt + 2; i++) {
       qpTaskManager.submit(testRunnable);
-      assertEquals(Math.min(i, ThradCnt), qpTaskManager.getActiveCnt());
+      Thread.sleep(10);
+      assertEquals(Math.min(i, threadCnt), qpTaskManager.getActiveCnt());
     }
 
     // test close
@@ -90,23 +82,19 @@ public class QPTaskManagerTest {
       assert false;
     }
 
-    try {
-      qpTaskManager.reopen();
-    } catch (ProcessorException e) {
-      assert false;
-    }
-
     mark = true;
 
-    for (int i = 1; i <= ThradCnt + 10; i++) {
+    for (int i = 1; i <= threadCnt + 10; i++) {
       qpTaskManager.submit(testRunnable);
-      assertEquals(Math.min(i, ThradCnt), qpTaskManager.getActiveCnt());
+      Thread.sleep(10);
+      assertEquals(Math.min(i, threadCnt), qpTaskManager.getActiveCnt());
     }
 
     try {
-      qpTaskManager.close(true, blockTimeOut);
+      new Thread(changeMark).start();
+      qpTaskManager.close(true, blockTimeOut / 10);
     } catch (ProcessorException e) {
-      assertEquals("QPTask thread pool doesn't exit after 500 ms", e.getMessage());
+      assertEquals("QPTask thread pool doesn't exit after 1 ms", e.getMessage());
     }
   }
 }

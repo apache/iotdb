@@ -122,8 +122,8 @@ public class Server {
   }
 
   public void stop() throws ProcessorException {
-    RaftTaskManager.getInstance().close(true, CLUSTER_CONF.getCloseRaftTaskBlockTimeout());
-    QPTaskManager.getInstance().close(true, CLUSTER_CONF.getCloseQPTaskBlockTimeout());
+//    RaftTaskManager.getInstance().close(true, CLUSTER_CONF.getCloseRaftTaskBlockTimeout());
+//    QPTaskManager.getInstance().close(true, CLUSTER_CONF.getCloseQPTaskBlockTimeout());
     iotdb.deactivate();
     CLIENT_MANAGER.shutdown();
     metadataHolder.stop();

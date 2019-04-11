@@ -347,8 +347,15 @@ public class ClusterConfig {
     return closeRaftTaskBlockTimeout;
   }
 
+  public void setCloseRaftTaskBlockTimeout(int closeRaftTaskBlockTimeout) {
+    this.closeRaftTaskBlockTimeout = closeRaftTaskBlockTimeout;
+  }
+
   public int getCloseQPTaskBlockTimeout() {
     return closeQPTaskBlockTimeout;
   }
 
+  public void setCloseQPTaskBlockTimeout(int closeQPTaskBlockTimeout) {
+    this.closeQPTaskBlockTimeout = closeQPTaskBlockTimeout;
+  }
 }

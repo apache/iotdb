@@ -37,25 +37,23 @@ public class RaftTaskManager {
   private int threadCnt;
 
   private RaftTaskManager() {
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    this.threadCnt = config.getConcurrentRaftTaskThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.RAFT_TASK.getName());
+   init();
   }
 
   public static RaftTaskManager getInstance() {
     return RaftTaskManager.InstanceHolder.instance;
   }
 
-  /**
-   * @throws ProcessorException if the pool is not terminated.
-   */
-  public void reopen() throws ProcessorException {
-    if (!pool.isTerminated()) {
-      throw new ProcessorException("Raft task Pool is not terminated!");
+  private void checkInit(){
+    if(pool == null){
+      init();
     }
+  }
+
+  private void init(){
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    this.threadCnt = config.getConcurrentRaftTaskThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.RAFT_TASK.getName());
+    this.threadCnt = config.getConcurrentQPTaskThread();
+    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QP_TASK.getName());
   }
 
   /**
@@ -67,22 +65,29 @@ public class RaftTaskManager {
    * @throws ProcessorException if timeOut is reached or being interrupted while waiting to exit.
    */
   public void close(boolean block, long timeOut) throws ProcessorException {
-    pool.shutdown();
-    if (block) {
+    if(pool != null) {
       try {
-        if (!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS)) {
-          throw new ProcessorException(
-              "Raft task thread pool doesn't exit after " + timeOut + " ms");
+        pool.shutdown();
+        if (block) {
+          try {
+            if (!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS)) {
+              throw new ProcessorException(
+                  "Raft task thread pool doesn't exit after " + timeOut + " ms");
+            }
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ProcessorException(
+                "Interrupted while waiting raft task thread pool to exit.", e);
+          }
         }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new ProcessorException(
-            "Interrupted while waiting raft task thread pool to exit.", e);
+      } finally {
+        pool = null;
       }
     }
   }
 
   public void execute(Runnable task) {
+    checkInit();
     pool.execute(task);
   }
 

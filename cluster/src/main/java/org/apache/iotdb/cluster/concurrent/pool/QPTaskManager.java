@@ -37,25 +37,24 @@ public class QPTaskManager {
   private int threadCnt;
 
   private QPTaskManager() {
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    this.threadCnt = config.getConcurrentQPTaskThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QP_TASK.getName());
+    init();
   }
 
   public static QPTaskManager getInstance() {
     return QPTaskManager.InstanceHolder.instance;
   }
 
-  /**
-   * @throws ProcessorException if the pool is not terminated.
-   */
-  public void reopen() throws ProcessorException {
-    if (!pool.isTerminated()) {
-      throw new ProcessorException("QP task Pool is not terminated!");
+  private void checkInit(){
+    if(pool == null){
+      init();
     }
+  }
+
+  private void init(){
+
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     this.threadCnt = config.getConcurrentQPTaskThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.RAFT_TASK.getName());
+    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QP_TASK.getName());
   }
 
   /**
@@ -67,22 +66,29 @@ public class QPTaskManager {
    * @throws ProcessorException if timeOut is reached or being interrupted while waiting to exit.
    */
   public void close(boolean block, long timeOut) throws ProcessorException {
-    pool.shutdown();
-    if (block) {
+    if(pool != null) {
       try {
-        if (!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS)) {
-          throw new ProcessorException(
-              "QPTask thread pool doesn't exit after " + timeOut + " ms");
+        pool.shutdown();
+        if (block) {
+          try {
+            if (!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS)) {
+              throw new ProcessorException(
+                  "QPTask thread pool doesn't exit after " + timeOut + " ms");
+            }
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ProcessorException(
+                "Interrupted while waiting QPTask thread pool to exit.", e);
+          }
         }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new ProcessorException(
-            "Interrupted while waiting QPTask thread pool to exit.", e);
+      } finally {
+        pool = null;
       }
     }
   }
 
   public Future<?> submit(Runnable task) {
+    checkInit();
     return pool.submit(task);
   }
 
