@@ -139,6 +139,7 @@ public class ClusterConfig {
 
   /**
    * Max time of blocking main thread for waiting for all RUNNING RAFT TASK THREADS AND TASKS IN THE QUEUE end.
+   * For raft tasks, due to consistency is need to be guaranteed, it must ensure that raft tasks finish.
    */
   private int closeRaftTaskBlockTimeout = Integer.MAX_VALUE;
 
