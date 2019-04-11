@@ -55,11 +55,6 @@ public class DataStateMachine extends StateMachineAdapter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataStateMachine.class);
 
   /**
-   * Server instance
-   */
-  private Server server = Server.getInstance();
-
-  /**
    * QP executor to apply task
    */
   private OverflowQPExecutor qpExecutor = new OverflowQPExecutor();

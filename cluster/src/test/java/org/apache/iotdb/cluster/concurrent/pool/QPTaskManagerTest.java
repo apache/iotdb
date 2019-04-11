@@ -79,9 +79,10 @@ public class QPTaskManagerTest {
       new Thread(changeMark).start();
       qpTaskManager.close(true, blockTimeOut * 3);
     } catch (ProcessorException e) {
-      assert false;
+      e.printStackTrace();
     }
 
+    Thread.sleep(blockTimeOut * 2);
     mark = true;
 
     for (int i = 1; i <= threadCnt + 10; i++) {
