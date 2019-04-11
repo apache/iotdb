@@ -81,6 +81,7 @@ import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_Status;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
@@ -308,14 +309,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         Metadata metadata;
         try {
           String column = req.getColumnPath();
-          metadata = MManager.getInstance().getMetadata();
+          metadata = getMetadata();
           Map<String, List<String>> deviceMap = metadata.getDeviceMap();
           if (deviceMap == null || !deviceMap.containsKey(column)) {
             resp.setColumnsList(new ArrayList<>());
           } else {
             resp.setColumnsList(deviceMap.get(column));
           }
-        } catch (PathErrorException e) {
+        } catch (PathErrorException | InterruptedException | ProcessorException e) {
           LOGGER.error("cannot get delta object map", e);
           status = getErrorStatus(String.format("Failed to fetch delta object map because: %s", e));
           resp.setStatus(status);
@@ -330,8 +331,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         break;
       case "COLUMN":
         try {
-          resp.setDataType(MManager.getInstance().getSeriesType(req.getColumnPath()).toString());
-        } catch (PathErrorException e) {
+          resp.setDataType(getSeriesType(req.getColumnPath()).toString());
+        } catch (PathErrorException | InterruptedException | ProcessorException e) {
           // TODO aggregate seriesPath e.g. last(root.ln.wf01.wt01.status)
           // status = new TS_Status(TS_StatusCode.ERROR_STATUS);
           // status.setErrorMessage(String.format("Failed to fetch %s's data type because: %s",
@@ -343,8 +344,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         break;
       case "ALL_COLUMNS":
         try {
-          resp.setColumnsList(MManager.getInstance().getPaths(req.getColumnPath()));
-        } catch (PathErrorException e) {
+          resp.setColumnsList(getPaths(req.getColumnPath()));
+        } catch (PathErrorException | InterruptedException | ProcessorException e) {
           status = getErrorStatus(String
               .format("Failed to fetch %s's all columns because: %s", req.getColumnPath(), e));
           resp.setStatus(status);
@@ -380,6 +381,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected String getMetadataInString()
       throws InterruptedException, PathErrorException, ProcessorException {
     return MManager.getInstance().getMetadataInString();
+  }
+
+  protected Metadata getMetadata() throws PathErrorException, InterruptedException, ProcessorException {
+    return MManager.getInstance().getMetadata();
+  }
+
+  protected TSDataType getSeriesType(String path) throws PathErrorException, InterruptedException, ProcessorException {
+    return MManager.getInstance().getSeriesType(path);
+  }
+
+  protected List<String> getPaths(String path) throws PathErrorException, InterruptedException, ProcessorException {
+    return MManager.getInstance().getPaths(path);
   }
 
   /**

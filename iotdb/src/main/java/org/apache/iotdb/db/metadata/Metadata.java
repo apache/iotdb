@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -65,6 +68,57 @@ public class Metadata {
 
   public Map<String, List<String>> getDeviceMap() {
     return deviceIdMap;
+  }
+
+  /**
+   * combine multiple metadatas
+   */
+  public static Metadata combineMetadatas(Metadata[] metadatas) {
+    Map<String, List<MeasurementSchema>> seriesMap = new HashMap<>();
+    Map<String, List<String>> deviceIdMap = new HashMap<>();
+    Map<String, Map<String, MeasurementSchema>> typeSchemaMap = new HashMap<>();
+
+    if (metadatas == null || metadatas.length == 0) {
+      return new Metadata(seriesMap, deviceIdMap);
+    }
+
+    for (int i = 0; i < metadatas.length; i++) {
+      Map<String, List<MeasurementSchema>> subSeriesMap = metadatas[i].seriesMap;
+      for (Entry<String, List<MeasurementSchema>> entry : subSeriesMap.entrySet()) {
+        Map<String, MeasurementSchema> map;
+        if (typeSchemaMap.containsKey(entry.getKey())) {
+          map = typeSchemaMap.get(entry.getKey());
+        } else {
+          map = new HashMap<>();
+        }
+        entry.getValue().forEach(schema -> map.put(schema.getMeasurementId(), schema));
+        if (!typeSchemaMap.containsKey(entry.getKey())) {
+          typeSchemaMap.put(entry.getKey(), map);
+        }
+      }
+
+      Map<String, List<String>> subDeviceIdMap = metadatas[i].deviceIdMap;
+      for (Entry<String, List<String>> entry : subDeviceIdMap.entrySet()) {
+        List<String> list;
+        if (deviceIdMap.containsKey(entry.getKey())) {
+          list = deviceIdMap.get(entry.getKey());
+        } else {
+          list = new ArrayList<>();
+        }
+        list.addAll(entry.getValue());
+        if (!deviceIdMap.containsKey(entry.getKey())) {
+          deviceIdMap.put(entry.getKey(), list);
+        }
+      }
+    }
+
+    for (Entry<String, Map<String, MeasurementSchema>> entry : typeSchemaMap.entrySet()) {
+      List<MeasurementSchema> list = new ArrayList<>();
+      list.addAll(entry.getValue().values());
+      seriesMap.put(entry.getKey(), list);
+    }
+
+    return new Metadata(seriesMap, deviceIdMap);
   }
 
   @Override

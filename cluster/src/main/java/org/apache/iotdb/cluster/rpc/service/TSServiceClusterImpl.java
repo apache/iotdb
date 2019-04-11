@@ -34,11 +34,14 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -242,6 +245,23 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   protected String getMetadataInString()
       throws InterruptedException, ProcessorException {
     return queryMetadataExecutor.get().processMetadataInStringQuery();
+  }
+
+  @Override
+  protected Metadata getMetadata()
+      throws InterruptedException, ProcessorException, PathErrorException {
+    return queryMetadataExecutor.get().processMetadataQuery();
+  }
+
+  @Override
+  protected TSDataType getSeriesType(String path) throws PathErrorException, InterruptedException, ProcessorException {
+    return queryMetadataExecutor.get().processSeriesTypeQuery(path);
+  }
+
+  @Override
+  protected List<String> getPaths(String path)
+      throws PathErrorException, InterruptedException, ProcessorException {
+    return queryMetadataExecutor.get().processPathsQuery(path);
   }
 
   @OnlyForTest
