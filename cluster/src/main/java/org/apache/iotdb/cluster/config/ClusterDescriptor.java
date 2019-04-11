@@ -169,7 +169,7 @@ public class ClusterDescriptor {
       conf.setCloseRaftTaskBlockTimeout(Integer
           .parseInt(properties.getProperty("close_raft_task_block_timeout",
               Integer.toString(conf.getCloseRaftTaskBlockTimeout()))));
-      if (conf.getConcurrentRaftTaskThread() <= 0) {
+      if (conf.getCloseRaftTaskBlockTimeout() <= 0) {
         conf.setCloseRaftTaskBlockTimeout(Integer.MAX_VALUE);
       }
 
