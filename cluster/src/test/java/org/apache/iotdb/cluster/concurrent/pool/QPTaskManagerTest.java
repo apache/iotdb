@@ -64,7 +64,7 @@ public class QPTaskManagerTest {
   @Test
   public void testSubmitAndClose() throws InterruptedException {
 
-    assertEquals(clusterConfig.getConcurrentQPTaskThread(), qpTaskManager.getThreadCnt());
+    assertEquals(clusterConfig.getConcurrentQPSubTaskThread(), qpTaskManager.getThreadCnt());
 
     int threadCnt = qpTaskManager.getThreadCnt();
     // test thread num
@@ -77,9 +77,9 @@ public class QPTaskManagerTest {
     // test close
     try {
       new Thread(changeMark).start();
-      qpTaskManager.close(true, blockTimeOut * 3);
+      qpTaskManager.close(true, blockTimeOut);
     } catch (ProcessorException e) {
-      e.printStackTrace();
+      assertEquals("QPTask thread pool doesn't exit after 10 ms", e.getMessage());
     }
 
     Thread.sleep(blockTimeOut * 2);

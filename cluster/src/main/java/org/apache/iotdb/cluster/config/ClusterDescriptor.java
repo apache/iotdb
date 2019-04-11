@@ -152,18 +152,32 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("read_data_consistency_level",
               Integer.toString(conf.getReadDataConsistencyLevel()))));
 
-      conf.setConcurrentQPTaskThread(Integer
-          .parseInt(properties.getProperty("concurrent_qp_task_thread",
-              Integer.toString(conf.getConcurrentQPTaskThread()))));
-      if (conf.getConcurrentQPTaskThread() <= 0) {
-        conf.setConcurrentQPTaskThread(Runtime.getRuntime().availableProcessors());
+      conf.setConcurrentQPSubTaskThread(Integer
+          .parseInt(properties.getProperty("concurrent_qp_sub_task_thread",
+              Integer.toString(conf.getConcurrentQPSubTaskThread()))));
+      if (conf.getConcurrentQPSubTaskThread() <= 0) {
+        conf.setConcurrentQPSubTaskThread(Runtime.getRuntime().availableProcessors());
       }
 
       conf.setConcurrentRaftTaskThread(Integer
           .parseInt(properties.getProperty("concurrent_raft_task_thread",
-              Integer.toString(conf.getConcurrentQPTaskThread()))));
+              Integer.toString(conf.getConcurrentQPSubTaskThread()))));
       if (conf.getConcurrentRaftTaskThread() <= 0) {
         conf.setConcurrentRaftTaskThread(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setCloseRaftTaskBlockTimeout(Integer
+          .parseInt(properties.getProperty("close_raft_task_block_timeout",
+              Integer.toString(conf.getCloseRaftTaskBlockTimeout()))));
+      if (conf.getConcurrentRaftTaskThread() <= 0) {
+        conf.setCloseRaftTaskBlockTimeout(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setCloseQPSubTaskBlockTimeout(Integer
+          .parseInt(properties.getProperty("close_qp_sub_task_block_timeout",
+              Integer.toString(conf.getCloseQPSubTaskBlockTimeout()))));
+      if (conf.getCloseQPSubTaskBlockTimeout() <= 0) {
+        conf.setCloseQPSubTaskBlockTimeout(Runtime.getRuntime().availableProcessors()*10);
       }
 
     } catch (IOException e) {

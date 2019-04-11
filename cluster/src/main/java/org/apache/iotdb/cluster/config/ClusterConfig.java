@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.config;
 
+import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
@@ -26,8 +27,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.alipay.sofa.jraft.util.OnlyForTest;
 
 public class ClusterConfig {
 
@@ -70,9 +69,8 @@ public class ClusterConfig {
   private String raftMetadataPath;
 
   /**
-   * A follower would become a candidate if it doesn't receive any message
-   * from the leader in {@code electionTimeoutMs} milliseconds
-   * Default: 1000 (1s)
+   * A follower would become a candidate if it doesn't receive any message from the leader in {@code
+   * electionTimeoutMs} milliseconds Default: 1000 (1s)
    */
   private int electionTimeoutMs = 1000;
 
@@ -112,8 +110,8 @@ public class ClusterConfig {
   private int maxNumOfInnerRpcClient = 500;
 
   /**
-   * Max number of queue length to use @NodeAsClient, the request which exceed to this
-   * number will be rejected.
+   * Max number of queue length to use @NodeAsClient, the request which exceed to this number will
+   * be rejected.
    */
   private int maxQueueNumOfInnerRpcClient = 500;
 
@@ -128,25 +126,32 @@ public class ClusterConfig {
   private int readDataConsistencyLevel = 1;
 
   /**
-   * How many threads can concurrently execute qp task. When <= 0, use CPU core number.
+   * Max num of threads can concurrently execute qp sub-tasks of all client requests. When <= 0, use
+   * CPU core number * 10. Each client request corresponds to a QP Task. A QP task may be divided
+   * into several sub-tasks.
    */
-  private int concurrentQPTaskThread = Runtime.getRuntime().availableProcessors();
+  private int concurrentQPSubTaskThread = Runtime.getRuntime().availableProcessors() * 10;
 
   /**
-   * How many threads can concurrently apply raft task. When <= 0, use CPU core number.
+   * Max num of threads can concurrently apply tasks in data partition state machine. When <= 0, use
+   * CPU core number.Raft Task refers to tasks that need to be performed in the state machine.
    */
-  private int concurrentRaftTaskThread = Runtime.getRuntime().availableProcessors() * 10;
+  private int concurrentRaftTaskThread = Runtime.getRuntime().availableProcessors();
 
   /**
-   * Max time of blocking main thread for waiting for all RUNNING RAFT TASK THREADS AND TASKS IN THE QUEUE end.
-   * For raft tasks, due to consistency is need to be guaranteed, it must ensure that raft tasks finish.
+   * Max time of blocking main thread for waiting for all running task threads and tasks in the
+   * queue until end. Raft Task refers to tasks that need to be performed in the state machine.The
+   * unit is milliseconds. Due to guarantee data consistency, it must ensure that tasks finish. If
+   * user sets the parameter, it will not sure to guarantee consistency.
    */
   private int closeRaftTaskBlockTimeout = Integer.MAX_VALUE;
 
   /**
-   * Max time of blocking main thread for waiting for all RUNNING QP TASK THREADS AND TASKS IN THE QUEUE end.
+   * Max time of blocking main thread for waiting for all running task threads and tasks in the
+   * queue until end. Each client request corresponds to a QP Task. A QP task may be divided into
+   * several sub-tasks.The unit is milliseconds.
    */
-  private int closeQPTaskBlockTimeout = 1;
+  private int closeQPSubTaskBlockTimeout = 1000;
 
   public ClusterConfig() {
     // empty constructor
@@ -327,12 +332,12 @@ public class ClusterConfig {
     this.readDataConsistencyLevel = readDataConsistencyLevel;
   }
 
-  public int getConcurrentQPTaskThread() {
-    return concurrentQPTaskThread;
+  public int getConcurrentQPSubTaskThread() {
+    return concurrentQPSubTaskThread;
   }
 
-  public void setConcurrentQPTaskThread(int concurrentQPTaskThread) {
-    this.concurrentQPTaskThread = concurrentQPTaskThread;
+  public void setConcurrentQPSubTaskThread(int concurrentQPSubTaskThread) {
+    this.concurrentQPSubTaskThread = concurrentQPSubTaskThread;
   }
 
   public int getConcurrentRaftTaskThread() {
@@ -351,11 +356,11 @@ public class ClusterConfig {
     this.closeRaftTaskBlockTimeout = closeRaftTaskBlockTimeout;
   }
 
-  public int getCloseQPTaskBlockTimeout() {
-    return closeQPTaskBlockTimeout;
+  public int getCloseQPSubTaskBlockTimeout() {
+    return closeQPSubTaskBlockTimeout;
   }
 
-  public void setCloseQPTaskBlockTimeout(int closeQPTaskBlockTimeout) {
-    this.closeQPTaskBlockTimeout = closeQPTaskBlockTimeout;
+  public void setCloseQPSubTaskBlockTimeout(int closeQPSubTaskBlockTimeout) {
+    this.closeQPSubTaskBlockTimeout = closeQPSubTaskBlockTimeout;
   }
 }

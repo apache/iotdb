@@ -41,7 +41,7 @@ public abstract class MultiQPTask extends QPTask {
   @Override
   public void shutdown() {
     for (Future<?> task : taskThreadMap.values()) {
-      if (task.isDone()) {
+      if (!task.isDone()) {
         task.cancel(true);
       }
     }

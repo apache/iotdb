@@ -18,85 +18,39 @@
  */
 package org.apache.iotdb.cluster.concurrent.pool;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.concurrent.ThreadName;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.exception.ProcessorException;
 
 /**
  * Manage all raft tasks which are applied to data state machine in thread.
  */
-public class RaftTaskManager {
+public class RaftTaskManager extends ThreadPoolManager{
 
-
-  private ExecutorService pool;
-  private int threadCnt;
+  private static final String managerName = "raft task manager";
 
   private RaftTaskManager() {
-   init();
+    init();
   }
 
   public static RaftTaskManager getInstance() {
     return RaftTaskManager.InstanceHolder.instance;
   }
 
-  private void checkInit(){
-    if(pool == null){
-      init();
-    }
-  }
-
-  private void init(){
+  @Override
+  public void init() {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    this.threadCnt = config.getConcurrentQPTaskThread();
+    int threadCnt = config.getConcurrentQPSubTaskThread();
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QP_TASK.getName());
   }
 
   /**
-   * Block new raft submits and exit when all RUNNING THREADS AND TASKS IN THE QUEUE end.
-   *
-   * @param block if set to true, this method will wait for timeOut milliseconds. false, return
-   * directly. False, return directly.
-   * @param timeOut block time out in milliseconds.
-   * @throws ProcessorException if timeOut is reached or being interrupted while waiting to exit.
+   * Name of Pool Manager
    */
-  public void close(boolean block, long timeOut) throws ProcessorException {
-    if(pool != null) {
-      try {
-        pool.shutdown();
-        if (block) {
-          try {
-            if (!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS)) {
-              throw new ProcessorException(
-                  "Raft task thread pool doesn't exit after " + timeOut + " ms");
-            }
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new ProcessorException(
-                "Interrupted while waiting raft task thread pool to exit.", e);
-          }
-        }
-      } finally {
-        pool = null;
-      }
-    }
-  }
-
-  public void execute(Runnable task) {
-    checkInit();
-    pool.execute(task);
-  }
-
-  public int getActiveCnt() {
-    return ((ThreadPoolExecutor) pool).getActiveCount();
-  }
-
-  public int getThreadCnt() {
-    return threadCnt;
+  @Override
+  public String getManagerName() {
+    return managerName;
   }
 
   private static class InstanceHolder {
