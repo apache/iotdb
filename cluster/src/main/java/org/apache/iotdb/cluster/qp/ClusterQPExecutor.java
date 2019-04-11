@@ -73,7 +73,7 @@ public abstract class ClusterQPExecutor {
   /**
    * Count limit to redo a single task
    */
-  private static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getTaskRedoCount();
+  private static final int TASK_MAX_RETRY = CLUSTER_CONFIG.getQpTaskRedoCount();
 
   /**
    * ReadMetadataConsistencyLevel: 1 Strong consistency, 2 Weak consistency

@@ -40,8 +40,8 @@ public class ClusterConfigureGenerator {
       put("max_catch_up_log_num", config.getMaxCatchUpLogNum() + "");
       put("delay_snapshot", config.isDelaySnapshot() + "");
       put("delay_hours", config.getDelayHours() + "");
-      put("task_redo_count", config.getTaskRedoCount() + "");
-      put("task_timeout_ms", config.getTaskTimeoutMs() + "");
+      put("task_redo_count", config.getQpTaskRedoCount() + "");
+      put("task_timeout_ms", config.getQpTaskTimeout() + "");
       put("num_of_virtual_nodes", config.getNumOfVirtualNodes() + "");
       put("max_num_of_inner_rpc_client", config.getMaxNumOfInnerRpcClient() + "");
       put("max_queue_num_of_inner_rpc_client", config.getMaxQueueNumOfInnerRpcClient() + "");

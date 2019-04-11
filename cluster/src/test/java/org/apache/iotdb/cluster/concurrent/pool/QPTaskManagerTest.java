@@ -81,21 +81,5 @@ public class QPTaskManagerTest {
     } catch (ProcessorException e) {
       assertEquals("qp task manager thread pool doesn't exit after 10 ms", e.getMessage());
     }
-
-    Thread.sleep(blockTimeOut * 2);
-    mark = true;
-
-    for (int i = 1; i <= threadCnt + 10; i++) {
-      qpTaskManager.submit(testRunnable);
-      Thread.sleep(10);
-      assertEquals(Math.min(i, threadCnt), qpTaskManager.getActiveCnt());
-    }
-
-    try {
-      new Thread(changeMark).start();
-      qpTaskManager.close(true, blockTimeOut / 10);
-    } catch (ProcessorException e) {
-      assertEquals("qp task manager thread pool doesn't exit after 1 ms", e.getMessage());
-    }
   }
 }

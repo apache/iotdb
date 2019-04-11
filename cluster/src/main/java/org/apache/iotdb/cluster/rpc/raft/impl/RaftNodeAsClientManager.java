@@ -48,7 +48,7 @@ public class RaftNodeAsClientManager {
   /**
    * Timeout limit for a task, the unit is milliseconds
    */
-  private static final int TASK_TIMEOUT_MS = CLUSTER_CONFIG.getTaskTimeoutMs();
+  private static final int TASK_TIMEOUT_MS = CLUSTER_CONFIG.getQpTaskTimeout();
 
   /**
    * Max valid number of @NodeAsClient usage, represent the number can run simultaneously at the

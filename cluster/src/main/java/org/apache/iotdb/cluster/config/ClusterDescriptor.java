@@ -124,13 +124,13 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("delay_hours",
               Integer.toString(conf.getDelayHours()))));
 
-      conf.setTaskRedoCount(Integer
-          .parseInt(properties.getProperty("task_redo_count",
-              Integer.toString(conf.getTaskRedoCount()))));
+      conf.setQpTaskRedoCount(Integer
+          .parseInt(properties.getProperty("qp_task_redo_count",
+              Integer.toString(conf.getQpTaskRedoCount()))));
 
-      conf.setTaskTimeoutMs(Integer
-          .parseInt(properties.getProperty("task_timeout_ms",
-              Integer.toString(conf.getTaskTimeoutMs()))));
+      conf.setQpTaskTimeout(Integer
+          .parseInt(properties.getProperty("qp_task_timeout_ms",
+              Integer.toString(conf.getQpTaskTimeout()))));
 
       conf.setNumOfVirtualNodes(Integer
           .parseInt(properties.getProperty("num_of_virtual_nodes",
@@ -156,7 +156,7 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("concurrent_qp_sub_task_thread",
               Integer.toString(conf.getConcurrentQPSubTaskThread()))));
       if (conf.getConcurrentQPSubTaskThread() <= 0) {
-        conf.setConcurrentQPSubTaskThread(Runtime.getRuntime().availableProcessors());
+        conf.setConcurrentQPSubTaskThread(Runtime.getRuntime().availableProcessors() * 10);
       }
 
       conf.setConcurrentRaftTaskThread(Integer
@@ -170,14 +170,14 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("close_raft_task_block_timeout",
               Integer.toString(conf.getCloseRaftTaskBlockTimeout()))));
       if (conf.getConcurrentRaftTaskThread() <= 0) {
-        conf.setCloseRaftTaskBlockTimeout(Runtime.getRuntime().availableProcessors());
+        conf.setCloseRaftTaskBlockTimeout(Integer.MAX_VALUE);
       }
 
       conf.setCloseQPSubTaskBlockTimeout(Integer
           .parseInt(properties.getProperty("close_qp_sub_task_block_timeout",
               Integer.toString(conf.getCloseQPSubTaskBlockTimeout()))));
       if (conf.getCloseQPSubTaskBlockTimeout() <= 0) {
-        conf.setCloseQPSubTaskBlockTimeout(Runtime.getRuntime().availableProcessors()*10);
+        conf.setCloseQPSubTaskBlockTimeout(1000);
       }
 
     } catch (IOException e) {
