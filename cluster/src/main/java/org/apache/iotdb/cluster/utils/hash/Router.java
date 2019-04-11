@@ -85,7 +85,7 @@ public class Router {
   /**
    * Change this method to public for test, you should not invoke this method explicitly.
    */
-  void init() {
+  public void init() {
     reset();
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     String[] hosts = config.getNodes();

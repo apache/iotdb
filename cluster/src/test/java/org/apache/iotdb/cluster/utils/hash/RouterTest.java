@@ -28,25 +28,25 @@ import org.junit.Test;
 
 public class RouterTest {
 
-  ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-  String[] ipListOld;
-  int replicatorOld;
-  int numOfVirtulaNodesOld;
-  HashFunction function = new MD5Hash();
-  final int PORT = 7777;
+  private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  private String[] ipListOld;
+  private int replicatorOld;
+  private int numOfVirtualNodesOld;
+//  private HashFunction function = new MD5Hash();
+  private final int PORT = 7777;
 
   @Before
   public void setUp() throws Exception {
     ipListOld = config.getNodes();
     replicatorOld = config.getReplication();
-    numOfVirtulaNodesOld = config.getNumOfVirtualNodes();
+    numOfVirtualNodesOld = config.getNumOfVirtualNodes();
   }
 
   @After
   public void tearDown() throws Exception {
     config.setNodes(ipListOld);
     config.setReplication(replicatorOld);
-    config.setNumOfVirtualNodes(numOfVirtulaNodesOld);
+    config.setNumOfVirtualNodes(numOfVirtualNodesOld);
   }
 
   @Test

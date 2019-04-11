@@ -26,6 +26,8 @@ import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.entity.Task;
 import com.alipay.sofa.jraft.util.Bits;
+import com.alipay.sofa.jraft.util.OnlyForTest;
+
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -83,6 +85,10 @@ public class RaftUtils {
    * Get random peer id
    */
   public static PeerId getRandomPeerID(String groupId) {
+    return getRandomPeerID(groupId, server, router);
+  }
+
+  public static PeerId getRandomPeerID(String groupId, Server server, Router router) {
     PeerId randomPeerId;
     if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
       RaftService service = (RaftService) server.getMetadataHolder().getService();
@@ -122,6 +128,7 @@ public class RaftUtils {
     return peerIds;
   }
 
+  @Deprecated
   public static int getIndexOfIpFromRaftNodeList(String ip, PeerId[] peerIds) {
     for (int i = 0; i < peerIds.length; i++) {
       if (peerIds[i].getIp().equals(ip)) {
@@ -134,7 +141,7 @@ public class RaftUtils {
   public static PhysicalNode[] getPhysicalNodeArrayFrom(PeerId[] peerIds) {
     PhysicalNode[] physicalNodes = new PhysicalNode[peerIds.length];
     for (int i = 0; i < peerIds.length; i++) {
-      physicalNodes[i] = new PhysicalNode(peerIds[i].getIp(), peerIds[i].getPort());
+      physicalNodes[i] = getPhysicalNodeFrom(peerIds[i]);
     }
     return physicalNodes;
   }
@@ -156,6 +163,11 @@ public class RaftUtils {
   public static void updateRaftGroupLeader(String groupId, PeerId peerId) {
     groupLeaderCache.put(groupId, peerId);
     LOGGER.info("group leader cache:{}", groupLeaderCache);
+  }
+
+  @OnlyForTest
+  public static void clearRaftGroupLeader() {
+	  groupLeaderCache.clear();
   }
 
   /**
@@ -255,6 +267,11 @@ public class RaftUtils {
    */
   public static void handleNullReadToMetaGroup(Status status) {
     SingleQPTask nullReadTask = new SingleQPTask(false, null);
+    handleNullReadToMetaGroup(status, server, nullReadTask);
+  }
+
+  public static void handleNullReadToMetaGroup(Status status, Server server,
+      SingleQPTask nullReadTask) {
     try {
       LOGGER.debug("Handle null-read in meta group for adding path request.");
       final byte[] reqContext = RaftUtils.createRaftRequestContext();
