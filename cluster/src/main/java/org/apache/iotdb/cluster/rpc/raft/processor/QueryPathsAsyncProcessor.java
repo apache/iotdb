@@ -39,19 +39,22 @@ public class QueryPathsAsyncProcessor extends BasicAsyncUserProcessor<QueryPaths
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       QueryPathsRequest request) {
     String groupId = request.getGroupID();
-    final byte[] reqContext = RaftUtils.createRaftRequestContext();
-    DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryPathsResponse response = QueryPathsResponse
           .createEmptyResponse(groupId);
       try {
         queryPaths(request, response);
+        response.addResult(true);
       } catch (final PathErrorException e) {
         response = QueryPathsResponse.createErrorResponse(groupId, e.getMessage());
+        response.addResult(false);
       }
       asyncContext.sendResponse(response);
     } else {
+      final byte[] reqContext = RaftUtils.createRaftRequestContext();
+      DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
+
       ((RaftService) dataPartitionHolder.getService()).getNode()
           .readIndex(reqContext, new ReadIndexClosure() {
 
@@ -62,12 +65,15 @@ public class QueryPathsAsyncProcessor extends BasicAsyncUserProcessor<QueryPaths
               if (status.isOk()) {
                 try {
                   queryPaths(request, response);
+                  response.addResult(true);
                 } catch (final PathErrorException e) {
                   response = QueryPathsResponse.createErrorResponse(groupId, e.getMessage());
+                  response.addResult(false);
                 }
               } else {
                 response = QueryPathsResponse
                     .createErrorResponse(groupId, status.getErrorMsg());
+                response.addResult(false);
               }
               asyncContext.sendResponse(response);
             }

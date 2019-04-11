@@ -39,18 +39,21 @@ public class QuerySeriesTypeAsyncProcessor extends BasicAsyncUserProcessor<Query
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       QuerySeriesTypeRequest request) {
     String groupId = request.getGroupID();
-    final byte[] reqContext = RaftUtils.createRaftRequestContext();
-    DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QuerySeriesTypeResponse response;
       try {
         response = QuerySeriesTypeResponse.createSuccessResponse(groupId, mManager.getSeriesType(request.getPath()));
+        response.addResult(true);
       } catch (final PathErrorException e) {
         response = QuerySeriesTypeResponse.createErrorResponse(groupId, e.getMessage());
+        response.addResult(false);
       }
       asyncContext.sendResponse(response);
     } else {
+      final byte[] reqContext = RaftUtils.createRaftRequestContext();
+      DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
+
       ((RaftService) dataPartitionHolder.getService()).getNode()
           .readIndex(reqContext, new ReadIndexClosure() {
 
@@ -60,12 +63,15 @@ public class QuerySeriesTypeAsyncProcessor extends BasicAsyncUserProcessor<Query
               if (status.isOk()) {
                 try {
                   response = QuerySeriesTypeResponse.createSuccessResponse(groupId, mManager.getSeriesType(request.getPath()));
+                  response.addResult(true);
                 } catch (final PathErrorException e) {
                   response = QuerySeriesTypeResponse.createErrorResponse(groupId, e.getMessage());
+                  response.addResult(false);
                 }
               } else {
                 response = QuerySeriesTypeResponse
                     .createErrorResponse(groupId, status.getErrorMsg());
+                response.addResult(false);
               }
               asyncContext.sendResponse(response);
             }

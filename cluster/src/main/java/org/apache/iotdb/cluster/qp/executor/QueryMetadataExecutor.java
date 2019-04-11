@@ -139,7 +139,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
         PeerId holder = RaftUtils.getRandomPeerID(groupId);
         res.addAll(queryTimeSeries(task, holder));
       } catch (RaftConnectionException e) {
-        LOGGER.error(e.getMessage());
         throw new ProcessorException("Raft connection occurs error.", e);
       }
     }
@@ -167,7 +166,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
           PeerId holder = RaftUtils.getRandomPeerID(groupId);
           asyncSendNonQueryTask(task, holder, 0);
         } catch (RaftConnectionException e) {
-          LOGGER.error(e.getMessage());
           throw new ProcessorException("Raft connection occurs error.", e);
         }
       }
@@ -177,7 +175,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       task.await();
       BasicResponse response = task.getResponse();
       if (response == null || !response.isSuccess()) {
-        LOGGER.error("Execute show timeseries statement false.");
         throw new ProcessorException();
       }
       metadataList.add(((QueryMetadataInStringResponse)response).getMetadata());
@@ -207,7 +204,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
           PeerId holder = RaftUtils.getRandomPeerID(groupId);
           asyncSendNonQueryTask(task, holder, 0);
         } catch (RaftConnectionException e) {
-          LOGGER.error(e.getMessage());
           throw new ProcessorException("Raft connection occurs error.", e);
         }
       }
@@ -217,8 +213,11 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       task.await();
       BasicResponse response = task.getResponse();
       if (response == null || !response.isSuccess()) {
-        LOGGER.error("Execute show timeseries statement false.");
-        throw new ProcessorException();
+        String errorMessage = "response is null";
+        if (response != null && response.getErrorMsg() != null) {
+          errorMessage = response.getErrorMsg();
+        }
+        throw new ProcessorException("Execute query metadata statement false because " + errorMessage);
       }
       metadatas[i] = ((QueryMetadataResponse)response).getMetadata();
     }
@@ -247,7 +246,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
           PeerId holder = RaftUtils.getRandomPeerID(groupId);
           dataType = querySeriesType(task, holder);
         } catch (RaftConnectionException e) {
-          LOGGER.error(e.getMessage());
           throw new ProcessorException("Raft connection occurs error.", e);
         }
       }
@@ -296,7 +294,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
         PeerId holder = RaftUtils.getRandomPeerID(groupId);
         res.addAll(queryPaths(task, holder));
       } catch (RaftConnectionException e) {
-        LOGGER.error(e.getMessage());
         throw new ProcessorException("Raft connection occurs error.", e);
       }
     }
@@ -353,8 +350,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     task.await();
     QueryTimeSeriesResponse response = (QueryTimeSeriesResponse) task.getResponse();
     if (response == null || !response.isSuccess()) {
-      LOGGER.error("Execute show timeseries {} statement false.", pathList);
-      throw new ProcessorException();
+      throw new ProcessorException("Execute show timeseries " + pathList + " statement false.");
     }
     return response.getTimeSeries();
   }
@@ -405,8 +401,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     task.await();
     QuerySeriesTypeResponse response = (QuerySeriesTypeResponse) task.getResponse();
     if (response == null || !response.isSuccess()) {
-      LOGGER.error("Execute get series type for {} statement false.", path);
-      throw new ProcessorException();
+      throw new ProcessorException("Execute get series type for " + path + " statement false.");
     }
     return response.getDataType();
   }

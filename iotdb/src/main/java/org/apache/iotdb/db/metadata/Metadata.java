@@ -20,9 +20,11 @@ package org.apache.iotdb.db.metadata;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -126,4 +128,66 @@ public class Metadata {
     return seriesMap.toString() + "\n" + deviceIdMap.toString();
   }
 
+  @Override
+  public boolean equals(Object obj) {
+    if(this == obj){
+      return true;
+    }
+    if(obj == null){
+      return false;
+    }
+    if(this.getClass() != obj.getClass()){
+      return false;
+    }
+
+    Metadata metadata = (Metadata) obj;
+    return seriesMapEquals(seriesMap, metadata.seriesMap) && deviceIdMapEquals(deviceIdMap, metadata.deviceIdMap);
+  }
+
+  /**
+   * only used to check if seriesMap is equal to another seriesMap
+   */
+  private boolean seriesMapEquals(Map<String, List<MeasurementSchema>> map1, Map<String, List<MeasurementSchema>> map2) {
+    if (!map1.keySet().equals(map2.keySet())) {
+      return false;
+    }
+
+    for (Entry<String, List<MeasurementSchema>> entry : map1.entrySet()) {
+      List list1 = entry.getValue();
+      List list2 = map2.get(entry.getKey());
+
+      if (!listEquals(list1, list2)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * only used to check if deviceIdMap is equal to another deviceIdMap
+   */
+  private boolean deviceIdMapEquals(Map<String, List<String>> map1, Map<String, List<String>> map2) {
+    if (!map1.keySet().equals(map2.keySet())) {
+      return false;
+    }
+
+    for (Entry<String, List<String>> entry : map1.entrySet()) {
+      List list1 = entry.getValue();
+      List list2 = map2.get(entry.getKey());
+
+      if (!listEquals(list1, list2)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean listEquals(List list1, List list2) {
+    Set set1 = new HashSet();
+    set1.addAll(list1);
+    Set set2 = new HashSet();
+    set2.addAll(list2);
+
+    return set1.equals(set2);
+  }
 }
