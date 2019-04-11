@@ -28,7 +28,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
  */
 public class RaftTaskManager extends ThreadPoolManager{
 
-  private static final String managerName = "raft task manager";
+  private static final String MANAGER_NAME = "raft task manager";
 
   private RaftTaskManager() {
     init();
@@ -50,7 +50,7 @@ public class RaftTaskManager extends ThreadPoolManager{
    */
   @Override
   public String getManagerName() {
-    return managerName;
+    return MANAGER_NAME;
   }
 
   private static class InstanceHolder {

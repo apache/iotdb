@@ -28,7 +28,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
  */
 public class QPTaskManager extends ThreadPoolManager {
 
-  private static final String managerName = "qp task manager";
+  private static final String MANAGER_NAME = "qp task manager";
 
   private QPTaskManager() {
     init();
@@ -51,7 +51,7 @@ public class QPTaskManager extends ThreadPoolManager {
    */
   @Override
   public String getManagerName() {
-    return managerName;
+    return MANAGER_NAME;
   }
 
   private static class InstanceHolder {
