@@ -79,7 +79,7 @@ public class QPTaskManagerTest {
       new Thread(changeMark).start();
       qpTaskManager.close(true, blockTimeOut);
     } catch (ProcessorException e) {
-      assertEquals("QPTask thread pool doesn't exit after 10 ms", e.getMessage());
+      assertEquals("qp task manager thread pool doesn't exit after 10 ms", e.getMessage());
     }
 
     Thread.sleep(blockTimeOut * 2);
@@ -95,7 +95,7 @@ public class QPTaskManagerTest {
       new Thread(changeMark).start();
       qpTaskManager.close(true, blockTimeOut / 10);
     } catch (ProcessorException e) {
-      assertEquals("QPTask thread pool doesn't exit after 1 ms", e.getMessage());
+      assertEquals("qp task manager thread pool doesn't exit after 1 ms", e.getMessage());
     }
   }
 }
