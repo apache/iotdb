@@ -19,11 +19,8 @@
 package org.apache.iotdb.cluster.concurrent;
 
 public enum ThreadName {
-  /**
-   * QP tash thread
-   */
   QP_TASK("QP-Task-Thread"),
-  Raft_TASK("JDBC-Client");
+  RAFT_TASK("Raft-Task-Thread");
 
   private String name;
 

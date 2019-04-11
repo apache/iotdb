@@ -55,7 +55,7 @@ public class QPTaskManager {
     }
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     this.threadCnt = config.getConcurrentQPTaskThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.Raft_TASK.getName());
+    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.RAFT_TASK.getName());
   }
 
   /**

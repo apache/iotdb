@@ -39,7 +39,7 @@ public class RaftTaskManager {
   private RaftTaskManager() {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     this.threadCnt = config.getConcurrentRaftTaskThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.Raft_TASK.getName());
+    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.RAFT_TASK.getName());
   }
 
   public static RaftTaskManager getInstance() {
@@ -55,7 +55,7 @@ public class RaftTaskManager {
     }
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     this.threadCnt = config.getConcurrentRaftTaskThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.Raft_TASK.getName());
+    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.RAFT_TASK.getName());
   }
 
   /**
