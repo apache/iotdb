@@ -127,6 +127,26 @@ public class ClusterConfig {
    */
   private int readDataConsistencyLevel = 1;
 
+  /**
+   * How many threads can concurrently execute qp task. When <= 0, use CPU core number.
+   */
+  private int concurrentQPTaskThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * How many threads can concurrently apply raft task. When <= 0, use CPU core number.
+   */
+  private int concurrentRaftTaskThread = Runtime.getRuntime().availableProcessors() * 10;
+
+  /**
+   * Max time of blocking main thread for waiting for all RUNNING RAFT TASK THREADS AND TASKS IN THE QUEUE end.
+   */
+  private int closeRaftTaskBlockTimeout = Integer.MAX_VALUE;
+
+  /**
+   * Max time of blocking main thread for waiting for all RUNNING QP TASK THREADS AND TASKS IN THE QUEUE end.
+   */
+  private int closeQPTaskBlockTimeout = 1;
+
   public ClusterConfig() {
     // empty constructor
   }
@@ -305,4 +325,29 @@ public class ClusterConfig {
   public void setReadDataConsistencyLevel(int readDataConsistencyLevel) {
     this.readDataConsistencyLevel = readDataConsistencyLevel;
   }
+
+  public int getConcurrentQPTaskThread() {
+    return concurrentQPTaskThread;
+  }
+
+  public void setConcurrentQPTaskThread(int concurrentQPTaskThread) {
+    this.concurrentQPTaskThread = concurrentQPTaskThread;
+  }
+
+  public int getConcurrentRaftTaskThread() {
+    return concurrentRaftTaskThread;
+  }
+
+  public void setConcurrentRaftTaskThread(int concurrentRaftTaskThread) {
+    this.concurrentRaftTaskThread = concurrentRaftTaskThread;
+  }
+
+  public int getCloseRaftTaskBlockTimeout() {
+    return closeRaftTaskBlockTimeout;
+  }
+
+  public int getCloseQPTaskBlockTimeout() {
+    return closeQPTaskBlockTimeout;
+  }
+
 }

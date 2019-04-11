@@ -152,6 +152,20 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("read_data_consistency_level",
               Integer.toString(conf.getReadDataConsistencyLevel()))));
 
+      conf.setConcurrentQPTaskThread(Integer
+          .parseInt(properties.getProperty("concurrent_qp_task_thread",
+              Integer.toString(conf.getConcurrentQPTaskThread()))));
+      if (conf.getConcurrentQPTaskThread() <= 0) {
+        conf.setConcurrentQPTaskThread(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setConcurrentRaftTaskThread(Integer
+          .parseInt(properties.getProperty("concurrent_raft_task_thread",
+              Integer.toString(conf.getConcurrentQPTaskThread()))));
+      if (conf.getConcurrentRaftTaskThread() <= 0) {
+        conf.setConcurrentRaftTaskThread(Runtime.getRuntime().availableProcessors());
+      }
+
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {
