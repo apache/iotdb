@@ -44,7 +44,7 @@ public abstract class ThreadPoolManager {
    * Block new submits and exit when all RUNNING THREADS AND TASKS IN THE QUEUE end.
    *
    * @param block if set to true, this method will wait for timeOut milliseconds. false, return
-   * directly. False, return directly.
+   * directly.
    * @param timeOut block time out in milliseconds.
    * @throws ProcessorException if timeOut is reached or being interrupted while waiting to exit.
    */
