@@ -56,6 +56,8 @@ public class ClusterDescriptorTest {
   private String testQueueLenNew = "300000";
   private String testMetadataConsistencyNew = "2";
   private String testDataConsistencyNew = "4";
+  private String testConcurrentQPTaskThreadNew = "6";
+  private String testConcurrentRaftTaskThreadNew = "11";
 
   private String[] testNodesOld;
   private int testReplicationOld;
@@ -75,6 +77,8 @@ public class ClusterDescriptorTest {
   private int testQueueLenOld;
   private int testMetadataConsistencyOld;
   private int testDataConsistencyOld;
+  private int testConcurrentQPTaskThreadOld;
+  private int testConcurrentRaftTaskThreadOld;
   private Map<String, String> testConfigMap = new HashMap<String, String>() {
     private static final long serialVersionUID = 7832408957178621132L;
 
@@ -97,6 +101,8 @@ public class ClusterDescriptorTest {
       put("max_queue_num_of_inner_rpc_client", testQueueLenNew);
       put("read_metadata_consistency_level", testMetadataConsistencyNew);
       put("read_data_consistency_level", testDataConsistencyNew);
+      put("concurrent_qp_task_thread", testConcurrentQPTaskThreadNew);
+      put("concurrent_raft_task_thread", testConcurrentRaftTaskThreadNew);
     }
   };
 
@@ -141,6 +147,9 @@ public class ClusterDescriptorTest {
     assertEquals(testQueueLenNew, config.getMaxQueueNumOfInnerRpcClient() + "");
     assertEquals(testMetadataConsistencyNew, config.getReadMetadataConsistencyLevel() + "");
     assertEquals(testDataConsistencyNew, config.getReadDataConsistencyLevel() + "");
+    assertEquals(testConcurrentQPTaskThreadNew, config.getConcurrentQPTaskThread() + "");
+    assertEquals(testConcurrentRaftTaskThreadNew, config.getConcurrentRaftTaskThread() + "");
+
 
     System.setProperty(IoTDBConstant.IOTDB_CONF, "");
     config.deleteAllPath();
@@ -191,6 +200,8 @@ public class ClusterDescriptorTest {
     testQueueLenOld = config.getMaxQueueNumOfInnerRpcClient();
     testMetadataConsistencyOld = config.getReadMetadataConsistencyLevel();
     testDataConsistencyOld = config.getReadDataConsistencyLevel();
+    testConcurrentQPTaskThreadOld = config.getConcurrentQPTaskThread();
+    testConcurrentRaftTaskThreadOld = config.getConcurrentRaftTaskThread();
   }
 
   private void restoreOldConfig() {
@@ -213,5 +224,7 @@ public class ClusterDescriptorTest {
     config.setMaxQueueNumOfInnerRpcClient(testQueueLenOld);
     config.setReadMetadataConsistencyLevel(testMetadataConsistencyOld);
     config.setReadDataConsistencyLevel(testDataConsistencyOld);
+    config.setConcurrentQPTaskThread(testConcurrentQPTaskThreadOld);
+    config.setConcurrentRaftTaskThread(testConcurrentRaftTaskThreadOld);
   }
 }
