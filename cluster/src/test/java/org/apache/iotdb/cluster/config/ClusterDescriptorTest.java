@@ -101,7 +101,7 @@ public class ClusterDescriptorTest {
       put("max_queue_num_of_inner_rpc_client", testQueueLenNew);
       put("read_metadata_consistency_level", testMetadataConsistencyNew);
       put("read_data_consistency_level", testDataConsistencyNew);
-      put("concurrent_qp_task_thread", testConcurrentQPTaskThreadNew);
+      put("concurrent_qp_sub_task_thread", testConcurrentQPTaskThreadNew);
       put("concurrent_raft_task_thread", testConcurrentRaftTaskThreadNew);
     }
   };
@@ -147,7 +147,7 @@ public class ClusterDescriptorTest {
     assertEquals(testQueueLenNew, config.getMaxQueueNumOfInnerRpcClient() + "");
     assertEquals(testMetadataConsistencyNew, config.getReadMetadataConsistencyLevel() + "");
     assertEquals(testDataConsistencyNew, config.getReadDataConsistencyLevel() + "");
-    assertEquals(testConcurrentQPTaskThreadNew, config.getConcurrentQPTaskThread() + "");
+    assertEquals(testConcurrentQPTaskThreadNew, config.getConcurrentQPSubTaskThread() + "");
     assertEquals(testConcurrentRaftTaskThreadNew, config.getConcurrentRaftTaskThread() + "");
 
 
@@ -200,7 +200,7 @@ public class ClusterDescriptorTest {
     testQueueLenOld = config.getMaxQueueNumOfInnerRpcClient();
     testMetadataConsistencyOld = config.getReadMetadataConsistencyLevel();
     testDataConsistencyOld = config.getReadDataConsistencyLevel();
-    testConcurrentQPTaskThreadOld = config.getConcurrentQPTaskThread();
+    testConcurrentQPTaskThreadOld = config.getConcurrentQPSubTaskThread();
     testConcurrentRaftTaskThreadOld = config.getConcurrentRaftTaskThread();
   }
 
@@ -224,7 +224,7 @@ public class ClusterDescriptorTest {
     config.setMaxQueueNumOfInnerRpcClient(testQueueLenOld);
     config.setReadMetadataConsistencyLevel(testMetadataConsistencyOld);
     config.setReadDataConsistencyLevel(testDataConsistencyOld);
-    config.setConcurrentQPTaskThread(testConcurrentQPTaskThreadOld);
+    config.setConcurrentQPSubTaskThread(testConcurrentQPTaskThreadOld);
     config.setConcurrentRaftTaskThread(testConcurrentRaftTaskThreadOld);
   }
 }
