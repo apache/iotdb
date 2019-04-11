@@ -22,12 +22,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.ProcessorException;
 
 public abstract class ThreadPoolManager {
 
   ExecutorService pool;
-  int threadCnt;
 
   private void checkInit() {
     if (pool == null) {
@@ -38,27 +38,29 @@ public abstract class ThreadPoolManager {
   /**
    * Init pool manager
    */
-  public abstract void init();
+  public void init(){
+    pool = IoTDBThreadPoolFactory.newFixedThreadPool(getThreadPoolSize(), getThreadName());
+  }
 
   /**
    * Block new submits and exit when all RUNNING THREADS AND TASKS IN THE QUEUE end.
    *
    * @param block if set to true, this method will wait for timeOut milliseconds. false, return
    * directly.
-   * @param timeOut block time out in milliseconds.
+   * @param timeout block time out in milliseconds.
    * @throws ProcessorException if timeOut is reached or being interrupted while waiting to exit.
    */
-  public void close(boolean block, long timeOut) throws ProcessorException {
+  public void close(boolean block, long timeout) throws ProcessorException {
     if (pool != null) {
       try {
         pool.shutdown();
         if (block) {
           try {
-            if (!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS)) {
+            if (!pool.awaitTermination(timeout, TimeUnit.MILLISECONDS)) {
               throw new ProcessorException(
                   String
                       .format("%s thread pool doesn't exit after %d ms", getManagerName(),
-                          timeOut));
+                          timeout));
             }
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -79,6 +81,10 @@ public abstract class ThreadPoolManager {
    */
   public abstract String getManagerName();
 
+  public abstract String getThreadName();
+
+  public abstract int getThreadPoolSize();
+
   public void execute(Runnable task) {
     checkInit();
     pool.execute(task);
@@ -93,7 +99,4 @@ public abstract class ThreadPoolManager {
     return ((ThreadPoolExecutor) pool).getActiveCount();
   }
 
-  public int getThreadCnt() {
-    return threadCnt;
-  }
 }

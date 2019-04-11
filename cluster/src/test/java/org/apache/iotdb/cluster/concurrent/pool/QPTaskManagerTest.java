@@ -64,14 +64,14 @@ public class QPTaskManagerTest {
   @Test
   public void testSubmitAndClose() throws InterruptedException {
 
-    assertEquals(clusterConfig.getConcurrentQPSubTaskThread(), qpTaskManager.getThreadCnt());
+    assertEquals(clusterConfig.getConcurrentQPSubTaskThread(), qpTaskManager.getThreadPoolSize());
 
-    int threadCnt = qpTaskManager.getThreadCnt();
+    int threadPoolSize = qpTaskManager.getThreadPoolSize();
     // test thread num
-    for (int i = 1; i <= threadCnt + 2; i++) {
+    for (int i = 1; i <= threadPoolSize + 2; i++) {
       qpTaskManager.submit(testRunnable);
       Thread.sleep(10);
-      assertEquals(Math.min(i, threadCnt), qpTaskManager.getActiveCnt());
+      assertEquals(Math.min(i, threadPoolSize), qpTaskManager.getActiveCnt());
     }
 
     // test close

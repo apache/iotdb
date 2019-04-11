@@ -38,19 +38,22 @@ public class RaftTaskManager extends ThreadPoolManager{
     return RaftTaskManager.InstanceHolder.instance;
   }
 
-  @Override
-  public void init() {
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    int threadCnt = config.getConcurrentQPSubTaskThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.RAFT_TASK.getName());
-  }
-
   /**
    * Name of Pool Manager
    */
   @Override
   public String getManagerName() {
     return MANAGER_NAME;
+  }
+
+  @Override
+  public String getThreadName() {
+    return ThreadName.RAFT_TASK.getName();
+  }
+
+  @Override
+  public int getThreadPoolSize() {
+    return ClusterDescriptor.getInstance().getConfig().getConcurrentQPSubTaskThread();
   }
 
   private static class InstanceHolder {

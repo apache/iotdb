@@ -38,20 +38,22 @@ public class QPTaskManager extends ThreadPoolManager {
     return QPTaskManager.InstanceHolder.instance;
   }
 
-  @Override
-  public void init() {
-
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    this.threadCnt = config.getConcurrentQPSubTaskThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QP_TASK.getName());
-  }
-
   /**
    * Name of Pool Manager
    */
   @Override
   public String getManagerName() {
     return MANAGER_NAME;
+  }
+
+  @Override
+  public String getThreadName() {
+    return ThreadName.QP_TASK.getName();
+  }
+
+  @Override
+  public int getThreadPoolSize() {
+    return ClusterDescriptor.getInstance().getConfig().getConcurrentQPSubTaskThread();
   }
 
   private static class InstanceHolder {
