@@ -166,20 +166,6 @@ public class ClusterDescriptor {
         conf.setConcurrentRaftTaskThread(Runtime.getRuntime().availableProcessors());
       }
 
-      conf.setCloseRaftTaskBlockTimeout(Integer
-          .parseInt(properties.getProperty("close_raft_task_block_timeout",
-              Integer.toString(conf.getCloseRaftTaskBlockTimeout()))));
-      if (conf.getCloseRaftTaskBlockTimeout() <= 0) {
-        conf.setCloseRaftTaskBlockTimeout(Integer.MAX_VALUE);
-      }
-
-      conf.setCloseQPSubTaskBlockTimeout(Integer
-          .parseInt(properties.getProperty("close_qp_sub_task_block_timeout",
-              Integer.toString(conf.getCloseQPSubTaskBlockTimeout()))));
-      if (conf.getCloseQPSubTaskBlockTimeout() <= 0) {
-        conf.setCloseQPSubTaskBlockTimeout(1000);
-      }
-
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

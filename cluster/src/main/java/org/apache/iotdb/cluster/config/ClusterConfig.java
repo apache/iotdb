@@ -115,8 +115,8 @@ public class ClusterConfig {
   private int maxNumOfInnerRpcClient = 500;
 
   /**
-   * Maximum number of queue length to use @NodeAsClient, the request which exceed to this number will
-   * be rejected.
+   * Maximum number of queue length to use @NodeAsClient, the request which exceed to this number
+   * will be rejected.
    */
   private int maxQueueNumOfInnerRpcClient = 500;
 
@@ -138,26 +138,12 @@ public class ClusterConfig {
   private int concurrentQPSubTaskThread = Runtime.getRuntime().availableProcessors() * 10;
 
   /**
-   * For each raft log, the state machine will start a thread to apply this log . This value indicates maximum number of threads for a state machine to create.
-   * Currently, this param only works for state machine of leader in data partition holder. Staten machine in
-   * metadata holder will apply raft log serially. When this value <= 0, use CPU core number.
+   * For each raft log, the state machine will start a thread to apply this log . This value
+   * indicates maximum number of threads for a state machine to create. Currently, this param only
+   * works for state machine of leader in data partition holder. Staten machine in metadata holder
+   * will apply raft log serially. When this value <= 0, use CPU core number.
    */
   private int concurrentRaftTaskThread = Runtime.getRuntime().availableProcessors();
-
-  /**
-   * Maximum time of blocking main thread for waiting for all running task threads and tasks in the
-   * queue until end. Raft Task refers to tasks that need to be performed in the state machine.The
-   * unit is milliseconds. Due to guarantee data consistency, it must ensure that tasks finish. If
-   * user sets the parameter, it will not sure to guarantee consistency.
-   */
-  private int closeRaftTaskBlockTimeout = Integer.MAX_VALUE;
-
-  /**
-   * Maximum time of blocking main thread for waiting for all running task threads and tasks in the
-   * queue until end. Each client request corresponds to a QP Task. A QP task may be divided into
-   * several sub-tasks.The unit is milliseconds.
-   */
-  private int closeQPSubTaskBlockTimeout = 1000;
 
   public ClusterConfig() {
     // empty constructor
@@ -352,21 +338,5 @@ public class ClusterConfig {
 
   public void setConcurrentRaftTaskThread(int concurrentRaftTaskThread) {
     this.concurrentRaftTaskThread = concurrentRaftTaskThread;
-  }
-
-  public int getCloseRaftTaskBlockTimeout() {
-    return closeRaftTaskBlockTimeout;
-  }
-
-  public void setCloseRaftTaskBlockTimeout(int closeRaftTaskBlockTimeout) {
-    this.closeRaftTaskBlockTimeout = closeRaftTaskBlockTimeout;
-  }
-
-  public int getCloseQPSubTaskBlockTimeout() {
-    return closeQPSubTaskBlockTimeout;
-  }
-
-  public void setCloseQPSubTaskBlockTimeout(int closeQPSubTaskBlockTimeout) {
-    this.closeQPSubTaskBlockTimeout = closeQPSubTaskBlockTimeout;
   }
 }
