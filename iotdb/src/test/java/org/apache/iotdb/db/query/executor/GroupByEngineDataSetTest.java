@@ -20,8 +20,8 @@ package org.apache.iotdb.db.query.executor;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.query.executor.groupby.GroupByEngineDataSet;
-import org.apache.iotdb.db.query.executor.groupby.GroupByWithValueFilterDataSetDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
@@ -39,7 +39,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {805, 810, 830};
     long[] endTimeArray = {810, 830, 850};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSetDataSet(jobId, null, unit, startTimePoint, pairList);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, startTimePoint, pairList);
     int cnt = 0;
     while (groupByEngine.hasNext()){
       Pair pair = groupByEngine.nextTimePartition();
@@ -64,7 +64,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {805, 810, 830, 850, 1200, 1210};
     long[] endTimeArray = {810, 830, 850, 870, 1210, 1230};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSetDataSet(jobId, null, unit, startTimePoint, pairList);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, startTimePoint, pairList);
     int cnt = 0;
     while (groupByEngine.hasNext()){
       Pair pair = groupByEngine.nextTimePartition();
@@ -89,7 +89,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {805, 820, 850, 860, 1200, 1220};
     long[] endTimeArray = {820, 840, 860, 880, 1220, 1240};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSetDataSet(jobId, null, unit, startTimePoint, pairList);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, startTimePoint, pairList);
     int cnt = 0;
     while (groupByEngine.hasNext()){
       Pair pair = groupByEngine.nextTimePartition();
@@ -114,7 +114,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {805, 1200};
     long[] endTimeArray = {900, 1300};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSetDataSet(jobId, null, unit, startTimePoint, pairList);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, startTimePoint, pairList);
     int cnt = 0;
     while (groupByEngine.hasNext()){
       Pair pair = groupByEngine.nextTimePartition();
@@ -139,7 +139,7 @@ public class GroupByEngineDataSetTest {
 
     long[] startTimeArray = {50, 585, 590};
     long[] endTimeArray = {110, 590, 670};
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSetDataSet(jobId, null, unit, startTimePoint, pairList);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(jobId, null, unit, startTimePoint, pairList);
     int cnt = 0;
     while (groupByEngine.hasNext()){
       Pair pair = groupByEngine.nextTimePartition();

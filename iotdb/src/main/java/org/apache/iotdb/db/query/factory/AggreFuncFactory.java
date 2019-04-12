@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.aggregation;
+package org.apache.iotdb.db.query.factory;
 
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.FirstAggrFunc;
 import org.apache.iotdb.db.query.aggregation.impl.LastAggrFunc;
