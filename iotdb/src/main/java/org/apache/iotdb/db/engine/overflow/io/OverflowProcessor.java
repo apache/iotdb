@@ -491,8 +491,6 @@ public class OverflowProcessor extends Processor {
     try {
       flushFuture.get();
     } catch (InterruptedException | ExecutionException e) {
-      LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
-              + "the bufferwrite processor is {}.", getProcessorName(), e);
       throw new IOException(e);
     }
     if (valueCount > 0) {
