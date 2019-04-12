@@ -171,20 +171,27 @@ public class BufferWriteProcessor extends Processor {
     long memUsage = MemUtils.getRecordSize(tsRecord);
     BasicMemController.UsageLevel level = BasicMemController.getInstance()
         .acquireUsage(this, memUsage);
-    for (DataPoint dataPoint : tsRecord.dataPointList) {
-      workMemTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
-          tsRecord.time,
-          dataPoint.getValue().toString());
-    }
-    valueCount++;
+
     String memory;
     switch (level) {
       case SAFE:
+        for (DataPoint dataPoint : tsRecord.dataPointList) {
+          workMemTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
+              tsRecord.time,
+              dataPoint.getValue().toString());
+        }
+        valueCount++;
         checkMemThreshold4Flush(memUsage);
         return true;
       case WARNING:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
         LOGGER.warn("Memory usage will exceed warning threshold, current : {}.", memory);
+        for (DataPoint dataPoint : tsRecord.dataPointList) {
+          workMemTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
+              tsRecord.time,
+              dataPoint.getValue().toString());
+        }
+        valueCount++;
         checkMemThreshold4Flush(memUsage);
         return true;
       case DANGEROUS:
