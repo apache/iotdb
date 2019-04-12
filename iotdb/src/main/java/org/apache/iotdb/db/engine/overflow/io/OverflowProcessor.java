@@ -488,16 +488,15 @@ public class OverflowProcessor extends Processor {
           (thisFLushTime - lastFlushTime) / 1000);
     }
     lastFlushTime = System.currentTimeMillis();
-    // value count
+    try {
+      flushFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
+              + "the bufferwrite processor is {}.",
+          getProcessorName(), e);
+      Thread.currentThread().interrupt();
+    }
     if (valueCount > 0) {
-      try {
-        flushFuture.get();
-      } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
-                + "the bufferwrite processor is {}.",
-            getProcessorName(), e);
-        Thread.currentThread().interrupt();
-      }
       try {
         // backup newIntervalFile list and emptyIntervalFileNode
         overflowFlushAction.act();
