@@ -343,16 +343,13 @@ public class BufferWriteProcessor extends Processor {
     }
     lastFlushTime = System.nanoTime();
     // check value count
+    // waiting for the end of last flush operation.
+    try {
+      flushFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new IOException(e);
+    }
     if (valueCount > 0) {
-      // waiting for the end of last flush operation.
-      try {
-        flushFuture.get();
-      } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
-                + "the bufferwrite processor is {}.",
-            getProcessorName(), e);
-        Thread.currentThread().interrupt();
-      }
       // update the lastUpdatetime, prepare for flush
       try {
         bufferwriteFlushAction.act();

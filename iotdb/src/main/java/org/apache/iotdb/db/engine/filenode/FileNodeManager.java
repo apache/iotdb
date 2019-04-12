@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -787,6 +788,7 @@ public class FileNodeManager implements IStatistic, IService {
     // loop waiting for merge to end, the longest waiting time is
     // 60s.
     int time = 2;
+    List<Exception> mergeException = new ArrayList<>();
     for (Future<?> task : futureTasks) {
       while (!task.isDone()) {
         try {
@@ -802,6 +804,18 @@ public class FileNodeManager implements IStatistic, IService {
           Thread.currentThread().interrupt();
         }
       }
+      try {
+        task.get();
+      } catch (InterruptedException e) {
+        LOGGER.error("Unexpected interruption {}", e);
+      } catch (ExecutionException e) {
+        mergeException.add(e);
+        LOGGER.error("The exception for merge: {}", e);
+      }
+    }
+    if (!mergeException.isEmpty()) {
+      // just throw the first exception
+      throw new FileNodeManagerException(mergeException.get(0));
     }
     fileNodeManagerStatus = FileNodeManagerStatus.NONE;
     LOGGER.info("End to merge all overflowed filenode");
