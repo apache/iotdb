@@ -435,9 +435,6 @@ public class FileNodeManager implements IStatistic, IService {
       if (!isMonitor) {
         updateStatHashMapWhenFail(tsRecord);
       }
-      // undo time update
-      fileNodeProcessor.setIntervalFileNodeStartTime(deviceId, prevStartTime);
-      fileNodeProcessor.setLastUpdateTime(deviceId, prevUpdateTime);
       throw new FileNodeManagerException(e);
     }
 
