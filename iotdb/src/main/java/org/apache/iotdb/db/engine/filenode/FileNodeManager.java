@@ -803,7 +803,7 @@ public class FileNodeManager implements IStatistic, IService {
         LOGGER.error("Unexpected interruption {}", e);
       } catch (ExecutionException e) {
         mergeException.add(e);
-        LOGGER.error("The exception for merge thread: {}", e);
+        LOGGER.error("The exception for merge: {}", e);
       }
     }
     if (!mergeException.isEmpty()) {
