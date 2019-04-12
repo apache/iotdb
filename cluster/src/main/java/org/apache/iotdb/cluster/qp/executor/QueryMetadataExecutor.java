@@ -117,7 +117,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     }
     return paths;
   }
-
+  
   /**
    * Handle query timeseries in one data group
    *
@@ -130,17 +130,18 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     SingleQPTask task = new SingleQPTask(false, request);
 
     LOGGER.debug("Execute show timeseries {} statement for group {}.", pathList, groupId);
+    PeerId holder;
     /** Check if the plan can be executed locally. **/
     if (canHandleQueryByGroupId(groupId)) {
-      LOGGER.debug("Execute show timeseries {} statement locally for group {}.", pathList, groupId);
-      res.addAll(queryTimeSeriesLocally(pathList, groupId, task));
+      LOGGER.debug("Execute show timeseries {} statement locally for group {} by sending request to local node.", pathList, groupId);
+      holder = this.server.getServerId();
     } else {
-      try {
-        PeerId holder = RaftUtils.getRandomPeerID(groupId);
-        res.addAll(queryTimeSeries(task, holder));
-      } catch (RaftConnectionException e) {
-        throw new ProcessorException("Raft connection occurs error.", e);
-      }
+      holder = RaftUtils.getRandomPeerID(groupId);
+    }
+    try {
+      res.addAll(queryTimeSeries(task, holder));
+    } catch (RaftConnectionException e) {
+      throw new ProcessorException("Raft connection occurs error.", e);
     }
   }
 
@@ -157,17 +158,18 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       taskList.add(task);
 
       LOGGER.debug("Execute show metadata in string statement for group {}.", groupId);
+      PeerId holder;
       /** Check if the plan can be executed locally. **/
       if (canHandleQueryByGroupId(groupId)) {
-        LOGGER.debug("Execute show metadata in string statement locally for group {}.", groupId);
-        asyncQueryMetadataInStringLocally(groupId, task);
+        LOGGER.debug("Execute show metadata in string statement locally for group {} by sending request to local node.", groupId);
+        holder = this.server.getServerId();
       } else {
-        try {
-          PeerId holder = RaftUtils.getRandomPeerID(groupId);
-          asyncSendNonQueryTask(task, holder, 0);
-        } catch (RaftConnectionException e) {
-          throw new ProcessorException("Raft connection occurs error.", e);
-        }
+        holder = RaftUtils.getRandomPeerID(groupId);
+      }
+      try {
+        asyncSendNonQueryTask(task, holder, 0);
+      } catch (RaftConnectionException e) {
+        throw new ProcessorException("Raft connection occurs error.", e);
       }
     }
     for (int i = 0; i < taskList.size(); i++) {
@@ -195,17 +197,18 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       taskList.add(task);
 
       LOGGER.debug("Execute query metadata statement for group {}.", groupId);
+      PeerId holder;
       /** Check if the plan can be executed locally. **/
       if (canHandleQueryByGroupId(groupId)) {
-        LOGGER.debug("Execute query metadata statement locally for group {}.", groupId);
-        asyncQueryMetadataLocally(groupId, task);
+        LOGGER.debug("Execute query metadata statement locally for group {} by sending request to local node.", groupId);
+        holder = this.server.getServerId();
       } else {
-        try {
-          PeerId holder = RaftUtils.getRandomPeerID(groupId);
-          asyncSendNonQueryTask(task, holder, 0);
-        } catch (RaftConnectionException e) {
-          throw new ProcessorException("Raft connection occurs error.", e);
-        }
+        holder = RaftUtils.getRandomPeerID(groupId);
+      }
+      try {
+        asyncSendNonQueryTask(task, holder, 0);
+      } catch (RaftConnectionException e) {
+        throw new ProcessorException("Raft connection occurs error.", e);
       }
     }
     for (int i = 0; i < taskList.size(); i++) {
@@ -237,17 +240,18 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
       SingleQPTask task = new SingleQPTask(false, request);
 
       LOGGER.debug("Execute get series type for {} statement for group {}.", path, groupId);
+      PeerId holder;
       /** Check if the plan can be executed locally. **/
       if (canHandleQueryByGroupId(groupId)) {
-        LOGGER.debug("Execute get series type for {} statement locally for group {}.", path, groupId);
-        dataType = querySeriesTypeLocally(path, groupId, task);
+        LOGGER.debug("Execute get series type for {} statement locally for group {} by sending request to local node.", path, groupId);
+        holder = this.server.getServerId();
       } else {
-        try {
-          PeerId holder = RaftUtils.getRandomPeerID(groupId);
-          dataType = querySeriesType(task, holder);
-        } catch (RaftConnectionException e) {
-          throw new ProcessorException("Raft connection occurs error.", e);
-        }
+        holder = RaftUtils.getRandomPeerID(groupId);
+      }
+      try {
+        dataType = querySeriesType(task, holder);
+      } catch (RaftConnectionException e) {
+        throw new ProcessorException("Raft connection occurs error.", e);
       }
     }
     return dataType;
@@ -285,74 +289,19 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     SingleQPTask task = new SingleQPTask(false, request);
 
     LOGGER.debug("Execute get paths for {} statement for group {}.", pathList, groupId);
+    PeerId holder;
     /** Check if the plan can be executed locally. **/
     if (canHandleQueryByGroupId(groupId)) {
-      LOGGER.debug("Execute get paths for {} statement locally for group {}.", pathList, groupId);
-      res.addAll(queryPathsLocally(pathList, groupId, task));
+      LOGGER.debug("Execute get paths for {} statement locally for group {} by sending request to local node.", pathList, groupId);
+      holder = this.server.getServerId();
     } else {
-      try {
-        PeerId holder = RaftUtils.getRandomPeerID(groupId);
-        res.addAll(queryPaths(task, holder));
-      } catch (RaftConnectionException e) {
-        throw new ProcessorException("Raft connection occurs error.", e);
-      }
+      holder = RaftUtils.getRandomPeerID(groupId);
     }
-  }
-
-  /**
-   * Handle "show timeseries <path>" statement
-   *
-   * @param pathList column path
-   */
-  private List<List<String>> queryTimeSeriesLocally(List<String> pathList, String groupId,
-      SingleQPTask task)
-      throws InterruptedException, ProcessorException {
-    final byte[] reqContext = RaftUtils.createRaftRequestContext();
-    DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
-
-    /** Check consistency level**/
-    if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
-      QueryTimeSeriesResponse response = QueryTimeSeriesResponse
-          .createEmptyResponse(groupId);
-      try {
-        for (String path : pathList) {
-          response.addTimeSeries(mManager.getShowTimeseriesPath(path));
-        }
-      } catch (final PathErrorException e) {
-        response = QueryTimeSeriesResponse.createErrorResponse(groupId, e.getMessage());
-      }
-      task.run(response);
-    } else {
-      ((RaftService) dataPartitionHolder.getService()).getNode()
-          .readIndex(reqContext, new ReadIndexClosure() {
-
-            @Override
-            public void run(Status status, long index, byte[] reqCtx) {
-              QueryTimeSeriesResponse response = QueryTimeSeriesResponse
-                  .createEmptyResponse(groupId);
-              if (status.isOk()) {
-                try {
-                  LOGGER.debug("start to read");
-                  for (String path : pathList) {
-                    response.addTimeSeries(mManager.getShowTimeseriesPath(path));
-                  }
-                } catch (final PathErrorException e) {
-                  response = QueryTimeSeriesResponse.createErrorResponse(groupId, e.getMessage());
-                }
-              } else {
-                response = QueryTimeSeriesResponse
-                    .createErrorResponse(groupId, status.getErrorMsg());
-              }
-              task.run(response);
-            }
-          });
+    try {
+      res.addAll(queryPaths(task, holder));
+    } catch (RaftConnectionException e) {
+      throw new ProcessorException("Raft connection occurs error.", e);
     }
-    task.await();
-    QueryTimeSeriesResponse response = (QueryTimeSeriesResponse) task.getResponse();
-    if (response == null || !response.isSuccess()) {
-      throw new ProcessorException("Execute show timeseries " + pathList + " statement false.");
-    }
-    return response.getTimeSeries();
   }
 
   private List<List<String>> queryTimeSeries(SingleQPTask task, PeerId leader)
@@ -360,50 +309,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
     return response == null ? new ArrayList<>()
         : ((QueryTimeSeriesResponse) response).getTimeSeries();
-  }
-
-  private TSDataType querySeriesTypeLocally(String path, String groupId,
-      SingleQPTask task)
-      throws InterruptedException, ProcessorException {
-    final byte[] reqContext = RaftUtils.createRaftRequestContext();
-    DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
-
-    /** Check consistency level**/
-    if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
-      QuerySeriesTypeResponse response;
-      try {
-        response = QuerySeriesTypeResponse.createSuccessResponse(groupId, mManager.getSeriesType(path));
-      } catch (final PathErrorException e) {
-        response = QuerySeriesTypeResponse.createErrorResponse(groupId, e.getMessage());
-      }
-      task.run(response);
-    } else {
-      ((RaftService) dataPartitionHolder.getService()).getNode()
-          .readIndex(reqContext, new ReadIndexClosure() {
-
-            @Override
-            public void run(Status status, long index, byte[] reqCtx) {
-              QuerySeriesTypeResponse response;
-              if (status.isOk()) {
-                try {
-                  LOGGER.debug("start to read");
-                  response = QuerySeriesTypeResponse.createSuccessResponse(groupId, mManager.getSeriesType(path));
-                } catch (final PathErrorException e) {
-                  response = QuerySeriesTypeResponse.createErrorResponse(groupId, e.getMessage());
-                }
-              } else {
-                response = QuerySeriesTypeResponse.createErrorResponse(groupId, status.getErrorMsg());
-              }
-              task.run(response);
-            }
-          });
-    }
-    task.await();
-    QuerySeriesTypeResponse response = (QuerySeriesTypeResponse) task.getResponse();
-    if (response == null || !response.isSuccess()) {
-      throw new ProcessorException("Execute get series type for " + path + " statement false.");
-    }
-    return response.getDataType();
   }
 
   private TSDataType querySeriesType(SingleQPTask task, PeerId leader)
@@ -456,140 +361,6 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     }
     task.await();
     return ((QueryStorageGroupResponse) task.getResponse()).getStorageGroups();
-  }
-
-  /**
-   * Handle "show timeseries" statement
-   */
-  private void asyncQueryMetadataInStringLocally(String groupId, SingleQPTask task) {
-    final byte[] reqContext = RaftUtils.createRaftRequestContext();
-    DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
-        .getDataPartitionHolder(groupId);
-    if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
-      QueryMetadataInStringResponse response = QueryMetadataInStringResponse
-          .createSuccessResponse(groupId, mManager.getMetadataInString());
-      response.addResult(true);
-      task.run(response);
-    } else {
-      ((RaftService) dataPartitionHolder.getService()).getNode()
-          .readIndex(reqContext, new ReadIndexClosure() {
-
-            @Override
-            public void run(Status status, long index, byte[] reqCtx) {
-              QueryMetadataInStringResponse response;
-              if (status.isOk()) {
-                LOGGER.debug("start to read");
-                response = QueryMetadataInStringResponse
-                    .createSuccessResponse(groupId, mManager.getMetadataInString());
-                response.addResult(true);
-              } else {
-                response = QueryMetadataInStringResponse
-                    .createErrorResponse(groupId, status.getErrorMsg());
-                response.addResult(false);
-              }
-              task.run(response);
-            }
-          });
-    }
-  }
-
-  /**
-   * Handle "show timeseries" statement
-   */
-  private void asyncQueryMetadataLocally(String groupId, SingleQPTask task)
-      throws PathErrorException {
-    final byte[] reqContext = RaftUtils.createRaftRequestContext();
-    DataPartitionRaftHolder dataPartitionHolder = (DataPartitionRaftHolder) server
-        .getDataPartitionHolder(groupId);
-    if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
-      QueryMetadataResponse response = QueryMetadataResponse
-          .createSuccessResponse(groupId, mManager.getMetadata());
-      response.addResult(true);
-      task.run(response);
-    } else {
-      ((RaftService) dataPartitionHolder.getService()).getNode()
-          .readIndex(reqContext, new ReadIndexClosure() {
-
-            @Override
-            public void run(Status status, long index, byte[] reqCtx) {
-              QueryMetadataResponse response;
-              if (status.isOk()) {
-                LOGGER.debug("start to read");
-                try {
-                  response = QueryMetadataResponse
-                      .createSuccessResponse(groupId, mManager.getMetadata());
-                  response.addResult(true);
-                } catch (PathErrorException e) {
-                  response = QueryMetadataResponse
-                      .createErrorResponse(groupId, e.getMessage());
-                  response.addResult(false);
-                }
-              } else {
-                response = QueryMetadataResponse
-                    .createErrorResponse(groupId, status.getErrorMsg());
-                response.addResult(false);
-              }
-              task.run(response);
-            }
-          });
-    }
-  }
-
-  /**
-   * Handle "show timeseries <path>" statement
-   *
-   * @param pathList column path
-   */
-  private List<String> queryPathsLocally(List<String> pathList, String groupId,
-      SingleQPTask task)
-      throws InterruptedException, ProcessorException {
-    final byte[] reqContext = RaftUtils.createRaftRequestContext();
-    DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
-
-    /** Check consistency level**/
-    if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
-      QueryPathsResponse response = QueryPathsResponse
-          .createEmptyResponse(groupId);
-      try {
-        for (String path : pathList) {
-          response.addPaths(mManager.getPaths(path));
-        }
-      } catch (final PathErrorException e) {
-        response = QueryPathsResponse.createErrorResponse(groupId, e.getMessage());
-      }
-      task.run(response);
-    } else {
-      ((RaftService) dataPartitionHolder.getService()).getNode()
-          .readIndex(reqContext, new ReadIndexClosure() {
-
-            @Override
-            public void run(Status status, long index, byte[] reqCtx) {
-              QueryPathsResponse response = QueryPathsResponse
-                  .createEmptyResponse(groupId);
-              if (status.isOk()) {
-                try {
-                  LOGGER.debug("start to read");
-                  for (String path : pathList) {
-                    response.addPaths(mManager.getPaths(path));
-                  }
-                } catch (final PathErrorException e) {
-                  response = QueryPathsResponse.createErrorResponse(groupId, e.getMessage());
-                }
-              } else {
-                response = QueryPathsResponse
-                    .createErrorResponse(groupId, status.getErrorMsg());
-              }
-              task.run(response);
-            }
-          });
-    }
-    task.await();
-    QueryPathsResponse response = (QueryPathsResponse) task.getResponse();
-    if (response == null || !response.isSuccess()) {
-      LOGGER.error("Execute get paths for {} statement false.", pathList);
-      throw new ProcessorException();
-    }
-    return response.getPaths();
   }
 
   private List<String> queryPaths(SingleQPTask task, PeerId leader)

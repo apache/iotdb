@@ -39,8 +39,6 @@ public class QueryMetadataInStringAsyncProcessor extends
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       QueryMetadataInStringRequest request) {
     String groupId = request.getGroupID();
-    final byte[] reqContext = RaftUtils.createRaftRequestContext();
-    DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryMetadataInStringResponse response = QueryMetadataInStringResponse
@@ -48,6 +46,9 @@ public class QueryMetadataInStringAsyncProcessor extends
       response.addResult(true);
       asyncContext.sendResponse(response);
     } else {
+      final byte[] reqContext = RaftUtils.createRaftRequestContext();
+      DataPartitionRaftHolder dataPartitionHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
+
       ((RaftService) dataPartitionHolder.getService()).getNode()
           .readIndex(reqContext, new ReadIndexClosure() {
 

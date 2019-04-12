@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,7 +32,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
  * This class stores all the metadata info for every deviceId and every timeseries.
  */
-public class Metadata {
+public class Metadata implements Serializable {
 
   private Map<String, List<MeasurementSchema>> seriesMap;
   private Map<String, List<String>> deviceIdMap;
