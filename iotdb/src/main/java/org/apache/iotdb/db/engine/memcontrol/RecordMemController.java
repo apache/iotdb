@@ -144,11 +144,12 @@ public class RecordMemController extends BasicMemController {
   @Override
   public void releaseUsage(Object user, long freeSize) {
     AtomicLong usage = memMap.get(user);
-    long usageLong = 0;
     if (usage == null) {
       LOGGER.error("Unregistered memory usage from {}", user);
-    } else if (freeSize > usageLong) {
-      usageLong = usage.get();
+      return;
+    }
+    long usageLong = usage.get();
+    if (freeSize > usageLong) {
       LOGGER
           .error("{} requests to free {} bytes while it only registered {} bytes", user,
               freeSize, usage);
