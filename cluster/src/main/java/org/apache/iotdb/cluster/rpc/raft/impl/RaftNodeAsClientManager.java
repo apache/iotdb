@@ -66,6 +66,8 @@ public class RaftNodeAsClientManager {
    */
   private final RaftNodeAsClient client = new RaftNodeAsClient();
 
+  private boolean clientInited = false;
+
   /**
    * Number of clients in use
    */
@@ -90,6 +92,10 @@ public class RaftNodeAsClientManager {
    */
   public RaftNodeAsClient getRaftNodeAsClient() {
     try {
+      if (!clientInited) {
+        client.init();
+      }
+
       numLock.lock();
       if (validClientNum.get() < MAX_VALID_CLIENT_NUM) {
         validClientNum.incrementAndGet();
@@ -165,6 +171,7 @@ public class RaftNodeAsClientManager {
     private void init(){
       boltClientService = new BoltCliClientService();
       boltClientService.init(new CliOptions());
+      clientInited = true;
     }
 
     @Override
@@ -229,6 +236,7 @@ public class RaftNodeAsClientManager {
     @Override
     public void shutdown() {
       boltClientService.shutdown();
+      clientInited = false;
     }
 
   }

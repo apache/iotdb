@@ -25,25 +25,32 @@ import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
-import org.apache.iotdb.cluster.rpc.raft.request.QueryMetadataInStringRequest;
-import org.apache.iotdb.cluster.rpc.raft.response.QueryMetadataInStringResponse;
+import org.apache.iotdb.cluster.rpc.raft.request.QueryMetadataRequest;
+import org.apache.iotdb.cluster.rpc.raft.response.QueryMetadataResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 
-public class QueryMetadataInStringAsyncProcessor extends
-    BasicAsyncUserProcessor<QueryMetadataInStringRequest> {
+public class QueryMetadataAsyncProcessor extends
+    BasicAsyncUserProcessor<QueryMetadataRequest> {
 
   private MManager mManager = MManager.getInstance();
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      QueryMetadataInStringRequest request) {
+      QueryMetadataRequest request) {
     String groupId = request.getGroupID();
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
-      QueryMetadataInStringResponse response = QueryMetadataInStringResponse
-          .createSuccessResponse(groupId, mManager.getMetadataInString());
-      response.addResult(true);
+      QueryMetadataResponse response = null;
+      try {
+        response = QueryMetadataResponse
+            .createSuccessResponse(groupId, mManager.getMetadata());
+        response.addResult(true);
+      } catch (PathErrorException e) {
+        response = QueryMetadataResponse.createErrorResponse(groupId, e.getMessage());
+        response.addResult(false);
+      }
       asyncContext.sendResponse(response);
     } else {
       final byte[] reqContext = RaftUtils.createRaftRequestContext();
@@ -54,13 +61,18 @@ public class QueryMetadataInStringAsyncProcessor extends
 
             @Override
             public void run(Status status, long index, byte[] reqCtx) {
-              QueryMetadataInStringResponse response;
+              QueryMetadataResponse response;
               if (status.isOk()) {
-                response = QueryMetadataInStringResponse
-                    .createSuccessResponse(groupId, mManager.getMetadataInString());
-                response.addResult(true);
+                try {
+                  response = QueryMetadataResponse
+                      .createSuccessResponse(groupId, mManager.getMetadata());
+                  response.addResult(true);
+                } catch (PathErrorException e) {
+                  response = QueryMetadataResponse.createErrorResponse(groupId, e.getMessage());
+                  response.addResult(false);
+                }
               } else {
-                response = QueryMetadataInStringResponse
+                response = QueryMetadataResponse
                     .createErrorResponse(groupId, status.getErrorMsg());
                 response.addResult(false);
               }
@@ -72,6 +84,6 @@ public class QueryMetadataInStringAsyncProcessor extends
 
   @Override
   public String interest() {
-    return QueryMetadataInStringRequest.class.getName();
+    return QueryMetadataRequest.class.getName();
   }
 }
