@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -794,6 +795,13 @@ public class FileNodeManager implements IStatistic, IService {
           LOGGER.error("Unexpected interruption {}", e);
           Thread.currentThread().interrupt();
         }
+      }
+      try {
+        task.get();
+      } catch (InterruptedException e) {
+        LOGGER.error("Unexpected interruption {}", e);
+      } catch (ExecutionException e) {
+        LOGGER.error("The exception for merge thread: {}", e);
       }
     }
     fileNodeManagerStatus = FileNodeManagerStatus.NONE;
