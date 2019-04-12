@@ -90,15 +90,12 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       return true;
     }
 
-    // end
-    if (usedIndex >= mergedIntervals.size()) {
-      return false;
-    }
-
     // skip the intervals in coverage of last time-partition
     while (usedIndex < mergedIntervals.size() && mergedIntervals.get(usedIndex).right < endTime) {
       usedIndex++;
     }
+
+    //end
     if (usedIndex >= mergedIntervals.size()) {
       return false;
     }
