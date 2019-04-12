@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.concurrent.pool.RaftTaskManager;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.raft.request.DataGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
@@ -80,12 +79,12 @@ public class DataStateMachine extends StateMachineAdapter {
       final Closure closure = iterator.done();
       final ByteBuffer data = iterator.getData();
 
-      /** It's leader to apply task **/
-      if (closure != null) {
-        RaftTaskManager.getInstance().execute(() -> applySingleTask(closure, data));
-      } else {
-        applySingleTask(null, data);
-      }
+//      /** It's leader to apply task **/
+//      if (closure != null) {
+//        RaftTaskManager.getInstance().execute(() -> applySingleTask(closure, data));
+//      } else {
+        applySingleTask(closure, data);
+//      }
       iterator.next();
     }
   }
