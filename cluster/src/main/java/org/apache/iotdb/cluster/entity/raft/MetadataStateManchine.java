@@ -79,15 +79,10 @@ public class MetadataStateManchine extends StateMachineAdapter {
   public void onApply(Iterator iterator) {
     while (iterator.hasNext()) {
 
-      Closure closure = null;
+      /** If closure is not null, the node is leader **/
+      Closure closure = iterator.done();
+      BasicResponse response = (closure==null) ? null: ((ResponseClosure)closure).getResponse();
       MetaGroupNonQueryRequest request = null;
-      BasicResponse response = null;
-
-      /** Check if the node is leader **/
-      if (iterator.done() != null) {
-        closure = iterator.done();
-        response = ((ResponseClosure) closure).getResponse();
-      }
       final ByteBuffer data = iterator.getData();
       try {
         request = SerializerManager.getSerializer(SerializerManager.Hessian2)
@@ -112,27 +107,30 @@ public class MetadataStateManchine extends StateMachineAdapter {
             AuthorPlan plan = (AuthorPlan) physicalPlan;
             qpExecutor.processNonQuery(plan);
           }
-          if (closure != null) {
-            response.addResult(true);
-          }
+          addResult(response, true);
         } catch (IOException | PathErrorException e) {
           LOGGER.error("Execute metadata plan error", e);
           status = new Status(-1, e.getMessage());
-          if (closure != null) {
-            response.addResult(false);
-          }
+          addResult(response, false);
         } catch (ProcessorException e) {
           LOGGER.error("Execute author plan error", e);
           status = new Status(-1, e.getMessage());
-          if (closure != null) {
-            response.addResult(false);
-          }
+          addResult(response, false);
         }
       }
       if (closure != null) {
         closure.run(status);
       }
       iterator.next();
+    }
+  }
+
+  /**
+   * Add result to response
+   */
+  private void addResult(BasicResponse response, boolean result){
+    if(response != null){
+      response.addResult(result);
     }
   }
 

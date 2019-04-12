@@ -124,23 +124,29 @@ public class DataStateMachine extends StateMachineAdapter {
             ((MetadataPlan) plan).getPath().getFullPath())) {
           RaftUtils.handleNullReadToMetaGroup(status);
           if(!status.isOk()){
+            addResult(response, false);
             continue;
           }
         }
         qpExecutor.processNonQuery(plan);
-        if (closure != null) {
-          response.addResult(true);
-        }
+        addResult(response, true);
       } catch (ProcessorException | IOException | PathErrorException e) {
         LOGGER.error("Execute physical plan error", e);
         status = new Status(-1, e.getMessage());
-        if (closure != null) {
-          response.addResult(false);
-        }
+        addResult(response, false);
       }
     }
     if (closure != null) {
       closure.run(status);
+    }
+  }
+
+  /**
+   * Add result to response
+   */
+  private void addResult(BasicResponse response, boolean result){
+    if(response != null){
+      response.addResult(result);
     }
   }
 
