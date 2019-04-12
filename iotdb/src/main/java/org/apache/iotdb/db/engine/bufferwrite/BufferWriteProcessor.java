@@ -192,7 +192,11 @@ public class BufferWriteProcessor extends Processor {
               dataPoint.getValue().toString());
         }
         valueCount++;
-        checkMemThreshold4Flush(memUsage);
+        try {
+          flush();
+        } catch (IOException e) {
+          throw new BufferWriteProcessorException(e);
+        }
         return true;
       case DANGEROUS:
       default:
