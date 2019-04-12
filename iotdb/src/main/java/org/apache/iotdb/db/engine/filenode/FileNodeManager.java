@@ -426,7 +426,11 @@ public class FileNodeManager implements IStatistic, IService {
     fileNodeProcessor.setIntervalFileNodeStartTime(deviceId);
     fileNodeProcessor.setLastUpdateTime(deviceId, timestamp);
     try {
-      bufferWriteProcessor.write(tsRecord);
+      if(!bufferWriteProcessor.write(tsRecord)) {
+        // undo time update
+        fileNodeProcessor.setIntervalFileNodeStartTime(deviceId, prevStartTime);
+        fileNodeProcessor.setLastUpdateTime(deviceId, prevUpdateTime);
+      }
     } catch (BufferWriteProcessorException e) {
       if (!isMonitor) {
         updateStatHashMapWhenFail(tsRecord);
