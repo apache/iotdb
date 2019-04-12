@@ -339,7 +339,7 @@ public class BufferWriteProcessor extends Processor {
       LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
               + "the bufferwrite processor is {}.",
           getProcessorName(), e);
-      Thread.currentThread().interrupt();
+      throw new IOException(e);
     }
     if (valueCount > 0) {
       // update the lastUpdatetime, prepare for flush

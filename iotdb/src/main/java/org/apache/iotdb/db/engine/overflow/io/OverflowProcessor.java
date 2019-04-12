@@ -475,7 +475,7 @@ public class OverflowProcessor extends Processor {
   @Override
   public synchronized Future<Boolean> flush() throws IOException {
     // statistic information for flush
-    if (lastFlushTime > 0) {
+    if (lastFlushTime > 0 && LOGGER.isInfoEnabled()) {
       long thisFLushTime = System.currentTimeMillis();
       ZonedDateTime lastDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(lastFlushTime),
           IoTDBDescriptor.getInstance().getConfig().getZoneID());
@@ -492,9 +492,8 @@ public class OverflowProcessor extends Processor {
       flushFuture.get();
     } catch (InterruptedException | ExecutionException e) {
       LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
-              + "the bufferwrite processor is {}.",
-          getProcessorName(), e);
-      Thread.currentThread().interrupt();
+              + "the bufferwrite processor is {}.", getProcessorName(), e);
+      throw new IOException(e);
     }
     if (valueCount > 0) {
       try {
