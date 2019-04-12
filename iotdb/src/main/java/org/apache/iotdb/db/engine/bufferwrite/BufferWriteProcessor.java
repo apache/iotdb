@@ -170,22 +170,33 @@ public class BufferWriteProcessor extends Processor {
   public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
     long memUsage = MemUtils.getRecordSize(tsRecord);
     BasicMemController.UsageLevel level = BasicMemController.getInstance()
-        .reportUse(this, memUsage);
-    for (DataPoint dataPoint : tsRecord.dataPointList) {
-      workMemTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
-          tsRecord.time,
-          dataPoint.getValue().toString());
-    }
-    valueCount++;
+        .acquireUsage(this, memUsage);
+
     String memory;
     switch (level) {
       case SAFE:
+        for (DataPoint dataPoint : tsRecord.dataPointList) {
+          workMemTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
+              tsRecord.time,
+              dataPoint.getValue().toString());
+        }
+        valueCount++;
         checkMemThreshold4Flush(memUsage);
         return true;
       case WARNING:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
         LOGGER.warn("Memory usage will exceed warning threshold, current : {}.", memory);
-        checkMemThreshold4Flush(memUsage);
+        for (DataPoint dataPoint : tsRecord.dataPointList) {
+          workMemTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
+              tsRecord.time,
+              dataPoint.getValue().toString());
+        }
+        valueCount++;
+        try {
+          flush();
+        } catch (IOException e) {
+          throw new BufferWriteProcessorException(e);
+        }
         return true;
       case DANGEROUS:
       default:
@@ -352,7 +363,7 @@ public class BufferWriteProcessor extends Processor {
       valueCount = 0;
       switchWorkToFlush();
       long version = versionController.nextVersion();
-      BasicMemController.getInstance().reportFree(this, memSize.get());
+      BasicMemController.getInstance().releaseUsage(this, memSize.get());
       memSize.set(0);
       // switch
       flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
@@ -555,5 +566,10 @@ public class BufferWriteProcessor extends Processor {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), baseDir, fileName);
+  }
+
+  @Override
+  public String toString() {
+    return "BufferWriteProcessor in " + insertFilePath;
   }
 }
