@@ -152,9 +152,29 @@ public abstract class BasicMemController implements IService {
     logger.info("MemController exited");
   }
 
-  public abstract UsageLevel reportUse(Object user, long usage);
+  /**
+   * Any object (like OverflowProcessor or BufferWriteProcessor) that wants to hold some fixed size
+   * of memory should call this method to check the returned memory usage level to decide any
+   * further actions.
+   * @param user an object that wants some memory as a buffer or anything.
+   * @param usage how many bytes does the object want.
+   * @return one of the three UsageLevels:
+   *          safe - there are still sufficient memories left, the user may go on freely and this
+   *                 usage is recorded.
+   *          warning - there is only a small amount of memories available, the user would better
+   *                    try to reduce memory usage but can still proceed and this usage is recorded.
+   *          dangerous - there is almost no memories unused, the user cannot proceed before enough
+   *                    memory usages are released and this usage is NOT recorded.
+   */
+  public abstract UsageLevel acquireUsage(Object user, long usage);
 
-  public abstract void reportFree(Object user, long freeSize);
+  /**
+   * When the memories held by one object (like OverflowProcessor or BufferWriteProcessor) is no
+   * more useful, this object should call this method to release the memories.
+   * @param user an object that holds some memory as a buffer or anything.
+   * @param freeSize how many bytes does the object want to release.
+   */
+  public abstract void releaseUsage(Object user, long freeSize);
 
   public enum ControllerType {
     RECORD, JVM, DISABLED
