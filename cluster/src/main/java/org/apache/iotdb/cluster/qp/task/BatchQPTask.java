@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.qp.callback;
+package org.apache.iotdb.cluster.qp.task;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.sql.Statement;
@@ -29,7 +29,7 @@ import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.DataGroupNonQueryResponse;
-import org.apache.iotdb.cluster.rpc.service.TSServiceClusterImpl.BatchResult;
+import org.apache.iotdb.cluster.service.TSServiceClusterImpl.BatchResult;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

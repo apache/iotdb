@@ -19,7 +19,7 @@
 package org.apache.iotdb.cluster.rpc.raft;
 
 import com.alipay.sofa.jraft.entity.PeerId;
-import org.apache.iotdb.cluster.qp.callback.QPTask;
+import org.apache.iotdb.cluster.qp.task.QPTask;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 

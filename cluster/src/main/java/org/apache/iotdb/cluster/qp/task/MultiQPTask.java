@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.qp.callback;
+package org.apache.iotdb.cluster.qp.task;
 
 import java.util.Map;
 
