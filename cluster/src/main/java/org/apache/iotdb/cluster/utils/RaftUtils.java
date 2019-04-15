@@ -278,4 +278,11 @@ public class RaftUtils {
       status.setErrorMsg(e.getMessage());
     }
   }
+
+  public static Status createErrorStatus(String errorMsg){
+    Status status = new Status();
+    status.setErrorMsg(errorMsg);
+    status.setCode(-1);
+    return status;
+  }
 }

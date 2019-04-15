@@ -137,14 +137,6 @@ public class ClusterConfig {
    */
   private int concurrentQPSubTaskThread = Runtime.getRuntime().availableProcessors() * 10;
 
-  /**
-   * For each raft log, the state machine will start a thread to apply this log . This value
-   * indicates maximum number of threads for a state machine to create. Currently, this param only
-   * works for state machine of leader in data partition holder. Staten machine in metadata holder
-   * will apply raft log serially. When this value <= 0, use CPU core number.
-   */
-  private int concurrentRaftTaskThread = Runtime.getRuntime().availableProcessors();
-
   public ClusterConfig() {
     // empty constructor
   }
@@ -330,13 +322,5 @@ public class ClusterConfig {
 
   public void setConcurrentQPSubTaskThread(int concurrentQPSubTaskThread) {
     this.concurrentQPSubTaskThread = concurrentQPSubTaskThread;
-  }
-
-  public int getConcurrentRaftTaskThread() {
-    return concurrentRaftTaskThread;
-  }
-
-  public void setConcurrentRaftTaskThread(int concurrentRaftTaskThread) {
-    this.concurrentRaftTaskThread = concurrentRaftTaskThread;
   }
 }

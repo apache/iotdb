@@ -47,6 +47,9 @@ import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * StateMachine of metadata group node.
+ */
 public class MetadataStateManchine extends StateMachineAdapter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataStateManchine.class);
@@ -78,50 +81,57 @@ public class MetadataStateManchine extends StateMachineAdapter {
   @Override
   public void onApply(Iterator iterator) {
     while (iterator.hasNext()) {
-
-      /** If closure is not null, the node is leader **/
-      Closure closure = iterator.done();
-      BasicResponse response = (closure==null) ? null: ((ResponseClosure)closure).getResponse();
-      MetaGroupNonQueryRequest request = null;
       final ByteBuffer data = iterator.getData();
-      try {
-        request = SerializerManager.getSerializer(SerializerManager.Hessian2)
-            .deserialize(data.array(), MetaGroupNonQueryRequest.class.getName());
-      } catch (final CodecException e) {
-        LOGGER.error("Fail to decode IncrementAndGetRequest", e);
-      }
-      Status status = new Status();
-      assert request != null;
-
-      List<byte[]> planBytes = request.getPhysicalPlanBytes();
-
-      /** handle batch plans(planBytes.size() > 0) or single plan(planBytes.size()==1) **/
-      for (byte[] planByte : planBytes) {
-        try {
-          PhysicalPlan physicalPlan = PhysicalPlanLogTransfer
-              .logToOperator(planByte);
-          if (physicalPlan.getOperatorType() == OperatorType.SET_STORAGE_GROUP) {
-            MetadataPlan plan = (MetadataPlan) physicalPlan;
-            addStorageGroup(plan.getPath().getFullPath());
-          } else {
-            AuthorPlan plan = (AuthorPlan) physicalPlan;
-            qpExecutor.processNonQuery(plan);
-          }
-          addResult(response, true);
-        } catch (IOException | PathErrorException e) {
-          LOGGER.error("Execute metadata plan error", e);
-          status = new Status(-1, e.getMessage());
-          addResult(response, false);
-        } catch (ProcessorException e) {
-          LOGGER.error("Execute author plan error", e);
-          status = new Status(-1, e.getMessage());
-          addResult(response, false);
-        }
-      }
-      if (closure != null) {
-        closure.run(status);
-      }
+      final Closure closure = iterator.done();
+      applySingleTask(closure, data);
       iterator.next();
+    }
+  }
+
+  private void applySingleTask(Closure closure, ByteBuffer data){
+    /** If closure is not null, the node is leader **/
+    BasicResponse response = (closure==null) ? null: ((ResponseClosure)closure).getResponse();
+    MetaGroupNonQueryRequest request;
+
+    try {
+      request = SerializerManager.getSerializer(SerializerManager.Hessian2)
+          .deserialize(data.array(), MetaGroupNonQueryRequest.class.getName());
+    } catch (final CodecException e) {
+      LOGGER.error("Fail to deserialize MetadataGroupNonQueryRequest", e);
+      if(closure != null){
+        closure.run(RaftUtils.createErrorStatus(e.getMessage()));
+      }
+      return;
+    }
+    Status status = new Status();
+
+    List<byte[]> planBytes = request.getPhysicalPlanBytes();
+
+    /** handle batch plans(planBytes.size() > 0) or single plan(planBytes.size()==1) **/
+    for (byte[] planByte : planBytes) {
+      try {
+        PhysicalPlan physicalPlan = PhysicalPlanLogTransfer
+            .logToOperator(planByte);
+        if (physicalPlan.getOperatorType() == OperatorType.SET_STORAGE_GROUP) {
+          MetadataPlan plan = (MetadataPlan) physicalPlan;
+          addStorageGroup(plan.getPath().getFullPath());
+        } else {
+          AuthorPlan plan = (AuthorPlan) physicalPlan;
+          qpExecutor.processNonQuery(plan);
+        }
+        addResult(response, true);
+      } catch (IOException | PathErrorException e) {
+        LOGGER.error("Execute metadata plan error", e);
+        status = new Status(-1, e.getMessage());
+        addResult(response, false);
+      } catch (ProcessorException e) {
+        LOGGER.error("Execute author plan error", e);
+        status = new Status(-1, e.getMessage());
+        addResult(response, false);
+      }
+    }
+    if (closure != null) {
+      closure.run(status);
     }
   }
 

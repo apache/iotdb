@@ -24,7 +24,6 @@ import com.alipay.sofa.jraft.rpc.RaftRpcServerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.cluster.concurrent.pool.QPTaskManager;
-import org.apache.iotdb.cluster.concurrent.pool.RaftTaskManager;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -123,7 +122,6 @@ public class Server {
   }
 
   public void stop() throws ProcessorException {
-    RaftTaskManager.getInstance().close(true, ClusterConstant.CLOSE_RAFT_TASK_BLOCK_TIMEOUT);
     QPTaskManager.getInstance().close(true, ClusterConstant.CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT);
     iotdb.deactivate();
     CLIENT_MANAGER.shutdown();

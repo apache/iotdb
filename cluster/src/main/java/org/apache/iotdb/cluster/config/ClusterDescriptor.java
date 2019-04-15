@@ -159,13 +159,6 @@ public class ClusterDescriptor {
         conf.setConcurrentQPSubTaskThread(Runtime.getRuntime().availableProcessors() * 10);
       }
 
-      conf.setConcurrentRaftTaskThread(Integer
-          .parseInt(properties.getProperty("concurrent_raft_task_thread",
-              Integer.toString(conf.getConcurrentQPSubTaskThread()))));
-      if (conf.getConcurrentRaftTaskThread() <= 0) {
-        conf.setConcurrentRaftTaskThread(Runtime.getRuntime().availableProcessors());
-      }
-
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

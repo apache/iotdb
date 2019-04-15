@@ -32,13 +32,6 @@ public class ClusterConstant {
 
   /**
    * Maximum time of blocking main thread for waiting for all running task threads and tasks in the
-   * queue until end. Raft Task refers to tasks that need to be performed in the state machine.The
-   * unit is milliseconds. Due to guarantee data consistency, it must ensure that tasks finish.
-   */
-  public static final int CLOSE_RAFT_TASK_BLOCK_TIMEOUT = Integer.MAX_VALUE;
-
-  /**
-   * Maximum time of blocking main thread for waiting for all running task threads and tasks in the
    * queue until end. Each client request corresponds to a QP Task. A QP task may be divided into
    * several sub-tasks.The unit is milliseconds.
    */

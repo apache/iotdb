@@ -78,13 +78,7 @@ public class DataStateMachine extends StateMachineAdapter {
     while (iterator.hasNext()) {
       final Closure closure = iterator.done();
       final ByteBuffer data = iterator.getData();
-
-//      /** It's leader to apply task **/
-//      if (closure != null) {
-//        RaftTaskManager.getInstance().execute(() -> applySingleTask(closure, data));
-//      } else {
-        applySingleTask(closure, data);
-//      }
+      applySingleTask(closure, data);
       iterator.next();
     }
   }
@@ -97,28 +91,31 @@ public class DataStateMachine extends StateMachineAdapter {
    * @param data Request data
    */
   private void applySingleTask(Closure closure, ByteBuffer data) {
+    /** If closure is not null, the node is leader **/
     BasicResponse response = (closure == null) ? null : ((ResponseClosure) closure).getResponse();
-    DataGroupNonQueryRequest request = null;
+    DataGroupNonQueryRequest request;
     try {
       request = SerializerManager.getSerializer(SerializerManager.Hessian2)
           .deserialize(data.array(), DataGroupNonQueryRequest.class.getName());
     } catch (final CodecException e) {
-      LOGGER.error("Fail to decode IncrementAndGetRequest", e);
+      LOGGER.error("Fail to deserialize DataGroupNonQueryRequest", e);
+      if (closure != null) {
+        closure.run(RaftUtils.createErrorStatus(e.getMessage()));
+      }
+      return;
     }
 
     Status status = Status.OK();
-    assert request != null;
-
     List<byte[]> planBytes = request.getPhysicalPlanBytes();
 
-    LOGGER.debug(String.format("State machine batch size(): %d", planBytes.size()));
+    LOGGER.debug("State machine batch size(): {}", planBytes.size());
 
     /** handle batch plans(planBytes.size() > 0) or single plan(planBytes.size()==1) **/
     for (byte[] planByte : planBytes) {
       try {
         PhysicalPlan plan = PhysicalPlanLogTransfer.logToOperator(planByte);
 
-        LOGGER.debug(String.format("OperatorType :%s", plan.getOperatorType()));
+        LOGGER.debug("OperatorType :{}", plan.getOperatorType());
         /** If the request is to set path and sg of the path doesn't exist, it needs to run null-read in meta group to avoid out of data sync **/
         if (plan.getOperatorType() == OperatorType.CREATE_TIMESERIES && !checkPathExistence(
             ((MetadataPlan) plan).getPath().getFullPath())) {
