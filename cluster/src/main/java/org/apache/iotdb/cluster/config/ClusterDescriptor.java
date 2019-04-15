@@ -124,13 +124,13 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("delay_hours",
               Integer.toString(conf.getDelayHours()))));
 
-      conf.setTaskRedoCount(Integer
-          .parseInt(properties.getProperty("task_redo_count",
-              Integer.toString(conf.getTaskRedoCount()))));
+      conf.setQpTaskRedoCount(Integer
+          .parseInt(properties.getProperty("qp_task_redo_count",
+              Integer.toString(conf.getQpTaskRedoCount()))));
 
-      conf.setTaskTimeoutMs(Integer
-          .parseInt(properties.getProperty("task_timeout_ms",
-              Integer.toString(conf.getTaskTimeoutMs()))));
+      conf.setQpTaskTimeout(Integer
+          .parseInt(properties.getProperty("qp_task_timeout_ms",
+              Integer.toString(conf.getQpTaskTimeout()))));
 
       conf.setNumOfVirtualNodes(Integer
           .parseInt(properties.getProperty("num_of_virtual_nodes",
@@ -151,6 +151,13 @@ public class ClusterDescriptor {
       conf.setReadDataConsistencyLevel(Integer
           .parseInt(properties.getProperty("read_data_consistency_level",
               Integer.toString(conf.getReadDataConsistencyLevel()))));
+
+      conf.setConcurrentQPSubTaskThread(Integer
+          .parseInt(properties.getProperty("concurrent_qp_sub_task_thread",
+              Integer.toString(conf.getConcurrentQPSubTaskThread()))));
+      if (conf.getConcurrentQPSubTaskThread() <= 0) {
+        conf.setConcurrentQPSubTaskThread(Runtime.getRuntime().availableProcessors() * 10);
+      }
 
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because, use default configuration", e);

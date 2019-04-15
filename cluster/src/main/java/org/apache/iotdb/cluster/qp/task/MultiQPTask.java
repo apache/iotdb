@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.qp.task;
 
 import java.util.Map;
+import java.util.concurrent.Future;
 
 public abstract class MultiQPTask extends QPTask {
 
@@ -28,19 +29,20 @@ public abstract class MultiQPTask extends QPTask {
   Map<String, SingleQPTask> taskMap;
 
   /**
-   * Task thread map
+   * Each future task handle a request in taskMap, which is corresponding to a group id. String:
+   * group id
    */
-  Map<String, Thread> taskThreadMap;
+  Map<String, Future<?>> taskThreadMap;
 
-  public MultiQPTask(boolean isSyncTask, int taskNum, TaskState taskState, TaskType taskType) {
+  public MultiQPTask(boolean isSyncTask, int taskNum, TaskType taskType) {
     super(isSyncTask, taskNum, TaskState.INITIAL, taskType);
   }
 
   @Override
   public void shutdown() {
-    for (Thread taskThread : taskThreadMap.values()) {
-      if (taskThread.isAlive() && !taskThread.isInterrupted()) {
-        taskThread.interrupt();
+    for (Future<?> task : taskThreadMap.values()) {
+      if (!task.isDone()) {
+        task.cancel(true);
       }
     }
     while(taskCountDownLatch.getCount()!=0) {

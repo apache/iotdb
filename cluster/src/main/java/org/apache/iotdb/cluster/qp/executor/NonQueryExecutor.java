@@ -29,15 +29,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import org.apache.iotdb.cluster.qp.task.BatchQPTask;
-import org.apache.iotdb.cluster.qp.task.QPTask;
-import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.qp.task.BatchQPTask;
+import org.apache.iotdb.cluster.qp.task.QPTask;
+import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.DataGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.MetaGroupNonQueryRequest;
@@ -101,7 +100,6 @@ public class NonQueryExecutor extends AbstractQPExecutor {
    */
   public void processBatch(PhysicalPlan[] physicalPlans, BatchResult batchResult)
       throws InterruptedException {
-    int[] result = batchResult.getResult();
 
     Status nullReadTaskStatus = Status.OK();
     RaftUtils.handleNullReadToMetaGroup(nullReadTaskStatus);
@@ -110,6 +108,27 @@ public class NonQueryExecutor extends AbstractQPExecutor {
     /** 1. Classify physical plans by group id **/
     Map<String, List<PhysicalPlan>> physicalPlansMap = new HashMap<>();
     Map<String, List<Integer>> planIndexMap = new HashMap<>();
+    classifyPhysicalPlanByGroupId(physicalPlans, batchResult, physicalPlansMap, planIndexMap);
+
+    /** 2. Construct Multiple Data Group Requests **/
+    Map<String, SingleQPTask> subTaskMap = new HashMap<>();
+    constructMultipleRequests(physicalPlansMap, planIndexMap, subTaskMap, batchResult);
+
+    /** 3. Execute Multiple Sub Tasks **/
+    BatchQPTask task = new BatchQPTask(subTaskMap.size(), batchResult, subTaskMap, planIndexMap);
+    currentTask.set(task);
+    task.execute(this);
+    task.await();
+    batchResult.setAllSuccessful(task.isAllSuccessful());
+    batchResult.setBatchErrorMessage(task.getBatchErrorMessage());
+  }
+
+  /**
+   * Classify batch physical plan by groupId
+   */
+  private void classifyPhysicalPlanByGroupId(PhysicalPlan[] physicalPlans, BatchResult batchResult,
+      Map<String, List<PhysicalPlan>> physicalPlansMap, Map<String, List<Integer>> planIndexMap) {
+    int[] result = batchResult.getResult();
     for (int i = 0; i < result.length; i++) {
       /** Check if the request has failed. If it has failed, ignore it. **/
       if (result[i] != Statement.EXECUTE_FAILED) {
@@ -131,7 +150,7 @@ public class NonQueryExecutor extends AbstractQPExecutor {
             physicalPlansMap.get(groupId).add(plan);
             planIndexMap.get(groupId).add(i);
           }
-        } catch (PathErrorException | ProcessorException | IOException | RaftConnectionException e) {
+        } catch (PathErrorException | ProcessorException | IOException | RaftConnectionException | InterruptedException e) {
           result[i] = Statement.EXECUTE_FAILED;
           batchResult.setAllSuccessful(false);
           batchResult.setBatchErrorMessage(e.getMessage());
@@ -139,16 +158,21 @@ public class NonQueryExecutor extends AbstractQPExecutor {
         }
       }
     }
+  }
 
-    /** 2. Construct Multiple Data Group Requests **/
-    Map<String, SingleQPTask> subTaskMap = new HashMap<>();
+  /**
+   * Construct multiple data group requests
+   */
+  private void constructMultipleRequests(Map<String, List<PhysicalPlan>> physicalPlansMap,
+      Map<String, List<Integer>> planIndexMap, Map<String, SingleQPTask> subTaskMap,
+      BatchResult batchResult) {
+    int[] result = batchResult.getResult();
     for (Entry<String, List<PhysicalPlan>> entry : physicalPlansMap.entrySet()) {
       String groupId = entry.getKey();
       SingleQPTask singleQPTask;
       BasicRequest request;
       try {
-        LOGGER.debug(
-            String.format("DATA_GROUP_ID Send batch size() : %d", entry.getValue().size()));
+        LOGGER.debug("DATA_GROUP_ID Send batch size() : {}", entry.getValue().size());
         request = new DataGroupNonQueryRequest(groupId, entry.getValue());
         singleQPTask = new SingleQPTask(false, request);
         subTaskMap.put(groupId, singleQPTask);
@@ -160,14 +184,6 @@ public class NonQueryExecutor extends AbstractQPExecutor {
         }
       }
     }
-
-    /** 3. Execute Multiple Sub Tasks **/
-    BatchQPTask task = new BatchQPTask(subTaskMap.size(), batchResult, subTaskMap, planIndexMap);
-    currentTask.set(task);
-    task.execute(this);
-    task.await();
-    batchResult.setAllSuccessful(task.isAllSuccessful());
-    batchResult.setBatchErrorMessage(task.getBatchErrorMessage());
   }
 
   /**

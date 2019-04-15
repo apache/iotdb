@@ -93,19 +93,4 @@ public class RaftService implements IService {
     this.node = node;
   }
 
-  public void saveSnapshot() {
-
-  }
-
-  public void loadSnapshot() {
-
-  }
-
-  public void onRevice(Object message) {
-
-  }
-
-  enum State {
-    FOLLOWER, LEADER, CANIDIDATE;
-  }
 }

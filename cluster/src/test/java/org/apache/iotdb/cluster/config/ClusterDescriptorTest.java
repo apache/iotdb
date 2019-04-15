@@ -56,6 +56,8 @@ public class ClusterDescriptorTest {
   private String testQueueLenNew = "300000";
   private String testMetadataConsistencyNew = "2";
   private String testDataConsistencyNew = "4";
+  private String testConcurrentQPTaskThreadNew = "6";
+  private String testConcurrentRaftTaskThreadNew = "11";
 
   private String[] testNodesOld;
   private int testReplicationOld;
@@ -75,6 +77,8 @@ public class ClusterDescriptorTest {
   private int testQueueLenOld;
   private int testMetadataConsistencyOld;
   private int testDataConsistencyOld;
+  private int testConcurrentQPTaskThreadOld;
+  private int testConcurrentRaftTaskThreadOld;
   private Map<String, String> testConfigMap = new HashMap<String, String>() {
     private static final long serialVersionUID = 7832408957178621132L;
 
@@ -90,13 +94,15 @@ public class ClusterDescriptorTest {
       put("max_catch_up_log_num", testMaxCatchUpLogNumNew);
       put("delay_snapshot", testDelaySnapshotNew);
       put("delay_hours", testDelayHoursNew);
-      put("task_redo_count", testTaskRedoCountNew);
-      put("task_timeout_ms", testTaskTimeoutMSNew);
+      put("qp_task_redo_count", testTaskRedoCountNew);
+      put("qp_task_timeout_ms", testTaskTimeoutMSNew);
       put("num_of_virtual_nodes", testVNodesNew);
       put("max_num_of_inner_rpc_client", testClientNumNew);
       put("max_queue_num_of_inner_rpc_client", testQueueLenNew);
       put("read_metadata_consistency_level", testMetadataConsistencyNew);
       put("read_data_consistency_level", testDataConsistencyNew);
+      put("concurrent_qp_sub_task_thread", testConcurrentQPTaskThreadNew);
+      put("concurrent_raft_task_thread", testConcurrentRaftTaskThreadNew);
     }
   };
 
@@ -134,13 +140,15 @@ public class ClusterDescriptorTest {
     assertEquals(testMaxCatchUpLogNumNew, config.getMaxCatchUpLogNum() + "");
     assertEquals(testDelaySnapshotNew, config.isDelaySnapshot() + "");
     assertEquals(testDelayHoursNew, config.getDelayHours() + "");
-    assertEquals(testTaskRedoCountNew, config.getTaskRedoCount() + "");
-    assertEquals(testTaskTimeoutMSNew, config.getTaskTimeoutMs() + "");
+    assertEquals(testTaskRedoCountNew, config.getQpTaskRedoCount() + "");
+    assertEquals(testTaskTimeoutMSNew, config.getQpTaskTimeout() + "");
     assertEquals(testVNodesNew, config.getNumOfVirtualNodes() + "");
     assertEquals(testClientNumNew, config.getMaxNumOfInnerRpcClient() + "");
     assertEquals(testQueueLenNew, config.getMaxQueueNumOfInnerRpcClient() + "");
     assertEquals(testMetadataConsistencyNew, config.getReadMetadataConsistencyLevel() + "");
     assertEquals(testDataConsistencyNew, config.getReadDataConsistencyLevel() + "");
+    assertEquals(testConcurrentQPTaskThreadNew, config.getConcurrentQPSubTaskThread() + "");
+
 
     System.setProperty(IoTDBConstant.IOTDB_CONF, "");
     config.deleteAllPath();
@@ -184,13 +192,14 @@ public class ClusterDescriptorTest {
     testMaxCatchUpLogNumOld = config.getMaxCatchUpLogNum();
     testDelaySnapshotOld = config.isDelaySnapshot();
     testDelayHoursOld = config.getDelayHours();
-    testTaskRedoCountOld = config.getTaskRedoCount();
-    testTaskTimeoutMSOld = config.getTaskTimeoutMs();
+    testTaskRedoCountOld = config.getQpTaskRedoCount();
+    testTaskTimeoutMSOld = config.getQpTaskTimeout();
     testVNodesOld = config.getNumOfVirtualNodes();
     testClientNumOld = config.getMaxNumOfInnerRpcClient();
     testQueueLenOld = config.getMaxQueueNumOfInnerRpcClient();
     testMetadataConsistencyOld = config.getReadMetadataConsistencyLevel();
     testDataConsistencyOld = config.getReadDataConsistencyLevel();
+    testConcurrentQPTaskThreadOld = config.getConcurrentQPSubTaskThread();
   }
 
   private void restoreOldConfig() {
@@ -206,12 +215,13 @@ public class ClusterDescriptorTest {
     config.setMaxCatchUpLogNum(testMaxCatchUpLogNumOld);
     config.setDelayHours(testDelayHoursOld);
     config.setDelaySnapshot(testDelaySnapshotOld);
-    config.setTaskRedoCount(testTaskRedoCountOld);
-    config.setTaskTimeoutMs(testTaskTimeoutMSOld);
+    config.setQpTaskRedoCount(testTaskRedoCountOld);
+    config.setQpTaskTimeout(testTaskTimeoutMSOld);
     config.setNumOfVirtualNodes(testVNodesOld);
     config.setMaxNumOfInnerRpcClient(testClientNumOld);
     config.setMaxQueueNumOfInnerRpcClient(testQueueLenOld);
     config.setReadMetadataConsistencyLevel(testMetadataConsistencyOld);
     config.setReadDataConsistencyLevel(testDataConsistencyOld);
+    config.setConcurrentQPSubTaskThread(testConcurrentQPTaskThreadOld);
   }
 }
