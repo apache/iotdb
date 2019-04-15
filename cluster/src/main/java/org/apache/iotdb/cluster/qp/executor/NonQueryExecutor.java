@@ -101,7 +101,6 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    */
   public void processBatch(PhysicalPlan[] physicalPlans, BatchResult batchResult)
       throws InterruptedException {
-    int[] result = batchResult.getResult();
 
     Status nullReadTaskStatus = Status.OK();
     RaftUtils.handleNullReadToMetaGroup(nullReadTaskStatus);
@@ -152,7 +151,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
             physicalPlansMap.get(groupId).add(plan);
             planIndexMap.get(groupId).add(i);
           }
-        } catch (PathErrorException | ProcessorException | IOException | RaftConnectionException e) {
+        } catch (PathErrorException | ProcessorException | IOException | RaftConnectionException | InterruptedException e) {
           result[i] = Statement.EXECUTE_FAILED;
           batchResult.setAllSuccessful(false);
           batchResult.setBatchErrorMessage(e.getMessage());
