@@ -46,6 +46,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.cli.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -301,11 +302,9 @@ public class ImportCsv extends AbstractCsvTool {
     DatabaseMetaData databaseMetaData = connection.getMetaData();
 
     for (int i = 1; i < strHeadInfo.length; i++) {
-      ResultSet resultSet = databaseMetaData.getColumns(null,
-          null, strHeadInfo[i], null);
+      ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, strHeadInfo[i], null, null);
       if (resultSet.next()) {
-        timeseriesDataType.put(resultSet.getString(1),
-            resultSet.getString(2));
+        timeseriesDataType.put(strHeadInfo[i], resultSet.getString(2));
       } else {
         String errorInfo = String.format("Database cannot find %s in %s, stop import!",
             strHeadInfo[i], file.getAbsolutePath());
