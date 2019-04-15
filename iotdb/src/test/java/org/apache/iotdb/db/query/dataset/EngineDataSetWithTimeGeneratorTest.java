@@ -24,8 +24,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -35,7 +35,7 @@ import org.junit.Test;
 
 public class EngineDataSetWithTimeGeneratorTest {
 
-  private QueryProcessExecutor queryExecutor = new OverflowQPExecutor();
+  private AbstractQueryProcessExecutor queryExecutor = new OverflowQPExecutor();
   private QueryProcessor processor = new QueryProcessor(queryExecutor);
   private String[] sqls = {
       "SET STORAGE GROUP TO root.vehicle",

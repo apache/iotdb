@@ -24,7 +24,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteOperator;
@@ -57,9 +57,9 @@ import org.slf4j.LoggerFactory;
 public class PhysicalGenerator {
 
   private static final Logger logger = LoggerFactory.getLogger(PhysicalGenerator.class);
-  private QueryProcessExecutor executor;
+  private AbstractQueryProcessExecutor executor;
 
-  public PhysicalGenerator(QueryProcessExecutor executor) {
+  public PhysicalGenerator(AbstractQueryProcessExecutor executor) {
     this.executor = executor;
   }
 
@@ -278,7 +278,7 @@ public class PhysicalGenerator {
   }
 
   // private SingleQueryPlan constructSelectPlan(FilterOperator filterOperator, List<Path> paths,
-  // QueryProcessExecutor conf) throws QueryProcessorException {
+  // AbstractQueryProcessExecutor conf) throws QueryProcessorException {
   // FilterOperator timeFilter = null;
   // FilterOperator freqFilter = null;
   // FilterOperator valueFilter = null;

@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Handle distributed non-query logic
  */
-public class NonQueryExecutor extends ClusterQPExecutor {
+public class NonQueryExecutor extends AbstractClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NonQueryExecutor.class);
 
@@ -140,7 +140,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     }
 
     /** 2. Construct Multiple Data Group Requests **/
-    Map<String, QPTask> subTaskMap = new HashMap<>();
+    Map<String, SingleQPTask> subTaskMap = new HashMap<>();
     for (Entry<String, List<PhysicalPlan>> entry : physicalPlansMap.entrySet()) {
       String groupId = entry.getKey();
       SingleQPTask singleQPTask;
@@ -298,7 +298,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     } else {
       request = new DataGroupNonQueryRequest(groupId, plans);
     }
-    QPTask qpTask = new SingleQPTask(false, request);
+    SingleQPTask qpTask = new SingleQPTask(false, request);
     currentTask = qpTask;
 
     /** Check if the plan can be executed locally. **/
@@ -340,9 +340,9 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    * @param leader leader of the target raft group
    * @return request result
    */
-  public boolean asyncHandleNonQueryTask(QPTask task, PeerId leader)
+  public boolean asyncHandleNonQueryTask(SingleQPTask task, PeerId leader)
       throws RaftConnectionException, InterruptedException {
-    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
     return response != null && response.isSuccess();
   }
 

@@ -26,7 +26,7 @@ import java.util.List;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -111,7 +111,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    *
    * @return QueryFilter in TsFile
    */
-  public IExpression transformToExpression(QueryProcessExecutor executor)
+  public IExpression transformToExpression(AbstractQueryProcessExecutor executor)
       throws QueryProcessorException {
     if (isSingle) {
       Pair<IUnaryExpression, String> ret = transformToSingleQueryFilter(executor);
@@ -149,7 +149,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    * @throws QueryProcessorException exception in filter transforming
    */
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
-      QueryProcessExecutor executor)
+      AbstractQueryProcessExecutor executor)
       throws QueryProcessorException {
     if (childOperators.isEmpty()) {
       throw new LogicalOperatorException(

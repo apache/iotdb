@@ -26,11 +26,11 @@ import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.iotdb.cluster.qp.task.QPTask;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
@@ -176,7 +176,7 @@ public class RaftNodeAsClientManager {
 
     @Override
     public void asyncHandleRequest(BasicRequest request, PeerId leader,
-        QPTask qpTask)
+        SingleQPTask qpTask)
         throws RaftConnectionException {
       LOGGER.debug("Node as client to send request to leader: {}", leader);
       try {
@@ -215,7 +215,7 @@ public class RaftNodeAsClientManager {
 
     @Override
     public void syncHandleRequest(BasicRequest request, PeerId leader,
-        QPTask qpTask)
+        SingleQPTask qpTask)
         throws RaftConnectionException {
       try {
         BasicResponse response = (BasicResponse) boltClientService.getRpcClient()

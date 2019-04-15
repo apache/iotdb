@@ -24,8 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.cluster.qp.task.QPTask;
-import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -33,6 +31,9 @@ import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.exception.ConsistencyLevelException;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.qp.task.QPTask;
+import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
+import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
@@ -44,9 +45,9 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class ClusterQPExecutor {
+public abstract class AbstractClusterQPExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterQPExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractClusterQPExecutor.class);
 
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
 
@@ -171,21 +172,20 @@ public abstract class ClusterQPExecutor {
    * @param taskRetryNum Number of QPTask retries due to timeout and redirected.
    * @return basic response
    */
-  protected BasicResponse asyncHandleNonQueryTaskGetRes(QPTask task, PeerId leader,
+  protected BasicResponse asyncHandleNonQuerySingleTaskGetRes(SingleQPTask task, PeerId leader,
       int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
-    asyncSendNonQueryTask(task, leader, taskRetryNum);
-    return asyncGetNonQueryRes(task, leader, taskRetryNum);
+    asyncSendNonQuerySingleTask(task, leader, taskRetryNum);
+    return syncGetNonQueryRes(task, leader, taskRetryNum);
   }
 
   /**
    * Asynchronous send rpc task via client
-   *
-   * @param task rpc task
+   *  @param task rpc task
    * @param leader leader node of the group
    * @param taskRetryNum Retry time of the task
    */
-  public void asyncSendNonQueryTask(QPTask task, PeerId leader, int taskRetryNum)
+  public void asyncSendNonQuerySingleTask(SingleQPTask task, PeerId leader, int taskRetryNum)
       throws RaftConnectionException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
       throw new RaftConnectionException(String.format("QPTask retries reach the upper bound %s",
@@ -211,15 +211,14 @@ public abstract class ClusterQPExecutor {
   }
 
   /**
-   * Asynchronous get task response. If it's redirected or status is exception, the task needs to be
+   * Synchronous get task response. If it's redirected or status is exception, the task needs to be
    * resent. Note: If status is Exception, it marks that an exception occurred during the task is
    * being sent instead of executed.
-   *
-   * @param task rpc task
+   *  @param task rpc task
    * @param leader leader node of the group
    * @param taskRetryNum Retry time of the task
    */
-  private BasicResponse asyncGetNonQueryRes(QPTask task, PeerId leader, int taskRetryNum)
+  private BasicResponse syncGetNonQueryRes(SingleQPTask task, PeerId leader, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
     task.await();
     if (task.getTaskState() != TaskState.FINISH) {
@@ -230,7 +229,7 @@ public abstract class ClusterQPExecutor {
         RaftUtils.updateRaftGroupLeader(task.getRequest().getGroupID(), leader);
       }
       task.resetTask();
-      return asyncHandleNonQueryTaskGetRes(task, leader, taskRetryNum + 1);
+      return asyncHandleNonQuerySingleTaskGetRes(task, leader, taskRetryNum + 1);
     }
     return task.getResponse();
   }

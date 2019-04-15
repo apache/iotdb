@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
@@ -49,13 +49,13 @@ import org.apache.iotdb.db.sql.parse.ParseUtils;
  */
 public class QueryProcessor {
 
-  private QueryProcessExecutor executor;
+  private AbstractQueryProcessExecutor executor;
 
-  public QueryProcessor(QueryProcessExecutor executor) {
+  public QueryProcessor(AbstractQueryProcessExecutor executor) {
     this.executor = executor;
   }
 
-  public QueryProcessExecutor getExecutor() {
+  public AbstractQueryProcessExecutor getExecutor() {
     return executor;
   }
 
@@ -122,7 +122,7 @@ public class QueryProcessor {
    * @throws LogicalOptimizeException
    *             exception in logical optimizing
    */
-  private Operator logicalOptimize(Operator operator, QueryProcessExecutor executor)
+  private Operator logicalOptimize(Operator operator, AbstractQueryProcessExecutor executor)
       throws LogicalOperatorException {
     switch (operator.getType()) {
       case AUTHOR:
@@ -156,7 +156,7 @@ public class QueryProcessor {
    * @throws LogicalOptimizeException
    *             exception in SFW optimizing
    */
-  private SFWOperator optimizeSFWOperator(SFWOperator root, QueryProcessExecutor executor)
+  private SFWOperator optimizeSFWOperator(SFWOperator root, AbstractQueryProcessExecutor executor)
       throws LogicalOperatorException {
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
     root = (SFWOperator) concatPathOptimizer.transform(root);

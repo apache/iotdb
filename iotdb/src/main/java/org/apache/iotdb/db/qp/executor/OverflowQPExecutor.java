@@ -52,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.LoadDataUtils;
@@ -69,7 +70,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class OverflowQPExecutor extends QueryProcessExecutor {
+public class OverflowQPExecutor extends AbstractQueryProcessExecutor {
 
   private static final Logger LOG = LoggerFactory.getLogger(OverflowQPExecutor.class);
 
@@ -77,6 +78,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   private MManager mManager = MManager.getInstance();
 
   public OverflowQPExecutor() {
+    super(new EngineQueryRouter());
     fileNodeManager = FileNodeManager.getInstance();
   }
 

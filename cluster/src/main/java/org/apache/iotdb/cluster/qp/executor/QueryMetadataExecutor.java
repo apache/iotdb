@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Handle < show timeseries <path> > logic
  */
-public class QueryMetadataExecutor extends ClusterQPExecutor {
+public class QueryMetadataExecutor extends AbstractClusterQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
   private static final String DOUB_SEPARATOR = "\\.";
@@ -165,7 +165,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
         holder = RaftUtils.getRandomPeerID(groupId);
       }
       try {
-        asyncSendNonQueryTask(task, holder, 0);
+        asyncSendNonQuerySingleTask(task, holder, 0);
       } catch (RaftConnectionException e) {
         throw new ProcessorException("Raft connection occurs error.", e);
       }
@@ -204,7 +204,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
         holder = RaftUtils.getRandomPeerID(groupId);
       }
       try {
-        asyncSendNonQueryTask(task, holder, 0);
+        asyncSendNonQuerySingleTask(task, holder, 0);
       } catch (RaftConnectionException e) {
         throw new ProcessorException("Raft connection occurs error.", e);
       }
@@ -304,14 +304,14 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private List<List<String>> queryTimeSeries(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
     return response == null ? new ArrayList<>()
         : ((QueryTimeSeriesResponse) response).getTimeSeries();
   }
 
   private TSDataType querySeriesType(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
     return response == null ? null
         : ((QuerySeriesTypeResponse) response).getDataType();
   }
@@ -363,7 +363,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private List<String> queryPaths(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
     return response == null ? new ArrayList<>()
         : ((QueryPathsResponse) response).getPaths();
   }

@@ -31,12 +31,13 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,7 +51,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Implement a simple executor with a memory demo reading processor for test.
  */
-public class MemIntQpExecutor extends QueryProcessExecutor {
+public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
 
   private static Logger LOG = LoggerFactory.getLogger(MemIntQpExecutor.class);
 
@@ -61,6 +62,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   private Map<String, List<String>> fakeAllPaths;
 
   public MemIntQpExecutor() {
+    super(new EngineQueryRouter());
     this.fetchSize.set(5);
   }
 

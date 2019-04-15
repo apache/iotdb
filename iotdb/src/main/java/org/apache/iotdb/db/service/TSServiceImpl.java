@@ -99,7 +99,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected static final String INFO_NOT_LOGIN = "{}: Not login.";
   protected static final String ERROR_NOT_LOGIN = "Not login";
 
-  protected QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+  private QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
   // Record the username for every rpc connection. Username.get() is null if
   // login is failed.
   protected ThreadLocal<String> username = new ThreadLocal<>();

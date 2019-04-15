@@ -25,7 +25,7 @@ public abstract class MultiQPTask extends QPTask {
   /**
    * Each request is corresponding to a group id. String: group id
    */
-  Map<String, QPTask> taskMap;
+  Map<String, SingleQPTask> taskMap;
 
   /**
    * Task thread map

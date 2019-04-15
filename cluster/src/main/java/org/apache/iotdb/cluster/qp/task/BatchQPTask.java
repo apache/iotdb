@@ -71,7 +71,7 @@ public class BatchQPTask extends MultiQPTask {
   private NonQueryExecutor executor;
 
 
-  public BatchQPTask(int taskNum, BatchResult batchResult, Map<String, QPTask> taskMap,
+  public BatchQPTask(int taskNum, BatchResult batchResult, Map<String, SingleQPTask> taskMap,
       Map<String, List<Integer>> planIndexMap) {
     super(false, taskNum, TaskState.INITIAL, TaskType.BATCH);
     this.batchResult = batchResult.getResult();
@@ -115,9 +115,9 @@ public class BatchQPTask extends MultiQPTask {
   public void execute(NonQueryExecutor executor) {
     this.executor = executor;
 
-    for (Entry<String, QPTask> entry : taskMap.entrySet()) {
+    for (Entry<String, SingleQPTask> entry : taskMap.entrySet()) {
       String groupId = entry.getKey();
-      QPTask subTask = entry.getValue();
+      SingleQPTask subTask = entry.getValue();
       Thread thread;
       if (executor.canHandleNonQueryByGroupId(groupId)) {
         thread = new Thread(() -> executeLocalSubTask(subTask, groupId));
@@ -147,7 +147,7 @@ public class BatchQPTask extends MultiQPTask {
   /**
    * Execute RPC sub task
    */
-  private void executeRpcSubTask(QPTask subTask, PeerId leader, String groupId) {
+  private void executeRpcSubTask(SingleQPTask subTask, PeerId leader, String groupId) {
       try {
         executor.asyncHandleNonQueryTask(subTask, leader);
         this.run(subTask.getResponse());
