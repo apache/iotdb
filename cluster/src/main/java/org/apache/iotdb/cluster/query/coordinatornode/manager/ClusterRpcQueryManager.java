@@ -18,37 +18,40 @@
  */
 package org.apache.iotdb.cluster.query.coordinatornode.manager;
 
-import java.util.HashMap;
-import java.util.Map;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
-public class ClusterRpcQueryManager implements IClusterQueryManager{
+/**
+ * Manage all query in cluster
+ */
+public class ClusterRpcQueryManager{
 
-  Map<Long, Map<String, PhysicalPlan>> selectPathPlan = new HashMap<>();
-  Map<Long, Map<String, PhysicalPlan>> filterPathPlan = new HashMap<>();
+  /**
+   * Key is group id, value is manager of a client query.
+   */
+  ConcurrentHashMap<Long, IClusterSingleQueryManager> singleQueryManagerMap = new ConcurrentHashMap<>();
+
+  /**
+   * Add a query
+   */
+  public void addSingleQuery(long jobId, QueryPlan physicalPlan){
+    singleQueryManagerMap.put(jobId, new ClusterSingleQueryManager(jobId, physicalPlan));
+  }
+
+  /**
+   * Get query manager by group id
+   */
+  public IClusterSingleQueryManager getSingleQuery(long jobId) {
+    return singleQueryManagerMap.get(jobId);
+  }
+
+  public void releaseQueryResource(long jobId){
+    if(singleQueryManagerMap.containsKey(jobId)){
+     singleQueryManagerMap.remove(jobId).releaseQueryResource();
+    }
+  }
 
   private ClusterRpcQueryManager(){
-  }
-
-  @Override
-  public void registerQuery(Long jobId, PhysicalPlan plan) {
-
-  }
-
-  @Override
-  public PhysicalPlan getSelectPathPhysicalPlan(Long jobId, String fullPath) {
-    return selectPathPlan.get(jobId).get(fullPath);
-  }
-
-  @Override
-  public PhysicalPlan getFilterPathPhysicalPlan(Long jobId, String fullPath) {
-    return filterPathPlan.get(jobId).get(fullPath);
-  }
-
-  @Override
-  public void remove(Long jobId) {
-    selectPathPlan.remove(jobId);
-    filterPathPlan.remove(jobId);
   }
 
   public static final ClusterRpcQueryManager getInstance() {

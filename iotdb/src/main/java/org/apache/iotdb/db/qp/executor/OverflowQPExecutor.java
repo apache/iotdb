@@ -70,7 +70,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class OverflowQPExecutor extends AbstractQueryProcessExecutor {
+public class OverflowQPExecutor extends QueryProcessExecutor {
 
   private static final Logger LOG = LoggerFactory.getLogger(OverflowQPExecutor.class);
 
@@ -78,7 +78,6 @@ public class OverflowQPExecutor extends AbstractQueryProcessExecutor {
   private MManager mManager = MManager.getInstance();
 
   public OverflowQPExecutor() {
-    super(new EngineQueryRouter());
     fileNodeManager = FileNodeManager.getInstance();
   }
 
@@ -186,14 +185,14 @@ public class OverflowQPExecutor extends AbstractQueryProcessExecutor {
       QueryContext context)
       throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
       PathErrorException, IOException {
-    return queryRouter.aggregate(paths, aggres, expression, context);
+    return getQueryRouter().aggregate(paths, aggres, expression, context);
   }
 
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException {
-    return queryRouter.fill(fillPaths, queryTime, fillTypes, context);
+    return getQueryRouter().fill(fillPaths, queryTime, fillTypes, context);
   }
 
   @Override
@@ -201,7 +200,7 @@ public class OverflowQPExecutor extends AbstractQueryProcessExecutor {
       long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
       throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
       PathErrorException, IOException {
-    return queryRouter.groupBy(paths, aggres, expression, unit, origin, intervals, context);
+    return getQueryRouter().groupBy(paths, aggres, expression, unit, origin, intervals, context);
   }
 
   @Override
@@ -228,7 +227,7 @@ public class OverflowQPExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  protected boolean delete(Path path, long timestamp) throws ProcessorException {
+  public boolean delete(Path path, long timestamp) throws ProcessorException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {

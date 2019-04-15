@@ -227,7 +227,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
 
   public TSDataType processSeriesTypeQuery(String path)
       throws InterruptedException, ProcessorException, PathErrorException {
-    TSDataType dataType = null;
+    TSDataType dataType;
     List<String> storageGroupList = mManager.getAllFileNamesByPath(path);
     if (storageGroupList.size() != 1) {
       throw new PathErrorException("path " + path + " is not valid.");

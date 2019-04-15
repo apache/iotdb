@@ -31,7 +31,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Implement a simple executor with a memory demo reading processor for test.
  */
-public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
+public class MemIntQpExecutor extends QueryProcessExecutor {
 
   private static Logger LOG = LoggerFactory.getLogger(MemIntQpExecutor.class);
 
@@ -62,7 +62,6 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   private Map<String, List<String>> fakeAllPaths;
 
   public MemIntQpExecutor() {
-    super(new EngineQueryRouter());
     this.fetchSize.set(5);
   }
 
@@ -163,7 +162,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  protected boolean delete(Path path, long deleteTime) {
+  public boolean delete(Path path, long deleteTime) {
     if (!demoMemDataBase.containsKey(path.toString())) {
       return true;
     }

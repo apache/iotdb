@@ -103,7 +103,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // Record the username for every rpc connection. Username.get() is null if
   // login is failed.
   protected ThreadLocal<String> username = new ThreadLocal<>();
-  private ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
+  protected ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
   protected ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
   protected ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -208,6 +208,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (QueryContext context : contextMap.values()) {
         QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
       }
+      contextMapLocal.set(new HashMap<>());
     } else {
       QueryResourceManager.getInstance()
           .endQueryForGivenJob(contextMap.remove(req.queryId).getJobId());
@@ -698,17 +699,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     processor.getExecutor().setFetchSize(fetchSize);
 
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
-    Map<Long, QueryContext> contextMap = contextMapLocal.get();
-    if (contextMap == null) {
-      contextMap = new HashMap<>();
-      contextMapLocal.set(contextMap);
-    }
-    contextMap.put(req.queryId, context);
+
+    initContextMap();
+    contextMapLocal.get().put(req.queryId, context);
 
     QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
         context);
     queryRet.get().put(statement, queryDataSet);
     return queryDataSet;
+  }
+
+  public void initContextMap(){
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+    if (contextMap == null) {
+      contextMap = new HashMap<>();
+      contextMapLocal.set(contextMap);
+    }
   }
 
   @Override

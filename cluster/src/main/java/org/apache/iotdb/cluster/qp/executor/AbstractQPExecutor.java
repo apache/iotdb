@@ -69,7 +69,7 @@ public abstract class AbstractQPExecutor {
   /**
    * The task in progress.
    */
-  protected ThreadLocal<QPTask> currentTask;
+  protected ThreadLocal<QPTask> currentTask = new ThreadLocal<>();
 
   /**
    * Count limit to redo a single task

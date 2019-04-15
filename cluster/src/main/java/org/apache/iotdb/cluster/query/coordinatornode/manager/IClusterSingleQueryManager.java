@@ -18,38 +18,50 @@
  */
 package org.apache.iotdb.cluster.query.coordinatornode.manager;
 
+import com.alipay.sofa.jraft.entity.PeerId;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-public interface IClusterQueryManager {
+/**
+ * Manage a single query.
+ */
+public interface IClusterSingleQueryManager {
 
   /**
-   * Register a query, divide physical plan into several sub physical plans according to timeseries
-   * full path.
-   *
-   * @param jobId Query job id assigned by QueryResourceManager.
-   * @param plan Physical plan parsed by QueryProcessor
+   * Divide physical plan into several sub physical plans according to timeseries full path.
    */
-  void registerQuery(Long jobId, PhysicalPlan plan);
+  void dividePhysicalPlan();
 
   /**
    * Get physical plan of select path
    *
-   * @param jobId Query job id assigned by QueryResourceManager.
-   * @param path Timeseries full path in select paths
+   * @param fullPath Timeseries full path in select paths
    */
-  PhysicalPlan getSelectPathPhysicalPlan(Long jobId, String path);
+  PhysicalPlan getSelectPathPhysicalPlan(String fullPath);
 
   /**
    * Get physical plan of filter path
    *
-   * @param jobId Query job id assigned by QueryResourceManager.
-   * @param path Timeseries full path in filter
+   * @param fullPath Timeseries full path in filter
    */
-  PhysicalPlan getFilterPathPhysicalPlan(Long jobId, String path);
-
+  PhysicalPlan getFilterPathPhysicalPlan(String fullPath);
 
   /**
-   * Remove resource of a job id
+   * Set reader node of a data group
+   *
+   * @param groupId data group id
+   * @param readerNode peer id
    */
-  void remove(Long jobId);
+  void setDataGroupReaderNode(String groupId, PeerId readerNode);
+
+  /**
+   * Get reader node of a data group by group id
+   * @param groupId data group id
+   * @return peer id of reader node
+   */
+  PeerId getDataGroupReaderNode(String groupId);
+
+  /**
+   * Release query resource
+   */
+  void releaseQueryResource();
 }
