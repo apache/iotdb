@@ -148,7 +148,6 @@ public class ClusterDescriptorTest {
     assertEquals(testMetadataConsistencyNew, config.getReadMetadataConsistencyLevel() + "");
     assertEquals(testDataConsistencyNew, config.getReadDataConsistencyLevel() + "");
     assertEquals(testConcurrentQPTaskThreadNew, config.getConcurrentQPSubTaskThread() + "");
-    assertEquals(testConcurrentRaftTaskThreadNew, config.getConcurrentRaftTaskThread() + "");
 
 
     System.setProperty(IoTDBConstant.IOTDB_CONF, "");
@@ -201,7 +200,6 @@ public class ClusterDescriptorTest {
     testMetadataConsistencyOld = config.getReadMetadataConsistencyLevel();
     testDataConsistencyOld = config.getReadDataConsistencyLevel();
     testConcurrentQPTaskThreadOld = config.getConcurrentQPSubTaskThread();
-    testConcurrentRaftTaskThreadOld = config.getConcurrentRaftTaskThread();
   }
 
   private void restoreOldConfig() {
@@ -225,6 +223,5 @@ public class ClusterDescriptorTest {
     config.setReadMetadataConsistencyLevel(testMetadataConsistencyOld);
     config.setReadDataConsistencyLevel(testDataConsistencyOld);
     config.setConcurrentQPSubTaskThread(testConcurrentQPTaskThreadOld);
-    config.setConcurrentRaftTaskThread(testConcurrentRaftTaskThreadOld);
   }
 }
