@@ -31,21 +31,18 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class AbstractClusterQPExecutorTest {
+public class AbstractQPExecutorTest {
 
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
 
   private TSServiceClusterImpl impl;
 
-  private NonQueryExecutor executor;
+  private NonQueryExecutor executor = new NonQueryExecutor();
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     impl = new TSServiceClusterImpl();
-    impl.initClusterService();
-
-    executor = impl.getNonQueryExecutor();
   }
 
   @After

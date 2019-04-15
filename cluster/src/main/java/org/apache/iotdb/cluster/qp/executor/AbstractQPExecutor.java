@@ -45,9 +45,9 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class AbstractClusterQPExecutor {
+public abstract class AbstractQPExecutor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractClusterQPExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractQPExecutor.class);
 
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
 
@@ -69,7 +69,7 @@ public abstract class AbstractClusterQPExecutor {
   /**
    * The task in progress.
    */
-  protected QPTask currentTask;
+  protected ThreadLocal<QPTask> currentTask;
 
   /**
    * Count limit to redo a single task
@@ -235,8 +235,8 @@ public abstract class AbstractClusterQPExecutor {
   }
 
   public void shutdown() {
-    if (currentTask != null) {
-      currentTask.shutdown();
+    if (currentTask.get() != null) {
+      currentTask.get().shutdown();
     }
   }
 

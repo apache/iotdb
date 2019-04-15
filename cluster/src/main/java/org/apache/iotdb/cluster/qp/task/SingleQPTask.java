@@ -57,6 +57,8 @@ public class SingleQPTask extends QPTask {
 
   @Override
   public void shutdown() {
-    this.taskCountDownLatch.countDown();
+    if (taskCountDownLatch.getCount() != 0) {
+      this.taskCountDownLatch.countDown();
+    }
   }
 }

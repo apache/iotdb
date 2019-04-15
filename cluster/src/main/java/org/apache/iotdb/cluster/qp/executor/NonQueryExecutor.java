@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.cluster.qp.task.BatchQPTask;
 import org.apache.iotdb.cluster.qp.task.QPTask;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
@@ -60,7 +61,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Handle distributed non-query logic
  */
-public class NonQueryExecutor extends AbstractClusterQPExecutor {
+public class NonQueryExecutor extends AbstractQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NonQueryExecutor.class);
 
@@ -162,7 +163,7 @@ public class NonQueryExecutor extends AbstractClusterQPExecutor {
 
     /** 3. Execute Multiple Sub Tasks **/
     BatchQPTask task = new BatchQPTask(subTaskMap.size(), batchResult, subTaskMap, planIndexMap);
-    currentTask = task;
+    currentTask.set(task);
     task.execute(this);
     task.await();
     batchResult.setAllSuccessful(task.isAllSuccessful());
@@ -299,7 +300,7 @@ public class NonQueryExecutor extends AbstractClusterQPExecutor {
       request = new DataGroupNonQueryRequest(groupId, plans);
     }
     SingleQPTask qpTask = new SingleQPTask(false, request);
-    currentTask = qpTask;
+    currentTask.set(qpTask);
 
     /** Check if the plan can be executed locally. **/
     if (canHandleNonQueryByGroupId(groupId)) {

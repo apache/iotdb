@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.cluster.service;
 
-import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.io.IOException;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -30,7 +29,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.ConsistencyLevelException;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
-import org.apache.iotdb.cluster.query.executor.QueryProcessorExecutor;
+import org.apache.iotdb.cluster.query.coordinatornode.executor.QueryProcessorExecutor;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -56,17 +55,11 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceClusterImpl.class);
 
   private QueryProcessor processor = new QueryProcessor(new QueryProcessorExecutor());
-  private ThreadLocal<NonQueryExecutor> nonQueryExecutor = new ThreadLocal<>();
-  private ThreadLocal<QueryMetadataExecutor> queryMetadataExecutor = new ThreadLocal<>();
+  private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor();
+  private QueryMetadataExecutor queryMetadataExecutor = new QueryMetadataExecutor();
 
   public TSServiceClusterImpl() throws IOException {
     super();
-  }
-
-  @Override
-  public void initClusterService() {
-    nonQueryExecutor.set(new NonQueryExecutor());
-    queryMetadataExecutor.set(new QueryMetadataExecutor());
   }
 
   @Override
@@ -99,7 +92,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
             result = resultTemp;
             physicalPlans = physicalPlansTemp;
             BatchResult batchResult = new BatchResult(isAllSuccessful, batchErrorMessage, result);
-            nonQueryExecutor.get().processBatch(physicalPlans, batchResult);
+            nonQueryExecutor.processBatch(physicalPlans, batchResult);
             return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
                 "statement is query :" + statements.get(i), Arrays.stream(result).boxed().collect(
                     Collectors.toList()));
@@ -133,7 +126,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       }
 
       BatchResult batchResult = new BatchResult(isAllSuccessful, batchErrorMessage, result);
-      nonQueryExecutor.get().processBatch(physicalPlans, batchResult);
+      nonQueryExecutor.processBatch(physicalPlans, batchResult);
       batchErrorMessage = batchResult.batchErrorMessage;
       isAllSuccessful = batchResult.isAllSuccessful;
 
@@ -202,13 +195,13 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       if (Pattern.matches(ClusterConstant.SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
         String[] splits = statement.split("\\s+");
         int level = Integer.parseInt(splits[splits.length - 1]);
-        nonQueryExecutor.get().setReadMetadataConsistencyLevel(level);
+        nonQueryExecutor.setReadMetadataConsistencyLevel(level);
         return true;
       } else if (Pattern
           .matches(ClusterConstant.SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
         String[] splits = statement.split("\\s+");
         int level = Integer.parseInt(splits[splits.length - 1]);
-        nonQueryExecutor.get().setReadDataConsistencyLevel(level);
+        nonQueryExecutor.setReadDataConsistencyLevel(level);
         return true;
       } else {
         return false;
@@ -220,7 +213,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
 
   @Override
   protected boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
-    return nonQueryExecutor.get().processNonQuery(plan);
+    return nonQueryExecutor.processNonQuery(plan);
   }
 
   /**
@@ -228,46 +221,41 @@ public class TSServiceClusterImpl extends TSServiceImpl {
    */
   @Override
   public void closeClusterService() {
-    nonQueryExecutor.get().shutdown();
-    queryMetadataExecutor.get().shutdown();
+    nonQueryExecutor.shutdown();
+    queryMetadataExecutor.shutdown();
   }
 
   @Override
   protected Set<String> getAllStorageGroups() throws InterruptedException {
-    return queryMetadataExecutor.get().processStorageGroupQuery();
+    return queryMetadataExecutor.processStorageGroupQuery();
   }
 
   @Override
   protected List<List<String>> getTimeSeriesForPath(String path)
       throws PathErrorException, InterruptedException, ProcessorException {
-    return queryMetadataExecutor.get().processTimeSeriesQuery(path);
+    return queryMetadataExecutor.processTimeSeriesQuery(path);
   }
 
   @Override
   protected String getMetadataInString()
       throws InterruptedException, ProcessorException {
-    return queryMetadataExecutor.get().processMetadataInStringQuery();
+    return queryMetadataExecutor.processMetadataInStringQuery();
   }
 
   @Override
   protected Metadata getMetadata()
       throws InterruptedException, ProcessorException, PathErrorException {
-    return queryMetadataExecutor.get().processMetadataQuery();
+    return queryMetadataExecutor.processMetadataQuery();
   }
 
   @Override
   protected TSDataType getSeriesType(String path) throws PathErrorException, InterruptedException, ProcessorException {
-    return queryMetadataExecutor.get().processSeriesTypeQuery(path);
+    return queryMetadataExecutor.processSeriesTypeQuery(path);
   }
 
   @Override
   protected List<String> getPaths(String path)
       throws PathErrorException, InterruptedException, ProcessorException {
-    return queryMetadataExecutor.get().processPathsQuery(path);
-  }
-
-  @OnlyForTest
-  public NonQueryExecutor getNonQueryExecutor() {
-    return nonQueryExecutor.get();
+    return queryMetadataExecutor.processPathsQuery(path);
   }
 }

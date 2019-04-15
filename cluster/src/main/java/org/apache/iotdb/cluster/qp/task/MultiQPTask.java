@@ -43,6 +43,8 @@ public abstract class MultiQPTask extends QPTask {
         taskThread.interrupt();
       }
     }
-    this.taskCountDownLatch.countDown();
+    while(taskCountDownLatch.getCount()!=0) {
+      this.taskCountDownLatch.countDown();
+    }
   }
 }

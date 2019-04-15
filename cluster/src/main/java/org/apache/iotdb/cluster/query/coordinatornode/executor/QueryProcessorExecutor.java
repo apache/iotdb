@@ -1,4 +1,4 @@
-package org.apache.iotdb.cluster.query.executor;
+package org.apache.iotdb.cluster.query.coordinatornode.executor;
 
 import java.io.IOException;
 import java.util.List;

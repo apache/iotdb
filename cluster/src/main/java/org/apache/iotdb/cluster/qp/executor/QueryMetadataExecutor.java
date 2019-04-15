@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Handle < show timeseries <path> > logic
  */
-public class QueryMetadataExecutor extends AbstractClusterQPExecutor {
+public class QueryMetadataExecutor extends AbstractQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
   private static final String DOUB_SEPARATOR = "\\.";
