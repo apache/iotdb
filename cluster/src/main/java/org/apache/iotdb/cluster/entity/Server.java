@@ -23,7 +23,9 @@ import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.rpc.RaftRpcServerFactory;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.iotdb.cluster.concurrent.pool.QPTaskManager;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.data.DataPartitionHolder;
 import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
@@ -40,6 +42,7 @@ import org.apache.iotdb.cluster.rpc.raft.processor.QueryTimeSeriesAsyncProcessor
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +56,8 @@ public class Server {
 
   private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
 
-  private static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager.getInstance();
+  private static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager
+      .getInstance();
 
   /**
    * Metadata Group Holder
@@ -61,8 +65,7 @@ public class Server {
   private MetadataHolder metadataHolder;
 
   /**
-   * Data Group Holder Map
-   * String: group id
+   * Data Group Holder Map String: group id
    */
   private Map<String, DataPartitionHolder> dataPartitionHolderMap;
 
@@ -124,7 +127,8 @@ public class Server {
 
   }
 
-  public void stop() {
+  public void stop() throws ProcessorException {
+    QPTaskManager.getInstance().close(true, ClusterConstant.CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT);
     iotdb.deactivate();
     CLIENT_MANAGER.shutdown();
     metadataHolder.stop();

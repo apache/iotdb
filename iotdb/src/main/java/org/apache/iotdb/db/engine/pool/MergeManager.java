@@ -62,16 +62,16 @@ public class MergeManager {
    *
    * @param block if set block to true, this method will wait for timeOut milliseconds to close the
    * merge pool. false, return directly.
-   * @param timeOut block time out in milliseconds.
+   * @param timeout block time out in milliseconds.
    * @throws ProcessorException if timeOut reach or interrupted while waiting to exit.
    */
-  public void forceClose(boolean block, long timeOut) throws ProcessorException {
+  public void forceClose(boolean block, long timeout) throws ProcessorException {
     pool.shutdownNow();
     if (block) {
       try {
-        if (!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS)) {
+        if (!pool.awaitTermination(timeout, TimeUnit.MILLISECONDS)) {
           throw new ProcessorException(
-              "Merge thread pool doesn't exit after " + timeOut + " ms");
+              "Merge thread pool doesn't exit after " + timeout + " ms");
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
