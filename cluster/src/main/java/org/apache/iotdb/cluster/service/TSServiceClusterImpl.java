@@ -19,9 +19,7 @@
 package org.apache.iotdb.cluster.service;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +32,7 @@ import org.apache.iotdb.cluster.exception.ConsistencyLevelException;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
 import org.apache.iotdb.cluster.query.coordinatornode.executor.QueryProcessorExecutor;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcQueryManager;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -42,20 +41,14 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -79,12 +72,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   /**
    * Key is query statement, Value is corresponding job id which is assigned in <class>QueryResourceManager</class>
    */
-  private ThreadLocal<HashMap<String, Long>> queryStatus = new ThreadLocal<>();
-
-  /**
-   * Key is job id, Value is QueryDataSet
-   */
-  private ThreadLocal<HashMap<Long, QueryDataSet>> queryRet = new ThreadLocal<>();
+  private ThreadLocal<HashMap<String, Long>> queryJobIdMap = new ThreadLocal<>();
 
   public TSServiceClusterImpl() throws IOException {
     super();
@@ -290,7 +278,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   @Override
   public void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
     long jobId = QueryResourceManager.getInstance().assignJobId();
-    queryStatus.get().put(statement, jobId);
+    queryJobIdMap.get().put(statement, jobId);
     // refresh current queryRet for statement
     if (queryRet.get().containsKey(statement)) {
       queryRet.get().remove(statement);
@@ -299,7 +287,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
 
   @Override
   public void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
-    Map<String, Long> queryStatus =
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       return;
     }
@@ -307,32 +295,46 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       // end query for all the query tokens created by current thread
       for (QueryContext context : contextMap.values()) {
         QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
+        ClusterRpcQueryManager.getInstance().remove(context.getJobId());
       }
     } else {
-      QueryResourceManager.getInstance()
-          .endQueryForGivenJob(contextMap.remove(req.queryId).getJobId());
+      long jobId = contextMap.remove(req.queryId).getJobId();
+      QueryResourceManager.getInstance().endQueryForGivenJob(jobId);
+      ClusterRpcQueryManager.getInstance().remove(jobId);
     }
   }
+
+  @Override
+  public void clearAllStatusForCurrentRequest() {
+    if (this.queryRet.get() != null) {
+      this.queryRet.get().clear();
+    }
+
+    if (this.queryJobIdMap.get() != null) {
+      this.queryJobIdMap.get().clear();
+    }
+  }
+
 
   @Override
   public QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
       ProcessorException, IOException {
-    PhysicalPlan physicalPlan = queryStatus.get().get(statement);
-    processor.getExecutor().setFetchSize(fetchSize);
-
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
-    Map<Long, QueryContext> contextMap = contextMapLocal.get();
-    if (contextMap == null) {
-      contextMap = new HashMap<>();
-      contextMapLocal.set(contextMap);
-    }
-    contextMap.put(req.queryId, context);
-
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
-        context);
-    queryRet.get().put(statement, queryDataSet);
-    return queryDataSet;
+//    PhysicalPlan physicalPlan = queryJobIdMap.get().get(statement);
+//    processor.getExecutor().setFetchSize(fetchSize);
+//
+//    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
+//    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+//    if (contextMap == null) {
+//      contextMap = new HashMap<>();
+//      contextMapLocal.set(contextMap);
+//    }
+//    contextMap.put(req.queryId, context);
+//
+//    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
+//        context);
+//    queryRet.get().put(statement, queryDataSet);
+//    return queryDataSet;
   }
   /**
    * Close cluster service
