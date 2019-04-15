@@ -19,8 +19,11 @@
 package org.apache.iotdb.cluster.service;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -34,15 +37,24 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
+import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,8 +70,53 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor();
   private QueryMetadataExecutor queryMetadataExecutor = new QueryMetadataExecutor();
 
+  /**
+   * Key is query statement, Value is corresponding job id which is assigned in <class>QueryResourceManager</class>
+   */
+  private ThreadLocal<HashMap<String, Long>> queryStatus = new ThreadLocal<>();
+
+  /**
+   * Key is job id, Value is QueryDataSet
+   */
+  private ThreadLocal<HashMap<Long, QueryDataSet>> queryRet = new ThreadLocal<>();
+
   public TSServiceClusterImpl() throws IOException {
     super();
+  }
+
+
+  @Override
+  protected Set<String> getAllStorageGroups() throws InterruptedException {
+    return queryMetadataExecutor.processStorageGroupQuery();
+  }
+
+  @Override
+  protected List<List<String>> getTimeSeriesForPath(String path)
+      throws PathErrorException, InterruptedException, ProcessorException {
+    return queryMetadataExecutor.processTimeSeriesQuery(path);
+  }
+
+  @Override
+  protected String getMetadataInString()
+      throws InterruptedException, ProcessorException {
+    return queryMetadataExecutor.processMetadataInStringQuery();
+  }
+
+  @Override
+  protected Metadata getMetadata()
+      throws InterruptedException, ProcessorException, PathErrorException {
+    return queryMetadataExecutor.processMetadataQuery();
+  }
+
+  @Override
+  protected TSDataType getSeriesType(String path) throws PathErrorException, InterruptedException, ProcessorException {
+    return queryMetadataExecutor.processSeriesTypeQuery(path);
+  }
+
+  @Override
+  protected List<String> getPaths(String path)
+      throws PathErrorException, InterruptedException, ProcessorException {
+    return queryMetadataExecutor.processPathsQuery(path);
   }
 
   @Override
@@ -217,6 +274,24 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   }
 
   /**
+   * //TODO
+   */
+  @Override
+  public void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+    MManager.getInstance().checkFileLevel(paths);
+  }
+
+  @Override
+  public void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
+    long jobId = QueryResourceManager.getInstance().assignJobId();
+    queryStatus.get().put(statement, jobId);
+    // refresh current queryRet for statement
+    if (queryRet.get().containsKey(statement)) {
+      queryRet.get().remove(statement);
+    }
+  }
+
+  /**
    * Close cluster service
    */
   @Override
@@ -225,37 +300,4 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     queryMetadataExecutor.shutdown();
   }
 
-  @Override
-  protected Set<String> getAllStorageGroups() throws InterruptedException {
-    return queryMetadataExecutor.processStorageGroupQuery();
-  }
-
-  @Override
-  protected List<List<String>> getTimeSeriesForPath(String path)
-      throws PathErrorException, InterruptedException, ProcessorException {
-    return queryMetadataExecutor.processTimeSeriesQuery(path);
-  }
-
-  @Override
-  protected String getMetadataInString()
-      throws InterruptedException, ProcessorException {
-    return queryMetadataExecutor.processMetadataInStringQuery();
-  }
-
-  @Override
-  protected Metadata getMetadata()
-      throws InterruptedException, ProcessorException, PathErrorException {
-    return queryMetadataExecutor.processMetadataQuery();
-  }
-
-  @Override
-  protected TSDataType getSeriesType(String path) throws PathErrorException, InterruptedException, ProcessorException {
-    return queryMetadataExecutor.processSeriesTypeQuery(path);
-  }
-
-  @Override
-  protected List<String> getPaths(String path)
-      throws PathErrorException, InterruptedException, ProcessorException {
-    return queryMetadataExecutor.processPathsQuery(path);
-  }
 }

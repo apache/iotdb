@@ -16,34 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query.coordinatornode.reader;
+package org.apache.iotdb.cluster.query.coordinatornode.manager;
 
-import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IBatchReader;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-public class ClusterAllDataReader implements IPointReader {
+public class ClusterRpcQueryManager {
 
-  private IBatchReader rpcBatchReader;
+  Map<Long, Map<String, PhysicalPlan>> selectPathPlan = new HashMap<>();
+  Map<Long, Map<String, PhysicalPlan>> filterPathPlan = new HashMap<>();
 
-  @Override
-  public TimeValuePair current() throws IOException {
-    return null;
-  }
-
-  @Override
-  public boolean hasNext() throws IOException {
-    return false;
-  }
-
-  @Override
-  public TimeValuePair next() throws IOException {
-    return null;
-  }
-
-  @Override
-  public void close() throws IOException {
+  private ClusterRpcQueryManager(){
 
   }
+
+
+
+  public static final ClusterRpcQueryManager getInstance() {
+    return ClusterRpcQueryManagerHolder.INSTANCE;
+  }
+
+  private static class ClusterRpcQueryManagerHolder {
+
+    private static final ClusterRpcQueryManager INSTANCE = new ClusterRpcQueryManager();
+
+    private ClusterRpcQueryManagerHolder() {
+
+    }
+  }
+
 }

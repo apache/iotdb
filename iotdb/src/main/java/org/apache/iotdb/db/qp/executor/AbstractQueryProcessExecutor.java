@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -195,6 +194,7 @@ public abstract class AbstractQueryProcessExecutor {
   public abstract int multiInsert(String deviceId, long insertTime, List<String> measurementList,
       List<String> insertValues) throws ProcessorException;
 
-  public abstract List<String> getAllPaths(String originPath) throws PathErrorException;
+  public abstract List<String> getAllPaths(String originPath)
+      throws PathErrorException, ProcessorException, InterruptedException;
 
 }

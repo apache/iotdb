@@ -378,15 +378,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getMetadataInString();
   }
 
-  protected Metadata getMetadata() throws PathErrorException, InterruptedException, ProcessorException {
+  protected Metadata getMetadata()
+      throws PathErrorException, InterruptedException, ProcessorException {
     return MManager.getInstance().getMetadata();
   }
 
-  protected TSDataType getSeriesType(String path) throws PathErrorException, InterruptedException, ProcessorException {
+  protected TSDataType getSeriesType(String path)
+      throws PathErrorException, InterruptedException, ProcessorException {
     return MManager.getInstance().getSeriesType(path);
   }
 
-  protected List<String> getPaths(String path) throws PathErrorException, InterruptedException, ProcessorException {
+  protected List<String> getPaths(String path)
+      throws PathErrorException, InterruptedException, ProcessorException {
     return MManager.getInstance().getPaths(path);
   }
 
@@ -566,8 +569,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       // check file level set
+
       try {
-        MManager.getInstance().checkFileLevel(paths);
+        checkFileLevelSet(paths);
       } catch (PathErrorException e) {
         LOGGER.error("meet error while checking file level.", e);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -646,6 +650,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
+  }
+
+  public void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+      MManager.getInstance().checkFileLevel(paths);
   }
 
   @Override
@@ -780,7 +788,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return executeUpdateStatement(physicalPlan);
   }
 
-  private void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
+  public void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
     queryStatus.get().put(statement, physicalPlan);
     // refresh current queryRet for statement
     if (queryRet.get().containsKey(statement)) {
