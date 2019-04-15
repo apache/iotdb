@@ -198,7 +198,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
   }
 
-  private void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
+  public void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       return;
@@ -691,7 +691,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
+  public QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);

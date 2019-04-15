@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -35,6 +36,7 @@ import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
 import org.apache.iotdb.cluster.query.coordinatornode.executor.QueryProcessorExecutor;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -43,15 +45,19 @@ import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
 import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -291,6 +297,43 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     }
   }
 
+  @Override
+  public void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
+    Map<String, Long> queryStatus =
+    if (contextMap == null) {
+      return;
+    }
+    if (req == null || req.queryId == -1) {
+      // end query for all the query tokens created by current thread
+      for (QueryContext context : contextMap.values()) {
+        QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
+      }
+    } else {
+      QueryResourceManager.getInstance()
+          .endQueryForGivenJob(contextMap.remove(req.queryId).getJobId());
+    }
+  }
+
+  @Override
+  public QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
+      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
+      ProcessorException, IOException {
+    PhysicalPlan physicalPlan = queryStatus.get().get(statement);
+    processor.getExecutor().setFetchSize(fetchSize);
+
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+    if (contextMap == null) {
+      contextMap = new HashMap<>();
+      contextMapLocal.set(contextMap);
+    }
+    contextMap.put(req.queryId, context);
+
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
+        context);
+    queryRet.get().put(statement, queryDataSet);
+    return queryDataSet;
+  }
   /**
    * Close cluster service
    */

@@ -22,16 +22,34 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-public class ClusterRpcQueryManager {
+public class ClusterRpcQueryManager implements IClusterQueryManager{
 
   Map<Long, Map<String, PhysicalPlan>> selectPathPlan = new HashMap<>();
   Map<Long, Map<String, PhysicalPlan>> filterPathPlan = new HashMap<>();
 
   private ClusterRpcQueryManager(){
+  }
+
+  @Override
+  public void registerQuery(Long jobId, PhysicalPlan plan) {
 
   }
 
+  @Override
+  public PhysicalPlan getSelectPathPhysicalPlan(Long jobId, String fullPath) {
+    return selectPathPlan.get(jobId).get(fullPath);
+  }
 
+  @Override
+  public PhysicalPlan getFilterPathPhysicalPlan(Long jobId, String fullPath) {
+    return filterPathPlan.get(jobId).get(fullPath);
+  }
+
+  @Override
+  public void remove(Long jobId) {
+    selectPathPlan.remove(jobId);
+    filterPathPlan.remove(jobId);
+  }
 
   public static final ClusterRpcQueryManager getInstance() {
     return ClusterRpcQueryManagerHolder.INSTANCE;
