@@ -20,6 +20,8 @@ package org.apache.iotdb.cluster.query.reader;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -42,21 +44,39 @@ public class ClusterRpcBatchDataReader implements IBatchReader {
   private PathType type;
 
   /**
+   * Current batch data
+   */
+  private BatchData currentBatchData;
+
+  /**
    * Batch data
    */
-  private BatchData batchData;
+  private List<BatchData> batchDataList;
+
+  private boolean remoteDataFinish;
 
   public ClusterRpcBatchDataReader(PeerId peerId, long jobId,
       PathType type, BatchData batchData) {
     this.peerId = peerId;
     this.jobId = jobId;
     this.type = type;
-    this.batchData = batchData;
+    this.batchDataList = new ArrayList<>();
+    this.batchDataList.add(batchData);
+    this.remoteDataFinish = false;
   }
 
   @Override
   public boolean hasNext() throws IOException {
+    if(currentBatchData == null || !currentBatchData.hasNext()){
+      updateCurrentBatchData();
+    }
     return false;
+  }
+
+  private void updateCurrentBatchData(){
+    if(!batchDataList.isEmpty()){
+      currentBatchData = batchDataList.remove(0);
+    }
   }
 
   @Override
@@ -67,5 +87,13 @@ public class ClusterRpcBatchDataReader implements IBatchReader {
   @Override
   public void close() throws IOException {
 
+  }
+
+  public boolean isRemoteDataFinish() {
+    return remoteDataFinish;
+  }
+
+  public void setRemoteDataFinish(boolean remoteDataFinish) {
+    this.remoteDataFinish = remoteDataFinish;
   }
 }

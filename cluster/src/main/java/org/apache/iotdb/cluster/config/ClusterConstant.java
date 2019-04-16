@@ -20,8 +20,7 @@ package org.apache.iotdb.cluster.config;
 
 public class ClusterConstant {
 
-  private ClusterConstant(){
-
+  private ClusterConstant() {
   }
 
   public static final String SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN = "set\\s+read\\s+metadata\\s+level\\s+to\\s+\\d+";
@@ -37,6 +36,6 @@ public class ClusterConstant {
    */
   public static final int CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT = 1000;
 
-  public static final int BATCH_READ_SIZE = 1000;
+  public static final int BATCH_READ_SIZE = 10000;
 
 }
