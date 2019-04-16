@@ -100,10 +100,13 @@ public class NonQueryExecutor extends AbstractQPExecutor {
    * @param batchResult batch result
    */
   public void processBatch(PhysicalPlan[] physicalPlans, BatchResult batchResult)
-      throws InterruptedException {
+      throws InterruptedException, ProcessorException {
 
     Status nullReadTaskStatus = Status.OK();
     RaftUtils.handleNullReadToMetaGroup(nullReadTaskStatus);
+    if(!nullReadTaskStatus.isOk()){
+      throw new ProcessorException("Null read while processing batch failed");
+    }
     nullReaderEnable = false;
 
     /** 1. Classify physical plans by group id **/

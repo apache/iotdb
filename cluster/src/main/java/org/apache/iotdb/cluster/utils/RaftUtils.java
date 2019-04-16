@@ -47,6 +47,7 @@ import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.nonquery.DataGroupNonQueryResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.nonquery.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
@@ -273,18 +274,16 @@ public class RaftUtils {
 
   /**
    * Handle null-read process in metadata group if the request is to set path.
-   *
-   * @param status status to return result if this node is leader of the data group
    */
   public static void handleNullReadToMetaGroup(Status status) {
     SingleQPTask nullReadTask = new SingleQPTask(false, null);
     handleNullReadToMetaGroup(status, server, nullReadTask);
   }
 
-  public static void handleNullReadToMetaGroup(Status status, Server server,
+  private static void handleNullReadToMetaGroup(Status status, Server server,
       SingleQPTask nullReadTask) {
     try {
-      LOGGER.debug("Handle null-read in meta group for adding path request.");
+      LOGGER.debug("Handle null-read in meta group for metadata request.");
       final byte[] reqContext = RaftUtils.createRaftRequestContext();
       MetadataRaftHolder metadataRaftHolder = (MetadataRaftHolder) server.getMetadataHolder();
       ((RaftService) metadataRaftHolder.getService()).getNode()
@@ -293,6 +292,40 @@ public class RaftUtils {
             public void run(Status status, long index, byte[] reqCtx) {
               BasicResponse response = MetaGroupNonQueryResponse
                   .createEmptyResponse(ClusterConfig.METADATA_GROUP_ID);
+              if (!status.isOk()) {
+                status.setCode(-1);
+                status.setErrorMsg(status.getErrorMsg());
+              }
+              nullReadTask.run(response);
+            }
+          });
+      nullReadTask.await();
+    } catch (InterruptedException e) {
+      status.setCode(-1);
+      status.setErrorMsg(e.getMessage());
+    }
+  }
+
+  /**
+   * Handle null-read process in data group while reading process
+   */
+  public static void handleNullReadToDataGroup(Status status, String groupId) {
+    SingleQPTask nullReadTask = new SingleQPTask(false, null);
+    handleNullReadToDataGroup(status, server, nullReadTask, groupId);
+  }
+
+  private static void handleNullReadToDataGroup(Status status, Server server,
+      SingleQPTask nullReadTask, String groupId) {
+    try {
+      LOGGER.debug("Handle null-read in data group for reading.");
+      final byte[] reqContext = RaftUtils.createRaftRequestContext();
+      DataPartitionRaftHolder dataPartitionRaftHolder = (DataPartitionRaftHolder) server.getDataPartitionHolder(groupId);
+      ((RaftService) dataPartitionRaftHolder.getService()).getNode()
+          .readIndex(reqContext, new ReadIndexClosure() {
+            @Override
+            public void run(Status status, long index, byte[] reqCtx) {
+              BasicResponse response = DataGroupNonQueryResponse
+                  .createEmptyResponse(groupId);
               if (!status.isOk()) {
                 status.setCode(-1);
                 status.setErrorMsg(status.getErrorMsg());

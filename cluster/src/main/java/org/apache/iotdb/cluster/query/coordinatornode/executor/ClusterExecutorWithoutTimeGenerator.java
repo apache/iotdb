@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterSingleQueryManager;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.query.coordinatornode.reader.ClusterSeriesReader;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -45,11 +45,11 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class ClusterExecutorWithoutTimeGenerator {
   private QueryExpression queryExpression;
-  private ClusterSingleQueryManager queryManager;
+  private ClusterRpcSingleQueryManager queryManager;
   private int readDataConsistencyLevel;
 
   public ClusterExecutorWithoutTimeGenerator(QueryExpression queryExpression,
-      ClusterSingleQueryManager queryManager, int readDataConsistencyLevel) {
+      ClusterRpcSingleQueryManager queryManager, int readDataConsistencyLevel) {
     this.queryExpression = queryExpression;
     this.queryManager = queryManager;
     this.readDataConsistencyLevel = readDataConsistencyLevel;

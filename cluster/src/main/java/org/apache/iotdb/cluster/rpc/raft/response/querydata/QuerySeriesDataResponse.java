@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.response.querydata;
 
-import java.util.Map;
+import java.util.List;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,27 +28,30 @@ public class QuerySeriesDataResponse extends BasicResponse {
 
   private long jobId;
   private PathType pathType;
-  private Map<String, TSDataType> seriesType;
-  private Map<String, BatchData> seriesBatchData;
+  private List<TSDataType> seriesType;
+  private List<BatchData> seriesBatchData;
 
   public QuerySeriesDataResponse(String groupId, PathType pathType) {
     super(groupId, false, null, null);
     this.pathType = pathType;
   }
 
-  public QuerySeriesDataResponse setJobId(long jobId) {
+  public void setJobId(long jobId) {
     this.jobId = jobId;
-    return this;
   }
 
-  public QuerySeriesDataResponse setSeriesType(Map<String, TSDataType> seriesType) {
+  public void setPathType(PathType pathType) {
+    this.pathType = pathType;
+  }
+
+  public void setSeriesType(
+      List<TSDataType> seriesType) {
     this.seriesType = seriesType;
-    return this;
   }
 
-  public QuerySeriesDataResponse seySeriesBatchData(Map<String, BatchData> seriesBatchData) {
+  public void setSeriesBatchData(
+      List<BatchData> seriesBatchData) {
     this.seriesBatchData = seriesBatchData;
-    return this;
   }
 
   public long getJobId() {
@@ -59,11 +62,11 @@ public class QuerySeriesDataResponse extends BasicResponse {
     return pathType;
   }
 
-  public Map<String, TSDataType> getSeriesType() {
+  public List<TSDataType> getSeriesType() {
     return seriesType;
   }
 
-  public Map<String, BatchData> getSeriesBatchData() {
+  public List<BatchData> getSeriesBatchData() {
     return seriesBatchData;
   }
 }

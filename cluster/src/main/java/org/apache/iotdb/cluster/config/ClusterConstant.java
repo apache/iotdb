@@ -37,4 +37,6 @@ public class ClusterConstant {
    */
   public static final int CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT = 1000;
 
+  public static final int BATCH_READ_SIZE = 1000;
+
 }

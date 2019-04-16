@@ -42,6 +42,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ClusterRpcReaderUtils {
 
@@ -65,14 +66,15 @@ public class ClusterRpcReaderUtils {
 
     /** create cluster series reader **/
     Map<String, ClusterSeriesReader> allSeriesReader = new HashMap<>();
-    Map<String, TSDataType> seriesType = response.getSeriesType();
-    Map<String, BatchData> seriesBatchData = response.getSeriesBatchData();
+    List<Path> paths = queryPlan.getPaths();
+    List<TSDataType> seriesType = response.getSeriesType();
+    List<BatchData> seriesBatchData = response.getSeriesBatchData();
     long jobId = response.getJobId();
-    for (Entry<String, TSDataType> entry : seriesType.entrySet()) {
-      String seriesPath = entry.getKey();
-      TSDataType dataType = entry.getValue();
+    for (int i =0 ; i < paths.size(); i++) {
+      String seriesPath = paths.get(i).getFullPath();
+      TSDataType dataType = seriesType.get(i);
       IBatchReader batchDataReader = new ClusterRpcBatchDataReader(peerId, jobId,
-          PathType.SELECT_PATH, seriesBatchData.get(seriesPath));
+          pathType, seriesBatchData.get(i));
       ClusterSeriesReader seriesReader = new ClusterSeriesReader(batchDataReader, seriesPath,
           dataType);
       allSeriesReader.put(seriesPath, seriesReader);

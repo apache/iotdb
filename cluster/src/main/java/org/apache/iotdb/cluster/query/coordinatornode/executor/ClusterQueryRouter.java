@@ -23,8 +23,8 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcQueryManager;
-import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterSingleQueryManager;
-import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterSingleQueryManager.QueryType;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcSingleQueryManager.QueryType;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -49,7 +49,7 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
   public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
       throws FileNodeManagerException, PathErrorException {
 
-    ClusterSingleQueryManager queryManager = ClusterRpcQueryManager.getInstance()
+    ClusterRpcSingleQueryManager queryManager = ClusterRpcQueryManager.getInstance()
         .getSingleQuery(context.getJobId());
     try {
       if (queryExpression.hasQueryFilter()) {

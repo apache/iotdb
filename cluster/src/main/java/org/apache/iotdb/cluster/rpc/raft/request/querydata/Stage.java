@@ -19,5 +19,5 @@
 package org.apache.iotdb.cluster.rpc.raft.request.querydata;
 
 public enum Stage {
-  INITIAL, READ_DATA
+  INITIAL, READ_DATA, CLOSE
 }

@@ -37,7 +37,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
+public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManager {
 
   /**
    * Query job id assigned by QueryResourceManager of coordinator node.
@@ -68,7 +68,7 @@ public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
 
   private Map<String, ClusterSeriesReader> filterPathReaders = new HashMap<>();
 
-  public ClusterSingleQueryManager(long jobId,
+  public ClusterRpcSingleQueryManager(long jobId,
       QueryPlan queryPlan) {
     this.jobId = jobId;
     this.queryPlan = queryPlan;

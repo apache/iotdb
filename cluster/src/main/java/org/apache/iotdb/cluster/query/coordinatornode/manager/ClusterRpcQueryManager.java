@@ -27,21 +27,21 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 public class ClusterRpcQueryManager{
 
   /**
-   * Key is group id, value is manager of a client query.
+   * Key is job id, value is manager of a client query.
    */
-  ConcurrentHashMap<Long, ClusterSingleQueryManager> singleQueryManagerMap = new ConcurrentHashMap<>();
+  ConcurrentHashMap<Long, ClusterRpcSingleQueryManager> singleQueryManagerMap = new ConcurrentHashMap<>();
 
   /**
    * Add a query
    */
   public void addSingleQuery(long jobId, QueryPlan physicalPlan){
-    singleQueryManagerMap.put(jobId, new ClusterSingleQueryManager(jobId, physicalPlan));
+    singleQueryManagerMap.put(jobId, new ClusterRpcSingleQueryManager(jobId, physicalPlan));
   }
 
   /**
    * Get query manager by group id
    */
-  public ClusterSingleQueryManager getSingleQuery(long jobId) {
+  public ClusterRpcSingleQueryManager getSingleQuery(long jobId) {
     return singleQueryManagerMap.get(jobId);
   }
 

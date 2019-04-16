@@ -21,14 +21,14 @@ package org.apache.iotdb.cluster.query.coordinatornode.manager;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterSingleQueryManager.QueryType;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcSingleQueryManager.QueryType;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 /**
  * Manage a single query.
  */
-public interface IClusterSingleQueryManager {
+public interface IClusterRpcSingleQueryManager {
 
   /**
    * Divide physical plan into several sub physical plans according to timeseries full path.

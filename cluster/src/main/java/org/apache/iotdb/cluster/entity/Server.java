@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.DataGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.MetaGroupNonQueryAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querydata.QuerySeriesDataSyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryMetadataAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryMetadataInStringAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryPathsAsyncProcessor;
@@ -95,13 +96,9 @@ public class Server {
     RpcServer rpcServer = new RpcServer(serverId.getPort());
     RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
 
-    rpcServer.registerUserProcessor(new DataGroupNonQueryAsyncProcessor());
-    rpcServer.registerUserProcessor(new MetaGroupNonQueryAsyncProcessor());
-    rpcServer.registerUserProcessor(new QueryTimeSeriesAsyncProcessor());
-    rpcServer.registerUserProcessor(new QueryMetadataInStringAsyncProcessor());
-    rpcServer.registerUserProcessor(new QueryMetadataAsyncProcessor());
-    rpcServer.registerUserProcessor(new QuerySeriesTypeAsyncProcessor());
-    rpcServer.registerUserProcessor(new QueryPathsAsyncProcessor());
+    registerNonQueryProcessor(rpcServer);
+    registerQueryMetadataProcessor(rpcServer);
+    registerQueryDataProcessor(rpcServer);
 
     metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer, true);
     metadataHolder.init();
@@ -125,6 +122,24 @@ public class Server {
       Router.getInstance().showPhysicalNodes(groupId);
     }
 
+  }
+
+  private void registerNonQueryProcessor(RpcServer rpcServer) {
+    rpcServer.registerUserProcessor(new DataGroupNonQueryAsyncProcessor());
+    rpcServer.registerUserProcessor(new MetaGroupNonQueryAsyncProcessor());
+  }
+
+  private void registerQueryMetadataProcessor(RpcServer rpcServer) {
+    rpcServer.registerUserProcessor(new QueryTimeSeriesAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryMetadataInStringAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryMetadataAsyncProcessor());
+    rpcServer.registerUserProcessor(new QuerySeriesTypeAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryPathsAsyncProcessor());
+    rpcServer.registerUserProcessor(new QuerySeriesTypeAsyncProcessor());
+  }
+
+  private void registerQueryDataProcessor(RpcServer rpcServer) {
+    rpcServer.registerUserProcessor(new QuerySeriesDataSyncProcessor());
   }
 
   public void stop() throws ProcessorException {

@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.query.coordinatornode.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.cluster.query.coordinatornode.manager.IClusterSingleQueryManager;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.IClusterRpcSingleQueryManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -39,11 +39,11 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class ClusterExecutorWithTimeGenerator {
 
   private QueryExpression queryExpression;
-  private IClusterSingleQueryManager queryManager;
+  private IClusterRpcSingleQueryManager queryManager;
   private int readDataConsistencyLevel;
 
   ClusterExecutorWithTimeGenerator(QueryExpression queryExpression,
-      IClusterSingleQueryManager queryManager, int readDataConsistencyLevel) {
+      IClusterRpcSingleQueryManager queryManager, int readDataConsistencyLevel) {
     this.queryExpression = queryExpression;
     this.queryManager = queryManager;
     this.readDataConsistencyLevel = readDataConsistencyLevel;

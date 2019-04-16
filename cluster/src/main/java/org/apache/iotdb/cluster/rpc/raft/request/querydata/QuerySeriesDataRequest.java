@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 public class QuerySeriesDataRequest extends BasicQueryRequest {
 
   private Stage stage;
+  private long jobId;
   private PathType pathType;
   private List<String> paths;
 
@@ -39,11 +40,44 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
     this.pathType = pathType;
   }
 
-  public QuerySeriesDataRequest(String groupID, List<String> paths, PathType pathType)
+  public QuerySeriesDataRequest(String groupID, long jobId, List<String> paths, PathType pathType)
       throws IOException {
     super(groupID);
     this.paths = paths;
     stage = Stage.READ_DATA;
+    this.jobId = jobId;
     this.pathType = pathType;
+  }
+
+  public Stage getStage() {
+    return stage;
+  }
+
+  public void setStage(Stage stage) {
+    this.stage = stage;
+  }
+
+  public PathType getPathType() {
+    return pathType;
+  }
+
+  public void setPathType(PathType pathType) {
+    this.pathType = pathType;
+  }
+
+  public List<String> getPaths() {
+    return paths;
+  }
+
+  public void setPaths(List<String> paths) {
+    this.paths = paths;
+  }
+
+  public long getJobId() {
+    return jobId;
+  }
+
+  public void setJobId(long jobId) {
+    this.jobId = jobId;
   }
 }
