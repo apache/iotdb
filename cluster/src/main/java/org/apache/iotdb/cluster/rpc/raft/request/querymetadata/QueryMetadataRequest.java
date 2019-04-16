@@ -16,16 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query.coordinatornode.factory;
+package org.apache.iotdb.cluster.rpc.raft.request.querymetadata;
 
-import com.alipay.sofa.jraft.entity.PeerId;
-import java.util.Map;
-import org.apache.iotdb.cluster.query.coordinatornode.reader.ClusterSeriesReader;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
 
-public class ClusterRpcReaderFactory {
+public class QueryMetadataRequest extends BasicQueryRequest {
 
-  public static Map<String, ClusterSeriesReader> createClusterSeriesReader(String groupId, PeerId peerId, QueryPlan queryPlan){
-return null;
+  public QueryMetadataRequest(String groupID, int readConsistencyLevel) {
+    super(groupID, readConsistencyLevel);
   }
 }

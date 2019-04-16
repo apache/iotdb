@@ -16,24 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.response;
+package org.apache.iotdb.cluster.rpc.raft.response.querymetadata;
 
-/**
- * Handle response from metadata group leader
- */
-public class MetaGroupNonQueryResponse extends BasicResponse {
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
-  private MetaGroupNonQueryResponse(String groupId, boolean redirected, String leaderStr,
+public class QueryMetadataInStringResponse extends BasicResponse {
+
+  private String metadata;
+
+  private QueryMetadataInStringResponse(String groupId, boolean redirected, String leaderStr,
       String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public static MetaGroupNonQueryResponse createRedirectedResponse(String groupId, String leaderStr) {
-    return new MetaGroupNonQueryResponse(groupId, true, leaderStr, null);
+  public static QueryMetadataInStringResponse createSuccessResponse(String groupId,
+      String metadata) {
+    QueryMetadataInStringResponse response = new QueryMetadataInStringResponse(groupId, false, null,
+        null);
+    response.metadata = metadata;
+    return response;
   }
 
-  public static MetaGroupNonQueryResponse createEmptyResponse(String groupId) {
-    return new MetaGroupNonQueryResponse(groupId, false, null, null);
+  public static QueryMetadataInStringResponse createErrorResponse(String groupId, String errorMsg) {
+    return new QueryMetadataInStringResponse(groupId, false, null, errorMsg);
   }
 
+  public String getMetadata() {
+    return metadata;
+  }
 }

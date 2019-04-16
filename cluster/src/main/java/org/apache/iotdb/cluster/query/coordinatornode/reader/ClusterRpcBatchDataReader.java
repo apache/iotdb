@@ -18,18 +18,41 @@
  */
 package org.apache.iotdb.cluster.query.coordinatornode.reader;
 
+import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.db.query.reader.IBatchReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class ClusterRpcBatchDataReader implements IBatchReader {
 
-  private String PeerId;
-  private String jobId;
+  /**
+   * Remote query node
+   */
+  private PeerId peerId;
+
+  /**
+   * Job id in remote query node
+   */
+  private long jobId;
+
+  /**
+   * Path type
+   */
   private PathType type;
+
+  /**
+   * Batch data
+   */
   private BatchData batchData;
+
+  public ClusterRpcBatchDataReader(PeerId peerId, long jobId,
+      PathType type, BatchData batchData) {
+    this.peerId = peerId;
+    this.jobId = jobId;
+    this.type = type;
+    this.batchData = batchData;
+  }
 
   @Override
   public boolean hasNext() throws IOException {

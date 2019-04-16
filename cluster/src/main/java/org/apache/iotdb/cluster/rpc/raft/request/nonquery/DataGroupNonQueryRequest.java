@@ -16,29 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.request;
+package org.apache.iotdb.cluster.rpc.raft.request.nonquery;
 
-public abstract class BasicQueryRequest extends BasicRequest {
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.List;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-  /**
-   * Read Consistency Level
-   */
-  private int readConsistencyLevel;
+/**
+ * Handle request to data group
+ */
+public class DataGroupNonQueryRequest extends BasicRequest {
 
-  public BasicQueryRequest(String groupID, int readConsistencyLevel) {
+
+  public DataGroupNonQueryRequest(String groupID, List<PhysicalPlan> physicalPlanBytes)
+      throws IOException {
     super(groupID);
-    this.readConsistencyLevel = readConsistencyLevel;
+    init(physicalPlanBytes);
   }
 
-  public BasicQueryRequest(String groupID) {
-    super(groupID);
-  }
-
-  public int getReadConsistencyLevel() {
-    return readConsistencyLevel;
-  }
-
-  public void setReadConsistencyLevel(int readConsistencyLevel) {
-    this.readConsistencyLevel = readConsistencyLevel;
-  }
 }

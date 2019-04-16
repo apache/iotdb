@@ -46,11 +46,13 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class ClusterExecutorWithoutTimeGenerator {
   private QueryExpression queryExpression;
   private ClusterSingleQueryManager queryManager;
+  private int readDataConsistencyLevel;
 
   public ClusterExecutorWithoutTimeGenerator(QueryExpression queryExpression,
-      ClusterSingleQueryManager queryManager) {
+      ClusterSingleQueryManager queryManager, int readDataConsistencyLevel) {
     this.queryExpression = queryExpression;
     this.queryManager = queryManager;
+    this.readDataConsistencyLevel = readDataConsistencyLevel;
   }
 
   /**
@@ -126,7 +128,9 @@ public class ClusterExecutorWithoutTimeGenerator {
         ClusterSeriesReader reader = selectPathReaders.get(path.toString());
         readersOfSelectedSeries.add(reader);
         dataTypes.add(reader.getDataType());
+
       } else {
+        // can read series locally.
         QueryDataSource queryDataSource = QueryResourceManager.getInstance()
             .getQueryDataSource(path,
                 context);

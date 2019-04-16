@@ -16,23 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.request;
+package org.apache.iotdb.cluster.rpc.raft.request.querydata;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.List;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-
-/**
- * Handle request to data group
- */
-public class DataGroupNonQueryRequest extends BasicRequest implements Serializable {
-
-
-  public DataGroupNonQueryRequest(String groupID, List<PhysicalPlan> physicalPlanBytes)
-      throws IOException {
-    super(groupID);
-    init(physicalPlanBytes);
-  }
-
+public enum Stage {
+  INITIAL, READ_DATA
 }

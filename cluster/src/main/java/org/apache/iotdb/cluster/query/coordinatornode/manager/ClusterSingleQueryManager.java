@@ -19,16 +19,19 @@
 package org.apache.iotdb.cluster.query.coordinatornode.manager;
 
 import com.alipay.sofa.jraft.entity.PeerId;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.cluster.query.coordinatornode.factory.ClusterRpcReaderFactory;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.coordinatornode.reader.ClusterSeriesReader;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.Router;
+import org.apache.iotdb.cluster.utils.query.ClusterRpcReaderUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -37,7 +40,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
 
   /**
-   * Query job id assigned by QueryResourceManager.
+   * Query job id assigned by QueryResourceManager of coordinator node.
    */
   private long jobId;
 
@@ -63,6 +66,8 @@ public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
    */
   private Map<String, QueryPlan> filterPathPlans = new HashMap<>();
 
+  private Map<String, ClusterSeriesReader> filterPathReaders = new HashMap<>();
+
   public ClusterSingleQueryManager(long jobId,
       QueryPlan queryPlan) {
     this.jobId = jobId;
@@ -70,7 +75,8 @@ public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
   }
 
   @Override
-  public void init(QueryType queryType) throws PathErrorException {
+  public void init(QueryType queryType, int readDataConsistencyLevel)
+      throws PathErrorException, IOException, RaftConnectionException {
     switch (queryType) {
       case NO_FILTER:
         divideNoFilterPhysicalPlan();
@@ -84,8 +90,8 @@ public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
       default:
         throw new UnsupportedOperationException();
     }
-    initSelectedPathPlan();
-    initFilterPathPlan();
+    initSelectedPathPlan(readDataConsistencyLevel);
+    initFilterPathPlan(readDataConsistencyLevel);
   }
 
   public enum QueryType {
@@ -127,26 +133,25 @@ public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
   /**
    * Init select path
    */
-  private void initSelectedPathPlan(){
-    if(!selectPathPlans.isEmpty()){
-      for(Entry<String, QueryPlan> entry: selectPathPlans.entrySet()){
+  private void initSelectedPathPlan(int readDataConsistencyLevel)
+      throws IOException, RaftConnectionException {
+    if (!selectPathPlans.isEmpty()) {
+      for (Entry<String, QueryPlan> entry : selectPathPlans.entrySet()) {
         String groupId = entry.getKey();
         QueryPlan queryPlan = entry.getValue();
-        if(!canHandleQueryLocally(groupId)) {
+        if (!canHandleQueryLocally(groupId)) {
           PeerId randomPeer = RaftUtils.getRandomPeerID(groupId);
           readerNodes.put(groupId, randomPeer);
-          Map<String, ClusterSeriesReader> selectPathReaders = ClusterRpcReaderFactory
-              .createClusterSeriesReader(groupId, randomPeer, queryPlan);
-          for (Path path : queryPlan.getPaths()) {
-            selectPathReaders.put(path.getFullPath(), selectPathReaders.get(path.getFullPath()));
-          }
+          this.selectPathReaders = ClusterRpcReaderUtils
+              .createClusterSeriesReader(groupId, randomPeer, queryPlan, readDataConsistencyLevel,
+                  PathType.SELECT_PATH);
         }
       }
     }
   }
 
-  private void initFilterPathPlan(){
-    if(!filterPathPlans.isEmpty()){
+  private void initFilterPathPlan(int readDataConsistencyLevel) {
+    if (!filterPathPlans.isEmpty()) {
 
     }
   }

@@ -140,5 +140,4 @@ public interface IQueryProcessExecutor {
 
   void setFetchSize(int fetchSize);
 
-  IEngineQueryRouter getQueryRouter();
 }

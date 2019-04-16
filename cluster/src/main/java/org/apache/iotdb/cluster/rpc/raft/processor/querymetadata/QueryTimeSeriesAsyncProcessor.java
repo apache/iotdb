@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.processor;
+package org.apache.iotdb.cluster.rpc.raft.processor.querymetadata;
 
 import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
@@ -25,25 +25,33 @@ import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
-import org.apache.iotdb.cluster.rpc.raft.request.QueryMetadataInStringRequest;
-import org.apache.iotdb.cluster.rpc.raft.response.QueryMetadataInStringResponse;
+import org.apache.iotdb.cluster.rpc.raft.processor.BasicAsyncUserProcessor;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryTimeSeriesRequest;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetadata.QueryTimeSeriesResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 
-public class QueryMetadataInStringAsyncProcessor extends
-    BasicAsyncUserProcessor<QueryMetadataInStringRequest> {
+
+public class QueryTimeSeriesAsyncProcessor extends BasicAsyncUserProcessor<QueryTimeSeriesRequest> {
 
   private MManager mManager = MManager.getInstance();
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      QueryMetadataInStringRequest request) {
+      QueryTimeSeriesRequest request) {
     String groupId = request.getGroupID();
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
-      QueryMetadataInStringResponse response = QueryMetadataInStringResponse
-          .createSuccessResponse(groupId, mManager.getMetadataInString());
-      response.addResult(true);
+      QueryTimeSeriesResponse response = QueryTimeSeriesResponse
+          .createEmptyResponse(groupId);
+      try {
+        queryTimeSeries(request, response);
+        response.addResult(true);
+      } catch (final PathErrorException e) {
+        response = QueryTimeSeriesResponse.createErrorResponse(groupId, e.getMessage());
+        response.addResult(false);
+      }
       asyncContext.sendResponse(response);
     } else {
       final byte[] reqContext = RaftUtils.createRaftRequestContext();
@@ -54,13 +62,18 @@ public class QueryMetadataInStringAsyncProcessor extends
 
             @Override
             public void run(Status status, long index, byte[] reqCtx) {
-              QueryMetadataInStringResponse response;
+              QueryTimeSeriesResponse response = QueryTimeSeriesResponse
+                  .createEmptyResponse(groupId);
               if (status.isOk()) {
-                response = QueryMetadataInStringResponse
-                    .createSuccessResponse(groupId, mManager.getMetadataInString());
-                response.addResult(true);
+                try {
+                  queryTimeSeries(request, response);
+                  response.addResult(true);
+                } catch (final PathErrorException e) {
+                  response = QueryTimeSeriesResponse.createErrorResponse(groupId, e.getMessage());
+                  response.addResult(false);
+                }
               } else {
-                response = QueryMetadataInStringResponse
+                response = QueryTimeSeriesResponse
                     .createErrorResponse(groupId, status.getErrorMsg());
                 response.addResult(false);
               }
@@ -70,8 +83,18 @@ public class QueryMetadataInStringAsyncProcessor extends
     }
   }
 
+  /**
+   * Query timeseries
+   */
+  private void queryTimeSeries(QueryTimeSeriesRequest queryMetadataRequest,
+      QueryTimeSeriesResponse response) throws PathErrorException {
+    for (String path : queryMetadataRequest.getPath()) {
+      response.addTimeSeries(mManager.getShowTimeseriesPath(path));
+    }
+  }
+
   @Override
   public String interest() {
-    return QueryMetadataInStringRequest.class.getName();
+    return QueryTimeSeriesRequest.class.getName();
   }
 }

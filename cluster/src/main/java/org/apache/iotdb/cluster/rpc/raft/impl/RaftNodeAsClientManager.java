@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
+import org.apache.iotdb.cluster.utils.query.QueryTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -214,17 +215,13 @@ public class RaftNodeAsClientManager {
     }
 
     @Override
-    public void syncHandleRequest(BasicRequest request, PeerId leader,
-        SingleQPTask qpTask)
-        throws RaftConnectionException {
+    public QueryTask syncHandleRequest(BasicRequest request, PeerId peerId) {
       try {
         BasicResponse response = (BasicResponse) boltClientService.getRpcClient()
-            .invokeSync(leader.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
-        qpTask.run(response);
+            .invokeSync(peerId.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
+        return new QueryTask(response, TaskState.FINISH);
       } catch (RemotingException | InterruptedException e) {
-        qpTask.setTaskState(TaskState.EXCEPTION);
-        qpTask.run(null);
-        throw new RaftConnectionException(e);
+        return new QueryTask(null, TaskState.EXCEPTION);
       } finally {
         releaseClient();
       }

@@ -16,35 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.response;
+package org.apache.iotdb.cluster.rpc.raft.response.querymetadata;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
-public class QueryPathsResponse extends BasicResponse {
+public class QueryTimeSeriesResponse extends BasicResponse {
 
-  private List<String> paths;
+  private List<List<String>> timeSeries;
 
-  private QueryPathsResponse(String groupId, boolean redirected, boolean success, String leaderStr, String errorMsg) {
+  private QueryTimeSeriesResponse(String groupId, boolean redirected, boolean success, String leaderStr, String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
     this.addResult(success);
-    paths = new ArrayList<>();
+    timeSeries = new ArrayList<>();
   }
 
-  public static QueryPathsResponse createEmptyResponse(String groupId){
-    return new QueryPathsResponse(groupId, false, true, null, null);
+  public static QueryTimeSeriesResponse createEmptyResponse(String groupId){
+    return new QueryTimeSeriesResponse(groupId, false, true, null, null);
   }
 
-  public static QueryPathsResponse createErrorResponse(String groupId, String errorMsg) {
-    return new QueryPathsResponse(groupId, false, false, null, errorMsg);
+  public static QueryTimeSeriesResponse createErrorResponse(String groupId, String errorMsg) {
+    return new QueryTimeSeriesResponse(groupId, false, false, null, errorMsg);
   }
 
-  public List<String> getPaths() {
-    return paths;
+  public List<List<String>> getTimeSeries() {
+    return timeSeries;
   }
 
-  public void addPaths(List<String> paths){
-    this.paths.addAll(paths);
+  public void addTimeSeries(List<List<String>> timeSeries){
+    this.timeSeries.addAll(timeSeries);
   }
 
 }

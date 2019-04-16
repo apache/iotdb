@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.response;
+package org.apache.iotdb.cluster.rpc.raft.response.querymetadata;
 
 import java.util.Set;
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
 public class QueryStorageGroupResponse extends BasicResponse {
 

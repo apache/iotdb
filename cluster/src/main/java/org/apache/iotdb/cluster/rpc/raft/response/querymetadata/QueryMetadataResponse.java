@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.response;
+package org.apache.iotdb.cluster.rpc.raft.response.querymetadata;
 
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.db.metadata.Metadata;
 
 public class QueryMetadataResponse extends BasicResponse {

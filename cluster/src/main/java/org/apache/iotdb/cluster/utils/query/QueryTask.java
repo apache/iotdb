@@ -16,30 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.response;
+package org.apache.iotdb.cluster.utils.query;
 
-public class QueryMetadataInStringResponse extends BasicResponse {
+import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
-  private String metadata;
+public class QueryTask {
+  private BasicResponse basicResponse;
+  private TaskState state;
 
-  private QueryMetadataInStringResponse(String groupId, boolean redirected, String leaderStr,
-      String errorMsg) {
-    super(groupId, redirected, leaderStr, errorMsg);
+  public QueryTask(BasicResponse basicResponse,
+      TaskState state) {
+    this.basicResponse = basicResponse;
+    this.state = state;
   }
 
-  public static QueryMetadataInStringResponse createSuccessResponse(String groupId,
-      String metadata) {
-    QueryMetadataInStringResponse response = new QueryMetadataInStringResponse(groupId, false, null,
-        null);
-    response.metadata = metadata;
-    return response;
+  public BasicResponse getBasicResponse() {
+    return basicResponse;
   }
 
-  public static QueryMetadataInStringResponse createErrorResponse(String groupId, String errorMsg) {
-    return new QueryMetadataInStringResponse(groupId, false, null, errorMsg);
+  public void setBasicResponse(BasicResponse basicResponse) {
+    this.basicResponse = basicResponse;
   }
 
-  public String getMetadata() {
-    return metadata;
+  public TaskState getState() {
+    return state;
+  }
+
+  public void setState(TaskState state) {
+    this.state = state;
   }
 }

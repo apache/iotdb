@@ -31,7 +31,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.ConsistencyLevelException;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
-import org.apache.iotdb.cluster.query.coordinatornode.executor.ClusterQueryProcessExecutor;
+import org.apache.iotdb.cluster.qp.executor.ClusterQueryProcessExecutor;
 import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcQueryManager;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -65,10 +65,12 @@ public class TSServiceClusterImpl extends TSServiceImpl {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceClusterImpl.class);
 
-  private ClusterRpcQueryManager queryManager = ClusterRpcQueryManager.getInstance();
-  private QueryProcessor processor = new QueryProcessor(new ClusterQueryProcessExecutor());
+  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor();
   private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor();
   private QueryMetadataExecutor queryMetadataExecutor = new QueryMetadataExecutor();
+
+  private ClusterRpcQueryManager queryManager = ClusterRpcQueryManager.getInstance();
+  private QueryProcessor queryProcessor = new QueryProcessor(queryDataExecutor);
 
   public TSServiceClusterImpl() throws IOException {
     super();
@@ -126,7 +128,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       /** find all valid physical plans **/
       for (int i = 0; i < statements.size(); i++) {
         try {
-          PhysicalPlan plan = processor
+          PhysicalPlan plan = queryProcessor
               .parseSQLToPhysicalPlan(statements.get(i), zoneIds.get());
           plan.setProposer(username.get());
 
@@ -242,13 +244,13 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       if (Pattern.matches(ClusterConstant.SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
         String[] splits = statement.split("\\s+");
         int level = Integer.parseInt(splits[splits.length - 1]);
-        nonQueryExecutor.setReadMetadataConsistencyLevel(level);
+        queryMetadataExecutor.setReadMetadataConsistencyLevel(level);
         return true;
       } else if (Pattern
           .matches(ClusterConstant.SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN, statement)) {
         String[] splits = statement.split("\\s+");
         int level = Integer.parseInt(splits[splits.length - 1]);
-        nonQueryExecutor.setReadDataConsistencyLevel(level);
+        queryDataExecutor.setReadDataConsistencyLevel(level);
         return true;
       } else {
         return false;
@@ -295,7 +297,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
-    processor.getExecutor().setFetchSize(fetchSize);
+    queryProcessor.getExecutor().setFetchSize(fetchSize);
 
     long jobId = QueryResourceManager.getInstance().assignJobId();
     QueryContext context = new QueryContext(jobId);
@@ -303,7 +305,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     contextMapLocal.get().put(req.queryId, context);
 
     queryManager.addSingleQuery(jobId, (QueryPlan) physicalPlan);
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
+    QueryDataSet queryDataSet = queryProcessor.getExecutor().processQuery((QueryPlan) physicalPlan,
         context);
     queryRet.get().put(statement, queryDataSet);
     return queryDataSet;

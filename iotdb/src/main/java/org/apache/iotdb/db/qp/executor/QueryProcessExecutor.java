@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public abstract class QueryProcessExecutor implements IQueryProcessExecutor {
 
   protected ThreadLocal<Integer> fetchSize = new ThreadLocal<>();
-  private IEngineQueryRouter queryRouter = new EngineQueryRouter();
+  protected IEngineQueryRouter queryRouter = new EngineQueryRouter();
 
   @Override
   public QueryDataSet processQuery(QueryPlan queryPlan, QueryContext context)
@@ -69,7 +69,7 @@ public abstract class QueryProcessExecutor implements IQueryProcessExecutor {
       return fill(queryPlan.getPaths(), fillQueryPlan.getQueryTime(),
           fillQueryPlan.getFillType(), context);
     }
-    return getQueryRouter().query(queryExpression, context);
+    return queryRouter.query(queryExpression, context);
   }
 
   @Override
@@ -83,11 +83,6 @@ public abstract class QueryProcessExecutor implements IQueryProcessExecutor {
   @Override
   public void setFetchSize(int fetchSize) {
     this.fetchSize.set(fetchSize);
-  }
-
-  @Override
-  public IEngineQueryRouter getQueryRouter() {
-    return queryRouter;
   }
 
   @Override

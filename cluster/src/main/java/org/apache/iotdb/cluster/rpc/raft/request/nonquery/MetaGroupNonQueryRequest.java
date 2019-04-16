@@ -16,20 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.request;
+package org.apache.iotdb.cluster.rpc.raft.request.nonquery;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.util.List;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-public class QuerySeriesTypeRequest extends BasicQueryRequest implements Serializable {
+/**
+ * Handle request to metadata group leader
+ */
+public class MetaGroupNonQueryRequest extends BasicRequest {
 
-  private String path;
-
-  public QuerySeriesTypeRequest(String groupID, int readConsistencyLevel, String path) {
-    super(groupID, readConsistencyLevel);
-    this.path = path;
+  public MetaGroupNonQueryRequest(String groupID, List<PhysicalPlan> plans)
+      throws IOException {
+    super(groupID);
+    this.init(plans);
   }
 
-  public String getPath() {
-    return path;
-  }
 }

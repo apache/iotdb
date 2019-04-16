@@ -40,7 +40,7 @@ public class ClusterSeriesReader implements IPointReader {
 
   @Override
   public TimeValuePair current() throws IOException {
-    return null;
+    throw new IOException("current() in ClusterSeriesReader is an empty method.");
   }
 
   @Override

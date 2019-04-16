@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.response;
+package org.apache.iotdb.cluster.rpc.raft.response.nonquery;
+
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
 /**
  * Handle response from data group leader

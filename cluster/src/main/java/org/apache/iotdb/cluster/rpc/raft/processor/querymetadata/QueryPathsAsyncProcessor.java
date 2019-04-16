@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.processor;
+package org.apache.iotdb.cluster.rpc.raft.processor.querymetadata;
 
 import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
@@ -25,28 +25,30 @@ import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
-import org.apache.iotdb.cluster.rpc.raft.request.QuerySeriesTypeRequest;
-import org.apache.iotdb.cluster.rpc.raft.response.QuerySeriesTypeResponse;
+import org.apache.iotdb.cluster.rpc.raft.processor.BasicAsyncUserProcessor;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryPathsRequest;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetadata.QueryPathsResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 
-public class QuerySeriesTypeAsyncProcessor extends BasicAsyncUserProcessor<QuerySeriesTypeRequest> {
+public class QueryPathsAsyncProcessor extends BasicAsyncUserProcessor<QueryPathsRequest> {
 
   private MManager mManager = MManager.getInstance();
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      QuerySeriesTypeRequest request) {
+      QueryPathsRequest request) {
     String groupId = request.getGroupID();
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
-      QuerySeriesTypeResponse response;
+      QueryPathsResponse response = QueryPathsResponse
+          .createEmptyResponse(groupId);
       try {
-        response = QuerySeriesTypeResponse.createSuccessResponse(groupId, mManager.getSeriesType(request.getPath()));
+        queryPaths(request, response);
         response.addResult(true);
       } catch (final PathErrorException e) {
-        response = QuerySeriesTypeResponse.createErrorResponse(groupId, e.getMessage());
+        response = QueryPathsResponse.createErrorResponse(groupId, e.getMessage());
         response.addResult(false);
       }
       asyncContext.sendResponse(response);
@@ -59,17 +61,18 @@ public class QuerySeriesTypeAsyncProcessor extends BasicAsyncUserProcessor<Query
 
             @Override
             public void run(Status status, long index, byte[] reqCtx) {
-              QuerySeriesTypeResponse response;
+              QueryPathsResponse response = QueryPathsResponse
+                  .createEmptyResponse(groupId);
               if (status.isOk()) {
                 try {
-                  response = QuerySeriesTypeResponse.createSuccessResponse(groupId, mManager.getSeriesType(request.getPath()));
+                  queryPaths(request, response);
                   response.addResult(true);
                 } catch (final PathErrorException e) {
-                  response = QuerySeriesTypeResponse.createErrorResponse(groupId, e.getMessage());
+                  response = QueryPathsResponse.createErrorResponse(groupId, e.getMessage());
                   response.addResult(false);
                 }
               } else {
-                response = QuerySeriesTypeResponse
+                response = QueryPathsResponse
                     .createErrorResponse(groupId, status.getErrorMsg());
                 response.addResult(false);
               }
@@ -79,8 +82,18 @@ public class QuerySeriesTypeAsyncProcessor extends BasicAsyncUserProcessor<Query
     }
   }
 
+  /**
+   * Query paths
+   */
+  private void queryPaths(QueryPathsRequest request,
+      QueryPathsResponse response) throws PathErrorException {
+    for (String path : request.getPath()) {
+      response.addPaths(mManager.getPaths(path));
+    }
+  }
+
   @Override
   public String interest() {
-    return QuerySeriesTypeRequest.class.getName();
+    return QueryPathsRequest.class.getName();
   }
 }

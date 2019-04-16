@@ -40,10 +40,13 @@ public class ClusterExecutorWithTimeGenerator {
 
   private QueryExpression queryExpression;
   private IClusterSingleQueryManager queryManager;
+  private int readDataConsistencyLevel;
 
-  ClusterExecutorWithTimeGenerator(QueryExpression queryExpression, IClusterSingleQueryManager queryManager) {
+  ClusterExecutorWithTimeGenerator(QueryExpression queryExpression,
+      IClusterSingleQueryManager queryManager, int readDataConsistencyLevel) {
     this.queryExpression = queryExpression;
     this.queryManager = queryManager;
+    this.readDataConsistencyLevel = readDataConsistencyLevel;
   }
 
   /**

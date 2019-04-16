@@ -16,35 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.response;
+package org.apache.iotdb.cluster.rpc.raft.response.querymetadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
-public class QuerySeriesTypeResponse extends BasicResponse {
+public class QueryPathsResponse extends BasicResponse {
 
-  private TSDataType dataType;
+  private List<String> paths;
 
-  private QuerySeriesTypeResponse(String groupId, boolean redirected, String leaderStr,
-      String errorMsg) {
+  private QueryPathsResponse(String groupId, boolean redirected, boolean success, String leaderStr, String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
+    this.addResult(success);
+    paths = new ArrayList<>();
   }
 
-  public static QuerySeriesTypeResponse createSuccessResponse(String groupId, TSDataType dataType) {
-    QuerySeriesTypeResponse response = new QuerySeriesTypeResponse(groupId, false, null,
-        null);
-    response.dataType = dataType;
-    return response;
+  public static QueryPathsResponse createEmptyResponse(String groupId){
+    return new QueryPathsResponse(groupId, false, true, null, null);
   }
 
-  public static QuerySeriesTypeResponse createErrorResponse(String groupId, String errorMsg) {
-    return new QuerySeriesTypeResponse(groupId, false, null, errorMsg);
+  public static QueryPathsResponse createErrorResponse(String groupId, String errorMsg) {
+    return new QueryPathsResponse(groupId, false, false, null, errorMsg);
   }
 
-  public TSDataType getDataType() {
-    return dataType;
+  public List<String> getPaths() {
+    return paths;
   }
 
-  public void setDataType(TSDataType dataType) {
-    this.dataType = dataType;
+  public void addPaths(List<String> paths){
+    this.paths.addAll(paths);
   }
+
 }

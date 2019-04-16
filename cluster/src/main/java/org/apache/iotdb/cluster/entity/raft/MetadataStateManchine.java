@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
-import org.apache.iotdb.cluster.rpc.raft.request.MetaGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.nonquery.MetaGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;

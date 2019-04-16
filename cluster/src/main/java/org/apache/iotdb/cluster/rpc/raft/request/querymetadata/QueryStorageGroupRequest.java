@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.request;
+package org.apache.iotdb.cluster.rpc.raft.request.querymetadata;
 
-import java.io.Serializable;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
 
-public class QueryMetadataInStringRequest extends BasicQueryRequest implements Serializable {
+public class QueryStorageGroupRequest extends BasicQueryRequest {
 
-  public QueryMetadataInStringRequest(String groupID, int readConsistencyLevel) {
+  public QueryStorageGroupRequest(String groupID, int readConsistencyLevel) {
     super(groupID, readConsistencyLevel);
   }
 }

@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.request;
+package org.apache.iotdb.cluster.rpc.raft.request.querymetadata;
 
-import java.io.Serializable;
 import java.util.List;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
 
-public class QueryPathsRequest extends BasicQueryRequest implements Serializable {
+public class QueryPathsRequest extends BasicQueryRequest {
 
   private List<String> path;
 

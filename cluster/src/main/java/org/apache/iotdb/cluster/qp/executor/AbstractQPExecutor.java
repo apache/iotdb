@@ -70,12 +70,17 @@ public abstract class AbstractQPExecutor {
   /**
    * ReadMetadataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
    */
-  protected int readMetadataConsistencyLevel = CLUSTER_CONFIG.getReadMetadataConsistencyLevel();
+  private ThreadLocal<Integer> readMetadataConsistencyLevel = new ThreadLocal<>();
 
   /**
    * ReadDataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
    */
-  private int readDataConsistencyLevel = CLUSTER_CONFIG.getReadDataConsistencyLevel();
+  private ThreadLocal<Integer> readDataConsistencyLevel = new ThreadLocal<>();
+
+  public AbstractQPExecutor() {
+    readMetadataConsistencyLevel.set(CLUSTER_CONFIG.getReadMetadataConsistencyLevel());
+    readDataConsistencyLevel.set(CLUSTER_CONFIG.getReadDataConsistencyLevel());
+  }
 
   /**
    * Async handle QPTask by QPTask and leader id
@@ -141,7 +146,7 @@ public abstract class AbstractQPExecutor {
 
   public void setReadMetadataConsistencyLevel(int level) throws ConsistencyLevelException {
     if (level <= ClusterConstant.MAX_CONSISTENCY_LEVEL) {
-      this.readMetadataConsistencyLevel = level;
+      readMetadataConsistencyLevel.set(level);
     } else {
       throw new ConsistencyLevelException(String.format("Consistency level %d not support", level));
     }
@@ -149,17 +154,17 @@ public abstract class AbstractQPExecutor {
 
   public void setReadDataConsistencyLevel(int level) throws ConsistencyLevelException {
     if (level <= ClusterConstant.MAX_CONSISTENCY_LEVEL) {
-      this.readDataConsistencyLevel = level;
+      readDataConsistencyLevel.set(level);
     } else {
       throw new ConsistencyLevelException(String.format("Consistency level %d not support", level));
     }
   }
 
   public int getReadMetadataConsistencyLevel() {
-    return readMetadataConsistencyLevel;
+    return readMetadataConsistencyLevel.get();
   }
 
   public int getReadDataConsistencyLevel() {
-    return readDataConsistencyLevel;
+    return readDataConsistencyLevel.get();
   }
 }

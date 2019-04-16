@@ -185,14 +185,14 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       QueryContext context)
       throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
       PathErrorException, IOException {
-    return getQueryRouter().aggregate(paths, aggres, expression, context);
+    return queryRouter.aggregate(paths, aggres, expression, context);
   }
 
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException {
-    return getQueryRouter().fill(fillPaths, queryTime, fillTypes, context);
+    return queryRouter.fill(fillPaths, queryTime, fillTypes, context);
   }
 
   @Override
@@ -200,7 +200,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
       throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
       PathErrorException, IOException {
-    return getQueryRouter().groupBy(paths, aggres, expression, unit, origin, intervals, context);
+    return queryRouter.groupBy(paths, aggres, expression, unit, origin, intervals, context);
   }
 
   @Override

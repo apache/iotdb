@@ -19,6 +19,8 @@
 package org.apache.iotdb.cluster.query.coordinatornode.manager;
 
 import com.alipay.sofa.jraft.entity.PeerId;
+import java.io.IOException;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterSingleQueryManager.QueryType;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -33,7 +35,8 @@ public interface IClusterSingleQueryManager {
    * @param queryType
    */
   void init(
-      QueryType queryType) throws PathErrorException;
+      QueryType queryType, int readDataConsistencyLevel)
+      throws PathErrorException, IOException, RaftConnectionException;
 
   /**
    * Get physical plan of select path

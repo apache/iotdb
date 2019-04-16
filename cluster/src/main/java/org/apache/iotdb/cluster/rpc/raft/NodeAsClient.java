@@ -22,6 +22,7 @@ import com.alipay.sofa.jraft.entity.PeerId;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
+import org.apache.iotdb.cluster.utils.query.QueryTask;
 
 /**
  * Handle the request and process the result as a client with the current node
@@ -38,11 +39,10 @@ public interface NodeAsClient {
 
   /**
    * Synchronous processing requests
-   *  @param clientService client rpc service handle
-   * @param leader leader node of the target group
-   * @param qpTask single QPTask to be executed
+   * @param peerId leader node of the target group
+   *
    */
-  void syncHandleRequest(BasicRequest request, PeerId leader, SingleQPTask qpTask)
+  QueryTask syncHandleRequest(BasicRequest request, PeerId peerId)
       throws RaftConnectionException;
 
   /**

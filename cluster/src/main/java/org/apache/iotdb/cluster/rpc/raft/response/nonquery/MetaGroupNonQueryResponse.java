@@ -16,13 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.request;
+package org.apache.iotdb.cluster.rpc.raft.response.nonquery;
 
-import java.io.Serializable;
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
-public class QueryMetadataRequest extends BasicQueryRequest implements Serializable {
+/**
+ * Handle response from metadata group leader
+ */
+public class MetaGroupNonQueryResponse extends BasicResponse {
 
-  public QueryMetadataRequest(String groupID, int readConsistencyLevel) {
-    super(groupID, readConsistencyLevel);
+  private MetaGroupNonQueryResponse(String groupId, boolean redirected, String leaderStr,
+      String errorMsg) {
+    super(groupId, redirected, leaderStr, errorMsg);
   }
+
+  public static MetaGroupNonQueryResponse createRedirectedResponse(String groupId, String leaderStr) {
+    return new MetaGroupNonQueryResponse(groupId, true, leaderStr, null);
+  }
+
+  public static MetaGroupNonQueryResponse createEmptyResponse(String groupId) {
+    return new MetaGroupNonQueryResponse(groupId, false, null, null);
+  }
+
 }
