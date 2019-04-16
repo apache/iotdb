@@ -39,11 +39,15 @@ import org.apache.iotdb.cluster.rpc.raft.processor.QueryMetadataInStringAsyncPro
 import org.apache.iotdb.cluster.rpc.raft.processor.QueryPathsAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.QuerySeriesTypeAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.QueryTimeSeriesAsyncProcessor;
+import org.apache.iotdb.cluster.service.ClusterMonitor;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.RegisterManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +82,8 @@ public class Server {
    * IoTDB stand-alone instance
    */
   private IoTDB iotdb;
+
+  private RegisterManager registerManager = new RegisterManager();
 
   public static void main(String[] args) {
     Server server = Server.getInstance();
@@ -125,6 +131,14 @@ public class Server {
       Router.getInstance().showPhysicalNodes(groupId);
     }
 
+    try {
+      registerManager.register(ClusterMonitor.INSTANCE);
+    } catch (StartupException e) {
+      LOGGER.error("meet error while starting up.", e);
+      stop();
+      LOGGER.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
+      return;
+    }
   }
 
   public void stop() throws ProcessorException {
@@ -135,6 +149,8 @@ public class Server {
     for (DataPartitionHolder dataPartitionHolder : dataPartitionHolderMap.values()) {
       dataPartitionHolder.stop();
     }
+
+    registerManager.deregisterAll();
   }
 
   public PeerId getServerId() {

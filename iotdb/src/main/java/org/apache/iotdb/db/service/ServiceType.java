@@ -24,6 +24,7 @@ public enum ServiceType {
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
   JDBC_SERVICE("JDBC ServerService", "JDBCService"),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
+  CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor"),
   STAT_MONITOR_SERVICE("Statistics ServerService", ""),
   WAL_SERVICE("WAL ServerService", ""),
   CLOSE_MERGE_SERVICE("Close&Merge ServerService", ""),

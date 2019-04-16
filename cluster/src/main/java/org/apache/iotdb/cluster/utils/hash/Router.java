@@ -66,6 +66,7 @@ public class Router {
   public static final String DATA_GROUP_STR = "data-group-";
 
   private HashFunction hashFunction = new MD5Hash();
+
   private final SortedMap<Integer, PhysicalNode> physicalRing = new TreeMap<>();
   private final SortedMap<Integer, VirtualNode> virtualRing = new TreeMap<>();
 
@@ -235,5 +236,13 @@ public class Router {
 
   public Set<String> getAllGroupId() {
     return groupIdMapNodeCache.keySet();
+  }
+
+  public SortedMap<Integer, PhysicalNode> getPhysicalRing() {
+    return physicalRing;
+  }
+
+  public SortedMap<Integer, VirtualNode> getVirtualRing() {
+    return virtualRing;
   }
 }
