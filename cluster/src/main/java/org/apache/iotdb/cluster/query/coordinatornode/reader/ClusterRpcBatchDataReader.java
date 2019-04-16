@@ -19,10 +19,17 @@
 package org.apache.iotdb.cluster.query.coordinatornode.reader;
 
 import java.io.IOException;
+import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class ClusterRpcBatchReader implements IBatchReader {
+public class ClusterRpcBatchDataReader implements IBatchReader {
+
+  private String PeerId;
+  private String jobId;
+  private PathType type;
+  private BatchData batchData;
 
   @Override
   public boolean hasNext() throws IOException {

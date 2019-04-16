@@ -40,7 +40,7 @@ public interface IEngineQueryRouter {
    * Execute physical plan.
    */
   QueryDataSet query(QueryExpression queryExpression, QueryContext context)
-      throws FileNodeManagerException;
+      throws FileNodeManagerException, PathErrorException;
 
   /**
    * Execute aggregation query.

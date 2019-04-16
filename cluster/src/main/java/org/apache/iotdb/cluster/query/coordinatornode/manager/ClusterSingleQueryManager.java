@@ -19,10 +19,20 @@
 package org.apache.iotdb.cluster.query.coordinatornode.manager;
 
 import com.alipay.sofa.jraft.entity.PeerId;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import org.apache.iotdb.cluster.query.coordinatornode.factory.ClusterRpcReaderFactory;
+import org.apache.iotdb.cluster.query.coordinatornode.reader.ClusterSeriesReader;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
+import org.apache.iotdb.cluster.utils.RaftUtils;
+import org.apache.iotdb.cluster.utils.hash.Router;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
 
@@ -34,7 +44,7 @@ public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
   /**
    * Origin query plan parsed by QueryProcessor
    */
-  private QueryPlan originPhysicalPlan;
+  private QueryPlan queryPlan;
 
   /**
    * Represent selected reader nodes, key is group id and value is selected peer id
@@ -42,25 +52,107 @@ public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
   private Map<String, PeerId> readerNodes = new HashMap<>();
 
   /**
-   * Physical plans of select paths which are divided from originPhysicalPlan
+   * Query plans of select paths which are divided from queryPlan group by group id
    */
   private Map<String, QueryPlan> selectPathPlans = new HashMap<>();
 
+  private Map<String, ClusterSeriesReader> selectPathReaders = new HashMap<>();
+
   /**
-   * Physical plans of filter paths which are divided from originPhysicalPlan
+   * Physical plans of filter paths which are divided from queryPlan group by group id
    */
   private Map<String, QueryPlan> filterPathPlans = new HashMap<>();
 
   public ClusterSingleQueryManager(long jobId,
-      QueryPlan originPhysicalPlan) {
+      QueryPlan queryPlan) {
     this.jobId = jobId;
-    this.originPhysicalPlan = originPhysicalPlan;
+    this.queryPlan = queryPlan;
   }
 
   @Override
-  public void dividePhysicalPlan() {
-//    List<Path>
-//    MManager.getInstance().getFileNameByPath()
+  public void init(QueryType queryType) throws PathErrorException {
+    switch (queryType) {
+      case NO_FILTER:
+        divideNoFilterPhysicalPlan();
+        break;
+      case GLOBAL_TIME:
+        divideGlobalTimePhysicalPlan();
+        break;
+      case FILTER:
+        divideFilterPhysicalPlan();
+        break;
+      default:
+        throw new UnsupportedOperationException();
+    }
+    initSelectedPathPlan();
+    initFilterPathPlan();
+  }
+
+  public enum QueryType {
+    NO_FILTER, GLOBAL_TIME, FILTER
+  }
+
+  /**
+   * Divide no-fill type query plan by group id
+   */
+  private void divideNoFilterPhysicalPlan() throws PathErrorException {
+    List<Path> selectPaths = queryPlan.getPaths();
+    Map<String, List<Path>> pathsByGroupId = new HashMap<>();
+    for (Path path : selectPaths) {
+      String storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
+      String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
+      if (pathsByGroupId.containsKey(groupId)) {
+        pathsByGroupId.put(groupId, new ArrayList<>());
+      }
+      pathsByGroupId.get(groupId).add(path);
+    }
+    for (Entry<String, List<Path>> entry : pathsByGroupId.entrySet()) {
+      String groupId = entry.getKey();
+      List<Path> paths = entry.getValue();
+      QueryPlan subQueryPlan = new QueryPlan();
+      subQueryPlan.setProposer(queryPlan.getProposer());
+      subQueryPlan.setPaths(paths);
+      selectPathPlans.put(groupId, subQueryPlan);
+    }
+  }
+
+  private void divideGlobalTimePhysicalPlan() {
+
+  }
+
+  private void divideFilterPhysicalPlan() {
+
+  }
+
+  /**
+   * Init select path
+   */
+  private void initSelectedPathPlan(){
+    if(!selectPathPlans.isEmpty()){
+      for(Entry<String, QueryPlan> entry: selectPathPlans.entrySet()){
+        String groupId = entry.getKey();
+        QueryPlan queryPlan = entry.getValue();
+        if(!canHandleQueryLocally(groupId)) {
+          PeerId randomPeer = RaftUtils.getRandomPeerID(groupId);
+          readerNodes.put(groupId, randomPeer);
+          Map<String, ClusterSeriesReader> selectPathReaders = ClusterRpcReaderFactory
+              .createClusterSeriesReader(groupId, randomPeer, queryPlan);
+          for (Path path : queryPlan.getPaths()) {
+            selectPathReaders.put(path.getFullPath(), selectPathReaders.get(path.getFullPath()));
+          }
+        }
+      }
+    }
+  }
+
+  private void initFilterPathPlan(){
+    if(!filterPathPlans.isEmpty()){
+
+    }
+  }
+
+  private boolean canHandleQueryLocally(String groupId){
+    return QPExecutorUtils.canHandleQueryByGroupId(groupId);
   }
 
   @Override
@@ -96,11 +188,47 @@ public class ClusterSingleQueryManager implements IClusterSingleQueryManager {
     this.jobId = jobId;
   }
 
-  public PhysicalPlan getOriginPhysicalPlan() {
-    return originPhysicalPlan;
+  public PhysicalPlan getQueryPlan() {
+    return queryPlan;
   }
 
-  public void setOriginPhysicalPlan(QueryPlan originPhysicalPlan) {
-    this.originPhysicalPlan = originPhysicalPlan;
+  public void setQueryPlan(QueryPlan queryPlan) {
+    this.queryPlan = queryPlan;
+  }
+
+  public Map<String, PeerId> getReaderNodes() {
+    return readerNodes;
+  }
+
+  public void setReaderNodes(
+      Map<String, PeerId> readerNodes) {
+    this.readerNodes = readerNodes;
+  }
+
+  public Map<String, QueryPlan> getSelectPathPlans() {
+    return selectPathPlans;
+  }
+
+  public void setSelectPathPlans(
+      Map<String, QueryPlan> selectPathPlans) {
+    this.selectPathPlans = selectPathPlans;
+  }
+
+  public Map<String, ClusterSeriesReader> getSelectPathReaders() {
+    return selectPathReaders;
+  }
+
+  public void setSelectPathReaders(
+      Map<String, ClusterSeriesReader> selectPathReaders) {
+    this.selectPathReaders = selectPathReaders;
+  }
+
+  public Map<String, QueryPlan> getFilterPathPlans() {
+    return filterPathPlans;
+  }
+
+  public void setFilterPathPlans(
+      Map<String, QueryPlan> filterPathPlans) {
+    this.filterPathPlans = filterPathPlans;
   }
 }

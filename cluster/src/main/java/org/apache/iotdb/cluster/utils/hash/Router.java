@@ -236,4 +236,11 @@ public class Router {
   public Set<String> getAllGroupId() {
     return groupIdMapNodeCache.keySet();
   }
+
+  /**
+   * Get raft group id by storage group name
+   */
+  public String getGroupIdBySG(String storageGroup) {
+    return getGroupID(routeGroup(storageGroup));
+  }
 }

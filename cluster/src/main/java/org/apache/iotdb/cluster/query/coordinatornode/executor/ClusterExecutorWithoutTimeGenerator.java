@@ -21,6 +21,9 @@ package org.apache.iotdb.cluster.query.coordinatornode.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterSingleQueryManager;
+import org.apache.iotdb.cluster.query.coordinatornode.reader.ClusterSeriesReader;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -42,9 +45,12 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class ClusterExecutorWithoutTimeGenerator {
   private QueryExpression queryExpression;
+  private ClusterSingleQueryManager queryManager;
 
-  public ClusterExecutorWithoutTimeGenerator(QueryExpression queryExpression) {
+  public ClusterExecutorWithoutTimeGenerator(QueryExpression queryExpression,
+      ClusterSingleQueryManager queryManager) {
     this.queryExpression = queryExpression;
+    this.queryManager = queryManager;
   }
 
   /**
@@ -62,37 +68,37 @@ public class ClusterExecutorWithoutTimeGenerator {
         .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
 
     for (Path path : queryExpression.getSelectedSeries()) {
-
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
-          context);
-
-      // add data type
-      try {
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-      } catch (PathErrorException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // sequence reader for one sealed tsfile
-      SequenceDataReader tsFilesReader;
-      try {
-        tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-            timeFilter, context);
-      } catch (IOException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // unseq reader for all chunk groups in unSeqFile
-      PriorityMergeReader unSeqMergeReader;
-      try {
-        unSeqMergeReader = SeriesReaderFactory.getInstance()
-            .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
-      } catch (IOException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // merge sequence data with unsequence data.
-      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
+//
+//      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
+//          context);
+//
+//      // add data type
+//      try {
+//        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+//      } catch (PathErrorException e) {
+//        throw new FileNodeManagerException(e);
+//      }
+//
+//      // sequence reader for one sealed tsfile
+//      SequenceDataReader tsFilesReader;
+//      try {
+//        tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
+//            timeFilter, context);
+//      } catch (IOException e) {
+//        throw new FileNodeManagerException(e);
+//      }
+//
+//      // unseq reader for all chunk groups in unSeqFile
+//      PriorityMergeReader unSeqMergeReader;
+//      try {
+//        unSeqMergeReader = SeriesReaderFactory.getInstance()
+//            .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
+//      } catch (IOException e) {
+//        throw new FileNodeManagerException(e);
+//      }
+//
+//      // merge sequence data with unsequence data.
+//      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
     }
 
     try {
@@ -112,42 +118,53 @@ public class ClusterExecutorWithoutTimeGenerator {
     List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    QueryResourceManager.getInstance()
-        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
-
+    Map<String, ClusterSeriesReader> selectPathReaders = queryManager.getSelectPathReaders();
+    List<Path> paths = new ArrayList<>();
     for (Path path : queryExpression.getSelectedSeries()) {
 
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
-          context);
+      if(selectPathReaders.containsKey(path.toString())){
+        ClusterSeriesReader reader = selectPathReaders.get(path.toString());
+        readersOfSelectedSeries.add(reader);
+        dataTypes.add(reader.getDataType());
+      } else {
+        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+            .getQueryDataSource(path,
+                context);
 
-      // add data type
-      try {
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-      } catch (PathErrorException e) {
-        throw new FileNodeManagerException(e);
+        // add data type
+        try {
+          dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+        } catch (PathErrorException e) {
+          throw new FileNodeManagerException(e);
+        }
+
+        // sequence insert data
+        SequenceDataReader tsFilesReader;
+        try {
+          tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
+              null, context);
+        } catch (IOException e) {
+          throw new FileNodeManagerException(e);
+        }
+
+        // unseq insert data
+        PriorityMergeReader unSeqMergeReader;
+        try {
+          unSeqMergeReader = SeriesReaderFactory.getInstance()
+              .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
+        } catch (IOException e) {
+          throw new FileNodeManagerException(e);
+        }
+
+        // merge sequence data with unsequence data.
+        readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
+
+        paths.add(path);
       }
-
-      // sequence insert data
-      SequenceDataReader tsFilesReader;
-      try {
-        tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-            null, context);
-      } catch (IOException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // unseq insert data
-      PriorityMergeReader unSeqMergeReader;
-      try {
-        unSeqMergeReader = SeriesReaderFactory.getInstance()
-            .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
-      } catch (IOException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // merge sequence data with unsequence data.
-      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
     }
+
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenQueryPaths(context.getJobId(), paths);
 
     try {
       return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,

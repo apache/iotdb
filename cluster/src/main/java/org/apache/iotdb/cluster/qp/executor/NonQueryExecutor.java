@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.DataGroupNonQueryResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.service.TSServiceClusterImpl.BatchResult;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -196,16 +197,16 @@ public class NonQueryExecutor extends AbstractQPExecutor {
     switch (plan.getOperatorType()) {
       case DELETE:
         storageGroup = getStorageGroupFromDeletePlan((DeletePlan) plan);
-        groupId = getGroupIdBySG(storageGroup);
+        groupId = router.getGroupIdBySG(storageGroup);
         break;
       case UPDATE:
         Path path = ((UpdatePlan) plan).getPath();
-        storageGroup = getStroageGroupByDevice(path.getDevice());
-        groupId = getGroupIdBySG(storageGroup);
+        storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
+        groupId = router.getGroupIdBySG(storageGroup);
         break;
       case INSERT:
-        storageGroup = getStroageGroupByDevice(((InsertPlan) plan).getDeviceId());
-        groupId = getGroupIdBySG(storageGroup);
+        storageGroup = QPExecutorUtils.getStroageGroupByDevice(((InsertPlan) plan).getDeviceId());
+        groupId = router.getGroupIdBySG(storageGroup);
         break;
       case CREATE_ROLE:
       case DELETE_ROLE:
@@ -284,8 +285,8 @@ public class NonQueryExecutor extends AbstractQPExecutor {
       case ADD_PATH:
       case DELETE_PATH:
         String deviceId = path.getDevice();
-        String storageGroup = getStroageGroupByDevice(deviceId);
-        groupId = getGroupIdBySG(storageGroup);
+        String storageGroup = QPExecutorUtils.getStroageGroupByDevice(deviceId);
+        groupId = router.getGroupIdBySG(storageGroup);
         break;
       case SET_FILE_LEVEL:
         boolean fileLevelExist = mManager.checkStorageLevelOfMTree(path.getFullPath());
@@ -319,7 +320,7 @@ public class NonQueryExecutor extends AbstractQPExecutor {
     currentTask.set(qpTask);
 
     /** Check if the plan can be executed locally. **/
-    if (canHandleNonQueryByGroupId(groupId)) {
+    if (QPExecutorUtils.canHandleNonQueryByGroupId(groupId)) {
       return handleNonQueryRequestLocally(groupId, qpTask);
     } else {
       PeerId leader = RaftUtils.getLeaderPeerID(groupId);

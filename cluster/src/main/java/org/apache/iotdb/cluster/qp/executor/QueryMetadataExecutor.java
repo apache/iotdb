@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.rpc.raft.response.QueryPathsResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.QuerySeriesTypeResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.QueryStorageGroupResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.QueryTimeSeriesResponse;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -81,7 +82,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     if (storageGroupList.isEmpty()) {
       return new ArrayList<>();
     } else {
-      Map<String, Set<String>> groupIdSGMap = classifySGByGroupId(storageGroupList);
+      Map<String, Set<String>> groupIdSGMap = QPExecutorUtils.classifySGByGroupId(storageGroupList);
       for (Entry<String, Set<String>> entry : groupIdSGMap.entrySet()) {
         List<String> paths = getSubQueryPaths(entry.getValue(), path);
         String groupId = entry.getKey();
@@ -130,7 +131,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     LOGGER.debug("Execute show timeseries {} statement for group {}.", pathList, groupId);
     PeerId holder;
     /** Check if the plan can be executed locally. **/
-    if (canHandleQueryByGroupId(groupId)) {
+    if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
       LOGGER.debug("Execute show timeseries {} statement locally for group {} by sending request to local node.", pathList, groupId);
       holder = this.server.getServerId();
     } else {
@@ -158,7 +159,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       LOGGER.debug("Execute show metadata in string statement for group {}.", groupId);
       PeerId holder;
       /** Check if the plan can be executed locally. **/
-      if (canHandleQueryByGroupId(groupId)) {
+      if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
         LOGGER.debug("Execute show metadata in string statement locally for group {} by sending request to local node.", groupId);
         holder = this.server.getServerId();
       } else {
@@ -197,7 +198,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       LOGGER.debug("Execute query metadata statement for group {}.", groupId);
       PeerId holder;
       /** Check if the plan can be executed locally. **/
-      if (canHandleQueryByGroupId(groupId)) {
+      if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
         LOGGER.debug("Execute query metadata statement locally for group {} by sending request to local node.", groupId);
         holder = this.server.getServerId();
       } else {
@@ -232,7 +233,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     if (storageGroupList.size() != 1) {
       throw new PathErrorException("path " + path + " is not valid.");
     } else {
-      String groupId = getGroupIdBySG(storageGroupList.get(0));
+      String groupId = router.getGroupIdBySG(storageGroupList.get(0));
       QuerySeriesTypeRequest request = new QuerySeriesTypeRequest(groupId,
           readMetadataConsistencyLevel, path);
       SingleQPTask task = new SingleQPTask(false, request);
@@ -240,7 +241,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       LOGGER.debug("Execute get series type for {} statement for group {}.", path, groupId);
       PeerId holder;
       /** Check if the plan can be executed locally. **/
-      if (canHandleQueryByGroupId(groupId)) {
+      if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
         LOGGER.debug("Execute get series type for {} statement locally for group {} by sending request to local node.", path, groupId);
         holder = this.server.getServerId();
       } else {
@@ -265,7 +266,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     if (storageGroupList.isEmpty()) {
       return new ArrayList<>();
     } else {
-      Map<String, Set<String>> groupIdSGMap = classifySGByGroupId(storageGroupList);
+      Map<String, Set<String>> groupIdSGMap = QPExecutorUtils.classifySGByGroupId(storageGroupList);
       for (Entry<String, Set<String>> entry : groupIdSGMap.entrySet()) {
         List<String> paths = getSubQueryPaths(entry.getValue(), path);
         String groupId = entry.getKey();
@@ -289,7 +290,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     LOGGER.debug("Execute get paths for {} statement for group {}.", pathList, groupId);
     PeerId holder;
     /** Check if the plan can be executed locally. **/
-    if (canHandleQueryByGroupId(groupId)) {
+    if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
       LOGGER.debug("Execute get paths for {} statement locally for group {} by sending request to local node.", pathList, groupId);
       holder = this.server.getServerId();
     } else {

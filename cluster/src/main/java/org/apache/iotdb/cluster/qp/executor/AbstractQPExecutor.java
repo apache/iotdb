@@ -51,16 +51,7 @@ public abstract class AbstractQPExecutor {
 
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
 
-  /**
-   * Raft as client manager.
-   */
-  private static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager
-      .getInstance();
-
   protected Router router = Router.getInstance();
-
-  private PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
-      CLUSTER_CONFIG.getPort());
 
   protected MManager mManager = MManager.getInstance();
 
@@ -87,84 +78,6 @@ public abstract class AbstractQPExecutor {
   private int readDataConsistencyLevel = CLUSTER_CONFIG.getReadDataConsistencyLevel();
 
   /**
-   * Get Storage Group Name by device name
-   */
-  protected String getStroageGroupByDevice(String device) throws PathErrorException {
-    String storageGroup;
-    try {
-      storageGroup = MManager.getInstance().getFileNameByPath(device);
-    } catch (PathErrorException e) {
-      throw new PathErrorException(String.format("File level of %s doesn't exist.", device));
-    }
-    return storageGroup;
-  }
-
-  /**
-   * Get all Storage Group Names by path
-   */
-  public List<String> getAllStroageGroupsByPath(String path) throws PathErrorException {
-    List<String> storageGroupList;
-    try {
-      storageGroupList = mManager.getAllFileNamesByPath(path);
-    } catch (PathErrorException e) {
-      throw new PathErrorException(String.format("File level of %s doesn't exist.", path));
-    }
-    return storageGroupList;
-  }
-
-  /**
-   * Classify the input storage group list by which data group it belongs to.
-   *
-   * @return key is groupId, value is all SGs belong to this data group
-   */
-  protected Map<String, Set<String>> classifySGByGroupId(List<String> sgList) {
-    Map<String, Set<String>> map = new HashMap<>();
-    for (int i = 0; i < sgList.size(); i++) {
-      String sg = sgList.get(i);
-      String groupId = getGroupIdBySG(sg);
-      if (map.containsKey(groupId)) {
-        map.get(groupId).add(sg);
-      } else {
-        Set<String> set = new HashSet<>();
-        set.add(sg);
-        map.put(groupId, set);
-      }
-    }
-    return map;
-  }
-
-  /**
-   * Get raft group id by storage group name
-   */
-  protected String getGroupIdBySG(String storageGroup) {
-    return router.getGroupID(router.routeGroup(storageGroup));
-  }
-
-  /**
-   * Check if the non query command can execute in local. 1. If this node belongs to the storage
-   * group 2. If this node is leader.
-   */
-  public boolean canHandleNonQueryByGroupId(String groupId) {
-    boolean canHandle = false;
-    if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
-      canHandle = ((MetadataRaftHolder) (server.getMetadataHolder())).getFsm().isLeader();
-    }else {
-      if (router.containPhysicalNodeByGroupId(groupId, localNode) && RaftUtils
-          .getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
-        canHandle = true;
-      }
-    }
-    return canHandle;
-  }
-
-  /**
-   * Check if the query command can execute in local. Check if this node belongs to the group id
-   */
-  protected boolean canHandleQueryByGroupId(String groupId) {
-    return router.containPhysicalNodeByGroupId(groupId, localNode);
-  }
-
-  /**
    * Async handle QPTask by QPTask and leader id
    *
    * @param task request QPTask
@@ -185,29 +98,15 @@ public abstract class AbstractQPExecutor {
    * @param leader leader node of the group
    * @param taskRetryNum Retry time of the task
    */
-  public void asyncSendNonQuerySingleTask(SingleQPTask task, PeerId leader, int taskRetryNum)
+  protected void asyncSendNonQuerySingleTask(SingleQPTask task, PeerId leader, int taskRetryNum)
       throws RaftConnectionException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
       throw new RaftConnectionException(String.format("QPTask retries reach the upper bound %s",
           TASK_MAX_RETRY));
     }
-    NodeAsClient client = getRaftNodeAsClient();
+    NodeAsClient client = RaftUtils.getRaftNodeAsClient();
     /** Call async method **/
     client.asyncHandleRequest(task.getRequest(), leader, task);
-  }
-
-  /**
-   * try to get raft rpc client
-   */
-  private NodeAsClient getRaftNodeAsClient() throws RaftConnectionException {
-    NodeAsClient client = CLIENT_MANAGER.getRaftNodeAsClient();
-    if (client == null) {
-      throw new RaftConnectionException(String
-          .format("Raft inner rpc clients have reached the max numbers %s",
-              CLUSTER_CONFIG.getMaxNumOfInnerRpcClient() + CLUSTER_CONFIG
-                  .getMaxQueueNumOfInnerRpcClient()));
-    }
-    return client;
   }
 
   /**

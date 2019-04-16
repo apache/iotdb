@@ -16,34 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query.coordinatornode.reader;
+package org.apache.iotdb.cluster.query.coordinatornode.factory;
 
-import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IBatchReader;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import com.alipay.sofa.jraft.entity.PeerId;
+import java.util.Map;
+import org.apache.iotdb.cluster.query.coordinatornode.reader.ClusterSeriesReader;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
-public class ClusterAllDataReader implements IPointReader {
+public class ClusterRpcReaderFactory {
 
-  private IBatchReader rpcBatchReader;
-
-  @Override
-  public TimeValuePair current() throws IOException {
-    return null;
-  }
-
-  @Override
-  public boolean hasNext() throws IOException {
-    return false;
-  }
-
-  @Override
-  public TimeValuePair next() throws IOException {
-    return null;
-  }
-
-  @Override
-  public void close() throws IOException {
-
+  public static Map<String, ClusterSeriesReader> createClusterSeriesReader(String groupId, PeerId peerId, QueryPlan queryPlan){
+return null;
   }
 }

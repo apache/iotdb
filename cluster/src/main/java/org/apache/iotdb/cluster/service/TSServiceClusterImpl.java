@@ -38,10 +38,8 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
-import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -71,11 +69,6 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   private QueryProcessor processor = new QueryProcessor(new ClusterQueryProcessExecutor());
   private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor();
   private QueryMetadataExecutor queryMetadataExecutor = new QueryMetadataExecutor();
-
-  /**
-   * Key is query statement, Value is corresponding job id which is assigned in <class>QueryResourceManager</class>
-   */
-  private ThreadLocal<HashMap<String, Long>> queryJobIdMap = new ThreadLocal<>();
 
   public TSServiceClusterImpl() throws IOException {
     super();
@@ -278,18 +271,6 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   }
 
   @Override
-  public void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
-    long jobId = QueryResourceManager.getInstance().assignJobId();
-    queryStatus.get().put(statement, physicalPlan);
-    queryJobIdMap.get().put(statement, jobId);
-    queryManager.addSingleQuery(jobId, (QueryPlan) physicalPlan);
-    // refresh current queryRet for statement
-    if (queryRet.get().containsKey(statement)) {
-      queryRet.get().remove(statement);
-    }
-  }
-
-  @Override
   public void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
@@ -310,35 +291,18 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   }
 
   @Override
-  public void clearAllStatusForCurrentRequest() {
-    if (this.queryRet.get() != null) {
-      this.queryRet.get().clear();
-    }
-
-    if (this.queryJobIdMap.get() != null) {
-      this.queryJobIdMap.get().clear();
-    }
-
-    if (this.queryStatus.get() != null) {
-      this.queryStatus.get().clear();
-    }
-  }
-
-
-  @Override
   public QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
     processor.getExecutor().setFetchSize(fetchSize);
-    long jobId = queryJobIdMap.get().get(statement);
 
+    long jobId = QueryResourceManager.getInstance().assignJobId();
     QueryContext context = new QueryContext(jobId);
     initContextMap();
     contextMapLocal.get().put(req.queryId, context);
 
-    queryManager.getSingleQuery(jobId).dividePhysicalPlan();
-
+    queryManager.addSingleQuery(jobId, (QueryPlan) physicalPlan);
     QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
         context);
     queryRet.get().put(statement, queryDataSet);

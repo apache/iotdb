@@ -19,6 +19,8 @@
 package org.apache.iotdb.cluster.query.coordinatornode.manager;
 
 import com.alipay.sofa.jraft.entity.PeerId;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterSingleQueryManager.QueryType;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 /**
@@ -28,8 +30,10 @@ public interface IClusterSingleQueryManager {
 
   /**
    * Divide physical plan into several sub physical plans according to timeseries full path.
+   * @param queryType
    */
-  void dividePhysicalPlan();
+  void init(
+      QueryType queryType) throws PathErrorException;
 
   /**
    * Get physical plan of select path

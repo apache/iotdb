@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.DataGroupNonQueryResponse;
 import org.apache.iotdb.cluster.service.TSServiceClusterImpl.BatchResult;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +122,7 @@ public class BatchQPTask extends MultiQPTask {
       String groupId = entry.getKey();
       SingleQPTask subTask = entry.getValue();
       Future<?> taskThread;
-      if (executor.canHandleNonQueryByGroupId(groupId)) {
+      if (QPExecutorUtils.canHandleNonQueryByGroupId(groupId)) {
         taskThread = QPTaskManager.getInstance()
             .submit(() -> executeLocalSubTask(subTask, groupId));
       } else {

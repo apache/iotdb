@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -40,7 +42,9 @@ import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
+import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
+import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.MetaGroupNonQueryResponse;
@@ -51,10 +55,17 @@ import org.slf4j.LoggerFactory;
 
 public class RaftUtils {
 
+  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
+
   private static final Logger LOGGER = LoggerFactory.getLogger(RaftUtils.class);
   private static final Server server = Server.getInstance();
   private static final Router router = Router.getInstance();
   private static final AtomicInteger requestId = new AtomicInteger(0);
+  /**
+   * Raft as client manager.
+   */
+  private static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager
+      .getInstance();
 
   /**
    * The cache will be update in two case: 1. When @onLeaderStart() method of state machine is
@@ -301,5 +312,19 @@ public class RaftUtils {
     status.setErrorMsg(errorMsg);
     status.setCode(-1);
     return status;
+  }
+
+  /**
+   * try to get raft rpc client
+   */
+  public static NodeAsClient getRaftNodeAsClient() throws RaftConnectionException {
+    NodeAsClient client = CLIENT_MANAGER.getRaftNodeAsClient();
+    if (client == null) {
+      throw new RaftConnectionException(String
+          .format("Raft inner rpc clients have reached the max numbers %s",
+              CLUSTER_CONFIG.getMaxNumOfInnerRpcClient() + CLUSTER_CONFIG
+                  .getMaxQueueNumOfInnerRpcClient()));
+    }
+    return client;
   }
 }

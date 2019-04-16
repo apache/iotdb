@@ -29,7 +29,7 @@ public class ClusterRpcQueryManager{
   /**
    * Key is group id, value is manager of a client query.
    */
-  ConcurrentHashMap<Long, IClusterSingleQueryManager> singleQueryManagerMap = new ConcurrentHashMap<>();
+  ConcurrentHashMap<Long, ClusterSingleQueryManager> singleQueryManagerMap = new ConcurrentHashMap<>();
 
   /**
    * Add a query
@@ -41,7 +41,7 @@ public class ClusterRpcQueryManager{
   /**
    * Get query manager by group id
    */
-  public IClusterSingleQueryManager getSingleQuery(long jobId) {
+  public ClusterSingleQueryManager getSingleQuery(long jobId) {
     return singleQueryManagerMap.get(jobId);
   }
 

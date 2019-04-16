@@ -21,6 +21,10 @@ package org.apache.iotdb.cluster.query.coordinatornode.executor;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcQueryManager;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterSingleQueryManager;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterSingleQueryManager.QueryType;
+import org.apache.iotdb.cluster.query.coordinatornode.manager.IClusterSingleQueryManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -30,8 +34,10 @@ import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -39,8 +45,37 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
 
   @Override
   public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
-      throws FileNodeManagerException {
-    return null;
+      throws FileNodeManagerException, PathErrorException {
+
+    ClusterSingleQueryManager queryManager = ClusterRpcQueryManager.getInstance()
+        .getSingleQuery(context.getJobId());
+    if (queryExpression.hasQueryFilter()) {
+      try {
+        IExpression optimizedExpression = ExpressionOptimizer.getInstance()
+            .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
+        queryExpression.setExpression(optimizedExpression);
+
+        if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+          queryManager.init(QueryType.GLOBAL_TIME);
+          ClusterExecutorWithoutTimeGenerator engineExecutor =
+              new ClusterExecutorWithoutTimeGenerator(queryExpression, queryManager);
+          return engineExecutor.executeWithGlobalTimeFilter(context);
+        } else {
+          queryManager.init(QueryType.FILTER);
+          ClusterExecutorWithTimeGenerator engineExecutor = new ClusterExecutorWithTimeGenerator(
+              queryExpression, queryManager);
+          return engineExecutor.execute(context);
+        }
+
+      } catch (QueryFilterOptimizationException e) {
+        throw new FileNodeManagerException(e);
+      }
+    } else {
+      queryManager.init(QueryType.NO_FILTER);
+      ClusterExecutorWithoutTimeGenerator engineExecutor =
+          new ClusterExecutorWithoutTimeGenerator(queryExpression, queryManager);
+      return engineExecutor.executeWithoutFilter(context);
+    }
   }
 
   @Override

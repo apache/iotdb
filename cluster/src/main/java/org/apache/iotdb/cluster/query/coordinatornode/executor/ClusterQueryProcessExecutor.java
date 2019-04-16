@@ -110,6 +110,7 @@ public class ClusterQueryProcessExecutor extends QueryProcessExecutor {
     this.fetchSize.set(fetchSize);
   }
 
+  @Override
   public IEngineQueryRouter getQueryRouter() {
     return queryRouter;
   }
