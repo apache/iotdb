@@ -61,7 +61,7 @@ public class JVMMemController extends BasicMemController {
   }
 
   @Override
-  public UsageLevel reportUse(Object user, long usage) {
+  public UsageLevel acquireUsage(Object user, long usage) {
     long memUsage = getTotalUsage() + usage;
     if (memUsage < warningThreshold) {
       return UsageLevel.SAFE;
@@ -82,7 +82,7 @@ public class JVMMemController extends BasicMemController {
   }
 
   @Override
-  public void reportFree(Object user, long freeSize) {
+  public void releaseUsage(Object user, long freeSize) {
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info("{} freed from {}, total usage {}", MemUtils.bytesCntToStr(freeSize),
           user.getClass(), MemUtils.bytesCntToStr(getTotalUsage()));

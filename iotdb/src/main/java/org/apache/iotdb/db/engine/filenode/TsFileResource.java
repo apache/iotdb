@@ -199,6 +199,10 @@ public class TsFileResource {
     }
   }
 
+  public void removeStartTime(String deviceId) {
+    startTimeMap.remove(deviceId);
+  }
+
   public Map<String, Long> getStartTimeMap() {
 
     return startTimeMap;

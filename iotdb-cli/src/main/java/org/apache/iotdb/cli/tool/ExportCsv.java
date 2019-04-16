@@ -150,7 +150,7 @@ public class ExportCsv extends AbstractCsvTool {
     targetDirectory = checkRequiredArg(TARGET_FILE_ARGS, TARGET_FILE_NAME, commandLine);
     timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
     if (timeFormat == null) {
-      timeFormat = DEFAULT_TIME_FORMAT;
+      timeFormat = "default";
     }
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
     if (!targetDirectory.endsWith(File.separator)) {
@@ -295,11 +295,10 @@ public class ExportCsv extends AbstractCsvTool {
   private static void writeTime(ResultSet rs, BufferedWriter bw) throws SQLException, IOException {
     ZonedDateTime dateTime;
     switch (timeFormat) {
-      case DEFAULT_TIME_FORMAT:
       case "default":
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(rs.getLong(1)),
             zoneId);
-        bw.write(dateTime.toString() + ",");
+        bw.write(dateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) + ",");
         break;
       case "timestamp":
       case "long":
