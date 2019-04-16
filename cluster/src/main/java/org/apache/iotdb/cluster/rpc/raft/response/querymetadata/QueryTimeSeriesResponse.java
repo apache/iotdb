@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
 public class QueryTimeSeriesResponse extends BasicResponse {
 
+  private static final long serialVersionUID = 8313150788331085964L;
   private List<List<String>> timeSeries;
 
   private QueryTimeSeriesResponse(String groupId, boolean redirected, boolean success, String leaderStr, String errorMsg) {

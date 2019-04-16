@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  */
 public class AndFilter extends BinaryFilter {
 
-  private static final long serialVersionUID = 6705254093824897938L;
+  private static final long serialVersionUID = -8212850098906044102L;
 
   public AndFilter(Filter left, Filter right) {
     super(left, right);

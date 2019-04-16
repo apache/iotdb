@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -39,7 +40,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -69,20 +69,19 @@ public class ClusterLocalSingleQueryManager {
   /**
    * Init create series reader.
    */
-  public void init(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
+  public void createSeriesReader(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException {
-    List<byte[]> planBytes = request.getPhysicalPlanBytes();
-    for (byte[] planByte : planBytes) {
-      QueryPlan plan = (QueryPlan) PhysicalPlanLogTransfer.logToOperator(planByte);
+    List<PhysicalPlan> plans = request.getPhysicalPlans();
+    for (PhysicalPlan plan : plans) {
       if (plan instanceof GroupByPlan) {
         throw new UnsupportedOperationException();
       } else if (plan instanceof AggregationPlan) {
         throw new UnsupportedOperationException();
       } else {
         QueryContext context = new QueryContext(jobId);
-        if (plan.getExpression() == null
-            || plan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
-          handleDataSetWithoutTimeGenerator(plan, context, request, response);
+        if (((QueryPlan) plan).getExpression() == null
+            || ((QueryPlan) plan).getExpression().getType() == ExpressionType.GLOBAL_TIME) {
+          handleDataSetWithoutTimeGenerator((QueryPlan) plan, context, request, response);
         } else {
           throw new UnsupportedOperationException();
         }

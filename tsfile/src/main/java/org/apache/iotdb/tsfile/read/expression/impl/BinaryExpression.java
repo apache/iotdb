@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.tsfile.read.expression.impl;
 
+import java.io.Serializable;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
-public abstract class BinaryExpression implements IBinaryExpression {
+public abstract class BinaryExpression implements IBinaryExpression, Serializable {
+
+  private static final long serialVersionUID = -711801318534904452L;
 
   public static AndExpression and(IExpression left, IExpression right) {
     return new AndExpression(left, right);

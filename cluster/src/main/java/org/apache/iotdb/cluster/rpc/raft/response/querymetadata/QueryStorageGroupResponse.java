@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
 public class QueryStorageGroupResponse extends BasicResponse {
 
+  private static final long serialVersionUID = 248840631619860233L;
   private Set<String> storageGroups;
 
   private QueryStorageGroupResponse(boolean success, String leaderStr, String errorMsg) {

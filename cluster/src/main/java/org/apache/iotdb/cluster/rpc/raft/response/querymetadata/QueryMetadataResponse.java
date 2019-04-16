@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.Metadata;
 
 public class QueryMetadataResponse extends BasicResponse {
 
+  private static final long serialVersionUID = -3969749781116510054L;
   private Metadata metadata;
 
   private QueryMetadataResponse(String groupId, boolean redirected, String leaderStr,

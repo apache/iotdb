@@ -22,6 +22,8 @@ import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
 
 public class QueryMetadataRequest extends BasicQueryRequest {
 
+  private static final long serialVersionUID = -1976805423799324348L;
+
   public QueryMetadataRequest(String groupID, int readConsistencyLevel) {
     super(groupID, readConsistencyLevel);
   }

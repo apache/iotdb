@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class QuerySeriesTypeResponse extends BasicResponse {
 
+  private static final long serialVersionUID = 7977583965911799165L;
   private TSDataType dataType;
 
   private QuerySeriesTypeResponse(String groupId, boolean redirected, String leaderStr,

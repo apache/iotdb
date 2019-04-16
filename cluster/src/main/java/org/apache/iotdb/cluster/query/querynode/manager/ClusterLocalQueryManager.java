@@ -43,7 +43,7 @@ public class ClusterLocalQueryManager {
     long jobId = QueryResourceManager.getInstance().assignJobId();
     response.setJobId(jobId);
     ClusterLocalSingleQueryManager localQueryManager = new ClusterLocalSingleQueryManager(jobId);
-    localQueryManager.init(request, response);
+    localQueryManager.createSeriesReader(request, response);
     singleQueryManagerMap.put(jobId, localQueryManager);
   }
 

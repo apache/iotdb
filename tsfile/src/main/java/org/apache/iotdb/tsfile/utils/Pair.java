@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import java.io.Serializable;
+
 /**
  * Pair is a template class to represent a couple of values. It also override the Object basic
  * methods like hasnCode, equals and toString.
@@ -26,8 +28,9 @@ package org.apache.iotdb.tsfile.utils;
  * @param <R> R type
  * @author kangrong
  */
-public class Pair<L, R> {
+public class Pair<L, R> implements Serializable {
 
+  private static final long serialVersionUID = -1398609631703707002L;
   public L left;
   public R right;
 

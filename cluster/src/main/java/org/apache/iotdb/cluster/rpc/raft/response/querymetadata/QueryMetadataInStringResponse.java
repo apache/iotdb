@@ -22,6 +22,7 @@ import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
 public class QueryMetadataInStringResponse extends BasicResponse {
 
+  private static final long serialVersionUID = 5704333006127833921L;
   private String metadata;
 
   private QueryMetadataInStringResponse(String groupId, boolean redirected, String leaderStr,

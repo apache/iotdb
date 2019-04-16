@@ -25,6 +25,8 @@ import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
  */
 public class DataGroupNonQueryResponse extends BasicResponse {
 
+  private static final long serialVersionUID = -8288044965888956717L;
+
   private DataGroupNonQueryResponse(String groupId, boolean redirected, String leaderStr,
       String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);

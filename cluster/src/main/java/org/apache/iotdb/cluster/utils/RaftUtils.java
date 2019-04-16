@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.nonquery.DataGroupNonQueryResponse;
@@ -218,7 +219,7 @@ public class RaftUtils {
    * @param service raft service
    */
   public static void executeRaftTaskForRpcProcessor(RaftService service, AsyncContext asyncContext,
-      BasicRequest request, BasicResponse response) {
+      BasicNonQueryRequest request, BasicResponse response) {
     final Task task = new Task();
     ResponseClosure closure = new ResponseClosure(response, status -> {
       response.addResult(status.isOk());
@@ -280,7 +281,7 @@ public class RaftUtils {
     handleNullReadToMetaGroup(status, server, nullReadTask);
   }
 
-  private static void handleNullReadToMetaGroup(Status status, Server server,
+  public static void handleNullReadToMetaGroup(Status status, Server server,
       SingleQPTask nullReadTask) {
     try {
       LOGGER.debug("Handle null-read in meta group for metadata request.");

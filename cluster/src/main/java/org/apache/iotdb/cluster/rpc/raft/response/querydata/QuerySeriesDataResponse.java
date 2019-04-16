@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class QuerySeriesDataResponse extends BasicResponse {
 
+  private static final long serialVersionUID = -4783032133961145205L;
   private long jobId;
   private PathType pathType;
   private List<TSDataType> seriesType;

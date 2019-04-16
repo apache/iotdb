@@ -59,6 +59,9 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    */
   private Map<String, QueryPlan> selectPathPlans = new HashMap<>();
 
+  /**
+   * Series reader of select paths, key is series path , value is reader
+   */
   private Map<String, ClusterSeriesReader> selectPathReaders = new HashMap<>();
 
   /**
@@ -66,6 +69,9 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    */
   private Map<String, QueryPlan> filterPathPlans = new HashMap<>();
 
+  /**
+   * Series reader of filter paths, key is series path , value is reader
+   */
   private Map<String, ClusterSeriesReader> filterPathReaders = new HashMap<>();
 
   public ClusterRpcSingleQueryManager(long jobId,

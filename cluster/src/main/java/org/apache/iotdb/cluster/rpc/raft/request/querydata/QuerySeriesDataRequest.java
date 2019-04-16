@@ -26,17 +26,39 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public class QuerySeriesDataRequest extends BasicQueryRequest {
 
+  private static final long serialVersionUID = 7132891920951977625L;
+
+  /**
+   * Request stage
+   */
   private Stage stage;
+
+  /**
+   * Corresponding jobid in remote query node
+   */
   private long jobId;
+
+  /**
+   * Type of series
+   */
   private PathType pathType;
+
+  /**
+   * Series list
+   */
   private List<String> paths;
 
+  /**
+   * Physical plan list
+   */
+  private List<PhysicalPlan> physicalPlans;
+
   public QuerySeriesDataRequest(String groupID, int readConsistencyLevel,
-      List<PhysicalPlan> physicalPlanBytes, PathType pathType)
+      List<PhysicalPlan> physicalPlans, PathType pathType)
       throws IOException {
     super(groupID, readConsistencyLevel);
-    init(physicalPlanBytes);
-    stage = Stage.INITIAL;
+    this.physicalPlans = physicalPlans;
+    this.stage = Stage.INITIAL;
     this.pathType = pathType;
   }
 
@@ -79,5 +101,13 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
 
   public void setJobId(long jobId) {
     this.jobId = jobId;
+  }
+
+  public List<PhysicalPlan> getPhysicalPlans() {
+    return physicalPlans;
+  }
+
+  public void setPhysicalPlans(List<PhysicalPlan> physicalPlans) {
+    this.physicalPlans = physicalPlans;
   }
 }

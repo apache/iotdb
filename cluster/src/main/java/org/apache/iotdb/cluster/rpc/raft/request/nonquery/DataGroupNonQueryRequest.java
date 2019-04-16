@@ -19,16 +19,16 @@
 package org.apache.iotdb.cluster.rpc.raft.request.nonquery;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.List;
-import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicNonQueryRequest;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 /**
  * Handle request to data group
  */
-public class DataGroupNonQueryRequest extends BasicRequest {
+public class DataGroupNonQueryRequest extends BasicNonQueryRequest {
 
+  private static final long serialVersionUID = -2442407985738324604L;
 
   public DataGroupNonQueryRequest(String groupID, List<PhysicalPlan> physicalPlanBytes)
       throws IOException {

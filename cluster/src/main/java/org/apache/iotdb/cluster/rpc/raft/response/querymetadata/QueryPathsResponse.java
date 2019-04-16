@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
 public class QueryPathsResponse extends BasicResponse {
 
+  private static final long serialVersionUID = -8255822509893237195L;
   private List<String> paths;
 
   private QueryPathsResponse(String groupId, boolean redirected, boolean success, String leaderStr, String errorMsg) {

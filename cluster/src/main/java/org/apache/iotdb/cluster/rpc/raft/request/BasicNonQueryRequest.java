@@ -18,28 +18,34 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.request;
 
-public abstract class BasicQueryRequest extends BasicRequest {
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 
-  private static final long serialVersionUID = 2993000692822502110L;
+public abstract class BasicNonQueryRequest extends BasicRequest{
+
+  private static final long serialVersionUID = -3082772186451384202L;
   /**
-   * Read Consistency Level
+   * Serialized physical plans
    */
-  private int readConsistencyLevel;
+  private List<byte[]> physicalPlanBytes;
 
-  public BasicQueryRequest(String groupID, int readConsistencyLevel) {
-    super(groupID);
-    this.readConsistencyLevel = readConsistencyLevel;
-  }
-
-  public BasicQueryRequest(String groupID) {
+  public BasicNonQueryRequest(String groupID) {
     super(groupID);
   }
 
-  public int getReadConsistencyLevel() {
-    return readConsistencyLevel;
+  protected void init(List<PhysicalPlan> physicalPlanBytes) throws IOException {
+    this.physicalPlanBytes = new ArrayList<>(physicalPlanBytes.size());
+    for (PhysicalPlan plan : physicalPlanBytes) {
+      this.physicalPlanBytes.add(PhysicalPlanLogTransfer.operatorToLog(plan));
+    }
   }
 
-  public void setReadConsistencyLevel(int readConsistencyLevel) {
-    this.readConsistencyLevel = readConsistencyLevel;
+  public List<byte[]> getPhysicalPlanBytes() {
+    return physicalPlanBytes;
   }
+
 }
