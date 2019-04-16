@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query.coordinatornode.executor;
+package org.apache.iotdb.cluster.query.executor;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcQueryManager;
-import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.coordinatornode.manager.ClusterRpcSingleQueryManager.QueryType;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager.QueryType;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;

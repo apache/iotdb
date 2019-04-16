@@ -4,7 +4,7 @@ import com.alipay.remoting.BizContext;
 import com.alipay.sofa.jraft.Status;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.query.PathType;
-import org.apache.iotdb.cluster.query.querynode.manager.ClusterLocalQueryManager;
+import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalQueryManager;
 import org.apache.iotdb.cluster.rpc.raft.processor.BasicSyncUserProcessor;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.Stage;

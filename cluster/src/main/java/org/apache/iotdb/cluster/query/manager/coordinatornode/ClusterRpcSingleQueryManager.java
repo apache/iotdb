@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query.coordinatornode.manager;
+package org.apache.iotdb.cluster.query.manager.coordinatornode;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.PathType;
-import org.apache.iotdb.cluster.query.coordinatornode.reader.ClusterSeriesReader;
+import org.apache.iotdb.cluster.query.reader.ClusterSeriesReader;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.Router;
