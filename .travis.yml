@@ -64,7 +64,7 @@ matrix:
         - choco install maven
       script:
         - java -version
-        - mvn clean integration-test
+        - mvn -B clean integration-test
 #    - os: windows
 #      language: c
 #      name: win-oraclejdk11
@@ -75,7 +75,7 @@ matrix:
 #        - choco install maven
 #      script:
 #        - java -version
-#        - mvn clean integration-test
+#        - mvn -B clean integration-test
     #choco does not support openjdk8. we have to install it manually
 #    - os: windows
 #      language: c
@@ -98,7 +98,7 @@ matrix:
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
-        - mvn clean integration-test
+        - mvn -B clean integration-test
     - os: linux
       name: linux-openjdk8
       dist: trusty
@@ -127,8 +127,8 @@ install: true
 
 script:
   - java -version
-  - mvn apache-rat:check
-  - mvn clean integration-test
+  - mvn -B apache-rat:check
+  - mvn -B clean integration-test
 
 after_success:
 

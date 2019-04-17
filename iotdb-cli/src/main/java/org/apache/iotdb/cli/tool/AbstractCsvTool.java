@@ -49,8 +49,7 @@ public abstract class AbstractCsvTool {
   protected static final String TIME_ZONE_ARGS = "tz";
   protected static final String TIME_ZONE_NAME = "timeZone";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
-  protected static final String DEFAULT_TIME_FORMAT = "ISO8601";
-  protected static final String[] SUPPORT_TIME_FORMAT = new String[]{DEFAULT_TIME_FORMAT, "default",
+  protected static final String[] SUPPORT_TIME_FORMAT = new String[]{"default",
       "long",
       "number", "timestamp", "yyyy-MM-dd HH:mm:ss", "yyyy/MM/dd HH:mm:ss", "yyyy.MM.dd HH:mm:ss",
       "yyyy-MM-dd'T'HH:mm:ss", "yyyy/MM/dd'T'HH:mm:ss", "yyyy.MM.dd'T'HH:mm:ss",
