@@ -16,21 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.query.timegenerator;
+package org.apache.iotdb.cluster.query.timegenerator;
 
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 
 import java.io.IOException;
+import java.util.Map;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.reader.ClusterSeriesReader;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.timegenerator.AbstractNodeConstructor;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 
-public class EngineNodeConstructor extends AbstractNodeConstructor {
+public class ClusterNodeConstructor extends AbstractNodeConstructor {
 
-  public EngineNodeConstructor() {
+  private ClusterRpcSingleQueryManager queryManager;
+
+  public ClusterNodeConstructor(ClusterRpcSingleQueryManager queryManager) {
+    this.queryManager = queryManager;
   }
 
   /**
@@ -46,7 +52,12 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
       throws FileNodeManagerException {
     if (expression.getType() == SERIES) {
       try {
-        return new EngineLeafNode(generateSeriesReader((SingleSeriesExpression) expression,
+        Map<String, ClusterSeriesReader> filterSeriesReaders = queryManager.getFilterSeriesReaders();
+        String seriesPath = ((SingleSeriesExpression) expression).getSeriesPath().getFullPath();
+        if(filterSeriesReaders.containsKey(seriesPath)){
+          return new ClusterLeafNode(filterSeriesReaders.get(seriesPath));
+        }
+        return new ClusterLeafNode(generateSeriesReader((SingleSeriesExpression) expression,
             context));
       } catch (IOException e) {
         throw new FileNodeManagerException(e);

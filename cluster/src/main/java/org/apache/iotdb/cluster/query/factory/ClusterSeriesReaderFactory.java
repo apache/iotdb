@@ -21,6 +21,9 @@ package org.apache.iotdb.cluster.query.factory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.reader.ClusterSeriesReader;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -41,28 +44,36 @@ public class ClusterSeriesReaderFactory {
    * @return the list of EngineReaderByTimeStamp
    */
   public static List<EngineReaderByTimeStamp> getByTimestampReadersOfSelectedPaths(
-      List<Path> paths, QueryContext context) throws IOException, FileNodeManagerException {
+      List<Path> paths, QueryContext context, ClusterRpcSingleQueryManager queryManager)
+      throws IOException, FileNodeManagerException {
 
+    Map<String, ClusterSeriesReader> selectSeriesReaders = queryManager.getSelectSeriesReaders();
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
     for (Path path : paths) {
 
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
-          context);
+      if(selectSeriesReaders.containsKey(path.getFullPath())){
+        readersOfSelectedSeries.add(selectSeriesReaders.get(path.getFullPath()));
+      }else {
+        /** can handle series query locally **/
+        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+            .getQueryDataSource(path,
+                context);
 
-      PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
+        PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
 
-      // reader for sequence data
-      SequenceDataReaderByTimestamp tsFilesReader = new SequenceDataReaderByTimestamp(
-          queryDataSource.getSeqDataSource(), context);
-      mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
+        // reader for sequence data
+        SequenceDataReaderByTimestamp tsFilesReader = new SequenceDataReaderByTimestamp(
+            queryDataSource.getSeqDataSource(), context);
+        mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
 
-      // reader for unSequence data
-      PriorityMergeReaderByTimestamp unSeqMergeReader = SeriesReaderFactory.getInstance()
-          .createUnSeqMergeReaderByTimestamp(queryDataSource.getOverflowSeriesDataSource());
-      mergeReaderByTimestamp.addReaderWithPriority(unSeqMergeReader, 2);
+        // reader for unSequence data
+        PriorityMergeReaderByTimestamp unSeqMergeReader = SeriesReaderFactory.getInstance()
+            .createUnSeqMergeReaderByTimestamp(queryDataSource.getOverflowSeriesDataSource());
+        mergeReaderByTimestamp.addReaderWithPriority(unSeqMergeReader, 2);
 
-      readersOfSelectedSeries.add(mergeReaderByTimestamp);
+        readersOfSelectedSeries.add(mergeReaderByTimestamp);
+      }
     }
 
     return readersOfSelectedSeries;

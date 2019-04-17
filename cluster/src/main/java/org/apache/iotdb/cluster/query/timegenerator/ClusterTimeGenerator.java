@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.timegenerator;
+package org.apache.iotdb.cluster.query.timegenerator;
 
 import java.io.IOException;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -26,27 +27,24 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 
-/**
- * A timestamp generator for query with filter. e.g. For query clause "select s1, s2 form root where
- * s3 < 0 and time > 100", this class can iterate back to every timestamp of the query.
- */
-public class EngineTimeGenerator implements TimeGenerator {
-
+public class ClusterTimeGenerator implements TimeGenerator {
   private IExpression expression;
   private Node operatorNode;
 
   /**
-   * Constructor of EngineTimeGenerator.
+   * Constructor of Cluster TimeGenerator.
    */
-  public EngineTimeGenerator(IExpression expression, QueryContext context)
+  public ClusterTimeGenerator(IExpression expression, QueryContext context,
+      ClusterRpcSingleQueryManager queryManager)
       throws FileNodeManagerException {
     this.expression = expression;
-    initNode(context);
+    initNode(context, queryManager);
   }
 
-  private void initNode(QueryContext context) throws FileNodeManagerException {
-    EngineNodeConstructor engineNodeConstructor = new EngineNodeConstructor();
-    this.operatorNode = engineNodeConstructor.construct(expression, context);
+  private void initNode(QueryContext context, ClusterRpcSingleQueryManager queryManager)
+      throws FileNodeManagerException {
+    ClusterNodeConstructor nodeConstructor = new ClusterNodeConstructor(queryManager);
+    this.operatorNode = nodeConstructor.construct(expression, context);
   }
 
   @Override
@@ -60,8 +58,7 @@ public class EngineTimeGenerator implements TimeGenerator {
   }
 
   @Override
-  public Object getValue(Path path, long time) {
+  public Object getValue(Path path, long time) throws IOException {
     return null;
   }
-
 }
