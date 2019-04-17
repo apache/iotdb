@@ -16,53 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.sync.receiver;
 
 import java.util.concurrent.CountDownLatch;
-
-import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class JDBCServiceEventHandler implements TServerEventHandler {
+public class SyncServiceEventHandler implements TServerEventHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(JDBCServiceEventHandler.class);
-  private TSServiceImpl serviceImpl;
   private CountDownLatch startLatch;
 
-  public JDBCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch startLatch) {
-    this.serviceImpl = serviceImpl;
+  public SyncServiceEventHandler(CountDownLatch startLatch) {
     this.startLatch = startLatch;
   }
 
   @Override
-  public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    // TODO Auto-generated method stub
+  public void preServe() {
+    startLatch.countDown();
+  }
+
+  @Override
+  public ServerContext createContext(TProtocol input, TProtocol output) {
     return null;
   }
 
   @Override
-  public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
-    try {
-      serviceImpl.handleClientExit();
-    } catch (TException e) {
-      LOGGER.error("failed to clear client status", e);
-    }
+  public void deleteContext(ServerContext serverContext, TProtocol input, TProtocol output) {
+    // Do nothing.
   }
 
   @Override
-  public void preServe() {
-    this.startLatch.countDown();
+  public void processContext(ServerContext serverContext, TTransport inputTransport,
+      TTransport outputTransport) {
+    // Do nothing.
   }
-
-  @Override
-  public void processContext(ServerContext arg0, TTransport arg1, TTransport arg2) {
-    // TODO Auto-generated method stub
-
-  }
-
 }
