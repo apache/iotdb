@@ -21,8 +21,7 @@ package org.apache.iotdb.cluster.query.manager.coordinatornode;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.query.PathType;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager.QueryType;
+import org.apache.iotdb.cluster.query.QueryType;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -35,8 +34,7 @@ public interface IClusterRpcSingleQueryManager {
    * Divide physical plan into several sub physical plans according to timeseries full path.
    * @param queryType
    */
-  void init(
-      QueryType queryType, int readDataConsistencyLevel)
+  void init(QueryType queryType, int readDataConsistencyLevel)
       throws PathErrorException, IOException, RaftConnectionException;
 
   /**

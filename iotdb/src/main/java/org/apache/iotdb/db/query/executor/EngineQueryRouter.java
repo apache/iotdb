@@ -62,7 +62,7 @@ public class EngineQueryRouter implements IEngineQueryRouter{
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           EngineExecutorWithoutTimeGenerator engineExecutor =
               new EngineExecutorWithoutTimeGenerator(queryExpression);
-          return engineExecutor.executeWithGlobalTimeFilter(context);
+          return engineExecutor.execute(context);
         } else {
           EngineExecutorWithTimeGenerator engineExecutor = new EngineExecutorWithTimeGenerator(
               queryExpression);
@@ -75,7 +75,7 @@ public class EngineQueryRouter implements IEngineQueryRouter{
     } else {
       EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
           queryExpression);
-      return engineExecutor.executeWithoutFilter(context);
+      return engineExecutor.execute(context);
     }
   }
 

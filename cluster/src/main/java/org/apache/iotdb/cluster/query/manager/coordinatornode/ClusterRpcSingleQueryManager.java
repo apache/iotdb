@@ -28,12 +28,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.PathType;
+import org.apache.iotdb.cluster.query.QueryType;
 import org.apache.iotdb.cluster.query.reader.ClusterSeriesReader;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.cluster.utils.query.ClusterRpcReaderUtils;
+import org.apache.iotdb.cluster.utils.query.QueryPlanPartitionUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -109,56 +110,18 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       throws PathErrorException, IOException, RaftConnectionException {
     switch (queryType) {
       case NO_FILTER:
-        divideNoFilterPhysicalPlan();
+        QueryPlanPartitionUtils.splitQueryPlanWithNoFilter(this);
         break;
       case GLOBAL_TIME:
-        divideGlobalTimePhysicalPlan();
+        QueryPlanPartitionUtils.splitQueryPlanWithGlobalTime(this);
         break;
       case FILTER:
-        divideFilterPhysicalPlan();
+        QueryPlanPartitionUtils.splitQueryPlanWithFilter(this);
         break;
       default:
         throw new UnsupportedOperationException();
     }
     initSeriesReader(readDataConsistencyLevel);
-  }
-
-  public enum QueryType {
-    NO_FILTER, GLOBAL_TIME, FILTER
-  }
-
-  /**
-   * Divide no-fill type query plan by group id
-   */
-  private void divideNoFilterPhysicalPlan() throws PathErrorException {
-    List<Path> selectPaths = queryPlan.getPaths();
-    Map<String, List<Path>> selectPathsByGroupId = new HashMap<>();
-    for (Path path : selectPaths) {
-      String storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
-      String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
-      if (selectPathsByGroupId.containsKey(groupId)) {
-        selectPathsByGroupId.put(groupId, new ArrayList<>());
-        selectSeriesByGroupId.put(groupId, new ArrayList<>());
-      }
-      selectPathsByGroupId.get(groupId).add(path);
-      selectSeriesByGroupId.get(groupId).add(path.getFullPath());
-    }
-    for (Entry<String, List<Path>> entry : selectPathsByGroupId.entrySet()) {
-      String groupId = entry.getKey();
-      List<Path> paths = entry.getValue();
-      QueryPlan subQueryPlan = new QueryPlan();
-      subQueryPlan.setProposer(queryPlan.getProposer());
-      subQueryPlan.setPaths(paths);
-      selectPathPlans.put(groupId, subQueryPlan);
-    }
-  }
-
-  private void divideGlobalTimePhysicalPlan() {
-
-  }
-
-  private void divideFilterPhysicalPlan() {
-
   }
 
   /**
@@ -307,7 +270,15 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     this.taskId = taskId;
   }
 
-  public PhysicalPlan getQueryPlan() {
+  public long getQueryRounds() {
+    return queryRounds;
+  }
+
+  public void setQueryRounds(long queryRounds) {
+    this.queryRounds = queryRounds;
+  }
+
+  public QueryPlan getQueryPlan() {
     return queryPlan;
   }
 
@@ -333,6 +304,15 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     this.selectPathPlans = selectPathPlans;
   }
 
+  public Map<String, List<String>> getSelectSeriesByGroupId() {
+    return selectSeriesByGroupId;
+  }
+
+  public void setSelectSeriesByGroupId(
+      Map<String, List<String>> selectSeriesByGroupId) {
+    this.selectSeriesByGroupId = selectSeriesByGroupId;
+  }
+
   public Map<String, ClusterSeriesReader> getSelectSeriesReaders() {
     return selectSeriesReaders;
   }
@@ -349,5 +329,23 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   public void setFilterPathPlans(
       Map<String, QueryPlan> filterPathPlans) {
     this.filterPathPlans = filterPathPlans;
+  }
+
+  public Map<String, List<String>> getFilterSeriesByGroupId() {
+    return filterSeriesByGroupId;
+  }
+
+  public void setFilterSeriesByGroupId(
+      Map<String, List<String>> filterSeriesByGroupId) {
+    this.filterSeriesByGroupId = filterSeriesByGroupId;
+  }
+
+  public Map<String, ClusterSeriesReader> getFilterSeriesReaders() {
+    return filterSeriesReaders;
+  }
+
+  public void setFilterSeriesReaders(
+      Map<String, ClusterSeriesReader> filterSeriesReaders) {
+    this.filterSeriesReaders = filterSeriesReaders;
   }
 }

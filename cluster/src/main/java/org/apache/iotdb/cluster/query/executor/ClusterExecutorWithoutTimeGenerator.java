@@ -46,76 +46,23 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class ClusterExecutorWithoutTimeGenerator {
   private QueryExpression queryExpression;
   private ClusterRpcSingleQueryManager queryManager;
-  private int readDataConsistencyLevel;
 
   public ClusterExecutorWithoutTimeGenerator(QueryExpression queryExpression,
-      ClusterRpcSingleQueryManager queryManager, int readDataConsistencyLevel) {
+      ClusterRpcSingleQueryManager queryManager) {
     this.queryExpression = queryExpression;
     this.queryManager = queryManager;
-    this.readDataConsistencyLevel = readDataConsistencyLevel;
   }
 
   /**
-   * with global time filter.
+   * without filter or with global time filter.
    */
-  public QueryDataSet executeWithGlobalTimeFilter(QueryContext context)
+  public QueryDataSet execute(QueryContext context)
       throws FileNodeManagerException {
 
-    Filter timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
-
-    List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-
-    QueryResourceManager.getInstance()
-        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
-
-    for (Path path : queryExpression.getSelectedSeries()) {
-//
-//      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
-//          context);
-//
-//      // add data type
-//      try {
-//        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-//      } catch (PathErrorException e) {
-//        throw new FileNodeManagerException(e);
-//      }
-//
-//      // sequence reader for one sealed tsfile
-//      SequenceDataReader tsFilesReader;
-//      try {
-//        tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-//            timeFilter, context);
-//      } catch (IOException e) {
-//        throw new FileNodeManagerException(e);
-//      }
-//
-//      // unseq reader for all chunk groups in unSeqFile
-//      PriorityMergeReader unSeqMergeReader;
-//      try {
-//        unSeqMergeReader = SeriesReaderFactory.getInstance()
-//            .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
-//      } catch (IOException e) {
-//        throw new FileNodeManagerException(e);
-//      }
-//
-//      // merge sequence data with unsequence data.
-//      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
+    Filter timeFilter = null;
+    if(queryExpression.getExpression() != null){
+      timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
     }
-
-    try {
-      return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
-          readersOfSelectedSeries);
-    } catch (IOException e) {
-      throw new FileNodeManagerException(e);
-    }
-  }
-
-  /**
-   * without filter.
-   */
-  public QueryDataSet executeWithoutFilter(QueryContext context)
-      throws FileNodeManagerException {
 
     List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -146,7 +93,7 @@ public class ClusterExecutorWithoutTimeGenerator {
         SequenceDataReader tsFilesReader;
         try {
           tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-              null, context);
+              timeFilter, context);
         } catch (IOException e) {
           throw new FileNodeManagerException(e);
         }
@@ -155,7 +102,7 @@ public class ClusterExecutorWithoutTimeGenerator {
         PriorityMergeReader unSeqMergeReader;
         try {
           unSeqMergeReader = SeriesReaderFactory.getInstance()
-              .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
+              .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
         } catch (IOException e) {
           throw new FileNodeManagerException(e);
         }

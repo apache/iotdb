@@ -16,34 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.query;
+package org.apache.iotdb.cluster.query;
 
-import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
-import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
-
-public class QueryTask {
-  private BasicResponse basicResponse;
-  private TaskState state;
-
-  public QueryTask(BasicResponse basicResponse,
-      TaskState state) {
-    this.basicResponse = basicResponse;
-    this.state = state;
-  }
-
-  public BasicResponse getBasicResponse() {
-    return basicResponse;
-  }
-
-  public void setBasicResponse(BasicResponse basicResponse) {
-    this.basicResponse = basicResponse;
-  }
-
-  public TaskState getState() {
-    return state;
-  }
-
-  public void setState(TaskState state) {
-    this.state = state;
-  }
+public enum QueryType {
+  NO_FILTER, GLOBAL_TIME, FILTER
 }

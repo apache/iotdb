@@ -73,7 +73,7 @@ public interface IQueryProcessExecutor {
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException;
 
   /**
-   * executeWithGlobalTimeFilter update command and return whether the operator is successful.
+   * execute update command and return whether the operator is successful.
    *
    * @param path : update series seriesPath
    * @param startTime start time in update command
@@ -85,7 +85,7 @@ public interface IQueryProcessExecutor {
       throws ProcessorException;
 
   /**
-   * executeWithGlobalTimeFilter delete command and return whether the operator is successful.
+   * execute delete command and return whether the operator is successful.
    *
    * @param paths : delete series paths
    * @param deleteTime end time in delete command
@@ -94,7 +94,7 @@ public interface IQueryProcessExecutor {
   boolean delete(List<Path> paths, long deleteTime) throws ProcessorException;
 
   /**
-   * executeWithGlobalTimeFilter delete command and return whether the operator is successful.
+   * execute delete command and return whether the operator is successful.
    *
    * @param path : delete series seriesPath
    * @param deleteTime end time in delete command
@@ -113,7 +113,7 @@ public interface IQueryProcessExecutor {
   int insert(Path path, long insertTime, String value) throws ProcessorException;
 
   /**
-   * executeWithGlobalTimeFilter insert command and return whether the operator is successful.
+   * execute insert command and return whether the operator is successful.
    *
    * @param deviceId deviceId to be inserted
    * @param insertTime - it's time point but not a range

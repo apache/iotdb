@@ -34,7 +34,7 @@ import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
-import org.apache.iotdb.cluster.utils.query.QueryTask;
+import org.apache.iotdb.cluster.qp.task.QueryTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

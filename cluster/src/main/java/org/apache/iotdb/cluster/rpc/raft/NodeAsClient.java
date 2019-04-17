@@ -22,7 +22,7 @@ import com.alipay.sofa.jraft.entity.PeerId;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
-import org.apache.iotdb.cluster.utils.query.QueryTask;
+import org.apache.iotdb.cluster.qp.task.QueryTask;
 
 /**
  * Handle the request and process the result as a client with the current node

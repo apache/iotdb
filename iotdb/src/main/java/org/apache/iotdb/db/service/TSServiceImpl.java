@@ -395,7 +395,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * Judge whether the statement is ADMIN COMMAND and if true, executeWithGlobalTimeFilter it.
+   * Judge whether the statement is ADMIN COMMAND and if true, execute it.
    *
    * @param statement command
    * @return true if the statement is ADMIN COMMAND
@@ -462,7 +462,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         } catch (Exception e) {
           String errMessage = String.format(
-              "Fail to generate physcial plan and executeWithGlobalTimeFilter for statement "
+              "Fail to generate physcial plan and execute for statement "
                   + "%s beacuse %s",
               statement, e.getMessage());
           result.add(Statement.EXECUTE_FAILED);

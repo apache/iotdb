@@ -22,9 +22,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.query.QueryType;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager.QueryType;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -41,6 +41,10 @@ import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+/**
+ * Query entrance class of cluster query process. All query clause will be transformed to physical
+ * plan, physical plan will be executed by ClusterQueryRouter.
+ */
 public class ClusterQueryRouter implements IEngineQueryRouter {
 
   private ThreadLocal<Integer> readDataConsistencyLevel = new ThreadLocal<>();
@@ -61,22 +65,20 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           queryManager.init(QueryType.GLOBAL_TIME, getReadDataConsistencyLevel());
           ClusterExecutorWithoutTimeGenerator engineExecutor =
-              new ClusterExecutorWithoutTimeGenerator(queryExpression, queryManager,
-                  getReadDataConsistencyLevel());
-          return engineExecutor.executeWithGlobalTimeFilter(context);
+              new ClusterExecutorWithoutTimeGenerator(queryExpression, queryManager);
+          return engineExecutor.execute(context);
         } else {
           queryManager.init(QueryType.FILTER, getReadDataConsistencyLevel());
           ClusterExecutorWithTimeGenerator engineExecutor = new ClusterExecutorWithTimeGenerator(
-              queryExpression, queryManager, getReadDataConsistencyLevel());
+              queryExpression, queryManager);
           return engineExecutor.execute(context);
         }
 
       } else {
         queryManager.init(QueryType.NO_FILTER, getReadDataConsistencyLevel());
         ClusterExecutorWithoutTimeGenerator engineExecutor =
-            new ClusterExecutorWithoutTimeGenerator(queryExpression, queryManager,
-                getReadDataConsistencyLevel());
-        return engineExecutor.executeWithoutFilter(context);
+            new ClusterExecutorWithoutTimeGenerator(queryExpression, queryManager);
+        return engineExecutor.execute(context);
       }
     } catch (QueryFilterOptimizationException | IOException | RaftConnectionException e) {
       throw new FileNodeManagerException(e);
