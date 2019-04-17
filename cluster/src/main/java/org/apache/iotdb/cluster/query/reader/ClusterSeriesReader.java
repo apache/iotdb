@@ -21,8 +21,11 @@ package org.apache.iotdb.cluster.query.reader;
 import java.io.IOException;
 import java.util.LinkedList;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
@@ -31,7 +34,12 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
  */
 public class ClusterSeriesReader implements IPointReader {
 
+  /**
+   * Data group id
+   */
   private String groupId;
+
+  private ClusterRpcSingleQueryManager queryManager;
 
   /**
    * Series name
@@ -59,10 +67,11 @@ public class ClusterSeriesReader implements IPointReader {
   private boolean remoteDataFinish;
 
   public ClusterSeriesReader(String groupId, String fullPath,
-      TSDataType dataType) {
+      TSDataType dataType, ClusterRpcSingleQueryManager queryManager) {
     this.groupId = groupId;
     this.fullPath = fullPath;
     this.dataType = dataType;
+    this.queryManager = queryManager;
     this.batchDataList = new LinkedList<>();
     this.remoteDataFinish = false;
   }
@@ -74,17 +83,44 @@ public class ClusterSeriesReader implements IPointReader {
 
   @Override
   public boolean hasNext() throws IOException {
-    return false;
+    if (currentBatchData == null || !currentBatchData.hasNext()) {
+      try {
+        updateCurrentBatchData();
+      } catch (RaftConnectionException e) {
+        throw new IOException(e);
+      }
+      if (currentBatchData == null || !currentBatchData.hasNext()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Update current batch data. if necessary ,fetch batch data from remote query node
+   */
+  private void updateCurrentBatchData() throws RaftConnectionException {
+    if (batchDataList.isEmpty() && !remoteDataFinish) {
+      queryManager.fetchData(groupId);
+    }
+    if (!batchDataList.isEmpty()) {
+      currentBatchData = batchDataList.removeFirst();
+    }
   }
 
   @Override
   public TimeValuePair next() throws IOException {
+    if (hasNext()) {
+      TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(currentBatchData);
+      currentBatchData.next();
+      return timeValuePair;
+    }
     return null;
   }
 
   @Override
   public void close() throws IOException {
-
+    //Do nothing
   }
 
   public String getFullPath() {
@@ -113,7 +149,7 @@ public class ClusterSeriesReader implements IPointReader {
 
   public void addBatchData(BatchData batchData) {
     batchDataList.addLast(batchData);
-    if(batchData.length() != ClusterConstant.BATCH_READ_SIZE){
+    if(batchData.length() < ClusterConstant.BATCH_READ_SIZE){
       remoteDataFinish = true;
     }
   }

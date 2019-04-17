@@ -38,8 +38,7 @@ public class QuerySeriesDataSyncProcessor extends
       throws Exception {
     Stage stage = request.getStage();
     String groupId = request.getGroupID();
-    PathType pathType = request.getPathType();
-    QuerySeriesDataResponse response = new QuerySeriesDataResponse(groupId, pathType);
+    QuerySeriesDataResponse response = new QuerySeriesDataResponse(groupId);
     switch (stage) {
       case INITIAL:
         handleNullRead(request.getReadConsistencyLevel(), groupId);

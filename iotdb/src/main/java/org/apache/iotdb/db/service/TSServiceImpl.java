@@ -192,13 +192,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       releaseQueryResource(req);
 
       clearAllStatusForCurrentRequest();
-    } catch (FileNodeManagerException e) {
+    } catch (Exception e) {
       LOGGER.error("Error in closeOperation : {}", e.getMessage());
     }
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
   }
 
-  public void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
+  public void releaseQueryResource(TSCloseOperationReq req) throws Exception {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       return;

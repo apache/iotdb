@@ -20,26 +20,19 @@ package org.apache.iotdb.cluster.utils.query;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.query.PathType;
-import org.apache.iotdb.cluster.query.reader.ClusterSeriesReader;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * Utils for cluster reader which needs to acquire data from remote query node.
@@ -56,39 +49,20 @@ public class ClusterRpcReaderUtils {
    * Create cluster series reader and get the first batch data
    *
    * @param peerId query node to fetch data
-   * @param queryPlan query plan to be executed in query node
    * @param readDataConsistencyLevel consistency level of read data
-   * @param pathType path type
    * @param taskId task id assigned by coordinator node
    * @param queryRounds represent the rounds of query
    */
-  public static Map<String, ClusterSeriesReader> createClusterSeriesReader(String groupId,
-      PeerId peerId, QueryPlan queryPlan, int readDataConsistencyLevel, PathType pathType,
-      String taskId, long queryRounds)
+  public static BasicResponse createClusterSeriesReader(String groupId, PeerId peerId,
+      int readDataConsistencyLevel, Map<PathType, QueryPlan> allQueryPlan, String taskId,
+      long queryRounds)
       throws IOException, RaftConnectionException {
 
     /** handle request **/
-    List<PhysicalPlan> physicalPlanList = new ArrayList<>();
-    physicalPlanList.add(queryPlan);
-    BasicRequest request = new QuerySeriesDataRequest(groupId, taskId, readDataConsistencyLevel,
-        physicalPlanList, pathType, queryRounds);
-    QuerySeriesDataResponse response = (QuerySeriesDataResponse) handleQueryRequest(request, peerId,
-        0);
-
-    /** create cluster series reader **/
-    Map<String, ClusterSeriesReader> allSeriesReader = new HashMap<>();
-    List<Path> paths = queryPlan.getPaths();
-    List<TSDataType> seriesType = response.getSeriesType();
-    List<BatchData> seriesBatchData = response.getSeriesBatchData();
-    for (int i =0 ; i < paths.size(); i++) {
-      String seriesPath = paths.get(i).getFullPath();
-      TSDataType dataType = seriesType.get(i);
-      ClusterSeriesReader seriesReader = new ClusterSeriesReader(groupId, seriesPath,
-          dataType);
-      seriesReader.addBatchData(seriesBatchData.get(i));
-      allSeriesReader.put(seriesPath, seriesReader);
-    }
-    return allSeriesReader;
+    BasicRequest request = QuerySeriesDataRequest
+        .createInitialQueryRequest(groupId, taskId, readDataConsistencyLevel,
+            allQueryPlan, queryRounds);
+    return handleQueryRequest(request, peerId, 0);
   }
 
   private static BasicResponse handleQueryRequest(BasicRequest request, PeerId peerId,
@@ -106,5 +80,22 @@ public class ClusterRpcReaderUtils {
     } else {
       return handleQueryRequest(request, peerId, taskRetryNum + 1);
     }
+  }
+
+  public static QuerySeriesDataResponse fetchBatchData(String groupID, PeerId peerId, String taskId,
+      Map<PathType, List<String>> fetchDataSeriesMap, long queryRounds) throws RaftConnectionException {
+    BasicRequest request = QuerySeriesDataRequest
+        .createFetchDataRequest(groupID, taskId, fetchDataSeriesMap, queryRounds);
+    return (QuerySeriesDataResponse) handleQueryRequest(request, peerId, 0);
+  }
+
+  /**
+   * Release remote query resource
+   */
+  public static void releaseRemoteQueryResource(String groupId, PeerId peerId, String taskId)
+      throws RaftConnectionException {
+
+    BasicRequest request = QuerySeriesDataRequest.createReleaseResourceRequest(groupId, taskId);
+    handleQueryRequest(request, peerId, 0);
   }
 }

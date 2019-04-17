@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.request.querydata;
 
-import java.io.IOException;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
 public class QuerySeriesDataRequest extends BasicQueryRequest {
 
@@ -39,43 +40,49 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   private long queryRounds;
 
   /**
-   * Corresponding jobid in remote query node
+   * Unique task id which is assigned in coordinator node
    */
   private String taskId;
 
   /**
-   * Type of series
+   * Key is series type, value is series list
    */
-  private PathType pathType;
+  private Map<PathType, List<String>> allSeriesPaths = new EnumMap<>(PathType.class);
 
   /**
-   * Series list
+   * Key is series type, value is query plan
    */
-  private List<String> paths;
+  private Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
 
-  /**
-   * Physical plan list
-   */
-  private List<PhysicalPlan> physicalPlans;
 
-  public QuerySeriesDataRequest(String groupID, String taskId, int readConsistencyLevel,
-      List<PhysicalPlan> physicalPlans, PathType pathType, long queryRounds)
-      throws IOException {
-    super(groupID, readConsistencyLevel);
+  private QuerySeriesDataRequest(String groupID, String taskId) {
+    super(groupID);
     this.taskId = taskId;
-    this.physicalPlans = physicalPlans;
-    this.stage = Stage.INITIAL;
-    this.pathType = pathType;
-    this.queryRounds = queryRounds;
   }
 
-  public QuerySeriesDataRequest(String groupID, String taskId, List<String> paths, PathType pathType)
-      throws IOException {
-    super(groupID);
-    this.paths = paths;
-    stage = Stage.READ_DATA;
-    this.taskId = taskId;
-    this.pathType = pathType;
+  public static QuerySeriesDataRequest createReleaseResourceRequest(String groupId, String taskId) {
+    QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
+    request.stage = Stage.CLOSE;
+    return request;
+  }
+
+  public static QuerySeriesDataRequest createFetchDataRequest(String groupId, String taskId,
+      Map<PathType, List<String>> allSeriesPaths, long queryRounds) {
+    QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
+    request.stage = Stage.READ_DATA;
+    request.allSeriesPaths = allSeriesPaths;
+    request.queryRounds = queryRounds;
+    return request;
+  }
+
+  public static QuerySeriesDataRequest createInitialQueryRequest(String groupId, String taskId, int readConsistencyLevel,
+      Map<PathType, QueryPlan> allQueryPlan, long queryRounds){
+    QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
+    request.stage = Stage.READ_DATA;
+    request.setReadConsistencyLevel(readConsistencyLevel);
+    request.allQueryPlan = allQueryPlan;
+    request.queryRounds = queryRounds;
+    return request;
   }
 
   public Stage getStage() {
@@ -86,22 +93,6 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
     this.stage = stage;
   }
 
-  public PathType getPathType() {
-    return pathType;
-  }
-
-  public void setPathType(PathType pathType) {
-    this.pathType = pathType;
-  }
-
-  public List<String> getPaths() {
-    return paths;
-  }
-
-  public void setPaths(List<String> paths) {
-    this.paths = paths;
-  }
-
   public String getTaskId() {
     return taskId;
   }
@@ -110,12 +101,22 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
     this.taskId = taskId;
   }
 
-  public List<PhysicalPlan> getPhysicalPlans() {
-    return physicalPlans;
+  public Map<PathType, List<String>> getAllSeriesPaths() {
+    return allSeriesPaths;
   }
 
-  public void setPhysicalPlans(List<PhysicalPlan> physicalPlans) {
-    this.physicalPlans = physicalPlans;
+  public void setAllSeriesPaths(
+      Map<PathType, List<String>> allSeriesPaths) {
+    this.allSeriesPaths = allSeriesPaths;
+  }
+
+  public Map<PathType, QueryPlan> getAllQueryPlan() {
+    return allQueryPlan;
+  }
+
+  public void setAllQueryPlan(
+      Map<PathType, QueryPlan> allQueryPlan) {
+    this.allQueryPlan = allQueryPlan;
   }
 
   public long getQueryRounds() {

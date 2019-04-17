@@ -120,7 +120,7 @@ public class ClusterExecutorWithoutTimeGenerator {
     List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    Map<String, ClusterSeriesReader> selectPathReaders = queryManager.getSelectPathReaders();
+    Map<String, ClusterSeriesReader> selectPathReaders = queryManager.getSelectSeriesReaders();
     List<Path> paths = new ArrayList<>();
     for (Path path : queryExpression.getSelectedSeries()) {
 

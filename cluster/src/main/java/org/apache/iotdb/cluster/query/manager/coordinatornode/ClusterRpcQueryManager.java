@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
 /**
@@ -65,13 +66,20 @@ public class ClusterRpcQueryManager{
   }
 
   /**
-   * Get query manager by group id
+   * Get query manager by jobId
    */
   public ClusterRpcSingleQueryManager getSingleQuery(long jobId) {
     return SINGLE_QUERY_MANAGER_MAP.get(jobId);
   }
 
-  public void releaseQueryResource(long jobId){
+  /**
+   * Get query manager by taskId
+   */
+  public ClusterRpcSingleQueryManager getSingleQuery(String taskId) {
+    return SINGLE_QUERY_MANAGER_MAP.get(taskId);
+  }
+
+  public void releaseQueryResource(long jobId) throws RaftConnectionException {
     if(SINGLE_QUERY_MANAGER_MAP.containsKey(jobId)){
      SINGLE_QUERY_MANAGER_MAP.remove(jobId).releaseQueryResource();
     }
