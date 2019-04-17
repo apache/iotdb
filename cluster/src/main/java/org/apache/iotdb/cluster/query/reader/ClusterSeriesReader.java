@@ -19,22 +19,52 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IBatchReader;
+import java.util.LinkedList;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
+/**
+ * Series reader
+ */
 public class ClusterSeriesReader implements IPointReader {
 
-  private IBatchReader rpcBatchReader;
+  private String groupId;
+
+  /**
+   * Series name
+   */
   private String fullPath;
+
+  /**
+   * Data type
+   */
   private TSDataType dataType;
 
-  public ClusterSeriesReader(IBatchReader rpcBatchReader, String fullPath,
+  /**
+   * Current batch data
+   */
+  private BatchData currentBatchData;
+
+  /**
+   * Batch data
+   */
+  private LinkedList<BatchData> batchDataList;
+
+  /**
+   * Mark whether remote has data
+   */
+  private boolean remoteDataFinish;
+
+  public ClusterSeriesReader(String groupId, String fullPath,
       TSDataType dataType) {
-    this.rpcBatchReader = rpcBatchReader;
+    this.groupId = groupId;
     this.fullPath = fullPath;
     this.dataType = dataType;
+    this.batchDataList = new LinkedList<>();
+    this.remoteDataFinish = false;
   }
 
   @Override
@@ -57,14 +87,6 @@ public class ClusterSeriesReader implements IPointReader {
 
   }
 
-  public IBatchReader getRpcBatchReader() {
-    return rpcBatchReader;
-  }
-
-  public void setRpcBatchReader(IBatchReader rpcBatchReader) {
-    this.rpcBatchReader = rpcBatchReader;
-  }
-
   public String getFullPath() {
     return fullPath;
   }
@@ -79,5 +101,36 @@ public class ClusterSeriesReader implements IPointReader {
 
   public void setDataType(TSDataType dataType) {
     this.dataType = dataType;
+  }
+
+  public BatchData getCurrentBatchData() {
+    return currentBatchData;
+  }
+
+  public void setCurrentBatchData(BatchData currentBatchData) {
+    this.currentBatchData = currentBatchData;
+  }
+
+  public void addBatchData(BatchData batchData) {
+    batchDataList.addLast(batchData);
+    if(batchData.length() != ClusterConstant.BATCH_READ_SIZE){
+      remoteDataFinish = true;
+    }
+  }
+
+  public boolean isRemoteDataFinish() {
+    return remoteDataFinish;
+  }
+
+  public void setRemoteDataFinish(boolean remoteDataFinish) {
+    this.remoteDataFinish = remoteDataFinish;
+  }
+
+  /**
+   * Check if this series need to fetch data from remote query node
+   */
+  public boolean enableFetchData() {
+    return !remoteDataFinish
+        && batchDataList.size() <= ClusterConstant.MAX_CACHE_BATCH_DATA_LIST_SIZE;
   }
 }

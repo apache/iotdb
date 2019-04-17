@@ -132,16 +132,13 @@ public class ClusterLocalSingleQueryManager {
   }
 
   /**
-   * Read batch data
-   * If query round in
-   * @param request
-   * @param response
-   * @throws IOException
+   * Read batch data If query round in cache is equal to target query round, it means that batch
+   * data in query node transfer to coordinator fail and return cached batch data.
    */
   public void readBatchData(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws IOException {
     long targetQueryRounds = request.getQueryRounds();
-    if(targetQueryRounds != this.queryRound){
+    if (targetQueryRounds != this.queryRound) {
       this.queryRound = targetQueryRounds;
       List<String> paths = request.getPaths();
       List<BatchData> batchDataList = new ArrayList<>();

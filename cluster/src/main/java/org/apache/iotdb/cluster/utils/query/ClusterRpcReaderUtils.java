@@ -28,7 +28,6 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.query.PathType;
-import org.apache.iotdb.cluster.query.reader.ClusterRpcBatchDataReader;
 import org.apache.iotdb.cluster.query.reader.ClusterSeriesReader;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
@@ -38,7 +37,6 @@ import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataRespo
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -85,10 +83,9 @@ public class ClusterRpcReaderUtils {
     for (int i =0 ; i < paths.size(); i++) {
       String seriesPath = paths.get(i).getFullPath();
       TSDataType dataType = seriesType.get(i);
-      IBatchReader batchDataReader = new ClusterRpcBatchDataReader(peerId, taskId,
-          pathType, seriesBatchData.get(i));
-      ClusterSeriesReader seriesReader = new ClusterSeriesReader(batchDataReader, seriesPath,
+      ClusterSeriesReader seriesReader = new ClusterSeriesReader(groupId, seriesPath,
           dataType);
+      seriesReader.addBatchData(seriesBatchData.get(i));
       allSeriesReader.put(seriesPath, seriesReader);
     }
     return allSeriesReader;

@@ -36,6 +36,14 @@ public class ClusterConstant {
    */
   public static final int CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT = 1000;
 
+  /**
+   * Batch data size read from remote query node once.
+   */
   public static final int BATCH_READ_SIZE = 10000;
+
+  /**
+   * Maximum number of cached batch data list for each series.
+   */
+  public static final int MAX_CACHE_BATCH_DATA_LIST_SIZE = 2;
 
 }
