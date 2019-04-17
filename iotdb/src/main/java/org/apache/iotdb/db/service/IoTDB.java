@@ -33,8 +33,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.sync.receiver.SyncServerManager;
+import org.apache.iotdb.db.sync.receiver.SyncServiceManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.manager.WriteLogNodeManager;
 import org.slf4j.Logger;
@@ -107,7 +106,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CloseMergeService.getInstance());
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(BasicMemController.getInstance());
-    registerManager.register(SyncServerManager.getInstance());
+    registerManager.register(SyncServiceManager.getInstance());
 
     JMXService.registerMBean(getInstance(), mbeanName);
 
