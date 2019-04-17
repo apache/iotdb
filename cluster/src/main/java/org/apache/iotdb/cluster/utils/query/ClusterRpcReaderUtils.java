@@ -43,6 +43,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 
+/**
+ * Utils for cluster reader which needs to acquire data from remote query node.
+ */
 public class ClusterRpcReaderUtils {
 
   /**
@@ -51,14 +54,18 @@ public class ClusterRpcReaderUtils {
   private static final int TASK_MAX_RETRY = ClusterDescriptor.getInstance().getConfig()
       .getQpTaskRedoCount();
 
+  /**
+   * Create cluster series reader and get the first batch data
+   */
   public static Map<String, ClusterSeriesReader> createClusterSeriesReader(String groupId,
-      PeerId peerId, QueryPlan queryPlan, int readDataConsistencyLevel, PathType pathType)
+      PeerId peerId, QueryPlan queryPlan, int readDataConsistencyLevel, PathType pathType,
+      String taskId)
       throws IOException, RaftConnectionException {
 
     /** handle request **/
     List<PhysicalPlan> physicalPlanList = new ArrayList<>();
     physicalPlanList.add(queryPlan);
-    BasicRequest request = new QuerySeriesDataRequest(groupId, readDataConsistencyLevel,
+    BasicRequest request = new QuerySeriesDataRequest(groupId, taskId, readDataConsistencyLevel,
         physicalPlanList, pathType);
     QuerySeriesDataResponse response = (QuerySeriesDataResponse) handleQueryRequest(request, peerId,
         0);
@@ -68,11 +75,10 @@ public class ClusterRpcReaderUtils {
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> seriesType = response.getSeriesType();
     List<BatchData> seriesBatchData = response.getSeriesBatchData();
-    long jobId = response.getJobId();
     for (int i =0 ; i < paths.size(); i++) {
       String seriesPath = paths.get(i).getFullPath();
       TSDataType dataType = seriesType.get(i);
-      IBatchReader batchDataReader = new ClusterRpcBatchDataReader(peerId, jobId,
+      IBatchReader batchDataReader = new ClusterRpcBatchDataReader(peerId, taskId,
           pathType, seriesBatchData.get(i));
       ClusterSeriesReader seriesReader = new ClusterSeriesReader(batchDataReader, seriesPath,
           dataType);

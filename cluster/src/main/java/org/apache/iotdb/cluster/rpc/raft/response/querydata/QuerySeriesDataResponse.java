@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class QuerySeriesDataResponse extends BasicResponse {
 
   private static final long serialVersionUID = -4783032133961145205L;
-  private long jobId;
   private PathType pathType;
   private List<TSDataType> seriesType;
   private List<BatchData> seriesBatchData;
@@ -35,10 +34,6 @@ public class QuerySeriesDataResponse extends BasicResponse {
   public QuerySeriesDataResponse(String groupId, PathType pathType) {
     super(groupId, false, null, null);
     this.pathType = pathType;
-  }
-
-  public void setJobId(long jobId) {
-    this.jobId = jobId;
   }
 
   public void setPathType(PathType pathType) {
@@ -53,10 +48,6 @@ public class QuerySeriesDataResponse extends BasicResponse {
   public void setSeriesBatchData(
       List<BatchData> seriesBatchData) {
     this.seriesBatchData = seriesBatchData;
-  }
-
-  public long getJobId() {
-    return jobId;
   }
 
   public PathType getPathType() {

@@ -40,9 +40,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManager {
 
   /**
-   * Query job id assigned by QueryResourceManager of coordinator node.
+   * Query job id assigned by ClusterRpcQueryManager
    */
-  private long jobId;
+  private String taskId;
 
   /**
    * Origin query plan parsed by QueryProcessor
@@ -74,9 +74,9 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    */
   private Map<String, ClusterSeriesReader> filterPathReaders = new HashMap<>();
 
-  public ClusterRpcSingleQueryManager(long jobId,
+  public ClusterRpcSingleQueryManager(String taskId,
       QueryPlan queryPlan) {
-    this.jobId = jobId;
+    this.taskId = taskId;
     this.queryPlan = queryPlan;
   }
 
@@ -150,7 +150,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
           readerNodes.put(groupId, randomPeer);
           this.selectPathReaders = ClusterRpcReaderUtils
               .createClusterSeriesReader(groupId, randomPeer, queryPlan, readDataConsistencyLevel,
-                  PathType.SELECT_PATH);
+                  PathType.SELECT_PATH, taskId);
         }
       }
     }
@@ -191,12 +191,12 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
 
   }
 
-  public long getJobId() {
-    return jobId;
+  public String getTaskId() {
+    return taskId;
   }
 
-  public void setJobId(long jobId) {
-    this.jobId = jobId;
+  public void setTaskId(String taskId) {
+    this.taskId = taskId;
   }
 
   public PhysicalPlan getQueryPlan() {

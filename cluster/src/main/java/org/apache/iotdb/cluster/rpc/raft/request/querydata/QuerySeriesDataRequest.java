@@ -36,7 +36,7 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   /**
    * Corresponding jobid in remote query node
    */
-  private long jobId;
+  private String taskId;
 
   /**
    * Type of series
@@ -53,21 +53,22 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
    */
   private List<PhysicalPlan> physicalPlans;
 
-  public QuerySeriesDataRequest(String groupID, int readConsistencyLevel,
+  public QuerySeriesDataRequest(String groupID, String taskId, int readConsistencyLevel,
       List<PhysicalPlan> physicalPlans, PathType pathType)
       throws IOException {
     super(groupID, readConsistencyLevel);
+    this.taskId = taskId;
     this.physicalPlans = physicalPlans;
     this.stage = Stage.INITIAL;
     this.pathType = pathType;
   }
 
-  public QuerySeriesDataRequest(String groupID, long jobId, List<String> paths, PathType pathType)
+  public QuerySeriesDataRequest(String groupID, String taskId, List<String> paths, PathType pathType)
       throws IOException {
     super(groupID);
     this.paths = paths;
     stage = Stage.READ_DATA;
-    this.jobId = jobId;
+    this.taskId = taskId;
     this.pathType = pathType;
   }
 
@@ -95,12 +96,12 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
     this.paths = paths;
   }
 
-  public long getJobId() {
-    return jobId;
+  public String getTaskId() {
+    return taskId;
   }
 
-  public void setJobId(long jobId) {
-    this.jobId = jobId;
+  public void setTaskId(String taskId) {
+    this.taskId = taskId;
   }
 
   public List<PhysicalPlan> getPhysicalPlans() {

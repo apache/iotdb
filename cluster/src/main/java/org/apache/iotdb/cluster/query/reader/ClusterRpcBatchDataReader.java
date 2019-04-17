@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.query.reader;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.db.query.reader.IBatchReader;
@@ -34,9 +35,9 @@ public class ClusterRpcBatchDataReader implements IBatchReader {
   private PeerId peerId;
 
   /**
-   * Job id in remote query node
+   * Task id in remote query node
    */
-  private long jobId;
+  private String taskId;
 
   /**
    * Path type
@@ -51,16 +52,16 @@ public class ClusterRpcBatchDataReader implements IBatchReader {
   /**
    * Batch data
    */
-  private List<BatchData> batchDataList;
+  private LinkedList<BatchData> batchDataList;
 
   private boolean remoteDataFinish;
 
-  public ClusterRpcBatchDataReader(PeerId peerId, long jobId,
+  public ClusterRpcBatchDataReader(PeerId peerId, String taskId,
       PathType type, BatchData batchData) {
     this.peerId = peerId;
-    this.jobId = jobId;
+    this.taskId = taskId;
     this.type = type;
-    this.batchDataList = new ArrayList<>();
+    this.batchDataList = new LinkedList<>();
     this.batchDataList.add(batchData);
     this.remoteDataFinish = false;
   }

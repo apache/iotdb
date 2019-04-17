@@ -31,9 +31,15 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 public class ClusterLocalQueryManager {
 
   /**
+   * Key is task id which is assigned by coordinator node, value is job id which is assigned by
+   * query node(local).
+   */
+  private static final ConcurrentHashMap<String, Long> TASK_ID_MAP_JOB_ID = new ConcurrentHashMap<>();
+
+  /**
    * Key is job id, value is manager of a client query.
    */
-  ConcurrentHashMap<Long, ClusterLocalSingleQueryManager> singleQueryManagerMap = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<Long, ClusterLocalSingleQueryManager> SINGLE_QUERY_MANAGER_MAP = new ConcurrentHashMap<>();
 
   private ClusterLocalQueryManager() {
   }
@@ -41,21 +47,22 @@ public class ClusterLocalQueryManager {
   public void createQueryDataSet(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws IOException, FileNodeManagerException, PathErrorException, ProcessorException, QueryFilterOptimizationException {
     long jobId = QueryResourceManager.getInstance().assignJobId();
-    response.setJobId(jobId);
+    String taskId = request.getTaskId();
+    TASK_ID_MAP_JOB_ID.put(taskId, jobId);
     ClusterLocalSingleQueryManager localQueryManager = new ClusterLocalSingleQueryManager(jobId);
     localQueryManager.createSeriesReader(request, response);
-    singleQueryManagerMap.put(jobId, localQueryManager);
+    SINGLE_QUERY_MANAGER_MAP.put(jobId, localQueryManager);
   }
 
   public void readBatchData(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws IOException {
-    long jobId = request.getJobId();
-    singleQueryManagerMap.get(jobId).readBatchData(request, response);
+    long jobId = TASK_ID_MAP_JOB_ID.get(request.getTaskId());
+    SINGLE_QUERY_MANAGER_MAP.get(jobId).readBatchData(request, response);
   }
 
-  public void close(long jobId) throws FileNodeManagerException {
-    if(singleQueryManagerMap.containsKey(jobId)){
-      singleQueryManagerMap.remove(jobId).close();
+  public void close(String taskId) throws FileNodeManagerException {
+    if (TASK_ID_MAP_JOB_ID.containsKey(taskId)) {
+      SINGLE_QUERY_MANAGER_MAP.remove(TASK_ID_MAP_JOB_ID.remove(taskId)).close();
     }
   }
 

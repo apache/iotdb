@@ -31,7 +31,7 @@ public class QuerySeriesDataSyncProcessor extends
         ClusterLocalQueryManager.getInstance().readBatchData(request, response);
         break;
       case CLOSE:
-        ClusterLocalQueryManager.getInstance().close(request.getJobId());
+        ClusterLocalQueryManager.getInstance().close(request.getTaskId());
         break;
       default:
         throw new UnsupportedOperationException();
