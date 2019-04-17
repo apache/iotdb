@@ -289,7 +289,7 @@ public class TsFileProcessor extends Processor {
       maxWrittenTimeForEachDeviceInCurrentFile.put(deviceId, time);
     }
     valueCount++;
-    BasicMemController.getInstance().reportUse(this, memUsage);
+    BasicMemController.getInstance().acquireUsage(this, memUsage);
     checkMemThreshold4Flush(memUsage);
     return true;
   }
@@ -399,7 +399,7 @@ public class TsFileProcessor extends Processor {
     valueCount = 0;
     switchWorkToFlush();
     long version = versionController.nextVersion();
-    BasicMemController.getInstance().reportFree(this, memSize.get());
+    BasicMemController.getInstance().releaseUsage(this, memSize.get());
     memSize.set(0);
     // switch
     flushFuture = FlushManager.getInstance().submit(() -> flushTask(version));
