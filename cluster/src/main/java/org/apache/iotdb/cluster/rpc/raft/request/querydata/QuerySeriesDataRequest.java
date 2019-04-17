@@ -34,6 +34,11 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   private Stage stage;
 
   /**
+   * Rounds number of query
+   */
+  private long queryRounds;
+
+  /**
    * Corresponding jobid in remote query node
    */
   private String taskId;
@@ -54,13 +59,14 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   private List<PhysicalPlan> physicalPlans;
 
   public QuerySeriesDataRequest(String groupID, String taskId, int readConsistencyLevel,
-      List<PhysicalPlan> physicalPlans, PathType pathType)
+      List<PhysicalPlan> physicalPlans, PathType pathType, long queryRounds)
       throws IOException {
     super(groupID, readConsistencyLevel);
     this.taskId = taskId;
     this.physicalPlans = physicalPlans;
     this.stage = Stage.INITIAL;
     this.pathType = pathType;
+    this.queryRounds = queryRounds;
   }
 
   public QuerySeriesDataRequest(String groupID, String taskId, List<String> paths, PathType pathType)
@@ -110,5 +116,13 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
 
   public void setPhysicalPlans(List<PhysicalPlan> physicalPlans) {
     this.physicalPlans = physicalPlans;
+  }
+
+  public long getQueryRounds() {
+    return queryRounds;
+  }
+
+  public void setQueryRounds(long queryRounds) {
+    this.queryRounds = queryRounds;
   }
 }

@@ -56,17 +56,24 @@ public class ClusterRpcReaderUtils {
 
   /**
    * Create cluster series reader and get the first batch data
+   *
+   * @param peerId query node to fetch data
+   * @param queryPlan query plan to be executed in query node
+   * @param readDataConsistencyLevel consistency level of read data
+   * @param pathType path type
+   * @param taskId task id assigned by coordinator node
+   * @param queryRounds represent the rounds of query
    */
   public static Map<String, ClusterSeriesReader> createClusterSeriesReader(String groupId,
       PeerId peerId, QueryPlan queryPlan, int readDataConsistencyLevel, PathType pathType,
-      String taskId)
+      String taskId, long queryRounds)
       throws IOException, RaftConnectionException {
 
     /** handle request **/
     List<PhysicalPlan> physicalPlanList = new ArrayList<>();
     physicalPlanList.add(queryPlan);
     BasicRequest request = new QuerySeriesDataRequest(groupId, taskId, readDataConsistencyLevel,
-        physicalPlanList, pathType);
+        physicalPlanList, pathType, queryRounds);
     QuerySeriesDataResponse response = (QuerySeriesDataResponse) handleQueryRequest(request, peerId,
         0);
 

@@ -45,6 +45,11 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   private String taskId;
 
   /**
+   * Represents the number of query rounds
+   */
+  private long queryRounds;
+
+  /**
    * Origin query plan parsed by QueryProcessor
    */
   private QueryPlan queryPlan;
@@ -150,7 +155,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
           readerNodes.put(groupId, randomPeer);
           this.selectPathReaders = ClusterRpcReaderUtils
               .createClusterSeriesReader(groupId, randomPeer, queryPlan, readDataConsistencyLevel,
-                  PathType.SELECT_PATH, taskId);
+                  PathType.SELECT_PATH, taskId, queryRounds++);
         }
       }
     }

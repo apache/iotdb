@@ -48,17 +48,35 @@ import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 
 public class ClusterLocalSingleQueryManager {
 
+  /**
+   * Job id assigned by local QueryResourceManager
+   */
   private long jobId;
 
   /**
-   * Key is series full path, value is reader of series
+   * Represents the number of query rounds
    */
-  private Map<String, IPointReader> seriesReaders = new HashMap<>();
+  private long queryRound;
+
+  /**
+   * Key is series full path, value is reader of select series
+   */
+  private Map<String, IPointReader> selectSeriesReaders = new HashMap<>();
+
+  /**
+   * Key is series full path, value is reader of filter series
+   */
+  private Map<String, IPointReader> filterSeriesReaders = new HashMap<>();
 
   /**
    * Key is series full path, value is data type of series
    */
   private Map<String, TSDataType> dataTypeMap = new HashMap<>();
+
+  /**
+   * Cached batch data result
+   */
+  private List<BatchData> cachedBatchDataResult = new ArrayList<>();
 
   private QueryProcessExecutor queryProcessExecutor = new OverflowQPExecutor();
 
@@ -90,6 +108,11 @@ public class ClusterLocalSingleQueryManager {
     }
   }
 
+  /**
+   * Handle query with no filter or only global time filter
+   *
+   * @param plan query plan
+   */
   private void handleDataSetWithoutTimeGenerator(QueryPlan plan, QueryContext context,
       QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException {
@@ -101,7 +124,7 @@ public class ClusterLocalSingleQueryManager {
     for (int i = 0; i < paths.size(); i++) {
       String fullPath = paths.get(i).getFullPath();
       IPointReader reader = readers.get(i);
-      seriesReaders.put(fullPath, reader);
+      selectSeriesReaders.put(fullPath, reader);
       dataTypeMap.put(fullPath, dataTypes.get(i));
     }
     response.setSeriesType(dataTypes);
@@ -110,26 +133,35 @@ public class ClusterLocalSingleQueryManager {
 
   /**
    * Read batch data
+   * If query round in
+   * @param request
+   * @param response
+   * @throws IOException
    */
   public void readBatchData(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws IOException {
-    List<String> paths = request.getPaths();
-    List<BatchData> batchDataList = new ArrayList<>();
-    for (String fullPath : paths) {
-      BatchData batchData = new BatchData(dataTypeMap.get(fullPath));
-      IPointReader reader = seriesReaders.get(fullPath);
-      for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
-        if (reader.hasNext()) {
-          TimeValuePair pair = reader.next();
-          batchData.putTime(pair.getTimestamp());
-          batchData.putAnObject(pair.getValue().getValue());
-        } else {
-          break;
+    long targetQueryRounds = request.getQueryRounds();
+    if(targetQueryRounds != this.queryRound){
+      this.queryRound = targetQueryRounds;
+      List<String> paths = request.getPaths();
+      List<BatchData> batchDataList = new ArrayList<>();
+      for (String fullPath : paths) {
+        BatchData batchData = new BatchData(dataTypeMap.get(fullPath));
+        IPointReader reader = selectSeriesReaders.get(fullPath);
+        for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
+          if (reader.hasNext()) {
+            TimeValuePair pair = reader.next();
+            batchData.putTime(pair.getTimestamp());
+            batchData.putAnObject(pair.getValue().getValue());
+          } else {
+            break;
+          }
         }
+        batchDataList.add(batchData);
       }
-      batchDataList.add(batchData);
+      cachedBatchDataResult = batchDataList;
     }
-    response.setSeriesBatchData(batchDataList);
+    response.setSeriesBatchData(cachedBatchDataResult);
   }
 
   /**
