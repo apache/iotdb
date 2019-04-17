@@ -41,7 +41,7 @@ public class ClusterExecutorWithTimeGenerator {
   private QueryExpression queryExpression;
   private IClusterRpcSingleQueryManager queryManager;
 
-  ClusterExecutorWithTimeGenerator(QueryExpression queryExpression,
+  public ClusterExecutorWithTimeGenerator(QueryExpression queryExpression,
       IClusterRpcSingleQueryManager queryManager) {
     this.queryExpression = queryExpression;
     this.queryManager = queryManager;

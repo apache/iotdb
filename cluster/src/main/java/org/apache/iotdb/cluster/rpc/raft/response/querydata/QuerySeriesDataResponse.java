@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.response.querydata;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.PathType;
@@ -30,8 +30,15 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 public class QuerySeriesDataResponse extends BasicResponse {
 
   private static final long serialVersionUID = -4783032133961145205L;
+
   private Map<PathType, List<TSDataType>> seriesDataTypes = new EnumMap<>(PathType.class);
-  private Map<PathType, List<BatchData>> seriesBatchData = new EnumMap<>(PathType.class);
+
+  /**
+   * Series type
+   */
+  private PathType pathType;
+
+  private List<BatchData> seriesBatchData = new ArrayList<>();
 
   public QuerySeriesDataResponse(String groupId) {
     super(groupId, false, null, null);
@@ -46,12 +53,20 @@ public class QuerySeriesDataResponse extends BasicResponse {
     this.seriesDataTypes = seriesDataTypes;
   }
 
-  public Map<PathType, List<BatchData>> getSeriesBatchData() {
+  public PathType getPathType() {
+    return pathType;
+  }
+
+  public void setPathType(PathType pathType) {
+    this.pathType = pathType;
+  }
+
+  public List<BatchData> getSeriesBatchData() {
     return seriesBatchData;
   }
 
   public void setSeriesBatchData(
-      Map<PathType, List<BatchData>> seriesBatchData) {
+      List<BatchData> seriesBatchData) {
     this.seriesBatchData = seriesBatchData;
   }
 }

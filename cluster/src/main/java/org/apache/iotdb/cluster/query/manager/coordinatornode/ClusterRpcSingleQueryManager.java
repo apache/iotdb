@@ -110,13 +110,13 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       throws PathErrorException, IOException, RaftConnectionException {
     switch (queryType) {
       case NO_FILTER:
-        QueryPlanPartitionUtils.splitQueryPlanWithNoFilter(this);
+        QueryPlanPartitionUtils.splitQueryPlanWithoutValueFilter(this);
         break;
       case GLOBAL_TIME:
-        QueryPlanPartitionUtils.splitQueryPlanWithGlobalTime(this);
+        QueryPlanPartitionUtils.splitQueryPlanWithValueFilter(this);
         break;
       case FILTER:
-        QueryPlanPartitionUtils.splitQueryPlanWithFilter(this);
+        QueryPlanPartitionUtils.splitQueryPlanWithValueFilter(this);
         break;
       default:
         throw new UnsupportedOperationException();
@@ -161,13 +161,11 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       QueryPlan plan = entry.getValue();
       List<Path> paths = plan.getPaths();
       List<TSDataType> seriesType = response.getSeriesDataTypes().get(pathType);
-      List<BatchData> seriesBatchData = response.getSeriesBatchData().get(pathType);
       for (int i = 0; i < paths.size(); i++) {
         String seriesPath = paths.get(i).getFullPath();
         TSDataType dataType = seriesType.get(i);
         ClusterSeriesReader seriesReader = new ClusterSeriesReader(groupId, seriesPath,
-            dataType, this);
-        seriesReader.addBatchData(seriesBatchData.get(i));
+            pathType, dataType, this);
         seriesReaderMap.put(seriesPath, seriesReader);
       }
     }
@@ -179,50 +177,43 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    * cached data for specific series is exceed limit, ignore this fetching data process.
    */
   @Override
-  public void fetchData(String groupId) throws RaftConnectionException {
-    Map<PathType, List<String>> fetchDataSeriesMap = new EnumMap<>(PathType.class);
-    if (selectSeriesByGroupId.containsKey(groupId)) {
-      List<String> allSelectSeries = selectSeriesByGroupId.get(groupId);
-      List<String> fetchDataSeries = new ArrayList<>();
-      for (String series : allSelectSeries) {
-        if (selectSeriesReaders.get(series).enableFetchData()) {
-          fetchDataSeries.add(series);
-        }
-      }
-      fetchDataSeriesMap.put(PathType.SELECT_PATH, fetchDataSeries);
+  public void fetchData(String groupId, PathType pathType) throws RaftConnectionException {
+    List<String> fetchDataSeries = new ArrayList<>();
+    Map<String, List<String>> seriesByGroupId;
+    Map<String, ClusterSeriesReader> seriesReaders;
+    if (pathType == PathType.SELECT_PATH) {
+      seriesByGroupId = selectSeriesByGroupId;
+      seriesReaders = selectSeriesReaders;
+    } else {
+      seriesByGroupId = filterSeriesByGroupId;
+      seriesReaders = filterSeriesReaders;
     }
-    if (filterSeriesByGroupId.containsKey(groupId)) {
-      List<String> fetchDataSeries = new ArrayList<>();
-      List<String> allFilterSeries = filterSeriesByGroupId.get(groupId);
+    if (seriesByGroupId.containsKey(groupId)) {
+      List<String> allFilterSeries = seriesByGroupId.get(groupId);
       for (String series : allFilterSeries) {
-        if (filterSeriesReaders.get(series).enableFetchData()) {
+        if (seriesReaders.get(series).enableFetchData()) {
           fetchDataSeries.add(series);
         }
       }
-      fetchDataSeriesMap.put(PathType.FILTER_PATH, fetchDataSeries);
     }
     QuerySeriesDataResponse response = ClusterRpcReaderUtils
-        .fetchBatchData(groupId, queryNodes.get(groupId), taskId, fetchDataSeriesMap,
+        .fetchBatchData(groupId, queryNodes.get(groupId), taskId, pathType, fetchDataSeries,
             queryRounds++);
-    handleFetchDataResponse(fetchDataSeriesMap, response);
+    handleFetchDataResponse(pathType, fetchDataSeries, response);
   }
 
   /**
    * Handle response of fetch data, add batch data to corresponding reader.
    */
-  private void handleFetchDataResponse(Map<PathType, List<String>> fetchDataSeriesMap,
+  private void handleFetchDataResponse(PathType pathType, List<String> fetchDataSeries,
       QuerySeriesDataResponse response) {
-    for (Entry<PathType, List<String>> entry : fetchDataSeriesMap.entrySet()) {
-      PathType pathType = entry.getKey();
-      List<String> selectSeries = entry.getValue();
-      Map<String, ClusterSeriesReader> seriesReaderMap =
-          pathType == PathType.SELECT_PATH ? selectSeriesReaders : filterSeriesReaders;
-      List<BatchData> batchDataList = response.getSeriesBatchData().get(pathType);
-      for (int i = 0; i < selectSeries.size(); i++) {
-        String series = selectSeries.get(i);
-        BatchData batchData = batchDataList.get(i);
-        seriesReaderMap.get(series).addBatchData(batchData);
-      }
+    Map<String, ClusterSeriesReader> seriesReaderMap =
+        pathType == PathType.SELECT_PATH ? selectSeriesReaders : filterSeriesReaders;
+    List<BatchData> batchDataList = response.getSeriesBatchData();
+    for (int i = 0; i < fetchDataSeries.size(); i++) {
+      String series = fetchDataSeries.get(i);
+      BatchData batchData = batchDataList.get(i);
+      seriesReaderMap.get(series).addBatchData(batchData);
     }
   }
 

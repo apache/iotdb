@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.query.manager.coordinatornode;
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.QueryType;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -40,7 +41,7 @@ public interface IClusterRpcSingleQueryManager {
   /**
    * Fetch batch data from remote query node
    */
-  void fetchData(String groupId) throws RaftConnectionException;
+  void fetchData(String groupId, PathType pathType) throws RaftConnectionException;
 
   /**
    * Get physical plan of select path

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -38,6 +39,11 @@ public class ClusterSeriesReader implements IPointReader {
    * Data group id
    */
   private String groupId;
+
+  /**
+   * Series type
+   */
+  private PathType pathType;
 
   private ClusterRpcSingleQueryManager queryManager;
 
@@ -66,10 +72,11 @@ public class ClusterSeriesReader implements IPointReader {
    */
   private boolean remoteDataFinish;
 
-  public ClusterSeriesReader(String groupId, String fullPath,
+  public ClusterSeriesReader(String groupId, String fullPath, PathType pathType,
       TSDataType dataType, ClusterRpcSingleQueryManager queryManager) {
     this.groupId = groupId;
     this.fullPath = fullPath;
+    this.pathType = pathType;
     this.dataType = dataType;
     this.queryManager = queryManager;
     this.batchDataList = new LinkedList<>();
@@ -101,7 +108,7 @@ public class ClusterSeriesReader implements IPointReader {
    */
   private void updateCurrentBatchData() throws RaftConnectionException {
     if (batchDataList.isEmpty() && !remoteDataFinish) {
-      queryManager.fetchData(groupId);
+      queryManager.fetchData(groupId, pathType);
     }
     if (!batchDataList.isEmpty()) {
       currentBatchData = batchDataList.removeFirst();

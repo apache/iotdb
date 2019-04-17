@@ -40,39 +40,9 @@ public class QueryPlanPartitionUtils {
   }
 
   /**
-   * Split query plan with no filter by group id
+   * Split query plan with no filter or with only global time filter by group id
    */
-  public static void splitQueryPlanWithNoFilter(ClusterRpcSingleQueryManager singleQueryManager)
-      throws PathErrorException {
-    QueryPlan queryPlan = singleQueryManager.getQueryPlan();
-    Map<String, List<String>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
-    Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
-    List<Path> selectPaths = queryPlan.getPaths();
-    Map<String, List<Path>> selectPathsByGroupId = new HashMap<>();
-    for (Path path : selectPaths) {
-      String storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
-      String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
-      if (selectPathsByGroupId.containsKey(groupId)) {
-        selectPathsByGroupId.put(groupId, new ArrayList<>());
-        selectSeriesByGroupId.put(groupId, new ArrayList<>());
-      }
-      selectPathsByGroupId.get(groupId).add(path);
-      selectSeriesByGroupId.get(groupId).add(path.getFullPath());
-    }
-    for (Entry<String, List<Path>> entry : selectPathsByGroupId.entrySet()) {
-      String groupId = entry.getKey();
-      List<Path> paths = entry.getValue();
-      QueryPlan subQueryPlan = new QueryPlan();
-      subQueryPlan.setProposer(queryPlan.getProposer());
-      subQueryPlan.setPaths(paths);
-      selectPathPlans.put(groupId, subQueryPlan);
-    }
-  }
-
-  /**
-   * Split query plan with only global time filter.
-   */
-  public static void splitQueryPlanWithGlobalTime(ClusterRpcSingleQueryManager singleQueryManager)
+  public static void splitQueryPlanWithoutValueFilter(ClusterRpcSingleQueryManager singleQueryManager)
       throws PathErrorException {
     QueryPlan queryPlan = singleQueryManager.getQueryPlan();
     Map<String, List<String>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
@@ -103,7 +73,7 @@ public class QueryPlanPartitionUtils {
   /**
    * Split query plan with not only global time filter.
    */
-  public static void splitQueryPlanWithFilter(ClusterRpcSingleQueryManager singleQueryManager) {
+  public static void splitQueryPlanWithValueFilter(ClusterRpcSingleQueryManager singleQueryManager) {
 
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.request.querydata;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -45,9 +46,14 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   private String taskId;
 
   /**
+   * Series type
+   */
+  private PathType pathType;
+
+  /**
    * Key is series type, value is series list
    */
-  private Map<PathType, List<String>> allSeriesPaths = new EnumMap<>(PathType.class);
+  private List<String> seriesPaths = new ArrayList<>();
 
   /**
    * Key is series type, value is query plan
@@ -67,10 +73,11 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   }
 
   public static QuerySeriesDataRequest createFetchDataRequest(String groupId, String taskId,
-      Map<PathType, List<String>> allSeriesPaths, long queryRounds) {
+      PathType pathType, List<String> seriesPaths, long queryRounds) {
     QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
     request.stage = Stage.READ_DATA;
-    request.allSeriesPaths = allSeriesPaths;
+    request.pathType = pathType;
+    request.seriesPaths = seriesPaths;
     request.queryRounds = queryRounds;
     return request;
   }
@@ -101,13 +108,20 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
     this.taskId = taskId;
   }
 
-  public Map<PathType, List<String>> getAllSeriesPaths() {
-    return allSeriesPaths;
+  public PathType getPathType() {
+    return pathType;
   }
 
-  public void setAllSeriesPaths(
-      Map<PathType, List<String>> allSeriesPaths) {
-    this.allSeriesPaths = allSeriesPaths;
+  public void setPathType(PathType pathType) {
+    this.pathType = pathType;
+  }
+
+  public List<String> getSeriesPaths() {
+    return seriesPaths;
+  }
+
+  public void setSeriesPaths(List<String> seriesPaths) {
+    this.seriesPaths = seriesPaths;
   }
 
   public Map<PathType, QueryPlan> getAllQueryPlan() {

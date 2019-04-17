@@ -84,9 +84,9 @@ public class ClusterRpcReaderUtils {
   }
 
   public static QuerySeriesDataResponse fetchBatchData(String groupID, PeerId peerId, String taskId,
-      Map<PathType, List<String>> fetchDataSeriesMap, long queryRounds) throws RaftConnectionException {
+      PathType pathType, List<String> fetchDataSeries, long queryRounds) throws RaftConnectionException {
     BasicRequest request = QuerySeriesDataRequest
-        .createFetchDataRequest(groupID, taskId, fetchDataSeriesMap, queryRounds);
+        .createFetchDataRequest(groupID, taskId, pathType, fetchDataSeries, queryRounds);
     return (QuerySeriesDataResponse) handleQueryRequest(request, peerId, 0);
   }
 

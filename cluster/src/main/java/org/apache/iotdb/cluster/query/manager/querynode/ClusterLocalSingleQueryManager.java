@@ -60,7 +60,7 @@ public class ClusterLocalSingleQueryManager {
   private long jobId;
 
   /**
-   * Represents the number of query rounds
+   * Represents the number of query rounds, initial value is -1.
    */
   private long queryRound = -1;
 
@@ -82,7 +82,7 @@ public class ClusterLocalSingleQueryManager {
   /**
    * Cached batch data result
    */
-  private Map<PathType, List<BatchData>> cachedBatchDataResult = new EnumMap<>(PathType.class);
+  private List<BatchData> cachedBatchDataResult = new ArrayList<>();
 
   private QueryProcessExecutor queryProcessExecutor = new OverflowQPExecutor();
 
@@ -107,13 +107,12 @@ public class ClusterLocalSingleQueryManager {
         QueryContext context = new QueryContext(jobId);
         if (plan.getExpression() == null
             || plan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
-          handleDataSetWithoutTimeGenerator(plan, context, request, response, pathType);
+          handleDataSetWithoutTimeGenerator(plan, context, response, pathType);
         } else {
           throw new UnsupportedOperationException();
         }
       }
     }
-    readBatchData(request, response);
   }
 
   /**
@@ -122,7 +121,7 @@ public class ClusterLocalSingleQueryManager {
    * @param plan query plan
    */
   private void handleDataSetWithoutTimeGenerator(QueryPlan plan, QueryContext context,
-      QuerySeriesDataRequest request, QuerySeriesDataResponse response, PathType pathType)
+      QuerySeriesDataResponse response, PathType pathType)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException {
     EngineDataSetWithoutTimeGenerator queryDataSet = (EngineDataSetWithoutTimeGenerator) queryProcessExecutor
         .processQuery(plan, context);
@@ -138,7 +137,6 @@ public class ClusterLocalSingleQueryManager {
       dataTypeMap.put(fullPath, dataTypes.get(i));
     }
     response.getSeriesDataTypes().put(pathType, dataTypes);
-    request.getAllSeriesPaths().put(pathType, series);
   }
 
   /**
@@ -150,19 +148,15 @@ public class ClusterLocalSingleQueryManager {
     long targetQueryRounds = request.getQueryRounds();
     if (targetQueryRounds != this.queryRound) {
       this.queryRound = targetQueryRounds;
-      Map<PathType, List<BatchData>> batchDataResult = new EnumMap<>(PathType.class);
-      for (Entry<PathType, List<String>> entry : request.getAllSeriesPaths().entrySet()) {
-        PathType pathType = entry.getKey();
-        List<String> paths = entry.getValue();
+        PathType pathType = request.getPathType();
+        List<String> paths = request.getSeriesPaths();
         List<BatchData> batchDataList;
         if (pathType == PathType.SELECT_PATH) {
           batchDataList = readSingelPathTypeBatchData(paths, selectSeriesReaders);
         } else {
           batchDataList = readSingelPathTypeBatchData(paths, filterSeriesReaders);
         }
-        batchDataResult.put(pathType, batchDataList);
-      }
-      cachedBatchDataResult = batchDataResult;
+        cachedBatchDataResult = batchDataList;
     }
     response.setSeriesBatchData(cachedBatchDataResult);
   }
