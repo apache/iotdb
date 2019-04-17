@@ -85,12 +85,12 @@ public class Server {
 
   private RegisterManager registerManager = new RegisterManager();
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws ProcessorException {
     Server server = Server.getInstance();
     server.start();
   }
 
-  public void start() {
+  public void start() throws ProcessorException {
     /** Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version **/
     iotdb = new IoTDB();
     iotdb.active();

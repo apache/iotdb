@@ -18,21 +18,28 @@
  */
 package org.apache.iotdb.cluster.service;
 
-import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
-import org.apache.iotdb.cluster.utils.hash.VirtualNode;
 
-public interface ClusterMonitorMBean {
+public class NodeTool {
 
-  SortedMap<Integer, PhysicalNode> getPhysicalRing();
+  public static void main(String... args)
+  {
+    ClusterMonitor monitor = ClusterMonitor.INSTANCE;
+    if (args.length == 0) {
+      SortedMap<Integer, PhysicalNode> physicalRing = monitor.getPhysicalRing();
+      physicalRing.entrySet()
+          .forEach(entry -> System.out.println(entry.getValue() + "\t-->\t" + entry.getKey()));
+    } else if ("showleader".equals(args[0])) {
+      if (args.length > 1) {
+        String leader = monitor.getLeaderOfSG(args[1]);
+        System.out.println(leader);
+      } else {
+        Map<String, String> groupIdLeaderMap = monitor.getAllLeaders();
+      }
+    }
 
-  SortedMap<Integer, VirtualNode> getVirtualRing();
-
-  Map<String, String> getAllLeaders();
-
-  Map<String, String[]> getAllGroups();
-
-  String getLeaderOfSG(String sg);
+    System.exit(0);
+  }
 }

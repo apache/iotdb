@@ -29,7 +29,9 @@ import com.alipay.sofa.jraft.util.Bits;
 import com.alipay.sofa.jraft.util.OnlyForTest;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -301,5 +303,9 @@ public class RaftUtils {
     status.setErrorMsg(errorMsg);
     status.setCode(-1);
     return status;
+  }
+
+  public static ConcurrentHashMap<String, PeerId> getGroupLeaderCache() {
+    return groupLeaderCache;
   }
 }

@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.cluster.service;
 
+import com.alipay.sofa.jraft.entity.PeerId;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.SortedMap;
+import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.cluster.utils.hash.VirtualNode;
@@ -71,5 +75,25 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   @Override
   public SortedMap<Integer, VirtualNode> getVirtualRing() {
     return router.getVirtualRing();
+  }
+
+  @Override
+  public Map<String, String> getAllLeaders() {
+    Map<String, String> map = new HashMap<>();
+    RaftUtils.getGroupLeaderCache().entrySet().forEach(entry -> map.put(entry.getKey(), entry.getValue().toString()));
+    return map;
+  }
+
+  @Override
+  public Map<String, String[]> getAllGroups() {
+    return null;
+  }
+
+  @Override
+  public String getLeaderOfSG(String sg) {
+    PhysicalNode[] group = router.routeGroup(sg);
+    String groupId = router.getGroupID(group);
+    PeerId leader = RaftUtils.getLeaderPeerID(groupId);
+    return leader.toString();
   }
 }
