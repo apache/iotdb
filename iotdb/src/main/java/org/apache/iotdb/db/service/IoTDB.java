@@ -79,6 +79,8 @@ public class IoTDB implements IoTDBMBean {
 
   private void setUp() throws StartupException {
     LOGGER.info("Setting up IoTDB...");
+
+    Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
 
     FileNodeManager.getInstance().recovery();
