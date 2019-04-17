@@ -29,9 +29,10 @@ import com.alipay.sofa.jraft.util.Bits;
 import com.alipay.sofa.jraft.util.OnlyForTest;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -48,6 +49,7 @@ import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
+import org.apache.iotdb.cluster.utils.hash.VirtualNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -307,5 +309,26 @@ public class RaftUtils {
 
   public static ConcurrentHashMap<String, PeerId> getGroupLeaderCache() {
     return groupLeaderCache;
+  }
+
+  public static Map<Integer, String> getPhysicalRing() {
+    SortedMap<Integer, PhysicalNode> hashNodeMap = router.getPhysicalRing();
+    Map<Integer, String> res = new LinkedHashMap<>();
+    hashNodeMap.entrySet().forEach(entry -> res.put(entry.getKey(), entry.getValue().toString()));
+    return res;
+  }
+
+  public static Map<Integer, String> getVirtualRing() {
+    SortedMap<Integer, VirtualNode> hashNodeMap = router.getVirtualRing();
+    Map<Integer, String> res = new LinkedHashMap<>();
+    hashNodeMap.entrySet().forEach(entry -> res.put(entry.getKey(), entry.getValue().getPhysicalNode().toString()));
+    return res;
+  }
+
+  public static PeerId getLeaderOfSG(String sg) {
+    PhysicalNode[] group = router.routeGroup(sg);
+    String groupId = router.getGroupID(group);
+    PeerId leader = RaftUtils.getLeaderPeerID(groupId);
+    return leader;
   }
 }

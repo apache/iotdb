@@ -16,19 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.service;
+package org.apache.iotdb.cli.service;
 
+import io.airlift.airline.Command;
 import java.util.Map;
+import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
-public interface ClusterMonitorMBean {
+@Command(name = "ring", description = "Print information about the hash ring")
+public class Ring extends NodeToolCmd
+{
 
-  Map<Integer, String> getPhysicalRing();
-
-  Map<Integer, String> getVirtualRing();
-
-  Map<String, String> getAllLeaders();
-
-  Map<String, String[]> getAllGroups();
-
-  String getLeaderOfSG(String sg);
+  @Override
+  public void execute(ClusterMonitorMBean proxy)
+  {
+    Map<Integer, String> map = proxy.getVirtualRing();
+    map.entrySet().forEach(entry -> System.out.println(entry.getKey() + "\t->\t" + entry.getValue()));
+  }
 }
+

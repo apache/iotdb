@@ -18,14 +18,9 @@
  */
 package org.apache.iotdb.cluster.service;
 
-import com.alipay.sofa.jraft.entity.PeerId;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.SortedMap;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
-import org.apache.iotdb.cluster.utils.hash.Router;
-import org.apache.iotdb.cluster.utils.hash.VirtualNode;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
@@ -42,7 +37,10 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   private final String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
-  private Router router = Router.getInstance();
+
+  public String getMbeanName() {
+    return mbeanName;
+  }
 
   @Override
   public void start() throws StartupException {
@@ -68,13 +66,13 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public SortedMap<Integer, PhysicalNode> getPhysicalRing() {
-    return router.getPhysicalRing();
+  public Map<Integer, String> getPhysicalRing() {
+    return RaftUtils.getPhysicalRing();
   }
 
   @Override
-  public SortedMap<Integer, VirtualNode> getVirtualRing() {
-    return router.getVirtualRing();
+  public Map<Integer, String> getVirtualRing() {
+    return RaftUtils.getVirtualRing();
   }
 
   @Override
@@ -91,9 +89,6 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   @Override
   public String getLeaderOfSG(String sg) {
-    PhysicalNode[] group = router.routeGroup(sg);
-    String groupId = router.getGroupID(group);
-    PeerId leader = RaftUtils.getLeaderPeerID(groupId);
-    return leader.toString();
+    return RaftUtils.getLeaderOfSG(sg).toString();
   }
 }

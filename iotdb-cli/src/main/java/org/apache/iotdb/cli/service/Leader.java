@@ -16,30 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.service;
+package org.apache.iotdb.cli.service;
 
-import java.util.Map;
-import java.util.SortedMap;
-import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
+import io.airlift.airline.Arguments;
+import io.airlift.airline.Command;
+import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
-public class NodeTool {
+@Command(name = "leader", description = "Print leader host information of specific storage group")
+public class Leader extends NodeToolCmd {
 
-  public static void main(String... args)
-  {
-    ClusterMonitor monitor = ClusterMonitor.INSTANCE;
-    if (args.length == 0) {
-      SortedMap<Integer, PhysicalNode> physicalRing = monitor.getPhysicalRing();
-      physicalRing.entrySet()
-          .forEach(entry -> System.out.println(entry.getValue() + "\t-->\t" + entry.getKey()));
-    } else if ("showleader".equals(args[0])) {
-      if (args.length > 1) {
-        String leader = monitor.getLeaderOfSG(args[1]);
-        System.out.println(leader);
-      } else {
-        Map<String, String> groupIdLeaderMap = monitor.getAllLeaders();
-      }
+  @Arguments(description = "Specify a storage group for accurate leader information")
+  private String sg = null;
+
+  @Override
+  public void execute(ClusterMonitorMBean proxy) {
+    if (sg == null) {
+      sg = ClusterConfig.METADATA_GROUP_ID;
     }
-
-    System.exit(0);
+    String leader = proxy.getLeaderOfSG(sg);
+    System.out.println(leader);
   }
 }

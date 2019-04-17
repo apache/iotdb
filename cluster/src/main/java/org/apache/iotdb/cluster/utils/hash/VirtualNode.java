@@ -28,11 +28,16 @@ public class VirtualNode {
     this.physicalNode = physicalNode;
   }
 
-  PhysicalNode getPhysicalNode() {
+  public PhysicalNode getPhysicalNode() {
     return this.physicalNode;
   }
 
   String getKey() {
     return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
+  }
+
+  @Override
+  public String toString() {
+    return getKey();
   }
 }
