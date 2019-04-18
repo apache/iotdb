@@ -550,17 +550,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   /**
-   * get buffer write processor.
-   */
-  public BufferWriteProcessor getBufferWriteProcessor() throws FileNodeProcessorException {
-    if (bufferWriteProcessor == null) {
-      LOGGER.error("The bufferwrite processor is null when get the bufferwriteProcessor");
-      throw new FileNodeProcessorException("The bufferwrite processor is null");
-    }
-    return bufferWriteProcessor;
-  }
-
-  /**
    * get overflow processor by processor name.
    */
   public OverflowProcessor getOverflowProcessor(String processorName) throws IOException {
@@ -589,7 +578,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   public boolean hasOverflowProcessor() {
-    return overflowProcessor != null;
+    return overflowProcessor != null && !overflowProcessor.isClosed();
   }
 
 
@@ -1458,6 +1447,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     // losing some modification.
     mergeDeleteLock.lock();
     QueryContext context = new QueryContext();
+
     try {
       FileReaderManager.getInstance().increaseFileReaderReference(backupIntervalFile.getFilePath(),
           true);
@@ -1484,6 +1474,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           // query one measurement in the special deviceId
           String measurementId = path.getMeasurement();
           TSDataType dataType = mManager.getSeriesType(path.getFullPath());
+          if (overflowProcessor.isClosed()) {
+            overflowProcessor.reopen();
+          }
           OverflowSeriesDataSource overflowSeriesDataSource = overflowProcessor.queryMerge(deviceId,
               measurementId, dataType, true, context);
           Filter timeFilter = FilterFactory

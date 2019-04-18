@@ -116,14 +116,14 @@ public class OverflowProcessor extends Processor {
     filenodeFlushAction = parameters
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
 
+    reopen();
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       logNode = MultiFileLogNodeManager.getInstance().getNode(
           processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX,
           getOverflowRestoreFile(),
           FileNodeManager.getInstance().getRestoreFilePath(processorName));
     }
-
-    reopen();
   }
 
   public void reopen() throws IOException {
@@ -143,7 +143,8 @@ public class OverflowProcessor extends Processor {
     } else {
       workSupport.clear();
     }
-
+    isClosed = false;
+    isFlush = false;
   }
   public void checkOpen() throws OverflowProcessorException {
     if (isClosed) {
@@ -312,6 +313,11 @@ public class OverflowProcessor extends Processor {
   public OverflowSeriesDataSource query(String deviceId, String measurementId,
       TSDataType dataType, Map<String, String> props, QueryContext context)
       throws IOException {
+    try {
+      checkOpen();
+    } catch (OverflowProcessorException e) {
+      throw new IOException(e);
+    }
     queryFlushLock.lock();
     try {
       // query insert data in memory and unseqTsFiles

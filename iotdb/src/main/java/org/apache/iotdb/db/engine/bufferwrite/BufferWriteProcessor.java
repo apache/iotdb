@@ -109,6 +109,7 @@ public class BufferWriteProcessor extends Processor {
     filenodeFlushAction = parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
 
 
+    reopen(fileName);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
@@ -121,7 +122,6 @@ public class BufferWriteProcessor extends Processor {
     }
     this.versionController = versionController;
 
-    reopen(fileName);
   }
 
   public void reopen(String fileName) throws BufferWriteProcessorException {
@@ -152,6 +152,8 @@ public class BufferWriteProcessor extends Processor {
     } else {
       workMemTable.clear();
     }
+    isClosed = false;
+    isFlush = false;
   }
 
   public void checkOpen() throws BufferWriteProcessorException {
@@ -294,7 +296,7 @@ public class BufferWriteProcessor extends Processor {
     try {
       flushMemTable.clear();
       writer.appendMetadata();
-      isClosed = false;
+      isFlush = false;
     } finally {
       flushQueryLock.unlock();
     }
