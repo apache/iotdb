@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.receiver;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -40,16 +41,18 @@ import org.slf4j.LoggerFactory;
 /**
  * sync receiver server.
  */
-public class SyncServerManager implements IService {
+public class SyncServiceManager implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncServerManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncServiceManager.class);
   private Thread syncServerThread;
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  private CountDownLatch startLatch;
+  private CountDownLatch stopLatch;
 
-  private SyncServerManager() {
+  private SyncServiceManager() {
   }
 
-  public static final SyncServerManager getInstance() {
+  public static final SyncServiceManager getInstance() {
     return ServerManagerHolder.INSTANCE;
   }
 
@@ -67,10 +70,27 @@ public class SyncServerManager implements IService {
       return;
     }
     conf.setIpWhiteList(conf.getIpWhiteList().replaceAll(" ", ""));
-    syncServerThread = new SyncServiceThread();
-    syncServerThread.setName(ThreadName.SYNC_SERVER.getName());
-    syncServerThread.start();
-    LOGGER.info("Sync server has started.");
+    resetLatch();
+    try {
+      syncServerThread = new SyncServiceThread(startLatch, stopLatch);
+      syncServerThread.setName(ThreadName.SYNC_SERVER.getName());
+      syncServerThread.start();
+      startLatch.await();
+    } catch (InterruptedException e) {
+      String errorMessage = String
+          .format("Failed to start %s because of %s", this.getID().getName(),
+              e.getMessage());
+      LOGGER.error(errorMessage);
+      throw new StartupException(errorMessage);
+    }
+    LOGGER
+        .info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
+            this.getID().getName(), conf.getRpcAddress(), conf.getSyncServerPort());
+  }
+
+  private void resetLatch(){
+    startLatch = new CountDownLatch(1);
+    stopLatch = new CountDownLatch(1);
   }
 
   /**
@@ -78,8 +98,20 @@ public class SyncServerManager implements IService {
    */
   @Override
   public void stop() {
-    if (conf.isSyncEnable()) {
+    if (!conf.isSyncEnable()) {
+      return;
+    }
+    ((SyncServiceThread) syncServerThread).close();
+    LOGGER.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    if (syncServerThread != null) {
       ((SyncServiceThread) syncServerThread).close();
+    }
+    try {
+      stopLatch.await();
+      resetLatch();
+      LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    } catch (InterruptedException e) {
+      LOGGER.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
     }
   }
 
@@ -90,7 +122,7 @@ public class SyncServerManager implements IService {
 
   private static class ServerManagerHolder {
 
-    private static final SyncServerManager INSTANCE = new SyncServerManager();
+    private static final SyncServiceManager INSTANCE = new SyncServiceManager();
   }
 
   private class SyncServiceThread extends Thread {
@@ -100,9 +132,13 @@ public class SyncServerManager implements IService {
     private Factory protocolFactory;
     private Processor<SyncService.Iface> processor;
     private TThreadPoolServer.Args poolArgs;
+    private CountDownLatch threadStartLatch;
+    private CountDownLatch threadStopLatch;
 
-    public SyncServiceThread() {
-      processor = new SyncService.Processor<>(new SyncServiceImpl());
+    public SyncServiceThread(CountDownLatch threadStartLatch, CountDownLatch threadStopLatch) {
+      this.processor = new SyncService.Processor<>(new SyncServiceImpl());
+      this.threadStartLatch = threadStartLatch;
+      this.threadStopLatch = threadStopLatch;
     }
 
     @Override
@@ -116,6 +152,7 @@ public class SyncServerManager implements IService {
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
         poolServer = new TThreadPoolServer(poolArgs);
+        poolServer.setServerEventHandler(new SyncServiceEventHandler(threadStartLatch));
         poolServer.serve();
       } catch (TTransportException e) {
         LOGGER.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,
@@ -124,6 +161,14 @@ public class SyncServerManager implements IService {
         LOGGER.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       } finally {
         close();
+        if(threadStopLatch == null) {
+          LOGGER.info("Sync Service Stop Count Down latch is null");
+        } else {
+          LOGGER.info("Sync Service Stop Count Down latch is {}", threadStopLatch.getCount());
+        }
+        if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
+          threadStopLatch.countDown();
+        }
         LOGGER.info("{}: close TThreadPoolServer and TServerSocket for {}",
             IoTDBConstant.GLOBAL_DB_NAME, getID().getName());
       }
