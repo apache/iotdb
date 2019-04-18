@@ -64,7 +64,9 @@ public class Host extends NodeToolCmd {
         for (int i = 0; i < sgs.length; i++) {
           builder.append(sgs[i]).append(", ");
         }
-        builder.delete(builder.length() - 2, builder.length());
+        if (sgs.length > 0) {
+          builder.delete(builder.length() - 2, builder.length());
+        }
         builder.append(')');
       } else {
         builder.append(sgs.length);
