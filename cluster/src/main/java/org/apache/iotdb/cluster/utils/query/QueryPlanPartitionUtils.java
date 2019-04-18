@@ -31,7 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
- * Utils for spliting query plan to several sub query plan by group id.
+ * Utils for splitting query plan to several sub query plans by group id.
  */
 public class QueryPlanPartitionUtils {
 
@@ -71,7 +71,7 @@ public class QueryPlanPartitionUtils {
   }
 
   /**
-   * Split query plan with not only global time filter.
+   * Split query plan with value filter.
    */
   public static void splitQueryPlanWithValueFilter(ClusterRpcSingleQueryManager singleQueryManager) {
 

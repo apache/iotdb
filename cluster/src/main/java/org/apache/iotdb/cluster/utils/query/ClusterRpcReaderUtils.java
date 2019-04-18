@@ -47,7 +47,7 @@ public class ClusterRpcReaderUtils {
       .getQpTaskRedoCount();
 
   /**
-   * Create cluster series reader and get the first batch data
+   * Create cluster series reader
    *
    * @param peerId query node to fetch data
    * @param readDataConsistencyLevel consistency level of read data
@@ -66,6 +66,14 @@ public class ClusterRpcReaderUtils {
     return handleQueryRequest(request, peerId, 0);
   }
 
+  /**
+   * Send query request to remote node and return response
+   *
+   * @param request query request
+   * @param peerId target remote query node
+   * @param taskRetryNum retry num of the request
+   * @return Response from remote query node
+   */
   private static BasicResponse handleQueryRequest(BasicRequest request, PeerId peerId,
       int taskRetryNum)
       throws RaftConnectionException {
@@ -91,7 +99,11 @@ public class ClusterRpcReaderUtils {
   }
 
   /**
-   * Release remote query resource
+   * Release remote query resources
+   *
+   * @param groupId data group id
+   * @param peerId target query node
+   * @param taskId unique task id
    */
   public static void releaseRemoteQueryResource(String groupId, PeerId peerId, String taskId)
       throws RaftConnectionException {

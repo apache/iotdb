@@ -28,6 +28,9 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 
+/**
+ * Manage all local query resources which provide data for coordinator node in cluster query node.
+ */
 public class ClusterLocalQueryManager {
 
   /**
@@ -41,9 +44,15 @@ public class ClusterLocalQueryManager {
    */
   private static final ConcurrentHashMap<Long, ClusterLocalSingleQueryManager> SINGLE_QUERY_MANAGER_MAP = new ConcurrentHashMap<>();
 
+
   private ClusterLocalQueryManager() {
   }
 
+  /**
+   * Initially create query data set for coordinator node.
+   *
+   * @param request request for query data from coordinator node
+   */
   public void createQueryDataSet(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws IOException, FileNodeManagerException, PathErrorException, ProcessorException, QueryFilterOptimizationException {
     long jobId = QueryResourceManager.getInstance().assignJobId();
@@ -54,6 +63,11 @@ public class ClusterLocalQueryManager {
     SINGLE_QUERY_MANAGER_MAP.put(jobId, localQueryManager);
   }
 
+  /**
+   * Read batch data of all querying series in request and set response.
+   *
+   * @param request request of querying series
+   */
   public void readBatchData(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws IOException {
     long jobId = TASK_ID_MAP_JOB_ID.get(request.getTaskId());

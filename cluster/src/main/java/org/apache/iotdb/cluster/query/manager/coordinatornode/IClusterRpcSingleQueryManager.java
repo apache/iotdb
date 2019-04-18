@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.QueryType;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
 /**
  * Manage a single query.
@@ -44,18 +45,18 @@ public interface IClusterRpcSingleQueryManager {
   void fetchData(String groupId, PathType pathType) throws RaftConnectionException;
 
   /**
-   * Get physical plan of select path
+   * Get query plan of select path
    *
    * @param fullPath Timeseries full path in select paths
    */
-  PhysicalPlan getSelectPathPhysicalPlan(String fullPath);
+  QueryPlan getSelectPathQueryPlan(String fullPath);
 
   /**
-   * Get physical plan of filter path
+   * Get query plan of filter path
    *
    * @param fullPath Timeseries full path in filter
    */
-  PhysicalPlan getFilterPathPhysicalPlan(String fullPath);
+  QueryPlan getFilterPathQueryPlan(String fullPath);
 
   /**
    * Set reader node of a data group
@@ -73,7 +74,7 @@ public interface IClusterRpcSingleQueryManager {
   PeerId getDataGroupReaderNode(String groupId);
 
   /**
-   * Release query resource
+   * Release query resource in remote query node
    */
   void releaseQueryResource() throws RaftConnectionException;
 }

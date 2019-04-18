@@ -18,6 +18,20 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.request.querydata;
 
+/**
+ * Stage of querying series data from remote query node
+ */
 public enum Stage {
-  INITIAL, READ_DATA, CLOSE
+  /**
+   * Initially create corresponding series readers in remote query node
+   */
+  INITIAL,
+  /**
+   * Read batch data from series reader from remote query node.
+   */
+  READ_DATA,
+  /**
+   * Release series reader resource in remote query node
+   */
+  CLOSE
 }

@@ -20,7 +20,6 @@ package org.apache.iotdb.cluster.query.manager.querynode;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +117,10 @@ public class ClusterLocalSingleQueryManager {
   /**
    * Handle query with no filter or only global time filter
    *
-   * @param plan query plan
+   * @param plan plan query plan
+   * @param context query context
+   * @param response response for coordinator node
+   * @param pathType type of series
    */
   private void handleDataSetWithoutTimeGenerator(QueryPlan plan, QueryContext context,
       QuerySeriesDataResponse response, PathType pathType)

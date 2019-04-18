@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
- * Manage all remote series reader resource in coordinator node.
+ * Manage all remote series reader resource in a query resource in coordinator node.
  */
 public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManager {
 
@@ -174,7 +174,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   /**
    * Handle response of initial reader. In order to reduce the number of RPC communications,
    * fetching data from remote query node will fetch for all series in the same data group. If the
-   * cached data for specific series is exceed limit, ignore this fetching data process.
+   * cached data for specific series exceed limit, ignore this fetching data process of the series.
    */
   @Override
   public void fetchData(String groupId, PathType pathType) throws RaftConnectionException {
@@ -203,7 +203,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   }
 
   /**
-   * Handle response of fetch data, add batch data to corresponding reader.
+   * Handle response of fetching data, and add batch data to corresponding reader.
    */
   private void handleFetchDataResponse(PathType pathType, List<String> fetchDataSeries,
       QuerySeriesDataResponse response) {
@@ -225,12 +225,12 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   }
 
   @Override
-  public PhysicalPlan getSelectPathPhysicalPlan(String fullPath) {
+  public QueryPlan getSelectPathQueryPlan(String fullPath) {
     return selectPathPlans.get(fullPath);
   }
 
   @Override
-  public PhysicalPlan getFilterPathPhysicalPlan(String fullPath) {
+  public QueryPlan getFilterPathQueryPlan(String fullPath) {
     return filterPathPlans.get(fullPath);
   }
 

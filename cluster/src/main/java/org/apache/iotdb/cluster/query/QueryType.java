@@ -18,6 +18,20 @@
  */
 package org.apache.iotdb.cluster.query;
 
+/**
+ * Type of query
+ */
 public enum QueryType {
-  NO_FILTER, GLOBAL_TIME, FILTER
+  /**
+   * Query with no filter
+   */
+  NO_FILTER,
+  /**
+   * Query with global time
+   */
+  GLOBAL_TIME,
+  /**
+   * Query with value filter
+   */
+  FILTER
 }

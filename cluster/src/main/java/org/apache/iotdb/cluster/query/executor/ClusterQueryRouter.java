@@ -47,6 +47,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
  */
 public class ClusterQueryRouter implements IEngineQueryRouter {
 
+
   private ThreadLocal<Integer> readDataConsistencyLevel = new ThreadLocal<>();
 
   @Override
@@ -89,7 +90,7 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
   public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context)
       throws QueryFilterOptimizationException, FileNodeManagerException, IOException, PathErrorException, ProcessorException {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -97,13 +98,13 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
       QueryContext context)
       throws ProcessorException, QueryFilterOptimizationException, FileNodeManagerException, PathErrorException, IOException {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context) throws FileNodeManagerException, PathErrorException, IOException {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   public int getReadDataConsistencyLevel() {

@@ -26,9 +26,10 @@ import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
 /**
- * Manage all query in cluster
+ * Manage all query series reader resources which fetch data from remote query nodes in coordinator
+ * node
  */
-public class ClusterRpcQueryManager{
+public class ClusterRpcQueryManager {
 
   /**
    * Key is job id, value is task id.
@@ -41,12 +42,15 @@ public class ClusterRpcQueryManager{
   private static final ConcurrentHashMap<String, ClusterRpcSingleQueryManager> SINGLE_QUERY_MANAGER_MAP = new ConcurrentHashMap<>();
 
   /**
-   * Assign every query a work id
+   * Assign every query a work id, which uniquely identify a query in remote query node
    */
   private static final AtomicLong TASK_ID = new AtomicLong(0);
 
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
 
+  /**
+   * Local address
+   */
   private static final String LOCAL_ADDR = String.format("%s:%d", CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
 
   /**
