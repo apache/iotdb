@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.query;
+package org.apache.iotdb.cluster.query.utils;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;

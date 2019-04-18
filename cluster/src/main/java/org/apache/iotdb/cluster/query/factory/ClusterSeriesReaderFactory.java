@@ -47,13 +47,13 @@ public class ClusterSeriesReaderFactory {
       List<Path> paths, QueryContext context, ClusterRpcSingleQueryManager queryManager)
       throws IOException, FileNodeManagerException {
 
-    Map<String, ClusterSeriesReader> selectSeriesReaders = queryManager.getSelectSeriesReaders();
+    Map<Path, ClusterSeriesReader> selectSeriesReaders = queryManager.getSelectSeriesReaders();
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
     for (Path path : paths) {
 
-      if(selectSeriesReaders.containsKey(path.getFullPath())){
-        readersOfSelectedSeries.add(selectSeriesReaders.get(path.getFullPath()));
+      if(selectSeriesReaders.containsKey(path)){
+        readersOfSelectedSeries.add(selectSeriesReaders.get(path));
       }else {
         /** can handle series query locally **/
         QueryDataSource queryDataSource = QueryResourceManager.getInstance()

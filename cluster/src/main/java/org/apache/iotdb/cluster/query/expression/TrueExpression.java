@@ -16,52 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.expression.impl;
+package org.apache.iotdb.cluster.query.expression;
 
-import java.io.Serializable;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class SingleSeriesExpression implements IUnaryExpression, Serializable {
-
-  private static final long serialVersionUID = 7131207370394865228L;
-  private Path seriesPath;
-  private Filter filter;
-
-  public SingleSeriesExpression(Path seriesDescriptor, Filter filter) {
-    this.seriesPath = seriesDescriptor;
-    this.filter = filter;
-  }
+public class TrueExpression implements IExpression {
 
   @Override
   public ExpressionType getType() {
-    return ExpressionType.SERIES;
+    return ExpressionType.TRUE;
   }
 
   @Override
   public IExpression clone() {
-    return new SingleSeriesExpression(seriesPath.clone(), filter.clone());
-  }
-
-  @Override
-  public Filter getFilter() {
-    return filter;
-  }
-
-  @Override
-  public void setFilter(Filter filter) {
-    this.filter = filter;
-  }
-
-  @Override
-  public String toString() {
-    return "[" + seriesPath + ":" + filter + "]";
-  }
-
-  public Path getSeriesPath() {
-    return this.seriesPath;
+    return new TrueExpression();
   }
 }

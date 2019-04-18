@@ -16,8 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.expression;
+package org.apache.iotdb.cluster.rpc.raft.request.querydata;
 
-public enum ExpressionType {
-  AND, OR, SERIES, GLOBAL_TIME, TRUE
+public class QuerySeriesDataByTimestampRequest {
+
 }

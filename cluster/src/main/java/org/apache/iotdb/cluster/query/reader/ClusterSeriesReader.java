@@ -30,6 +30,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * Series reader
@@ -51,12 +52,17 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
   /**
    * Series name
    */
-  private String fullPath;
+  private Path seriesPath;
 
   /**
    * Data type
    */
   private TSDataType dataType;
+
+  /**
+   * Current time value pair
+   */
+  private TimeValuePair currentTimeValuePair;
 
   /**
    * Current batch data
@@ -73,10 +79,10 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
    */
   private boolean remoteDataFinish;
 
-  public ClusterSeriesReader(String groupId, String fullPath, PathType pathType,
+  public ClusterSeriesReader(String groupId, Path seriesPath, PathType pathType,
       TSDataType dataType, ClusterRpcSingleQueryManager queryManager) {
     this.groupId = groupId;
-    this.fullPath = fullPath;
+    this.seriesPath = seriesPath;
     this.pathType = pathType;
     this.dataType = dataType;
     this.queryManager = queryManager;
@@ -89,10 +95,23 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
     throw new IOException("current() in ClusterSeriesReader is an empty method.");
   }
 
-  @Deprecated
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    return null;
+    if (currentTimeValuePair != null && currentTimeValuePair.getTimestamp() == timestamp) {
+      return currentTimeValuePair.getValue();
+    }
+    while (true) {
+      if (hasNext()) {
+        next();
+        if (currentTimeValuePair.getTimestamp() == timestamp) {
+          return currentTimeValuePair.getValue();
+        } else if (currentTimeValuePair.getTimestamp() > timestamp) {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }
   }
 
   @Override
@@ -115,7 +134,7 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
    */
   private void updateCurrentBatchData() throws RaftConnectionException {
     if (batchDataList.isEmpty() && !remoteDataFinish) {
-      queryManager.fetchData(groupId, pathType);
+      queryManager.fetchBatchData(groupId, pathType);
     }
     if (!batchDataList.isEmpty()) {
       currentBatchData = batchDataList.removeFirst();
@@ -126,6 +145,7 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
   public TimeValuePair next() throws IOException {
     if (hasNext()) {
       TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(currentBatchData);
+      currentTimeValuePair = timeValuePair;
       currentBatchData.next();
       return timeValuePair;
     }
@@ -137,12 +157,12 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
     //Do nothing
   }
 
-  public String getFullPath() {
-    return fullPath;
+  public Path getSeriesPath() {
+    return seriesPath;
   }
 
-  public void setFullPath(String fullPath) {
-    this.fullPath = fullPath;
+  public void setSeriesPath(Path seriesPath) {
+    this.seriesPath = seriesPath;
   }
 
   public TSDataType getDataType() {
@@ -163,7 +183,7 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
 
   public void addBatchData(BatchData batchData) {
     batchDataList.addLast(batchData);
-    if(batchData.length() < ClusterConstant.BATCH_READ_SIZE){
+    if (batchData.length() < ClusterConstant.BATCH_READ_SIZE) {
       remoteDataFinish = true;
     }
   }

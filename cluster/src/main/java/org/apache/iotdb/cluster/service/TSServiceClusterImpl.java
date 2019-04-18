@@ -319,4 +319,20 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     queryMetadataExecutor.shutdown();
   }
 
+  public ClusterQueryProcessExecutor getQueryDataExecutor() {
+    return queryDataExecutor;
+  }
+
+  public void setQueryDataExecutor(
+      ClusterQueryProcessExecutor queryDataExecutor) {
+    this.queryDataExecutor = queryDataExecutor;
+  }
+
+  public QueryMetadataExecutor getQueryMetadataExecutor() {
+    return queryMetadataExecutor;
+  }
+
+  public void setNonQueryExecutor(NonQueryExecutor nonQueryExecutor) {
+    this.nonQueryExecutor = nonQueryExecutor;
+  }
 }

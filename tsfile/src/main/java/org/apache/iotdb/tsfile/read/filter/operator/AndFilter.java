@@ -59,4 +59,9 @@ public class AndFilter extends BinaryFilter {
   public String toString() {
     return "(" + left + " && " + right + ")";
   }
+
+  @Override
+  public Filter clone() {
+    return new AndFilter(left.clone(), right.clone());
+  }
 }

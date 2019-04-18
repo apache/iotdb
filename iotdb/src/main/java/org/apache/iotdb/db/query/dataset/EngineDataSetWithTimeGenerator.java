@@ -97,37 +97,4 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
     }
     return hasCachedRowRecord;
   }
-
-  private Field getField(Object value, TSDataType dataType) {
-    Field field = new Field(dataType);
-
-    if (value == null) {
-      field.setNull();
-      return field;
-    }
-
-    switch (dataType) {
-      case DOUBLE:
-        field.setDoubleV((double) value);
-        break;
-      case FLOAT:
-        field.setFloatV((float) value);
-        break;
-      case INT64:
-        field.setLongV((long) value);
-        break;
-      case INT32:
-        field.setIntV((int) value);
-        break;
-      case BOOLEAN:
-        field.setBoolV((boolean) value);
-        break;
-      case TEXT:
-        field.setBinaryV((Binary) value);
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
-    }
-    return field;
-  }
 }

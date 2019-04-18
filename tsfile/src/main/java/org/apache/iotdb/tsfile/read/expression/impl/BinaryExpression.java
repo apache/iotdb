@@ -35,6 +35,9 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     return new OrExpression(left, right);
   }
 
+  @Override
+  public abstract IExpression clone();
+
   protected static class AndExpression extends BinaryExpression {
 
     public IExpression left;
@@ -58,6 +61,11 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     @Override
     public ExpressionType getType() {
       return ExpressionType.AND;
+    }
+
+    @Override
+    public IExpression clone() {
+      return new AndExpression(left.clone(), right.clone());
     }
 
     @Override
@@ -89,6 +97,11 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     @Override
     public ExpressionType getType() {
       return ExpressionType.OR;
+    }
+
+    @Override
+    public IExpression clone() {
+      return new OrExpression(left.clone(), right.clone());
     }
 
     @Override

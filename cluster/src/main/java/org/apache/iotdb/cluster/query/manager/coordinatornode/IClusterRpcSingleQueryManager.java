@@ -20,11 +20,11 @@ package org.apache.iotdb.cluster.query.manager.coordinatornode;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.QueryType;
 import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
 /**
@@ -40,9 +40,16 @@ public interface IClusterRpcSingleQueryManager {
       throws PathErrorException, IOException, RaftConnectionException;
 
   /**
-   * Fetch batch data from remote query node
+   * Handle response of initial reader. In order to reduce the number of RPC communications,
+   * fetching data from remote query node will fetch for all series in the same data group. If the
+   * cached data for specific series exceed limit, ignore this fetching data process of the series.
    */
-  void fetchData(String groupId, PathType pathType) throws RaftConnectionException;
+  void fetchBatchData(String groupId, PathType pathType) throws RaftConnectionException;
+
+  /**
+   * Fetch batch data of all select paths by batch timestamp
+   */
+  void fetchBatchDataByTimestamp(List<Long> batchTimestamp) throws RaftConnectionException;
 
   /**
    * Get query plan of select path

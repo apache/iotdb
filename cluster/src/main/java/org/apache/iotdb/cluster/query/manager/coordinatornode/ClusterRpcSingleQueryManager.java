@@ -30,11 +30,11 @@ import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.QueryType;
 import org.apache.iotdb.cluster.query.reader.ClusterSeriesReader;
+import org.apache.iotdb.cluster.query.utils.ClusterRpcReaderUtils;
+import org.apache.iotdb.cluster.query.utils.QueryPlanPartitionUtils;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.cluster.utils.query.ClusterRpcReaderUtils;
-import org.apache.iotdb.cluster.utils.query.QueryPlanPartitionUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -75,12 +75,12 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   /**
    * Key is group id, value is all select series in group id
    */
-  private Map<String, List<String>> selectSeriesByGroupId = new HashMap<>();
+  private Map<String, List<Path>> selectSeriesByGroupId = new HashMap<>();
 
   /**
    * Series reader of select paths, key is series path , value is reader
    */
-  private Map<String, ClusterSeriesReader> selectSeriesReaders = new HashMap<>();
+  private Map<Path, ClusterSeriesReader> selectSeriesReaders = new HashMap<>();
 
   // filter path resource
   /**
@@ -91,12 +91,12 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   /**
    * Key is group id, value is all filter series in group id
    */
-  private Map<String, List<String>> filterSeriesByGroupId = new HashMap<>();
+  private Map<String, List<Path>> filterSeriesByGroupId = new HashMap<>();
 
   /**
    * Series reader of filter paths, key is series path , value is reader
    */
-  private Map<String, ClusterSeriesReader> filterSeriesReaders = new HashMap<>();
+  private Map<Path, ClusterSeriesReader> filterSeriesReaders = new HashMap<>();
 
   public ClusterRpcSingleQueryManager(String taskId,
       QueryPlan queryPlan) {
@@ -129,20 +129,21 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    */
   private void initSeriesReader(int readDataConsistencyLevel)
       throws IOException, RaftConnectionException {
-    if (!selectPathPlans.isEmpty()) {
-      for (Entry<String, QueryPlan> entry : selectPathPlans.entrySet()) {
-        String groupId = entry.getKey();
-        QueryPlan queryPlan = entry.getValue();
-        if (!canHandleQueryLocally(groupId)) {
-          PeerId randomPeer = RaftUtils.getRandomPeerID(groupId);
-          queryNodes.put(groupId, randomPeer);
-          Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
-          allQueryPlan.put(PathType.SELECT_PATH, queryPlan);
-          QuerySeriesDataResponse response = (QuerySeriesDataResponse) ClusterRpcReaderUtils
-              .createClusterSeriesReader(groupId, randomPeer, readDataConsistencyLevel,
-                  allQueryPlan, taskId, queryRounds++);
-          handleInitReaderResponse(groupId, allQueryPlan, response);
+    for (Entry<String, QueryPlan> entry : selectPathPlans.entrySet()) {
+      String groupId = entry.getKey();
+      QueryPlan queryPlan = entry.getValue();
+      if (!canHandleQueryLocally(groupId)) {
+        PeerId randomPeer = RaftUtils.getRandomPeerID(groupId);
+        queryNodes.put(groupId, randomPeer);
+        Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
+        allQueryPlan.put(PathType.SELECT_PATH, queryPlan);
+        if (filterPathPlans.containsKey(groupId)) {
+          allQueryPlan.put(PathType.FILTER_PATH, queryPlan);
         }
+        QuerySeriesDataResponse response = (QuerySeriesDataResponse) ClusterRpcReaderUtils
+            .createClusterSeriesReader(groupId, randomPeer, readDataConsistencyLevel,
+                allQueryPlan, taskId, queryRounds++);
+        handleInitReaderResponse(groupId, allQueryPlan, response);
       }
     }
   }
@@ -155,13 +156,13 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     /** create cluster series reader **/
     for (Entry<PathType, QueryPlan> entry : allQueryPlan.entrySet()) {
       PathType pathType = entry.getKey();
-      Map<String, ClusterSeriesReader> seriesReaderMap =
+      Map<Path, ClusterSeriesReader> seriesReaderMap =
           pathType == PathType.SELECT_PATH ? selectSeriesReaders : filterSeriesReaders;
       QueryPlan plan = entry.getValue();
       List<Path> paths = plan.getPaths();
       List<TSDataType> seriesType = response.getSeriesDataTypes().get(pathType);
       for (int i = 0; i < paths.size(); i++) {
-        String seriesPath = paths.get(i).getFullPath();
+        Path seriesPath = paths.get(i);
         TSDataType dataType = seriesType.get(i);
         ClusterSeriesReader seriesReader = new ClusterSeriesReader(groupId, seriesPath,
             pathType, dataType, this);
@@ -170,16 +171,11 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     }
   }
 
-  /**
-   * Handle response of initial reader. In order to reduce the number of RPC communications,
-   * fetching data from remote query node will fetch for all series in the same data group. If the
-   * cached data for specific series exceed limit, ignore this fetching data process of the series.
-   */
   @Override
-  public void fetchData(String groupId, PathType pathType) throws RaftConnectionException {
+  public void fetchBatchData(String groupId, PathType pathType) throws RaftConnectionException {
     List<String> fetchDataSeries = new ArrayList<>();
-    Map<String, List<String>> seriesByGroupId;
-    Map<String, ClusterSeriesReader> seriesReaders;
+    Map<String, List<Path>> seriesByGroupId;
+    Map<Path, ClusterSeriesReader> seriesReaders;
     if (pathType == PathType.SELECT_PATH) {
       seriesByGroupId = selectSeriesByGroupId;
       seriesReaders = selectSeriesReaders;
@@ -188,10 +184,10 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       seriesReaders = filterSeriesReaders;
     }
     if (seriesByGroupId.containsKey(groupId)) {
-      List<String> allFilterSeries = seriesByGroupId.get(groupId);
-      for (String series : allFilterSeries) {
+      List<Path> allFilterSeries = seriesByGroupId.get(groupId);
+      for (Path series : allFilterSeries) {
         if (seriesReaders.get(series).enableFetchData()) {
-          fetchDataSeries.add(series);
+          fetchDataSeries.add(series.getFullPath());
         }
       }
     }
@@ -201,18 +197,23 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     handleFetchDataResponse(pathType, fetchDataSeries, response);
   }
 
+  @Override
+  public void fetchBatchDataByTimestamp(List<Long> batchTimestamp) throws RaftConnectionException {
+
+  }
+
   /**
    * Handle response of fetching data, and add batch data to corresponding reader.
    */
   private void handleFetchDataResponse(PathType pathType, List<String> fetchDataSeries,
       QuerySeriesDataResponse response) {
-    Map<String, ClusterSeriesReader> seriesReaderMap =
+    Map<Path, ClusterSeriesReader> seriesReaderMap =
         pathType == PathType.SELECT_PATH ? selectSeriesReaders : filterSeriesReaders;
     List<BatchData> batchDataList = response.getSeriesBatchData();
     for (int i = 0; i < fetchDataSeries.size(); i++) {
       String series = fetchDataSeries.get(i);
       BatchData batchData = batchDataList.get(i);
-      seriesReaderMap.get(series).addBatchData(batchData);
+      seriesReaderMap.get(new Path(series)).addBatchData(batchData);
     }
   }
 
@@ -294,21 +295,21 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     this.selectPathPlans = selectPathPlans;
   }
 
-  public Map<String, List<String>> getSelectSeriesByGroupId() {
+  public Map<String, List<Path>> getSelectSeriesByGroupId() {
     return selectSeriesByGroupId;
   }
 
   public void setSelectSeriesByGroupId(
-      Map<String, List<String>> selectSeriesByGroupId) {
+      Map<String, List<Path>> selectSeriesByGroupId) {
     this.selectSeriesByGroupId = selectSeriesByGroupId;
   }
 
-  public Map<String, ClusterSeriesReader> getSelectSeriesReaders() {
+  public Map<Path, ClusterSeriesReader> getSelectSeriesReaders() {
     return selectSeriesReaders;
   }
 
   public void setSelectSeriesReaders(
-      Map<String, ClusterSeriesReader> selectSeriesReaders) {
+      Map<Path, ClusterSeriesReader> selectSeriesReaders) {
     this.selectSeriesReaders = selectSeriesReaders;
   }
 
@@ -321,21 +322,21 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     this.filterPathPlans = filterPathPlans;
   }
 
-  public Map<String, List<String>> getFilterSeriesByGroupId() {
+  public Map<String, List<Path>> getFilterSeriesByGroupId() {
     return filterSeriesByGroupId;
   }
 
   public void setFilterSeriesByGroupId(
-      Map<String, List<String>> filterSeriesByGroupId) {
+      Map<String, List<Path>> filterSeriesByGroupId) {
     this.filterSeriesByGroupId = filterSeriesByGroupId;
   }
 
-  public Map<String, ClusterSeriesReader> getFilterSeriesReaders() {
+  public Map<Path, ClusterSeriesReader> getFilterSeriesReaders() {
     return filterSeriesReaders;
   }
 
   public void setFilterSeriesReaders(
-      Map<String, ClusterSeriesReader> filterSeriesReaders) {
+      Map<Path, ClusterSeriesReader> filterSeriesReaders) {
     this.filterSeriesReaders = filterSeriesReaders;
   }
 }

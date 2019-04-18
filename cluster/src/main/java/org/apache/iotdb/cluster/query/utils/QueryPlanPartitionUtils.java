@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.query;
+package org.apache.iotdb.cluster.query.utils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,22 +47,27 @@ public class QueryPlanPartitionUtils {
    */
   public static void splitQueryPlanWithoutValueFilter(ClusterRpcSingleQueryManager singleQueryManager)
       throws PathErrorException {
+    splitQueryPlanBySelectPath(singleQueryManager);
+  }
+
+  /**
+   * Split query plan by select paths
+   */
+  private static void splitQueryPlanBySelectPath(ClusterRpcSingleQueryManager singleQueryManager)
+      throws PathErrorException {
     QueryPlan queryPlan = singleQueryManager.getQueryPlan();
-    Map<String, List<String>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
+    Map<String, List<Path>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
     Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
     List<Path> selectPaths = queryPlan.getPaths();
-    Map<String, List<Path>> selectPathsByGroupId = new HashMap<>();
     for (Path path : selectPaths) {
       String storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
       String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
-      if (selectPathsByGroupId.containsKey(groupId)) {
-        selectPathsByGroupId.put(groupId, new ArrayList<>());
+      if (selectSeriesByGroupId.containsKey(groupId)) {
         selectSeriesByGroupId.put(groupId, new ArrayList<>());
       }
-      selectPathsByGroupId.get(groupId).add(path);
-      selectSeriesByGroupId.get(groupId).add(path.getFullPath());
+      selectSeriesByGroupId.get(groupId).add(path);
     }
-    for (Entry<String, List<Path>> entry : selectPathsByGroupId.entrySet()) {
+    for (Entry<String, List<Path>> entry : selectSeriesByGroupId.entrySet()) {
       String groupId = entry.getKey();
       List<Path> paths = entry.getValue();
       QueryPlan subQueryPlan = new QueryPlan();
@@ -76,13 +81,14 @@ public class QueryPlanPartitionUtils {
   /**
    * Split query plan with filter.
    */
-  public static void splitQueryPlanWithValueFilter(ClusterRpcSingleQueryManager singleQueryManager) {
+  public static void splitQueryPlanWithValueFilter(
+      ClusterRpcSingleQueryManager singleQueryManager) throws PathErrorException {
     QueryPlan queryPlan = singleQueryManager.getQueryPlan();
-    if(queryPlan instanceof GroupByPlan){
+    if (queryPlan instanceof GroupByPlan) {
       splitGroupByPlan((GroupByPlan) queryPlan, singleQueryManager);
-    } else if(queryPlan instanceof AggregationPlan){
+    } else if (queryPlan instanceof AggregationPlan) {
       splitAggregationPlan((AggregationPlan) queryPlan, singleQueryManager);
-    } else{
+    } else {
       splitQueryPlan(queryPlan, singleQueryManager);
     }
   }
@@ -90,7 +96,6 @@ public class QueryPlanPartitionUtils {
   private static void splitGroupByPlan(GroupByPlan queryPlan,
       ClusterRpcSingleQueryManager singleQueryManager) {
     throw new UnsupportedOperationException();
-
   }
 
   private static void splitAggregationPlan(AggregationPlan aggregationPlan,
@@ -99,7 +104,23 @@ public class QueryPlanPartitionUtils {
   }
 
   private static void splitQueryPlan(QueryPlan queryPlan,
-      ClusterRpcSingleQueryManager singleQueryManager) {
+      ClusterRpcSingleQueryManager singleQueryManager) throws PathErrorException {
+    splitQueryPlanBySelectPath(singleQueryManager);
+    // split query plan by filter path
+    Map<String, List<Path>> filterSeriesByGroupId = singleQueryManager.getFilterSeriesByGroupId();
+    Map<String, QueryPlan> filterPathPlans = singleQueryManager.getFilterPathPlans();
     IExpression expression = queryPlan.getExpression();
+    ExpressionUtils.getAllExpressionSeries(expression, filterSeriesByGroupId);
+    for (Entry<String, List<Path>> entry:filterSeriesByGroupId.entrySet()){
+      String groupId = entry.getKey();
+      List<Path> filterSeriesList = entry.getValue();
+      // create filter sub query plan
+      QueryPlan subQueryPlan = new QueryPlan();
+      subQueryPlan.setPaths(filterSeriesList);
+      IExpression subExpression = ExpressionUtils.pruneFilterTree(expression.clone(), filterSeriesList);
+      subQueryPlan.setExpression(subExpression);
+
+      filterPathPlans.put(groupId, subQueryPlan);
+    }
   }
 }

@@ -40,6 +40,11 @@ public class OrFilter extends BinaryFilter implements Serializable {
   }
 
   @Override
+  public Filter clone() {
+    return new OrFilter(left.clone(), right.clone());
+  }
+
+  @Override
   public boolean satisfy(DigestForFilter digest) {
     return left.satisfy(digest) || right.satisfy(digest);
   }

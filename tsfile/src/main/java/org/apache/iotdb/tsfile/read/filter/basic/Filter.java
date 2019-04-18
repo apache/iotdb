@@ -61,4 +61,6 @@ public interface Filter {
    * @param endTime end time of a partition
    */
   boolean containStartEndTime(long startTime, long endTime);
+
+  Filter clone();
 }

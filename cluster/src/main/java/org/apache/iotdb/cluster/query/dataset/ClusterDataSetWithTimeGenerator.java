@@ -19,7 +19,13 @@
 package org.apache.iotdb.cluster.query.dataset;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.query.timegenerator.ClusterTimeGenerator;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -30,11 +36,16 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-@Deprecated
 public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
 
+  private ClusterRpcSingleQueryManager queryManager;
   private ClusterTimeGenerator timeGenerator;
   private List<EngineReaderByTimeStamp> readers;
+
+  /**
+   * Cached batch timestamp
+   */
+  private Iterator<Long> cachedBatchTimestamp;
   private boolean hasCachedRowRecord;
   private RowRecord cachedRowRecord;
 
@@ -47,10 +58,12 @@ public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
    * @param readers readers in List(EngineReaderByTimeStamp) structure
    */
   public ClusterDataSetWithTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
-      ClusterTimeGenerator timeGenerator, List<EngineReaderByTimeStamp> readers) {
+      ClusterTimeGenerator timeGenerator, List<EngineReaderByTimeStamp> readers,
+      ClusterRpcSingleQueryManager queryManager) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
     this.readers = readers;
+    this.queryManager = queryManager;
   }
 
   @Override
@@ -76,9 +89,9 @@ public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
    * @return if there has next row record.
    */
   private boolean cacheRowRecord() throws IOException {
-    while (timeGenerator.hasNext()) {
+    while (hasNextTimestamp()) {
       boolean hasField = false;
-      long timestamp = timeGenerator.next();
+      long timestamp = cachedBatchTimestamp.next();
       RowRecord rowRecord = new RowRecord(timestamp);
       for (int i = 0; i < readers.size(); i++) {
         EngineReaderByTimeStamp reader = readers.get(i);
@@ -99,36 +112,31 @@ public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
     return hasCachedRowRecord;
   }
 
-  private Field getField(Object value, TSDataType dataType) {
-    Field field = new Field(dataType);
-
-    if (value == null) {
-      field.setNull();
-      return field;
+  /**
+   * Check if it has next valid timestamp
+   */
+  private boolean hasNextTimestamp() throws IOException {
+    if(cachedBatchTimestamp == null || !cachedBatchTimestamp.hasNext()) {
+      List<Long> batchTimestamp = new ArrayList<>();
+      for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
+        if (timeGenerator.hasNext()) {
+          batchTimestamp.add(timeGenerator.next());
+        } else {
+          break;
+        }
+      }
+      if (!batchTimestamp.isEmpty()) {
+        cachedBatchTimestamp = batchTimestamp.iterator();
+        try {
+          queryManager.fetchBatchDataByTimestamp(batchTimestamp);
+        } catch (RaftConnectionException e) {
+          throw new IOException(e);
+        }
+      }
     }
-
-    switch (dataType) {
-      case DOUBLE:
-        field.setDoubleV((double) value);
-        break;
-      case FLOAT:
-        field.setFloatV((float) value);
-        break;
-      case INT64:
-        field.setLongV((long) value);
-        break;
-      case INT32:
-        field.setIntV((int) value);
-        break;
-      case BOOLEAN:
-        field.setBoolV((boolean) value);
-        break;
-      case TEXT:
-        field.setBinaryV((Binary) value);
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+    if(cachedBatchTimestamp != null && cachedBatchTimestamp.hasNext()){
+      return true;
     }
-    return field;
+    return false;
   }
 }
