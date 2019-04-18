@@ -96,6 +96,9 @@ public class OverflowProcessor extends Processor {
   private WriteLogNode logNode;
   private VersionController versionController;
 
+  private boolean isClosed = false;
+  private boolean isFlush = false;
+
   public OverflowProcessor(String processorName, Map<String, Action> parameters,
       FileSchema fileSchema, VersionController versionController)
       throws IOException {
@@ -108,14 +111,7 @@ public class OverflowProcessor extends Processor {
       overflowDirPath = overflowDirPath + File.separatorChar;
     }
     this.parentPath = overflowDirPath + processorName;
-    File processorDataDir = new File(parentPath);
-    if (!processorDataDir.exists()) {
-      processorDataDir.mkdirs();
-    }
-    // recover file
-    recovery(processorDataDir);
-    // memory
-    workSupport = new OverflowMemtable();
+
     overflowFlushAction = parameters.get(FileNodeConstants.OVERFLOW_FLUSH_ACTION);
     filenodeFlushAction = parameters
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
@@ -126,7 +122,35 @@ public class OverflowProcessor extends Processor {
           getOverflowRestoreFile(),
           FileNodeManager.getInstance().getRestoreFilePath(processorName));
     }
+
+    reopen();
   }
+
+  public void reopen() throws IOException {
+    if (!isClosed) {
+      return;
+    }
+    // recover file
+    File processorDataDir = new File(parentPath);
+    if (!processorDataDir.exists()) {
+      processorDataDir.mkdirs();
+    }
+    recovery(processorDataDir);
+
+    // memory
+    if (workSupport == null) {
+      workSupport = new OverflowMemtable();
+    } else {
+      workSupport.clear();
+    }
+
+  }
+  public void checkOpen() throws OverflowProcessorException {
+    if (isClosed) {
+      throw new OverflowProcessorException("OverflowProcessor already closed");
+    }
+  }
+
 
   private void recovery(File parentFile) throws IOException {
     String[] subFilePaths = clearFile(parentFile.list());
@@ -173,6 +197,11 @@ public class OverflowProcessor extends Processor {
    * insert one time-series record
    */
   public void insert(TSRecord tsRecord) throws IOException {
+    try {
+      checkOpen();
+    } catch (OverflowProcessorException e) {
+      throw new IOException(e);
+    }
     // memory control
     long memUage = MemUtils.getRecordSize(tsRecord);
     UsageLevel usageLevel = BasicMemController.getInstance().acquireUsage(this, memUage);
@@ -261,6 +290,11 @@ public class OverflowProcessor extends Processor {
    */
   public void delete(String deviceId, String measurementId, long timestamp, long version,
       List<ModificationFile> updatedModFiles) throws IOException {
+    try {
+      checkOpen();
+    } catch (OverflowProcessorException e) {
+      throw new IOException(e);
+    }
     workResource.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
     workSupport.delete(deviceId, measurementId, timestamp, false);
     if (isFlush()) {
@@ -400,8 +434,10 @@ public class OverflowProcessor extends Processor {
   private void switchWorkToFlush() {
     queryFlushLock.lock();
     try {
+      OverflowMemtable temp = flushSupport == null ? new OverflowMemtable() : flushSupport;
       flushSupport = workSupport;
-      workSupport = new OverflowMemtable();
+      workSupport = temp;
+      isFlush = true;
     } finally {
       queryFlushLock.unlock();
     }
@@ -412,7 +448,7 @@ public class OverflowProcessor extends Processor {
     try {
       flushSupport.clear();
       workResource.appendMetadatas();
-      flushSupport = null;
+      isFlush = false;
     } finally {
       queryFlushLock.unlock();
     }
@@ -444,8 +480,7 @@ public class OverflowProcessor extends Processor {
   }
 
   public boolean isFlush() {
-    //see BufferWriteProcess.isFlush()
-    return  flushSupport != null;
+    return isFlush;
   }
 
   private boolean flushTask(String displayMessage) {
@@ -546,6 +581,9 @@ public class OverflowProcessor extends Processor {
 
   @Override
   public void close() throws OverflowProcessorException {
+    if (isClosed) {
+      return;
+    }
     LOGGER.info("The overflow processor {} starts close operation.", getProcessorName());
     long closeStartTime = System.currentTimeMillis();
     // flush data
@@ -570,14 +608,22 @@ public class OverflowProcessor extends Processor {
           DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
           closeEndTime - closeStartTime);
     }
+    try {
+      clear();
+    } catch (IOException e) {
+      throw new OverflowProcessorException(e);
+    }
+    isClosed = true;
   }
 
   public void clear() throws IOException {
     if (workResource != null) {
       workResource.close();
+      workResource = null;
     }
     if (mergeResource != null) {
       mergeResource.close();
+      mergeResource = null;
     }
   }
 
@@ -704,5 +750,9 @@ public class OverflowProcessor extends Processor {
   @Override
   public String toString() {
     return "OverflowProcessor in " + parentPath;
+  }
+
+  public boolean isClosed() {
+    return isClosed;
   }
 }
