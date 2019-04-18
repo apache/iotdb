@@ -113,7 +113,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
         QueryPlanPartitionUtils.splitQueryPlanWithoutValueFilter(this);
         break;
       case GLOBAL_TIME:
-        QueryPlanPartitionUtils.splitQueryPlanWithValueFilter(this);
+        QueryPlanPartitionUtils.splitQueryPlanWithoutValueFilter(this);
         break;
       case FILTER:
         QueryPlanPartitionUtils.splitQueryPlanWithValueFilter(this);
