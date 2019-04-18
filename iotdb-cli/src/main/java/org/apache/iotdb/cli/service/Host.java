@@ -29,8 +29,8 @@ import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 @Command(name = "host", description = "Print all data partitions information which specific host belongs to")
 public class Host extends NodeToolCmd {
 
-  @Option(title = "ip", name = {"-i", "--ip"}, required = true, description = "Specify the host ip for accurate hosts information")
-  private String ip = null;
+  @Option(title = "ip", name = {"-i", "--ip"}, description = "Specify the host ip for accurate hosts information")
+  private String ip = "127.0.0.1";
 
   @Option(title = "port", name = {"-p", "--port"}, description = "Specify the host port for accurate hosts information")
   private int port = -1;

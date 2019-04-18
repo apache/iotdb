@@ -393,7 +393,7 @@ public class RaftUtils {
     Map<String[], String[]> res = new HashMap<>();
     int index = 0;
     for (Entry<PhysicalNode[], List<String>> entry : groupSGMap.entrySet()) {
-      res.put(groupIps[index], (String[]) entry.getValue().toArray());
+      res.put(groupIps[index], entry.getValue().toArray(new String[entry.getValue().size()]));
     }
     return res;
   }
