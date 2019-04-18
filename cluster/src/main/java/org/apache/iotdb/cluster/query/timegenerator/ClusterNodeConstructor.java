@@ -23,7 +23,7 @@ import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.reader.ClusterSeriesReader;
+import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSeriesReader;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.timegenerator.AbstractNodeConstructor;

@@ -27,7 +27,7 @@ import java.util.Set;
 import org.apache.iotdb.cluster.query.dataset.ClusterDataSetWithTimeGenerator;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.reader.ClusterSeriesReader;
+import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSeriesReader;
 import org.apache.iotdb.cluster.query.timegenerator.ClusterTimeGenerator;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -80,7 +80,7 @@ public class ClusterExecutorWithTimeGenerator {
       timestampGenerator = new ClusterTimeGenerator(queryExpression.getExpression(), context,
           queryManager);
       readersOfSelectedSeries = ClusterSeriesReaderFactory
-          .getByTimestampReadersOfSelectedPaths(queryExpression.getSelectedSeries(), context,
+          .createReadersByTimestampOfSelectedPaths(queryExpression.getSelectedSeries(), context,
               queryManager);
     } catch (IOException ex) {
       throw new FileNodeManagerException(ex);

@@ -44,7 +44,9 @@ public interface IClusterRpcSingleQueryManager {
    * fetching data from remote query node will fetch for all series in the same data group. If the
    * cached data for specific series exceed limit, ignore this fetching data process of the series.
    */
-  void fetchBatchData(String groupId, PathType pathType) throws RaftConnectionException;
+  void fetchBatchDataForSelectPaths(String groupId) throws RaftConnectionException;
+
+  void fetchBatchDataForFilterPaths(String groupId) throws RaftConnectionException;
 
   /**
    * Fetch batch data of all select paths by batch timestamp

@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query.reader;
+package org.apache.iotdb.cluster.query.reader.coordinatornode;
 
 import java.io.IOException;
 import java.util.LinkedList;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
@@ -41,11 +40,6 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
    * Data group id
    */
   private String groupId;
-
-  /**
-   * Series type
-   */
-  private PathType pathType;
 
   private ClusterRpcSingleQueryManager queryManager;
 
@@ -79,11 +73,10 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
    */
   private boolean remoteDataFinish;
 
-  public ClusterSeriesReader(String groupId, Path seriesPath, PathType pathType,
-      TSDataType dataType, ClusterRpcSingleQueryManager queryManager) {
+  public ClusterSeriesReader(String groupId, Path seriesPath, TSDataType dataType,
+      ClusterRpcSingleQueryManager queryManager) {
     this.groupId = groupId;
     this.seriesPath = seriesPath;
-    this.pathType = pathType;
     this.dataType = dataType;
     this.queryManager = queryManager;
     this.batchDataList = new LinkedList<>();
@@ -134,7 +127,7 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
    */
   private void updateCurrentBatchData() throws RaftConnectionException {
     if (batchDataList.isEmpty() && !remoteDataFinish) {
-      queryManager.fetchBatchData(groupId, pathType);
+      queryManager.fetchBatchDataForSelectPaths(groupId);
     }
     if (!batchDataList.isEmpty()) {
       currentBatchData = batchDataList.removeFirst();

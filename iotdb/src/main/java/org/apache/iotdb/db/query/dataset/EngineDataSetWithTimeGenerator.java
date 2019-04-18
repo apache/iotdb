@@ -97,4 +97,12 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
     }
     return hasCachedRowRecord;
   }
+
+  public EngineTimeGenerator getTimeGenerator() {
+    return timeGenerator;
+  }
+
+  public List<EngineReaderByTimeStamp> getReaders() {
+    return readers;
+  }
 }
