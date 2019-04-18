@@ -96,7 +96,7 @@ public class OverflowProcessor extends Processor {
   private WriteLogNode logNode;
   private VersionController versionController;
 
-  private boolean isClosed = false;
+  private boolean isClosed = true;
   private boolean isFlush = false;
 
   public OverflowProcessor(String processorName, Map<String, Action> parameters,

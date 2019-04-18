@@ -84,7 +84,7 @@ public class BufferWriteProcessor extends Processor {
   private WriteLogNode logNode;
   private VersionController versionController;
 
-  private boolean isClosed = false;
+  private boolean isClosed = true;
   private boolean isFlush = false;
 
   /**
