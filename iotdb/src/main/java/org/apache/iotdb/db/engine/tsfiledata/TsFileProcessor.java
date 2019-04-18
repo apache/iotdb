@@ -48,6 +48,7 @@ import org.apache.iotdb.db.engine.bufferwrite.RestorableTsFileIOWriter;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
+import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
@@ -90,6 +91,10 @@ import org.slf4j.LoggerFactory;
 public class TsFileProcessor extends Processor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileProcessor.class);
+  public static final int WRITE_SUCCESS = 1;
+  public static final int WRITE_IN_WARNING_MEM= 0;
+  public static final int WRITE_REJECT_BY_TIME  = -1;
+  public static final int WRITE_REJECT_BY_MEM = -2;
 
   //this is just a part of fileSchemaRef: only the measurements that belong to this TsFileProcessor
   // are in this fileSchemaRef. And, this filed is shared with other classes (i.e., storage group
@@ -259,27 +264,65 @@ public class TsFileProcessor extends Processor {
    * flushing operation will be called.
    *
    * @param plan data to be written
-   * @return true if the tsRecord can be inserted into tsFile. otherwise false (, then you need to
-   * insert it into overflow)
+   * @return - 1 (WRITE_SUCCESS) if the tsRecord can be inserted into tsFile.
+   * - 0 (WRITE_IN_WARNING_MEM) if the memory is UsageLevel.WARNING
+   * - -1 (WRITE_REJECT_BY_TIME) if you need to insert it into overflow
+   * - -2 (WRITE_REJECT_BY_MEM) if the memory is UsageLevel.ERROR
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
-  public boolean insert(InsertPlan plan) throws BufferWriteProcessorException, IOException {
+  public int insert(InsertPlan plan) throws BufferWriteProcessorException, IOException {
     if (lastFlushedTimeForEachDevice.containsKey(plan.getDeviceId()) && plan.getTime() <= lastFlushedTimeForEachDevice.get(plan.getDeviceId())) {
-      return false;
+      return WRITE_REJECT_BY_TIME;
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       logNode.write(plan);
     }
-    String deviceId = plan.getDeviceId();
-    long time = plan.getTime();
     long memUsage = 0;
     TSDataType type;
     String measurement;
     for (int i=0; i < plan.getMeasurements().length; i++){
       measurement = plan.getMeasurements()[i];
       type = fileSchemaRef.getMeasurementDataType(measurement);
-      workMemTable.write(deviceId, measurement, type, time, plan.getValues()[i]);
       memUsage += MemUtils.getPointSize(type, measurement);
+    }
+    UsageLevel level = BasicMemController.getInstance().acquireUsage(this, memUsage);
+    switch (level) {
+      case SAFE:
+        doInsert(plan);
+        checkMemThreshold4Flush(memUsage);
+        return WRITE_SUCCESS;
+      case WARNING:
+        if(LOGGER.isWarnEnabled()) {
+          LOGGER.warn("Memory usage will exceed warning threshold, current : {}.",
+              MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+        }
+        doInsert(plan);
+        try {
+          flush();
+        } catch (IOException e) {
+          throw new BufferWriteProcessorException(e);
+        }
+        return WRITE_IN_WARNING_MEM;
+      case DANGEROUS:
+        if (LOGGER.isWarnEnabled()) {
+          LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",
+              MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+        }
+        return WRITE_REJECT_BY_MEM;
+      default:
+          return WRITE_REJECT_BY_MEM;
+    }
+  }
+
+  private void doInsert(InsertPlan plan) {
+    String deviceId = plan.getDeviceId();
+    long time = plan.getTime();
+    TSDataType type;
+    String measurement;
+    for (int i=0; i < plan.getMeasurements().length; i++){
+      measurement = plan.getMeasurements()[i];
+      type = fileSchemaRef.getMeasurementDataType(measurement);
+      workMemTable.write(deviceId, measurement, type, time, plan.getValues()[i]);
     }
     if (!minWrittenTimeForEachDeviceInCurrentFile.containsKey(deviceId)) {
       minWrittenTimeForEachDeviceInCurrentFile.put(deviceId, time);
@@ -289,9 +332,6 @@ public class TsFileProcessor extends Processor {
       maxWrittenTimeForEachDeviceInCurrentFile.put(deviceId, time);
     }
     valueCount++;
-    BasicMemController.getInstance().acquireUsage(this, memUsage);
-    checkMemThreshold4Flush(memUsage);
-    return true;
   }
 
   /**
