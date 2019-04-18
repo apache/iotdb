@@ -314,21 +314,44 @@ public class RaftUtils {
   public static Map<Integer, String> getPhysicalRing() {
     SortedMap<Integer, PhysicalNode> hashNodeMap = router.getPhysicalRing();
     Map<Integer, String> res = new LinkedHashMap<>();
-    hashNodeMap.entrySet().forEach(entry -> res.put(entry.getKey(), entry.getValue().toString()));
+    hashNodeMap.entrySet().forEach(entry -> res.put(entry.getKey(), entry.getValue().getIp()));
     return res;
   }
 
   public static Map<Integer, String> getVirtualRing() {
     SortedMap<Integer, VirtualNode> hashNodeMap = router.getVirtualRing();
     Map<Integer, String> res = new LinkedHashMap<>();
-    hashNodeMap.entrySet().forEach(entry -> res.put(entry.getKey(), entry.getValue().getPhysicalNode().toString()));
+    hashNodeMap.entrySet().forEach(entry -> res.put(entry.getKey(), entry.getValue().getPhysicalNode().getIp()));
     return res;
   }
 
-  public static PeerId getLeaderOfSG(String sg) {
-    PhysicalNode[] group = router.routeGroup(sg);
-    String groupId = router.getGroupID(group);
+  /**
+   * Get all node information of the data group of input storage group.
+   * The first node is the current leader
+   *
+   * @param sg storage group ID. If null, return metadata group info
+   */
+  public static PeerId[] getDataPartitionOfSG(String sg) {
+    String groupId;
+    PeerId[] nodes;
+    if (sg == null) {
+      groupId = ClusterConfig.METADATA_GROUP_ID;
+      nodes = (PeerId[]) ((RaftService) server.getMetadataHolder().getService()).getPeerIdList()
+          .toArray();
+    } else {
+      PhysicalNode[] group = router.routeGroup(sg);
+      groupId = router.getGroupID(group);
+      nodes = getPeerIdArrayFrom(group);
+    }
     PeerId leader = RaftUtils.getLeaderPeerID(groupId);
-    return leader;
+    for (int i = 0; i < nodes.length; i++) {
+      if (leader.equals(nodes[i])) {
+        PeerId t = nodes[i];
+        nodes[i] = nodes[0];
+        nodes[0] = t;
+        break;
+      }
+    }
+    return nodes;
   }
 }

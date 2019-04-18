@@ -19,6 +19,7 @@
 package org.apache.iotdb.cli.service;
 
 import io.airlift.airline.Command;
+import io.airlift.airline.Option;
 import java.util.Map;
 import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
 import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
@@ -26,11 +27,18 @@ import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 @Command(name = "ring", description = "Print information about the hash ring")
 public class Ring extends NodeToolCmd
 {
+  @Option(title = "physical_ring", name = {"-p", "--physical"}, description = "Show physical nodes instead of virtual ones")
+  private boolean physical = false;
 
   @Override
   public void execute(ClusterMonitorMBean proxy)
   {
-    Map<Integer, String> map = proxy.getVirtualRing();
+    Map<Integer, String> map;
+    if (physical) {
+      map = proxy.getPhysicalRing();
+    } else {
+      map = proxy.getVirtualRing();
+    }
     map.entrySet().forEach(entry -> System.out.println(entry.getKey() + "\t->\t" + entry.getValue()));
   }
 }

@@ -35,7 +35,7 @@ public class Leader extends NodeToolCmd {
     if (sg == null) {
       sg = ClusterConfig.METADATA_GROUP_ID;
     }
-    String leader = proxy.getLeaderOfSG(sg);
-    System.out.println(leader);
+    String nodes = proxy.getDataPartitionOfSG(sg);
+    System.out.println(nodes);
   }
 }

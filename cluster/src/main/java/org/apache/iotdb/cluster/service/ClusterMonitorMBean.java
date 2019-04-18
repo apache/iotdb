@@ -30,5 +30,5 @@ public interface ClusterMonitorMBean {
 
   Map<String, String[]> getAllGroups();
 
-  String getLeaderOfSG(String sg);
+  String getDataPartitionOfSG(String sg);
 }

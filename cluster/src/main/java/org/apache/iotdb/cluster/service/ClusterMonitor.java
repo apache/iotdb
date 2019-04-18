@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.service;
 
+import com.alipay.sofa.jraft.entity.PeerId;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.cluster.utils.RaftUtils;
@@ -88,7 +89,13 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public String getLeaderOfSG(String sg) {
-    return RaftUtils.getLeaderOfSG(sg).toString();
+  public String getDataPartitionOfSG(String sg) {
+    PeerId[] nodes = RaftUtils.getDataPartitionOfSG(sg);
+    StringBuilder builder = new StringBuilder();
+    builder.append(nodes[0]).append(" (leader)");
+    for (int i = 1; i < nodes.length; i++) {
+      builder.append(", ").append(nodes[i].getIp());
+    }
+    return builder.toString();
   }
 }
