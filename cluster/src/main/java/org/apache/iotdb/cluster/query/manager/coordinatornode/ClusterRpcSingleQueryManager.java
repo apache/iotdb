@@ -36,7 +36,6 @@ import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.query.ClusterRpcReaderUtils;
 import org.apache.iotdb.cluster.utils.query.QueryPlanPartitionUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;

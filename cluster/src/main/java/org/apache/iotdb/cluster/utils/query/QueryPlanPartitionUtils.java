@@ -27,8 +27,11 @@ import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQu
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 /**
  * Utils for splitting query plan to several sub query plans by group id.
@@ -71,9 +74,32 @@ public class QueryPlanPartitionUtils {
   }
 
   /**
-   * Split query plan with value filter.
+   * Split query plan with filter.
    */
   public static void splitQueryPlanWithValueFilter(ClusterRpcSingleQueryManager singleQueryManager) {
+    QueryPlan queryPlan = singleQueryManager.getQueryPlan();
+    if(queryPlan instanceof GroupByPlan){
+      splitGroupByPlan((GroupByPlan) queryPlan, singleQueryManager);
+    } else if(queryPlan instanceof AggregationPlan){
+      splitAggregationPlan((AggregationPlan) queryPlan, singleQueryManager);
+    } else{
+      splitQueryPlan(queryPlan, singleQueryManager);
+    }
+  }
 
+  private static void splitGroupByPlan(GroupByPlan queryPlan,
+      ClusterRpcSingleQueryManager singleQueryManager) {
+    throw new UnsupportedOperationException();
+
+  }
+
+  private static void splitAggregationPlan(AggregationPlan aggregationPlan,
+      ClusterRpcSingleQueryManager singleQueryManager) {
+    throw new UnsupportedOperationException();
+  }
+
+  private static void splitQueryPlan(QueryPlan queryPlan,
+      ClusterRpcSingleQueryManager singleQueryManager) {
+    IExpression expression = queryPlan.getExpression();
   }
 }
