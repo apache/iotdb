@@ -24,10 +24,10 @@ import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
-@Command(name = "leader", description = "Print leader host information of specific storage group")
-public class Leader extends NodeToolCmd {
+@Command(name = "storagegroup", description = "Print all hosts information of specific storage group")
+public class StorageGroup extends NodeToolCmd {
 
-  @Arguments(description = "Specify a storage group for accurate leader information")
+  @Arguments(description = "Specify a storage group for accurate hosts information")
   private String sg = null;
 
   @Override

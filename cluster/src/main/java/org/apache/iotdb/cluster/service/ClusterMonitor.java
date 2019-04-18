@@ -98,4 +98,14 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     }
     return builder.toString();
   }
+
+  @Override
+  public Map<String[], String[]> getDataPartitonOfNode(String ip) {
+    return RaftUtils.getDataPartitionOfNode(ip);
+  }
+
+  @Override
+  public Map<String[], String[]> getDataPartitonOfNode(String ip, int port) {
+    return RaftUtils.getDataPartitionOfNode(ip, port);
+  }
 }

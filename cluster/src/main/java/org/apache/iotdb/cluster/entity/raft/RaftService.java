@@ -93,4 +93,7 @@ public class RaftService implements IService {
     this.node = node;
   }
 
+  public StateMachine getFsm() {
+    return fsm;
+  }
 }

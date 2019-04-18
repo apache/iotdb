@@ -542,7 +542,7 @@ public class MManager {
    *
    * @return A HashSet instance which stores all storage group info
    */
-  public Set<String> getAllStorageGroup() throws PathErrorException {
+  public Set<String> getAllStorageGroup() {
 
     lock.readLock().lock();
     try {

@@ -29,13 +29,19 @@ import com.alipay.sofa.jraft.util.Bits;
 import com.alipay.sofa.jraft.util.OnlyForTest;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.entity.raft.MetadataStateManchine;
 import org.apache.iotdb.cluster.qp.callback.QPTask;
 import org.apache.iotdb.cluster.qp.callback.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -50,6 +56,7 @@ import org.apache.iotdb.cluster.rpc.raft.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.cluster.utils.hash.VirtualNode;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +66,7 @@ public class RaftUtils {
   private static final Server server = Server.getInstance();
   private static final Router router = Router.getInstance();
   private static final AtomicInteger requestId = new AtomicInteger(0);
+  private static final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
 
   /**
    * The cache will be update in two case: 1. When @onLeaderStart() method of state machine is
@@ -353,5 +361,40 @@ public class RaftUtils {
       }
     }
     return nodes;
+  }
+
+  public static Map<String[], String[]> getDataPartitionOfNode(String ip) {
+    return getDataPartitionOfNode(ip, config.getPort());
+  }
+
+  public static Map<String[], String[]> getDataPartitionOfNode(String ip, int port) {
+    PhysicalNode[][] groups = router.getGroupsNodes(ip, port);
+
+    Map<PhysicalNode[], List<String>> groupSGMap = new LinkedHashMap<>();
+    for (int i = 0; i < groups.length; i++) {
+      groupSGMap.put(groups[i], new ArrayList<>());
+    }
+    Set<String> allSGList = ((MetadataStateManchine)((RaftService)server.getMetadataHolder().getService()).getFsm()).getAllStorageGroups();
+    for (String sg : allSGList) {
+      PhysicalNode[] tempGroup = router.routeGroup(sg);
+      if (groupSGMap.containsKey(tempGroup)) {
+        groupSGMap.get(tempGroup).add(sg);
+      }
+    }
+
+    String[][] groupIps = new String[groups.length][];
+    for (int i = 0; i < groups.length; i++) {
+      groupIps[i] = new String[groups[i].length];
+      for (int j = 0; j < groups[i].length; j++) {
+        groupIps[i][j] = groups[i][j].ip;
+      }
+    }
+
+    Map<String[], String[]> res = new HashMap<>();
+    int index = 0;
+    for (Entry<PhysicalNode[], List<String>> entry : groupSGMap.entrySet()) {
+      res.put(groupIps[index], (String[]) entry.getValue().toArray());
+    }
+    return res;
   }
 }

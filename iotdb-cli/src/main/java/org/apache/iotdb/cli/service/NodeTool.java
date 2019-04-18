@@ -54,7 +54,8 @@ public class NodeTool {
     List<Class<? extends Runnable>> commands = newArrayList(
         Help.class,
         Ring.class,
-        Leader.class
+        StorageGroup.class,
+        Host.class
     );
 
     Cli.CliBuilder<Runnable> builder = Cli.builder("nodetool");

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.service;
 
+import java.util.List;
 import java.util.Map;
 
 public interface ClusterMonitorMBean {
@@ -31,4 +32,7 @@ public interface ClusterMonitorMBean {
   Map<String, String[]> getAllGroups();
 
   String getDataPartitionOfSG(String sg);
+
+  Map<String[], String[]> getDataPartitonOfNode(String ip);
+  Map<String[], String[]> getDataPartitonOfNode(String ip, int port);
 }
