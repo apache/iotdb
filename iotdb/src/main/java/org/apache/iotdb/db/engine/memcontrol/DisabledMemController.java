@@ -45,12 +45,12 @@ public class DisabledMemController extends BasicMemController {
   }
 
   @Override
-  public UsageLevel reportUse(Object user, long usage) {
+  public UsageLevel acquireUsage(Object user, long usage) {
     return UsageLevel.SAFE;
   }
 
   @Override
-  public void reportFree(Object user, long freeSize) {
+  public void releaseUsage(Object user, long freeSize) {
 
   }
 }
