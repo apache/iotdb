@@ -128,7 +128,7 @@ public class Server {
 
   }
 
-  public void stop() throws ProcessorException {
+  public void stop() throws ProcessorException, InterruptedException {
     QPTaskManager.getInstance().close(true, ClusterConstant.CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT);
     iotdb.deactivate();
     CLIENT_MANAGER.shutdown();
