@@ -187,10 +187,9 @@ public class IoTDBConfig {
   private long memMonitorInterval = 1000;
   /**
    * Decide how to control memory usage of inserting data. 0 is RecordMemController, which sums the
-   * size of each record (tuple). 1 is JVMMemController, which uses the JVM heap memory as the
-   * memory usage indicator.
+   * size of each record (tuple).
    */
-  private int memControllerType = 1;
+  private int memControllerType = 0;
   /**
    * When a bufferwrite's metadata size (in byte) exceed this, the bufferwrite is forced closed.
    */

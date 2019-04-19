@@ -49,8 +49,6 @@ public abstract class BasicMemController implements IService {
   public static BasicMemController getInstance() {
     switch (ControllerType.values()[IoTDBDescriptor.getInstance().getConfig()
         .getMemControllerType()]) {
-      case JVM:
-        return JVMMemController.getInstance();
       case RECORD:
       default:
         return RecordMemController.getInstance();
@@ -162,7 +160,7 @@ public abstract class BasicMemController implements IService {
    *          warning - there is only a small amount of memories available, the user would better
    *                    try to reduce memory usage but can still proceed and this usage is recorded.
    *          dangerous - there is almost no memories unused, the user cannot proceed before enough
-   *                    memory usages are released and this usage is NOT recorded.
+   *                    memory usages are released but this usage is still recorded.
    */
   public abstract UsageLevel acquireUsage(Object user, long usage);
 
@@ -175,7 +173,7 @@ public abstract class BasicMemController implements IService {
   public abstract void releaseUsage(Object user, long freeSize);
 
   public enum ControllerType {
-    RECORD, JVM
+    RECORD
   }
 
   public enum UsageLevel {
