@@ -16,16 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.client;
+package org.apache.iotdb.cli.tool;
 
 import java.io.File;
 import java.io.IOException;
-
+import org.apache.iotdb.cli.client.AbstractScript;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class StartClientScriptIT extends AbstractScript {
+public class ImportCsvTestIT extends AbstractScript {
 
   @Before
   public void setUp() throws Exception {
@@ -36,7 +36,7 @@ public class StartClientScriptIT extends AbstractScript {
   }
 
   @Test
-  public void test() throws IOException, InterruptedException {
+  public void test() throws IOException {
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
       testOnWindows();
@@ -47,28 +47,31 @@ public class StartClientScriptIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
-    final String[] output = {"````````````````````````", "Starting IoTDB Client",
-        "````````````````````````",
-        "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
+    final String[] output = {"````````````````````````````````````````````````",
+        "Starting IoTDB Client Import Script",
+        "````````````````````````````````````````````````",
+        "Encounter an error when importing data, error is: Connection Error, please check whether "
+            + "the network is available or the server has started."};
     String dir = getCurrentPath("cmd.exe", "/c", "echo %cd%");
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "cli" + File.separator + "bin" + File.separator + "start-client.bat",
-        "-h",
-        "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
+        dir + File.separator + "cli" + File.separator + "bin" + File.separator + "import-csv.bat",
+        "-h", "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root", "-f", "./");
     testOutput(builder, output);
   }
 
   @Override
   protected void testOnUnix() throws IOException {
-    final String[] output = {"---------------------", "Starting IoTDB Client",
-        "---------------------",
-        "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
+    final String[] output = {"------------------------------------------",
+        "Starting IoTDB Client Import Script",
+        "------------------------------------------",
+        "Encounter an error when importing data, error is: Connection Error, please check whether "
+            + "the network is available or the server has started."};
     String dir = getCurrentPath("pwd");
     System.out.println(dir);
     ProcessBuilder builder = new ProcessBuilder("sh",
-        dir + File.separator + "cli" + File.separator + "bin" + File.separator + "start-client.sh",
+        dir + File.separator + "cli" + File.separator + "bin" + File.separator + "import-csv.sh",
         "-h",
-        "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
+        "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root", "-f", "./");
     testOutput(builder, output);
   }
 }
