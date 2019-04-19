@@ -94,7 +94,7 @@ public class EnvironmentUtils {
     cleanAllDir();
     // FileNodeManager.getInstance().reset();
     // reset MemController
-    BasicMemController.getInstance().close();
+    BasicMemController.getInstance().stop();
     try {
       BasicMemController.getInstance().start();
     } catch (StartupException e) {
