@@ -192,6 +192,7 @@ public class BufferWriteProcessor extends Processor {
               tsRecord.time,
               dataPoint.getValue().toString());
         }
+        memDataSize.addAndGet(memUsage);
         valueCount++;
         try {
           flush();
