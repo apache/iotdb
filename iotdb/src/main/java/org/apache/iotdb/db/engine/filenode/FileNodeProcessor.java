@@ -1525,6 +1525,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
     if (mergeFileWriter != null) {
       mergeFileWriter.endFile(fileSchema);
+      mergeFileWriter = null;
     }
     backupIntervalFile.setBaseDirIndex(directories.getTsFileFolderIndex(mergeBaseDir));
     backupIntervalFile.setRelativePath(mergeFileName);

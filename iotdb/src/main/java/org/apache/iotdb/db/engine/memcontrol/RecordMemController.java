@@ -82,41 +82,17 @@ public class RecordMemController extends BasicMemController {
     AtomicLong userUsage = memMap.computeIfAbsent(user, k -> new AtomicLong(0));
     long oldUsage = userUsage.get();
 
-    long newTotUsage = totalMemUsed.get() + usage;
-    // check if the new usage will reach dangerous threshold
-    if (newTotUsage > dangerouseThreshold) {
-      logDangerous(newTotUsage, user);
+    long newTotUsage = totalMemUsed.addAndGet(usage);
+    userUsage.addAndGet(usage);
+    if (newTotUsage < warningThreshold) {
+      logSafe(newTotUsage, user, usage, oldUsage);
+      return UsageLevel.SAFE;
+    } else if (newTotUsage < dangerouseThreshold) {
+      logWarn(newTotUsage, user, usage, oldUsage);
+      return UsageLevel.WARNING;
+    } else {
+      logDangerous(newTotUsage, user, usage, oldUsage);
       return UsageLevel.DANGEROUS;
-    }
-
-    if (newTotUsage < dangerouseThreshold) {
-      newTotUsage = totalMemUsed.addAndGet(usage);
-      // double check if updating will reach dangerous threshold
-      if (newTotUsage < warningThreshold) {
-        // still safe, action taken
-        userUsage.addAndGet(usage);
-        logSafe(newTotUsage, user, usage, oldUsage);
-        return UsageLevel.SAFE;
-      } else if (newTotUsage < dangerouseThreshold) {
-        // become warning because competition with other threads, still take the action
-        userUsage.addAndGet(usage);
-        logWarn(newTotUsage, user, usage, oldUsage);
-        return UsageLevel.WARNING;
-      } else {
-        logDangerous(newTotUsage, user);
-        // become dangerous because competition with other threads, discard this action
-        totalMemUsed.addAndGet(-usage);
-        return UsageLevel.DANGEROUS;
-      }
-    }
-    return null;
-  }
-
-  private void logDangerous(long newTotUsage, Object user) {
-    if (LOGGER.isWarnEnabled()) {
-      LOGGER.warn("Memory request from {} is denied, memory usage : {}",
-          user,
-          MemUtils.bytesCntToStr(newTotUsage));
     }
   }
 
@@ -132,6 +108,15 @@ public class RecordMemController extends BasicMemController {
   private void logWarn(long newTotUsage, Object user, long usage, long oldUsage) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Warning Threshold : {} allocated to {}, it is using {}, total usage {}",
+          MemUtils.bytesCntToStr(usage), user,
+          MemUtils.bytesCntToStr(oldUsage + usage),
+          MemUtils.bytesCntToStr(newTotUsage));
+    }
+  }
+
+  private void logDangerous(long newTotUsage, Object user, long usage, long oldUsage) {
+    if (LOGGER.isWarnEnabled()) {
+      LOGGER.warn("Warning Threshold : {} allocated to {}, it is using {}, total usage {}",
           MemUtils.bytesCntToStr(usage), user,
           MemUtils.bytesCntToStr(oldUsage + usage),
           MemUtils.bytesCntToStr(newTotUsage));
@@ -154,6 +139,7 @@ public class RecordMemController extends BasicMemController {
           .error("{} requests to free {} bytes while it only registered {} bytes", user,
               freeSize, usage);
       totalMemUsed.addAndGet(-usageLong);
+      usage.set(0);
     } else {
       long newTotalMemUsage = totalMemUsed.addAndGet(-freeSize);
       usage.addAndGet(-freeSize);
