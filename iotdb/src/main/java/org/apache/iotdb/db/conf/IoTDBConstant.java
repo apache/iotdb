@@ -55,4 +55,6 @@ public class IoTDBConstant {
   public static final String MAX_TIME = "max_time";
   public static final String MIN_TIME = "min_time";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
+
+  public static final long ESTIMATED_CHUNK_METADATA_SIZE = 500;
 }

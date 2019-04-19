@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.overflow.io;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.ESTIMATED_CHUNK_METADATA_SIZE;
+
 import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
@@ -91,7 +93,8 @@ public class OverflowProcessor extends Processor {
   private FileSchema fileSchema;
 
   private long memThreshold = TSFileConfig.groupSizeInByte;
-  private AtomicLong memSize = new AtomicLong();
+  private AtomicLong memDataSize = new AtomicLong();
+  private AtomicLong memMetaSize = new AtomicLong();
 
   private WriteLogNode logNode;
   private VersionController versionController;
@@ -182,7 +185,7 @@ public class OverflowProcessor extends Processor {
         workSupport.insert(tsRecord);
         valueCount++;
         // check flush
-        memUage = memSize.addAndGet(memUage);
+        memUage = memDataSize.addAndGet(memUage);
         if (memUage > memThreshold) {
           if (LOGGER.isWarnEnabled()) {
             LOGGER.warn("The usage of memory {} in overflow processor {} reaches the threshold {}",
@@ -197,15 +200,12 @@ public class OverflowProcessor extends Processor {
         workSupport.insert(tsRecord);
         valueCount++;
         // flush
-        memSize.addAndGet(memUage);
+        memDataSize.addAndGet(memUage);
         flush();
         break;
       case DANGEROUS:
         throw new IOException("The insertion is rejected because dangerous memory level hit");
     }
-
-
-
   }
 
   /**
@@ -459,6 +459,13 @@ public class OverflowProcessor extends Processor {
           .flush(fileSchema, flushSupport.getMemTabale(),
               getProcessorName());
       filenodeFlushAction.act();
+
+      long estChunkMetaSize = flushSupport.getMemTabale()
+          .seriesNum() * ESTIMATED_CHUNK_METADATA_SIZE;
+      // no check since flush cannot be undone
+      BasicMemController.getInstance().acquireUsage(this, estChunkMetaSize);
+      memMetaSize.addAndGet(estChunkMetaSize);
+
       // write-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode.notifyEndFlush(null);
@@ -530,8 +537,8 @@ public class OverflowProcessor extends Processor {
               getProcessorName(), e);
         }
       }
-      BasicMemController.getInstance().releaseUsage(this, memSize.get());
-      memSize.set(0);
+      BasicMemController.getInstance().releaseUsage(this, memDataSize.get());
+      memDataSize.set(0);
       valueCount = 0;
       // switch from work to flush
       switchWorkToFlush();
@@ -589,7 +596,7 @@ public class OverflowProcessor extends Processor {
 
   @Override
   public long memoryUsage() {
-    return memSize.get();
+    return memDataSize.get();
   }
 
   public String getOverflowRestoreFile() {
@@ -673,7 +680,7 @@ public class OverflowProcessor extends Processor {
             Objects.equals(overflowFlushAction, that.overflowFlushAction) &&
             Objects.equals(filenodeFlushAction, that.filenodeFlushAction) &&
             Objects.equals(fileSchema, that.fileSchema) &&
-            Objects.equals(memSize, that.memSize) &&
+            Objects.equals(memDataSize, that.memDataSize) &&
             Objects.equals(logNode, that.logNode);
   }
 
@@ -682,7 +689,7 @@ public class OverflowProcessor extends Processor {
     return Objects.hash(super.hashCode(), workResource, mergeResource, workSupport,
             flushSupport, flushFuture, isMerge, valueCount, parentPath, lastFlushTime,
             dataPathCount, queryFlushLock, overflowFlushAction, filenodeFlushAction, fileSchema,
-            memThreshold, memSize, logNode, flushFuture);
+            memThreshold, memDataSize, logNode, flushFuture);
   }
 
   /**

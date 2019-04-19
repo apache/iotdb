@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.bufferwrite;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.ESTIMATED_CHUNK_METADATA_SIZE;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
@@ -64,7 +66,8 @@ public class BufferWriteProcessor extends Processor {
   private FileSchema fileSchema;
   private volatile Future<Boolean> flushFuture = new ImmediateFuture<>(true);
   private ReentrantLock flushQueryLock = new ReentrantLock();
-  private AtomicLong memSize = new AtomicLong();
+  private AtomicLong memDataSize = new AtomicLong();
+  private AtomicLong memMetaSize = new AtomicLong();
   private long memThreshold = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
   private IMemTable workMemTable;
   private IMemTable flushMemTable;
@@ -147,16 +150,15 @@ public class BufferWriteProcessor extends Processor {
    * @param timestamp timestamp of the data point
    * @param dataType the data type of the value
    * @param value data point value
-   * @return true -the size of tsfile or metadata reaches to the threshold. false -otherwise
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
-  public boolean write(String deviceId, String measurementId, long timestamp, TSDataType dataType,
+  public void write(String deviceId, String measurementId, long timestamp, TSDataType dataType,
       String value)
       throws BufferWriteProcessorException {
     TSRecord record = new TSRecord(timestamp, deviceId);
     DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, value);
     record.addTuple(dataPoint);
-    return write(record);
+    write(record);
   }
 
   /**
@@ -164,10 +166,9 @@ public class BufferWriteProcessor extends Processor {
    * flushing operation will be called.
    *
    * @param tsRecord data to be written
-   * @return FIXME what is the mean about the return value??
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
-  public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
+  public void write(TSRecord tsRecord) throws BufferWriteProcessorException {
     long memUsage = MemUtils.getRecordSize(tsRecord);
     BasicMemController.UsageLevel level = BasicMemController.getInstance()
         .acquireUsage(this, memUsage);
@@ -182,7 +183,7 @@ public class BufferWriteProcessor extends Processor {
         }
         valueCount++;
         checkMemThreshold4Flush(memUsage);
-        return true;
+        break;
       case WARNING:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
         LOGGER.warn("Memory usage will exceed warning threshold, current : {}.", memory);
@@ -197,17 +198,18 @@ public class BufferWriteProcessor extends Processor {
         } catch (IOException e) {
           throw new BufferWriteProcessorException(e);
         }
-        return true;
+        break;
       case DANGEROUS:
       default:
+        BasicMemController.getInstance().releaseUsage(this, memUsage);
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
         LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
-        return false;
+        throw new BufferWriteProcessorException("Memory usage will exceed dangerous threshold.");
     }
   }
 
   private void checkMemThreshold4Flush(long addedMemory) throws BufferWriteProcessorException {
-    long newMem = memSize.addAndGet(addedMemory);
+    long newMem = memDataSize.addAndGet(addedMemory);
     if (newMem > memThreshold) {
       String usageMem = MemUtils.bytesCntToStr(newMem);
       String threshold = MemUtils.bytesCntToStr(memThreshold);
@@ -296,12 +298,20 @@ public class BufferWriteProcessor extends Processor {
             version);
         // write restore information
         writer.flush();
+
+        // each series results in a ChunkMetaData
+        // NOTICE: the returned level is not checked because flush cannot be undone
+        // reaching a dangerous level will block the following insertion
+        long estimatedNewChunkMetaSize = flushMemTable.seriesNum() * ESTIMATED_CHUNK_METADATA_SIZE;
+        BasicMemController.getInstance().acquireUsage(this, estimatedNewChunkMetaSize);
+        this.memMetaSize.addAndGet(estimatedNewChunkMetaSize);
       }
 
       filenodeFlushAction.act();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode.notifyEndFlush(null);
       }
+
       result = true;
     } catch (Exception e) {
       LOGGER.error(
@@ -363,8 +373,8 @@ public class BufferWriteProcessor extends Processor {
       valueCount = 0;
       switchWorkToFlush();
       long version = versionController.nextVersion();
-      BasicMemController.getInstance().releaseUsage(this, memSize.get());
-      memSize.set(0);
+      BasicMemController.getInstance().releaseUsage(this, memDataSize.get());
+      memDataSize.set(0);
       // switch
       flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
           version));
@@ -392,6 +402,9 @@ public class BufferWriteProcessor extends Processor {
       // flush the changed information for filenode
       filenodeFlushAction.act();
       // delete the restore for this bufferwrite processor
+
+      BasicMemController.getInstance().releaseUsage(this, memMetaSize.get());
+      memMetaSize.set(0);
       if (LOGGER.isInfoEnabled()) {
         long closeEndTime = System.currentTimeMillis();
         LOGGER.info(
@@ -415,7 +428,7 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public long memoryUsage() {
-    return memSize.get();
+    return memDataSize.get();
   }
 
   /**

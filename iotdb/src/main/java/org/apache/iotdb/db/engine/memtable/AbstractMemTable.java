@@ -84,6 +84,15 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public int seriesNum() {
+    int sum = 0;
+    for (Map<String, IWritableMemChunk> seriesMap : memTableMap.values()) {
+      sum += seriesMap.size();
+    }
+    return sum;
+  }
+
+  @Override
   public void clear() {
     memTableMap.clear();
   }

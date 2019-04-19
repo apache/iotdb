@@ -38,6 +38,8 @@ public interface IMemTable {
 
   int size();
 
+  int seriesNum();
+
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       Map<String, String> props);
 
