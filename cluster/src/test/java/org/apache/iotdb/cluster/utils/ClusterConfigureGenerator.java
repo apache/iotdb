@@ -32,23 +32,9 @@ public class ClusterConfigureGenerator {
 
   private static final String TEST_CONF_PATH = "src" + File.separatorChar + "test"
       + File.separatorChar + "resources" + File.separatorChar + "conf";
-  private static ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-  private static Map<String, String> configMap = new HashMap<String, String>() {
-    {
-      put("port", config.getPort() + "");
-      put("election_timeout_ms", config.getElectionTimeoutMs() + "");
-      put("max_catch_up_log_num", config.getMaxCatchUpLogNum() + "");
-      put("delay_snapshot", config.isDelaySnapshot() + "");
-      put("delay_hours", config.getDelayHours() + "");
-      put("task_redo_count", config.getQpTaskRedoCount() + "");
-      put("task_timeout_ms", config.getQpTaskTimeout() + "");
-      put("num_of_virtual_nodes", config.getNumOfVirtualNodes() + "");
-      put("max_num_of_inner_rpc_client", config.getMaxNumOfInnerRpcClient() + "");
-      put("max_queue_num_of_inner_rpc_client", config.getMaxQueueNumOfInnerRpcClient() + "");
-      put("read_metadata_consistency_level", config.getReadMetadataConsistencyLevel() + "");
-      put("read_data_consistency_level", config.getReadDataConsistencyLevel() + "");
-    }
-  };
+  private static Map<String, String> configMap = new HashMap<String, String>() {{
+    put("qp_task_timeout_ms", "10000");
+  }};
 
   public static void generateClusterConfigure() throws IOException {
     deleteClusterConfigure();
@@ -57,7 +43,12 @@ public class ClusterConfigureGenerator {
     String[][] config = {
         {"192.168.130.14:8888,192.168.130.16:8888,192.168.130.18:8888", "1"},
         {"192.168.130.14:8888,192.168.130.16:8888,192.168.130.18:8888", "3"},
-        {"192.168.130.12:8888,192.168.130.14:8888,192.168.130.16:8888,192.168.130.18:8888,192.168.130.19:8888", "3"},
+        {"192.168.130.12:8888,192.168.130.13:8888,192.168.130.14:8888,192.168.130.16:8888,192.168.130.18:8888", "1"},
+        {"192.168.130.12:8888,192.168.130.13:8888,192.168.130.14:8888,192.168.130.16:8888,192.168.130.18:8888", "3"},
+        {"192.168.130.9:8888,192.168.130.12:8888,192.168.130.13:8888,192.168.130.14:8888,192.168.130.15:8888,192.168.130.16:8888,192.168.130.18:8888", "1"},
+        {"192.168.130.9:8888,192.168.130.12:8888,192.168.130.13:8888,192.168.130.14:8888,192.168.130.15:8888,192.168.130.16:8888,192.168.130.18:8888", "3"},
+        {"192.168.130.8:8888,192.168.130.9:8888,192.168.130.10:8888,192.168.130.7:8888,192.168.130.12:8888,192.168.130.13:8888,192.168.130.14:8888,192.168.130.15:8888,192.168.130.16:8888,192.168.130.18:8888", "3"},
+        {"192.168.130.8:8888,192.168.130.9:8888,192.168.130.10:8888,192.168.130.7:8888,192.168.130.12:8888,192.168.130.13:8888,192.168.130.14:8888,192.168.130.15:8888,192.168.130.16:8888,192.168.130.18:8888", "5"},
     };
     for(String[] c : config){
       for(String node : c[0].split(",")){
