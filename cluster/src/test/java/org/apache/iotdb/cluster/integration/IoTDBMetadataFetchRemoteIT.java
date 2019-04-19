@@ -19,10 +19,11 @@
 package org.apache.iotdb.cluster.integration;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.sql.SQLException;
 import org.apache.iotdb.cluster.utils.ClusterConfigureGenerator;
+import org.apache.iotdb.cluster.utils.Utils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -41,57 +42,10 @@ public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
   }
 
   @Test
-  public void test3Node3Replicator() throws SQLException, IOException {
-//    final String URL = "192.168.130.16:6667/";
-//    String dir = Utils.getCurrentPath("pwd");
-//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh",
-//        "3", "3", dir);
-//    test(URL, false);
-//    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh",
-//        "3", dir);
-
-//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh",
-//        "3", "3", dir);
-//    test(URL, true);
-//    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh",
-//        "3", dir);
-  }
-
-
-  @Test
-  public void test3Node1Replicator() throws SQLException, IOException {
-//    final String URL = "192.168.130.16:6667/";
-//    String dir = Utils.getCurrentPath("pwd");
-//
-//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh",
-//        "3", "1", dir);
-//    test(URL, false);
-//    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh",
-//        "3", dir);
-//
-//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh",
-//        "3", "1", dir);
-//    test(URL, true);
-//    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh",
-//        "3", dir);
-  }
-
-  @Test
-  public void test5Node3Replicator() throws SQLException, IOException {
-//    final String URL = "192.168.130.16:6667/";
-//    String dir = Utils.getCurrentPath("pwd");
-//
-//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh",
-//        "5", "3", dir);
-//    test(URL, false);
-//    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh",
-//        "5", dir);
-//
-//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh",
-//        "5", "3", dir);
-//    test(URL, true);
-//    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh",
-//        "5", dir);
+  public void test() throws IOException {
+    String dir = Utils.getCurrentPath("pwd");
+//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh", "7", "1", dir);
+    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh", "7", "3", dir);
   }
 
   private void startScript(String... command) throws IOException{

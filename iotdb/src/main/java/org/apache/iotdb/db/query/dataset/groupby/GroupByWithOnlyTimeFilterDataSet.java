@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.executor.groupby;
+package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,7 +45,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSet {
+public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
 
   protected List<IPointReader> unSequenceReaderList;
   protected List<IAggregateReader> sequenceReaderList;
@@ -56,7 +56,7 @@ public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSe
   /**
    * constructor.
    */
-  public GroupByWithOnlyTimeFilterDataSetDataSet(long jobId, List<Path> paths, long unit,
+  public GroupByWithOnlyTimeFilterDataSet(long jobId, List<Path> paths, long unit,
       long origin, List<Pair<Long, Long>> mergedIntervals) {
     super(jobId, paths, unit, origin, mergedIntervals);
     this.unSequenceReaderList = new ArrayList<>();
@@ -103,7 +103,7 @@ public class GroupByWithOnlyTimeFilterDataSetDataSet extends GroupByEngineDataSe
   public RowRecord next() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next() "
-          + "in GroupByWithOnlyTimeFilterDataSetDataSet.");
+          + "in GroupByWithOnlyTimeFilterDataSet.");
     }
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(startTime);

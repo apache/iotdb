@@ -40,7 +40,7 @@ public class CountAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
-    resultData.reSet();
+    resultData.reset();
     resultData.setTimestamp(0);
     resultData.setLongRet(0);
   }

@@ -42,7 +42,7 @@ public class MeanAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
-    resultData.reSet();
+    resultData.reset();
     sum = 0.0;
     cnt = 0;
   }

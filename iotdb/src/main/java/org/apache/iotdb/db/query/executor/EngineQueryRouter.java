@@ -27,8 +27,8 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.groupby.GroupByWithOnlyTimeFilterDataSetDataSet;
-import org.apache.iotdb.db.query.executor.groupby.GroupByWithValueFilterDataSetDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithOnlyTimeFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -48,8 +48,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
  * plan, physical plan will be executed by EngineQueryRouter.
  */
 public class EngineQueryRouter {
-
-
 
   /**
    * execute physical plan.
@@ -164,12 +162,12 @@ public class EngineQueryRouter {
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      GroupByWithOnlyTimeFilterDataSetDataSet groupByEngine = new GroupByWithOnlyTimeFilterDataSetDataSet(
+      GroupByWithOnlyTimeFilterDataSet groupByEngine = new GroupByWithOnlyTimeFilterDataSet(
           nextJobId, selectedSeries, unit, origin, mergedIntervalList);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;
     } else {
-      GroupByWithValueFilterDataSetDataSet groupByEngine = new GroupByWithValueFilterDataSetDataSet(
+      GroupByWithValueFilterDataSet groupByEngine = new GroupByWithValueFilterDataSet(
           nextJobId,
           selectedSeries, unit, origin, mergedIntervalList);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);

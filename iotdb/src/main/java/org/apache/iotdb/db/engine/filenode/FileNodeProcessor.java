@@ -371,6 +371,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
+  void setIntervalFileNodeStartTime(String deviceId, long time) {
+    if (time != -1) {
+      currentTsFileResource.setStartTime(deviceId, time);
+    } else {
+      currentTsFileResource.removeTime(deviceId);
+      invertedIndexOfFiles.get(deviceId).remove(currentTsFileResource);
+    }
+  }
+
+  long getIntervalFileNodeStartTime(String deviceId) {
+    return currentTsFileResource.getStartTime(deviceId);
+  }
+
   /**
    * clear filenode.
    */
@@ -586,6 +599,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   public void setLastUpdateTime(String deviceId, long timestamp) {
     if (!lastUpdateTimeMap.containsKey(deviceId) || lastUpdateTimeMap.get(deviceId) < timestamp) {
       lastUpdateTimeMap.put(deviceId, timestamp);
+    }
+    if (timestamp == -1) {
+      lastUpdateTimeMap.remove(deviceId);
     }
   }
 

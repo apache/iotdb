@@ -36,7 +36,7 @@ public class AggreResultDataPointReader implements IPointReader {
   @Override
   public TimeValuePair next() {
     TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(aggreResultData);
-    aggreResultData.reSet();
+    aggreResultData.reset();
     return timeValuePair;
   }
 
