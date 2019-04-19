@@ -36,9 +36,9 @@ public interface IClusterRpcQueryManager {
   void addSingleQuery(long jobId, QueryPlan physicalPlan);
 
   /**
-   * Get full task id (local address + task id) and increase task id
+   * Get full task id (local address + job id)
    */
-  String getAndIncreaTaskId();
+  String getAndIncreaTaskId(long jobId);
 
   /**
    * Get query manager by jobId

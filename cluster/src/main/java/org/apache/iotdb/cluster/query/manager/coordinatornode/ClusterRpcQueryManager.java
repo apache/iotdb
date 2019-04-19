@@ -37,11 +37,6 @@ public class ClusterRpcQueryManager implements IClusterRpcQueryManager {
    */
   private static final ConcurrentHashMap<String, ClusterRpcSingleQueryManager> SINGLE_QUERY_MANAGER_MAP = new ConcurrentHashMap<>();
 
-  /**
-   * Assign every query a work id, which uniquely identify a query in remote query node
-   */
-  private static final AtomicLong TASK_ID = new AtomicLong(0);
-
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
 
   /**
@@ -58,8 +53,8 @@ public class ClusterRpcQueryManager implements IClusterRpcQueryManager {
   }
 
   @Override
-  public String getAndIncreaTaskId() {
-    return String.format("%s:%d", LOCAL_ADDR, TASK_ID.getAndIncrement());
+  public String getAndIncreaTaskId(long jobId) {
+    return String.format("%s:%d", LOCAL_ADDR, jobId);
   }
 
   @Override
