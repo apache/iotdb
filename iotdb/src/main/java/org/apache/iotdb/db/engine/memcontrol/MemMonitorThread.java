@@ -41,12 +41,12 @@ public class MemMonitorThread extends Thread {
     long confInterval = config.getMemMonitorInterval();
     this.checkInterval = confInterval > 0 ? confInterval : this.checkInterval;
     if (config.isEnableSmallFlush()) {
-      this.safePolicy = new FlushPartialPolicy();
+      this.safePolicy = new ClosePartialPolicy();
     } else {
       this.safePolicy = new NoActPolicy();
     }
-    this.warningPolicy = new ForceFLushAllPolicy();
-    this.dangerousPolicy = new ForceFLushAllPolicy();
+    this.warningPolicy = new ClosePartialPolicy();
+    this.dangerousPolicy = new ForceCloseAllPolicy();
   }
 
   public void setCheckInterval(long checkInterval) {

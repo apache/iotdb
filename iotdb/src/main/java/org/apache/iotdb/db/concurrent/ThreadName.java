@@ -28,7 +28,7 @@ public enum ThreadName {
   MERGE_DAEMON("Merge-Daemon-Thread"),
   MEMORY_MONITOR("IoTDB-MemMonitor-Thread"),
   MEMORY_STATISTICS("IoTDB-MemStatistic-Thread"),
-  FLUSH_PARTIAL_POLICY("IoTDB-FlushPartialPolicy-Thread"),
+  FLUSH_PARTIAL_POLICY("IoTDB-ClosePartialPolicy-Thread"),
   FORCE_FLUSH_ALL_POLICY("IoTDB-ForceFlushAllPolicy-Thread"),
   STAT_MONITOR("StatMonitor-ServerServiceImpl"),
   FLUSH_SERVICE("Flush-ServerServiceImpl"),

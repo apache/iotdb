@@ -427,15 +427,14 @@ public class FileNodeManager implements IStatistic, IService {
     fileNodeProcessor.setIntervalFileNodeStartTime(deviceId);
     fileNodeProcessor.setLastUpdateTime(deviceId, timestamp);
     try {
-      if(!bufferWriteProcessor.write(tsRecord)) {
-        // undo time update
-        fileNodeProcessor.setIntervalFileNodeStartTime(deviceId, prevStartTime);
-        fileNodeProcessor.setLastUpdateTime(deviceId, prevUpdateTime);
-      }
+      bufferWriteProcessor.write(tsRecord);
     } catch (BufferWriteProcessorException e) {
       if (!isMonitor) {
         updateStatHashMapWhenFail(tsRecord);
       }
+      // undo time update
+      fileNodeProcessor.setIntervalFileNodeStartTime(deviceId, prevStartTime);
+      fileNodeProcessor.setLastUpdateTime(deviceId, prevUpdateTime);
       throw new FileNodeManagerException(e);
     }
 
@@ -1068,55 +1067,44 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   /**
-   * force flush to control memory usage.
+   * force close to control memory usage.
    */
-  public void forceFlush(BasicMemController.UsageLevel level) {
-    // you may add some delicate process like below
-    // or you could provide multiple methods for different urgency
+  public void forceClose(BasicMemController.UsageLevel level) {
     switch (level) {
       // only select the most urgent (most active or biggest in size)
-      // processors to flush
-      // only select top 10% active memory user to flush
+      // processors to close
+      // only select top 10% active memory user to close
       case WARNING:
         try {
-          flushTop(0.1f);
-        } catch (IOException e) {
-          LOGGER.error("force flush memory data error: {}", e);
+          closeTop(0.1f);
+        } catch (FileNodeProcessorException e) {
+          LOGGER.error("force close error: {}", e);
         }
         break;
       // force all processors to flush
       case DANGEROUS:
         try {
-          flushAll();
-        } catch (IOException e) {
-          LOGGER.error("force flush memory data error: {}", e);
+          closeAllFile();
+        } catch (FileNodeProcessorException e) {
+          LOGGER.error("force close error: {}", e);
         }
         break;
       // if the flush thread pool is not full ( or half full), start a new
       // flush task
       case SAFE:
-        if (FlushManager.getInstance().getActiveCnt() < 0.5 * FlushManager.getInstance()
-            .getThreadCnt()) {
-          try {
-            flushTop(0.01f);
-          } catch (IOException e) {
-            LOGGER.error("force flush memory data error: ", e);
-          }
-        }
         break;
       default:
     }
   }
 
-  private void flushAll() throws IOException {
+  private void closeAllFile() throws FileNodeProcessorException {
     for (FileNodeProcessor processor : processorMap.values()) {
       if (!processor.tryLock(true)) {
         continue;
       }
       try {
-        boolean isMerge = processor.flush().isHasOverflowFlushTask();
-        if (isMerge) {
-          processor.submitToMerge();
+        if (processor.canBeClosed()) {
+          processor.close();
         }
       } finally {
         processor.unlock(true);
@@ -1124,7 +1112,7 @@ public class FileNodeManager implements IStatistic, IService {
     }
   }
 
-  private void flushTop(float percentage) throws IOException {
+  private void closeTop(float percentage) throws FileNodeProcessorException {
     List<FileNodeProcessor> tempProcessors = new ArrayList<>(processorMap.values());
     // sort the tempProcessors as descending order
     tempProcessors.sort((o1, o2) -> (int) (o2.memoryUsage() - o1.memoryUsage()));
@@ -1134,15 +1122,10 @@ public class FileNodeManager implements IStatistic, IService {
             : 1;
     for (int i = 0; i < flushNum && i < tempProcessors.size(); i++) {
       FileNodeProcessor processor = tempProcessors.get(i);
-      // 64M
-      if (processor.memoryUsage() <= TSFileConfig.groupSizeInByte / 2) {
-        continue;
-      }
       processor.writeLock();
       try {
-        boolean isMerge = processor.flush().isHasOverflowFlushTask();
-        if (isMerge) {
-          processor.submitToMerge();
+        if (processor.canBeClosed()) {
+          processor.close();
         }
       } finally {
         processor.writeUnlock();

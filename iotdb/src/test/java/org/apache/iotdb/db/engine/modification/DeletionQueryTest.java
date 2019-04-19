@@ -248,7 +248,7 @@ public class DeletionQueryTest {
     FileNodeManager.getInstance().delete(processorName, measurements[5], 30);
     FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
 
-    FileNodeManager.getInstance().forceFlush(UsageLevel.DANGEROUS);
+    FileNodeManager.getInstance().forceClose(UsageLevel.DANGEROUS);
 
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -263,7 +263,7 @@ public class DeletionQueryTest {
     FileNodeManager.getInstance().delete(processorName, measurements[5], 230);
     FileNodeManager.getInstance().delete(processorName, measurements[5], 250);
 
-    FileNodeManager.getInstance().forceFlush(UsageLevel.DANGEROUS);
+    FileNodeManager.getInstance().forceClose(UsageLevel.DANGEROUS);
 
     for (int i = 201; i <= 300; i++) {
       TSRecord record = new TSRecord(i, processorName);

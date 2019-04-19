@@ -24,15 +24,19 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ForceFLushAllPolicy implements Policy {
+/**
+ * ForceCloseAllPolicy is executed when the memory usage reaches a dangerous level.
+ * In this case, all FileNodeProcessor should be closed to reduce in-memory data and metadata.
+ */
+public class ForceCloseAllPolicy implements Policy {
 
-  private static final Logger logger = LoggerFactory.getLogger(ForceFLushAllPolicy.class);
+  private static final Logger logger = LoggerFactory.getLogger(ForceCloseAllPolicy.class);
   private Thread workerThread;
 
   @Override
   public void execute() {
     if (logger.isInfoEnabled()) {
-      logger.info("Memory reaches {}, current memory size is {}, JVM memory is {}, flushing.",
+      logger.info("Memory reaches {}, current memory size is {}, JVM memory is {}, closing.",
               BasicMemController.getInstance().getCurrLevel(),
               MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
               MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()
@@ -45,7 +49,7 @@ public class ForceFLushAllPolicy implements Policy {
       workerThread.start();
     } else {
       if (workerThread.isAlive()) {
-        logger.info("Last flush is ongoing...");
+        logger.info("Last close is ongoing...");
       } else {
         workerThread = createWorkerThread();
         workerThread.start();
@@ -55,7 +59,7 @@ public class ForceFLushAllPolicy implements Policy {
 
   private Thread createWorkerThread() {
     return new Thread(() ->
-            FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.DANGEROUS),
+            FileNodeManager.getInstance().forceClose(BasicMemController.UsageLevel.DANGEROUS),
             ThreadName.FORCE_FLUSH_ALL_POLICY.getName());
   }
 }
