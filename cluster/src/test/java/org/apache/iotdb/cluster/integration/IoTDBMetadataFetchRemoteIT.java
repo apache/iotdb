@@ -44,8 +44,8 @@ public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
   @Test
   public void test() throws IOException {
     String dir = Utils.getCurrentPath("pwd");
-//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh", "7", "1", dir);
-    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh", "7", "3", dir);
+    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh", "3", "2", dir);
+//    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh", "7", "3", dir);
   }
 
   private void startScript(String... command) throws IOException{

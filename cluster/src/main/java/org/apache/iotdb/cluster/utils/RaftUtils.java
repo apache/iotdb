@@ -30,6 +30,8 @@ import com.alipay.sofa.jraft.util.OnlyForTest;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,6 +59,7 @@ import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.cluster.utils.hash.VirtualNode;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -370,15 +373,15 @@ public class RaftUtils {
   public static Map<String[], String[]> getDataPartitionOfNode(String ip, int port) {
     PhysicalNode[][] groups = router.getGroupsNodes(ip, port);
 
-    Map<PhysicalNode[], List<String>> groupSGMap = new LinkedHashMap<>();
+    Map<String, List<String>> groupSGMap = new LinkedHashMap<>();
     for (int i = 0; i < groups.length; i++) {
-      groupSGMap.put(groups[i], new ArrayList<>());
+      groupSGMap.put(generateStringKey(groups[i]), new ArrayList<>());
     }
     Set<String> allSGList = ((MetadataStateManchine)((RaftService)server.getMetadataHolder().getService()).getFsm()).getAllStorageGroups();
     for (String sg : allSGList) {
-      PhysicalNode[] tempGroup = router.routeGroup(sg);
-      if (groupSGMap.containsKey(tempGroup)) {
-        groupSGMap.get(tempGroup).add(sg);
+      String key = generateStringKey(router.routeGroup(sg));
+      if (groupSGMap.containsKey(key)) {
+        groupSGMap.get(key).add(sg);
       }
     }
 
@@ -392,9 +395,28 @@ public class RaftUtils {
 
     Map<String[], String[]> res = new HashMap<>();
     int index = 0;
-    for (Entry<PhysicalNode[], List<String>> entry : groupSGMap.entrySet()) {
+    for (Entry<String, List<String>> entry : groupSGMap.entrySet()) {
       res.put(groupIps[index], entry.getValue().toArray(new String[entry.getValue().size()]));
+      index++;
     }
     return res;
+  }
+
+  private static String generateStringKey(PhysicalNode[] nodes) {
+    if (nodes == null || nodes.length == 0) {
+      return "";
+    }
+    Arrays.sort(nodes, new Comparator<PhysicalNode>() {
+      @Override
+      public int compare(PhysicalNode o1, PhysicalNode o2) {
+        return o1.toString().compareTo(o2.toString());
+      }
+    });
+    StringBuilder builder = new StringBuilder();
+    builder.append(nodes[0]);
+    for (int i = 1; i < nodes.length; i++) {
+      builder.append('#').append(nodes[i]);
+    }
+    return builder.toString();
   }
 }

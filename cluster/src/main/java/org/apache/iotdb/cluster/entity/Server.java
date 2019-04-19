@@ -85,12 +85,12 @@ public class Server {
 
   private RegisterManager registerManager = new RegisterManager();
 
-  public static void main(String[] args) throws ProcessorException {
+  public static void main(String[] args) throws ProcessorException, InterruptedException {
     Server server = Server.getInstance();
     server.start();
   }
 
-  public void start() throws ProcessorException {
+  public void start() throws ProcessorException, InterruptedException {
     /** Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version **/
     iotdb = new IoTDB();
     iotdb.active();
@@ -133,6 +133,7 @@ public class Server {
     }
 
     try {
+      LOGGER.info("Register Cluster Monitor to JMX service.");
       registerManager.register(ClusterMonitor.INSTANCE);
     } catch (StartupException e) {
       stop();
