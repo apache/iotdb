@@ -134,9 +134,7 @@ public class Server {
     try {
       registerManager.register(ClusterMonitor.INSTANCE);
     } catch (StartupException e) {
-      LOGGER.error("meet error while starting up.", e);
       stop();
-      LOGGER.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
   }

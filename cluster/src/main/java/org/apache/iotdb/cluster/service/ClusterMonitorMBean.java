@@ -23,16 +23,44 @@ import java.util.Map;
 
 public interface ClusterMonitorMBean {
 
+  /**
+   * Get physical hash ring
+   *
+   * @return key: hash value, value: node ip
+   */
   Map<Integer, String> getPhysicalRing();
 
+  /**
+   * Get virtual hash ring
+   *
+   * @return key: hash value, value: node ip
+   */
   Map<Integer, String> getVirtualRing();
 
+  /**
+   * Get currents leaders of each data partition
+   *
+   * @return key: group id, value: leader node ip
+   */
   Map<String, String> getAllLeaders();
 
-  Map<String, String[]> getAllGroups();
-
+  /**
+   * Get data partition information of input storage group in String format. The node ips are split
+   * by ',', and the first ip is the currnt leader.
+   *
+   * @param sg input storage group path
+   * @return data partition information in String format
+   */
   String getDataPartitionOfSG(String sg);
 
-  Map<String[], String[]> getDataPartitonOfNode(String ip);
+  /**
+   * Get data partitions that input node belongs to.
+   *
+   * @param ip node ip
+   * @param port node rpc port
+   * @return key: node ips of one data partition, value: storage group paths that belong to this
+   * data partition
+   */
   Map<String[], String[]> getDataPartitonOfNode(String ip, int port);
+  Map<String[], String[]> getDataPartitonOfNode(String ip);
 }

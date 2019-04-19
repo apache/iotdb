@@ -51,7 +51,6 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
-      LOGGER.error(errorMessage);
       throw new StartupException(errorMessage);
     }
   }
@@ -81,11 +80,6 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     Map<String, String> map = new HashMap<>();
     RaftUtils.getGroupLeaderCache().entrySet().forEach(entry -> map.put(entry.getKey(), entry.getValue().toString()));
     return map;
-  }
-
-  @Override
-  public Map<String, String[]> getAllGroups() {
-    return null;
   }
 
   @Override

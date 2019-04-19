@@ -33,12 +33,7 @@ public class Ring extends NodeToolCmd
   @Override
   public void execute(ClusterMonitorMBean proxy)
   {
-    Map<Integer, String> map;
-    if (physical) {
-      map = proxy.getPhysicalRing();
-    } else {
-      map = proxy.getVirtualRing();
-    }
+    Map<Integer, String> map = physical ? proxy.getPhysicalRing() : proxy.getVirtualRing();
     map.entrySet().forEach(entry -> System.out.println(entry.getKey() + "\t->\t" + entry.getValue()));
   }
 }
