@@ -200,14 +200,7 @@ public abstract class ClusterQPExecutor {
    * try to get raft rpc client
    */
   private NodeAsClient getRaftNodeAsClient() throws RaftConnectionException {
-    NodeAsClient client = CLIENT_MANAGER.getRaftNodeAsClient();
-    if (client == null) {
-      throw new RaftConnectionException(String
-          .format("Raft inner rpc clients have reached the max numbers %s",
-              CLUSTER_CONFIG.getMaxNumOfInnerRpcClient() + CLUSTER_CONFIG
-                  .getMaxQueueNumOfInnerRpcClient()));
-    }
-    return client;
+    return CLIENT_MANAGER.getRaftNodeAsClient();
   }
 
   /**
