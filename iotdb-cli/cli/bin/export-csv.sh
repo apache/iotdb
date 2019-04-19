@@ -44,7 +44,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.db.tool.ExportCsv
+MAIN_CLASS=org.apache.iotdb.cli.tool.ExportCsv
 
 "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

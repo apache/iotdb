@@ -18,6 +18,9 @@
 @REM
 
 @echo off
+echo ````````````````````````````````````````````````
+echo Starting IoTDB Client Export Script
+echo ````````````````````````````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
 
@@ -25,7 +28,7 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tool.ExportCsv
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cli.tool.ExportCsv
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
