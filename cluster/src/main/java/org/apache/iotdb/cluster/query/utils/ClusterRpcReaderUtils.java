@@ -29,8 +29,10 @@ import org.apache.iotdb.cluster.qp.task.QueryTask;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -92,10 +94,19 @@ public class ClusterRpcReaderUtils {
   }
 
   public static QuerySeriesDataResponse fetchBatchData(String groupID, PeerId peerId, String taskId,
-      PathType pathType, List<String> fetchDataSeries, long queryRounds) throws RaftConnectionException {
+      PathType pathType, List<String> fetchDataSeries, long queryRounds)
+      throws RaftConnectionException {
     BasicRequest request = QuerySeriesDataRequest
         .createFetchDataRequest(groupID, taskId, pathType, fetchDataSeries, queryRounds);
     return (QuerySeriesDataResponse) handleQueryRequest(request, peerId, 0);
+  }
+
+  public static QuerySeriesDataByTimestampResponse fetchBatchDataByTimestamp(String groupId,
+      PeerId peerId, String taskId, long queryRounds, List<Long> batchTimestamp)
+      throws RaftConnectionException {
+    BasicRequest request = QuerySeriesDataByTimestampRequest
+        .createRequest(groupId, queryRounds, taskId, batchTimestamp);
+    return (QuerySeriesDataByTimestampResponse) handleQueryRequest(request, peerId, 0);
   }
 
   /**

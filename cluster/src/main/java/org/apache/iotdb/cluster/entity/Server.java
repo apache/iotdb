@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.DataGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.MetaGroupNonQueryAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querydata.QuerySeriesDataByTimestampSyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querydata.QuerySeriesDataSyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryMetadataAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryMetadataInStringAsyncProcessor;
@@ -140,6 +141,7 @@ public class Server {
 
   private void registerQueryDataProcessor(RpcServer rpcServer) {
     rpcServer.registerUserProcessor(new QuerySeriesDataSyncProcessor());
+    rpcServer.registerUserProcessor(new QuerySeriesDataByTimestampSyncProcessor());
   }
 
   public void stop() throws ProcessorException {

@@ -16,23 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query.expression;
+package org.apache.iotdb.cluster.rpc.raft.response.querydata;
 
-import org.apache.iotdb.tsfile.read.expression.ExpressionType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.cluster.rpc.raft.response.BasicQueryDataResponse;
 
-/**
- * This type of Expression is used in pruning filter tree while handling query with value filter
- */
-public class TrueExpression implements IExpression {
+public class QuerySeriesDataByTimestampResponse extends BasicQueryDataResponse {
 
-  @Override
-  public ExpressionType getType() {
-    return ExpressionType.TRUE;
+  private static final long serialVersionUID = -9015865924302417289L;
+
+  public QuerySeriesDataByTimestampResponse(String groupId) {
+    super(groupId, false, null, null);
   }
 
-  @Override
-  public IExpression clone() {
-    return new TrueExpression();
-  }
 }

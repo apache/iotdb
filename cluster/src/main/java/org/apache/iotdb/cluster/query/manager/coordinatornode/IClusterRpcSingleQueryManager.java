@@ -22,7 +22,6 @@ import com.alipay.sofa.jraft.entity.PeerId;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.QueryType;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -34,24 +33,36 @@ public interface IClusterRpcSingleQueryManager {
 
   /**
    * Divide physical plan into several sub physical plans according to timeseries full path.
-   * @param queryType
+   *
+   * @param queryType query type
+   * @param readDataConsistencyLevel consistency level of reading data
    */
-  void init(QueryType queryType, int readDataConsistencyLevel)
+  void initQueryResource(QueryType queryType, int readDataConsistencyLevel)
       throws PathErrorException, IOException, RaftConnectionException;
 
   /**
-   * Handle response of initial reader. In order to reduce the number of RPC communications,
-   * fetching data from remote query node will fetch for all series in the same data group. If the
-   * cached data for specific series exceed limit, ignore this fetching data process of the series.
+   * Fetch data for select paths. In order to reduce the number of RPC communications, fetching data
+   * from remote query node will fetch for all series in the same data group. If the cached data for
+   * specific series exceed limit, ignore this fetching data process of the series.
+   *
+   * @param groupId data group id
    */
   void fetchBatchDataForSelectPaths(String groupId) throws RaftConnectionException;
 
+  /**
+   * Fetch data for filter path.
+   *
+   * @param groupId data group id
+   */
   void fetchBatchDataForFilterPaths(String groupId) throws RaftConnectionException;
 
   /**
-   * Fetch batch data of all select paths by batch timestamp
+   * Fetch batch data for all select paths by batch timestamp
+   *
+   * @param batchTimestamp valid batch timestamp
    */
-  void fetchBatchDataByTimestamp(List<Long> batchTimestamp) throws RaftConnectionException;
+  void fetchBatchDataByTimestampForAllSelectPaths(List<Long> batchTimestamp)
+      throws RaftConnectionException;
 
   /**
    * Get query plan of select path
@@ -71,12 +82,13 @@ public interface IClusterRpcSingleQueryManager {
    * Set reader node of a data group
    *
    * @param groupId data group id
-   * @param readerNode peer id
+   * @param readerNode reader peer id
    */
   void setDataGroupReaderNode(String groupId, PeerId readerNode);
 
   /**
    * Get reader node of a data group by group id
+   *
    * @param groupId data group id
    * @return peer id of reader node
    */

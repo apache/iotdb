@@ -26,6 +26,9 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
+/**
+ * BatchReader without time generator for cluster which is used in query node.
+ */
 public class ClusterBatchReaderWithoutTimeGenerator extends IClusterBatchReader {
 
   /**
@@ -70,7 +73,7 @@ public class ClusterBatchReaderWithoutTimeGenerator extends IClusterBatchReader 
   }
 
   @Override
-  BatchData nextBatch(List<Long> batchTime) throws IOException {
+  public BatchData nextBatch(List<Long> batchTime) throws IOException {
     throw new IOException(
         "nextBatch(List<Long> batchTime) in ClusterBatchReaderWithoutTimeGenerator is an empty method.");
   }

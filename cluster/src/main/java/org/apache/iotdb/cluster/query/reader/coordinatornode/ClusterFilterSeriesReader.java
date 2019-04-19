@@ -20,27 +20,26 @@ package org.apache.iotdb.cluster.query.reader.coordinatornode;
 
 import java.io.IOException;
 import java.util.LinkedList;
-import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
- * Series reader
+ * Filter series reader which is used in coordinator node.
  */
-public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStamp {
+public class ClusterFilterSeriesReader extends AbstractClusterPointReader {
 
   /**
    * Data group id
    */
   private String groupId;
 
+  /**
+   * Manager of the whole query
+   */
   private ClusterRpcSingleQueryManager queryManager;
 
   /**
@@ -54,16 +53,6 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
   private TSDataType dataType;
 
   /**
-   * Current time value pair
-   */
-  private TimeValuePair currentTimeValuePair;
-
-  /**
-   * Current batch data
-   */
-  private BatchData currentBatchData;
-
-  /**
    * Batch data
    */
   private LinkedList<BatchData> batchDataList;
@@ -73,76 +62,32 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
    */
   private boolean remoteDataFinish;
 
-  public ClusterSeriesReader(String groupId, Path seriesPath, TSDataType dataType,
+  public ClusterFilterSeriesReader(String groupId, Path seriesPath, TSDataType dataType,
       ClusterRpcSingleQueryManager queryManager) {
     this.groupId = groupId;
     this.seriesPath = seriesPath;
     this.dataType = dataType;
     this.queryManager = queryManager;
     this.batchDataList = new LinkedList<>();
-    this.remoteDataFinish = false;
+    remoteDataFinish = false;
   }
 
   @Override
   public TimeValuePair current() throws IOException {
-    throw new IOException("current() in ClusterSeriesReader is an empty method.");
-  }
-
-  @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    if (currentTimeValuePair != null && currentTimeValuePair.getTimestamp() == timestamp) {
-      return currentTimeValuePair.getValue();
-    }
-    while (true) {
-      if (hasNext()) {
-        next();
-        if (currentTimeValuePair.getTimestamp() == timestamp) {
-          return currentTimeValuePair.getValue();
-        } else if (currentTimeValuePair.getTimestamp() > timestamp) {
-          return null;
-        }
-      } else {
-        return null;
-      }
-    }
-  }
-
-  @Override
-  public boolean hasNext() throws IOException {
-    if (currentBatchData == null || !currentBatchData.hasNext()) {
-      try {
-        updateCurrentBatchData();
-      } catch (RaftConnectionException e) {
-        throw new IOException(e);
-      }
-      if (currentBatchData == null || !currentBatchData.hasNext()) {
-        return false;
-      }
-    }
-    return true;
+    return currentTimeValuePair;
   }
 
   /**
-   * Update current batch data. if necessary ,fetch batch data from remote query node
+   * Update current batch data. If necessary ,fetch batch data from remote query node
    */
-  private void updateCurrentBatchData() throws RaftConnectionException {
+  @Override
+  protected void updateCurrentBatchData() throws RaftConnectionException {
     if (batchDataList.isEmpty() && !remoteDataFinish) {
-      queryManager.fetchBatchDataForSelectPaths(groupId);
+      queryManager.fetchBatchDataForFilterPaths(groupId);
     }
     if (!batchDataList.isEmpty()) {
       currentBatchData = batchDataList.removeFirst();
     }
-  }
-
-  @Override
-  public TimeValuePair next() throws IOException {
-    if (hasNext()) {
-      TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(currentBatchData);
-      currentTimeValuePair = timeValuePair;
-      currentBatchData.next();
-      return timeValuePair;
-    }
-    return null;
   }
 
   @Override
@@ -174,26 +119,8 @@ public class ClusterSeriesReader implements IPointReader, EngineReaderByTimeStam
     this.currentBatchData = currentBatchData;
   }
 
-  public void addBatchData(BatchData batchData) {
+  public void addBatchData(BatchData batchData, boolean remoteDataFinish) {
     batchDataList.addLast(batchData);
-    if (batchData.length() < ClusterConstant.BATCH_READ_SIZE) {
-      remoteDataFinish = true;
-    }
-  }
-
-  public boolean isRemoteDataFinish() {
-    return remoteDataFinish;
-  }
-
-  public void setRemoteDataFinish(boolean remoteDataFinish) {
     this.remoteDataFinish = remoteDataFinish;
-  }
-
-  /**
-   * Check if this series need to fetch data from remote query node
-   */
-  public boolean enableFetchData() {
-    return !remoteDataFinish
-        && batchDataList.size() <= ClusterConstant.MAX_CACHE_BATCH_DATA_LIST_SIZE;
   }
 }

@@ -24,10 +24,19 @@ import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
+/**
+ * BatchReader by timestamp for cluster which is used in query node.
+ */
 public class ClusterBatchReaderByTimestamp extends IClusterBatchReader {
 
+  /**
+   * Reader
+   */
   private EngineReaderByTimeStamp readerByTimeStamp;
 
+  /**
+   * Data type
+   */
   private TSDataType dataType;
 
   public ClusterBatchReaderByTimestamp(
@@ -55,7 +64,7 @@ public class ClusterBatchReaderByTimestamp extends IClusterBatchReader {
   }
 
   @Override
-  BatchData nextBatch(List<Long> batchTime) throws IOException {
+  public BatchData nextBatch(List<Long> batchTime) throws IOException {
     BatchData batchData = new BatchData(dataType);
     for(long time: batchTime){
       Object value = readerByTimeStamp.getValueInTimestamp(time);

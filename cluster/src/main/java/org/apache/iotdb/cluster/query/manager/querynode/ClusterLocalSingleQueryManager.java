@@ -27,10 +27,12 @@ import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderWithoutTimeGenerator;
-import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterBatchReader;
+import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.IClusterBatchReader;
-import org.apache.iotdb.cluster.query.reader.querynode.IClusterFilterBatchReader;
+import org.apache.iotdb.cluster.query.reader.querynode.IClusterFilterSeriesBatchReader;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
+import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -53,11 +55,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-/**
- * Manage all series reader in a query as a query node, cooperate with coordinator node for a client
- * query
- */
-public class ClusterLocalSingleQueryManager {
+
+public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryManager {
 
   /**
    * Job id assigned by local QueryResourceManager
@@ -77,7 +76,7 @@ public class ClusterLocalSingleQueryManager {
   /**
    * Filter reader
    */
-  private IClusterFilterBatchReader filterReader;
+  private IClusterFilterSeriesBatchReader filterReader;
 
   /**
    * Key is series full path, value is data type of series
@@ -91,18 +90,19 @@ public class ClusterLocalSingleQueryManager {
 
   private QueryProcessExecutor queryProcessExecutor = new OverflowQPExecutor();
 
+  /**
+   * Constructor of ClusterLocalSingleQueryManager
+   */
   public ClusterLocalSingleQueryManager(long jobId) {
     this.jobId = jobId;
   }
 
-  /**
-   * Initially create corresponding series readers.
-   */
+  @Override
   public void createSeriesReader(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException {
     QueryContext context = new QueryContext(jobId);
     Map<PathType, QueryPlan> queryPlanMap = request.getAllQueryPlan();
-    if(queryPlanMap.containsKey(PathType.SELECT_PATH)){
+    if (queryPlanMap.containsKey(PathType.SELECT_PATH)) {
       QueryPlan plan = queryPlanMap.get(PathType.SELECT_PATH);
       if (plan instanceof GroupByPlan) {
         throw new UnsupportedOperationException();
@@ -117,7 +117,7 @@ public class ClusterLocalSingleQueryManager {
         }
       }
     }
-    if(queryPlanMap.containsKey(PathType.FILTER_PATH)){
+    if (queryPlanMap.containsKey(PathType.FILTER_PATH)) {
       QueryPlan queryPlan = queryPlanMap.get(PathType.FILTER_PATH);
       handleFilterSeriesReader(queryPlan, context, response, PathType.FILTER_PATH);
     }
@@ -139,7 +139,7 @@ public class ClusterLocalSingleQueryManager {
       dataTypeMap.put(paths.get(i).getFullPath(), dataTypes.get(i));
     }
     response.getSeriesDataTypes().put(pathType, dataTypes);
-    filterReader = new ClusterFilterBatchReader(queryDataSet, paths);
+    filterReader = new ClusterFilterSeriesBatchReader(queryDataSet, paths);
   }
 
   /**
@@ -192,24 +192,37 @@ public class ClusterLocalSingleQueryManager {
     response.getSeriesDataTypes().put(PathType.SELECT_PATH, dataTypeList);
   }
 
-  /**
-   * Read batch data If query round in cache is equal to target query round, it means that batch
-   * data in query node transfer to coordinator fail and return cached batch data.
-   */
+  @Override
   public void readBatchData(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
       throws IOException {
     long targetQueryRounds = request.getQueryRounds();
     if (targetQueryRounds != this.queryRound) {
       this.queryRound = targetQueryRounds;
-        PathType pathType = request.getPathType();
-        List<String> paths = request.getSeriesPaths();
-        List<BatchData> batchDataList;
-        if (pathType == PathType.SELECT_PATH) {
-          batchDataList = readSelectSeriesBatchData(paths);
-        } else {
-          batchDataList = readFilterSeriesBatchData();
-        }
-        cachedBatchDataResult = batchDataList;
+      PathType pathType = request.getPathType();
+      List<String> paths = request.getSeriesPaths();
+      List<BatchData> batchDataList;
+      if (pathType == PathType.SELECT_PATH) {
+        batchDataList = readSelectSeriesBatchData(paths);
+      } else {
+        batchDataList = readFilterSeriesBatchData();
+      }
+      cachedBatchDataResult = batchDataList;
+    }
+    response.setSeriesBatchData(cachedBatchDataResult);
+  }
+
+  @Override
+  public void readBatchDataByTimestamp(QuerySeriesDataByTimestampRequest request,
+      QuerySeriesDataByTimestampResponse response)
+      throws IOException {
+    long targetQueryRounds = request.getQueryRounds();
+    if (targetQueryRounds != this.queryRound) {
+      this.queryRound = targetQueryRounds;
+      List<BatchData> batchDataList = new ArrayList<>();
+      for (IClusterBatchReader reader : selectSeriesReaders.values()) {
+        batchDataList.add(reader.nextBatch(request.getBatchTimestamp()));
+      }
+      cachedBatchDataResult = batchDataList;
     }
     response.setSeriesBatchData(cachedBatchDataResult);
   }
@@ -236,9 +249,7 @@ public class ClusterLocalSingleQueryManager {
     return filterReader.nextBatchList();
   }
 
-  /**
-   * Release query resource
-   */
+  @Override
   public void close() throws FileNodeManagerException {
     QueryResourceManager.getInstance().endQueryForGivenJob(jobId);
   }

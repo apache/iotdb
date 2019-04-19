@@ -25,11 +25,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
-/**
- * Manage all query series reader resources which fetch data from remote query nodes in coordinator
- * node
- */
-public class ClusterRpcQueryManager {
+public class ClusterRpcQueryManager implements IClusterRpcQueryManager {
 
   /**
    * Key is job id, value is task id.
@@ -51,45 +47,39 @@ public class ClusterRpcQueryManager {
   /**
    * Local address
    */
-  private static final String LOCAL_ADDR = String.format("%s:%d", CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
+  private static final String LOCAL_ADDR = String
+      .format("%s:%d", CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
 
-  /**
-   * Add a query
-   */
-  public void addSingleQuery(long jobId, QueryPlan physicalPlan){
+  @Override
+  public void addSingleQuery(long jobId, QueryPlan physicalPlan) {
     String taskId = getAndIncreaTaskId();
     JOB_ID_MAP_TASK_ID.put(jobId, taskId);
     SINGLE_QUERY_MANAGER_MAP.put(taskId, new ClusterRpcSingleQueryManager(taskId, physicalPlan));
   }
 
-  /**
-   * Get full task id (local address + task id) and increase task id
-   */
-  private String getAndIncreaTaskId() {
+  @Override
+  public String getAndIncreaTaskId() {
     return String.format("%s:%d", LOCAL_ADDR, TASK_ID.getAndIncrement());
   }
 
-  /**
-   * Get query manager by jobId
-   */
+  @Override
   public ClusterRpcSingleQueryManager getSingleQuery(long jobId) {
-    return SINGLE_QUERY_MANAGER_MAP.get(jobId);
+    return SINGLE_QUERY_MANAGER_MAP.get(JOB_ID_MAP_TASK_ID.get(jobId));
   }
 
-  /**
-   * Get query manager by taskId
-   */
+  @Override
   public ClusterRpcSingleQueryManager getSingleQuery(String taskId) {
     return SINGLE_QUERY_MANAGER_MAP.get(taskId);
   }
 
+  @Override
   public void releaseQueryResource(long jobId) throws RaftConnectionException {
-    if(SINGLE_QUERY_MANAGER_MAP.containsKey(jobId)){
-     SINGLE_QUERY_MANAGER_MAP.remove(jobId).releaseQueryResource();
+    if (SINGLE_QUERY_MANAGER_MAP.containsKey(jobId)) {
+      SINGLE_QUERY_MANAGER_MAP.remove(jobId).releaseQueryResource();
     }
   }
 
-  private ClusterRpcQueryManager(){
+  private ClusterRpcQueryManager() {
   }
 
   public static final ClusterRpcQueryManager getInstance() {

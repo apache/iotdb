@@ -23,7 +23,7 @@ import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSeriesReader;
+import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterFilterSeriesReader;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.timegenerator.AbstractNodeConstructor;
@@ -53,9 +53,10 @@ public class ClusterNodeConstructor extends AbstractNodeConstructor {
       throws FileNodeManagerException {
     if (expression.getType() == SERIES) {
       try {
-        Map<Path, ClusterSeriesReader> filterSeriesReaders = queryManager.getFilterSeriesReaders();
+        Map<Path, ClusterFilterSeriesReader> filterSeriesReaders = queryManager
+            .getFilterSeriesReaders();
         Path seriesPath = ((SingleSeriesExpression) expression).getSeriesPath();
-        if(filterSeriesReaders.containsKey(seriesPath)){
+        if (filterSeriesReaders.containsKey(seriesPath)) {
           return new ClusterLeafNode(filterSeriesReaders.get(seriesPath));
         }
         return new ClusterLeafNode(generateSeriesReader((SingleSeriesExpression) expression,

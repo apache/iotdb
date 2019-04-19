@@ -29,12 +29,15 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class ClusterFilterBatchReader implements IClusterFilterBatchReader{
+/**
+ * Batch reader for all filter paths.
+ */
+public class ClusterFilterSeriesBatchReader implements IClusterFilterSeriesBatchReader {
 
   private List<Path> allFilterPath;
   private QueryDataSet queryDataSet;
 
-  public ClusterFilterBatchReader(QueryDataSet queryDataSet, List<Path> allFilterPath) {
+  public ClusterFilterSeriesBatchReader(QueryDataSet queryDataSet, List<Path> allFilterPath) {
     this.queryDataSet = queryDataSet;
     this.allFilterPath = allFilterPath;
   }
@@ -44,14 +47,18 @@ public class ClusterFilterBatchReader implements IClusterFilterBatchReader{
     return queryDataSet.hasNext();
   }
 
+  /**
+   * Get batch data of all filter series by next batch time which is determined by
+   * <code>queryDataSet</code>
+   */
   @Override
   public List<BatchData> nextBatchList() throws IOException {
     List<BatchData> batchDataList = new ArrayList<>(allFilterPath.size());
     List<TSDataType> dataTypeList = queryDataSet.getDataTypes();
-    for(int i = 0 ; i < allFilterPath.size(); i ++){
+    for (int i = 0; i < allFilterPath.size(); i++) {
       batchDataList.add(new BatchData(dataTypeList.get(i)));
     }
-    for(int i = 0 ; i < ClusterConstant.BATCH_READ_SIZE; i++) {
+    for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
       if (hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
         long time = rowRecord.getTimestamp();

@@ -20,7 +20,6 @@ package org.apache.iotdb.cluster.query.dataset;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterConstant;
@@ -28,14 +27,15 @@ import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.query.timegenerator.ClusterTimeGenerator;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
 
+/**
+ * Dataset with time generator for cluster
+ */
 public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
 
   private ClusterRpcSingleQueryManager queryManager;
@@ -116,7 +116,7 @@ public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
    * Check if it has next valid timestamp
    */
   private boolean hasNextTimestamp() throws IOException {
-    if(cachedBatchTimestamp == null || !cachedBatchTimestamp.hasNext()) {
+    if (cachedBatchTimestamp == null || !cachedBatchTimestamp.hasNext()) {
       List<Long> batchTimestamp = new ArrayList<>();
       for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
         if (timeGenerator.hasNext()) {
@@ -128,13 +128,13 @@ public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
       if (!batchTimestamp.isEmpty()) {
         cachedBatchTimestamp = batchTimestamp.iterator();
         try {
-          queryManager.fetchBatchDataByTimestamp(batchTimestamp);
+          queryManager.fetchBatchDataByTimestampForAllSelectPaths(batchTimestamp);
         } catch (RaftConnectionException e) {
           throw new IOException(e);
         }
       }
     }
-    if(cachedBatchTimestamp != null && cachedBatchTimestamp.hasNext()){
+    if (cachedBatchTimestamp != null && cachedBatchTimestamp.hasNext()) {
       return true;
     }
     return false;

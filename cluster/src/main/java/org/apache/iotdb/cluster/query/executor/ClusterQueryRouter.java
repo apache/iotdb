@@ -47,7 +47,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
  */
 public class ClusterQueryRouter implements IEngineQueryRouter {
 
-
+  /**
+   * Consistency level of reading data
+   */
   private ThreadLocal<Integer> readDataConsistencyLevel = new ThreadLocal<>();
 
   @Override
@@ -64,19 +66,19 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
         queryExpression.setExpression(optimizedExpression);
 
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-          queryManager.init(QueryType.GLOBAL_TIME, getReadDataConsistencyLevel());
+          queryManager.initQueryResource(QueryType.GLOBAL_TIME, getReadDataConsistencyLevel());
           ClusterExecutorWithoutTimeGenerator engineExecutor =
               new ClusterExecutorWithoutTimeGenerator(queryExpression, queryManager);
           return engineExecutor.execute(context);
         } else {
-          queryManager.init(QueryType.FILTER, getReadDataConsistencyLevel());
+          queryManager.initQueryResource(QueryType.FILTER, getReadDataConsistencyLevel());
           ClusterExecutorWithTimeGenerator engineExecutor = new ClusterExecutorWithTimeGenerator(
               queryExpression, queryManager);
           return engineExecutor.execute(context);
         }
 
       } else {
-        queryManager.init(QueryType.NO_FILTER, getReadDataConsistencyLevel());
+        queryManager.initQueryResource(QueryType.NO_FILTER, getReadDataConsistencyLevel());
         ClusterExecutorWithoutTimeGenerator engineExecutor =
             new ClusterExecutorWithoutTimeGenerator(queryExpression, queryManager);
         return engineExecutor.execute(context);

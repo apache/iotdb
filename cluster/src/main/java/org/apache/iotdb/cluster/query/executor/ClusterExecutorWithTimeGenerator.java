@@ -27,7 +27,7 @@ import java.util.Set;
 import org.apache.iotdb.cluster.query.dataset.ClusterDataSetWithTimeGenerator;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSeriesReader;
+import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
 import org.apache.iotdb.cluster.query.timegenerator.ClusterTimeGenerator;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -42,9 +42,19 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class ClusterExecutorWithTimeGenerator {
 
+  /**
+   * query expression
+   */
   private QueryExpression queryExpression;
+
+  /**
+   * Manger for all remote query series reader resource in the query
+   */
   private ClusterRpcSingleQueryManager queryManager;
 
+  /**
+   * Constructor of ClusterExecutorWithTimeGenerator
+   */
   public ClusterExecutorWithTimeGenerator(QueryExpression queryExpression,
       ClusterRpcSingleQueryManager queryManager) {
     this.queryExpression = queryExpression;
@@ -52,11 +62,9 @@ public class ClusterExecutorWithTimeGenerator {
   }
 
   /**
-   * execute query.
+   * Execute query with value filter.
    *
    * @return QueryDataSet object
-   * @throws IOException IOException
-   * @throws FileNodeManagerException FileNodeManagerException
    */
   public QueryDataSet execute(QueryContext context) throws FileNodeManagerException {
 
@@ -88,7 +96,7 @@ public class ClusterExecutorWithTimeGenerator {
 
     /** Get data type of select paths **/
     List<TSDataType> dataTypes = new ArrayList<>();
-    Map<Path, ClusterSeriesReader> selectSeriesReaders = queryManager.getSelectSeriesReaders();
+    Map<Path, ClusterSelectSeriesReader> selectSeriesReaders = queryManager.getSelectSeriesReaders();
     for (Path path : queryExpression.getSelectedSeries()) {
       try {
         if (selectSeriesReaders.containsKey(path)) {

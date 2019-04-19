@@ -22,9 +22,15 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public interface IClusterFilterBatchReader {
+/**
+ * Batch reader for filter series which is used in query node.
+ */
+public interface IClusterFilterSeriesBatchReader {
 
   boolean hasNext() throws IOException;
 
+  /**
+   * Get next batch data of all filter series.
+   */
   List<BatchData> nextBatchList() throws IOException;
 }

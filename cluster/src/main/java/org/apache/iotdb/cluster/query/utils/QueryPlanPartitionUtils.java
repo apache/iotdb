@@ -19,7 +19,6 @@
 package org.apache.iotdb.cluster.query.utils;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -55,7 +54,7 @@ public class QueryPlanPartitionUtils {
    */
   private static void splitQueryPlanBySelectPath(ClusterRpcSingleQueryManager singleQueryManager)
       throws PathErrorException {
-    QueryPlan queryPlan = singleQueryManager.getQueryPlan();
+    QueryPlan queryPlan = singleQueryManager.getOriginQueryPlan();
     Map<String, List<Path>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
     Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
     List<Path> selectPaths = queryPlan.getPaths();
@@ -83,7 +82,7 @@ public class QueryPlanPartitionUtils {
    */
   public static void splitQueryPlanWithValueFilter(
       ClusterRpcSingleQueryManager singleQueryManager) throws PathErrorException {
-    QueryPlan queryPlan = singleQueryManager.getQueryPlan();
+    QueryPlan queryPlan = singleQueryManager.getOriginQueryPlan();
     if (queryPlan instanceof GroupByPlan) {
       splitGroupByPlan((GroupByPlan) queryPlan, singleQueryManager);
     } else if (queryPlan instanceof AggregationPlan) {

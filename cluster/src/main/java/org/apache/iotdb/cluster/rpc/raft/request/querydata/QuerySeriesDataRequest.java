@@ -26,6 +26,10 @@ import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
+/**
+ * This class handle three situation request: 1. Initially create series reader. 2. Fetch date without
+ * timestamp. 3. Release resource in remote node
+ */
 public class QuerySeriesDataRequest extends BasicQueryRequest {
 
   private static final long serialVersionUID = 7132891920951977625L;

@@ -16,23 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query.expression;
+package org.apache.iotdb.cluster.rpc.raft.response;
 
-import org.apache.iotdb.tsfile.read.expression.ExpressionType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 
-/**
- * This type of Expression is used in pruning filter tree while handling query with value filter
- */
-public class TrueExpression implements IExpression {
+public abstract class BasicQueryDataResponse extends BasicResponse{
 
-  @Override
-  public ExpressionType getType() {
-    return ExpressionType.TRUE;
+
+  private List<BatchData> seriesBatchData = new ArrayList<>();
+
+  public BasicQueryDataResponse(String groupId, boolean redirected, String leaderStr,
+      String errorMsg) {
+    super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  @Override
-  public IExpression clone() {
-    return new TrueExpression();
+  public List<BatchData> getSeriesBatchData() {
+    return seriesBatchData;
+  }
+
+  public void setSeriesBatchData(
+      List<BatchData> seriesBatchData) {
+    this.seriesBatchData = seriesBatchData;
   }
 }

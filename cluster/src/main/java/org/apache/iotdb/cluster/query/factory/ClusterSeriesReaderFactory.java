@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSeriesReader;
+import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -34,6 +34,9 @@ import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.common.Path;
 
+/**
+ * Reader factory for cluster
+ */
 public class ClusterSeriesReaderFactory {
 
   /**
@@ -47,7 +50,7 @@ public class ClusterSeriesReaderFactory {
       List<Path> paths, QueryContext context, ClusterRpcSingleQueryManager queryManager)
       throws IOException, FileNodeManagerException {
 
-    Map<Path, ClusterSeriesReader> selectSeriesReaders = queryManager.getSelectSeriesReaders();
+    Map<Path, ClusterSelectSeriesReader> selectSeriesReaders = queryManager.getSelectSeriesReaders();
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
     for (Path path : paths) {

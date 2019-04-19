@@ -18,6 +18,57 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.request.querydata;
 
-public class QuerySeriesDataByTimestampRequest {
+import java.util.List;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
 
+public class QuerySeriesDataByTimestampRequest extends BasicQueryRequest {
+
+  private static final long serialVersionUID = 4942493162179531133L;
+  /**
+   * Rounds number of query
+   */
+  private long queryRounds;
+
+  /**
+   * Unique task id which is assigned in coordinator node
+   */
+  private String taskId;
+
+  private List<Long> batchTimestamp;
+
+  private QuerySeriesDataByTimestampRequest(String groupID) {
+    super(groupID);
+  }
+
+  public static QuerySeriesDataByTimestampRequest createRequest(String groupId, long queryRounds, String taskId, List<Long> batchTimestamp){
+    QuerySeriesDataByTimestampRequest request = new QuerySeriesDataByTimestampRequest(groupId);
+    request.queryRounds = queryRounds;
+    request.taskId = taskId;
+    request.batchTimestamp = batchTimestamp;
+    return request;
+  }
+
+  public long getQueryRounds() {
+    return queryRounds;
+  }
+
+  public void setQueryRounds(long queryRounds) {
+    this.queryRounds = queryRounds;
+  }
+
+  public String getTaskId() {
+    return taskId;
+  }
+
+  public void setTaskId(String taskId) {
+    this.taskId = taskId;
+  }
+
+  public List<Long> getBatchTimestamp() {
+    return batchTimestamp;
+  }
+
+  public void setBatchTimestamp(List<Long> batchTimestamp) {
+    this.batchTimestamp = batchTimestamp;
+  }
 }

@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.cluster.query;
 
+/**
+ * Type of path
+ */
 public enum PathType {
   /**
    * Select paths in a query

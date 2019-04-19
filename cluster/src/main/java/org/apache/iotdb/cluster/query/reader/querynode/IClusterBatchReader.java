@@ -23,8 +23,17 @@ import java.util.List;
 import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
+/**
+ * Cluster batch reader, which provides another method to get batch data by batch timestamp.
+ */
 public abstract class IClusterBatchReader implements IBatchReader {
 
-  abstract BatchData nextBatch(List<Long> batchTime) throws IOException;
+  /**
+   * Get batch data by batch time
+   *
+   * @param batchTime valid batch timestamp
+   * @return corresponding batch data
+   */
+  public abstract BatchData nextBatch(List<Long> batchTime) throws IOException;
 
 }

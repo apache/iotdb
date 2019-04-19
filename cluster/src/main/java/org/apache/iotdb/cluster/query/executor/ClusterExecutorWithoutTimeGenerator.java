@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSeriesReader;
+import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -44,9 +44,20 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class ClusterExecutorWithoutTimeGenerator {
+
+  /**
+   * Query expression
+   */
   private QueryExpression queryExpression;
+
+  /**
+   * Manger for all remote query series reader resource in the query
+   */
   private ClusterRpcSingleQueryManager queryManager;
 
+  /**
+   * Constructor of ClusterExecutorWithoutTimeGenerator
+   */
   public ClusterExecutorWithoutTimeGenerator(QueryExpression queryExpression,
       ClusterRpcSingleQueryManager queryManager) {
     this.queryExpression = queryExpression;
@@ -54,25 +65,25 @@ public class ClusterExecutorWithoutTimeGenerator {
   }
 
   /**
-   * without filter or with global time filter.
+   * Execute query without filter or with only global time filter.
    */
   public QueryDataSet execute(QueryContext context)
       throws FileNodeManagerException {
 
     Filter timeFilter = null;
-    if(queryExpression.getExpression() != null){
+    if (queryExpression.getExpression() != null) {
       timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
     }
 
     List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    Map<Path, ClusterSeriesReader> selectPathReaders = queryManager.getSelectSeriesReaders();
+    Map<Path, ClusterSelectSeriesReader> selectPathReaders = queryManager.getSelectSeriesReaders();
     List<Path> paths = new ArrayList<>();
     for (Path path : queryExpression.getSelectedSeries()) {
 
-      if(selectPathReaders.containsKey(path)){
-        ClusterSeriesReader reader = selectPathReaders.get(path);
+      if (selectPathReaders.containsKey(path)) {
+        ClusterSelectSeriesReader reader = selectPathReaders.get(path);
         readersOfSelectedSeries.add(reader);
         dataTypes.add(reader.getDataType());
 
