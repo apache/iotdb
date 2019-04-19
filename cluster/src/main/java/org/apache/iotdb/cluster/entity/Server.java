@@ -90,6 +90,7 @@ public class Server {
     /** Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version **/
     iotdb = new IoTDB();
     iotdb.active();
+    CLIENT_MANAGER.init();
 
     /** Init raft groups **/
     PeerId[] peerIds = RaftUtils.convertStringArrayToPeerIdArray(CLUSTER_CONF.getNodes());
@@ -144,7 +145,7 @@ public class Server {
     rpcServer.registerUserProcessor(new QuerySeriesDataByTimestampSyncProcessor());
   }
 
-  public void stop() throws ProcessorException {
+  public void stop() throws ProcessorException, InterruptedException {
     QPTaskManager.getInstance().close(true, ClusterConstant.CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT);
     iotdb.deactivate();
     CLIENT_MANAGER.shutdown();
