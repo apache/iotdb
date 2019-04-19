@@ -61,15 +61,17 @@ public class ImportCsvTestIT extends AbstractScript {
 
 	@Override
 	protected void testOnUnix() throws IOException {
-		final String[] output = {"---------------------", "Starting IoTDB Client",
-				"---------------------",
-				"IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
+		final String[] output = {"------------------------------------------",
+				"Starting IoTDB Client Import Script",
+				"------------------------------------------",
+				"Encounter an error when importing data, error is: Connection Error, please check whether "
+						+ "the network is available or the server has started."};
 		String dir = getCurrentPath("pwd");
 		System.out.println(dir);
 		ProcessBuilder builder = new ProcessBuilder("sh",
 				dir + File.separator + "cli" + File.separator + "bin" + File.separator + "import-csv.sh",
 				"-h",
-				"127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
+				"127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root", "-f", "./");
 		testOutput(builder, output);
 	}
 }

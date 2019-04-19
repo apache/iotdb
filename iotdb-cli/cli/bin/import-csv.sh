@@ -18,6 +18,9 @@
 # under the License.
 #
 
+echo ------------------------------------------
+echo Starting IoTDB Client Import Script
+echo ------------------------------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
     export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
