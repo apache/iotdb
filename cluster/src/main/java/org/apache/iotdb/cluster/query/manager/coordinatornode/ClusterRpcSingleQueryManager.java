@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.QueryType;
@@ -225,7 +226,21 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       QuerySeriesDataByTimestampResponse response = ClusterRpcReaderUtils
           .fetchBatchDataByTimestamp(groupId, queryNodes.get(groupId), taskId, queryRounds++,
               batchTimestamp);
-      handleFetchDataResponseForSelectPaths(fetchDataFilterSeries, response);
+      handleFetchDataByTimestampResponseForSelectPaths(fetchDataFilterSeries, response);
+    }
+  }
+
+  /**
+   * Handle response of fetching data, and add batch data to corresponding reader.
+   */
+  private void handleFetchDataByTimestampResponseForSelectPaths(List<String> fetchDataSeries,
+      BasicQueryDataResponse response) {
+    List<BatchData> batchDataList = response.getSeriesBatchData();
+    for (int i = 0; i < fetchDataSeries.size(); i++) {
+      String series = fetchDataSeries.get(i);
+      BatchData batchData = batchDataList.get(i);
+      selectSeriesReaders.get(new Path(series))
+          .addBatchData(batchData, true);
     }
   }
 
@@ -238,7 +253,8 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     for (int i = 0; i < fetchDataSeries.size(); i++) {
       String series = fetchDataSeries.get(i);
       BatchData batchData = batchDataList.get(i);
-      selectSeriesReaders.get(new Path(series)).addBatchData(batchData);
+      selectSeriesReaders.get(new Path(series))
+          .addBatchData(batchData, batchData.length() < ClusterConstant.BATCH_READ_SIZE);
     }
   }
 

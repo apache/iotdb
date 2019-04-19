@@ -142,11 +142,9 @@ public class ClusterSelectSeriesReader extends AbstractClusterPointReader implem
     this.currentBatchData = currentBatchData;
   }
 
-  public void addBatchData(BatchData batchData) {
+  public void addBatchData(BatchData batchData, boolean remoteDataFinish) {
     batchDataList.addLast(batchData);
-    if (batchData.length() < ClusterConstant.BATCH_READ_SIZE) {
-      remoteDataFinish = true;
-    }
+    this.remoteDataFinish = remoteDataFinish;
   }
 
   public boolean isRemoteDataFinish() {
