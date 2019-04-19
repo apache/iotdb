@@ -47,7 +47,7 @@ public class ClusterRpcQueryManager implements IClusterRpcQueryManager {
 
   @Override
   public void addSingleQuery(long jobId, QueryPlan physicalPlan) {
-    String taskId = getAndIncreaTaskId();
+    String taskId = getAndIncreaTaskId(jobId);
     JOB_ID_MAP_TASK_ID.put(jobId, taskId);
     SINGLE_QUERY_MANAGER_MAP.put(taskId, new ClusterRpcSingleQueryManager(taskId, physicalPlan));
   }
