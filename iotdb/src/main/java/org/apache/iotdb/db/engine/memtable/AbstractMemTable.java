@@ -124,7 +124,7 @@ public abstract class AbstractMemTable implements IMemTable {
       IWritableMemChunk newChunk = filterChunk(chunk, timestamp);
       if (newChunk != null) {
         deviceMap.put(measurementId, newChunk);
-        return newChunk.count() == chunk.count();
+        return newChunk.count() != chunk.count();
       }
     }
     return false;
