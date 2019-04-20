@@ -18,6 +18,9 @@
 # under the License.
 #
 
+echo ------------------------------------------
+echo Starting IoTDB Client Export Script
+echo ------------------------------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
     export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
@@ -44,7 +47,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.db.tool.ExportCsv
+MAIN_CLASS=org.apache.iotdb.cli.tool.ExportCsv
 
 "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?
