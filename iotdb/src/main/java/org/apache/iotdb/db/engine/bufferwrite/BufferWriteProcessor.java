@@ -81,8 +81,6 @@ public class BufferWriteProcessor extends Processor {
   private String insertFilePath;
   private String bufferWriteRelativePath;
 
-  private List<TsFileResource> tsFileResources;
-
   private WriteLogNode logNode;
   private VersionController versionController;
 

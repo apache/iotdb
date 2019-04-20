@@ -570,14 +570,16 @@ public class FileNodeManager implements IStatistic, IService {
       Iterator<Map.Entry<String, FileNodeProcessor>> processorIterator)
       throws FileNodeManagerException {
     if (!processorMap.containsKey(processorName)) {
+      //TODO do we need to call processorIterator.remove() ?
       LOGGER.warn("The processorMap doesn't contain the filenode processor {}.", processorName);
       return;
     }
     LOGGER.info("Try to delete the filenode processor {}.", processorName);
     FileNodeProcessor processor = processorMap.get(processorName);
     if (!processor.tryWriteLock()) {
-      LOGGER.warn("Can't get the write lock of the filenode processor {}.", processorName);
-      return;
+      throw new FileNodeManagerException(String
+          .format("Delete the filenode processor %s because Can't get the write lock.",
+              processorName));
     }
 
     try {
