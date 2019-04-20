@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.tsfiledata.TsFileProcessor;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -196,27 +195,5 @@ public class QueryResourceManager {
 
     private QueryTokenManagerHelper() {
     }
-  }
-
-
-  /**
-   * TODO
-   * This is only for test TsFileProcessor now. This method will finally be replaced when
-   * fileNodeManager is refactored
-   */
-  public QueryDataSource getQueryDataSourceByTsFileProcessor(Path selectedPath,
-      QueryContext context, TsFileProcessor processor)
-      throws IOException, FileNodeManagerException {
-    OverflowSeriesDataSource overflowSeriesDataSource = new OverflowSeriesDataSource(selectedPath);
-    overflowSeriesDataSource.setOverflowInsertFileList(Collections.EMPTY_LIST);
-
-    SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
-    GlobalSortedSeriesDataSource dataSource =processor.query(singleSeriesExpression, context);
-    QueryDataSource queryDataSource = new QueryDataSource(dataSource, overflowSeriesDataSource);
-    // add used files to current thread request cached map
-    filePathsManager.addUsedFilesForGivenJob(context.getJobId(), queryDataSource);
-
-    return queryDataSource;
-
   }
 }
