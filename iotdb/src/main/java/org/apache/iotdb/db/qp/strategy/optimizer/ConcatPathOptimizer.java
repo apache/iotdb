@@ -335,7 +335,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         retPaths.add(new Path(pathStr));
       }
     } catch (PathErrorException e) {
-      LOG.error("meet error while removing star." + e);
+      LOG.error("meet error while removing star.", e);
       throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
     }
     return retPaths;
@@ -355,12 +355,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           }
         }
       } catch (PathErrorException e) {
-        LOG.error("meet error while removing star." + e);
+        LOG.error("meet error while removing star.", e);
         throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
       }
     }
     if (retPaths.isEmpty()) {
-      throw new LogicalOptimizeException("do not select any existing seriesPath");
+      throw new LogicalOptimizeException("do not select any existing series");
     }
     selectOperator.setSuffixPathList(retPaths);
     selectOperator.setAggregations(newAggregations);
