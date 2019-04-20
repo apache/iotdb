@@ -482,7 +482,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeUpdateStatement(physicalPlan);
       }
     } catch (Exception e) {
-      LOGGER.info("meet error while executing statement: {}", e.getMessage());
+      LOGGER.info("meet error: {}  while executing statement: {}", e.getMessage(), req.getStatement());
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
