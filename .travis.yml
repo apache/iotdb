@@ -72,6 +72,12 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B clean integration-test
+      cache:
+        directories:
+          - '$HOME/.m2/repository'
+          - '$HOME/.sonar/cache'
+          - '/c/java11'
+          - '/c/mvn361'
 
     - os: linux
       name: linux-openjdk11
