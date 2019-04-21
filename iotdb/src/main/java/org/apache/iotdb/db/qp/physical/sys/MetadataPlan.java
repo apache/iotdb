@@ -57,8 +57,10 @@ public class MetadataPlan extends PhysicalPlan {
     this.deletePathList = deletePathList;
     switch (namespaceType) {
       case SET_FILE_LEVEL:
-      case ADD_PATH:
         setOperatorType(Operator.OperatorType.SET_STORAGE_GROUP);
+        break;
+      case ADD_PATH:
+        setOperatorType(Operator.OperatorType.CREATE_TIMESERIES);
         break;
       case DELETE_PATH:
         setOperatorType(Operator.OperatorType.DELETE_TIMESERIES);
@@ -114,7 +116,7 @@ public class MetadataPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    String ret = String.format("seriesPath: %s\ndataType: %s\nencoding: %s\nnamespace type: %s\nargs: ", path, dataType, encoding, namespaceType);
+    String ret = String.format("seriesPath: %s\nresultDataType: %s\nencoding: %s\nnamespace type: %s\nargs: ", path, dataType, encoding, namespaceType);
     StringBuilder stringBuilder = new StringBuilder(ret.length()+50);
     stringBuilder.append(ret);
     for (Map.Entry prop : props.entrySet()) {

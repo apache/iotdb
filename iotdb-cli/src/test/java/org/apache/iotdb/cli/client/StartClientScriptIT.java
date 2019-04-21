@@ -18,19 +18,14 @@
  */
 package org.apache.iotdb.cli.client;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class StartClientScriptIT {
+public class StartClientScriptIT extends AbstractScript {
 
   @Before
   public void setUp() throws Exception {
@@ -42,16 +37,16 @@ public class StartClientScriptIT {
 
   @Test
   public void test() throws IOException, InterruptedException {
-
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
-      testStartClientOnWindows();
+      testOnWindows();
     } else {
-      testStartClientOnUnix();
+      testOnUnix();
     }
   }
 
-  private void testStartClientOnWindows() throws IOException {
+  @Override
+  protected void testOnWindows() throws IOException {
     final String[] output = {"````````````````````````", "Starting IoTDB Client",
         "````````````````````````",
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
@@ -63,7 +58,8 @@ public class StartClientScriptIT {
     testOutput(builder, output);
   }
 
-  private void testStartClientOnUnix() throws IOException {
+  @Override
+  protected void testOnUnix() throws IOException {
     final String[] output = {"---------------------", "Starting IoTDB Client",
         "---------------------",
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
@@ -74,36 +70,5 @@ public class StartClientScriptIT {
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     testOutput(builder, output);
-  }
-
-  private void testOutput(ProcessBuilder builder, String[] output) throws IOException {
-    builder.redirectErrorStream(true);
-    Process p = builder.start();
-    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-    String line;
-    List<String> outputList = new ArrayList<>();
-    while (true) {
-      line = r.readLine();
-      if (line == null) {
-        break;
-      } else {
-        outputList.add(line);
-      }
-    }
-    r.close();
-    p.destroy();
-
-    for (int i = 0; i < output.length; i++) {
-      assertEquals(output[output.length - 1 - i], outputList.get(outputList.size() - 1 - i));
-    }
-  }
-
-  private String getCurrentPath(String... command) throws IOException {
-    ProcessBuilder builder = new ProcessBuilder(command);
-    builder.redirectErrorStream(true);
-    Process p = builder.start();
-    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-    String path = r.readLine();
-    return path;
   }
 }

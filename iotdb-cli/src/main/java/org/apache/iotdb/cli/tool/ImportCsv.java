@@ -46,6 +46,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.cli.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -57,9 +58,6 @@ import org.slf4j.LoggerFactory;
  * @author zhanggr
  */
 public class ImportCsv extends AbstractCsvTool {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(ImportCsv.class);
-
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
   private static final String FILE_SUFFIX = "csv";
@@ -130,7 +128,7 @@ public class ImportCsv extends AbstractCsvTool {
       try {
         errorFile.createNewFile();
       } catch (IOException e) {
-        LOGGER.error("Cannot create a errorFile because, ", e);
+        System.out.println("Cannot create a errorFile because: " + e.getMessage());
         return;
       }
     }
@@ -157,7 +155,7 @@ public class ImportCsv extends AbstractCsvTool {
 
       String[] strHeadInfo = header.split(",");
       if (strHeadInfo.length <= 1) {
-        LOGGER.error("The CSV file {} illegal, please check first line", file.getName());
+        System.out.println("The CSV file "+ file.getName() +" illegal, please check first line");
         return;
       }
 
@@ -184,11 +182,11 @@ public class ImportCsv extends AbstractCsvTool {
       executeSqls(bw, tmp, startTime, file);
 
     } catch (FileNotFoundException e) {
-      LOGGER.error("Cannot find {}", file.getName(), e);
+      System.out.println("Cannot find " + file.getName() + " because: "+e.getMessage());
     } catch (IOException e) {
-      LOGGER.error("CSV file read exception! ", e);
+      System.out.println("CSV file read exception because: " + e.getMessage());
     } catch (SQLException e) {
-      LOGGER.error("Database connection exception!", e);
+      System.out.println("Database connection exception because: " + e.getMessage());
     } finally {
       try {
         if (statement != null) {
@@ -197,13 +195,13 @@ public class ImportCsv extends AbstractCsvTool {
         if (errorFlag) {
           FileUtils.forceDelete(errorFile);
         } else {
-          LOGGER.error("Format of some lines in {} error, please check {} for more "
-                  + "information", file.getAbsolutePath(), errorFile.getAbsolutePath());
+          System.out.println("Format of some lines in "+ file.getAbsolutePath() + " error, please "
+              + "check "+errorFile.getAbsolutePath()+" for more information");
         }
       } catch (SQLException e) {
-        LOGGER.error("Sql statement can not be closed ! ", e);
+        System.out.println("Sql statement can not be closed because: " + e.getMessage());
       } catch (IOException e) {
-        LOGGER.error("Close file error ! ", e);
+        System.out.println("Close file error because: " + e.getMessage());
       }
     }
   }
@@ -221,13 +219,13 @@ public class ImportCsv extends AbstractCsvTool {
       }
       statement.clearBatch();
       tmp.clear();
-      LOGGER.info("Load data from {} successfully, it takes {}ms", file.getName(),
-          System.currentTimeMillis() - startTime);
+      System.out.println("Load data from "+ file.getName() +" successfully, it takes "
+          + ""+(System.currentTimeMillis() - startTime)+"ms");
     } catch (SQLException e) {
       bw.write(e.getMessage());
       bw.newLine();
       errorFlag = false;
-      LOGGER.error("Cannot execute sql because ", e);
+      System.out.println("Cannot execute sql because: " + e.getMessage());
     }
   }
 
@@ -243,7 +241,7 @@ public class ImportCsv extends AbstractCsvTool {
       } catch (Exception e) {
         bw.write(String.format("error input line, maybe it is not complete: %s", line));
         bw.newLine();
-        LOGGER.error("Cannot create sql for {} because ", line, e);
+        System.out.println("Cannot create sql for " + line + " because: " + e.getMessage());
         errorFlag = false;
         return false;
       }
@@ -268,7 +266,7 @@ public class ImportCsv extends AbstractCsvTool {
         bw.write(e.getMessage());
         bw.newLine();
         errorFlag = false;
-        LOGGER.error("Cannot execute sql because ", e);
+        System.out.println("Cannot execute sql because: " + e.getMessage());
         return false;
       }
     }
@@ -301,16 +299,14 @@ public class ImportCsv extends AbstractCsvTool {
     DatabaseMetaData databaseMetaData = connection.getMetaData();
 
     for (int i = 1; i < strHeadInfo.length; i++) {
-      ResultSet resultSet = databaseMetaData.getColumns(null,
-          null, strHeadInfo[i], null);
+      ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, strHeadInfo[i], null, null);
       if (resultSet.next()) {
-        timeseriesDataType.put(resultSet.getString(1),
-            resultSet.getString(2));
+        timeseriesDataType.put(strHeadInfo[i], resultSet.getString(2));
       } else {
         String errorInfo = String.format("Database cannot find %s in %s, stop import!",
             strHeadInfo[i], file.getAbsolutePath());
-        LOGGER.error("Database cannot find {} in {}, stop import!",
-            strHeadInfo[i], file.getAbsolutePath());
+        System.out.println("Database cannot find "+strHeadInfo[i]+" in "+file.getAbsolutePath()+", "
+            + "stop import!");
         bw.write(errorInfo);
         return false;
       }
@@ -390,14 +386,14 @@ public class ImportCsv extends AbstractCsvTool {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      LOGGER.error("Too few params input, please check the following hint.");
+      System.out.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      LOGGER.error("Parse error ", e);
+      System.out.println("Parse error: " + e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
@@ -418,9 +414,9 @@ public class ImportCsv extends AbstractCsvTool {
       parseSpecialParams(commandLine);
       importCsvFromFile(host, port, username, password, filename, timeZoneID);
     } catch (ArgsErrorException e) {
-      LOGGER.error("Args error", e);
+      System.out.println("Args error: " + e.getMessage());
     } catch (Exception e) {
-      LOGGER.error("Encounter an error, because ", e);
+      System.out.println("Encounter an error, because: " + e.getMessage());
     } finally {
       reader.close();
     }
@@ -455,14 +451,14 @@ public class ImportCsv extends AbstractCsvTool {
       }
 
     } catch (ClassNotFoundException e) {
-      LOGGER.error(
-          "Failed to dump data because cannot find TsFile JDBC Driver, "
-              + "please check whether you have imported driver or not", e);
+      System.out.println("Failed to import data because cannot find IoTDB JDBC Driver, "
+          + "please check whether you have imported driver or not: " + e.getMessage());
     } catch (TException e) {
-      LOGGER.error("Encounter an error when connecting to server, because ",
-          e);
+      System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
+    } catch (SQLException e){
+      System.out.println("Encounter an error when importing data, error is: " + e.getMessage());
     } catch (Exception e) {
-      LOGGER.error("Encounter an error, because ", e);
+      System.out.println("Encounter an error, because: " + e.getMessage());
     } finally {
       if (connection != null) {
         connection.close();
@@ -474,7 +470,7 @@ public class ImportCsv extends AbstractCsvTool {
     if (file.getName().endsWith(FILE_SUFFIX)) {
       loadDataFromCSV(file, 1);
     } else {
-      LOGGER.warn("File {} should ends with '.csv' if you want to import", file.getName());
+      System.out.println("File "+ file.getName() +"  should ends with '.csv' if you want to import");
     }
   }
 
@@ -491,7 +487,7 @@ public class ImportCsv extends AbstractCsvTool {
           loadDataFromCSV(subFile, i);
           i++;
         } else {
-          LOGGER.warn("File {} should ends with '.csv' if you want to import", file.getName());
+          System.out.println("File " + file.getName() + " should ends with '.csv' if you want to import");
         }
       }
     }

@@ -51,8 +51,11 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.LoadDataUtils;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -143,6 +146,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             MManager.getInstance());
         return true;
       case DELETE_TIMESERIES:
+      case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
       case METADATA:
         MetadataPlan metadata = (MetadataPlan) plan;
@@ -176,22 +180,26 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Pair<Path, String>> aggres, IExpression expression)
-      throws ProcessorException {
-    throw new ProcessorException("not support");
+  public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
+      QueryContext context)
+      throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
+      PathErrorException, IOException {
+    return queryRouter.aggregate(paths, aggres, expression, context);
   }
 
-  // @Override
-  // public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes) throws
-  // ProcessorException, IOException, PathErrorException {
-  // return queryEngine.fill(fillPaths, queryTime, fillTypes);
-  // }
+  @Override
+  public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
+      QueryContext context)
+      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException {
+    return queryRouter.fill(fillPaths, queryTime, fillTypes, context);
+  }
 
   @Override
-  public QueryDataSet groupBy(List<Pair<Path, String>> aggres, IExpression expression, long unit,
-      long origin,
-      List<Pair<Long, Long>> intervals, int fetchSize) throws ProcessorException {
-    throw new ProcessorException("not support");
+  public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
+      long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
+      throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
+      PathErrorException, IOException {
+    return queryRouter.groupBy(paths, aggres, expression, unit, origin, intervals, context);
   }
 
   @Override
@@ -502,7 +510,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           // optimize the speed of adding timeseries
           String fileNodePath = mManager.getFileNameByPath(path.getFullPath());
           // the two map is stored in the storage group node
-          Map<String, MeasurementSchema> schemaMap = mManager.getSchemaMapForOneFileNode(fileNodePath);
+          Map<String, MeasurementSchema> schemaMap = mManager
+              .getSchemaMapForOneFileNode(fileNodePath);
           Map<String, Integer> numSchemaMap = mManager.getNumSchemaMapForOneFileNode(fileNodePath);
           String lastNode = path.getMeasurement();
           boolean isNewMeasurement = true;
@@ -514,8 +523,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               if (!columnSchema.getType().equals(dataType)
                   || !columnSchema.getEncodingType().equals(encoding)) {
                 throw new ProcessorException(String.format(
-                    "The dataType or encoding of the last node %s is conflicting in the storage group %s",
-                    lastNode, fileNodePath));
+                    "The resultDataType or encoding of the last node %s is conflicting "
+                        + "in the storage group %s", lastNode, fileNodePath));
               }
               mManager.addPathToMTree(path.getFullPath(), dataType, encoding, compressor, props);
               numSchemaMap.put(lastNode, numSchemaMap.get(lastNode) + 1);
@@ -529,7 +538,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               if (isNewMeasurement) {
                 // add time series to schema
                 fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, props);
-                //TODO fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, encodingArgs);
+                //TODO fileNodeManager.addTimeSeries(
+                //TODO path, resultDataType, encoding, compressor, encodingArgs);
               }
               // fileNodeManager.closeOneFileNode(namespacePath);
             } catch (FileNodeManagerException e) {
@@ -627,8 +637,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   /**
    * Delete all data of time series in pathList.
    *
-   * @param pathList
-   *            deleted paths
+   * @param pathList deleted paths
    */
   private void deleteDataOfTimeSeries(List<String> pathList) throws ProcessorException {
     for (String p : pathList) {

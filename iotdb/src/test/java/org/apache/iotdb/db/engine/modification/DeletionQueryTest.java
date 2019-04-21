@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -63,7 +65,9 @@ public class DeletionQueryTest {
 
   @Before
   public void setup() throws MetadataArgsErrorException,
-      PathErrorException, IOException, FileNodeManagerException {
+      PathErrorException, IOException, FileNodeManagerException, StartupException {
+    EnvironmentUtils.envSetUp();
+
     MManager.getInstance().setStorageLevelToMTree(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
@@ -103,7 +107,7 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[5]));
 
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression);
+    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {
@@ -134,7 +138,7 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[5]));
 
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression);
+    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {
@@ -176,7 +180,7 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[5]));
 
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression);
+    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {
@@ -218,7 +222,7 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[5]));
 
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression);
+    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {
@@ -285,7 +289,7 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[5]));
 
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = router.query(queryExpression);
+    QueryDataSet dataSet = router.query(queryExpression, TEST_QUERY_CONTEXT);
 
     int count = 0;
     while (dataSet.hasNext()) {

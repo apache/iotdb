@@ -49,8 +49,8 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
-import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationResp;
@@ -79,6 +79,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_Status;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
@@ -104,6 +105,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
   private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
   public TSServiceImpl() throws IOException {
     // do nothing because there is no need
@@ -184,17 +186,30 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
     LOGGER.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
-      // end query for all the query tokens created by current thread
-      QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
 
-      // remove usage of opened file paths of current thread
-      OpenedFilePathsManager.getInstance().removeUsedFilesForCurrentRequestThread();
+      releaseQueryResource(req);
 
       clearAllStatusForCurrentRequest();
     } catch (FileNodeManagerException e) {
       LOGGER.error("Error in closeOperation : {}", e.getMessage());
     }
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
+  }
+
+  private void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+    if (contextMap == null) {
+      return;
+    }
+    if(req == null || req.queryId == -1) {
+      // end query for all the query tokens created by current thread
+      for (QueryContext context : contextMap.values()) {
+        QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
+      }
+    } else {
+      QueryResourceManager.getInstance()
+          .endQueryForGivenJob(contextMap.remove(req.queryId).getJobId());
+    }
   }
 
   private void clearAllStatusForCurrentRequest() {
@@ -206,7 +221,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private TS_Status getErrorStatus(String message){
+  private TS_Status getErrorStatus(String message) {
     TS_Status status = new TS_Status(TS_StatusCode.ERROR_STATUS);
     status.setErrorMessage(message);
     return status;
@@ -230,7 +245,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setShowTimeseriesList(showTimeseriesList);
         } catch (PathErrorException e) {
           status = getErrorStatus(
-                  String.format("Failed to fetch timeseries %s's metadata because: %s",
+              String.format("Failed to fetch timeseries %s's metadata because: %s",
                   req.getColumnPath(), e));
           resp.setStatus(status);
           return resp;
@@ -239,8 +254,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
                   outOfMemoryError);
           status = getErrorStatus(
-                  String.format("Failed to fetch timeseries %s's metadata because: %s",
-                          req.getColumnPath(), outOfMemoryError));
+              String.format("Failed to fetch timeseries %s's metadata because: %s",
+                  req.getColumnPath(), outOfMemoryError));
           resp.setStatus(status);
           return resp;
         }
@@ -251,14 +266,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           Set<String> storageGroups = MManager.getInstance().getAllStorageGroup();
           resp.setShowStorageGroups(storageGroups);
         } catch (PathErrorException e) {
-          status = getErrorStatus(String.format("Failed to fetch storage groups' metadata because: %s", e));
+          status = getErrorStatus(
+              String.format("Failed to fetch storage groups' metadata because: %s", e));
           resp.setStatus(status);
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
           LOGGER.error("Failed to fetch storage groups' metadata", outOfMemoryError);
           status = getErrorStatus(
-                  String.format("Failed to fetch storage groups' metadata because: %s",
-                          outOfMemoryError));
+              String.format("Failed to fetch storage groups' metadata because: %s",
+                  outOfMemoryError));
           resp.setStatus(status);
           return resp;
         }
@@ -270,7 +286,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           metadataInJson = MManager.getInstance().getMetadataInString();
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
           LOGGER.error("Failed to fetch all metadata in json", outOfMemoryError);
-          status = getErrorStatus(String.format("Failed to fetch all metadata in json because: %s", outOfMemoryError));
+          status = getErrorStatus(
+              String.format("Failed to fetch all metadata in json because: %s", outOfMemoryError));
           resp.setStatus(status);
           return resp;
         }
@@ -295,7 +312,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
           LOGGER.error("Failed to get delta object map", outOfMemoryError);
-          status = getErrorStatus(String.format("Failed to get delta object map because: %s", outOfMemoryError));
+          status = getErrorStatus(
+              String.format("Failed to get delta object map because: %s", outOfMemoryError));
           break;
         }
         status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
@@ -317,7 +335,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         try {
           resp.setColumnsList(MManager.getInstance().getPaths(req.getColumnPath()));
         } catch (PathErrorException e) {
-          status = getErrorStatus(String.format("Failed to fetch %s's all columns because: %s", req.getColumnPath(), e));
+          status = getErrorStatus(String
+              .format("Failed to fetch %s's all columns because: %s", req.getColumnPath(), e));
           resp.setStatus(status);
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
@@ -463,7 +482,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeUpdateStatement(physicalPlan);
       }
     } catch (Exception e) {
-      LOGGER.error("meet error while executing statement.", e);
+      LOGGER.info("meet error: {}  while executing statement: {}", e.getMessage(), req.getStatement());
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
@@ -587,10 +606,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       int fetchSize = req.getFetch_size();
       QueryDataSet queryDataSet;
       if (!queryRet.get().containsKey(statement)) {
-        PhysicalPlan physicalPlan = queryStatus.get().get(statement);
-        processor.getExecutor().setFetchSize(fetchSize);
-        queryDataSet = processor.getExecutor().processQuery(physicalPlan);
-        queryRet.get().put(statement, queryDataSet);
+        queryDataSet = createNewDataSet(statement, fetchSize, req);
       } else {
         queryDataSet = queryRet.get().get(statement);
       }
@@ -608,6 +624,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
+  }
+
+  private QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
+      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
+      ProcessorException, IOException {
+    PhysicalPlan physicalPlan = queryStatus.get().get(statement);
+    processor.getExecutor().setFetchSize(fetchSize);
+
+    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+    if (contextMap == null) {
+      contextMap = new HashMap<>();
+      contextMapLocal.set(contextMap);
+    }
+    contextMap.put(req.queryId, context);
+
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
+        context);
+    queryRet.get().put(statement, queryDataSet);
+    return queryDataSet;
   }
 
   @Override
