@@ -25,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.LineNumberReader;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -36,6 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import jline.console.ConsoleReader;
+import me.tongfei.progressbar.ProgressBar;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -66,7 +68,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String ERROR_INFO_STR = "csvInsertError.error";
 
   private static final String STRING_DATA_TYPE = "TEXT";
-  private static final int BATCH_EXECUTE_COUNT = 10;
+  private static final int BATCH_EXECUTE_COUNT = 100;
 
   private static String errorInsertInfo = "";
   private static boolean errorFlag;
@@ -122,7 +124,13 @@ public class ImportCsv extends AbstractCsvTool {
    */
   private static void loadDataFromCSV(File file, int index) {
     statement = null;
-
+    int fileLine;
+    try {
+      fileLine = getFileLineCount(file);
+    } catch (IOException e) {
+      System.out.println("Failed to import file: " + file.getName() + " at:" + file.getParent());
+      return;
+    }
     File errorFile = new File(errorInsertInfo + index);
     if (!errorFile.exists()) {
       try {
@@ -132,11 +140,12 @@ public class ImportCsv extends AbstractCsvTool {
         return;
       }
     }
-
+    System.out.println("Start to import data from: " + file.getName() + " at:" + file.getParent());
     errorFlag = true;
     try(BufferedReader br = new BufferedReader(new FileReader(file));
-    BufferedWriter bw = new BufferedWriter(new FileWriter(errorFile))) {
-
+        BufferedWriter bw = new BufferedWriter(new FileWriter(errorFile));
+        ProgressBar pb = new ProgressBar("Import from: " + file.getName(), fileLine)) {
+      pb.setExtraMessage("Importing...");
       String header = br.readLine();
 
       bw.write("From " + file.getAbsolutePath());
@@ -174,13 +183,13 @@ public class ImportCsv extends AbstractCsvTool {
 
       List<String> tmp = new ArrayList<>();
       success = readAndGenSqls(br, timeseriesDataType, deviceToColumn, colInfo, headInfo,
-          bw, tmp);
+          bw, tmp, pb);
       if (!success) {
         return;
       }
 
       executeSqls(bw, tmp, startTime, file);
-
+      pb.stepTo(fileLine);
     } catch (FileNotFoundException e) {
       System.out.println("Cannot find " + file.getName() + " because: "+e.getMessage());
     } catch (IOException e) {
@@ -231,7 +240,7 @@ public class ImportCsv extends AbstractCsvTool {
 
   private static boolean readAndGenSqls(BufferedReader br, Map<String, String> timeseriesDataType,
       Map<String, ArrayList<Integer>> deviceToColumn, List<String> colInfo,
-      List<String> headInfo, BufferedWriter bw, List<String> tmp) throws IOException {
+      List<String> headInfo, BufferedWriter bw, List<String> tmp, ProgressBar pb) throws IOException {
     String line;
     count = 0;
     while ((line = br.readLine()) != null) {
@@ -246,6 +255,7 @@ public class ImportCsv extends AbstractCsvTool {
         return false;
       }
       boolean success = addSqlsToBatch(sqls, tmp, bw);
+      pb.step();
       if (!success) {
         return false;
       }
@@ -491,5 +501,17 @@ public class ImportCsv extends AbstractCsvTool {
         }
       }
     }
+  }
+
+  private static int getFileLineCount(File file) throws IOException {
+    int line = 0;
+    try (LineNumberReader count = new LineNumberReader(new FileReader(file))) {
+      while (count.skip(Long.MAX_VALUE) > 0) {
+        // Loop just in case the file is > Long.MAX_VALUE or skip() decides to not read the entire file
+      }
+      // +1 because line index starts at 0
+      line = count.getLineNumber() + 1;
+    }
+    return line;
   }
 }
