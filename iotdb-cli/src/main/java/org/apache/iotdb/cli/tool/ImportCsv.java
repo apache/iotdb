@@ -140,7 +140,7 @@ public class ImportCsv extends AbstractCsvTool {
         return;
       }
     }
-    System.out.println("Start to import data from: " + file.getName() + " at:" + file.getParent());
+    System.out.println("Start to import data from: " + file.getName());
     errorFlag = true;
     try(BufferedReader br = new BufferedReader(new FileReader(file));
         BufferedWriter bw = new BufferedWriter(new FileWriter(errorFile));
