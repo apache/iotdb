@@ -175,5 +175,6 @@ public class EnvironmentUtils {
     MultiFileLogNodeManager.getInstance().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    BasicMemController.getInstance().clear();
   }
 }
