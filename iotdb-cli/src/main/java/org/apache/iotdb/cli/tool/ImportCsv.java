@@ -128,7 +128,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       fileLine = getFileLineCount(file);
     } catch (IOException e) {
-      System.out.println("Failed to import file: " + file.getName() + " at:" + file.getParent());
+      System.out.println("Failed to import file: " + file.getName());
       return;
     }
     File errorFile = new File(errorInsertInfo + index);
@@ -228,8 +228,6 @@ public class ImportCsv extends AbstractCsvTool {
       }
       statement.clearBatch();
       tmp.clear();
-      System.out.println("Load data from "+ file.getName() +" successfully, it takes "
-          + ""+(System.currentTimeMillis() - startTime)+"ms");
     } catch (SQLException e) {
       bw.write(e.getMessage());
       bw.newLine();
