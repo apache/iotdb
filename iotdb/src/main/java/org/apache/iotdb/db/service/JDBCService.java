@@ -218,9 +218,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
         close();
         // TODO debug log, will be deleted in production env
         if(threadStopLatch == null) {
-          LOGGER.info("Stop Count Down latch is null");
+          LOGGER.info("JDBC Service Stop Count Down latch is null");
         } else {
-          LOGGER.info("Stop Count Down latch is {}", threadStopLatch.getCount());
+          LOGGER.info("JDBC Service Stop Count Down latch is {}", threadStopLatch.getCount());
         }
         // debug log, will be deleted in production env
 
