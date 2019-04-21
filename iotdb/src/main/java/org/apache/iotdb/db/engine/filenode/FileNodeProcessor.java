@@ -1066,6 +1066,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     emptyTsFileResource.clear();
     // attention
     try {
+      if (overflowProcessor.isClosed()) {
+        overflowProcessor.reopen();
+      }
       overflowProcessor.switchWorkToMerge();
     } catch (IOException e) {
       LOGGER.error("The filenode processor {} can't switch overflow processor from work to merge.",
@@ -1474,9 +1477,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           // query one measurement in the special deviceId
           String measurementId = path.getMeasurement();
           TSDataType dataType = mManager.getSeriesType(path.getFullPath());
-          if (overflowProcessor.isClosed()) {
-            overflowProcessor.reopen();
-          }
+
           OverflowSeriesDataSource overflowSeriesDataSource = overflowProcessor.queryMerge(deviceId,
               measurementId, dataType, true, context);
           Filter timeFilter = FilterFactory
