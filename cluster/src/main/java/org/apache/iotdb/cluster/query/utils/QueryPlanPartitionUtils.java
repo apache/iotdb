@@ -61,7 +61,7 @@ public class QueryPlanPartitionUtils {
     for (Path path : selectPaths) {
       String storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
       String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
-      if (selectSeriesByGroupId.containsKey(groupId)) {
+      if (!selectSeriesByGroupId.containsKey(groupId)) {
         selectSeriesByGroupId.put(groupId, new ArrayList<>());
       }
       selectSeriesByGroupId.get(groupId).add(path);
