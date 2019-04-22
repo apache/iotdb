@@ -137,7 +137,6 @@ public class Server {
     rpcServer.registerUserProcessor(new QueryMetadataAsyncProcessor());
     rpcServer.registerUserProcessor(new QuerySeriesTypeAsyncProcessor());
     rpcServer.registerUserProcessor(new QueryPathsAsyncProcessor());
-    rpcServer.registerUserProcessor(new QuerySeriesTypeAsyncProcessor());
   }
 
   private void registerQueryDataProcessor(RpcServer rpcServer) {

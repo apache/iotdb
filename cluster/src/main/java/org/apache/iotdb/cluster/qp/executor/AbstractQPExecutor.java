@@ -69,8 +69,18 @@ public abstract class AbstractQPExecutor {
   private ThreadLocal<Integer> readDataConsistencyLevel = new ThreadLocal<>();
 
   public AbstractQPExecutor() {
-    readMetadataConsistencyLevel.set(CLUSTER_CONFIG.getReadMetadataConsistencyLevel());
-    readDataConsistencyLevel.set(CLUSTER_CONFIG.getReadDataConsistencyLevel());
+  }
+
+  /**
+   * Check init of consistency level(<code>ThreadLocal</code>)
+   */
+  private void checkInitConsistencyLevel() {
+    if (readMetadataConsistencyLevel.get() == null) {
+      readMetadataConsistencyLevel.set(CLUSTER_CONFIG.getReadMetadataConsistencyLevel());
+    }
+    if (readDataConsistencyLevel.get() == null) {
+      readDataConsistencyLevel.set(CLUSTER_CONFIG.getReadDataConsistencyLevel());
+    }
   }
 
   /**
@@ -152,10 +162,12 @@ public abstract class AbstractQPExecutor {
   }
 
   public int getReadMetadataConsistencyLevel() {
+    checkInitConsistencyLevel();
     return readMetadataConsistencyLevel.get();
   }
 
   public int getReadDataConsistencyLevel() {
+    checkInitConsistencyLevel();
     return readDataConsistencyLevel.get();
   }
 }

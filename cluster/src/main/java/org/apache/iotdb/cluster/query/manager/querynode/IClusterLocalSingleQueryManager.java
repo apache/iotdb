@@ -29,8 +29,10 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 
 /**
+ * <p>
  * Manage all series reader in a query as a query node, cooperate with coordinator node for a client
  * query
+ * </p>
  */
 public interface IClusterLocalSingleQueryManager {
 
@@ -41,8 +43,10 @@ public interface IClusterLocalSingleQueryManager {
       throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException;
 
   /**
+   * <p>
    * Read batch data If query round in cache is equal to target query round, it means that batch
    * data in query node transfer to coordinator fail and return cached batch data.
+   * </p>
    *
    * @param request request of querying series data
    * @param response response of querying series data

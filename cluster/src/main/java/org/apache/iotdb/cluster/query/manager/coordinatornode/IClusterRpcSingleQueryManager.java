@@ -41,9 +41,11 @@ public interface IClusterRpcSingleQueryManager {
       throws PathErrorException, IOException, RaftConnectionException;
 
   /**
+   * <p>
    * Fetch data for select paths. In order to reduce the number of RPC communications, fetching data
    * from remote query node will fetch for all series in the same data group. If the cached data for
    * specific series exceed limit, ignore this fetching data process of the series.
+   * </p>
    *
    * @param groupId data group id
    */
