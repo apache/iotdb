@@ -60,6 +60,8 @@ public class MManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MManager.class);
   private static final String ROOT_NAME = MetadataConstant.ROOT;
+  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
+
   // the lock for read/write
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   // The file storing the serialize info for metadata
@@ -985,7 +987,9 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return mgraph.toString();
+      StringBuilder builder = new StringBuilder();
+      builder.append(TIME_SERIES_TREE_HEADER).append(mgraph.toString());
+      return builder.toString();
     } finally {
       lock.readLock().unlock();
     }
@@ -995,7 +999,13 @@ public class MManager {
    * combine multiple metadata in string format
    */
   public static String combineMetadataInStrings(String[] metadatas) {
-    return MGraph.combineMetadataInStrings(metadatas);
+    for (int i = 0; i < metadatas.length; i++) {
+      metadatas[i] = metadatas[i].replace(TIME_SERIES_TREE_HEADER, "");
+    }
+    String res = MGraph.combineMetadataInStrings(metadatas);
+    StringBuilder builder = new StringBuilder();
+    builder.append(TIME_SERIES_TREE_HEADER).append(res);
+    return builder.toString();
   }
 
   /**

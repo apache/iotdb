@@ -284,7 +284,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case "METADATA_IN_JSON":
         String metadataInJson = null;
         try {
-          metadataInJson = MGraph.TIME_SERIES_TREE_HEADER + MManager.getInstance().getMetadataInString();
+          metadataInJson = MManager.getInstance().getMetadataInString();
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
           LOGGER.error("Failed to fetch all metadata in json", outOfMemoryError);
           status = getErrorStatus(
