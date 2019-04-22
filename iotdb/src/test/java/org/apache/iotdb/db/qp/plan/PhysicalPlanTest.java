@@ -81,7 +81,7 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     MetadataPlan plan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("seriesPath: root.vehicle.d1.s1\n" + "dataType: INT32\n" + "encoding: RLE\n"
+    assertEquals("seriesPath: root.vehicle.d1.s1\n" + "resultDataType: INT32\n" + "encoding: RLE\n"
         + "namespace type: ADD_PATH\n" + "args: ", plan.toString());
   }
 
@@ -90,9 +90,10 @@ public class PhysicalPlanTest {
     String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
+    System.out.println(plan.toString());
     assertEquals(
         "userName: null\n" + "roleName: xm\n" + "password: null\n" + "newPassword: null\n"
-            + "permissions: [0, 4]\n" + "nodeName: root.vehicle.d1.s1\n" + "authorType: GRANT_ROLE",
+            + "permissions: [0, 5]\n" + "nodeName: root.vehicle.d1.s1\n" + "authorType: GRANT_ROLE",
         plan.toString());
   }
 
@@ -184,7 +185,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testFill3() throws QueryProcessorException, ArgsErrorException {
+  public void testFill3() {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear, 5m], boolean[previous])";
     try {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);

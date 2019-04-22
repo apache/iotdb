@@ -34,6 +34,10 @@ public abstract class QueryDataSet {
     this.dataTypes = dataTypes;
   }
 
+  public QueryDataSet(List<Path> paths) {
+    this.paths = paths;
+  }
+
   /**
    * This method is used for batch query.
    */
@@ -52,4 +56,7 @@ public abstract class QueryDataSet {
     return dataTypes;
   }
 
+  public void setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
+  }
 }

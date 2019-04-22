@@ -48,13 +48,6 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   /**
    * init by TSDataType and TimeValuePairSorter.
    */
-//  public ReadOnlyMemChunk(TSDataType dataType, TimeValuePairSorter memSeries) {
-//    this(dataType, memSeries, Collections.emptyMap());
-//  }
-
-  /**
-   * init by TSDataType and TimeValuePairSorter.
-   */
   public ReadOnlyMemChunk(TSDataType dataType, TimeValuePairSorter memSeries, Map<String, String> props) {
     this.dataType = dataType;
     this.memSeries = memSeries;

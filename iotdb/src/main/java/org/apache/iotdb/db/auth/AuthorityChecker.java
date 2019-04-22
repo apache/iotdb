@@ -114,6 +114,8 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
+      case CREATE_TIMESERIES:
+        return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
       case QUERY:

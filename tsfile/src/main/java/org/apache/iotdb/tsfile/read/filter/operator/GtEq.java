@@ -25,8 +25,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 /**
  * Greater than or Equals filter.
  *
- * @param <T>
- *            comparable data type
+ * @param <T> comparable data type
  */
 public class GtEq<T extends Comparable<T>> extends UnaryFilter<T> {
 
@@ -59,6 +58,20 @@ public class GtEq<T extends Comparable<T>> extends UnaryFilter<T> {
         return false;
       }
       return true;
+    } else {
+      return true;
+    }
+  }
+
+  @Override
+  public boolean containStartEndTime(long startTime, long endTime) {
+    if (filterType == FilterType.TIME_FILTER) {
+      long time = (Long) value;
+      if (startTime >= time) {
+        return true;
+      } else {
+        return false;
+      }
     } else {
       return true;
     }

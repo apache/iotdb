@@ -33,6 +33,9 @@ public class QueryUtils {
   /**
    * modifyChunkMetaData iterates the chunkMetaData and applies all available modifications on it to
    * generate a ModifiedChunkMetadata.
+   * <br/>
+   * the caller should guarantee that chunkMetaData and modifications refer to the same time series
+   * paths.
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
    */

@@ -64,6 +64,8 @@ public class IoTDBCompleteIT {
     insertTest();
     selectTest();
     deleteTest();
+
+    funcTestWithOutTimeGenerator();
   }
 
   public void simpleTest() throws ClassNotFoundException, SQLException {
@@ -282,6 +284,42 @@ public class IoTDBCompleteIT {
         "NOW(),10,\n", "DELETE FROM root.vehicle.d0.s0 WHERE time <= NOW()",
         "SELECT * FROM root.vehicle.d0",
         "", "DELETE TIMESERIES root.vehicle.*"};
+    executeSQL(sqlS);
+  }
+
+  public void funcTestWithOutTimeGenerator() throws ClassNotFoundException, SQLException {
+    String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,110)",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,109)",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(3,108)",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(4,107)",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(5,106)",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(6,105)",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(7,104)",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(8,103)",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(9,102)",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(10,101)",
+        "SELECT COUNT(s0) FROM root.vehicle.d0", "0,10,\n",
+        "SELECT MAX_TIME(s0) FROM root.vehicle.d0", "0,10,\n",
+        "SELECT MIN_TIME(s0) FROM root.vehicle.d0", "0,1,\n",
+        "SELECT MAX_VALUE(s0) FROM root.vehicle.d0", "0,110,\n",
+        "SELECT MAX_VALUE(s0) FROM root.vehicle.d0 WHERE time > 4", "0,106,\n",
+        "SELECT SUM(s0) FROM root.vehicle.d0 WHERE time > 4", "0,621.0,\n",
+        "SELECT MIN_VALUE(s0) FROM root.vehicle.d0", "0,101,\n",
+        "SELECT MIN_VALUE(s0) FROM root.vehicle.d0 WHERE time < 5", "0,107,\n",
+        "DELETE FROM root.vehicle.d0.s0 WHERE time <= 10",
+        "INSERT INTO root.vehicle.d0(timestamp,s0) values(NOW(),5)",
+        "SELECT * FROM root.vehicle.d0",
+        "NOW(),5,\n","DELETE FROM root.vehicle.d0.s0 WHERE time <= NOW()",
+        "SELECT * FROM root.vehicle.d0","",
+        "SELECT COUNT(s0) FROM root.vehicle.d0", "0,0,\n",
+        "SELECT MAX_TIME(s0) FROM root.vehicle.d0", "",
+        "SELECT MIN_TIME(s0) FROM root.vehicle.d0", "",
+        "SELECT MAX_VALUE(s0) FROM root.vehicle.d0", "",
+        "SELECT MAX_VALUE(s0) FROM root.vehicle.d0 WHERE time > 4", "",
+        "SELECT MIN_VALUE(s0) FROM root.vehicle.d0", "",
+        "SELECT MIN_VALUE(s0) FROM root.vehicle.d0 WHERE time < 5", "",
+        "DELETE TIMESERIES root.vehicle.*"};
     executeSQL(sqlS);
   }
 

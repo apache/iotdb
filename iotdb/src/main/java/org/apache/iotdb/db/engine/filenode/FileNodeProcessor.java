@@ -134,7 +134,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private FileNodeProcessorStore fileNodeProcessorStore;
   private String fileNodeRestoreFilePath;
   private final Object fileNodeRestoreLock = new Object();
-  private String baseDirPath;
   // last merge time
   private long lastMergeTime = -1;
   private BufferWriteProcessor bufferWriteProcessor = null;
@@ -242,16 +241,16 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         && dirPath.charAt(dirPath.length() - 1) != File.separatorChar) {
       dirPath = dirPath + File.separatorChar;
     }
-    this.baseDirPath = dirPath + processorName;
-    File dataDir = new File(this.baseDirPath);
-    if (!dataDir.exists()) {
-      dataDir.mkdirs();
+
+    File restoreFolder = new File(dirPath + processorName);
+    if (!restoreFolder.exists()) {
+      restoreFolder.mkdirs();
       LOGGER.info(
-          "The data directory of the filenode processor {} doesn't exist. Create new " +
+          "The restore directory of the filenode processor {} doesn't exist. Create new " +
               "directory {}",
-          getProcessorName(), baseDirPath);
+          getProcessorName(), restoreFolder.getAbsolutePath());
     }
-    fileNodeRestoreFilePath = new File(dataDir, processorName + RESTORE_FILE_SUFFIX).getPath();
+    fileNodeRestoreFilePath = new File(restoreFolder, processorName + RESTORE_FILE_SUFFIX).getPath();
     try {
       fileNodeProcessorStore = readStoreFromDisk();
     } catch (FileNodeProcessorException e) {
@@ -294,7 +293,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       statMonitor.registerStatistics(statStorageDeltaName, this);
     }
     try {
-      versionController = new SimpleFileVersionController(fileNodeDirPath);
+      versionController = new SimpleFileVersionController(restoreFolder.getPath());
     } catch (IOException e) {
       throw new FileNodeProcessorException(e);
     }
@@ -370,6 +369,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
       invertedIndexOfFiles.get(deviceId).add(currentTsFileResource);
     }
+  }
+
+  void setIntervalFileNodeStartTime(String deviceId, long time) {
+    if (time != -1) {
+      currentTsFileResource.setStartTime(deviceId, time);
+    } else {
+      currentTsFileResource.removeTime(deviceId);
+      invertedIndexOfFiles.get(deviceId).remove(currentTsFileResource);
+    }
+  }
+
+  long getIntervalFileNodeStartTime(String deviceId) {
+    return currentTsFileResource.getStartTime(deviceId);
   }
 
   /**
@@ -587,6 +599,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   public void setLastUpdateTime(String deviceId, long timestamp) {
     if (!lastUpdateTimeMap.containsKey(deviceId) || lastUpdateTimeMap.get(deviceId) < timestamp) {
       lastUpdateTimeMap.put(deviceId, timestamp);
+    }
+    if (timestamp == -1) {
+      lastUpdateTimeMap.remove(deviceId);
     }
   }
 
@@ -1982,7 +1997,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         isMerging == that.isMerging &&
         Objects.equals(fileNodeProcessorStore, that.fileNodeProcessorStore) &&
         Objects.equals(fileNodeRestoreFilePath, that.fileNodeRestoreFilePath) &&
-        Objects.equals(baseDirPath, that.baseDirPath) &&
         Objects.equals(bufferWriteProcessor, that.bufferWriteProcessor) &&
         Objects.equals(overflowProcessor, that.overflowProcessor) &&
         Objects.equals(oldMultiPassTokenSet, that.oldMultiPassTokenSet) &&
@@ -2002,7 +2016,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     return Objects.hash(super.hashCode(), statStorageDeltaName, statParamsHashMap, isOverflowed,
         lastUpdateTimeMap, flushLastUpdateTimeMap, invertedIndexOfFiles,
         emptyTsFileResource, currentTsFileResource, newFileNodes, isMerging,
-        numOfMergeFile, fileNodeProcessorStore, fileNodeRestoreFilePath, baseDirPath,
+        numOfMergeFile, fileNodeProcessorStore, fileNodeRestoreFilePath,
         lastMergeTime, bufferWriteProcessor, overflowProcessor, oldMultiPassTokenSet,
         newMultiPassTokenSet, oldMultiPassLock, newMultiPassLock, shouldRecovery, parameters,
         fileSchema, flushFileNodeProcessorAction, bufferwriteFlushAction,

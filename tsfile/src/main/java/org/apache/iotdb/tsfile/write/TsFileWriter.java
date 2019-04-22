@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author kangrong
  */
-public class TsFileWriter {
+public class TsFileWriter implements AutoCloseable{
 
   private static final Logger LOG = LoggerFactory.getLogger(TsFileWriter.class);
   /**
