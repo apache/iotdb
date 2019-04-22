@@ -1111,8 +1111,16 @@ public class MTree implements Serializable {
       res.put(key, b.get(key));
     }
     for (String key : retainSet) {
+      Object
       res.put(key, combineJSONObjects(a.getJSONObject(key), b.getJSONObject(key)));
     }
     return res;
+  }
+
+  public static void main(String[] args) {
+    JSONObject jsonObject = new JSONObject();
+    jsonObject.put("s1", new HashMap<>());
+    System.out.println(jsonObject instanceof JSONObject);
+    System.out.println(jsonObject.get("s1") instanceof JSONObject);
   }
 }
