@@ -119,18 +119,18 @@ public class PageHeaderTest {
   }
 
   private PageHeader deSerialized(int offset) {
-    FileInputStream fis = null;
+    TsFileInput input = null;
     PageHeader header = null;
     try {
-      TsFileInput input = new DefaultTsFileInput(Paths.get(PATH));
+      input = new DefaultTsFileInput(Paths.get(PATH));
       header = PageHeader.deserializeFrom(DATA_TYPE, input, offset, true);
       return header;
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      if (fis != null) {
+      if (input != null) {
         try {
-          fis.close();
+          input.close();
         } catch (IOException e) {
           e.printStackTrace();
         }

@@ -360,7 +360,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       }
     }
     if (retPaths.isEmpty()) {
-      throw new LogicalOptimizeException("do not select any existing seriesPath");
+      throw new LogicalOptimizeException("do not select any existing series");
     }
     selectOperator.setSuffixPathList(retPaths);
     selectOperator.setAggregations(newAggregations);
