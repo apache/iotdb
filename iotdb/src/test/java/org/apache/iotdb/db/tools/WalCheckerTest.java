@@ -146,6 +146,7 @@ public class WalCheckerTest {
 
         FileOutputStream fileOutputStream = new FileOutputStream(new File(subDir, WAL_FILE_NAME));
         fileOutputStream.write(i);
+        fileOutputStream.close();
       }
 
       WalChecker checker = new WalChecker(tempRoot.getAbsolutePath());
