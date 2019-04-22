@@ -52,6 +52,15 @@ public class MTree implements Serializable {
   private static final String NOT_SERIES_PATH = "The prefix of the seriesPath %s is not one storage group seriesPath";
   private MNode root;
 
+  private static final Set<String> TIMESERIES_METADATA_NAMESET = new HashSet<>();
+  static {
+    TIMESERIES_METADATA_NAMESET.add("DataType");
+    TIMESERIES_METADATA_NAMESET.add("Encoding");
+    TIMESERIES_METADATA_NAMESET.add("Compressor");
+    TIMESERIES_METADATA_NAMESET.add("args");
+    TIMESERIES_METADATA_NAMESET.add("StorageGroup");
+  }
+
   public MTree(String rootName) {
     this.root = new MNode(rootName, null, false);
   }
@@ -219,7 +228,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * check whether the input path is storage group or not
+   * Check whether the input path is storage group or not
    * @param path input path
    * @return if it is storage group, return true. Else return false
    * @apiNote :for cluster
@@ -588,28 +597,45 @@ public class MTree implements Serializable {
    * Get all the storage group seriesPaths for one seriesPath.
    *
    * @return List storage group seriesPath list
+   * @apiNote :for cluster
    */
-  public List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+  public List<String> getAllFileNamesByPath(String pathReg) throws PathErrorException {
+    ArrayList<String> fileNames = new ArrayList<>();
+    String[] nodes = pathReg.split(DOUB_SEPARATOR);
+    if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
+      throw new PathErrorException(String.format(SERIES_NOT_CORRECT, pathReg));
+    }
+    findFileName(getRoot(), nodes, 1, "", fileNames);
+    return fileNames;
+  }
 
-    List<String> sgList = new ArrayList<>();
-    String[] nodes = path.split(DOUB_SEPARATOR);
-    MNode cur = getRoot();
-    for (int i = 1; i < nodes.length; i++) {
-      if (cur == null) {
-        throw new PathErrorException(
-            String.format(NOT_SERIES_PATH,
-                path));
-      }
-      if (cur.isStorageLevel()) {
-        sgList.add(cur.getDataFileName());
-        return sgList;
-      }
-      cur = cur.getChild(nodes[i]);
+  /**
+   * Recursively find all fileName according to a specific path
+   * @apiNote :for cluster
+   */
+  private void findFileName(MNode node, String[] nodes, int idx, String parent,
+      ArrayList<String> paths) {
+    if (node.isStorageLevel()) {
+      paths.add(node.getDataFileName());
+      return;
     }
-    if (sgList.isEmpty()) {
-      getAllStorageGroupsOfNode(cur, path, sgList);
+    String nodeReg;
+    if (idx >= nodes.length) {
+      nodeReg = "*";
+    } else {
+      nodeReg = nodes[idx];
     }
-    return sgList;
+
+    if (!("*").equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        findFileName(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths);
+      }
+    } else {
+      for (MNode child : node.getChildren().values()) {
+        findFileName(child, nodes, idx + 1, parent + node.getName() + ".", paths);
+      }
+    }
+    return;
   }
 
   private void getAllStorageGroupsOfNode(MNode node, String path, List<String> sgList) {
@@ -1068,6 +1094,9 @@ public class MTree implements Serializable {
 
   private static JSONObject combineJSONObjects(JSONObject a, JSONObject b) {
     JSONObject res = new JSONObject();
+    if (a.keySet().equals(TIMESERIES_METADATA_NAMESET) && b.keySet().equals(TIMESERIES_METADATA_NAMESET)) {
+      return a;
+    }
 
     Set<String> retainSet = new HashSet<>(a.keySet());
     retainSet.retainAll(b.keySet());
