@@ -34,6 +34,7 @@ public class ClusterConfigureGenerator {
       + File.separatorChar + "resources" + File.separatorChar + "conf";
   private static Map<String, String> configMap = new HashMap<String, String>() {{
     put("qp_task_timeout_ms", "10000");
+    put("election_timeout_ms", "50000");
   }};
 
   public static void generateClusterConfigure() throws IOException {
