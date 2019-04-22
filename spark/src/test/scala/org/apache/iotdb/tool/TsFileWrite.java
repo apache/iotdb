@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.tool;
+package org.apache.iotdb.tool;
 
 import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

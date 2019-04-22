@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile
 import java.io.File
 
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.tool.TsFileWrite
+import org.apache.iotdb.tool.TsFileWrite
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
 import org.junit.Assert

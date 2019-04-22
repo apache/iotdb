@@ -22,7 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.io.HDFSInput;
-import org.apache.iotdb.tsfile.tool.TsFileWrite;
+import org.apache.iotdb.tool.TsFileWrite;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

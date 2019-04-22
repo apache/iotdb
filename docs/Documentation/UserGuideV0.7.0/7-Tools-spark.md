@@ -61,7 +61,7 @@ With this connector, you can
 
 |Spark Version | Scala Version | Java Version | TsFile |
 |------------- | ------------- | ------------ |------------ |
-| `2.0.1`        | `2.12.8`    | `1.8` or `11.0`      | `0.8.0-SNAPSHOT`|
+| `2.0.1`        | `2.11.8`        | `1.8`        | `0.8.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
@@ -129,30 +129,27 @@ The existing data in the file is as follows:
 
 <center>
 <table style="text-align:center">
-	<tr><th colspan="4">delta_object:root.ln.wf01.wt01</th><th colspan="4">delta_object:root.ln.wf02.wt02</th><th colspan="4">delta_object:root.sgcc.wf03.wt01</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th><th colspan="2">status</th><th colspan="2">temperature</th></tr>
-	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td><td>2</td><td>True</td><td>3</td><td>3.3</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td><td>3</td><td>True</td><td>6</td><td>6.6</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td><td>4</td><td>True</td><td>8</td><td>8.8</td></tr>
-	<tr><td>7</td><td> True </td><td>4</td><td>2.0</td><td>8</td><td>"ddd"</td><td>5</td><td>False</td><td>6</td><td>True</td><td>9</td><td>9.9</td></tr>
+	<tr><th colspan="4">delta_object:root.ln.wf01.wt01</th><th colspan="4">delta_object:root.ln.wf02.wt02</th></tr>
+	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
+	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td></tr>
+	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
+	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
+	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
+	<tr><td>7</td><td> True </td><td>4</td><td>2.0</td><td>8</td><td>"ddd"</td><td>5</td><td>False</td></tr>
 </table>
 </center>
 
+
 The corresponding SparkSQL table is as follows:
 
-| time | root.ln.wf01.wt01.status (BooleanType) | root.ln.wf01.wt01.temperature (FloatType) | root.ln.wf02.wt02.hardware (StringType) | root.ln.wf02.wt02.status (BooleanType) | root.sgcc.wf03.wt01.status (BooleanType) | root.sgcc.wf03.wt01.temperature (FloatType) |
-|------|----------------------------------------|-------------------------------------------|-----------------------------------------|----------------------------------------|------------------------------------------|---------------------------------------------|
-|    1 | True                                   | 2.2                                       | null                                    | True                                   | null                                     | null                                        |
-|    2 | null                                   | 2.2                                       | "aaa"                                   | False                                  | True                                     | null                                        |
-|    3 | True                                   | 2.1                                       | null                                    | null                                   | True                                     | 3.3                                         |
-|    4 | null                                   | 2.0                                       | "bbb"                                   | True                                   | True                                     | null                                        |
-|    5 | False                                  | null                                      | null                                    | False                                  | null                                     | null                                        |
-|    6 | null                                   | null                                      | "ccc"                                   | null                                   | True                                     | 6.6                                         |
-|    7 | True                                   | null                                      | null                                    | null                                   | null                                     | null                                        |
-|    8 | null                                   | null                                      | "ddd"                                   | null                                   | null                                     | 8.8                                         |
-|    9 | null                                   | null                                      | null                                    | null                                   | null                                     | 9.9                                            |
-
+| time | root.ln.wf02.wt02.temperature | root.ln.wf02.wt02.status | root.ln.wf02.wt02.hardware | root.ln.wf01.wt01.temperature | root.ln.wf01.wt01.status | root.ln.wf01.wt01.hardware |
+|------|-------------------------------|--------------------------|----------------------------|-------------------------------|--------------------------|----------------------------|
+|    1 | null                          | true                     | null                       | 2.2                           | true                     | null                       |
+|    2 | null                          | false                    | aaa                        | 2.2                           | null                     | null                       |
+|    3 | null                          | null                     | null                       | 2.1                           | true                     | null                       |
+|    4 | null                          | true                     | bbb                        | null                          | null                     | null                       |
+|    5 | null                          | null                     | null                       | null                          | false                    | null                       |
+|    6 | null                          | null                     | ccc                        | null                          | null                     | null                       |
 
 
 <a id="6-scala-api"></a>
