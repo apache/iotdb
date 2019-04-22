@@ -41,6 +41,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.metadata.MGraph;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -283,7 +284,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case "METADATA_IN_JSON":
         String metadataInJson = null;
         try {
-          metadataInJson = MManager.getInstance().getMetadataInString();
+          metadataInJson = MGraph.TIME_SERIES_TREE_HEADER + MManager.getInstance().getMetadataInString();
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
           LOGGER.error("Failed to fetch all metadata in json", outOfMemoryError);
           status = getErrorStatus(

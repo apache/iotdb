@@ -52,15 +52,6 @@ public class MTree implements Serializable {
   private static final String NOT_SERIES_PATH = "The prefix of the seriesPath %s is not one storage group seriesPath";
   private MNode root;
 
-  private static final Set<String> TIMESERIES_METADATA_NAMESET = new HashSet<>();
-  static {
-    TIMESERIES_METADATA_NAMESET.add("DataType");
-    TIMESERIES_METADATA_NAMESET.add("Encoding");
-    TIMESERIES_METADATA_NAMESET.add("Compressor");
-    TIMESERIES_METADATA_NAMESET.add("args");
-    TIMESERIES_METADATA_NAMESET.add("StorageGroup");
-  }
-
   public MTree(String rootName) {
     this.root = new MNode(rootName, null, false);
   }
@@ -1094,9 +1085,6 @@ public class MTree implements Serializable {
 
   private static JSONObject combineJSONObjects(JSONObject a, JSONObject b) {
     JSONObject res = new JSONObject();
-    if (a.keySet().equals(TIMESERIES_METADATA_NAMESET) && b.keySet().equals(TIMESERIES_METADATA_NAMESET)) {
-      return a;
-    }
 
     Set<String> retainSet = new HashSet<>(a.keySet());
     retainSet.retainAll(b.keySet());
@@ -1111,16 +1099,14 @@ public class MTree implements Serializable {
       res.put(key, b.get(key));
     }
     for (String key : retainSet) {
-      Object
-      res.put(key, combineJSONObjects(a.getJSONObject(key), b.getJSONObject(key)));
+      Object v1 = a.get(key);
+      Object v2 = b.get(key);
+      if (v1 instanceof JSONObject && v2 instanceof JSONObject) {
+        res.put(key, combineJSONObjects((JSONObject) v1, (JSONObject) v2));
+      } else {
+        res.put(key, v1);
+      }
     }
     return res;
-  }
-
-  public static void main(String[] args) {
-    JSONObject jsonObject = new JSONObject();
-    jsonObject.put("s1", new HashMap<>());
-    System.out.println(jsonObject instanceof JSONObject);
-    System.out.println(jsonObject.get("s1") instanceof JSONObject);
   }
 }
