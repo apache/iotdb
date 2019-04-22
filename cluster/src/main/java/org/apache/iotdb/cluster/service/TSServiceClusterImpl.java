@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.cluster.service;
 
-import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.io.IOException;
 import java.sql.Statement;
 import java.util.Arrays;

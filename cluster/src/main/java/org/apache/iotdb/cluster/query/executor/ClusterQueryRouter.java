@@ -64,6 +64,8 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
             .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
         queryExpression.setExpression(optimizedExpression);
+        // update query expression of origin query plan, it's necessary.
+        queryManager.getOriginQueryPlan().setExpression(optimizedExpression);
 
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           queryManager.initQueryResource(QueryType.GLOBAL_TIME, getReadDataConsistencyLevel());

@@ -35,4 +35,9 @@ public class TrueExpression implements IExpression {
   public IExpression clone() {
     return new TrueExpression();
   }
+
+  @Override
+  public String toString() {
+    return "TrueExpression{}";
+  }
 }

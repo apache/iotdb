@@ -100,6 +100,8 @@ public class ExpressionUtils {
     if (left.getType() == TRUE || right.getType() == TRUE) {
       return new TrueExpression();
     } else {
+      ((BinaryExpression) expression).setLeft(left);
+      ((BinaryExpression) expression).setRight(right);
       return expression;
     }
   }
@@ -116,10 +118,12 @@ public class ExpressionUtils {
     if (left.getType() == TRUE && right.getType() == TRUE) {
       return new TrueExpression();
     } else if (left.getType() == TRUE) {
-      return ((BinaryExpression) expression).getRight();
+      return right;
     } else if (right.getType() == TRUE) {
-      return ((BinaryExpression) expression).getLeft();
+      return left;
     } else {
+      ((BinaryExpression) expression).setLeft(left);
+      ((BinaryExpression) expression).setRight(right);
       return expression;
     }
   }

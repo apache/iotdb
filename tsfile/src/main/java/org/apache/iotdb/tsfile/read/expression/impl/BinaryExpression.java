@@ -59,6 +59,16 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     }
 
     @Override
+    public void setLeft(IExpression leftExpression) {
+      this.left = leftExpression;
+    }
+
+    @Override
+    public void setRight(IExpression rightExpression) {
+      this.right = rightExpression;
+    }
+
+    @Override
     public ExpressionType getType() {
       return ExpressionType.AND;
     }
@@ -92,6 +102,16 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
     @Override
     public IExpression getRight() {
       return right;
+    }
+
+    @Override
+    public void setLeft(IExpression leftExpression) {
+      this.left = leftExpression;
+    }
+
+    @Override
+    public void setRight(IExpression rightExpression) {
+      this.right = rightExpression;
     }
 
     @Override

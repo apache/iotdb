@@ -93,7 +93,7 @@ public class ClusterRpcManagerTest {
   }
 
   @Test
-  public void testClusterQueryManagerWithoutFilter() throws Exception {
+  public void testClusterRpcQueryManagerWithoutFilter() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
       insertData(connection);
@@ -160,7 +160,7 @@ public class ClusterRpcManagerTest {
   }
 
   @Test
-  public void testClusterQueryManagerWithFilter() throws Exception {
+  public void testClusterRpcQueryManagerWithFilter() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
       insertData(connection);
@@ -227,7 +227,7 @@ public class ClusterRpcManagerTest {
   }
 
   @Test
-  public void testClusterSingleQueryWithoutFilterManager() throws Exception {
+  public void testClusterRpcSingleQueryWithoutFilterManager() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
       insertData(connection);
@@ -279,7 +279,7 @@ public class ClusterRpcManagerTest {
   }
 
   @Test
-  public void testClusterSingleQueryWithFilterManager() throws Exception {
+  public void testClusterRpcSingleQueryWithFilterManager() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
       insertData(connection);
