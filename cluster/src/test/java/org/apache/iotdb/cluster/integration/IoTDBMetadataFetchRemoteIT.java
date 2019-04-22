@@ -29,43 +29,41 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
-  @BeforeClass
-  public static void  setUp() throws Exception {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    ClusterConfigureGenerator.generateClusterConfigure();
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    ClusterConfigureGenerator.deleteClusterConfigure();
-  }
-
-  @Test
-  public void test() throws IOException {
-    String dir = Utils.getCurrentPath("pwd");
-//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh", "7", "1", dir);
-    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh", "7", "3", dir);
-  }
-
-  private void startScript(String... command) throws IOException{
-    ProcessBuilder builder = new ProcessBuilder(command);
-    builder.redirectErrorStream(true);
-    Process p = builder.start();
-    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-    String line;
-    while (true) {
-      line = r.readLine();
-      if (line == null) {
-        break;
-      } else {
-        System.out.println(line);
-      }
-    }
-    r.close();
-    p.destroy();
-  }
-
-
-}
+//public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
+//  @BeforeClass
+//  public static void  setUp() throws Exception {
+//    Class.forName(Config.JDBC_DRIVER_NAME);
+//    ClusterConfigureGenerator.generateClusterConfigure();
+//  }
+//
+//  @AfterClass
+//  public static void tearDown() throws Exception {
+//    ClusterConfigureGenerator.deleteClusterConfigure();
+//  }
+//
+//  @Test
+//  public void test() throws IOException {
+//    String dir = Utils.getCurrentPath("pwd");
+////    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh", "7", "1", dir);
+//    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh", "7", "3", dir);
+//  }
+//
+//  private void startScript(String... command) throws IOException {
+//    ProcessBuilder builder = new ProcessBuilder(command);
+//    builder.redirectErrorStream(true);
+//    Process p = builder.start();
+//    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+//    String line;
+//    while (true) {
+//      line = r.readLine();
+//      if (line == null) {
+//        break;
+//      } else {
+//        System.out.println(line);
+//      }
+//    }
+//    r.close();
+//    p.destroy();
+//  }
+//}
 
