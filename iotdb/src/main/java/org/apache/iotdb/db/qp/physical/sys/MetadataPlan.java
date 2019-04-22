@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -56,8 +57,10 @@ public class MetadataPlan extends PhysicalPlan {
     this.deletePathList = deletePathList;
     switch (namespaceType) {
       case SET_FILE_LEVEL:
-      case ADD_PATH:
         setOperatorType(Operator.OperatorType.SET_STORAGE_GROUP);
+        break;
+      case ADD_PATH:
+        setOperatorType(Operator.OperatorType.CREATE_TIMESERIES);
         break;
       case DELETE_PATH:
         setOperatorType(Operator.OperatorType.DELETE_TIMESERIES);
@@ -113,7 +116,7 @@ public class MetadataPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    String ret = String.format("seriesPath: %s\ndataType: %s\nencoding: %s\nnamespace type: %s\nargs: ", path, dataType, encoding, namespaceType);
+    String ret = String.format("seriesPath: %s\nresultDataType: %s\nencoding: %s\nnamespace type: %s\nargs: ", path, dataType, encoding, namespaceType);
     StringBuilder stringBuilder = new StringBuilder(ret.length()+50);
     stringBuilder.append(ret);
     for (Map.Entry prop : props.entrySet()) {
@@ -141,5 +144,30 @@ public class MetadataPlan extends PhysicalPlan {
       ret.add(path);
     }
     return ret;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof MetadataPlan)) {
+      return false;
+    }
+    MetadataPlan that = (MetadataPlan) o;
+    return getNamespaceType() == that.getNamespaceType() &&
+        Objects.equals(getPath(), that.getPath()) &&
+        getDataType() == that.getDataType() &&
+        getCompressor() == that.getCompressor() &&
+        getEncoding() == that.getEncoding() &&
+        Objects.equals(getProps(), that.getProps()) &&
+        Objects.equals(getDeletePathList(), that.getDeletePathList());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects
+        .hash(getNamespaceType(), getPath(), getDataType(), getCompressor(), getEncoding(),
+            getProps(), getDeletePathList());
   }
 }

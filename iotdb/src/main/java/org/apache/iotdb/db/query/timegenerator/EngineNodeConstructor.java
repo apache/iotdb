@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.timegenerator;
 
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.AND;
@@ -26,8 +27,9 @@ import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
+import org.apache.iotdb.db.query.reader.AllDataReader;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
@@ -42,10 +44,8 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 
 public class EngineNodeConstructor {
 
-  private long jobId;
 
-  public EngineNodeConstructor(long jobId) {
-    this.jobId = jobId;
+  public EngineNodeConstructor() {
   }
 
   /**
@@ -87,24 +87,26 @@ public class EngineNodeConstructor {
       QueryContext context)
       throws IOException, FileNodeManagerException {
 
-    QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId,
+    QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(
         singleSeriesExpression.getSeriesPath(), context);
 
     Filter filter = singleSeriesExpression.getFilter();
 
-    PriorityMergeReader priorityReader = new PriorityMergeReader();
-
     // reader for all sequence data
     SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
         filter, context);
-    priorityReader.addReaderWithPriority(tsFilesReader, 1);
 
     // reader for all unSequence data
     PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
         .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), filter);
-    priorityReader.addReaderWithPriority(unSeqMergeReader, 2);
 
-    return priorityReader;
+    if (!tsFilesReader.hasNext()) {
+      //only have unsequence data.
+      return unSeqMergeReader;
+    } else {
+      //merge sequence data with unsequence data.
+      return new AllDataReader(tsFilesReader, unSeqMergeReader);
+    }
   }
 
 }

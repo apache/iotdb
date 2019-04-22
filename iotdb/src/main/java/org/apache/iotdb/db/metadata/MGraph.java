@@ -145,6 +145,26 @@ public class MGraph implements Serializable {
   }
 
   /**
+   * Check whether the input path is storage level for current Metadata Tree or not.
+   *
+   * @param path Format: root.node.(node)*
+   * @apiNote :for cluster
+   */
+  public boolean checkStorageLevel(String path) {
+    return mtree.checkStorageGroup(path);
+  }
+
+  /**
+   * Check whether the storage group of the input path exists or not
+   *
+   * @param path Format: root.node.(node)*
+   * @apiNote :for cluster
+   */
+  public boolean checkStorageExistOfPath(String path) {
+    return mtree.checkStorageExistOfPath(path);
+  }
+
+  /**
    * Get all paths for given seriesPath regular expression if given seriesPath belongs to MTree, or
    * get all linked seriesPath for given seriesPath if given seriesPath belongs to PTree Notice:
    * Regular expression in this method is formed by the amalgamation of seriesPath and the character
@@ -282,6 +302,13 @@ public class MGraph implements Serializable {
 
   public boolean checkFileNameByPath(String path) {
     return mtree.checkFileNameByPath(path);
+  }
+
+  /**
+   * Get all file names for given seriesPath
+   */
+  public List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+    return mtree.getAllFileNamesByPath(path);
   }
 
   /**

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -71,5 +72,24 @@ public class PropertyPlan extends PhysicalPlan {
       ret.add(propertyPath);
     }
     return ret;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PropertyPlan that = (PropertyPlan) o;
+    return propertyType == that.propertyType &&
+        Objects.equals(propertyPath, that.propertyPath) &&
+        Objects.equals(metadataPath, that.metadataPath);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(propertyType, propertyPath, metadataPath);
   }
 }

@@ -40,6 +40,7 @@ import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
+import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.pool.FlushManager;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -173,18 +175,37 @@ public class OverflowProcessor extends Processor {
   public void insert(TSRecord tsRecord) throws IOException {
     // memory control
     long memUage = MemUtils.getRecordSize(tsRecord);
-    BasicMemController.getInstance().reportUse(this, memUage);
-    // write data
-    workSupport.insert(tsRecord);
-    valueCount++;
-    // check flush
-    memUage = memSize.addAndGet(memUage);
-    if (memUage > memThreshold) {
-      LOGGER.warn("The usage of memory {} in overflow processor {} reaches the threshold {}",
-          MemUtils.bytesCntToStr(memUage), getProcessorName(),
-          MemUtils.bytesCntToStr(memThreshold));
-      flush();
+    UsageLevel usageLevel = BasicMemController.getInstance().acquireUsage(this, memUage);
+    switch (usageLevel) {
+      case SAFE:
+        // write data
+        workSupport.insert(tsRecord);
+        valueCount++;
+        // check flush
+        memUage = memSize.addAndGet(memUage);
+        if (memUage > memThreshold) {
+          if (LOGGER.isWarnEnabled()) {
+            LOGGER.warn("The usage of memory {} in overflow processor {} reaches the threshold {}",
+                MemUtils.bytesCntToStr(memUage), getProcessorName(),
+                MemUtils.bytesCntToStr(memThreshold));
+          }
+          flush();
+        }
+        break;
+      case WARNING:
+        // write data
+        workSupport.insert(tsRecord);
+        valueCount++;
+        // flush
+        memSize.addAndGet(memUage);
+        flush();
+        break;
+      case DANGEROUS:
+        throw new IOException("The insertion is rejected because dangerous memory level hit");
     }
+
+
+
   }
 
   /**
@@ -409,6 +430,7 @@ public class OverflowProcessor extends Processor {
 
   public void switchMergeToWork() throws IOException {
     if (mergeResource != null) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(mergeResource.getInsertFilePath());
       mergeResource.close();
       mergeResource.deleteResource();
       mergeResource = null;
@@ -473,7 +495,7 @@ public class OverflowProcessor extends Processor {
   @Override
   public synchronized Future<Boolean> flush() throws IOException {
     // statistic information for flush
-    if (lastFlushTime > 0) {
+    if (lastFlushTime > 0 && LOGGER.isInfoEnabled()) {
       long thisFLushTime = System.currentTimeMillis();
       ZonedDateTime lastDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(lastFlushTime),
           IoTDBDescriptor.getInstance().getConfig().getZoneID());
@@ -486,16 +508,12 @@ public class OverflowProcessor extends Processor {
           (thisFLushTime - lastFlushTime) / 1000);
     }
     lastFlushTime = System.currentTimeMillis();
-    // value count
+    try {
+      flushFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new IOException(e);
+    }
     if (valueCount > 0) {
-      try {
-        flushFuture.get();
-      } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
-                + "the bufferwrite processor is {}.",
-            getProcessorName(), e);
-        Thread.currentThread().interrupt();
-      }
       try {
         // backup newIntervalFile list and emptyIntervalFileNode
         overflowFlushAction.act();
@@ -512,7 +530,7 @@ public class OverflowProcessor extends Processor {
               getProcessorName(), e);
         }
       }
-      BasicMemController.getInstance().reportFree(this, memSize.get());
+      BasicMemController.getInstance().releaseUsage(this, memSize.get());
       memSize.set(0);
       valueCount = 0;
       // switch from work to flush
@@ -681,5 +699,10 @@ public class OverflowProcessor extends Processor {
    */
   public long getLastFlushTime() {
     return lastFlushTime;
+  }
+
+  @Override
+  public String toString() {
+    return "OverflowProcessor in " + parentPath;
   }
 }

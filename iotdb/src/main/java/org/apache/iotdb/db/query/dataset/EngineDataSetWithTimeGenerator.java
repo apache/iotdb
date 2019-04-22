@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -35,6 +34,8 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
 
   private EngineTimeGenerator timeGenerator;
   private List<EngineReaderByTimeStamp> readers;
+  private boolean hasCachedRowRecord;
+  private RowRecord cachedRowRecord;
 
   /**
    * constructor of EngineDataSetWithTimeGenerator.
@@ -53,24 +54,48 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
 
   @Override
   public boolean hasNext() throws IOException {
-    return timeGenerator.hasNext();
+    if (hasCachedRowRecord) {
+      return true;
+    }
+    return cacheRowRecord();
   }
 
   @Override
   public RowRecord next() throws IOException {
-    long timestamp = timeGenerator.next();
-    RowRecord rowRecord = new RowRecord(timestamp);
-    for (int i = 0; i < readers.size(); i++) {
-      EngineReaderByTimeStamp reader = readers.get(i);
-      TsPrimitiveType tsPrimitiveType = reader.getValueInTimestamp(timestamp);
-      if (tsPrimitiveType == null) {
-        rowRecord.addField(new Field(null));
-      } else {
-        rowRecord.addField(getField(tsPrimitiveType.getValue(), dataTypes.get(i)));
+    if (!hasCachedRowRecord && !cacheRowRecord()) {
+      return null;
+    }
+    hasCachedRowRecord = false;
+    return cachedRowRecord;
+  }
+
+  /**
+   * Cache row record
+   *
+   * @return if there has next row record.
+   */
+  private boolean cacheRowRecord() throws IOException {
+    while (timeGenerator.hasNext()) {
+      boolean hasField = false;
+      long timestamp = timeGenerator.next();
+      RowRecord rowRecord = new RowRecord(timestamp);
+      for (int i = 0; i < readers.size(); i++) {
+        EngineReaderByTimeStamp reader = readers.get(i);
+        Object value = reader.getValueInTimestamp(timestamp);
+        if (value == null) {
+          rowRecord.addField(new Field(null));
+        } else {
+          hasField = true;
+          rowRecord.addField(getField(value, dataTypes.get(i)));
+        }
+      }
+      if (hasField) {
+        hasCachedRowRecord = true;
+        cachedRowRecord = rowRecord;
+        break;
       }
     }
-
-    return rowRecord;
+    return hasCachedRowRecord;
   }
 
   private Field getField(Object value, TSDataType dataType) {

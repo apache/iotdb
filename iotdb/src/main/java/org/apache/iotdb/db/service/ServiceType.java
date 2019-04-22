@@ -29,7 +29,9 @@ public enum ServiceType {
   CLOSE_MERGE_SERVICE("Close&Merge ServerService", ""),
   JVM_MEM_CONTROL_SERVICE("Memory Controller", ""),
   AUTHORIZATION_SERVICE("Authorization ServerService", ""),
-  FILE_READER_MANAGER_SERVICE("File reader manager ServerService", "");
+  FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
+  SYNC_SERVICE("SYNC ServerService", "");
+
   private String name;
   private String jmxName;
 

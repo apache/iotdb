@@ -19,14 +19,14 @@
 package org.apache.iotdb.db.query.reader.merge;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IReader;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 
-public interface EngineReaderByTimeStamp extends IReader {
+public interface EngineReaderByTimeStamp {
 
   /**
    * Given a timestamp, the reader is supposed to return the corresponding value in the timestamp.
    * If no value in this timestamp, null will be returned.
    */
-  TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException;
+  Object getValueInTimestamp(long timestamp) throws IOException;
+
+  boolean hasNext() throws IOException;
 }

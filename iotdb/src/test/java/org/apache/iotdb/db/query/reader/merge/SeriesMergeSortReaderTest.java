@@ -19,10 +19,9 @@
 package org.apache.iotdb.db.query.reader.merge;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -54,7 +53,8 @@ public class SeriesMergeSortReaderTest {
   private void test(long[] retTimestamp, long[] retValue, long[]... sources) throws IOException {
     PriorityMergeReader seriesMergeSortReader = new PriorityMergeReader();
     for (int i = 0; i < sources.length; i++) {
-      seriesMergeSortReader.addReaderWithPriority(new FakedSeriesReader(sources[i], i + 1), i + 1);
+      seriesMergeSortReader.addReaderWithPriority(
+          new FakedSeriesReader(sources[i], i + 1), i + 1);
     }
 
     int i = 0;
@@ -66,7 +66,7 @@ public class SeriesMergeSortReaderTest {
     }
   }
 
-  public static class FakedSeriesReader implements IReader {
+  public static class FakedSeriesReader implements IPointReader {
 
     private long[] timestamps;
     private int index;
@@ -89,27 +89,12 @@ public class SeriesMergeSortReaderTest {
     }
 
     @Override
-    public void skipCurrentTimeValuePair() {
-      next();
+    public TimeValuePair current() {
+      return new TimeValuePair(timestamps[index], new TsPrimitiveType.TsLong(value));
     }
 
     @Override
     public void close() {
-    }
-
-    @Override
-    public boolean hasNextBatch() {
-      return false;
-    }
-
-    @Override
-    public BatchData nextBatch() {
-      return null;
-    }
-
-    @Override
-    public BatchData currentBatch() {
-      return null;
     }
   }
 }

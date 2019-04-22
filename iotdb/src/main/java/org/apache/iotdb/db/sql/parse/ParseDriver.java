@@ -97,7 +97,7 @@ public class ParseDriver {
 
       r = parser.statement();
     } catch (RecognitionException e) {
-      LOG.error("meet error while parsing statement.", e);
+      LOG.trace("meet error: {} while parsing statement: {}", e.getMessage(), command);
     }
 
     if (lexer.getErrors().isEmpty() && parser.errors.isEmpty()) {

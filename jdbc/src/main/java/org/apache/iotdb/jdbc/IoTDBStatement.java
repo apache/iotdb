@@ -29,6 +29,7 @@ import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -64,6 +65,7 @@ public class IoTDBStatement implements Statement {
   private TS_SessionHandle sessionHandle = null;
   private TSOperationHandle operationHandle = null;
   private List<String> batchSQLList;
+  private AtomicLong queryId = new AtomicLong(0);
   /**
    * Keep state so we can fail certain calls made after close().
    */
@@ -158,7 +160,7 @@ public class IoTDBStatement implements Statement {
   private void closeClientOperation() throws SQLException {
     try {
       if (operationHandle != null) {
-        TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle);
+        TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, -1);
         TSCloseOperationResp closeResp = client.closeOperation(closeReq);
         Utils.verifySuccess(closeResp.getStatus());
       }
@@ -252,7 +254,7 @@ public class IoTDBStatement implements Statement {
       if (execResp.getOperationHandle().hasResultSet) {
         resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
             operationHandle, sql, execResp.getOperationType(),
-            getColumnsType(execResp.getColumns()));
+            getColumnsType(execResp.getColumns()), queryId.getAndIncrement());
         return true;
       }
       return false;
@@ -347,7 +349,8 @@ public class IoTDBStatement implements Statement {
     operationHandle = execResp.getOperationHandle();
     Utils.verifySuccess(execResp.getStatus());
     resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
-        operationHandle, sql, execResp.getOperationType(), getColumnsType(execResp.getColumns()));
+        operationHandle, sql, execResp.getOperationType(), getColumnsType(execResp.getColumns()),
+        queryId.getAndIncrement());
     return resultSet;
   }
 
