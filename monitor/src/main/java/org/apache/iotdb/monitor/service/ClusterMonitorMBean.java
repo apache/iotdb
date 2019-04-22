@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.service;
+package org.apache.iotdb.monitor.service;
 
 import java.util.List;
 import java.util.Map;

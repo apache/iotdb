@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.service;
+package org.apache.iotdb.monitor.service;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.util.HashMap;

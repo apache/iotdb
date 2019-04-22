@@ -26,15 +26,13 @@
         <version>0.8.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>IoTDB-cluster</artifactId>
-    <name>IoTDB Cluster</name>
+    <artifactId>iotdb-monitor</artifactId>
+    <name>IoTDB Monitor</name>
     <properties>
-        <jraft.version>1.2.4</jraft.version>
-        <antlr3.version>3.5.2</antlr3.version>
         <common.lang3.version>3.8.1</common.lang3.version>
-        <cluster.test.skip>false</cluster.test.skip>
-        <cluster.it.skip>${cluster.test.skip}</cluster.it.skip>
-        <cluster.ut.skip>${cluster.test.skip}</cluster.ut.skip>
+        <monitor.test.skip>false</monitor.test.skip>
+        <monitor.it.skip>${monitor.test.skip}</monitor.it.skip>
+        <monitor.ut.skip>${monitor.test.skip}</monitor.ut.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -44,43 +42,8 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-jdbc</artifactId>
+            <artifactId>iotdb-cluster</artifactId>
             <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- jraft -->
-        <dependency>
-            <groupId>com.alipay.sofa</groupId>
-            <artifactId>jraft-core</artifactId>
-            <version>${jraft.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-slf4j-impl</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-jcl</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-monitor</artifactId>
-            <version>0.8.0-SNAPSHOT</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
     <build>
@@ -114,18 +77,6 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.antlr</groupId>
-                <artifactId>antlr3-maven-plugin</artifactId>
-                <version>${antlr3.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>antlr</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
@@ -149,12 +100,12 @@
                 </configuration>
             </plugin>
             <!--using `mvn test` to run UT, `mvn verify` to run ITs
-                        Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
+                  Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <skipTests>${cluster.ut.skip}</skipTests>
+                    <skipTests>${monitor.ut.skip}</skipTests>
                 </configuration>
             </plugin>
             <plugin>
@@ -171,15 +122,15 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <skipTests>${cluster.test.skip}</skipTests>
-                    <skipITs>${cluster.it.skip}</skipITs>
+                    <skipTests>${monitor.test.skip}</skipTests>
+                    <skipITs>${monitor.it.skip}</skipITs>
                 </configuration>
             </plugin>
         </plugins>
     </build>
     <profiles>
         <profile>
-            <id>skipClusterTests</id>
+            <id>skipMonitorTests</id>
             <activation>
                 <property>
                     <name>skipTests</name>
@@ -187,13 +138,13 @@
                 </property>
             </activation>
             <properties>
-                <cluster.test.skip>true</cluster.test.skip>
-                <cluster.ut.skip>true</cluster.ut.skip>
-                <cluster.it.skip>true</cluster.it.skip>
+                <monitor.test.skip>true</monitor.test.skip>
+                <monitor.ut.skip>true</monitor.ut.skip>
+                <monitor.it.skip>true</monitor.it.skip>
             </properties>
         </profile>
         <profile>
-            <id>skipUT_Cluster_Tests</id>
+            <id>skipUT_Monitor_Tests</id>
             <activation>
                 <property>
                     <name>skipUTs</name>

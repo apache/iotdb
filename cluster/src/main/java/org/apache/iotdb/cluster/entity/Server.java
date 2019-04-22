@@ -39,15 +39,14 @@ import org.apache.iotdb.cluster.rpc.raft.processor.QueryMetadataInStringAsyncPro
 import org.apache.iotdb.cluster.rpc.raft.processor.QueryPathsAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.QuerySeriesTypeAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.QueryTimeSeriesAsyncProcessor;
-import org.apache.iotdb.cluster.service.ClusterMonitor;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
+import org.apache.iotdb.monitor.service.ClusterMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

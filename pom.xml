@@ -136,6 +136,7 @@
         <module>iotdb-cli</module>
         <module>example</module>
         <module>cluster</module>
+        <module>monitor</module>
         <!--<module>hadoop</module>-->
         <!--<module>spark</module>-->
     </modules>
