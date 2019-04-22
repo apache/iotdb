@@ -77,6 +77,8 @@ public class WalChecker {
 
       if (walFile.length() > 0 && walFile.length() < RAFLogReader.LEAST_LOG_SIZE) {
         // contains only one damaged log
+        LOGGER.error("{} fails the check because it is non-empty but does not contain enough bytes "
+            + "even for one log.", walFile.getAbsoluteFile());
         failedFiles.add(walFile);
         continue;
       }
