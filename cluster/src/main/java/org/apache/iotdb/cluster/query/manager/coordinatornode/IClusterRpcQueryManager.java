@@ -38,7 +38,7 @@ public interface IClusterRpcQueryManager {
   /**
    * Get full task id (local address + job id)
    */
-  String getAndIncreaTaskId(long jobId);
+  String createJobId(long jobId);
 
   /**
    * Get query manager by jobId

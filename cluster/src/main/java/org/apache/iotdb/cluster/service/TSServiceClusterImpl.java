@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.service;
 
+import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.io.IOException;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -33,6 +34,7 @@ import org.apache.iotdb.cluster.qp.executor.ClusterQueryProcessExecutor;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.IClusterRpcQueryManager;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -69,7 +71,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor();
   private QueryMetadataExecutor queryMetadataExecutor = new QueryMetadataExecutor();
 
-  private ClusterRpcQueryManager queryManager = ClusterRpcQueryManager.getInstance();
+  private IClusterRpcQueryManager queryManager = ClusterRpcQueryManager.getInstance();
   private QueryProcessor queryProcessor = new QueryProcessor(queryDataExecutor);
 
   public TSServiceClusterImpl() throws IOException {

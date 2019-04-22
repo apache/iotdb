@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.cluster.query.manager.coordinatornode;
 
+import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
@@ -47,13 +47,13 @@ public class ClusterRpcQueryManager implements IClusterRpcQueryManager {
 
   @Override
   public void addSingleQuery(long jobId, QueryPlan physicalPlan) {
-    String taskId = getAndIncreaTaskId(jobId);
+    String taskId = createJobId(jobId);
     JOB_ID_MAP_TASK_ID.put(jobId, taskId);
     SINGLE_QUERY_MANAGER_MAP.put(taskId, new ClusterRpcSingleQueryManager(taskId, physicalPlan));
   }
 
   @Override
-  public String getAndIncreaTaskId(long jobId) {
+  public String createJobId(long jobId) {
     return String.format("%s:%d", LOCAL_ADDR, jobId);
   }
 
@@ -69,9 +69,14 @@ public class ClusterRpcQueryManager implements IClusterRpcQueryManager {
 
   @Override
   public void releaseQueryResource(long jobId) throws RaftConnectionException {
-    if (SINGLE_QUERY_MANAGER_MAP.containsKey(jobId)) {
-      SINGLE_QUERY_MANAGER_MAP.remove(jobId).releaseQueryResource();
+    if (JOB_ID_MAP_TASK_ID.containsKey(jobId)) {
+      SINGLE_QUERY_MANAGER_MAP.remove(JOB_ID_MAP_TASK_ID.remove(jobId)).releaseQueryResource();
     }
+  }
+
+  @OnlyForTest
+  public static ConcurrentHashMap<Long, String> getJobIdMapTaskId() {
+    return JOB_ID_MAP_TASK_ID;
   }
 
   private ClusterRpcQueryManager() {

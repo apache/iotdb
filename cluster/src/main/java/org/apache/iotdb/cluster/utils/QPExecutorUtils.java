@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.utils;
 
+import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,6 +48,9 @@ public class QPExecutorUtils {
   private static final  MManager mManager = MManager.getInstance();
 
   private static final Server server = Server.getInstance();
+
+  @OnlyForTest
+  private static boolean isTest = false;
 
 
   /**
@@ -117,7 +121,13 @@ public class QPExecutorUtils {
    * Check if the query command can execute in local. Check if this node belongs to the group id
    */
   public static boolean canHandleQueryByGroupId(String groupId) {
+    if (isTest) {
+      return false;
+    }
     return router.containPhysicalNodeByGroupId(groupId, localNode);
   }
 
+  public static void setIsTest(boolean isTest) {
+    QPExecutorUtils.isTest = isTest;
+  }
 }

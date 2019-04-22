@@ -59,7 +59,8 @@ public interface IClusterRpcSingleQueryManager {
   void fetchBatchDataForFilterPaths(String groupId) throws RaftConnectionException;
 
   /**
-   * Fetch batch data for all select paths by batch timestamp
+   * Fetch batch data for all select paths by batch timestamp. If target data can be fetched, skip
+   * corresponding group id.
    *
    * @param batchTimestamp valid batch timestamp
    */

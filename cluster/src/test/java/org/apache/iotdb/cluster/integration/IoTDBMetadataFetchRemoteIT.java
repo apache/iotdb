@@ -30,19 +30,19 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
-//  @BeforeClass
-//  public static void  setUp() throws Exception {
-//    Class.forName(Config.JDBC_DRIVER_NAME);
-//    ClusterConfigureGenerator.generateClusterConfigure();
-//  }
-//
-//  @AfterClass
-//  public static void tearDown() throws Exception {
-//    ClusterConfigureGenerator.deleteClusterConfigure();
-//  }
-//
-//  @Test
-//  public void test() throws IOException {
+  @BeforeClass
+  public static void  setUp() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    ClusterConfigureGenerator.generateClusterConfigure();
+  }
+
+  @AfterClass
+  public static void tearDown() throws Exception {
+    ClusterConfigureGenerator.deleteClusterConfigure();
+  }
+
+  @Test
+  public void test() throws IOException {
 //    String dir = Utils.getCurrentPath("pwd");
 ////    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh", "7", "1", dir);
 //    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh", "7", "3", dir);
@@ -64,7 +64,7 @@ public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
 //    }
 //    r.close();
 //    p.destroy();
-//  }
+  }
 
 
 }
