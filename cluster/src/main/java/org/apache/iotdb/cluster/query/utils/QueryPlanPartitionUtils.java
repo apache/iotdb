@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 /**
@@ -116,8 +117,11 @@ public class QueryPlanPartitionUtils {
       // create filter sub query plan
       QueryPlan subQueryPlan = new QueryPlan();
       subQueryPlan.setPaths(filterSeriesList);
-      IExpression subExpression = ExpressionUtils.pruneFilterTree(expression.clone(), filterSeriesList);
-      subQueryPlan.setExpression(subExpression);
+      IExpression subExpression = ExpressionUtils
+          .pruneFilterTree(expression.clone(), filterSeriesList);
+      if (subExpression.getType() != ExpressionType.TRUE) {
+        subQueryPlan.setExpression(subExpression);
+      }
 
       filterPathPlans.put(groupId, subQueryPlan);
     }
