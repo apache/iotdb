@@ -23,17 +23,18 @@ import io.airlift.airline.Option;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
-import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
+import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
 
 @Command(name = "host", description = "Print all data partitions information which specific host belongs to")
 public class Host extends NodeToolCmd {
+
+  private final int DEFAULT_PORT = -1;
 
   @Option(title = "ip", name = {"-i", "--ip"}, description = "Specify the host ip for accurate hosts information")
   private String ip = "127.0.0.1";
 
   @Option(title = "port", name = {"-p", "--port"}, description = "Specify the host port for accurate hosts information")
-  private int port = -1;
+  private int port = DEFAULT_PORT;
 
   @Option(title = "sg_detail", name = {"-d", "--detail"}, description = "Show path of storage groups")
   private boolean detail = false;
@@ -41,7 +42,7 @@ public class Host extends NodeToolCmd {
   @Override
   public void execute(ClusterMonitorMBean proxy) {
     Map<String[], String[]> map;
-    if (port == -1) {
+    if (port == DEFAULT_PORT) {
       map = proxy.getDataPartitonOfNode(ip);
     } else {
       map = proxy.getDataPartitonOfNode(ip, port);

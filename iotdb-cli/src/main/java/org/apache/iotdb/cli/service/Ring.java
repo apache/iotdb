@@ -22,11 +22,10 @@ import io.airlift.airline.Command;
 import io.airlift.airline.Option;
 import java.util.Map;
 import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
-import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
+import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
 
 @Command(name = "ring", description = "Print information about the hash ring")
-public class Ring extends NodeToolCmd
-{
+public class Ring extends NodeToolCmd {
   @Option(title = "physical_ring", name = {"-p", "--physical"}, description = "Show physical nodes instead of virtual ones")
   private boolean physical = false;
 

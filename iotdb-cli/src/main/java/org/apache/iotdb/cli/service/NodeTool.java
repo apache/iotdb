@@ -43,8 +43,8 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-import org.apache.iotdb.cluster.service.ClusterMonitor;
-import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
+import org.apache.iotdb.monitor.service.ClusterMonitor;
+import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
 
 public class NodeTool {
 

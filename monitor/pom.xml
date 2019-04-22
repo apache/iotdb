@@ -76,29 +76,6 @@
                     </filesets>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-dependencies</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.basedir}/../iotdb/iotdb/lib_cluster</outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <configuration>
-                    <outputDirectory>${project.basedir}/../iotdb/iotdb/lib_cluster</outputDirectory>
-                </configuration>
-            </plugin>
             <!--using `mvn test` to run UT, `mvn verify` to run ITs
                   Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
@@ -152,7 +129,7 @@
                 </property>
             </activation>
             <properties>
-                <iotdb.ut.skip>true</iotdb.ut.skip>
+                <monitor.ut.skip>true</monitor.ut.skip>
             </properties>
         </profile>
     </profiles>

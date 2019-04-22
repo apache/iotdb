@@ -29,7 +29,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-//public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
+public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
 //  @BeforeClass
 //  public static void  setUp() throws Exception {
 //    Class.forName(Config.JDBC_DRIVER_NAME);
@@ -65,4 +65,4 @@ import org.junit.Test;
 //    r.close();
 //    p.destroy();
 //  }
-//}
+}

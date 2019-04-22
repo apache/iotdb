@@ -22,7 +22,7 @@ import io.airlift.airline.Arguments;
 import io.airlift.airline.Command;
 import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
 import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
+import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
 
 @Command(name = "storagegroup", description = "Print all hosts information of specific storage group")
 public class StorageGroup extends NodeToolCmd {
