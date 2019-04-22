@@ -54,6 +54,7 @@ public class WalChecker {
    */
   public List<File> doCheck() throws SysCheckException {
     File walFolderFile = new File(walFolder);
+    LOGGER.info("Checking folder: {}", walFolderFile.getAbsolutePath());
     if(!walFolderFile.exists() || !walFolderFile.isDirectory()) {
       throw new SysCheckException(String.format("%s is not a directory", walFolder));
     }
@@ -67,10 +68,16 @@ public class WalChecker {
     List<File> failedFiles = new ArrayList<>();
     for (int dirIndex = 0; dirIndex < storageWalFolders.length; dirIndex++) {
       File storageWalFolder = storageWalFolders[dirIndex];
-      LOGGER.debug("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
+      LOGGER.info("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
       File walFile = new File(storageWalFolder, WAL_FILE_NAME);
       if (!walFile.exists()) {
         LOGGER.debug("No wal file in this dir, skipping");
+        continue;
+      }
+
+      if (walFile.length() > 0 && walFile.length() < RAFLogReader.LEAST_LOG_SIZE) {
+        // contains only one damaged log
+        failedFiles.add(walFile);
         continue;
       }
 
