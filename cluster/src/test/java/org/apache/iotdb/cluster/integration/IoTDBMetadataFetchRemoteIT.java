@@ -29,6 +29,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+<<<<<<< HEAD
 //public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
 //  @BeforeClass
 //  public static void  setUp() throws Exception {
@@ -66,4 +67,3 @@ import org.junit.Test;
 //    p.destroy();
 //  }
 //}
-
