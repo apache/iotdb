@@ -75,4 +75,12 @@ public class ClusterBatchReaderByTimestamp extends IClusterBatchReader {
     }
     return batchData;
   }
+
+  public EngineReaderByTimeStamp getReaderByTimeStamp() {
+    return readerByTimeStamp;
+  }
+
+  public TSDataType getDataType() {
+    return dataType;
+  }
 }
