@@ -325,14 +325,14 @@ public class RaftUtils {
   public static Map<Integer, String> getPhysicalRing() {
     SortedMap<Integer, PhysicalNode> hashNodeMap = router.getPhysicalRing();
     Map<Integer, String> res = new LinkedHashMap<>();
-    hashNodeMap.entrySet().forEach(entry -> res.put(entry.getKey(), entry.getValue().getIp()));
+    hashNodeMap.forEach((key, value) -> res.put(key, value.getIp()));
     return res;
   }
 
   public static Map<Integer, String> getVirtualRing() {
     SortedMap<Integer, VirtualNode> hashNodeMap = router.getVirtualRing();
     Map<Integer, String> res = new LinkedHashMap<>();
-    hashNodeMap.entrySet().forEach(entry -> res.put(entry.getKey(), entry.getValue().getPhysicalNode().getIp()));
+    hashNodeMap.forEach((key, value) -> res.put(key, value.getPhysicalNode().getIp()));
     return res;
   }
 
@@ -347,8 +347,8 @@ public class RaftUtils {
     PeerId[] nodes;
     if (sg == null) {
       groupId = ClusterConfig.METADATA_GROUP_ID;
-      nodes = (PeerId[]) ((RaftService) server.getMetadataHolder().getService()).getPeerIdList()
-          .toArray();
+      List<PeerId> peerIdList = ((RaftService) server.getMetadataHolder().getService()).getPeerIdList();
+      nodes = peerIdList.toArray(new PeerId[peerIdList.size()]);
     } else {
       PhysicalNode[] group = router.routeGroup(sg);
       groupId = router.getGroupID(group);
@@ -406,12 +406,7 @@ public class RaftUtils {
     if (nodes == null || nodes.length == 0) {
       return "";
     }
-    Arrays.sort(nodes, new Comparator<PhysicalNode>() {
-      @Override
-      public int compare(PhysicalNode o1, PhysicalNode o2) {
-        return o1.toString().compareTo(o2.toString());
-      }
-    });
+    Arrays.sort(nodes, Comparator.comparing(PhysicalNode::toString));
     StringBuilder builder = new StringBuilder();
     builder.append(nodes[0]);
     for (int i = 1; i < nodes.length; i++) {

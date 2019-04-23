@@ -21,7 +21,6 @@ package org.apache.iotdb.cli.service;
 import io.airlift.airline.Arguments;
 import io.airlift.airline.Command;
 import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
-import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
 
 @Command(name = "storagegroup", description = "Print all hosts information of specific storage group")
@@ -32,9 +31,6 @@ public class StorageGroup extends NodeToolCmd {
 
   @Override
   public void execute(ClusterMonitorMBean proxy) {
-    if (sg == null) {
-      sg = ClusterConfig.METADATA_GROUP_ID;
-    }
     String nodes = proxy.getDataPartitionOfSG(sg);
     System.out.println(nodes);
   }

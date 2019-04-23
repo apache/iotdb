@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.monitor.service;
+package org.apache.iotdb.cluster.service;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import java.util.HashMap;
@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,18 +36,15 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterMonitor.class);
 
   public static final ClusterMonitor INSTANCE = new ClusterMonitor();
-  private final String mbeanName = String
-      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
-          getID().getJmxName());
 
   public String getMbeanName() {
-    return mbeanName;
+    return MBEAN_NAME;
   }
 
   @Override
   public void start() throws StartupException {
     try {
-      JMXService.registerMBean(INSTANCE, mbeanName);
+      JMXService.registerMBean(INSTANCE, MBEAN_NAME);
     } catch (Exception e) {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
@@ -57,7 +55,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   @Override
   public void stop() {
-    JMXService.deregisterMBean(mbeanName);
+    JMXService.deregisterMBean(MBEAN_NAME);
   }
 
   @Override

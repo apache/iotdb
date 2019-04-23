@@ -43,12 +43,9 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-import org.apache.iotdb.monitor.service.ClusterMonitor;
 import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
 
 public class NodeTool {
-
-  private static ClusterMonitor clusterMonitor = ClusterMonitor.INSTANCE;
 
   public static void main(String... args) {
     List<Class<? extends Runnable>> commands = newArrayList(
@@ -116,7 +113,7 @@ public class NodeTool {
     public void run() {
       try {
         MBeanServerConnection mbsc = connect();
-        ObjectName name = new ObjectName(clusterMonitor.getMbeanName());
+        ObjectName name = new ObjectName(ClusterMonitorMBean.MBEAN_NAME);
         ClusterMonitorMBean clusterMonitorProxy = JMX
             .newMBeanProxy(mbsc, name, ClusterMonitorMBean.class);
         execute(clusterMonitorProxy);

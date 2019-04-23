@@ -23,6 +23,8 @@ import java.util.Map;
 
 public interface ClusterMonitorMBean {
 
+  public static final String MBEAN_NAME = "org.apache.iotdb.service:type=Cluster Monitor";
+
   /**
    * Get physical hash ring
    *
