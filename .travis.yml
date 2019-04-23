@@ -85,7 +85,7 @@ matrix:
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
-        - mvn -B clean integration-test
+        - mvn clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
     - os: linux
       name: linux-openjdk8
       dist: trusty
