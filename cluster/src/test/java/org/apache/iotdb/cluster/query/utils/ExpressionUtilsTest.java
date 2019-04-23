@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.query.utils;
 
+import static org.apache.iotdb.cluster.utils.Utils.insertData;
 import static org.junit.Assert.*;
 
 import java.sql.Connection;
@@ -155,7 +156,7 @@ public class ExpressionUtilsTest {
     QueryPlan queryPlan;
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       initCorrectResult();
     }
 
@@ -224,19 +225,6 @@ public class ExpressionUtilsTest {
     pruneExpression = ExpressionUtils.pruneFilterTree(optimizedExpression.clone(), pathList);
     assertEquals(correntPruneFilterTree[5].toString(), pruneExpression.toString());
 
-
-  }
-
-
-  private void insertData(Connection connection) throws SQLException {
-    try (Statement statement = connection.createStatement()) {
-      for (String createSql : createSQLs) {
-        statement.execute(createSql);
-      }
-      for (String insertSql : insertSQLs) {
-        statement.execute(insertSql);
-      }
-    }
   }
 
 }

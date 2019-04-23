@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.query.utils;
 
+import static org.apache.iotdb.cluster.utils.Utils.insertData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -232,7 +233,7 @@ public class QueryPlanPartitionUtilsTest {
   public void splitQueryPlanWithoutValueFilter() throws Exception{
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       initCorrectResult();
       for(int i = 0 ; i < queryStatementsWithoutFilters.length; i++) {
         String queryStatementsWithoutFilter = queryStatementsWithoutFilters[i];
@@ -278,7 +279,7 @@ public class QueryPlanPartitionUtilsTest {
   public void splitQueryPlanWithValueFilter() throws Exception{
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       initCorrectResult();
       for(int i = 0 ; i < queryStatementsWithFilters.length; i++) {
         String queryStatementsWithoutFilter = queryStatementsWithFilters[i];
@@ -326,17 +327,6 @@ public class QueryPlanPartitionUtilsTest {
             }
           }
         }
-      }
-    }
-  }
-
-  private void insertData(Connection connection) throws SQLException {
-    try (Statement statement = connection.createStatement()) {
-      for (String createSql : createSQLs) {
-        statement.execute(createSql);
-      }
-      for (String insertSql : insertSQLs) {
-        statement.execute(insertSql);
       }
     }
   }

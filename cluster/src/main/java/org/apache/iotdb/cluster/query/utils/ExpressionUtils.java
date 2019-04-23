@@ -53,10 +53,12 @@ public class ExpressionUtils {
       Path path = ((SingleSeriesExpression)expression).getSeriesPath();
       String storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
       String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
-      if(!seriesPathMap.containsKey(groupId)){
+      if(!seriesPathMap.containsKey(groupId)) {
         seriesPathMap.put(groupId, new ArrayList<>());
       }
-      seriesPathMap.get(groupId).add(path);
+      if (!seriesPathMap.get(groupId).contains(path)) {
+        seriesPathMap.get(groupId).add(path);
+      }
     } else if (expression.getType() == OR || expression.getType() == AND) {
       getAllExpressionSeries(((IBinaryExpression)expression).getLeft(), seriesPathMap);
       getAllExpressionSeries(((IBinaryExpression)expression).getRight(), seriesPathMap);

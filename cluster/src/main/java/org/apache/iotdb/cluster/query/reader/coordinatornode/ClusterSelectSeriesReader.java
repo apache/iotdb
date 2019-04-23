@@ -23,10 +23,8 @@ import java.util.LinkedList;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -85,6 +83,8 @@ public class ClusterSelectSeriesReader extends AbstractClusterPointReader implem
   public Object getValueInTimestamp(long timestamp) throws IOException {
     if (currentTimeValuePair != null && currentTimeValuePair.getTimestamp() == timestamp) {
       return currentTimeValuePair.getValue().getValue();
+    } else if (currentTimeValuePair != null && currentTimeValuePair.getTimestamp() > timestamp) {
+      return null;
     }
     while (true) {
       if (hasNext()) {

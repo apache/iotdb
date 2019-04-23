@@ -45,7 +45,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
+import org.apache.iotdb.db.query.executor.ExecutorWithoutTimeGenerator;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -53,6 +53,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 
@@ -151,15 +153,19 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
    */
   private void handleSelectReaderWithoutTimeGenerator(QueryPlan plan, QueryContext context,
       QuerySeriesDataResponse response)
-      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException {
-    EngineDataSetWithoutTimeGenerator queryDataSet = (EngineDataSetWithoutTimeGenerator) queryProcessExecutor
-        .processQuery(plan, context);
+      throws FileNodeManagerException {
     List<Path> paths = plan.getPaths();
-    List<IPointReader> readers = queryDataSet.getReaders();
-    List<TSDataType> dataTypes = queryDataSet.getDataTypes();
+    Filter timeFilter = null;
+    if (plan.getExpression() != null) {
+      timeFilter = ((GlobalTimeExpression) plan.getExpression()).getFilter();
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenQueryPaths(context.getJobId(), plan.getPaths());
     for (int i = 0; i < paths.size(); i++) {
       String fullPath = paths.get(i).getFullPath();
-      IPointReader reader = readers.get(i);
+      IPointReader reader = ExecutorWithoutTimeGenerator
+          .createSeriesReader(context, paths.get(i), dataTypes, timeFilter);
       selectSeriesReaders
           .put(fullPath, new ClusterBatchReaderWithoutTimeGenerator(dataTypes.get(i), reader));
       dataTypeMap.put(fullPath, dataTypes.get(i));

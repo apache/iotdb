@@ -27,21 +27,20 @@ import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.entity.Task;
 import com.alipay.sofa.jraft.util.Bits;
 import com.alipay.sofa.jraft.util.OnlyForTest;
-
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.qp.task.QPTask;
-import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.qp.task.QPTask;
+import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
@@ -176,6 +175,15 @@ public class RaftUtils {
   public static void updateRaftGroupLeader(String groupId, PeerId peerId) {
     groupLeaderCache.put(groupId, peerId);
     LOGGER.info("group leader cache:{}", groupLeaderCache);
+  }
+
+  /**
+   * Remove cached raft group leader if occurs exception in the process of executing qp task.
+   *
+   * @param groupId data group id
+   */
+  public static void removeCachedRaftGroupLeader(String groupId) {
+    groupLeaderCache.remove(groupId);
   }
 
   @OnlyForTest

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.query.manager;
 
+import static org.apache.iotdb.cluster.utils.Utils.insertData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -103,7 +104,7 @@ public class ClusterLocalManagerTest {
   public void testClusterLocalQueryManagerWithoutFilter() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       Statement statement = connection.createStatement();
 
       // first query
@@ -146,7 +147,7 @@ public class ClusterLocalManagerTest {
   public void testClusterLocalQueryManagerWithFilter() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       Statement statement = connection.createStatement();
 
       // first query
@@ -205,7 +206,7 @@ public class ClusterLocalManagerTest {
   public void testClusterLocalSingleQueryWithoutFilterManager() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       Statement statement = connection.createStatement();
 
       // first query
@@ -296,7 +297,7 @@ public class ClusterLocalManagerTest {
   public void testClusterLocalSingleQueryWithFilterManager() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       Statement statement = connection.createStatement();
 
       // first query
@@ -401,17 +402,6 @@ public class ClusterLocalManagerTest {
         }
       }
       statement.close();
-    }
-  }
-
-  private void insertData(Connection connection) throws SQLException {
-    try (Statement statement = connection.createStatement()) {
-      for (String createSql : createSQLs) {
-        statement.execute(createSql);
-      }
-      for (String insertSql : insertSQLs) {
-        statement.execute(insertSql);
-      }
     }
   }
 

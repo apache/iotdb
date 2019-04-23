@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.query.manager;
 
+import static org.apache.iotdb.cluster.utils.Utils.insertData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -96,7 +97,7 @@ public class ClusterRpcManagerTest {
   public void testClusterRpcQueryManagerWithoutFilter() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       Statement statement = connection.createStatement();
 
       // first query
@@ -163,7 +164,7 @@ public class ClusterRpcManagerTest {
   public void testClusterRpcQueryManagerWithFilter() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       Statement statement = connection.createStatement();
 
       // first query
@@ -245,7 +246,7 @@ public class ClusterRpcManagerTest {
   public void testClusterRpcSingleQueryWithoutFilterManager() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute(queryStatementsWithoutFilter);
       assertTrue(hasResultSet);
@@ -297,7 +298,7 @@ public class ClusterRpcManagerTest {
   public void testClusterRpcSingleQueryWithFilterManager() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
+      insertData(connection, createSQLs, insertSQLs);
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute(queryStatementsWithFilter);
       assertTrue(hasResultSet);
@@ -354,16 +355,4 @@ public class ClusterRpcManagerTest {
       statement.close();
     }
   }
-
-  private void insertData(Connection connection) throws SQLException {
-    try (Statement statement = connection.createStatement()) {
-      for (String createSql : createSQLs) {
-        statement.execute(createSql);
-      }
-      for (String insertSql : insertSQLs) {
-        statement.execute(insertSql);
-      }
-    }
-  }
-
 }

@@ -132,6 +132,11 @@ public abstract class AbstractQPExecutor {
         leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
         LOGGER.debug("Redirect leader: {}, group id = {}", leader, task.getRequest().getGroupID());
         RaftUtils.updateRaftGroupLeader(task.getRequest().getGroupID(), leader);
+      } else {
+        String groupId = task.getRequest().getGroupID();
+        RaftUtils.removeCachedRaftGroupLeader(groupId);
+        LOGGER.debug("Remove cached raft group leader of {}", groupId);
+        leader = RaftUtils.getLeaderPeerID(groupId);
       }
       task.resetTask();
       return asyncHandleNonQuerySingleTaskGetRes(task, leader, taskRetryNum + 1);

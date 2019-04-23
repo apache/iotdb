@@ -24,18 +24,12 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
-import org.apache.iotdb.db.query.reader.AllDataReader;
+import org.apache.iotdb.db.query.executor.ExecutorWithoutTimeGenerator;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -43,7 +37,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class ClusterExecutorWithoutTimeGenerator {
+public class ClusterExecutorWithoutTimeGenerator extends ExecutorWithoutTimeGenerator {
 
   /**
    * Query expression
@@ -88,39 +82,8 @@ public class ClusterExecutorWithoutTimeGenerator {
         dataTypes.add(reader.getDataType());
 
       } else {
-        // can read series locally.
-        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-            .getQueryDataSource(path,
-                context);
-
-        // add data type
-        try {
-          dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-        } catch (PathErrorException e) {
-          throw new FileNodeManagerException(e);
-        }
-
-        // sequence insert data
-        SequenceDataReader tsFilesReader;
-        try {
-          tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-              timeFilter, context);
-        } catch (IOException e) {
-          throw new FileNodeManagerException(e);
-        }
-
-        // unseq insert data
-        PriorityMergeReader unSeqMergeReader;
-        try {
-          unSeqMergeReader = SeriesReaderFactory.getInstance()
-              .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
-        } catch (IOException e) {
-          throw new FileNodeManagerException(e);
-        }
-
-        // merge sequence data with unsequence data.
-        readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
-
+        IPointReader reader = createSeriesReader(context, path, dataTypes, timeFilter);
+        readersOfSelectedSeries.add(reader);
         paths.add(path);
       }
     }
