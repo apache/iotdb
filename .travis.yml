@@ -60,8 +60,8 @@ matrix:
       addons:
         homebrew:
           taps:
-           #- homebrew/cask-versions
-           - AdoptOpenJDK/openjdk
+            #- homebrew/cask-versions
+            - AdoptOpenJDK/openjdk
           update: true
           casks: adoptopenjdk-openjdk8
     - os: windows
@@ -71,12 +71,30 @@ matrix:
         - choco install jdk11 -params 'installdir=c:\\java11'
         - export PATH=$PATH:"/c/java11/bin"
         - export JAVA_HOME="/c/java11"
-#        - choco install maven
         - wget https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.1-bin.zip -o/c/mvn361
         - export "MAVEN_HOME=/c/mvn361/apache-maven-3.6.1"
         - export "M2_HOME=/c/mvn361/apache-maven-3.6.1"
         - export "PATH=$MAVEN_HOME/bin:$PATH"
+      script:
+        - java -version
+        - mvn -version
+        - mvn -B apache-rat:check
+        - mvn clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
+    - os: windows
+      language: c
+      name: win-oraclejdk8
+      before_install:
+        - choco install jdk8 -params 'installdir=c:\\jdk8'
+        - wget https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
+        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.1-bin.zip -o/c/mvn361
+      before_script:
+        - export "JAVA_HOME=/c/jdk8"
+        - export "PATH=/c/jdk8/bin:$PATH"
+        - export "PATH=/c/jdk8/jre/bin:$PATH"
+        - export "MAVEN_HOME=/c/mvn361/apache-maven-3.6.1"
+        - export "M2_HOME=/c/mvn361/apache-maven-3.6.1"
+        - export "PATH=/c/mvn361/apache-maven-3.6.1/bin:$PATH"
     - os: linux
       name: linux-openjdk11
       dist: trusty
