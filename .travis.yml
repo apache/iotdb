@@ -108,7 +108,6 @@ matrix:
       script:
         - java -version
         - mvn -version
-        - mvn -B apache-rat:check
         - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
     - os: linux
       name: linux-openjdk8
