@@ -84,13 +84,13 @@ public class ClusterSelectSeriesReader extends AbstractClusterPointReader implem
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
     if (currentTimeValuePair != null && currentTimeValuePair.getTimestamp() == timestamp) {
-      return currentTimeValuePair.getValue();
+      return currentTimeValuePair.getValue().getValue();
     }
     while (true) {
       if (hasNext()) {
         next();
         if (currentTimeValuePair.getTimestamp() == timestamp) {
-          return currentTimeValuePair.getValue();
+          return currentTimeValuePair.getValue().getValue();
         } else if (currentTimeValuePair.getTimestamp() > timestamp) {
           return null;
         }

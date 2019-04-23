@@ -102,7 +102,7 @@ public class ClusterConfig {
    * then it sends requests to other nodes in the cluster. This parameter represents the maximum
    * timeout for these requests. The unit is milliseconds.
    **/
-  private int qpTaskTimeout = 1000;
+  private int qpTaskTimeout = 50000000;
 
   /**
    * Number of virtual nodes

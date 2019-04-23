@@ -171,6 +171,10 @@ public class ClusterRpcManagerTest {
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       assertTrue(resultSet.next());
+      assertEquals(10, resultSet.getLong(1));
+      assertEquals(100, resultSet.getInt(2));
+      assertNull(resultSet.getString(3));
+      assertNull(resultSet.getString(4));
       ConcurrentHashMap<Long, String> map = ClusterRpcQueryManager.getJobIdMapTaskId();
       assertEquals(1, map.size());
       for (String taskId : map.values()) {
@@ -184,12 +188,17 @@ public class ClusterRpcManagerTest {
         String taskId = entry.getValue();
         assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
       }
+      assertFalse(resultSet.next());
 
       // second query
-      hasResultSet = statement.execute(queryStatementsWithoutFilter);
+      hasResultSet = statement.execute(queryStatementsWithFilter);
       assertTrue(hasResultSet);
       resultSet = statement.getResultSet();
       assertTrue(resultSet.next());
+      assertEquals(10, resultSet.getLong(1));
+      assertEquals(100, resultSet.getInt(2));
+      assertNull(resultSet.getString(3));
+      assertNull(resultSet.getString(4));
       map = ClusterRpcQueryManager.getJobIdMapTaskId();
       assertEquals(2, map.size());
       for (String taskId : map.values()) {
@@ -203,12 +212,17 @@ public class ClusterRpcManagerTest {
         String taskId = entry.getValue();
         assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
       }
+      assertFalse(resultSet.next());
 
       // third query
-      hasResultSet = statement.execute(queryStatementsWithoutFilter);
+      hasResultSet = statement.execute(queryStatementsWithFilter);
       assertTrue(hasResultSet);
       resultSet = statement.getResultSet();
       assertTrue(resultSet.next());
+      assertEquals(10, resultSet.getLong(1));
+      assertEquals(100, resultSet.getInt(2));
+      assertNull(resultSet.getString(3));
+      assertNull(resultSet.getString(4));
       map = ClusterRpcQueryManager.getJobIdMapTaskId();
       assertEquals(3, map.size());
       for (String taskId : map.values()) {
@@ -222,6 +236,7 @@ public class ClusterRpcManagerTest {
         String taskId = entry.getValue();
         assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
       }
+      assertFalse(resultSet.next());
       statement.close();
     }
   }

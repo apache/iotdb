@@ -65,7 +65,7 @@ public class ClusterBatchReaderByTimestamp extends IClusterBatchReader {
 
   @Override
   public BatchData nextBatch(List<Long> batchTime) throws IOException {
-    BatchData batchData = new BatchData(dataType);
+    BatchData batchData = new BatchData(dataType, true);
     for(long time: batchTime){
       Object value = readerByTimeStamp.getValueInTimestamp(time);
       if(value != null){

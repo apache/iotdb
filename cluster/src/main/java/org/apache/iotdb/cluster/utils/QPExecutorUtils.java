@@ -49,10 +49,6 @@ public class QPExecutorUtils {
 
   private static final Server server = Server.getInstance();
 
-  @OnlyForTest
-  private static boolean isTest = false;
-
-
   /**
    * Get Storage Group Name by device name
    */
@@ -109,8 +105,7 @@ public class QPExecutorUtils {
     if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
       canHandle = ((MetadataRaftHolder) (server.getMetadataHolder())).getFsm().isLeader();
     }else {
-      if (router.containPhysicalNodeByGroupId(groupId, localNode) && RaftUtils
-          .getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
+      if (checkDataGroupLeader(groupId)) {
         canHandle = true;
       }
     }
@@ -118,16 +113,33 @@ public class QPExecutorUtils {
   }
 
   /**
+   * Check whether local node is leader of data group.
+   *
+   * @param groupId data group
+   * @return true if local node is leader of data group, else return false
+   */
+  public static boolean checkDataGroupLeader(String groupId) {
+    boolean isLeader = false;
+    if (router.containPhysicalNodeByGroupId(groupId, localNode) && RaftUtils
+        .getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
+      isLeader = true;
+    }
+    return isLeader;
+  }
+
+  /**
    * Check if the query command can execute in local. Check if this node belongs to the group id
    */
   public static boolean canHandleQueryByGroupId(String groupId) {
-    if (isTest) {
-      return false;
-    }
     return router.containPhysicalNodeByGroupId(groupId, localNode);
   }
 
-  public static void setIsTest(boolean isTest) {
-    QPExecutorUtils.isTest = isTest;
+  /**
+   * Change address of local node for test
+   */
+  @OnlyForTest
+  public static void setLocalNodeAddr(String ip, int port) {
+    localNode.setIp(ip);
+    localNode.setPort(port);
   }
 }

@@ -102,10 +102,11 @@ public class ClusterRpcReaderUtils {
   }
 
   public static QuerySeriesDataByTimestampResponse fetchBatchDataByTimestamp(String groupId,
-      PeerId peerId, String taskId, long queryRounds, List<Long> batchTimestamp)
+      PeerId peerId, String taskId, long queryRounds, List<Long> batchTimestamp,
+      List<String> fetchDataSeries)
       throws RaftConnectionException {
     BasicRequest request = QuerySeriesDataByTimestampRequest
-        .createRequest(groupId, queryRounds, taskId, batchTimestamp);
+        .createRequest(groupId, queryRounds, taskId, batchTimestamp, fetchDataSeries);
     return (QuerySeriesDataByTimestampResponse) handleQueryRequest(request, peerId, 0);
   }
 

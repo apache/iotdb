@@ -54,7 +54,7 @@ public class ClusterBatchReaderWithoutTimeGenerator extends IClusterBatchReader 
 
   @Override
   public BatchData nextBatch() throws IOException {
-    BatchData batchData = new BatchData(dataType);
+    BatchData batchData = new BatchData(dataType, true);
     for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
       if (hasNext()) {
         TimeValuePair pair = reader.next();
@@ -76,5 +76,13 @@ public class ClusterBatchReaderWithoutTimeGenerator extends IClusterBatchReader 
   public BatchData nextBatch(List<Long> batchTime) throws IOException {
     throw new IOException(
         "nextBatch(List<Long> batchTime) in ClusterBatchReaderWithoutTimeGenerator is an empty method.");
+  }
+
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
+  public IPointReader getReader() {
+    return reader;
   }
 }

@@ -21,12 +21,12 @@ package org.apache.iotdb.cluster.rpc.raft.processor.querydata;
 import com.alipay.remoting.BizContext;
 import com.alipay.sofa.jraft.Status;
 import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalQueryManager;
 import org.apache.iotdb.cluster.rpc.raft.processor.BasicSyncUserProcessor;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.Stage;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.ProcessorException;
 
@@ -57,13 +57,15 @@ public class QuerySeriesDataSyncProcessor extends
   }
 
   /**
-   * It's necessary to do null read while creating query data set with a strong consistency level.
+   * It's necessary to do null read while creating query data set with a strong consistency level
+   * and local node is not the leader of data group
    *
    * @param readConsistencyLevel read concistency level
    * @param groupId group id
    */
   private void handleNullRead(int readConsistencyLevel, String groupId) throws ProcessorException {
-    if (readConsistencyLevel == ClusterConstant.STRONG_CONSISTENCY_LEVEL) {
+    if (readConsistencyLevel == ClusterConstant.STRONG_CONSISTENCY_LEVEL && !QPExecutorUtils
+        .checkDataGroupLeader(groupId)) {
       Status nullReadTaskStatus = Status.OK();
       RaftUtils.handleNullReadToDataGroup(nullReadTaskStatus, groupId);
       if (!nullReadTaskStatus.isOk()) {
@@ -74,6 +76,6 @@ public class QuerySeriesDataSyncProcessor extends
 
   @Override
   public String interest() {
-    return QuerySeriesDataSyncProcessor.class.getName();
+    return QuerySeriesDataRequest.class.getName();
   }
 }

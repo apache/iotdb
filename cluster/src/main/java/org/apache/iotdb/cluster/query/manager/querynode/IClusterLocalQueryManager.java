@@ -64,4 +64,13 @@ public interface IClusterLocalQueryManager {
    * @param taskId task id of local single query manager
    */
   void close(String taskId) throws FileNodeManagerException;
+
+
+  /**
+   * Get query manager by taskId
+   *
+   * @param taskId task id assigned by ClusterRpcQueryManager
+   */
+  ClusterLocalSingleQueryManager getSingleQuery(String taskId);
+
 }

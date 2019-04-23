@@ -180,12 +180,12 @@ public class QueryResourceManager {
       // no resource need to be released.
       return;
     }
-      for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
-        for (int token : entry.getValue()) {
-          FileNodeManager.getInstance().endQuery(entry.getKey(), token);
-        }
+    for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
+      for (int token : entry.getValue()) {
+        FileNodeManager.getInstance().endQuery(entry.getKey(), token);
       }
-      queryTokensMap.remove(jobId);
+    }
+    queryTokensMap.remove(jobId);
     // remove usage of opened file paths of current thread
     filePathsManager.removeUsedFilesForGivenJob(jobId);
   }

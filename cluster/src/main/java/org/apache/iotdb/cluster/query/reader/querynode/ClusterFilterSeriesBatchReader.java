@@ -56,19 +56,24 @@ public class ClusterFilterSeriesBatchReader implements IClusterFilterSeriesBatch
     List<BatchData> batchDataList = new ArrayList<>(allFilterPath.size());
     List<TSDataType> dataTypeList = queryDataSet.getDataTypes();
     for (int i = 0; i < allFilterPath.size(); i++) {
-      batchDataList.add(new BatchData(dataTypeList.get(i)));
+      batchDataList.add(new BatchData(dataTypeList.get(i), true));
     }
     for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
       if (hasNext()) {
+        boolean hasField = false;
         RowRecord rowRecord = queryDataSet.next();
         long time = rowRecord.getTimestamp();
         List<Field> fieldList = rowRecord.getFields();
         for (int j = 0; j < allFilterPath.size(); j++) {
           if (!fieldList.get(j).isNull()) {
+            hasField = true;
             BatchData batchData = batchDataList.get(j);
             batchData.putTime(time);
-            batchData.putAnObject(fieldList.get(j).toString());
+            batchData.putAnObject((fieldList.get(j).getObjectValue(dataTypeList.get(j))));
           }
+        }
+        if(!hasField){
+          i--;
         }
       }
     }

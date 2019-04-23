@@ -215,11 +215,13 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   public void readBatchDataByTimestamp(QuerySeriesDataByTimestampRequest request,
       QuerySeriesDataByTimestampResponse response)
       throws IOException {
+    List<String> fetchDataSeries = request.getFetchDataSeries();
     long targetQueryRounds = request.getQueryRounds();
     if (targetQueryRounds != this.queryRound) {
       this.queryRound = targetQueryRounds;
       List<BatchData> batchDataList = new ArrayList<>();
-      for (IClusterBatchReader reader : selectSeriesReaders.values()) {
+      for (String series : fetchDataSeries) {
+        IClusterBatchReader reader = selectSeriesReaders.get(series);
         batchDataList.add(reader.nextBatch(request.getBatchTimestamp()));
       }
       cachedBatchDataResult = batchDataList;
@@ -252,5 +254,25 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   @Override
   public void close() throws FileNodeManagerException {
     QueryResourceManager.getInstance().endQueryForGivenJob(jobId);
+  }
+
+  public long getJobId() {
+    return jobId;
+  }
+
+  public long getQueryRound() {
+    return queryRound;
+  }
+
+  public Map<String, IClusterBatchReader> getSelectSeriesReaders() {
+    return selectSeriesReaders;
+  }
+
+  public IClusterFilterSeriesBatchReader getFilterReader() {
+    return filterReader;
+  }
+
+  public Map<String, TSDataType> getDataTypeMap() {
+    return dataTypeMap;
   }
 }

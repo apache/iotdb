@@ -34,17 +34,26 @@ public class QuerySeriesDataByTimestampRequest extends BasicQueryRequest {
    */
   private String taskId;
 
+  /**
+   * Batch valid timestamp
+   */
   private List<Long> batchTimestamp;
+
+  /**
+   * Series to fetch data from remote query node
+   */
+  private List<String> fetchDataSeries;
 
   private QuerySeriesDataByTimestampRequest(String groupID) {
     super(groupID);
   }
 
-  public static QuerySeriesDataByTimestampRequest createRequest(String groupId, long queryRounds, String taskId, List<Long> batchTimestamp){
+  public static QuerySeriesDataByTimestampRequest createRequest(String groupId, long queryRounds, String taskId, List<Long> batchTimestamp, List<String> fetchDataSeries){
     QuerySeriesDataByTimestampRequest request = new QuerySeriesDataByTimestampRequest(groupId);
     request.queryRounds = queryRounds;
     request.taskId = taskId;
     request.batchTimestamp = batchTimestamp;
+    request.fetchDataSeries = fetchDataSeries;
     return request;
   }
 
@@ -70,5 +79,13 @@ public class QuerySeriesDataByTimestampRequest extends BasicQueryRequest {
 
   public void setBatchTimestamp(List<Long> batchTimestamp) {
     this.batchTimestamp = batchTimestamp;
+  }
+
+  public List<String> getFetchDataSeries() {
+    return fetchDataSeries;
+  }
+
+  public void setFetchDataSeries(List<String> fetchDataSeries) {
+    this.fetchDataSeries = fetchDataSeries;
   }
 }

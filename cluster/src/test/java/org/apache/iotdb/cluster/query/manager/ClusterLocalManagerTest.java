@@ -29,20 +29,20 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalQueryManager;
+import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalSingleQueryManager;
+import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderWithoutTimeGenerator;
+import org.apache.iotdb.cluster.query.reader.querynode.IClusterBatchReader;
 import org.apache.iotdb.cluster.utils.EnvironmentUtils;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,9 +51,7 @@ public class ClusterLocalManagerTest {
 
   private Server server;
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
-  private static final String LOCAL_ADDR = String
-      .format("%s:%d", CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
-  private static ClusterRpcQueryManager manager = ClusterRpcQueryManager.getInstance();
+  private static ClusterLocalQueryManager manager = ClusterLocalQueryManager.getInstance();
 
   private static final String URL = "127.0.0.1:6667/";
 
@@ -78,6 +76,7 @@ public class ClusterLocalManagerTest {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
+    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
     CLUSTER_CONFIG.createAllPath();
     server = Server.getInstance();
     server.start();
@@ -103,18 +102,10 @@ public class ClusterLocalManagerTest {
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       assertTrue(resultSet.next());
-      ConcurrentHashMap<Long, String> map = ClusterRpcQueryManager.getJobIdMapTaskId();
+      ConcurrentHashMap<String, Long> map = ClusterLocalQueryManager.getTaskIdMapJobId();
       assertEquals(1, map.size());
-      for (String taskId : map.values()) {
+      for (String taskId : map.keySet()) {
         assertNotNull(manager.getSingleQuery(taskId));
-      }
-      for (long jobId : map.keySet()) {
-        assertNotNull(manager.getSingleQuery(jobId));
-      }
-      for (Entry<Long, String> entry : map.entrySet()) {
-        long jobId = entry.getKey();
-        String taskId = entry.getValue();
-        assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
       }
 
       // second query
@@ -122,18 +113,10 @@ public class ClusterLocalManagerTest {
       assertTrue(hasResultSet);
       resultSet = statement.getResultSet();
       assertTrue(resultSet.next());
-      map = ClusterRpcQueryManager.getJobIdMapTaskId();
+      map = ClusterLocalQueryManager.getTaskIdMapJobId();
       assertEquals(2, map.size());
-      for (String taskId : map.values()) {
+      for (String taskId : map.keySet()) {
         assertNotNull(manager.getSingleQuery(taskId));
-      }
-      for (long jobId : map.keySet()) {
-        assertNotNull(manager.getSingleQuery(jobId));
-      }
-      for (Entry<Long, String> entry : map.entrySet()) {
-        long jobId = entry.getKey();
-        String taskId = entry.getValue();
-        assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
       }
 
       // third query
@@ -141,18 +124,10 @@ public class ClusterLocalManagerTest {
       assertTrue(hasResultSet);
       resultSet = statement.getResultSet();
       assertTrue(resultSet.next());
-      map = ClusterRpcQueryManager.getJobIdMapTaskId();
+      map = ClusterLocalQueryManager.getTaskIdMapJobId();
       assertEquals(3, map.size());
-      for (String taskId : map.values()) {
+      for (String taskId : map.keySet()) {
         assertNotNull(manager.getSingleQuery(taskId));
-      }
-      for (long jobId : map.keySet()) {
-        assertNotNull(manager.getSingleQuery(jobId));
-      }
-      for (Entry<Long, String> entry : map.entrySet()) {
-        long jobId = entry.getKey();
-        String taskId = entry.getValue();
-        assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
       }
       statement.close();
     }
@@ -170,57 +145,38 @@ public class ClusterLocalManagerTest {
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       assertTrue(resultSet.next());
-      ConcurrentHashMap<Long, String> map = ClusterRpcQueryManager.getJobIdMapTaskId();
+      assertEquals(10, resultSet.getLong(1));
+      assertEquals(100, resultSet.getInt(2));
+      assertNull(resultSet.getString(3));
+      assertNull(resultSet.getString(4));
+      ConcurrentHashMap<String, Long> map = ClusterLocalQueryManager.getTaskIdMapJobId();
       assertEquals(1, map.size());
-      for (String taskId : map.values()) {
+      for (String taskId : map.keySet()) {
         assertNotNull(manager.getSingleQuery(taskId));
       }
-      for (long jobId : map.keySet()) {
-        assertNotNull(manager.getSingleQuery(jobId));
-      }
-      for (Entry<Long, String> entry : map.entrySet()) {
-        long jobId = entry.getKey();
-        String taskId = entry.getValue();
-        assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
-      }
+      assertFalse(resultSet.next());
 
-      // second query
-      hasResultSet = statement.execute(queryStatementsWithoutFilter);
-      assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      assertTrue(resultSet.next());
-      map = ClusterRpcQueryManager.getJobIdMapTaskId();
-      assertEquals(2, map.size());
-      for (String taskId : map.values()) {
-        assertNotNull(manager.getSingleQuery(taskId));
-      }
-      for (long jobId : map.keySet()) {
-        assertNotNull(manager.getSingleQuery(jobId));
-      }
-      for (Entry<Long, String> entry : map.entrySet()) {
-        long jobId = entry.getKey();
-        String taskId = entry.getValue();
-        assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
-      }
-
-      // third query
-      hasResultSet = statement.execute(queryStatementsWithoutFilter);
-      assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      assertTrue(resultSet.next());
-      map = ClusterRpcQueryManager.getJobIdMapTaskId();
-      assertEquals(3, map.size());
-      for (String taskId : map.values()) {
-        assertNotNull(manager.getSingleQuery(taskId));
-      }
-      for (long jobId : map.keySet()) {
-        assertNotNull(manager.getSingleQuery(jobId));
-      }
-      for (Entry<Long, String> entry : map.entrySet()) {
-        long jobId = entry.getKey();
-        String taskId = entry.getValue();
-        assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
-      }
+//      // second query
+//      hasResultSet = statement.execute(queryStatementsWithoutFilter);
+//      assertTrue(hasResultSet);
+//      resultSet = statement.getResultSet();
+//      assertTrue(resultSet.next());
+//      map = ClusterLocalQueryManager.getTaskIdMapJobId();
+//      assertEquals(2, map.size());
+//      for (String taskId : map.keySet()) {
+//        assertNotNull(manager.getSingleQuery(taskId));
+//      }
+//
+//      // third query
+//      hasResultSet = statement.execute(queryStatementsWithoutFilter);
+//      assertTrue(hasResultSet);
+//      resultSet = statement.getResultSet();
+//      assertTrue(resultSet.next());
+//      map = ClusterLocalQueryManager.getTaskIdMapJobId();
+//      assertEquals(3, map.size());
+//      for (String taskId : map.keySet()) {
+//        assertNotNull(manager.getSingleQuery(taskId));
+//      }
       statement.close();
     }
   }
@@ -231,113 +187,152 @@ public class ClusterLocalManagerTest {
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
       insertData(connection);
       Statement statement = connection.createStatement();
+
+      // first query
       boolean hasResultSet = statement.execute(queryStatementsWithoutFilter);
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       assertTrue(resultSet.next());
-      ConcurrentHashMap<Long, String> map = ClusterRpcQueryManager.getJobIdMapTaskId();
+      ConcurrentHashMap<String, Long> map = ClusterLocalQueryManager.getTaskIdMapJobId();
       assertEquals(1, map.size());
-      for (String taskId : map.values()) {
-        ClusterRpcSingleQueryManager singleManager = manager.getSingleQuery(taskId);
-        assertNotNull(singleManager);
-        assertEquals(0, singleManager.getQueryRounds());
-        assertEquals(taskId, singleManager.getTaskId());
-
-        // select path plans
-        Map<String, QueryPlan> selectPathPlans = singleManager.getSelectPathPlans();
-        assertEquals(1, selectPathPlans.size());
-        for (QueryPlan queryPlan : selectPathPlans.values()) {
-          List<Path> paths = queryPlan.getPaths();
-          List<Path> correctPaths = new ArrayList<>();
-          correctPaths.add(new Path("root.vehicle.d0.s0"));
-          correctPaths.add(new Path("root.vehicle.d0.s1"));
-          correctPaths.add(new Path("root.vehicle.d0.s3"));
-          assertEquals(correctPaths, paths);
-          assertNull(queryPlan.getExpression());
+      for (String taskId : map.keySet()) {
+        ClusterLocalSingleQueryManager singleQueryManager = manager.getSingleQuery(taskId);
+        assertNotNull(singleQueryManager);
+        assertEquals((long) map.get(taskId), singleQueryManager.getJobId());
+        assertEquals(1, singleQueryManager.getQueryRound());
+        assertNull(singleQueryManager.getFilterReader());
+        Map<String, IClusterBatchReader> selectSeriesReaders = singleQueryManager
+            .getSelectSeriesReaders();
+        assertEquals(3, selectSeriesReaders.size());
+        Map<String, TSDataType> typeMap = singleQueryManager.getDataTypeMap();
+        for (Entry<String, IClusterBatchReader> entry : selectSeriesReaders.entrySet()) {
+          String path = entry.getKey();
+          TSDataType dataType = typeMap.get(path);
+          IClusterBatchReader clusterBatchReader = entry.getValue();
+          assertNotNull(((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getReader());
+          assertEquals(dataType,
+              ((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getDataType());
         }
-
-        // select series by group id
-        assertEquals(0, singleManager.getSelectSeriesByGroupId().size());
-
-        // select series reader
-        assertTrue(singleManager
-            .getSelectSeriesReaders().isEmpty());
-
-        // filter path plans
-        assertTrue(singleManager.getFilterPathPlans().isEmpty());
-
-        // filter series by group id
-        assertTrue(singleManager.getFilterSeriesByGroupId().isEmpty());
-
-        // filter series reader
-        assertTrue(singleManager.getFilterSeriesReaders().isEmpty());
-
       }
-      statement.close();
-    }
-  }
 
-  @Test
-  public void testClusterLocalSingleQueryWithFilterManager() throws Exception {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
-      insertData(connection);
-      Statement statement = connection.createStatement();
-      boolean hasResultSet = statement.execute(queryStatementsWithFilter);
+      // second query
+      hasResultSet = statement.execute(queryStatementsWithoutFilter);
       assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
+      resultSet = statement.getResultSet();
       assertTrue(resultSet.next());
-      ConcurrentHashMap<Long, String> map = ClusterRpcQueryManager.getJobIdMapTaskId();
-      assertEquals(1, map.size());
-      for (String taskId : map.values()) {
-        ClusterRpcSingleQueryManager singleManager = manager.getSingleQuery(taskId);
-        assertNotNull(singleManager);
-        assertEquals(0, singleManager.getQueryRounds());
-        assertEquals(taskId, singleManager.getTaskId());
-
-        // select path plans
-        assertFalse(singleManager.getFilterPathPlans().isEmpty());
-        Map<String, QueryPlan> selectPathPlans = singleManager.getSelectPathPlans();
-        assertEquals(1, selectPathPlans.size());
-        for (QueryPlan queryPlan : selectPathPlans.values()) {
-          List<Path> paths = queryPlan.getPaths();
-          List<Path> correctPaths = new ArrayList<>();
-          correctPaths.add(new Path("root.vehicle.d0.s0"));
-          correctPaths.add(new Path("root.vehicle.d0.s1"));
-          correctPaths.add(new Path("root.vehicle.d0.s3"));
-          assertEquals(correctPaths, paths);
-          assertNotNull(queryPlan.getExpression());
+      map = ClusterLocalQueryManager.getTaskIdMapJobId();
+      assertEquals(2, map.size());
+      for (String taskId : map.keySet()) {
+        ClusterLocalSingleQueryManager singleQueryManager = manager.getSingleQuery(taskId);
+        assertNotNull(singleQueryManager);
+        assertEquals((long) map.get(taskId), singleQueryManager.getJobId());
+        assertEquals(1, singleQueryManager.getQueryRound());
+        assertNull(singleQueryManager.getFilterReader());
+        Map<String, IClusterBatchReader> selectSeriesReaders = singleQueryManager
+            .getSelectSeriesReaders();
+        assertEquals(3, selectSeriesReaders.size());
+        Map<String, TSDataType> typeMap = singleQueryManager.getDataTypeMap();
+        for (Entry<String, IClusterBatchReader> entry : selectSeriesReaders.entrySet()) {
+          String path = entry.getKey();
+          TSDataType dataType = typeMap.get(path);
+          IClusterBatchReader clusterBatchReader = entry.getValue();
+          assertNotNull(((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getReader());
+          assertEquals(dataType,
+              ((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getDataType());
         }
+      }
 
-        // select series by group id
-        assertTrue(singleManager.getSelectSeriesByGroupId().isEmpty());
-
-        // select series reader
-        assertTrue(singleManager
-            .getSelectSeriesReaders().isEmpty());
-
-        // filter path plans
-        assertFalse(singleManager.getFilterPathPlans().isEmpty());
-        Map<String, QueryPlan> filterSeriesPath = singleManager.getFilterPathPlans();
-        assertEquals(1, filterSeriesPath.size());
-        for (QueryPlan queryPlan : filterSeriesPath.values()) {
-          List<Path> paths = queryPlan.getPaths();
-          List<Path> correctPaths = new ArrayList<>();
-          correctPaths.add(new Path("root.vehicle.d0.s0"));
-          assertEquals(correctPaths, paths);
-          assertNotNull(queryPlan.getExpression());
+      // third query
+      hasResultSet = statement.execute(queryStatementsWithoutFilter);
+      assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      assertTrue(resultSet.next());
+      map = ClusterLocalQueryManager.getTaskIdMapJobId();
+      assertEquals(3, map.size());
+      for (String taskId : map.keySet()) {
+        ClusterLocalSingleQueryManager singleQueryManager = manager.getSingleQuery(taskId);
+        assertNotNull(singleQueryManager);
+        assertEquals((long) map.get(taskId), singleQueryManager.getJobId());
+        assertEquals(1, singleQueryManager.getQueryRound());
+        assertNull(singleQueryManager.getFilterReader());
+        Map<String, IClusterBatchReader> selectSeriesReaders = singleQueryManager
+            .getSelectSeriesReaders();
+        assertEquals(3, selectSeriesReaders.size());
+        Map<String, TSDataType> typeMap = singleQueryManager.getDataTypeMap();
+        for (Entry<String, IClusterBatchReader> entry : selectSeriesReaders.entrySet()) {
+          String path = entry.getKey();
+          TSDataType dataType = typeMap.get(path);
+          IClusterBatchReader clusterBatchReader = entry.getValue();
+          assertNotNull(((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getReader());
+          assertEquals(dataType,
+              ((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getDataType());
         }
-
-        // filter series by group id
-        assertTrue(singleManager.getFilterSeriesByGroupId().isEmpty());
-
-        // filter series reader
-        assertTrue(singleManager.getFilterSeriesReaders().isEmpty());
-
       }
       statement.close();
     }
   }
+//
+//  @Test
+//  public void testClusterLocalSingleQueryWithFilterManager() throws Exception {
+//    try (Connection connection = DriverManager
+//        .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
+//      insertData(connection);
+//      Statement statement = connection.createStatement();
+//      boolean hasResultSet = statement.execute(queryStatementsWithFilter);
+//      assertTrue(hasResultSet);
+//      ResultSet resultSet = statement.getResultSet();
+//      assertTrue(resultSet.next());
+//      ConcurrentHashMap<Long, String> map = ClusterRpcQueryManager.getJobIdMapTaskId();
+//      assertEquals(1, map.size());
+//      for (String taskId : map.values()) {
+//        ClusterRpcSingleQueryManager singleManager = manager.getSingleQuery(taskId);
+//        assertNotNull(singleManager);
+//        assertEquals(0, singleManager.getQueryRounds());
+//        assertEquals(taskId, singleManager.getTaskId());
+//
+//        // select path plans
+//        assertFalse(singleManager.getFilterPathPlans().isEmpty());
+//        Map<String, QueryPlan> selectPathPlans = singleManager.getSelectPathPlans();
+//        assertEquals(1, selectPathPlans.size());
+//        for (QueryPlan queryPlan : selectPathPlans.values()) {
+//          List<Path> paths = queryPlan.getPaths();
+//          List<Path> correctPaths = new ArrayList<>();
+//          correctPaths.add(new Path("root.vehicle.d0.s0"));
+//          correctPaths.add(new Path("root.vehicle.d0.s1"));
+//          correctPaths.add(new Path("root.vehicle.d0.s3"));
+//          assertEquals(correctPaths, paths);
+//          assertNotNull(queryPlan.getExpression());
+//        }
+//
+//        // select series by group id
+//        assertTrue(singleManager.getSelectSeriesByGroupId().isEmpty());
+//
+//        // select series reader
+//        assertTrue(singleManager
+//            .getSelectSeriesReaders().isEmpty());
+//
+//        // filter path plans
+//        assertFalse(singleManager.getFilterPathPlans().isEmpty());
+//        Map<String, QueryPlan> filterSeriesPath = singleManager.getFilterPathPlans();
+//        assertEquals(1, filterSeriesPath.size());
+//        for (QueryPlan queryPlan : filterSeriesPath.values()) {
+//          List<Path> paths = queryPlan.getPaths();
+//          List<Path> correctPaths = new ArrayList<>();
+//          correctPaths.add(new Path("root.vehicle.d0.s0"));
+//          assertEquals(correctPaths, paths);
+//          assertNotNull(queryPlan.getExpression());
+//        }
+//
+//        // filter series by group id
+//        assertTrue(singleManager.getFilterSeriesByGroupId().isEmpty());
+//
+//        // filter series reader
+//        assertTrue(singleManager.getFilterSeriesReaders().isEmpty());
+//
+//      }
+//      statement.close();
+//    }
+//  }
 
   private void insertData(Connection connection) throws SQLException {
     try (Statement statement = connection.createStatement()) {

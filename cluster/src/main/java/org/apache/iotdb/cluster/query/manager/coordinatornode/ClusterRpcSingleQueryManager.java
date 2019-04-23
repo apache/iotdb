@@ -146,7 +146,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
         Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
         allQueryPlan.put(PathType.SELECT_PATH, queryPlan);
         if (filterPathPlans.containsKey(groupId)) {
-          allQueryPlan.put(PathType.FILTER_PATH, queryPlan);
+          allQueryPlan.put(PathType.FILTER_PATH, filterPathPlans.get(groupId));
         }
         QuerySeriesDataResponse response = (QuerySeriesDataResponse) ClusterRpcReaderUtils
             .createClusterSeriesReader(groupId, randomPeer, readDataConsistencyLevel,
@@ -227,13 +227,13 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   @Override
   public void fetchBatchDataByTimestampForAllSelectPaths(List<Long> batchTimestamp)
       throws RaftConnectionException {
-    for (Entry<String, List<Path>> entry : filterSeriesByGroupId.entrySet()) {
+    for (Entry<String, List<Path>> entry : selectSeriesByGroupId.entrySet()) {
       String groupId = entry.getKey();
       List<String> fetchDataFilterSeries = new ArrayList<>();
       entry.getValue().forEach(path -> fetchDataFilterSeries.add(path.getFullPath()));
       QuerySeriesDataByTimestampResponse response = ClusterRpcReaderUtils
           .fetchBatchDataByTimestamp(groupId, queryNodes.get(groupId), taskId, queryRounds++,
-              batchTimestamp);
+              batchTimestamp, fetchDataFilterSeries);
       handleFetchDataByTimestampResponseForSelectPaths(fetchDataFilterSeries, response);
     }
   }

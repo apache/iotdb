@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.cluster.query.manager.querynode;
 
+import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.IClusterRpcQueryManager;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
@@ -81,6 +81,12 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
     }
   }
 
+  @Override
+  public ClusterLocalSingleQueryManager getSingleQuery(String taskId) {
+    long jobId = TASK_ID_MAP_JOB_ID.get(taskId);
+    return SINGLE_QUERY_MANAGER_MAP.get(jobId);
+  }
+
   public static final ClusterLocalQueryManager getInstance() {
     return ClusterLocalQueryManager.ClusterLocalQueryManagerHolder.INSTANCE;
   }
@@ -92,5 +98,15 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
     private ClusterLocalQueryManagerHolder() {
 
     }
+  }
+
+  @OnlyForTest
+  public static ConcurrentHashMap<String, Long> getTaskIdMapJobId() {
+    return TASK_ID_MAP_JOB_ID;
+  }
+
+  @OnlyForTest
+  public static ConcurrentHashMap<Long, ClusterLocalSingleQueryManager> getSingleQueryManagerMap() {
+    return SINGLE_QUERY_MANAGER_MAP;
   }
 }

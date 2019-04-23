@@ -89,7 +89,7 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   public static QuerySeriesDataRequest createInitialQueryRequest(String groupId, String taskId, int readConsistencyLevel,
       Map<PathType, QueryPlan> allQueryPlan, long queryRounds){
     QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
-    request.stage = Stage.READ_DATA;
+    request.stage = Stage.INITIAL;
     request.setReadConsistencyLevel(readConsistencyLevel);
     request.allQueryPlan = allQueryPlan;
     request.queryRounds = queryRounds;

@@ -123,7 +123,7 @@ public class RaftUtils {
   }
 
   public static PeerId getPeerIDFrom(PhysicalNode node) {
-    return new PeerId(node.ip, node.port);
+    return new PeerId(node.getIp(), node.getPort());
   }
 
   public static PhysicalNode getPhysicalNodeFrom(PeerId peer) {
