@@ -87,8 +87,11 @@ public class Router {
    * Change this method to public for test, you should not invoke this method explicitly.
    */
   public void init() {
+    init(ClusterDescriptor.getInstance().getConfig());
+  }
+
+  public void init(ClusterConfig config) {
     reset();
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     String[] hosts = config.getNodes();
     int replicator = config.getReplication();
     int numOfVirtualNodes = config.getNumOfVirtualNodes();

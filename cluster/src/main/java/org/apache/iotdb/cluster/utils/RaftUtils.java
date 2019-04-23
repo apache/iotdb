@@ -343,6 +343,10 @@ public class RaftUtils {
    * @param sg storage group ID. If null, return metadata group info
    */
   public static PeerId[] getDataPartitionOfSG(String sg) {
+    return getDataPartitionOfSG(sg, server, router);
+  }
+
+  public static PeerId[] getDataPartitionOfSG(String sg, Server server, Router router) {
     String groupId;
     PeerId[] nodes;
     if (sg == null) {
@@ -371,6 +375,10 @@ public class RaftUtils {
   }
 
   public static Map<String[], String[]> getDataPartitionOfNode(String ip, int port) {
+    return getDataPartitionOfNode(ip, port, server, router);
+  }
+
+  public static Map<String[], String[]> getDataPartitionOfNode(String ip, int port, Server server, Router router) {
     PhysicalNode[][] groups = router.getGroupsNodes(ip, port);
 
     Map<String, List<String>> groupSGMap = new LinkedHashMap<>();
