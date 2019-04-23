@@ -79,7 +79,6 @@ matrix:
       script:
         - java -version
         - mvn -version
-        - mvn -B apache-rat:check
         - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
     - os: windows
       language: c
@@ -95,6 +94,10 @@ matrix:
         - export "MAVEN_HOME=/c/mvn361/apache-maven-3.6.1"
         - export "M2_HOME=/c/mvn361/apache-maven-3.6.1"
         - export "PATH=/c/mvn361/apache-maven-3.6.1/bin:$PATH"
+      script:
+        - java -version
+        - mvn -version
+        - mvn -B clean integration-test
     - os: linux
       name: linux-openjdk11
       dist: trusty
