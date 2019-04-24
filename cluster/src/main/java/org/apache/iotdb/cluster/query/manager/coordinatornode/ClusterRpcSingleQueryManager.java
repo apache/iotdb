@@ -346,6 +346,10 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     return dataGroupUsage;
   }
 
+  public void addDataGroupUsage(String groupId) {
+    this.dataGroupUsage.add(groupId);
+  }
+
   public String getTaskId() {
     return taskId;
   }

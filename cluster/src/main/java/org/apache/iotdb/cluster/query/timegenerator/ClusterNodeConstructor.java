@@ -40,6 +40,11 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 public class ClusterNodeConstructor extends AbstractNodeConstructor {
 
   /**
+   * Single query manager
+   */
+  private ClusterRpcSingleQueryManager queryManager;
+
+  /**
    * Filter series reader group by  group id
    */
   private Map<String, List<ClusterFilterSeriesReader>> filterSeriesReadersByGroupId;
@@ -50,6 +55,7 @@ public class ClusterNodeConstructor extends AbstractNodeConstructor {
   private Map<String, Integer> filterSeriesReaderIndex;
 
   public ClusterNodeConstructor(ClusterRpcSingleQueryManager queryManager) {
+    this.queryManager = queryManager;
     this.filterSeriesReadersByGroupId = new HashMap<>();
     this.filterSeriesReaderIndex = new HashMap<>();
     this.init(queryManager);
@@ -85,9 +91,11 @@ public class ClusterNodeConstructor extends AbstractNodeConstructor {
           int readerIndex = filterSeriesReaderIndex.get(groupId);
           filterSeriesReaderIndex.put(groupId, readerIndex + 1);
           return new ClusterLeafNode(seriesReaders.get(readerIndex));
+        } else {
+          queryManager.addDataGroupUsage(groupId);
+          return new ClusterLeafNode(generateSeriesReader((SingleSeriesExpression) expression,
+              context));
         }
-        return new ClusterLeafNode(generateSeriesReader((SingleSeriesExpression) expression,
-            context));
       } catch (IOException | PathErrorException e) {
         throw new FileNodeManagerException(e);
       }
