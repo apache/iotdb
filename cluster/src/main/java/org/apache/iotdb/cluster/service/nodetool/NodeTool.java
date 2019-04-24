@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.service;
+package org.apache.iotdb.cluster.service.nodetool;
 
-import static com.google.common.base.Throwables.getStackTraceAsString;
-import static com.google.common.collect.Lists.newArrayList;
 import static java.lang.String.format;
 
 import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
 import io.airlift.airline.Cli;
 import io.airlift.airline.Help;
 import io.airlift.airline.Option;
@@ -43,16 +42,18 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
 public class NodeTool {
 
   public static void main(String... args) {
-    List<Class<? extends Runnable>> commands = newArrayList(
+    args = "ring".split(" ");
+    List<Class<? extends Runnable>> commands = Lists.newArrayList(
         Help.class,
         Ring.class,
         StorageGroup.class,
-        Host.class
+        Host.class,
+        Lag.class
     );
 
     Cli.CliBuilder<Runnable> builder = Cli.builder("nodetool");
@@ -94,7 +95,7 @@ public class NodeTool {
   private static void err(Throwable e) {
     System.err.println("error: " + e.getMessage());
     System.err.println("-- StackTrace --");
-    System.err.println(getStackTraceAsString(e));
+    System.err.println(Throwables.getStackTraceAsString(e));
   }
 
   public static abstract class NodeToolCmd implements Runnable {

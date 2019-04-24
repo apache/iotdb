@@ -16,24 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.service;
+package org.apache.iotdb.cluster.service.nodetool;
 
+import io.airlift.airline.Arguments;
 import io.airlift.airline.Command;
-import io.airlift.airline.Option;
-import java.util.Map;
-import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
-import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
+import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
 
-@Command(name = "ring", description = "Print information about the hash ring")
-public class Ring extends NodeToolCmd {
-  @Option(title = "physical_ring", name = {"-p", "--physical"}, description = "Show physical nodes instead of virtual ones")
-  private boolean physical = false;
+@Command(name = "storagegroup", description = "Print all hosts information of specific storage group")
+public class StorageGroup extends NodeToolCmd {
+
+  @Arguments(description = "Specify a storage group for accurate hosts information")
+  private String sg = null;
 
   @Override
-  public void execute(ClusterMonitorMBean proxy)
-  {
-    Map<Integer, String> map = physical ? proxy.getPhysicalRing() : proxy.getVirtualRing();
-    map.entrySet().forEach(entry -> System.out.println(entry.getKey() + "\t->\t" + entry.getValue()));
+  public void execute(ClusterMonitorMBean proxy) {
+    String nodes = proxy.getDataPartitionOfSG(sg);
+    System.out.println(nodes);
   }
 }
-

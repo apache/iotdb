@@ -23,7 +23,7 @@ if [ -z "${IOTDB_HOME}" ]; then
 fi
 
 
-MAIN_CLASS=org.apache.iotdb.cli.service.NodeTool
+MAIN_CLASS=org.apache.iotdb.cluster.service.nodetool.NodeTool
 
 
 CLASSPATH=""

@@ -22,12 +22,10 @@ import com.alipay.sofa.jraft.entity.PeerId;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,5 +97,10 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   @Override
   public Map<String[], String[]> getDataPartitonOfNode(String ip, int port) {
     return RaftUtils.getDataPartitionOfNode(ip, port);
+  }
+
+  @Override
+  public Map<String, Integer> getLogLagMap() {
+    return RaftUtils.getLogLagMap();
   }
 }

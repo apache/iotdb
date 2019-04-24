@@ -76,6 +76,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>airline</artifactId>
+            <version>0.8</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

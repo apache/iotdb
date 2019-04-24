@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.monitor.service;
+package org.apache.iotdb.cluster.service;
 
 import java.util.List;
 import java.util.Map;
@@ -69,4 +69,11 @@ public interface ClusterMonitorMBean {
    */
   Map<String[], String[]> getDataPartitonOfNode(String ip, int port);
   Map<String[], String[]> getDataPartitonOfNode(String ip);
+
+  /**
+   * Get log lag for metadata group and each data partition
+   *
+   * @return key: groupId, value: log lag
+   */
+  Map<String, Integer> getLogLagMap();
 }

@@ -23,11 +23,13 @@ import com.alipay.remoting.exception.CodecException;
 import com.alipay.remoting.serialization.SerializerManager;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.closure.ReadIndexClosure;
+import com.alipay.sofa.jraft.core.NodeImpl;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.entity.Task;
 import com.alipay.sofa.jraft.util.Bits;
 import com.alipay.sofa.jraft.util.OnlyForTest;
 
+import com.codahale.metrics.Gauge;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -58,8 +60,6 @@ import org.apache.iotdb.cluster.rpc.raft.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.cluster.utils.hash.VirtualNode;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -370,6 +370,13 @@ public class RaftUtils {
     return nodes;
   }
 
+  /**
+   * Get data partitions that input node belongs to.
+   *
+   * @param ip node ip
+   * @return key: node ips of one data partition, value: storage group paths that belong to this
+   * data partition
+   */
   public static Map<String[], String[]> getDataPartitionOfNode(String ip) {
     return getDataPartitionOfNode(ip, config.getPort());
   }
@@ -421,5 +428,41 @@ public class RaftUtils {
       builder.append('#').append(nodes[i]);
     }
     return builder.toString();
+  }
+
+  /**
+   * Get nextIndex for metadata group and each data partition
+   *
+   * @return key: groupId, value: nextIndex
+   */
+  public static Map<String, Integer> getLogNextIndexMap() {
+    return getMetricMap("next-index");
+  }
+
+  /**
+   * Get log lag for metadata group and each data partition
+   *
+   * @return key: groupId, value: log lag
+   */
+  public static Map<String, Integer> getLogLagMap() {
+    return getMetricMap("log-lags");
+  }
+
+  public static Map<String, Integer> getMetricMap(String metric) {
+    Map<String, Integer> metricMap = new HashMap<>();
+    RaftService raftService = (RaftService) server.getMetadataHolder().getService();
+    metricMap.put(raftService.getGroupId(), getMetricFromRaftService(raftService, metric));
+
+    server.getDataPartitionHolderMap().forEach(
+        (k, v) -> metricMap.put(k, getMetricFromRaftService((RaftService) v.getService(), metric)));
+    return metricMap;
+  }
+
+  private static int getMetricFromRaftService(RaftService service, String metric) {
+    NodeImpl node = (NodeImpl) service.getNode();
+    Map<String, Gauge> metrics = service.getNode().getNodeMetrics().getMetricRegistry().getGauges();
+    String key = "replicator-metadata/" + server.getServerId().toString() + "." + metric;
+    Gauge gauge = metrics.get(metric);
+    return (int) metrics.get(key).getValue();
   }
 }

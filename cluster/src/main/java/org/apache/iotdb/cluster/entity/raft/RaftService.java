@@ -96,4 +96,8 @@ public class RaftService implements IService {
   public StateMachine getFsm() {
     return fsm;
   }
+
+  public String getGroupId() {
+    return groupId;
+  }
 }

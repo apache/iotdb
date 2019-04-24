@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.service;
+package org.apache.iotdb.cluster.service.nodetool;
 
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.cli.service.NodeTool.NodeToolCmd;
-import org.apache.iotdb.monitor.service.ClusterMonitorMBean;
+import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
 @Command(name = "host", description = "Print all data partitions information which specific host belongs to")
 public class Host extends NodeToolCmd {
