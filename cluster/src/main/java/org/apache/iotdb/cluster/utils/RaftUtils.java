@@ -46,20 +46,27 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.raft.MetadataStateManchine;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.callback.QPTask;
+import org.apache.iotdb.cluster.qp.callback.QPTask.TaskState;
 import org.apache.iotdb.cluster.qp.callback.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
+import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
+import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.QueryMetricRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.MetaGroupNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.QueryMetricResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.cluster.utils.hash.VirtualNode;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -431,15 +438,6 @@ public class RaftUtils {
   }
 
   /**
-   * Get nextIndex for metadata group and each data partition
-   *
-   * @return key: groupId, value: nextIndex
-   */
-  public static Map<String, Integer> getLogNextIndexMap() {
-    return getMetricMap("next-index");
-  }
-
-  /**
    * Get log lag for metadata group and each data partition
    *
    * @return key: groupId, value: log lag
@@ -458,11 +456,50 @@ public class RaftUtils {
     return metricMap;
   }
 
+  public static int getMetric(String groupId, String metric) {
+    RaftService service = (RaftService) server.getDataPartitionHolder(groupId).getService();
+    return getMetricFromRaftService(service, metric);
+  }
+
   private static int getMetricFromRaftService(RaftService service, String metric) {
     NodeImpl node = (NodeImpl) service.getNode();
-    Map<String, Gauge> metrics = service.getNode().getNodeMetrics().getMetricRegistry().getGauges();
-    String key = "replicator-metadata/" + server.getServerId().toString() + "." + metric;
-    Gauge gauge = metrics.get(metric);
-    return (int) metrics.get(key).getValue();
+    if (node.isLeader()) {
+      Map<String, Gauge> metrics = service.getNode().getNodeMetrics().getMetricRegistry()
+          .getGauges();
+      String key = "replicator-metadata/" + server.getServerId().toString() + "." + metric;
+      int value = -1;
+      if (metric.contains(key)) {
+        value = (int) metrics.get(key).getValue();
+      }
+      return value;
+    } else {
+      return getMetricFromRemoteNode(service.getGroupId(), metric);
+    }
+  }
+
+  private static int getMetricFromRemoteNode(String groupId, String metric) {
+    QueryMetricRequest request = new QueryMetricRequest(groupId,
+        config.getReadDataConsistencyLevel(), metric);
+    SingleQPTask task = new SingleQPTask(false, request);
+
+    LOGGER.debug("Execute get metric for {} statement for group {}.", metric, groupId);
+    PeerId holder = RaftUtils.getRandomPeerID(groupId);
+    try {
+      NodeAsClient client = RaftNodeAsClientManager.getInstance().getRaftNodeAsClient();
+      /** Call async method **/
+      client.asyncHandleRequest(task.getRequest(), holder, task);
+
+      task.await();
+      int value;
+      if (task.getTaskState() != TaskState.FINISH) {
+        value = -1;
+      } else {
+        BasicResponse response = task.getResponse();
+        value = response == null ? -1 : ((QueryMetricResponse) response).getValue();
+      }
+      return value;
+    } catch (RaftConnectionException | InterruptedException e) {
+      return -1;
+    }
   }
 }
