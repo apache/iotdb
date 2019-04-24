@@ -82,7 +82,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   public String getDataPartitionOfSG(String sg) {
     PeerId[] nodes = RaftUtils.getDataPartitionOfSG(sg);
     StringBuilder builder = new StringBuilder();
-    builder.append(nodes[0]).append(" (leader)");
+    builder.append(nodes[0].getIp()).append(" (leader)");
     for (int i = 1; i < nodes.length; i++) {
       builder.append(", ").append(nodes[i].getIp());
     }
@@ -100,7 +100,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public Map<String, Integer> getLogLagMap() {
+  public Map<String, Map<String, Integer>> getLogLagMap() {
     return RaftUtils.getLogLagMap();
   }
 }

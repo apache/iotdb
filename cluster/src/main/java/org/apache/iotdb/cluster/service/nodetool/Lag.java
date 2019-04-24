@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.service.nodetool;
 
 import io.airlift.airline.Command;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
 import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
@@ -29,7 +30,10 @@ public class Lag extends NodeToolCmd {
   @Override
   public void execute(ClusterMonitorMBean proxy)
   {
-    Map<String, Integer> map = proxy.getLogLagMap();
-    map.forEach((groupId, lag) -> System.out.println(groupId + "\t->\t" + lag));
+    Map<String, Map<String, Integer>> groupMap = proxy.getLogLagMap();
+    for (Entry<String, Map<String, Integer>> entry : groupMap.entrySet()) {
+      System.out.println(entry.getKey() + ":");
+      entry.getValue().forEach((node, lag) -> System.out.println("\t" + node + "\t->\t" + lag));
+    }
   }
 }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.cluster.service;
 
-import java.util.List;
 import java.util.Map;
 
 public interface ClusterMonitorMBean {
@@ -75,5 +74,5 @@ public interface ClusterMonitorMBean {
    *
    * @return key: groupId, value: log lag
    */
-  Map<String, Integer> getLogLagMap();
+  Map<String, Map<String, Integer>> getLogLagMap();
 }

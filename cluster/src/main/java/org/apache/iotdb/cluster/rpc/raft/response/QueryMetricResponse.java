@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.response;
 
+import java.util.Map;
+
 public class QueryMetricResponse extends BasicResponse {
 
-  private int value;
+  private Map<String, Integer> value;
 
   private QueryMetricResponse(String groupId, boolean redirected, String leaderStr,
       String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public static QueryMetricResponse createSuccessResponse(String groupId, int value) {
+  public static QueryMetricResponse createSuccessResponse(String groupId, Map<String, Integer> value) {
     QueryMetricResponse response = new QueryMetricResponse(groupId, false, null,
         null);
     response.value = value;
@@ -38,11 +40,7 @@ public class QueryMetricResponse extends BasicResponse {
     return new QueryMetricResponse(groupId, false, null, errorMsg);
   }
 
-  public int getValue() {
+  public Map<String, Integer> getValue() {
     return value;
-  }
-
-  public void setValue(int value) {
-    this.value = value;
   }
 }
