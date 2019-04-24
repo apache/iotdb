@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
  * Utils for splitting query plan to several sub query plans by group id.
@@ -60,8 +62,7 @@ public class QueryPlanPartitionUtils {
     Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
     List<Path> selectPaths = queryPlan.getPaths();
     for (Path path : selectPaths) {
-      String storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
-      String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
       if (!selectSeriesByGroupId.containsKey(groupId)) {
         selectSeriesByGroupId.put(groupId, new ArrayList<>());
       }
@@ -107,13 +108,11 @@ public class QueryPlanPartitionUtils {
       ClusterRpcSingleQueryManager singleQueryManager) throws PathErrorException {
     splitQueryPlanBySelectPath(singleQueryManager);
     // split query plan by filter path
-    Map<String, List<Path>> filterSeriesByGroupId = singleQueryManager.getFilterSeriesByGroupId();
-    Map<String, QueryPlan> filterPathPlans = singleQueryManager.getFilterPathPlans();
+    Map<String, FilterGroupEntity> filterGroupEntityMap = singleQueryManager.getFilterGroupEntityMap();
     IExpression expression = queryPlan.getExpression();
-    ExpressionUtils.getAllExpressionSeries(expression, filterSeriesByGroupId);
-    for (Entry<String, List<Path>> entry:filterSeriesByGroupId.entrySet()){
-      String groupId = entry.getKey();
-      List<Path> filterSeriesList = entry.getValue();
+    ExpressionUtils.getAllExpressionSeries(expression, filterGroupEntityMap);
+    for(FilterGroupEntity filterGroupEntity: filterGroupEntityMap.values()){
+      List<Path> filterSeriesList = filterGroupEntity.getFilterPaths();
       // create filter sub query plan
       QueryPlan subQueryPlan = new QueryPlan();
       subQueryPlan.setPaths(filterSeriesList);
@@ -122,8 +121,7 @@ public class QueryPlanPartitionUtils {
       if (subExpression.getType() != ExpressionType.TRUE) {
         subQueryPlan.setExpression(subExpression);
       }
-
-      filterPathPlans.put(groupId, subQueryPlan);
+      filterGroupEntity.setQueryPlan(subQueryPlan);
     }
   }
 }

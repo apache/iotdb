@@ -121,7 +121,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
     }
     if (queryPlanMap.containsKey(PathType.FILTER_PATH)) {
       QueryPlan queryPlan = queryPlanMap.get(PathType.FILTER_PATH);
-      handleFilterSeriesReader(queryPlan, context, response, PathType.FILTER_PATH);
+      handleFilterSeriesReader(queryPlan, context, request, response, PathType.FILTER_PATH);
     }
   }
 
@@ -131,7 +131,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
    * @param plan filter series query plan
    */
   private void handleFilterSeriesReader(QueryPlan plan, QueryContext context,
-      QuerySeriesDataResponse response, PathType pathType)
+      QuerySeriesDataRequest request, QuerySeriesDataResponse response, PathType pathType)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException {
     QueryDataSet queryDataSet = queryProcessExecutor
         .processQuery(plan, context);
@@ -141,7 +141,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       dataTypeMap.put(paths.get(i).getFullPath(), dataTypes.get(i));
     }
     response.getSeriesDataTypes().put(pathType, dataTypes);
-    filterReader = new ClusterFilterSeriesBatchReader(queryDataSet, paths);
+    filterReader = new ClusterFilterSeriesBatchReader(queryDataSet, paths, request.getFilterList());
   }
 
   /**

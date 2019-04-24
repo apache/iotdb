@@ -28,7 +28,6 @@ import static org.junit.Assert.assertTrue;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +39,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
 import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.jdbc.Config;
@@ -280,15 +280,6 @@ public class ClusterRpcManagerTest {
         assertTrue(singleManager
             .getSelectSeriesReaders().isEmpty());
 
-        // filter path plans
-        assertTrue(singleManager.getFilterPathPlans().isEmpty());
-
-        // filter series by group id
-        assertTrue(singleManager.getFilterSeriesByGroupId().isEmpty());
-
-        // filter series reader
-        assertTrue(singleManager.getFilterSeriesReaders().isEmpty());
-
       }
       statement.close();
     }
@@ -313,7 +304,6 @@ public class ClusterRpcManagerTest {
         assertEquals(taskId, singleManager.getTaskId());
 
         // select path plans
-        assertFalse(singleManager.getFilterPathPlans().isEmpty());
         Map<String, QueryPlan> selectPathPlans = singleManager.getSelectPathPlans();
         assertEquals(1, selectPathPlans.size());
         for (QueryPlan queryPlan : selectPathPlans.values()) {
@@ -334,22 +324,8 @@ public class ClusterRpcManagerTest {
             .getSelectSeriesReaders().isEmpty());
 
         // filter path plans
-        assertFalse(singleManager.getFilterPathPlans().isEmpty());
-        Map<String, QueryPlan> filterSeriesPath = singleManager.getFilterPathPlans();
-        assertEquals(1, filterSeriesPath.size());
-        for (QueryPlan queryPlan : filterSeriesPath.values()) {
-          List<Path> paths = queryPlan.getPaths();
-          List<Path> correctPaths = new ArrayList<>();
-          correctPaths.add(new Path("root.vehicle.d0.s0"));
-          assertEquals(correctPaths, paths);
-          assertNotNull(queryPlan.getExpression());
-        }
-
-        // filter series by group id
-        assertTrue(singleManager.getFilterSeriesByGroupId().isEmpty());
-
-        // filter series reader
-        assertTrue(singleManager.getFilterSeriesReaders().isEmpty());
+        Map<String, FilterGroupEntity> filterGroupEntityMap = singleManager.getFilterGroupEntityMap();
+        assertTrue(filterGroupEntityMap.isEmpty());
 
       }
       statement.close();

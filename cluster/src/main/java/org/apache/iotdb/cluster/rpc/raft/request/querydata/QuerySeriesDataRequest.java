@@ -25,6 +25,7 @@ import java.util.Map;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
  * This class handle three situation request: 1. Initially create series reader. 2. Fetch date without
@@ -64,6 +65,11 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
    */
   private Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
 
+  /**
+   * Represent all filter of leaf node in filter tree while executing a query with value filter.
+   */
+  private List<Filter> filterList = new ArrayList<>();
+
 
   private QuerySeriesDataRequest(String groupID, String taskId) {
     super(groupID);
@@ -87,11 +93,12 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   }
 
   public static QuerySeriesDataRequest createInitialQueryRequest(String groupId, String taskId, int readConsistencyLevel,
-      Map<PathType, QueryPlan> allQueryPlan, long queryRounds){
+      Map<PathType, QueryPlan> allQueryPlan, List<Filter> filterList, long queryRounds){
     QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
     request.stage = Stage.INITIAL;
     request.setReadConsistencyLevel(readConsistencyLevel);
     request.allQueryPlan = allQueryPlan;
+    request.filterList = filterList;
     request.queryRounds = queryRounds;
     return request;
   }
@@ -135,6 +142,10 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   public void setAllQueryPlan(
       Map<PathType, QueryPlan> allQueryPlan) {
     this.allQueryPlan = allQueryPlan;
+  }
+
+  public List<Filter> getFilterList() {
+    return filterList;
   }
 
   public long getQueryRounds() {

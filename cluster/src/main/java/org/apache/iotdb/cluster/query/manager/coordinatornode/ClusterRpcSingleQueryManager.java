@@ -44,6 +44,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
  * Manage all remote series reader resource in a query resource in coordinator node.
@@ -89,22 +90,11 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   private Map<Path, ClusterSelectSeriesReader> selectSeriesReaders = new HashMap<>();
 
   // filter path resource
-  /**
-   * Query plans of filter paths which are divided from queryPlan group by group id, it contains all
-   * * group id ,including local data group if it involves.
-   */
-  private Map<String, QueryPlan> filterPathPlans = new HashMap<>();
 
   /**
-   * Key is group id (only contains remote group id), value is all filter series in group id
+   * Filter group entity group by data group, key is group id
    */
-  private Map<String, List<Path>> filterSeriesByGroupId = new HashMap<>();
-
-  /**
-   * Series reader of filter paths (only contains remote series), key is series path , value is
-   * reader
-   */
-  private Map<Path, ClusterFilterSeriesReader> filterSeriesReaders = new HashMap<>();
+  private Map<String, FilterGroupEntity> filterGroupEntityMap = new HashMap<>();
 
   public ClusterRpcSingleQueryManager(String taskId,
       QueryPlan queryPlan) {
@@ -145,17 +135,20 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
         queryNodes.put(groupId, randomPeer);
         Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
         allQueryPlan.put(PathType.SELECT_PATH, queryPlan);
-        if (filterPathPlans.containsKey(groupId)) {
-          allQueryPlan.put(PathType.FILTER_PATH, filterPathPlans.get(groupId));
+        List<Filter> filterList = null;
+        if (filterGroupEntityMap.containsKey(groupId)) {
+          FilterGroupEntity filterGroupEntity = filterGroupEntityMap.get(groupId);
+          allQueryPlan.put(PathType.FILTER_PATH, filterGroupEntity.getQueryPlan());
+          filterList = filterGroupEntity.getFilters();
         }
         QuerySeriesDataResponse response = (QuerySeriesDataResponse) ClusterRpcReaderUtils
             .createClusterSeriesReader(groupId, randomPeer, readDataConsistencyLevel,
-                allQueryPlan, taskId, queryRounds++);
+                allQueryPlan, taskId, filterList, queryRounds++);
         handleInitReaderResponse(groupId, allQueryPlan, response);
       } else {
         selectSeriesByGroupId.remove(groupId);
-        if (filterPathPlans.containsKey(groupId)) {
-          filterSeriesByGroupId.remove(groupId);
+        if (filterGroupEntityMap.containsKey(groupId)) {
+          filterGroupEntityMap.remove(groupId);
         }
       }
     }
@@ -188,7 +181,10 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
         TSDataType dataType = seriesType.get(i);
         ClusterFilterSeriesReader seriesReader = new ClusterFilterSeriesReader(groupId, seriesPath,
             dataType, this);
-        filterSeriesReaders.put(seriesPath, seriesReader);
+        if (!filterGroupEntityMap.containsKey(groupId)) {
+          filterGroupEntityMap.put(groupId, new FilterGroupEntity(groupId));
+        }
+        filterGroupEntityMap.get(groupId).addFilterSeriesReader(seriesReader);
       }
     }
   }
@@ -220,7 +216,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     QuerySeriesDataResponse response = ClusterRpcReaderUtils
         .fetchBatchData(groupId, queryNodes.get(groupId), taskId, PathType.FILTER_PATH, null,
             queryRounds++);
-    handleFetchDataResponseForFilterPaths(filterSeriesByGroupId.get(groupId), response);
+    handleFetchDataResponseForFilterPaths(groupId, response);
   }
 
 
@@ -269,9 +265,12 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   /**
    * Handle response of fetching data, and add batch data to corresponding reader.
    */
-  private void handleFetchDataResponseForFilterPaths(List<Path> fetchDataSeries,
+  private void handleFetchDataResponseForFilterPaths(String groupId,
       QuerySeriesDataResponse response) {
+    FilterGroupEntity filterGroupEntity = filterGroupEntityMap.get(groupId);
+    List<Path> fetchDataSeries = filterGroupEntity.getFilterPaths();
     List<BatchData> batchDataList = response.getSeriesBatchData();
+    List<ClusterFilterSeriesReader> filterReaders = filterGroupEntity.getFilterSeriesReaders();
     boolean remoteDataFinish = true;
     for (int i = 0; i < batchDataList.size(); i++) {
       if (batchDataList.get(i).length() != 0) {
@@ -280,9 +279,10 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       }
     }
     for (int i = 0; i < fetchDataSeries.size(); i++) {
-      Path path = fetchDataSeries.get(i);
       BatchData batchData = batchDataList.get(i);
-      filterSeriesReaders.get(path).addBatchData(batchData, remoteDataFinish);
+      if(batchData.length() != 0) {
+        filterReaders.get(i).addBatchData(batchData, remoteDataFinish);
+      }
     }
   }
 
@@ -296,11 +296,6 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   @Override
   public QueryPlan getSelectPathQueryPlan(String fullPath) {
     return selectPathPlans.get(fullPath);
-  }
-
-  @Override
-  public QueryPlan getFilterPathQueryPlan(String fullPath) {
-    return filterPathPlans.get(fullPath);
   }
 
   @Override
@@ -382,30 +377,12 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     this.selectSeriesReaders = selectSeriesReaders;
   }
 
-  public Map<String, QueryPlan> getFilterPathPlans() {
-    return filterPathPlans;
+  public Map<String, FilterGroupEntity> getFilterGroupEntityMap() {
+    return filterGroupEntityMap;
   }
 
-  public void setFilterPathPlans(
-      Map<String, QueryPlan> filterPathPlans) {
-    this.filterPathPlans = filterPathPlans;
-  }
-
-  public Map<String, List<Path>> getFilterSeriesByGroupId() {
-    return filterSeriesByGroupId;
-  }
-
-  public void setFilterSeriesByGroupId(
-      Map<String, List<Path>> filterSeriesByGroupId) {
-    this.filterSeriesByGroupId = filterSeriesByGroupId;
-  }
-
-  public Map<Path, ClusterFilterSeriesReader> getFilterSeriesReaders() {
-    return filterSeriesReaders;
-  }
-
-  public void setFilterSeriesReaders(
-      Map<Path, ClusterFilterSeriesReader> filterSeriesReaders) {
-    this.filterSeriesReaders = filterSeriesReaders;
+  public void setFilterGroupEntityMap(
+      Map<String, FilterGroupEntity> filterGroupEntityMap) {
+    this.filterGroupEntityMap = filterGroupEntityMap;
   }
 }

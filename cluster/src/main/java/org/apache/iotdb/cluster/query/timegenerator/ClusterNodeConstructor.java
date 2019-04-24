@@ -21,10 +21,15 @@ package org.apache.iotdb.cluster.query.timegenerator;
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterFilterSeriesReader;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.timegenerator.AbstractNodeConstructor;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -34,10 +39,30 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 
 public class ClusterNodeConstructor extends AbstractNodeConstructor {
 
-  private ClusterRpcSingleQueryManager queryManager;
+  /**
+   * Filter series reader group by  group id
+   */
+  private Map<String, List<ClusterFilterSeriesReader>> filterSeriesReadersByGroupId;
+
+  /**
+   * Mark filter series reader index group by group id
+   */
+  private Map<String, Integer> filterSeriesReaderIndex;
 
   public ClusterNodeConstructor(ClusterRpcSingleQueryManager queryManager) {
-    this.queryManager = queryManager;
+    this.filterSeriesReadersByGroupId = new HashMap<>();
+    this.filterSeriesReaderIndex = new HashMap<>();
+    this.init(queryManager);
+  }
+
+  /**
+   * Init filter series reader
+   */
+  private void init(ClusterRpcSingleQueryManager queryManager) {
+    Map<String, FilterGroupEntity> filterGroupEntityMap = queryManager.getFilterGroupEntityMap();
+    filterGroupEntityMap.forEach(
+        (key, value) -> filterSeriesReadersByGroupId.put(key, value.getFilterSeriesReaders()));
+    filterSeriesReadersByGroupId.forEach((key, value) -> filterSeriesReaderIndex.put(key, 0));
   }
 
   /**
@@ -53,15 +78,17 @@ public class ClusterNodeConstructor extends AbstractNodeConstructor {
       throws FileNodeManagerException {
     if (expression.getType() == SERIES) {
       try {
-        Map<Path, ClusterFilterSeriesReader> filterSeriesReaders = queryManager
-            .getFilterSeriesReaders();
         Path seriesPath = ((SingleSeriesExpression) expression).getSeriesPath();
-        if (filterSeriesReaders.containsKey(seriesPath)) {
-          return new ClusterLeafNode(filterSeriesReaders.get(seriesPath));
+        String groupId = QPExecutorUtils.getGroupIdByDevice(seriesPath.getDevice());
+        if (filterSeriesReadersByGroupId.containsKey(groupId)) {
+          List<ClusterFilterSeriesReader> seriesReaders = filterSeriesReadersByGroupId.get(groupId);
+          int readerIndex = filterSeriesReaderIndex.get(groupId);
+          filterSeriesReaderIndex.put(groupId, readerIndex + 1);
+          return new ClusterLeafNode(seriesReaders.get(readerIndex));
         }
         return new ClusterLeafNode(generateSeriesReader((SingleSeriesExpression) expression,
             context));
-      } catch (IOException e) {
+      } catch (IOException | PathErrorException e) {
         throw new FileNodeManagerException(e);
       }
     } else {

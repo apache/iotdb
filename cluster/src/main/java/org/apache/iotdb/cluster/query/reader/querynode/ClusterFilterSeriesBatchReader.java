@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 /**
@@ -35,11 +36,14 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class ClusterFilterSeriesBatchReader implements IClusterFilterSeriesBatchReader {
 
   private List<Path> allFilterPath;
+  private List<Filter> filters;
   private QueryDataSet queryDataSet;
 
-  public ClusterFilterSeriesBatchReader(QueryDataSet queryDataSet, List<Path> allFilterPath) {
+  public ClusterFilterSeriesBatchReader(QueryDataSet queryDataSet, List<Path> allFilterPath,
+      List<Filter> filters) {
     this.queryDataSet = queryDataSet;
     this.allFilterPath = allFilterPath;
+    this.filters = filters;
   }
 
   @Override
@@ -58,26 +62,39 @@ public class ClusterFilterSeriesBatchReader implements IClusterFilterSeriesBatch
     for (int i = 0; i < allFilterPath.size(); i++) {
       batchDataList.add(new BatchData(dataTypeList.get(i), true));
     }
-    for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
-      if (hasNext()) {
-        boolean hasField = false;
-        RowRecord rowRecord = queryDataSet.next();
-        long time = rowRecord.getTimestamp();
-        List<Field> fieldList = rowRecord.getFields();
-        for (int j = 0; j < allFilterPath.size(); j++) {
-          if (!fieldList.get(j).isNull()) {
-            hasField = true;
-            BatchData batchData = batchDataList.get(j);
-            batchData.putTime(time);
-            batchData.putAnObject((fieldList.get(j).getObjectValue(dataTypeList.get(j))));
-          }
-        }
-        if(!hasField){
-          i--;
-        }
+    int dataPointCount = 0;
+    while(true){
+      if(!hasNext() || dataPointCount == ClusterConstant.BATCH_READ_SIZE){
+        break;
+      }
+      if(hasNext() && addTimeValuePair(batchDataList, dataTypeList)){
+          dataPointCount++;
       }
     }
     return batchDataList;
+  }
+
+  /**
+   * Add a time-value pair to batch data
+   */
+  private boolean addTimeValuePair(List<BatchData> batchDataList, List<TSDataType> dataTypeList)
+      throws IOException {
+    boolean hasField = false;
+    RowRecord rowRecord = queryDataSet.next();
+    long time = rowRecord.getTimestamp();
+    List<Field> fieldList = rowRecord.getFields();
+    for (int j = 0; j < allFilterPath.size(); j++) {
+      if (!fieldList.get(j).isNull()) {
+        BatchData batchData = batchDataList.get(j);
+        Object value = fieldList.get(j).getObjectValue(dataTypeList.get(j));
+        if (filters.get(j).satisfy(time, value)) {
+          hasField = true;
+          batchData.putTime(time);
+          batchData.putAnObject(value);
+        }
+      }
+    }
+    return hasField;
   }
 
   public List<Path> getAllFilterPath() {

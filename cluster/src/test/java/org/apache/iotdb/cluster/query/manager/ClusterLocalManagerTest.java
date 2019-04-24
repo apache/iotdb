@@ -311,7 +311,7 @@ public class ClusterLocalManagerTest {
         ClusterLocalSingleQueryManager singleQueryManager = manager.getSingleQuery(taskId);
         assertNotNull(singleQueryManager);
         assertEquals((long) map.get(taskId), singleQueryManager.getJobId());
-        assertEquals(3, singleQueryManager.getQueryRound());
+        assertEquals(4, singleQueryManager.getQueryRound());
         ClusterFilterSeriesBatchReader filterReader = (ClusterFilterSeriesBatchReader) singleQueryManager.getFilterReader();
         assertNotNull(filterReader);
         List<Path> allFilterPaths = new ArrayList<>();
@@ -345,7 +345,7 @@ public class ClusterLocalManagerTest {
         ClusterLocalSingleQueryManager singleQueryManager = manager.getSingleQuery(taskId);
         assertNotNull(singleQueryManager);
         assertEquals((long) map.get(taskId), singleQueryManager.getJobId());
-        assertEquals(3, singleQueryManager.getQueryRound());
+        assertEquals(4, singleQueryManager.getQueryRound());
         ClusterFilterSeriesBatchReader filterReader = (ClusterFilterSeriesBatchReader) singleQueryManager.getFilterReader();
         assertNotNull(filterReader);
         List<Path> allFilterPaths = new ArrayList<>();
@@ -379,7 +379,7 @@ public class ClusterLocalManagerTest {
         ClusterLocalSingleQueryManager singleQueryManager = manager.getSingleQuery(taskId);
         assertNotNull(singleQueryManager);
         assertEquals((long) map.get(taskId), singleQueryManager.getJobId());
-        assertEquals(3, singleQueryManager.getQueryRound());
+        assertEquals(4, singleQueryManager.getQueryRound());
         ClusterFilterSeriesBatchReader filterReader = (ClusterFilterSeriesBatchReader) singleQueryManager.getFilterReader();
         assertNotNull(filterReader);
         List<Path> allFilterPaths = new ArrayList<>();

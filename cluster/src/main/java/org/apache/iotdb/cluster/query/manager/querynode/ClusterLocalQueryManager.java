@@ -55,8 +55,8 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
     String taskId = request.getTaskId();
     TASK_ID_MAP_JOB_ID.put(taskId, jobId);
     ClusterLocalSingleQueryManager localQueryManager = new ClusterLocalSingleQueryManager(jobId);
-    localQueryManager.createSeriesReader(request, response);
     SINGLE_QUERY_MANAGER_MAP.put(jobId, localQueryManager);
+    localQueryManager.createSeriesReader(request, response);
   }
 
   @Override

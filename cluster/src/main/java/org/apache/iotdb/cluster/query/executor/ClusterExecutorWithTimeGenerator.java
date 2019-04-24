@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.iotdb.cluster.query.dataset.ClusterDataSetWithTimeGenerator;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
 import org.apache.iotdb.cluster.query.timegenerator.ClusterTimeGenerator;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -77,8 +78,10 @@ public class ClusterExecutorWithTimeGenerator {
 
     /** add query token for filter series which can handle locally **/
     Set<String> deviceIdSet = new HashSet<>();
-    Set<Path> remoteFilterSeries = queryManager.getFilterSeriesReaders().keySet();
-    remoteFilterSeries.forEach(seriesPath -> deviceIdSet.add(seriesPath.getDevice()));
+    for(FilterGroupEntity filterGroupEntity:queryManager.getFilterGroupEntityMap().values()){
+      List<Path> remoteFilterSeries = filterGroupEntity.getFilterPaths();
+      remoteFilterSeries.forEach(seriesPath -> deviceIdSet.add(seriesPath.getDevice()));
+    }
     QueryResourceManager.getInstance()
         .beginQueryOfGivenExpression(context.getJobId(), queryExpression.getExpression(), deviceIdSet);
 

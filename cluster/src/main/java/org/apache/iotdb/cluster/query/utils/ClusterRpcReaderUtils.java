@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTim
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
  * Utils for cluster reader which needs to acquire data from remote query node.
@@ -58,13 +59,13 @@ public class ClusterRpcReaderUtils {
    */
   public static BasicResponse createClusterSeriesReader(String groupId, PeerId peerId,
       int readDataConsistencyLevel, Map<PathType, QueryPlan> allQueryPlan, String taskId,
-      long queryRounds)
+      List<Filter> filterList, long queryRounds)
       throws IOException, RaftConnectionException {
 
     /** handle request **/
     BasicRequest request = QuerySeriesDataRequest
         .createInitialQueryRequest(groupId, taskId, readDataConsistencyLevel,
-            allQueryPlan, queryRounds);
+            allQueryPlan, filterList,queryRounds);
     return handleQueryRequest(request, peerId, 0);
   }
 

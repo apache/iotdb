@@ -135,6 +135,17 @@ public class QPExecutorUtils {
   }
 
   /**
+   * Get group id by device
+   *
+   * @param device device
+   */
+  public static String getGroupIdByDevice(String device) throws PathErrorException {
+    String storageGroup = QPExecutorUtils.getStroageGroupByDevice(device);
+    String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
+    return groupId;
+  }
+
+  /**
    * Change address of local node for test
    */
   @OnlyForTest

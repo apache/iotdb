@@ -75,13 +75,6 @@ public interface IClusterRpcSingleQueryManager {
   QueryPlan getSelectPathQueryPlan(String fullPath);
 
   /**
-   * Get query plan of filter path
-   *
-   * @param fullPath Timeseries full path in filter
-   */
-  QueryPlan getFilterPathQueryPlan(String fullPath);
-
-  /**
    * Set reader node of a data group
    *
    * @param groupId data group id

@@ -28,7 +28,6 @@ import static org.junit.Assert.assertTrue;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +39,7 @@ import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.qp.executor.ClusterQueryProcessExecutor;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
 import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -256,8 +256,7 @@ public class QueryPlanPartitionUtilsTest {
             assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
             ClusterRpcSingleQueryManager singleQueryManager = ClusterRpcQueryManager.getInstance()
                 .getSingleQuery(jobId);
-            Map<String, QueryPlan> filterPathPlans = singleQueryManager.getFilterPathPlans();
-            assertTrue(filterPathPlans.isEmpty());
+            assertTrue(singleQueryManager.getFilterGroupEntityMap().isEmpty());
             Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
             assertFalse(selectPathPlans.isEmpty());
             for(Entry<String, QueryPlan> entry1: selectPathPlans.entrySet()){
@@ -302,8 +301,7 @@ public class QueryPlanPartitionUtilsTest {
             assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
             ClusterRpcSingleQueryManager singleQueryManager = ClusterRpcQueryManager.getInstance()
                 .getSingleQuery(jobId);
-            Map<String, QueryPlan> filterPathPlans = singleQueryManager.getFilterPathPlans();
-            assertFalse(filterPathPlans.isEmpty());
+            assertTrue(singleQueryManager.getFilterGroupEntityMap().isEmpty());
             Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
             assertFalse(selectPathPlans.isEmpty());
             for(Entry<String, QueryPlan> entry1 : selectPathPlans.entrySet()) {
@@ -315,8 +313,9 @@ public class QueryPlanPartitionUtilsTest {
               assertEquals(correctQueryPlan.getOperatorType(), queryPlan.getOperatorType());
               assertEquals(correctQueryPlan.getAggregations(), queryPlan.getAggregations());
             }
-            for (Entry<String, QueryPlan> entry1 : filterPathPlans.entrySet()) {
-              QueryPlan queryPlan = entry1.getValue();
+            Map<String, FilterGroupEntity> filterGroupEntityMap = singleQueryManager.getFilterGroupEntityMap();
+            for (FilterGroupEntity filterGroupEntity:filterGroupEntityMap.values()) {
+              QueryPlan queryPlan = filterGroupEntity.getQueryPlan();
               QueryPlan correctQueryPlan = withFilterFilterResults.get(i + 1);
               assertTrue(correctQueryPlan.getPaths().containsAll(queryPlan.getPaths()));
               assertEquals(correctQueryPlan.getExpression().getType(),

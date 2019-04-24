@@ -23,12 +23,11 @@ import static org.apache.iotdb.tsfile.read.expression.ExpressionType.OR;
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.TRUE;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.expression.TrueExpression;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
-import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -40,28 +39,27 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 
 public class ExpressionUtils {
 
-  private ExpressionUtils(){
+  private ExpressionUtils() {
   }
 
   /**
    * Get all series path of expression group by group id
-   * @return
    */
-  public static void getAllExpressionSeries(IExpression expression, Map<String, List<Path>> seriesPathMap)
+  public static void getAllExpressionSeries(IExpression expression,
+      Map<String, FilterGroupEntity> filterGroupEntityMap)
       throws PathErrorException {
-    if(expression.getType() == ExpressionType.SERIES){
-      Path path = ((SingleSeriesExpression)expression).getSeriesPath();
-      String storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
-      String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
-      if(!seriesPathMap.containsKey(groupId)) {
-        seriesPathMap.put(groupId, new ArrayList<>());
+    if (expression.getType() == ExpressionType.SERIES) {
+      Path path = ((SingleSeriesExpression) expression).getSeriesPath();
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
+      if (!filterGroupEntityMap.containsKey(groupId)) {
+        filterGroupEntityMap.put(groupId, new FilterGroupEntity(groupId));
       }
-      if (!seriesPathMap.get(groupId).contains(path)) {
-        seriesPathMap.get(groupId).add(path);
-      }
+      FilterGroupEntity filterGroupEntity = filterGroupEntityMap.get(groupId);
+      filterGroupEntity.addFilterPaths(path);
+      filterGroupEntity.addFilter(((SingleSeriesExpression) expression).getFilter());
     } else if (expression.getType() == OR || expression.getType() == AND) {
-      getAllExpressionSeries(((IBinaryExpression)expression).getLeft(), seriesPathMap);
-      getAllExpressionSeries(((IBinaryExpression)expression).getRight(), seriesPathMap);
+      getAllExpressionSeries(((IBinaryExpression) expression).getLeft(), filterGroupEntityMap);
+      getAllExpressionSeries(((IBinaryExpression) expression).getRight(), filterGroupEntityMap);
     } else {
       throw new UnSupportedDataTypeException(
           "Unsupported QueryFilterType when construct OperatorNode: " + expression.getType());
