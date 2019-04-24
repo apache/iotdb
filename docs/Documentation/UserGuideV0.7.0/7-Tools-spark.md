@@ -184,7 +184,9 @@ val df = spark.read.tsfile("hdfs://localhost:9000/usr/hadoop")
 df.show
 ```
 
-Note: Global time ordering of all TsFiles in a directory is not supported now.
+Note 1: Global time ordering of all TsFiles in a directory is not supported now.
+
+Note 2: Measurements of the same name should have the same schema.
 
 <a id="example-4-query"></a>
 ### Example 4: query
