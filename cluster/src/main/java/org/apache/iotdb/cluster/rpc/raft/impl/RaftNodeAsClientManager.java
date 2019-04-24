@@ -257,6 +257,7 @@ public class RaftNodeAsClientManager {
                   @Override
                   public void onResponse(Object result) {
                     BasicResponse response = (BasicResponse) result;
+                    boltClientService.disconnect(leader.getEndpoint());
                     releaseClient(RaftNodeAsClient.this);
                     qpTask.run(response);
                   }
@@ -265,6 +266,7 @@ public class RaftNodeAsClientManager {
                   public void onException(Throwable e) {
                     LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
                     qpTask.setTaskState(TaskState.EXCEPTION);
+                    boltClientService.disconnect(leader.getEndpoint());
                     releaseClient(RaftNodeAsClient.this);
                     qpTask.run(null);
                   }
@@ -292,6 +294,7 @@ public class RaftNodeAsClientManager {
       } catch (RemotingException | InterruptedException e) {
         return new QueryTask(null, TaskState.EXCEPTION);
       } finally {
+        boltClientService.disconnect(peerId.getEndpoint());
         releaseClient(RaftNodeAsClient.this);
       }
     }
