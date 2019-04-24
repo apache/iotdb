@@ -278,6 +278,7 @@ public class RaftNodeAsClientManager {
                 }, TASK_TIMEOUT_MS);
       } catch (RemotingException | InterruptedException e) {
         LOGGER.error(e.getMessage());
+        boltClientService.disconnect(leader.getEndpoint());
         qpTask.setTaskState(TaskState.EXCEPTION);
         releaseClient(RaftNodeAsClient.this);
         qpTask.run(null);
