@@ -52,8 +52,10 @@ public abstract class BasicMemController implements IService {
       case JVM:
         return JVMMemController.getInstance();
       case RECORD:
-      default:
         return RecordMemController.getInstance();
+      case DISABLED:
+      default:
+        return DisabledMemController.getInstance();
     }
   }
 
@@ -175,7 +177,7 @@ public abstract class BasicMemController implements IService {
   public abstract void releaseUsage(Object user, long freeSize);
 
   public enum ControllerType {
-    RECORD, JVM
+    RECORD, JVM, DISABLED
   }
 
   public enum UsageLevel {
