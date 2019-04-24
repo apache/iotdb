@@ -20,6 +20,8 @@ package org.apache.iotdb.cluster.query.manager.querynode;
 
 import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
@@ -100,6 +102,16 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
     private ClusterLocalQueryManagerHolder() {
 
     }
+  }
+
+  @Override
+  public Map<String, Integer> getAllReadUsage() {
+    Map<String, Integer> readerUsageMap = new HashMap<>();
+    SINGLE_QUERY_MANAGER_MAP.values().forEach(singleQueryManager -> {
+      String groupId = singleQueryManager.getGroupId();
+      readerUsageMap.put(groupId, readerUsageMap.getOrDefault(groupId, 0) + 1);
+    });
+    return readerUsageMap;
   }
 
   @OnlyForTest

@@ -62,6 +62,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryManager {
 
+  private String groupId;
+
   /**
    * Job id assigned by local QueryResourceManager
    */
@@ -104,7 +106,8 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   @Override
   public InitSeriesReaderResponse createSeriesReader(InitSeriesReaderRequest request)
       throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException {
-    InitSeriesReaderResponse response = new InitSeriesReaderResponse(request.getGroupID());
+    this.groupId = request.getGroupID();
+    InitSeriesReaderResponse response = new InitSeriesReaderResponse(groupId);
     QueryContext context = new QueryContext(jobId);
     Map<PathType, QueryPlan> queryPlanMap = request.getAllQueryPlan();
     if (queryPlanMap.containsKey(PathType.SELECT_PATH)) {
@@ -264,6 +267,10 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
    */
   private List<BatchData> readFilterSeriesBatchData() throws IOException {
     return filterReader.nextBatchList();
+  }
+
+  public String getGroupId() {
+    return groupId;
   }
 
   @Override

@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.query.manager.querynode;
 
 import java.io.IOException;
+import java.util.Map;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
@@ -74,4 +75,8 @@ public interface IClusterLocalQueryManager {
    */
   ClusterLocalSingleQueryManager getSingleQuery(String taskId);
 
+  /**
+   * Get all read usage count group by data group id, key is group id, value is usage count
+   */
+  Map<String, Integer> getAllReadUsage();
 }

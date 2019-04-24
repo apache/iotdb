@@ -23,9 +23,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.PathType;
@@ -34,7 +36,6 @@ import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterFilterSeries
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
 import org.apache.iotdb.cluster.query.utils.ClusterRpcReaderUtils;
 import org.apache.iotdb.cluster.query.utils.QueryPlanPartitionUtils;
-import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicQueryDataResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.InitSeriesReaderResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
@@ -52,6 +53,11 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  * Manage all remote series reader resource in a query resource in coordinator node.
  */
 public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManager {
+
+  /**
+   * Statistic all usage of local data group.
+   */
+  private Set<String> dataGroupUsage = new HashSet<>();
 
   /**
    * Query job id assigned by ClusterRpcQueryManager
@@ -93,7 +99,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
 
   // filter path resource
   /**
-   * Filter group entity group by data group, key is group id
+   * Filter group entity group by data group, key is group id(only contain remote group id)
    */
   private Map<String, FilterGroupEntity> filterGroupEntityMap = new HashMap<>();
 
@@ -128,6 +134,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    */
   private void initSeriesReader(int readDataConsistencyLevel)
       throws IOException, RaftConnectionException {
+    // Init all series with data group of select series,if filter series has the same data group, init them together.
     for (Entry<String, QueryPlan> entry : selectPathPlans.entrySet()) {
       String groupId = entry.getKey();
       QueryPlan queryPlan = entry.getValue();
@@ -147,10 +154,27 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
                 allQueryPlan, taskId, filterList);
         handleInitReaderResponse(groupId, allQueryPlan, response);
       } else {
+        dataGroupUsage.add(groupId);
         selectSeriesByGroupId.remove(groupId);
         if (filterGroupEntityMap.containsKey(groupId)) {
           filterGroupEntityMap.remove(groupId);
         }
+      }
+    }
+
+    //Init series reader with data groups of filter series, which don't exist in data groups list of select series.
+    for (Entry<String, FilterGroupEntity> entry : filterGroupEntityMap.entrySet()) {
+      String groupId = entry.getKey();
+      if (!selectPathPlans.containsKey(groupId)) {
+        PeerId randomPeer = RaftUtils.getRandomPeerID(groupId);
+        Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
+        FilterGroupEntity filterGroupEntity = filterGroupEntityMap.get(groupId);
+        allQueryPlan.put(PathType.FILTER_PATH, filterGroupEntity.getQueryPlan());
+        List<Filter> filterList = filterGroupEntity.getFilters();
+        InitSeriesReaderResponse response = (InitSeriesReaderResponse) ClusterRpcReaderUtils
+            .createClusterSeriesReader(groupId, randomPeer, readDataConsistencyLevel,
+                allQueryPlan, taskId, filterList);
+        handleInitReaderResponse(groupId, allQueryPlan, response);
       }
     }
   }
@@ -316,6 +340,10 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       PeerId queryNode = entry.getValue();
       ClusterRpcReaderUtils.releaseRemoteQueryResource(groupId, queryNode, taskId);
     }
+  }
+
+  public Set<String> getDataGroupUsage() {
+    return dataGroupUsage;
   }
 
   public String getTaskId() {

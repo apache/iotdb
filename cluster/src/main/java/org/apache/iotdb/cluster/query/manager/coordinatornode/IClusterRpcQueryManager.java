@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.query.manager.coordinatornode;
 
+import java.util.Map;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
@@ -61,4 +62,8 @@ public interface IClusterRpcQueryManager {
    */
   void releaseQueryResource(long jobId) throws RaftConnectionException;
 
+  /**
+   * Get all read usage count group by data group id, key is group id, value is usage count
+   */
+  Map<String, Integer> getAllReadUsage();
 }

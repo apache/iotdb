@@ -19,6 +19,8 @@
 package org.apache.iotdb.cluster.query.manager.coordinatornode;
 
 import com.alipay.sofa.jraft.util.OnlyForTest;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -72,6 +74,17 @@ public class ClusterRpcQueryManager implements IClusterRpcQueryManager {
     if (JOB_ID_MAP_TASK_ID.containsKey(jobId)) {
       SINGLE_QUERY_MANAGER_MAP.remove(JOB_ID_MAP_TASK_ID.remove(jobId)).releaseQueryResource();
     }
+  }
+
+  @Override
+  public Map<String, Integer> getAllReadUsage() {
+    Map<String, Integer> readerUsageMap = new HashMap<>();
+    SINGLE_QUERY_MANAGER_MAP.values().forEach(singleQueryManager -> {
+      for(String groupId:singleQueryManager.getDataGroupUsage()) {
+        readerUsageMap.put(groupId, readerUsageMap.getOrDefault(groupId, 0) + 1);
+      }
+    });
+    return readerUsageMap;
   }
 
   @OnlyForTest
