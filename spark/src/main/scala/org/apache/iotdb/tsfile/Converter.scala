@@ -258,7 +258,7 @@ object Converter {
 
   /**
     * Given a SparkSQL struct type, generate the TsFile schema.
-    * Note: There are not two sensors with the same name in the same TsFile.
+    * Note: Measurements of the same name should have the same schema.
     *
     * @param structType given sql schema
     * @return TsFile schema
