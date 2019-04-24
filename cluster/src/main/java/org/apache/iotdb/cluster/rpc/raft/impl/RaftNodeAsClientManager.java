@@ -280,6 +280,7 @@ public class RaftNodeAsClientManager {
         LOGGER.error(e.getMessage());
         qpTask.setTaskState(TaskState.EXCEPTION);
         releaseClient(RaftNodeAsClient.this);
+        boltClientService.disconnect(leader.getEndpoint());
         qpTask.run(null);
         throw new RaftConnectionException(e);
       }

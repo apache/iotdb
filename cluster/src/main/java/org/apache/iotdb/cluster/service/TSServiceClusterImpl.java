@@ -71,10 +71,10 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   private QueryMetadataExecutor queryMetadataExecutor = new QueryMetadataExecutor();
 
   private IClusterRpcQueryManager queryManager = ClusterRpcQueryManager.getInstance();
-  private QueryProcessor queryProcessor = new QueryProcessor(queryDataExecutor);
 
   public TSServiceClusterImpl() throws IOException {
     super();
+    processor = new QueryProcessor(queryDataExecutor);
   }
 
 
@@ -129,7 +129,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       /** find all valid physical plans **/
       for (int i = 0; i < statements.size(); i++) {
         try {
-          PhysicalPlan plan = queryProcessor
+          PhysicalPlan plan = processor
               .parseSQLToPhysicalPlan(statements.get(i), zoneIds.get());
           plan.setProposer(username.get());
 
@@ -298,7 +298,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
-    queryProcessor.getExecutor().setFetchSize(fetchSize);
+    processor.getExecutor().setFetchSize(fetchSize);
 
     long jobId = QueryResourceManager.getInstance().assignJobId();
     QueryContext context = new QueryContext(jobId);
@@ -306,7 +306,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     contextMapLocal.get().put(req.queryId, context);
 
     queryManager.addSingleQuery(jobId, (QueryPlan) physicalPlan);
-    QueryDataSet queryDataSet = queryProcessor.getExecutor().processQuery((QueryPlan) physicalPlan,
+    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
         context);
     queryRet.get().put(statement, queryDataSet);
     return queryDataSet;

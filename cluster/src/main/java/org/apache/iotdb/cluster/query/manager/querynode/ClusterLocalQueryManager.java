@@ -111,4 +111,5 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
   public static ConcurrentHashMap<Long, ClusterLocalSingleQueryManager> getSingleQueryManagerMap() {
     return SINGLE_QUERY_MANAGER_MAP;
   }
+
 }
