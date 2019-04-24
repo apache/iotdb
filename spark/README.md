@@ -38,7 +38,7 @@
 		- [Example 5: write](#example-5-write)
 	- [Appendix A: Old Design of Schema Inference](#appendix-a-old-design-of-schema-inference)
 			- [the default way](#the-default-way)
-			- [unfolding delta_object column](#unfolding-delta_object-column)
+			- [unfolding device column](#unfolding-device-column)
 	- [Appendix B: Old Note](#appendix-b-old-note)
 
 <!-- /TOC -->
@@ -129,13 +129,12 @@ The existing data in the file is as follows:
 
 <center>
 <table style="text-align:center">
-	<tr><th colspan="4">delta_object:root.ln.wf01.wt01</th><th colspan="4">delta_object:root.ln.wf02.wt02</th></tr>
+	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
 	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
 	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td></tr>
 	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
 	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
 	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
-	<tr><td>7</td><td> True </td><td>4</td><td>2.0</td><td>8</td><td>"ddd"</td><td>5</td><td>False</td></tr>
 </table>
 </center>
 
