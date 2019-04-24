@@ -217,20 +217,22 @@ Till now, we have already create a table called root.vehicle and add a colomn ca
 IoTDB> SHOW TIMESERIES
 ===  Timeseries Tree  ===
 
-root:{
-    ln:{
-        wf01:{
-            wt01:{
-                status:{
-                     DataType: BOOLEAN,
-                     Encoding: PLAIN,
-                     Compressor: UNCOMPRESSED,
-                     args: {},
-                     StorageGroup: root.vehicle
-                }
-            }
-        }
-    }
+{
+	"root":{
+		"ln":{
+			"wf01":{
+				"wt01":{
+					"status":{
+						"args":"{}",
+						"StorageGroup":"root.ln",
+						"DataType":"BOOLEAN",
+						"Compressor":"UNCOMPRESSED",
+						"Encoding":"PLAIN"
+					}
+				}
+			}
+		}
+	}
 }
 ```
 
@@ -241,27 +243,29 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCO
 IoTDB> SHOW TIMESERIES
 ===  Timeseries Tree  ===
 
-root:{
-    ln:{
-        wf01:{
-            wt01:{
-                status:{
-                     DataType: BOOLEAN,
-                     Encoding: PLAIN,
-                     Compressor: UNCOMPRESSED,
-                     args: {},
-                     StorageGroup: root.vehicle
-                },
-                temperature:{
-                     DataType: FLOAT,
-                     Encoding: RLE,
-                     Compressor: UNCOMPRESSED,
-                     args: {},
-                     StorageGroup: root.vehicle
-                }
-            }
-        }
-    }
+{
+	"root":{
+		"ln":{
+			"wf01":{
+				"wt01":{
+					"temperature":{
+						"args":"{}",
+						"StorageGroup":"root.ln",
+						"DataType":"FLOAT",
+						"Compressor":"UNCOMPRESSED",
+						"Encoding":"RLE"
+					},
+					"status":{
+						"args":"{}",
+						"StorageGroup":"root.ln",
+						"DataType":"BOOLEAN",
+						"Compressor":"UNCOMPRESSED",
+						"Encoding":"PLAIN"
+					}
+				}
+			}
+		}
+	}
 }
 ```
 Now, for your conveniect, SHOW TIMESERIES clause also supports extention syntax, the pattern is (for further details, check Chapter x):
