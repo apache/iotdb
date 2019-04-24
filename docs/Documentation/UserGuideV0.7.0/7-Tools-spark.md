@@ -37,8 +37,8 @@
 		- [Example 4: query](#example-4-query)
 		- [Example 5: write](#example-5-write)
 	- [Appendix A: Old Design of Schema Inference](#appendix-a-old-design-of-schema-inference)
-			- [the default way](#the-default-way)
-			- [unfolding device column](#unfolding-device-column)
+        - [the default way](#the-default-way)
+        - [unfolding delta_object column](#unfolding-delta_object-column)
 	- [Appendix B: Old Note](#appendix-b-old-note)
 
 <!-- /TOC -->
