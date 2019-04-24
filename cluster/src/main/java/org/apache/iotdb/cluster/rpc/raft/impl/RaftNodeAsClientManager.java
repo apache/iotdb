@@ -26,16 +26,18 @@ import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.LinkedList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
+import org.apache.iotdb.cluster.qp.task.QueryTask;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
-import org.apache.iotdb.cluster.qp.task.QueryTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +83,12 @@ public class RaftNodeAsClientManager {
   /**
    * Lock to update clientNumInUse
    */
-  private ReentrantLock resourceLock = new ReentrantLock();
+  private Lock resourceLock = new ReentrantLock();
+
+  /**
+   * Condition to get client
+   */
+  private Condition resourceCondition = resourceLock.newCondition();
 
   /**
    * Mark whether system is shutting down
@@ -105,8 +112,8 @@ public class RaftNodeAsClientManager {
    * Try to get clientList, return null if num of queue clientList exceeds threshold.
    */
   public RaftNodeAsClient getRaftNodeAsClient() throws RaftConnectionException {
+    resourceLock.lock();
     try {
-      resourceLock.lock();
       if (queueClientNum >= MAX_QUEUE_CLIENT_NUM) {
         throw new RaftConnectionException(String
             .format("Raft inner rpc clients have reached the max numbers %s",
@@ -118,7 +125,6 @@ public class RaftNodeAsClientManager {
         clientNumInUse.incrementAndGet();
         return getClient();
       }
-      queueClientNum++;
     } finally {
       resourceLock.unlock();
     }
@@ -136,29 +142,26 @@ public class RaftNodeAsClientManager {
    * Check whether it can get the clientList
    */
   private RaftNodeAsClient tryToGetClient() throws RaftConnectionException {
-    for (; ; ) {
-      if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
-        resourceLock.lock();
-        try {
+    resourceLock.lock();
+    queueClientNum++;
+    try {
+      while (true) {
+        if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
           checkShuttingDown();
           if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
             clientNumInUse.incrementAndGet();
-            queueClientNum--;
             return getClient();
           }
-        } catch (RaftConnectionException e) {
-          queueClientNum--;
-          throw new RaftConnectionException(e);
-        } finally {
-          resourceLock.unlock();
         }
+        resourceCondition.await();
       }
-      try {
-        Thread.sleep(THREAD_SLEEP_INTERVAL);
-      } catch (InterruptedException e) {
-        throw new RaftConnectionException("An error occurred when trying to get NodeAsClient", e);
-      }
+    } catch (InterruptedException e) {
+      throw new RaftConnectionException("An error occurred when trying to get NodeAsClient", e);
+    } finally {
+      queueClientNum--;
+      resourceLock.unlock();
     }
+
   }
 
   /**
@@ -179,6 +182,9 @@ public class RaftNodeAsClientManager {
     resourceLock.lock();
     try {
       clientNumInUse.decrementAndGet();
+      if (clientList.isEmpty() && queueClientNum > 0) {
+        resourceCondition.signal();
+      }
       clientList.addLast(client);
     } finally {
       resourceLock.unlock();
