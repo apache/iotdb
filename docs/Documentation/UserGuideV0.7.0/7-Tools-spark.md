@@ -73,7 +73,7 @@ With this connector, you can
 Start Spark with TsFile-Spark-Connector in local mode: 
 
 ```
-./<spark-shell-path>  --jars  tsfile-spark-connector.jar
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.8.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
 Note:
@@ -89,7 +89,7 @@ Note:
 Start Spark with TsFile-Spark-Connector in distributed mode (That is, the spark cluster is connected by spark-shell): 
 
 ```
-. /<spark-shell-path>   --jars  tsfile-spark-connector.jar  --master spark://ip:7077
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-0.8.0-SNAPSHOT-jar-with-dependencies.jar  --master spark://ip:7077
 ```
 
 Note:
