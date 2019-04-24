@@ -19,26 +19,16 @@
 package org.apache.iotdb.cluster.rpc.raft.request.querydata;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
- * This class handle three situation request: 1. Initially create series reader. 2. Fetch date without
- * timestamp. 3. Release resource in remote node
+ * Read batch data from series reader from remote query node.
  */
 public class QuerySeriesDataRequest extends BasicQueryRequest {
 
   private static final long serialVersionUID = 7132891920951977625L;
-
-  /**
-   * Request stage
-   */
-  private Stage stage;
 
   /**
    * Rounds number of query
@@ -60,55 +50,26 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
    */
   private List<String> seriesPaths = new ArrayList<>();
 
-  /**
-   * Key is series type, value is query plan
-   */
-  private Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
-
-  /**
-   * Represent all filter of leaf node in filter tree while executing a query with value filter.
-   */
-  private List<Filter> filterList = new ArrayList<>();
-
-
   private QuerySeriesDataRequest(String groupID, String taskId) {
     super(groupID);
     this.taskId = taskId;
   }
 
-  public static QuerySeriesDataRequest createReleaseResourceRequest(String groupId, String taskId) {
-    QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
-    request.stage = Stage.CLOSE;
-    return request;
-  }
-
   public static QuerySeriesDataRequest createFetchDataRequest(String groupId, String taskId,
       PathType pathType, List<String> seriesPaths, long queryRounds) {
     QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
-    request.stage = Stage.READ_DATA;
     request.pathType = pathType;
     request.seriesPaths = seriesPaths;
     request.queryRounds = queryRounds;
     return request;
   }
 
-  public static QuerySeriesDataRequest createInitialQueryRequest(String groupId, String taskId, int readConsistencyLevel,
-      Map<PathType, QueryPlan> allQueryPlan, List<Filter> filterList, long queryRounds){
-    QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
-    request.stage = Stage.INITIAL;
-    request.setReadConsistencyLevel(readConsistencyLevel);
-    request.allQueryPlan = allQueryPlan;
-    request.filterList = filterList;
-    request.queryRounds = queryRounds;
-    return request;
+  public long getQueryRounds() {
+    return queryRounds;
   }
 
-  public Stage getStage() {
-    return stage;
-  }
-
-  public void setStage(Stage stage) {
-    this.stage = stage;
+  public void setQueryRounds(long queryRounds) {
+    this.queryRounds = queryRounds;
   }
 
   public String getTaskId() {
@@ -133,26 +94,5 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
 
   public void setSeriesPaths(List<String> seriesPaths) {
     this.seriesPaths = seriesPaths;
-  }
-
-  public Map<PathType, QueryPlan> getAllQueryPlan() {
-    return allQueryPlan;
-  }
-
-  public void setAllQueryPlan(
-      Map<PathType, QueryPlan> allQueryPlan) {
-    this.allQueryPlan = allQueryPlan;
-  }
-
-  public List<Filter> getFilterList() {
-    return filterList;
-  }
-
-  public long getQueryRounds() {
-    return queryRounds;
-  }
-
-  public void setQueryRounds(long queryRounds) {
-    this.queryRounds = queryRounds;
   }
 }

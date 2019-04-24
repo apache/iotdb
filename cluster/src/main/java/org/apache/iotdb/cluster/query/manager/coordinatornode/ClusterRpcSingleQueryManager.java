@@ -34,7 +34,9 @@ import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterFilterSeries
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
 import org.apache.iotdb.cluster.query.utils.ClusterRpcReaderUtils;
 import org.apache.iotdb.cluster.query.utils.QueryPlanPartitionUtils;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicQueryDataResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querydata.InitSeriesReaderResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
@@ -90,7 +92,6 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   private Map<Path, ClusterSelectSeriesReader> selectSeriesReaders = new HashMap<>();
 
   // filter path resource
-
   /**
    * Filter group entity group by data group, key is group id
    */
@@ -141,9 +142,9 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
           allQueryPlan.put(PathType.FILTER_PATH, filterGroupEntity.getQueryPlan());
           filterList = filterGroupEntity.getFilters();
         }
-        QuerySeriesDataResponse response = (QuerySeriesDataResponse) ClusterRpcReaderUtils
+        InitSeriesReaderResponse response = (InitSeriesReaderResponse) ClusterRpcReaderUtils
             .createClusterSeriesReader(groupId, randomPeer, readDataConsistencyLevel,
-                allQueryPlan, taskId, filterList, queryRounds++);
+                allQueryPlan, taskId, filterList);
         handleInitReaderResponse(groupId, allQueryPlan, response);
       } else {
         selectSeriesByGroupId.remove(groupId);
@@ -158,7 +159,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    * Handle response of initialization with remote query node
    */
   private void handleInitReaderResponse(String groupId, Map<PathType, QueryPlan> allQueryPlan,
-      QuerySeriesDataResponse response) {
+      InitSeriesReaderResponse response) {
     /** create cluster series reader **/
     if (allQueryPlan.containsKey(PathType.SELECT_PATH)) {
       QueryPlan plan = allQueryPlan.get(PathType.SELECT_PATH);

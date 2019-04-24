@@ -19,8 +19,10 @@
 package org.apache.iotdb.cluster.query.manager.querynode;
 
 import java.io.IOException;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
+import org.apache.iotdb.cluster.rpc.raft.response.querydata.InitSeriesReaderResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -38,7 +40,7 @@ public interface IClusterLocalQueryManager {
    *
    * @param request request for query data from coordinator node
    */
-  void createQueryDataSet(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
+  InitSeriesReaderResponse createQueryDataSet(InitSeriesReaderRequest request)
       throws IOException, FileNodeManagerException, PathErrorException, ProcessorException, QueryFilterOptimizationException;
 
   /**
@@ -46,17 +48,16 @@ public interface IClusterLocalQueryManager {
    *
    * @param request request of querying series
    */
-  void readBatchData(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
+  QuerySeriesDataResponse readBatchData(QuerySeriesDataRequest request)
       throws IOException;
 
   /**
    * Read batch data of select series by batch timestamp which is used in query with value filter
+   *  @param request request of querying select paths
    *
-   * @param request request of querying select paths
-   * @param response response of querying select paths
    */
-  void readBatchDataByTimestamp(QuerySeriesDataByTimestampRequest request,
-      QuerySeriesDataByTimestampResponse response) throws IOException;
+  QuerySeriesDataByTimestampResponse readBatchDataByTimestamp(
+      QuerySeriesDataByTimestampRequest request) throws IOException;
 
   /**
    * Close query resource of a task

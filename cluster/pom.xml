@@ -84,21 +84,21 @@
                 <configuration>
                     <filesets>
                         <fileset>
-                            <directory>${project.basedir}/../iotdb/lib_cluster</directory>
+                            <directory>${project.basedir}/../iotdb/iotdb/lib_cluster</directory>
                             <includes>
                                 <include>**/*.jar</include>
                             </includes>
                             <followSymlinks>false</followSymlinks>
                         </fileset>
                         <fileset>
-                            <directory>${project.basedir}/../iotdb/data</directory>
+                            <directory>${project.basedir}/../iotdb/iotdb/data</directory>
                             <includes>
                                 <include>**/*</include>
                             </includes>
                             <followSymlinks>false</followSymlinks>
                         </fileset>
                         <fileset>
-                            <directory>${project.basedir}/../iotdb/logs</directory>
+                            <directory>${project.basedir}/../iotdb/iotdb/logs</directory>
                             <includes>
                                 <include>**/*</include>
                             </includes>

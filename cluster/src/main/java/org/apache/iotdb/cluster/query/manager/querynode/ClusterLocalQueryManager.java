@@ -21,8 +21,10 @@ package org.apache.iotdb.cluster.query.manager.querynode;
 import com.alipay.sofa.jraft.util.OnlyForTest;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
+import org.apache.iotdb.cluster.rpc.raft.response.querydata.InitSeriesReaderResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -49,29 +51,29 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
   }
 
   @Override
-  public void createQueryDataSet(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
+  public InitSeriesReaderResponse createQueryDataSet(InitSeriesReaderRequest request)
       throws IOException, FileNodeManagerException, PathErrorException, ProcessorException, QueryFilterOptimizationException {
     long jobId = QueryResourceManager.getInstance().assignJobId();
     String taskId = request.getTaskId();
     TASK_ID_MAP_JOB_ID.put(taskId, jobId);
     ClusterLocalSingleQueryManager localQueryManager = new ClusterLocalSingleQueryManager(jobId);
     SINGLE_QUERY_MANAGER_MAP.put(jobId, localQueryManager);
-    localQueryManager.createSeriesReader(request, response);
+    return localQueryManager.createSeriesReader(request);
   }
 
   @Override
-  public void readBatchData(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
+  public QuerySeriesDataResponse readBatchData(QuerySeriesDataRequest request)
       throws IOException {
     long jobId = TASK_ID_MAP_JOB_ID.get(request.getTaskId());
-    SINGLE_QUERY_MANAGER_MAP.get(jobId).readBatchData(request, response);
+    return SINGLE_QUERY_MANAGER_MAP.get(jobId).readBatchData(request);
   }
 
   @Override
-  public void readBatchDataByTimestamp(QuerySeriesDataByTimestampRequest request,
-      QuerySeriesDataByTimestampResponse response)
+  public QuerySeriesDataByTimestampResponse readBatchDataByTimestamp(
+      QuerySeriesDataByTimestampRequest request)
       throws IOException {
     long jobId = TASK_ID_MAP_JOB_ID.get(request.getTaskId());
-    SINGLE_QUERY_MANAGER_MAP.get(jobId).readBatchDataByTimestamp(request, response);
+    return SINGLE_QUERY_MANAGER_MAP.get(jobId).readBatchDataByTimestamp(request);
   }
 
   @Override

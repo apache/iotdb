@@ -30,8 +30,10 @@ import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderWithout
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.IClusterBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.IClusterFilterSeriesBatchReader;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
+import org.apache.iotdb.cluster.rpc.raft.response.querydata.InitSeriesReaderResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -100,8 +102,9 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   }
 
   @Override
-  public void createSeriesReader(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
+  public InitSeriesReaderResponse createSeriesReader(InitSeriesReaderRequest request)
       throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException {
+    InitSeriesReaderResponse response = new InitSeriesReaderResponse(request.getGroupID());
     QueryContext context = new QueryContext(jobId);
     Map<PathType, QueryPlan> queryPlanMap = request.getAllQueryPlan();
     if (queryPlanMap.containsKey(PathType.SELECT_PATH)) {
@@ -123,6 +126,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       QueryPlan queryPlan = queryPlanMap.get(PathType.FILTER_PATH);
       handleFilterSeriesReader(queryPlan, context, request, response, PathType.FILTER_PATH);
     }
+    return response;
   }
 
   /**
@@ -131,7 +135,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
    * @param plan filter series query plan
    */
   private void handleFilterSeriesReader(QueryPlan plan, QueryContext context,
-      QuerySeriesDataRequest request, QuerySeriesDataResponse response, PathType pathType)
+      InitSeriesReaderRequest request, InitSeriesReaderResponse response, PathType pathType)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException {
     QueryDataSet queryDataSet = queryProcessExecutor
         .processQuery(plan, context);
@@ -152,7 +156,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
    * @param response response for coordinator node
    */
   private void handleSelectReaderWithoutTimeGenerator(QueryPlan plan, QueryContext context,
-      QuerySeriesDataResponse response)
+      InitSeriesReaderResponse response)
       throws FileNodeManagerException {
     List<Path> paths = plan.getPaths();
     Filter timeFilter = null;
@@ -181,7 +185,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
    * @param response response for coordinator node
    */
   private void handleSelectReaderWithTimeGenerator(QueryPlan plan, QueryContext context,
-      QuerySeriesDataResponse response)
+      InitSeriesReaderResponse response)
       throws PathErrorException, FileNodeManagerException, IOException {
     List<Path> paths = plan.getPaths();
     List<TSDataType> dataTypeList = new ArrayList<>();
@@ -199,8 +203,9 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   }
 
   @Override
-  public void readBatchData(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
+  public QuerySeriesDataResponse readBatchData(QuerySeriesDataRequest request)
       throws IOException {
+    QuerySeriesDataResponse response = new QuerySeriesDataResponse(request.getGroupID());
     long targetQueryRounds = request.getQueryRounds();
     if (targetQueryRounds != this.queryRound) {
       this.queryRound = targetQueryRounds;
@@ -215,12 +220,15 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       cachedBatchDataResult = batchDataList;
     }
     response.setSeriesBatchData(cachedBatchDataResult);
+    return response;
   }
 
   @Override
-  public void readBatchDataByTimestamp(QuerySeriesDataByTimestampRequest request,
-      QuerySeriesDataByTimestampResponse response)
+  public QuerySeriesDataByTimestampResponse readBatchDataByTimestamp(
+      QuerySeriesDataByTimestampRequest request)
       throws IOException {
+    String groupId = request.getGroupID();
+    QuerySeriesDataByTimestampResponse response = new QuerySeriesDataByTimestampResponse(groupId);
     List<String> fetchDataSeries = request.getFetchDataSeries();
     long targetQueryRounds = request.getQueryRounds();
     if (targetQueryRounds != this.queryRound) {
@@ -233,6 +241,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       cachedBatchDataResult = batchDataList;
     }
     response.setSeriesBatchData(cachedBatchDataResult);
+    return response;
   }
 
   /**

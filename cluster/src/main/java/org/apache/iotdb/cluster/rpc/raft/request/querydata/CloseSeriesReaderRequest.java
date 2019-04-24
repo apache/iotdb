@@ -18,20 +18,30 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.request.querydata;
 
+import org.apache.iotdb.cluster.rpc.raft.request.BasicQueryRequest;
+
 /**
- * Stage of querying series data from remote query node
+ * Release series reader resource in remote query node
  */
-public enum Stage {
+public class CloseSeriesReaderRequest extends BasicQueryRequest {
+
+  private static final long serialVersionUID = 1369515842480836991L;
+
   /**
-   * Initially create corresponding series readers in remote query node
+   * Unique task id which is assigned in coordinator node
    */
-  INITIAL,
-  /**
-   * Read batch data from series reader from remote query node.
-   */
-  READ_DATA,
-  /**
-   * Release series reader resource in remote query node
-   */
-  CLOSE
+  private String taskId;
+
+  private CloseSeriesReaderRequest(String groupID, String taskId) {
+    super(groupID);
+    this.taskId = taskId;
+  }
+
+  public static CloseSeriesReaderRequest createReleaseResourceRequest(String groupId, String taskId) {
+    return new CloseSeriesReaderRequest(groupId, taskId);
+  }
+
+  public String getTaskId() {
+    return taskId;
+  }
 }

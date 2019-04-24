@@ -19,8 +19,10 @@
 package org.apache.iotdb.cluster.query.manager.querynode;
 
 import java.io.IOException;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
+import org.apache.iotdb.cluster.rpc.raft.response.querydata.InitSeriesReaderResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -38,8 +40,9 @@ public interface IClusterLocalSingleQueryManager {
 
   /**
    * Initially create corresponding series readers.
+   * @param request request of querying series data
    */
-  void createSeriesReader(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
+  InitSeriesReaderResponse createSeriesReader(InitSeriesReaderRequest request)
       throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException;
 
   /**
@@ -47,18 +50,17 @@ public interface IClusterLocalSingleQueryManager {
    * Read batch data If query round in cache is equal to target query round, it means that batch
    * data in query node transfer to coordinator fail and return cached batch data.
    * </p>
+   *  @param request request of querying series data
    *
-   * @param request request of querying series data
-   * @param response response of querying series data
    */
-  void readBatchData(QuerySeriesDataRequest request, QuerySeriesDataResponse response)
+  QuerySeriesDataResponse readBatchData(QuerySeriesDataRequest request)
       throws IOException;
 
   /**
    * Read batch data of select paths by timestamp
    */
-  void readBatchDataByTimestamp(QuerySeriesDataByTimestampRequest request,
-      QuerySeriesDataByTimestampResponse response) throws IOException;
+  QuerySeriesDataByTimestampResponse readBatchDataByTimestamp(
+      QuerySeriesDataByTimestampRequest request) throws IOException;
 
   /**
    * Release query resource

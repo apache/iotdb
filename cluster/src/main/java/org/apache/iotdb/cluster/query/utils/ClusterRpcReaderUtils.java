@@ -29,6 +29,8 @@ import org.apache.iotdb.cluster.qp.task.QueryTask;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.CloseSeriesReaderRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
@@ -55,43 +57,17 @@ public class ClusterRpcReaderUtils {
    * @param peerId query node to fetch data
    * @param readDataConsistencyLevel consistency level of read data
    * @param taskId task id assigned by coordinator node
-   * @param queryRounds represent the rounds of query
    */
   public static BasicResponse createClusterSeriesReader(String groupId, PeerId peerId,
       int readDataConsistencyLevel, Map<PathType, QueryPlan> allQueryPlan, String taskId,
-      List<Filter> filterList, long queryRounds)
+      List<Filter> filterList)
       throws IOException, RaftConnectionException {
 
     /** handle request **/
-    BasicRequest request = QuerySeriesDataRequest
+    BasicRequest request = InitSeriesReaderRequest
         .createInitialQueryRequest(groupId, taskId, readDataConsistencyLevel,
-            allQueryPlan, filterList,queryRounds);
+            allQueryPlan, filterList);
     return handleQueryRequest(request, peerId, 0);
-  }
-
-  /**
-   * Send query request to remote node and return response
-   *
-   * @param request query request
-   * @param peerId target remote query node
-   * @param taskRetryNum retry num of the request
-   * @return Response from remote query node
-   */
-  private static BasicResponse handleQueryRequest(BasicRequest request, PeerId peerId,
-      int taskRetryNum)
-      throws RaftConnectionException {
-    if (taskRetryNum > TASK_MAX_RETRY) {
-      throw new RaftConnectionException(
-          String.format("Query request retries reach the upper bound %s",
-              TASK_MAX_RETRY));
-    }
-    NodeAsClient nodeAsClient = RaftUtils.getRaftNodeAsClient();
-    QueryTask queryTask = nodeAsClient.syncHandleRequest(request, peerId);
-    if (queryTask.getState() == TaskState.FINISH) {
-      return queryTask.getBasicResponse();
-    } else {
-      return handleQueryRequest(request, peerId, taskRetryNum + 1);
-    }
   }
 
   public static QuerySeriesDataResponse fetchBatchData(String groupID, PeerId peerId, String taskId,
@@ -121,7 +97,32 @@ public class ClusterRpcReaderUtils {
   public static void releaseRemoteQueryResource(String groupId, PeerId peerId, String taskId)
       throws RaftConnectionException {
 
-    BasicRequest request = QuerySeriesDataRequest.createReleaseResourceRequest(groupId, taskId);
+    BasicRequest request = CloseSeriesReaderRequest.createReleaseResourceRequest(groupId, taskId);
     handleQueryRequest(request, peerId, 0);
+  }
+
+  /**
+   * Send query request to remote node and return response
+   *
+   * @param request query request
+   * @param peerId target remote query node
+   * @param taskRetryNum retry num of the request
+   * @return Response from remote query node
+   */
+  private static BasicResponse handleQueryRequest(BasicRequest request, PeerId peerId,
+      int taskRetryNum)
+      throws RaftConnectionException {
+    if (taskRetryNum > TASK_MAX_RETRY) {
+      throw new RaftConnectionException(
+          String.format("Query request retries reach the upper bound %s",
+              TASK_MAX_RETRY));
+    }
+    NodeAsClient nodeAsClient = RaftUtils.getRaftNodeAsClient();
+    QueryTask queryTask = nodeAsClient.syncHandleRequest(request, peerId);
+    if (queryTask.getState() == TaskState.FINISH) {
+      return queryTask.getBasicResponse();
+    } else {
+      return handleQueryRequest(request, peerId, taskRetryNum + 1);
+    }
   }
 }

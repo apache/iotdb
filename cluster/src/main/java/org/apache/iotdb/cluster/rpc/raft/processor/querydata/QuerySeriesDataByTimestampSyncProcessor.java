@@ -22,17 +22,13 @@ import com.alipay.remoting.BizContext;
 import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalQueryManager;
 import org.apache.iotdb.cluster.rpc.raft.processor.BasicSyncUserProcessor;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
-import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 
 public class QuerySeriesDataByTimestampSyncProcessor extends BasicSyncUserProcessor<QuerySeriesDataByTimestampRequest> {
 
   @Override
   public Object handleRequest(BizContext bizContext,
       QuerySeriesDataByTimestampRequest request) throws Exception {
-    String groupId = request.getGroupID();
-    QuerySeriesDataByTimestampResponse response = new QuerySeriesDataByTimestampResponse(groupId);
-    ClusterLocalQueryManager.getInstance().readBatchDataByTimestamp(request, response);
-    return response;
+    return ClusterLocalQueryManager.getInstance().readBatchDataByTimestamp(request);
   }
 
   @Override

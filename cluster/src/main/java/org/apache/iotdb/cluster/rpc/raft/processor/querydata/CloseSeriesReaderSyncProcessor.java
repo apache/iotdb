@@ -21,20 +21,23 @@ package org.apache.iotdb.cluster.rpc.raft.processor.querydata;
 import com.alipay.remoting.BizContext;
 import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalQueryManager;
 import org.apache.iotdb.cluster.rpc.raft.processor.BasicSyncUserProcessor;
-import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querydata.CloseSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 
-public class QuerySeriesDataSyncProcessor extends
-    BasicSyncUserProcessor<QuerySeriesDataRequest> {
+public class CloseSeriesReaderSyncProcessor extends
+    BasicSyncUserProcessor<CloseSeriesReaderRequest> {
 
   @Override
-  public Object handleRequest(BizContext bizContext, QuerySeriesDataRequest request)
+  public Object handleRequest(BizContext bizContext, CloseSeriesReaderRequest request)
       throws Exception {
-    return ClusterLocalQueryManager.getInstance().readBatchData(request);
+    String groupId = request.getGroupID();
+    QuerySeriesDataResponse response = new QuerySeriesDataResponse(groupId);
+    ClusterLocalQueryManager.getInstance().close(request.getTaskId());
+    return response;
   }
 
   @Override
   public String interest() {
-    return QuerySeriesDataRequest.class.getName();
+    return CloseSeriesReaderRequest.class.getName();
   }
 }
