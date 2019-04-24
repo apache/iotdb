@@ -80,6 +80,13 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
+      cache:
+        directories:
+          - '$HOME/.m2/repository'
+          - '$HOME/.sonar/cache'
+          - '/c/java11'
+          - '/c/mvn361'
+          
     - os: windows
       language: c
       name: win-oraclejdk8
@@ -98,6 +105,7 @@ matrix:
         - java -version
         - mvn -version
         - mvn -B clean integration-test
+
     - os: linux
       name: linux-openjdk11
       dist: trusty
@@ -110,7 +118,6 @@ matrix:
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
-        - mvn -version
         - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
     - os: linux
       name: linux-openjdk8

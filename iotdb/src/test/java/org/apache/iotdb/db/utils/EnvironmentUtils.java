@@ -95,11 +95,6 @@ public class EnvironmentUtils {
     // FileNodeManager.getInstance().reset();
     // reset MemController
     BasicMemController.getInstance().close();
-    try {
-      BasicMemController.getInstance().start();
-    } catch (StartupException e) {
-      LOGGER.error("", e);
-    }
   }
 
   private static void cleanAllDir() throws IOException {
@@ -175,5 +170,10 @@ public class EnvironmentUtils {
     MultiFileLogNodeManager.getInstance().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    try {
+      BasicMemController.getInstance().start();
+    } catch (StartupException e) {
+      LOGGER.error("", e);
+    }
   }
 }
