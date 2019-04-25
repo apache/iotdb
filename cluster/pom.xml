@@ -29,7 +29,7 @@
     <artifactId>iotdb-cluster</artifactId>
     <name>IoTDB Cluster</name>
     <properties>
-        <jraft.version>1.2.4</jraft.version>
+        <jraft.version>1.2.5</jraft.version>
         <antlr3.version>3.5.2</antlr3.version>
         <common.lang3.version>3.8.1</common.lang3.version>
         <cluster.test.skip>false</cluster.test.skip>
