@@ -189,6 +189,7 @@ public class Router {
     sgRouter.clear();
     dataPartitionCache.clear();
     nodeMapGroupIdCache.clear();
+    groupIdMapNodeCache.clear();
   }
 
   @OnlyForTest
