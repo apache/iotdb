@@ -643,7 +643,7 @@ public class FileNodeManager implements IStatistic, IService {
     try {
       LOGGER.debug("Get the FileNodeProcessor: filenode is {}, begin query.",
           fileNodeProcessor.getProcessorName());
-      return fileNodeProcessor.addMultiPassLock();
+      return fileNodeProcessor.addMultiPassCount();
     } finally {
       fileNodeProcessor.writeUnlock();
     }
@@ -694,7 +694,11 @@ public class FileNodeManager implements IStatistic, IService {
     try {
       LOGGER.debug("Get the FileNodeProcessor: {} end query.",
           fileNodeProcessor.getProcessorName());
-      fileNodeProcessor.removeMultiPassLock(token);
+      fileNodeProcessor.decreaseMultiPassCount(token);
+    } catch (FileNodeProcessorException e) {
+      throw new FileNodeManagerException(String
+          .format("FileNodeProcessor of [%s] meets error when ending query",
+              fileNodeProcessor.getProcessorName()), e);
     } finally {
       fileNodeProcessor.writeUnlock();
     }
