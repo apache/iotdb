@@ -255,6 +255,7 @@ MIT License
 ------------
 org.slf4j:slf4j-api
 org.mockito:mockito-all:1.10.19
+me.tongfei:progressbar:0.7.3
 
 
 EDL 1.0
