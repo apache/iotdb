@@ -190,10 +190,7 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   /**
-   *
    * @param filenodeName storage name, e.g., root.a.b
-   * @return
-   * @throws FileNodeManagerException
    */
   private FileNodeProcessor constructNewProcessor(String filenodeName)
       throws FileNodeManagerException {
@@ -427,7 +424,7 @@ public class FileNodeManager implements IStatistic, IService {
     fileNodeProcessor.setIntervalFileNodeStartTime(deviceId);
     fileNodeProcessor.setLastUpdateTime(deviceId, timestamp);
     try {
-      if(!bufferWriteProcessor.write(tsRecord)) {
+      if (!bufferWriteProcessor.write(tsRecord)) {
         // undo time update
         fileNodeProcessor.setIntervalFileNodeStartTime(deviceId, prevStartTime);
         fileNodeProcessor.setLastUpdateTime(deviceId, prevUpdateTime);
@@ -635,7 +632,8 @@ public class FileNodeManager implements IStatistic, IService {
 
   /**
    * begin query.
-   * @param  deviceId queried deviceId
+   *
+   * @param deviceId queried deviceId
    * @return a query token for the device.
    */
   public int beginQuery(String deviceId) throws FileNodeManagerException {
@@ -957,7 +955,8 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * add time series.
    */
-  public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding, CompressionType compressor,
+  public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor,
       Map<String, String> props) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(path.getFullPath(), true);
     try {

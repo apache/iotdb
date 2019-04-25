@@ -552,9 +552,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       } catch (BufferWriteProcessorException e) {
         throw new FileNodeProcessorException(String
             .format("The filenode processor %s failed to get the bufferwrite processor.",
-                processorName),e);
+                processorName), e);
       }
-    } else if (bufferWriteProcessor.isClosed()){
+    } else if (bufferWriteProcessor.isClosed()) {
       try {
         bufferWriteProcessor.reopen(insertTime + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR
             + System.currentTimeMillis());
@@ -577,7 +577,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
       overflowProcessor = new OverflowProcessor(processorName, params, fileSchema,
           versionController);
-    } else if (overflowProcessor.isClosed()){
+    } else if (overflowProcessor.isClosed()) {
       overflowProcessor.reopen();
     }
     return overflowProcessor;
