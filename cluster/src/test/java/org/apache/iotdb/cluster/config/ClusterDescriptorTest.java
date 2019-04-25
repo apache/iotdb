@@ -150,7 +150,7 @@ public class ClusterDescriptorTest {
     assertEquals(testConcurrentQPTaskThreadNew, config.getConcurrentQPSubTaskThread() + "");
 
 
-    System.setProperty(IoTDBConstant.IOTDB_CONF, "");
+    System.clearProperty(IoTDBConstant.IOTDB_CONF);
     config.deleteAllPath();
   }
 
