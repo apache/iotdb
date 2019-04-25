@@ -19,10 +19,12 @@
 package org.apache.iotdb.cluster.query.manager.querynode;
 
 import com.alipay.sofa.jraft.util.OnlyForTest;
+import com.alipay.sofa.jraft.util.RepeatedTimer;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
@@ -34,8 +36,12 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterLocalQueryManager.class);
 
   /**
    * Key is task id which is assigned by coordinator node, value is job id which is assigned by
@@ -48,7 +54,6 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
    */
   private static final ConcurrentHashMap<Long, ClusterLocalSingleQueryManager> SINGLE_QUERY_MANAGER_MAP = new ConcurrentHashMap<>();
 
-
   private ClusterLocalQueryManager() {
   }
 
@@ -58,7 +63,9 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
     long jobId = QueryResourceManager.getInstance().assignJobId();
     String taskId = request.getTaskId();
     TASK_ID_MAP_JOB_ID.put(taskId, jobId);
-    ClusterLocalSingleQueryManager localQueryManager = new ClusterLocalSingleQueryManager(jobId);
+    ClusterLocalSingleQueryManager localQueryManager = new ClusterLocalSingleQueryManager(jobId,
+        new QueryRepeaterTimer(taskId,
+            ClusterConstant.QUERY_TIMEOUT_IN_QUERY_NODE));
     SINGLE_QUERY_MANAGER_MAP.put(jobId, localQueryManager);
     return localQueryManager.createSeriesReader(request);
   }
@@ -124,4 +131,22 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
     return SINGLE_QUERY_MANAGER_MAP;
   }
 
+  public class QueryRepeaterTimer extends RepeatedTimer {
+
+    private String taskId;
+
+    public QueryRepeaterTimer(String taskId, int timeoutMs) {
+      super(taskId, timeoutMs);
+      this.taskId = taskId;
+    }
+
+    @Override
+    protected void onTrigger() {
+      try {
+        close(taskId);
+      } catch (FileNodeManagerException e) {
+        LOGGER.error(e.getMessage());
+      }
+    }
+  }
 }

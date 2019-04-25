@@ -46,4 +46,11 @@ public class ClusterConstant {
    */
   public static final int MAX_CACHE_BATCH_DATA_LIST_SIZE = 2;
 
+  /**
+   * Query timeout in query node. If time interval between last communications with coordinator node
+   * and now exceed this parameter, release corresponding query resource.Each query in query node
+   * has a <code>QueryRepeaterTimer</code>, the unit is milliseconds. Default value is 30 minutes.
+   */
+  public static final int QUERY_TIMEOUT_IN_QUERY_NODE = 30 * 60 * 1000;
+
 }

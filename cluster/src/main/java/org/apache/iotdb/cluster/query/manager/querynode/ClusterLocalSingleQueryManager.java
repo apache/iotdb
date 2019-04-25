@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
+import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalQueryManager.QueryRepeaterTimer;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderWithoutTimeGenerator;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterSeriesBatchReader;
@@ -65,6 +66,11 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   private String groupId;
 
   /**
+   * Timer of Query, if the time is up, close query resource.
+   */
+  private QueryRepeaterTimer queryRepeaterTimer;
+
+  /**
    * Job id assigned by local QueryResourceManager
    */
   private long jobId;
@@ -99,8 +105,9 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   /**
    * Constructor of ClusterLocalSingleQueryManager
    */
-  public ClusterLocalSingleQueryManager(long jobId) {
+  public ClusterLocalSingleQueryManager(long jobId, QueryRepeaterTimer queryRepeaterTimer) {
     this.jobId = jobId;
+    this.queryRepeaterTimer = queryRepeaterTimer;
   }
 
   @Override
@@ -208,6 +215,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   @Override
   public QuerySeriesDataResponse readBatchData(QuerySeriesDataRequest request)
       throws IOException {
+    resetQueryTimer();
     QuerySeriesDataResponse response = new QuerySeriesDataResponse(request.getGroupID());
     long targetQueryRounds = request.getQueryRounds();
     if (targetQueryRounds != this.queryRound) {
@@ -230,7 +238,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   public QuerySeriesDataByTimestampResponse readBatchDataByTimestamp(
       QuerySeriesDataByTimestampRequest request)
       throws IOException {
-    String groupId = request.getGroupID();
+    resetQueryTimer();
     QuerySeriesDataByTimestampResponse response = new QuerySeriesDataByTimestampResponse(groupId);
     List<String> fetchDataSeries = request.getFetchDataSeries();
     long targetQueryRounds = request.getQueryRounds();
@@ -245,6 +253,11 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
     }
     response.setSeriesBatchData(cachedBatchDataResult);
     return response;
+  }
+
+  @Override
+  public void resetQueryTimer() {
+    queryRepeaterTimer.reset();
   }
 
   /**
@@ -275,6 +288,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
 
   @Override
   public void close() throws FileNodeManagerException {
+    queryRepeaterTimer.destroy();
     QueryResourceManager.getInstance().endQueryForGivenJob(jobId);
   }
 

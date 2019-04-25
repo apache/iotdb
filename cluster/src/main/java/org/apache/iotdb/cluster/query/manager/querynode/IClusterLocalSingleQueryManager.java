@@ -63,6 +63,11 @@ public interface IClusterLocalSingleQueryManager {
       QuerySeriesDataByTimestampRequest request) throws IOException;
 
   /**
+   * Reset query timer and restart timer
+   */
+  void resetQueryTimer();
+
+  /**
    * Release query resource
    */
   void close() throws FileNodeManagerException;
