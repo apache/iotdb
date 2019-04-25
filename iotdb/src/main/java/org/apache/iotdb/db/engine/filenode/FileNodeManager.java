@@ -609,7 +609,7 @@ public class FileNodeManager implements IStatistic, IService {
     FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
     try {
       fileNodeProcessor.deleteBufferWrite(deviceId, measurementId, timestamp);
-    } catch (IOException e) {
+    } catch (BufferWriteProcessorException | IOException e) {
       throw new FileNodeManagerException(e);
     } finally {
       fileNodeProcessor.writeUnlock();

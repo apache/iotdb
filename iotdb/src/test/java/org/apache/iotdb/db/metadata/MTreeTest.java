@@ -22,6 +22,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -125,6 +128,46 @@ public class MTreeTest {
       fail(e.getMessage());
     }
 
+  }
+
+  @Test
+  public void testCombineMetadataInStrings() {
+    MTree root = new MTree("root");
+    MTree root1 = new MTree("root");
+    MTree root2 = new MTree("root");
+    MTree root3 = new MTree("root");
+    try {
+      root.setStorageGroup("root.a.d0");
+      root.addTimeseriesPath("root.a.d0.s0", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.d0.s1", "INT32", "RLE");
+
+      root.setStorageGroup("root.a.d1");
+      root.addTimeseriesPath("root.a.d1.s0", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.d1.s1", "INT32", "RLE");
+
+      root.setStorageGroup("root.a.b.d0");
+      root.addTimeseriesPath("root.a.b.d0.s0", "INT32", "RLE");
+
+      root1.setStorageGroup("root.a.d0");
+      root1.addTimeseriesPath("root.a.d0.s0", "INT32", "RLE");
+      root1.addTimeseriesPath("root.a.d0.s1", "INT32", "RLE");
+
+      root2.setStorageGroup("root.a.d1");
+      root2.addTimeseriesPath("root.a.d1.s0", "INT32", "RLE");
+      root2.addTimeseriesPath("root.a.d1.s1", "INT32", "RLE");
+
+      root3.setStorageGroup("root.a.b.d0");
+      root3.addTimeseriesPath("root.a.b.d0.s0", "INT32", "RLE");
+
+      String[] metadatas = new String[3];
+      metadatas[0] = root1.toString();
+      metadatas[1] = root2.toString();
+      metadatas[2] = root3.toString();
+      assertEquals(MTree.combineMetadataInStrings(metadatas), root.toString());
+    } catch (PathErrorException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @Test

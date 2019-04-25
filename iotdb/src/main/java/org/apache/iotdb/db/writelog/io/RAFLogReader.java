@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 public class RAFLogReader implements ILogReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RAFLogReader.class);
+  public static final int LEAST_LOG_SIZE = 12; // size + checksum
   private RandomAccessFile logRaf;
   private String filepath;
   private int bufferSize = 4 * 1024 * 1024;
@@ -53,7 +54,7 @@ public class RAFLogReader implements ILogReader {
       return true;
     }
 
-    if (logRaf.getFilePointer() + 12 > logRaf.length()) {
+    if (logRaf.getFilePointer() + LEAST_LOG_SIZE > logRaf.length()) {
       return false;
     }
 

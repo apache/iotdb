@@ -253,7 +253,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     fileNodeRestoreFilePath = new File(restoreFolder, processorName + RESTORE_FILE_SUFFIX).getPath();
     try {
       fileNodeProcessorStore = readStoreFromDisk();
-    } catch (FileNodeProcessorException | IOException  e) {
+    } catch (FileNodeProcessorException e) {
       LOGGER.error(
           "The fileNode processor {} encountered an error when recoverying restore " +
               "information.", processorName);
@@ -805,8 +805,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                 + "but the bufferwrite processor is null.",
             newFileNodes.get(newFileNodes.size() - 1).getFile().getAbsolutePath(), getProcessorName()));
       }
-      bufferwritedata = bufferWriteProcessor
-          .queryBufferWriteData(deviceId, measurementId, dataType, mSchema.getProps());
+      try {
+        bufferwritedata = bufferWriteProcessor
+            .queryBufferWriteData(deviceId, measurementId, dataType, mSchema.getProps());
+      } catch (BufferWriteProcessorException e) {
+        throw new FileNodeProcessorException(e);
+      }
 
       try {
         List<Modification> pathModifications = context.getPathModifications(
@@ -1842,14 +1846,18 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  private FileNodeProcessorStore readStoreFromDisk() throws FileNodeProcessorException, IOException {
+  private FileNodeProcessorStore readStoreFromDisk() throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreLock) {
       File restoreFile = new File(fileNodeRestoreFilePath);
       if (!restoreFile.exists() || restoreFile.length() == 0) {
-        return new FileNodeProcessorStore(false, new HashMap<>(),
-            new TsFileResource(null, false),
-            new ArrayList<>(), FileNodeProcessorStatus.NONE, 0);
+        try {
+          return new FileNodeProcessorStore(false, new HashMap<>(),
+              new TsFileResource(null, false),
+              new ArrayList<>(), FileNodeProcessorStatus.NONE, 0);
+        } catch (IOException e) {
+          throw new FileNodeProcessorException(e);
+        }
       }
       try (FileInputStream inputStream = new FileInputStream(fileNodeRestoreFilePath)) {
         return FileNodeProcessorStore.deSerialize(inputStream);
@@ -1926,7 +1934,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Similar to delete(), but only deletes data in BufferWrite. Only used by WAL recovery.
    */
   public void deleteBufferWrite(String deviceId, String measurementId, long timestamp)
-      throws IOException {
+      throws IOException, BufferWriteProcessorException {
     String fullPath = deviceId +
         IoTDBConstant.PATH_SEPARATOR + measurementId;
     long version = versionController.nextVersion();

@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -67,6 +71,7 @@ public class MTree implements Serializable {
     addTimeseriesPath(timeseriesPath, tsDataType, tsEncoding, compressionType,
         Collections.emptyMap());
   }
+
   /**
    * function for adding timeseries.It should check whether seriesPath exists.
    */
@@ -214,7 +219,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * check whether the input path is storage group or not
+   * Check whether the input path is storage group or not
    * @param path input path
    * @return if it is storage group, return true. Else return false
    * @apiNote :for cluster
@@ -583,28 +588,45 @@ public class MTree implements Serializable {
    * Get all the storage group seriesPaths for one seriesPath.
    *
    * @return List storage group seriesPath list
+   * @apiNote :for cluster
    */
-  public List<String> getAllFileNamesByPath(String path) throws PathErrorException {
+  public List<String> getAllFileNamesByPath(String pathReg) throws PathErrorException {
+    ArrayList<String> fileNames = new ArrayList<>();
+    String[] nodes = pathReg.split(DOUB_SEPARATOR);
+    if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
+      throw new PathErrorException(String.format(SERIES_NOT_CORRECT, pathReg));
+    }
+    findFileName(getRoot(), nodes, 1, "", fileNames);
+    return fileNames;
+  }
 
-    List<String> sgList = new ArrayList<>();
-    String[] nodes = path.split(DOUB_SEPARATOR);
-    MNode cur = getRoot();
-    for (int i = 1; i < nodes.length; i++) {
-      if (cur == null) {
-        throw new PathErrorException(
-            String.format(NOT_SERIES_PATH,
-                path));
-      }
-      if (cur.isStorageLevel()) {
-        sgList.add(cur.getDataFileName());
-        return sgList;
-      }
-      cur = cur.getChild(nodes[i]);
+  /**
+   * Recursively find all fileName according to a specific path
+   * @apiNote :for cluster
+   */
+  private void findFileName(MNode node, String[] nodes, int idx, String parent,
+      ArrayList<String> paths) {
+    if (node.isStorageLevel()) {
+      paths.add(node.getDataFileName());
+      return;
     }
-    if (sgList.isEmpty()) {
-      getAllStorageGroupsOfNode(cur, path, sgList);
+    String nodeReg;
+    if (idx >= nodes.length) {
+      nodeReg = "*";
+    } else {
+      nodeReg = nodes[idx];
     }
-    return sgList;
+
+    if (!("*").equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        findFileName(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths);
+      }
+    } else {
+      for (MNode child : node.getChildren().values()) {
+        findFileName(child, nodes, idx + 1, parent + node.getName() + ".", paths);
+      }
+    }
+    return;
   }
 
   private void getAllStorageGroupsOfNode(MNode node, String path, List<String> sgList) {
@@ -1012,59 +1034,79 @@ public class MTree implements Serializable {
 
   @Override
   public String toString() {
-    return mnodeToString(getRoot(), 0);
+    return jsonToString(toJson());
   }
 
-  private String mnodeToString(MNode node, int tab) {
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < tab; i++) {
-      builder.append(QUAD_SPACE);
-    }
-    builder.append(node.getName());
+  private static String jsonToString(JSONObject jsonObject) {
+    return JSON.toJSONString(jsonObject, SerializerFeature.PrettyFormat);
+  }
+
+  private JSONObject toJson() {
+    JSONObject jsonObject = new JSONObject();
+    jsonObject.put(getRoot().getName(), mnodeToJSON(getRoot()));
+    return jsonObject;
+  }
+
+  private JSONObject mnodeToJSON(MNode node) {
+    JSONObject jsonObject = new JSONObject();
     if (!node.isLeaf() && node.getChildren().size() > 0) {
-      builder.append(":{\n");
-      int first = 0;
       for (MNode child : node.getChildren().values()) {
-        if (first == 0) {
-          first = 1;
-        } else {
-          builder.append(",\n");
-        }
-        builder.append(mnodeToString(child, tab + 1));
+        jsonObject.put(child.getName(), mnodeToJSON(child));
       }
-      builder.append("\n");
-      for (int i = 0; i < tab; i++) {
-        builder.append(QUAD_SPACE);
-      }
-      builder.append("}");
     } else if (node.isLeaf()) {
-      builder.append(":{\n");
-      builder
-          .append(String.format("%s DataType: %s,\n", getTabs(tab + 1), node.getSchema().getType()));
-      builder
-          .append(String.format("%s Encoding: %s,\n", getTabs(tab + 1), node.getSchema().getEncodingType()));
-
-      builder
-          .append(String.format("%s Compressor: %s,\n", getTabs(tab + 1), node.getSchema().getCompressor()));
-      builder
-          .append(String.format("%s args: %s,\n", getTabs(tab + 1), node.getSchema().getProps()));
-      builder.append(
-          String.format("%s StorageGroup: %s\n", getTabs(tab + 1), node.getDataFileName()));
-      builder.append(getTabs(tab));
-      builder.append("}");
+      jsonObject.put("DataType", node.getSchema().getType());
+      jsonObject.put("Encoding", node.getSchema().getEncodingType());
+      jsonObject.put("Compressor", node.getSchema().getCompressor());
+      jsonObject.put("args", node.getSchema().getProps().toString());
+      jsonObject.put("StorageGroup", node.getDataFileName());
     }
-    return builder.toString();
-  }
-
-  private String getTabs(int count) {
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < count; i++) {
-      sb.append(QUAD_SPACE);
-    }
-    return sb.toString();
+    return jsonObject;
   }
 
   public MNode getRoot() {
     return root;
+  }
+
+  /**
+   * combine multiple metadata in string format
+   */
+  public static String combineMetadataInStrings(String[] metadatas) {
+    JSONObject[] jsonObjects = new JSONObject[metadatas.length];
+    for (int i = 0; i < jsonObjects.length; i++) {
+      jsonObjects[i] = JSONObject.parseObject(metadatas[i]);
+    }
+
+    JSONObject root = jsonObjects[0];
+    for (int i = 1; i < jsonObjects.length; i++) {
+      root = combineJSONObjects(root, jsonObjects[i]);
+    }
+    return jsonToString(root);
+  }
+
+  private static JSONObject combineJSONObjects(JSONObject a, JSONObject b) {
+    JSONObject res = new JSONObject();
+
+    Set<String> retainSet = new HashSet<>(a.keySet());
+    retainSet.retainAll(b.keySet());
+    Set<String> aCha = new HashSet<>(a.keySet());
+    Set<String> bCha = new HashSet<>(b.keySet());
+    aCha.removeAll(retainSet);
+    bCha.removeAll(retainSet);
+    for (String key : aCha) {
+      res.put(key, a.getJSONObject(key));
+    }
+    for (String key : bCha) {
+      res.put(key, b.get(key));
+    }
+    for (String key : retainSet) {
+      Object v1 = a.get(key);
+      Object v2 = b.get(key);
+      if (v1 instanceof JSONObject && v2 instanceof JSONObject) {
+        res.put(key, combineJSONObjects((JSONObject) v1, (JSONObject) v2));
+      } else {
+        res.put(key, v1);
+      }
+    }
+    return res;
   }
 }

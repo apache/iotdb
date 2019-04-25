@@ -60,6 +60,8 @@ public class MManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MManager.class);
   private static final String ROOT_NAME = MetadataConstant.ROOT;
+  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
+
   // the lock for read/write
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   // The file storing the serialize info for metadata
@@ -259,7 +261,7 @@ public class MManager {
    */
   public void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props)
-      throws PathErrorException, IOException, MetadataArgsErrorException {
+      throws PathErrorException, IOException {
 
     lock.writeLock().lock();
     try {
@@ -292,7 +294,7 @@ public class MManager {
    * @param encoding the encoding function {@code Encoding} for the timeseries
    */
   public void addPathToMTree(String path, String dataType, String encoding)
-      throws PathErrorException, IOException, MetadataArgsErrorException {
+      throws PathErrorException, IOException {
     TSDataType tsDataType = TSDataType.valueOf(dataType);
     TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
     CompressionType type = CompressionType.valueOf(TSFileConfig.compressor);
@@ -985,10 +987,25 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return mgraph.toString();
+      StringBuilder builder = new StringBuilder();
+      builder.append(TIME_SERIES_TREE_HEADER).append(mgraph.toString());
+      return builder.toString();
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  /**
+   * combine multiple metadata in string format
+   */
+  public static String combineMetadataInStrings(String[] metadatas) {
+    for (int i = 0; i < metadatas.length; i++) {
+      metadatas[i] = metadatas[i].replace(TIME_SERIES_TREE_HEADER, "");
+    }
+    String res = MGraph.combineMetadataInStrings(metadatas);
+    StringBuilder builder = new StringBuilder();
+    builder.append(TIME_SERIES_TREE_HEADER).append(res);
+    return builder.toString();
   }
 
   /**
