@@ -252,11 +252,6 @@ public class TsFileResource {
     return baseDirIndex;
   }
 
-//  public void setBaseDirIndex(int baseDirIndex) {
-//    this.baseDirIndex = baseDirIndex;
-//  }
-
-
   public boolean checkEmpty() {
 
     return startTimeMap.isEmpty() && endTimeMap.isEmpty();
@@ -305,8 +300,6 @@ public class TsFileResource {
     Map<String, Long> endTimeMapCopy = new HashMap<>(this.endTimeMap);
     return new TsFileResource(startTimeMapCopy,
         endTimeMapCopy, overflowChangeType, file);
-    //return new TsFileResource(startTimeMapCopy, endTimeMapCopy, overflowChangeType,
-      //        baseDirIndex, relativePath);
   }
 
   public Set<String> getDevices() {

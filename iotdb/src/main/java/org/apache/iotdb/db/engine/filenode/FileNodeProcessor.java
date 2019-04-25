@@ -382,22 +382,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     return currentTsFileResource.getStartTime(deviceId);
   }
 
-  /**
-   * clear filenode.
-   */
-  public void clearFileNode() throws IOException {
-    isOverflowed = false;
-    emptyTsFileResource = new TsFileResource(null, false);
-    newFileNodes = new ArrayList<>();
-    isMerging = FileNodeProcessorStatus.NONE;
-    numOfMergeFile = 0;
-    fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
-    fileNodeProcessorStore.setFileNodeProcessorStatus(isMerging);
-    fileNodeProcessorStore.setNewFileNodes(newFileNodes);
-    fileNodeProcessorStore.setNumOfMergeFile(numOfMergeFile);
-    fileNodeProcessorStore.setEmptyTsFileResource(emptyTsFileResource);
-  }
-
   private void addAllFileIntoIndex(List<TsFileResource> fileList) {
     // clear map
     invertedIndexOfFiles.clear();
@@ -543,17 +527,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       } catch (BufferWriteProcessorException e) {
         throw new FileNodeProcessorException("Cannot reopen BufferWriteProcessor", e);
       }
-    }
-    return bufferWriteProcessor;
-  }
-
-  /**
-   * get buffer write processor.
-   */
-  public BufferWriteProcessor getBufferWriteProcessor() throws FileNodeProcessorException {
-    if (bufferWriteProcessor == null) {
-      LOGGER.error("The bufferwrite processor is null when get the bufferwriteProcessor");
-      throw new FileNodeProcessorException("The bufferwrite processor is null");
     }
     return bufferWriteProcessor;
   }
@@ -1726,7 +1699,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosed()) {
       bufferWriteFlushFuture = bufferWriteProcessor.flush();
     }
-    if (overflowProcessor != null && !bufferWriteProcessor.isClosed()) {
+    if (overflowProcessor != null && !overflowProcessor.isClosed()) {
       overflowFlushFuture = overflowProcessor.flush();
     }
     return new FileNodeFlushFuture(bufferWriteFlushFuture, overflowFlushFuture);

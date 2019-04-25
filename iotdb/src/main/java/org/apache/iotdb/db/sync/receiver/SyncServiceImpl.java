@@ -619,8 +619,6 @@ public class SyncServiceImpl implements SyncService.Iface {
         for (String timeseries : timeseriesList) {
           paths.clear();
           paths.add(new Path(timeseries));
-          //Map<InsertPlan, String> originDataPoint = new HashMap<>();
-          //Map<InsertPlan, String> newDataPoint = new HashMap<>();
           Set<InsertPlan> originDataPoints = new HashSet<>();
           QueryExpression queryExpression = QueryExpression.create(paths, null);
           QueryDataSet queryDataSet = readOnlyTsFile.query(queryExpression);
