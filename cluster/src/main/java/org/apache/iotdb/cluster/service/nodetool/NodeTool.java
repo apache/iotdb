@@ -53,7 +53,8 @@ public class NodeTool {
         Ring.class,
         StorageGroup.class,
         Host.class,
-        Lag.class
+        Lag.class,
+        Query.class
     );
 
     Cli.CliBuilder<Runnable> builder = Cli.builder("nodetool");

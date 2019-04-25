@@ -32,7 +32,7 @@ public class QueryMetricAsyncProcessor extends BasicAsyncUserProcessor<QueryMetr
     String groupId = request.getGroupID();
 
     QueryMetricResponse response = QueryMetricResponse.createSuccessResponse(groupId,
-        RaftUtils.getMetric(request.getGroupID(), request.getMetric()));
+        RaftUtils.getReplicaMetric(request.getGroupID(), request.getMetric()));
     response.addResult(true);
     asyncContext.sendResponse(response);
   }

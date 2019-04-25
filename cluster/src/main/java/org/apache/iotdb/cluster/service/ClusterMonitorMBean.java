@@ -70,9 +70,16 @@ public interface ClusterMonitorMBean {
   Map<String[], String[]> getDataPartitonOfNode(String ip);
 
   /**
-   * Get log lag for metadata group and each data partition
+   * Get replica lag for metadata group and each data partition
    *
-   * @return key: groupId, value: log lag
+   * @return key: groupId, value: ip -> replica lag
    */
-  Map<String, Map<String, Integer>> getLogLagMap();
+  Map<String, Map<String, Integer>> getReplicaLagMap();
+
+  /**
+   * Get number of query jobs for metadata group and each data partition
+   *
+   * @return key: groupId, value: number of query jobs
+   */
+  Map<String, Integer> getQueryJobNumMap();
 }

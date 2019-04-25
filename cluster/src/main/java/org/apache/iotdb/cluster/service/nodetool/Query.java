@@ -20,20 +20,16 @@ package org.apache.iotdb.cluster.service.nodetool;
 
 import io.airlift.airline.Command;
 import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
 import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
-@Command(name = "lag", description = "Print log lag for all groups of connected host")
-public class Lag extends NodeToolCmd {
+@Command(name = "query", description = "Print number of query jobs for all groups of connected host")
+public class Query extends NodeToolCmd {
 
   @Override
   public void execute(ClusterMonitorMBean proxy)
   {
-    Map<String, Map<String, Integer>> groupMap = proxy.getReplicaLagMap();
-    for (Entry<String, Map<String, Integer>> entry : groupMap.entrySet()) {
-      System.out.println(entry.getKey() + ":");
-      entry.getValue().forEach((node, lag) -> System.out.println("\t" + node + "\t->\t" + lag));
-    }
+    Map<String, Integer> queryNumMap = proxy.getQueryJobNumMap();
+    queryNumMap.forEach((groupId, num) -> System.out.println(groupId + "\t->\t" + num));
   }
 }
