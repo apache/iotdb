@@ -1773,9 +1773,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         waitForOverflowClose();
       }
       overflowProcessor.close();
-      overflowProcessor.clear();
-      overflowProcessor = null;
-    } catch (OverflowProcessorException | IOException e) {
+    } catch (OverflowProcessorException e) {
       throw new FileNodeProcessorException(e);
     }
   }
