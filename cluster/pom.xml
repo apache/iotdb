@@ -142,7 +142,7 @@
                     <outputDirectory>${project.basedir}/../iotdb/iotdb/lib_cluster</outputDirectory>
                 </configuration>
             </plugin>
-            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+            <!--using `mvn test` to triggerAction UT, `mvn verify` to triggerAction ITs
                         Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

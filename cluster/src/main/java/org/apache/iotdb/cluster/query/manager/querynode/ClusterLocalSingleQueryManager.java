@@ -108,6 +108,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   public ClusterLocalSingleQueryManager(long jobId, QueryRepeaterTimer queryRepeaterTimer) {
     this.jobId = jobId;
     this.queryRepeaterTimer = queryRepeaterTimer;
+    this.queryRepeaterTimer.start();
   }
 
   @Override
@@ -288,7 +289,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
 
   @Override
   public void close() throws FileNodeManagerException {
-    queryRepeaterTimer.destroy();
+    queryRepeaterTimer.stop();
     QueryResourceManager.getInstance().endQueryForGivenJob(jobId);
   }
 
