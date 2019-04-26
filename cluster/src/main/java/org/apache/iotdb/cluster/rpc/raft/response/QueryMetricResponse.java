@@ -22,14 +22,14 @@ import java.util.Map;
 
 public class QueryMetricResponse extends BasicResponse {
 
-  private Map<String, Integer> value;
+  private Map<String, Long> value;
 
   private QueryMetricResponse(String groupId, boolean redirected, String leaderStr,
       String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public static QueryMetricResponse createSuccessResponse(String groupId, Map<String, Integer> value) {
+  public static QueryMetricResponse createSuccessResponse(String groupId, Map<String, Long> value) {
     QueryMetricResponse response = new QueryMetricResponse(groupId, false, null,
         null);
     response.value = value;
@@ -40,7 +40,7 @@ public class QueryMetricResponse extends BasicResponse {
     return new QueryMetricResponse(groupId, false, null, errorMsg);
   }
 
-  public Map<String, Integer> getValue() {
+  public Map<String, Long> getValue() {
     return value;
   }
 }

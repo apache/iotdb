@@ -100,7 +100,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public Map<String, Map<String, Integer>> getReplicaLagMap() {
+  public Map<String, Map<String, Long>> getReplicaLagMap() {
     return RaftUtils.getReplicaLagMap();
   }
 

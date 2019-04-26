@@ -30,8 +30,8 @@ public class Lag extends NodeToolCmd {
   @Override
   public void execute(ClusterMonitorMBean proxy)
   {
-    Map<String, Map<String, Integer>> groupMap = proxy.getReplicaLagMap();
-    for (Entry<String, Map<String, Integer>> entry : groupMap.entrySet()) {
+    Map<String, Map<String, Long>> groupMap = proxy.getReplicaLagMap();
+    for (Entry<String, Map<String, Long>> entry : groupMap.entrySet()) {
       System.out.println(entry.getKey() + ":");
       entry.getValue().forEach((node, lag) -> System.out.println("\t" + node + "\t->\t" + lag));
     }

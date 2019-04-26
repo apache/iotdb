@@ -441,12 +441,12 @@ public class RaftUtils {
    *
    * @return key: groupId, value: ip -> replica lag
    */
-  public static Map<String, Map<String, Integer>> getReplicaLagMap() {
+  public static Map<String, Map<String, Long>> getReplicaLagMap() {
     return getReplicaMetricMap("log-lags");
   }
 
-  public static Map<String, Map<String, Integer>> getReplicaMetricMap(String metric) {
-    Map<String, Map<String, Integer>> metricMap = new HashMap<>();
+  public static Map<String, Map<String, Long>> getReplicaMetricMap(String metric) {
+    Map<String, Map<String, Long>> metricMap = new HashMap<>();
     RaftService raftService = (RaftService) server.getMetadataHolder().getService();
     metricMap.put(raftService.getGroupId(), getReplicaMetricFromRaftService(raftService, metric));
 
@@ -454,7 +454,7 @@ public class RaftUtils {
     return metricMap;
   }
 
-  public static Map<String, Integer> getReplicaMetric(String groupId, String metric) {
+  public static Map<String, Long> getReplicaMetric(String groupId, String metric) {
     if (server.getDataPartitionHolderMap().containsKey(groupId)) {
       RaftService service = (RaftService) server.getDataPartitionHolder(groupId).getService();
       return getReplicaMetricFromRaftService(service, metric);
@@ -464,11 +464,11 @@ public class RaftUtils {
     }
   }
 
-  private static Map<String, Integer> getReplicaMetricFromRaftService(RaftService service, String metric) {
+  private static Map<String, Long> getReplicaMetricFromRaftService(RaftService service, String metric) {
     String groupId = service.getGroupId();
     LOGGER.debug("Get replica metric {} for group {}.", metric, service.getGroupId());
     NodeImpl node = (NodeImpl) service.getNode();
-    Map<String, Integer> lagMap;
+    Map<String, Long> lagMap;
     if (node.isLeader()) {
       LOGGER.debug("Get metric locally.");
       List<PeerId> nodes = service.getPeerIdList();
@@ -480,16 +480,16 @@ public class RaftUtils {
       for (int i = 0; i < nodes.size(); i++) {
         // leader doesn't have lag metric
         if (nodes.get(i).equals(node.getServerId())) {
-          lagMap.put(nodes.get(i).getIp() + " (leader)", 0);
+          lagMap.put(nodes.get(i).getIp() + " (leader)", 0L);
           continue;
         }
 
         String key = String.format(keyFormat, groupId, nodes.get(i), metric);
-        int value = -1;
-        if (metric.contains(key)) {
-          value = (int) metrics.get(key).getValue();
+        long value = -1;
+        if (metrics.containsKey(key)) {
+          value = (long) metrics.get(key).getValue();
         } else {
-          LOGGER.debug("Metric map {} should contain key {}, but not.", metrics, key);
+          LOGGER.warn("Metric map {} should contain key {}, but not.", metrics, key);
         }
         lagMap.put(nodes.get(i).getIp(), value);
       }
@@ -499,7 +499,7 @@ public class RaftUtils {
     return lagMap;
   }
 
-  private static Map<String, Integer> getReplicaMetricFromRemoteNode(String groupId, String metric) {
+  private static Map<String, Long> getReplicaMetricFromRemoteNode(String groupId, String metric) {
     QueryMetricRequest request = new QueryMetricRequest(groupId,
         config.getReadDataConsistencyLevel(), metric);
     SingleQPTask task = new SingleQPTask(false, request);
@@ -513,7 +513,7 @@ public class RaftUtils {
       client.asyncHandleRequest(task.getRequest(), holder, task);
 
       task.await();
-      Map<String, Integer> value = null;
+      Map<String, Long> value = null;
       if (task.getTaskState() == TaskState.FINISH) {
         BasicResponse response = task.getResponse();
         value = response == null ? null : ((QueryMetricResponse) response).getValue();

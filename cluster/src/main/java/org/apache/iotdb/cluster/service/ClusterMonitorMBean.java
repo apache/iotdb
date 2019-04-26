@@ -74,7 +74,7 @@ public interface ClusterMonitorMBean {
    *
    * @return key: groupId, value: ip -> replica lag
    */
-  Map<String, Map<String, Integer>> getReplicaLagMap();
+  Map<String, Map<String, Long>> getReplicaLagMap();
 
   /**
    * Get number of query jobs for metadata group and each data partition
