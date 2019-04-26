@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.cluster.service.nodetool;
 
-import io.airlift.airline.Arguments;
 import io.airlift.airline.Command;
+import io.airlift.airline.Option;
 import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
 
 @Command(name = "storagegroup", description = "Print all hosts information of specific storage group")
 public class StorageGroup extends NodeToolCmd {
 
-  @Arguments(description = "Specify a storage group for accurate hosts information")
+  @Option(title = "storage group", name = {"-sg",
+      "--storagegroup"}, description = "Specify a storage group for accurate hosts information")
   private String sg = null;
 
   @Override

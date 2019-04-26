@@ -31,5 +31,7 @@ public class Query extends NodeToolCmd {
   {
     Map<String, Integer> queryNumMap = proxy.getQueryJobNumMap();
     queryNumMap.forEach((groupId, num) -> System.out.println(groupId + "\t->\t" + num));
+    int sum = queryNumMap.values().stream().mapToInt(num -> num).sum();
+    System.out.println("Total\t->\t" + sum);
   }
 }

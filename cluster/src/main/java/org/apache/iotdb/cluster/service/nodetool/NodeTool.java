@@ -47,7 +47,6 @@ import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 public class NodeTool {
 
   public static void main(String... args) {
-    args = ("-h 192.168.130.9 -p 31999 host").split(" ");
     List<Class<? extends Runnable>> commands = Lists.newArrayList(
         Help.class,
         Ring.class,
