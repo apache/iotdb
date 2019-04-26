@@ -20,18 +20,24 @@
 
 ## Only for test
 nodes=$1
-if [ $nodes == "3" ]
+if [ $nodes == "1" ]
 then
-  iplist=('192.168.130.14' '192.168.130.16' '192.168.130.18')
+  iplist=('192.168.130.14')
+elif [ $nodes == "3" ]
+then
+  iplist=('192.168.130.12' '192.168.130.15' '192.168.130.14')
 elif [ $nodes == "5" ]
 then
   iplist=('192.168.130.12' '192.168.130.13' '192.168.130.14' '192.168.130.16' '192.168.130.18')
 elif [ $nodes == "7" ]
 then
-  iplist=('192.168.130.9' '192.168.130.12' '192.168.130.13' '192.168.130.14' '192.168.130.15' '192.168.130.16' '192.168.130.18')
+  iplist=('192.168.130.8' '192.168.130.12' '192.168.130.13' '192.168.130.14' '192.168.130.15' '192.168.130.16' '192.168.130.18')
+elif [ $nodes == "9" ]
+then
+  iplist=('192.168.130.6' '192.168.130.7' '192.168.130.8' '192.168.130.12' '192.168.130.13' '192.168.130.14' '192.168.130.15' '192.168.130.16' '192.168.130.18')
 elif [ $nodes == "10" ]
 then
-  iplist=('192.168.130.8' '192.168.130.9' '192.168.130.10' '192.168.130.9' '192.168.130.12' '192.168.130.13' '192.168.130.14' '192.168.130.15' '192.168.130.16' '192.168.130.18')
+  iplist=('192.168.130.5' '192.168.130.6' '192.168.130.7' '192.168.130.8' '192.168.130.12' '192.168.130.13' '192.168.130.14' '192.168.130.15' '192.168.130.16' '192.168.130.18')
 else
   echo "node number error"
   exit 1;
@@ -41,7 +47,7 @@ for ip in ${iplist[@]}
 do
   ssh fit@$ip "chmod a+x /home/fit/xuyi/incubator-iotdb/iotdb/iotdb/bin/stop-cluster.sh"
   ssh fit@$ip "sh /home/fit/xuyi/incubator-iotdb/iotdb/iotdb/bin/stop-cluster.sh"
+  ssh fit@$ip "sh /home/fit/xuyi/incubator-iotdb/iotdb/iotdb/bin/stop-server.sh"
   ssh fit@$ip "rm -rf /home/fit/xuyi/incubator-iotdb/iotdb/iotdb/data"
   ssh fit@$ip "rm -rf /home/fit/xuyi/incubator-iotdb/iotdb/iotdb/logs"
 done
-
