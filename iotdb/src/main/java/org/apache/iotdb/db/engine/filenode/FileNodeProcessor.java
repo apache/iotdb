@@ -43,7 +43,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -149,10 +148,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private Set<Integer> newMultiPassTokenSet = new HashSet<>();
 
   /**
-   * lock resource when switching status in merge process
+   * Represent the number of old queries that have not ended.
+   * This parameter only decreases but not increase.
    */
-  private Lock oldMultiPassLock;
   private CountDownLatch oldMultiPassCount = null;
+
+  /**
+   * Represent the number of new queries that have not ended.
+   */
   private AtomicInteger newMultiPassCount = new AtomicInteger(0);
   /**
    * system recovery
@@ -1253,7 +1256,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     try {
       oldMultiPassTokenSet = newMultiPassTokenSet;
       oldMultiPassCount = new CountDownLatch(newMultiPassCount.get());
-      oldMultiPassLock = new ReentrantLock(false);
       newMultiPassTokenSet = new HashSet<>();
       newMultiPassCount = new AtomicInteger(0);
       List<TsFileResource> result = new ArrayList<>();
@@ -1362,7 +1364,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
             getProcessorName());
         throw new FileNodeProcessorException(e);
       }
-      oldMultiPassLock.lock();
     }
 
     try {
@@ -1413,9 +1414,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
     } finally {
       oldMultiPassTokenSet = null;
-      if (oldMultiPassLock != null) {
-        oldMultiPassLock.unlock();
-      }
       oldMultiPassCount = null;
     }
 
