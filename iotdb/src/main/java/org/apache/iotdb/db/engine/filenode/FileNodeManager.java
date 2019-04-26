@@ -694,9 +694,8 @@ public class FileNodeManager implements IStatistic, IService {
           fileNodeProcessor.getProcessorName());
       fileNodeProcessor.decreaseMultiPassCount(token);
     } catch (FileNodeProcessorException e) {
-      throw new FileNodeManagerException(String
-          .format("FileNodeProcessor of [%s] meets error when ending query",
-              fileNodeProcessor.getProcessorName()), e);
+      LOGGER.error("Failed to end query: the deviceId {}, token {}.", deviceId, token, e);
+      throw new FileNodeManagerException(e);
     } finally {
       fileNodeProcessor.writeUnlock();
     }

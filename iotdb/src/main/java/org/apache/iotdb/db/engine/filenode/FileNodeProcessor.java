@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -151,7 +152,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * lock resource when switching status in merge process
    */
   private Lock oldMultiPassLock;
-  private AtomicInteger oldMultiPassCount = null;
+  private CountDownLatch oldMultiPassCount = null;
   private AtomicInteger newMultiPassCount = new AtomicInteger(0);
   /**
    * system recovery
@@ -757,14 +758,15 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       return true;
     } else if (oldMultiPassTokenSet != null && oldMultiPassTokenSet.contains(token)) {
       // remove token first, then unlock
-      int oldMultiPassCountValue = oldMultiPassCount.decrementAndGet();
       oldMultiPassTokenSet.remove(token);
+      oldMultiPassCount.countDown();
+      long oldMultiPassCountValue = oldMultiPassCount.getCount();
       if (oldMultiPassCountValue < 0) {
         throw new FileNodeProcessorException(String
             .format("Remove MultiPassCount error, oldMultiPassCount:%d", oldMultiPassCountValue));
       }
       LOGGER.debug("Remove multi token:{}, old set:{}, count:{}", token, oldMultiPassTokenSet,
-          oldMultiPassCount);
+          oldMultiPassCount.getCount());
       return true;
     } else {
       LOGGER.error("remove token error:{},new set:{}, old set:{}", token, newMultiPassTokenSet,
@@ -1250,7 +1252,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     writeLock();
     try {
       oldMultiPassTokenSet = newMultiPassTokenSet;
-      oldMultiPassCount = newMultiPassCount;
+      oldMultiPassCount = new CountDownLatch(newMultiPassCount.get());
       oldMultiPassLock = new ReentrantLock(false);
       newMultiPassTokenSet = new HashSet<>();
       newMultiPassCount = new AtomicInteger(0);
@@ -1352,8 +1354,17 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       LOGGER.info("The old Multiple Pass Token set is {}, the old Multiple Pass Count is {}",
           oldMultiPassTokenSet,
           oldMultiPassCount);
+      try {
+        oldMultiPassCount.await();
+      } catch (InterruptedException e) {
+        LOGGER.info(
+            "The filenode processor {} encountered an error when it waits for all old queries over.",
+            getProcessorName());
+        throw new FileNodeProcessorException(e);
+      }
       oldMultiPassLock.lock();
     }
+
     try {
       writeLock();
       try {
@@ -1710,11 +1721,11 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     if (oldMultiPassCount == null) {
       return true;
     }
-    if (oldMultiPassCount.get() == 0) {
+    if (oldMultiPassCount.getCount() == 0) {
       return true;
     } else {
       LOGGER.info("The filenode {} can't be closed, because oldMultiPassCount is {}",
-          getProcessorName(), oldMultiPassCount);
+          getProcessorName(), oldMultiPassCount.getCount());
       return false;
     }
   }
