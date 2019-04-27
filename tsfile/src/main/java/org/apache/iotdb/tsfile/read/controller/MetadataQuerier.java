@@ -78,6 +78,12 @@ public interface MetadataQuerier {
    */
   void setLoadMode(LoadMode mode);
 
+  /**
+   * The load mode of the MetadataQuerier:
+   * NoPartition - load metadata of all chunkgroups in the file
+   * InPartition - load metadata of chunkgroups which fall in the current partition
+   * PrevPartition - load metadata of chunkgroups which fall ahead the current partition
+   */
   enum LoadMode {
     NoPartition, InPartition, PrevPartition
   }

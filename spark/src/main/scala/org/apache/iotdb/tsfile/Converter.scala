@@ -134,13 +134,13 @@ object Converter {
     * Construct fields with the TSFile data type converted to the SparkSQL data type.
     *
     * @param tsfileSchema tsfileSchema
-    * @param isTimeField  true to add a time field; false to not
+    * @param addTimeField  true to add a time field; false to not
     * @return the converted list of fields
     */
-  def toSqlField(tsfileSchema: util.ArrayList[MeasurementSchema], isTimeField: Boolean): ListBuffer[StructField] = {
+  def toSqlField(tsfileSchema: util.ArrayList[MeasurementSchema], addTimeField: Boolean): ListBuffer[StructField] = {
     val fields = new ListBuffer[StructField]()
 
-    if (isTimeField) {
+    if (addTimeField) {
       fields += StructField(QueryConstant.RESERVED_TIME, LongType, nullable = false)
     }
 
@@ -327,7 +327,7 @@ object Converter {
     //get paths from schema
     val paths = new util.ArrayList[org.apache.iotdb.tsfile.read.common.Path]
     schema.foreach(f => {
-      if (!QueryConstant.RESERVED_TIME.equals(f.name)) { // the time field in is excluded
+      if (!QueryConstant.RESERVED_TIME.equals(f.name)) { // the time field is excluded
         paths.add(new org.apache.iotdb.tsfile.read.common.Path(f.name))
       }
     })
@@ -398,7 +398,7 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.eq(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructFilter(schema, node.attribute, node.value, "Eq")
+          filter = constructFilter(schema, node.attribute, node.value, FilterTypes.Eq)
         }
         filter
 
@@ -406,7 +406,7 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.lt(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructFilter(schema, node.attribute, node.value, "Lt")
+          filter = constructFilter(schema, node.attribute, node.value, FilterTypes.Lt)
         }
         filter
 
@@ -414,7 +414,7 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.ltEq(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructFilter(schema, node.attribute, node.value, "LtEq")
+          filter = constructFilter(schema, node.attribute, node.value, FilterTypes.LtEq)
         }
         filter
 
@@ -422,7 +422,7 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.gt(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructFilter(schema, node.attribute, node.value, "Gt")
+          filter = constructFilter(schema, node.attribute, node.value, FilterTypes.Gt)
         }
         filter
 
@@ -430,7 +430,7 @@ object Converter {
         if (QueryConstant.RESERVED_TIME.equals(node.attribute.toLowerCase())) {
           filter = new GlobalTimeExpression(TimeFilter.gtEq(node.value.asInstanceOf[java.lang.Long]))
         } else {
-          filter = constructFilter(schema, node.attribute, node.value, "GtEq")
+          filter = constructFilter(schema, node.attribute, node.value, FilterTypes.GtEq)
         }
         filter
 
@@ -439,7 +439,7 @@ object Converter {
     }
   }
 
-  def constructFilter(schema: StructType, nodeName: String, nodeValue: Any, filterType: String): IExpression = {
+  def constructFilter(schema: StructType, nodeName: String, nodeValue: Any, filterType: FilterTypes.Value): IExpression = {
     val fieldNames = schema.fieldNames
     val index = fieldNames.indexOf(nodeName)
     if (index == -1) {
@@ -450,7 +450,7 @@ object Converter {
       val dataType = schema.get(index).dataType
 
       filterType match {
-        case "Eq" =>
+        case FilterTypes.Eq =>
           dataType match {
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(nodeName),
@@ -478,7 +478,7 @@ object Converter {
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }
-        case "Gt" =>
+        case FilterTypes.Gt =>
           dataType match {
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(nodeName),
@@ -498,7 +498,7 @@ object Converter {
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }
-        case "GtEq" =>
+        case FilterTypes.GtEq =>
           dataType match {
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(nodeName),
@@ -518,7 +518,7 @@ object Converter {
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }
-        case "Lt" =>
+        case FilterTypes.Lt =>
           dataType match {
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(nodeName),
@@ -538,7 +538,7 @@ object Converter {
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }
-        case "LtEq" =>
+        case FilterTypes.LtEq =>
           dataType match {
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(nodeName),
@@ -560,6 +560,10 @@ object Converter {
           }
       }
     }
+  }
+
+  object FilterTypes extends Enumeration {
+    val Eq, Gt, GtEq, Lt, LtEq = Value
   }
 
   class SparkSqlFilterException(message: String, cause: Throwable)
