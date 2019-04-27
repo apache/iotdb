@@ -35,7 +35,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 public abstract class Processor {
 
   private final ReadWriteLock lock;
-  private String processorName;
+  protected String processorName;
 
   /**
    * Construct processor using name space seriesPath

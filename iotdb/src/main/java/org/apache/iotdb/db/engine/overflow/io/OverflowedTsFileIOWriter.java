@@ -16,32 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+package org.apache.iotdb.db.engine.overflow.io;
 
-public interface IWritableMemChunk extends TimeValuePairSorter {
+import java.io.File;
+import java.io.FileNotFoundException;
+import org.apache.iotdb.tsfile.write.writer.DefaultTsFileOutput;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-  void putLong(long t, long v);
+public class OverflowedTsFileIOWriter extends TsFileIOWriter {
 
-  void putInt(long t, int v);
+  public OverflowedTsFileIOWriter(File file) throws FileNotFoundException {
+    super();
+    this.out = new DefaultTsFileOutput(file, true);
 
-  void putFloat(long t, float v);
+  }
 
-  void putDouble(long t, double v);
 
-  void putBinary(long t, Binary v);
-
-  void putBoolean(long t, boolean v);
-
-  void write(long insertTime, String insertValue);
-
-  void write(long insertTime, Object insertValue);
-
-  void reset();
-
-  int count();
-
-  TSDataType getType();
 }

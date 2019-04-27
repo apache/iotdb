@@ -26,27 +26,27 @@ import java.util.List;
 public class InsertOperator extends SFWOperator {
 
   private long time;
-  private List<String> measurementList;
-  private List<String> valueList;
+  private String[] measurementList;
+  private String[] valueList;
 
   public InsertOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.INSERT;
   }
 
-  public List<String> getMeasurementList() {
+  public String[] getMeasurementList() {
     return measurementList;
   }
 
-  public void setMeasurementList(List<String> measurementList) {
+  public void setMeasurementList(String[] measurementList) {
     this.measurementList = measurementList;
   }
 
-  public List<String> getValueList() {
+  public String[] getValueList() {
     return valueList;
   }
 
-  public void setValueList(List<String> insertValue) {
+  public void setValueList(String[] insertValue) {
     this.valueList = insertValue;
   }
 
