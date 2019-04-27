@@ -126,11 +126,8 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
         override def next(): InternalRow = {
 
           val curRecord = queryDataSet.next()
-          val fields = new scala.collection.mutable.HashMap[String, Field]()
-          for (i <- 0 until curRecord.getFields.size()) {
-            val field = curRecord.getFields.get(i)
-            fields.put(queryDataSet.getPaths.get(i).getFullPath, field)
-          }
+          val fields = curRecord.getFields
+          val paths = queryDataSet.getPaths
 
           //index in one required row
           var index = 0
@@ -138,7 +135,12 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
             if (field.name == QueryConstant.RESERVED_TIME) {
               rowBuffer(index) = curRecord.getTimestamp
             } else {
-              rowBuffer(index) = Converter.toSqlValue(fields.getOrElse(field.name, null))
+              val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(field.name))
+              var curField: Field = null
+              if (pos != -1) {
+                curField = fields.get(pos)
+              }
+              rowBuffer(index) = Converter.toSqlValue(curField)
             }
             index += 1
           })
