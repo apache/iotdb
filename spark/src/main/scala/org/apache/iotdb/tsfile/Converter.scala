@@ -45,6 +45,22 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
+  * A series has a name and a type.
+  *
+  * @param seriesName name
+  * @param seriesType type
+  */
+class Series(seriesName: String, seriesType: TSDataType) {
+  var _name: String = seriesName
+  var _type: TSDataType = seriesType
+
+  def getName = _name
+  def getType = _type
+
+  override def toString = s"[" + _name + "," + _type + "]"
+}
+
+/**
   * This object contains methods that are used to convert schema and data between SparkSQL and TSFile.
   *
   */
@@ -56,8 +72,8 @@ object Converter {
     * @param tsFileMetaData TsFileMetaData
     * @return union series
     */
-  def getSeries(tsFileMetaData: TsFileMetaData): util.ArrayList[MeasurementSchema] = {
-    val series = new util.ArrayList[MeasurementSchema]()
+  def getSeries(tsFileMetaData: TsFileMetaData): util.ArrayList[Series] = {
+    val series = new util.ArrayList[Series]()
 
     val devices = tsFileMetaData.getDeviceMap.keySet()
     val measurements = tsFileMetaData.getMeasurementSchema
@@ -65,7 +81,7 @@ object Converter {
     devices.foreach(d => {
       measurements.foreach(m => {
         val fullPath = d + "." + m._1
-        series.add(new MeasurementSchema(fullPath, m._2.getType, m._2.getEncodingType)
+        series.add(new Series(fullPath, m._2.getType)
         )
       })
     })
@@ -81,8 +97,8 @@ object Converter {
     * @param conf  hadoop configuration
     * @return union series
     */
-  def getUnionSeries(files: Seq[FileStatus], conf: Configuration): util.ArrayList[MeasurementSchema] = {
-    val unionSeries = new util.ArrayList[MeasurementSchema]()
+  def getUnionSeries(files: Seq[FileStatus], conf: Configuration): util.ArrayList[Series] = {
+    val unionSeries = new util.ArrayList[Series]()
     var seriesSet: mutable.Set[String] = mutable.Set()
 
     files.foreach(f => {
@@ -97,7 +113,7 @@ object Converter {
           val fullPath = d + "." + m._1
           if (!seriesSet.contains(fullPath)) {
             seriesSet += fullPath
-            unionSeries.add(new MeasurementSchema(fullPath, m._2.getType, m._2.getEncodingType)
+            unionSeries.add(new Series(fullPath, m._2.getType)
             )
           }
         })
@@ -137,15 +153,15 @@ object Converter {
     * @param addTimeField  true to add a time field; false to not
     * @return the converted list of fields
     */
-  def toSqlField(tsfileSchema: util.ArrayList[MeasurementSchema], addTimeField: Boolean): ListBuffer[StructField] = {
+  def toSqlField(tsfileSchema: util.ArrayList[Series], addTimeField: Boolean): ListBuffer[StructField] = {
     val fields = new ListBuffer[StructField]()
 
     if (addTimeField) {
       fields += StructField(QueryConstant.RESERVED_TIME, LongType, nullable = false)
     }
 
-    tsfileSchema.foreach((series: MeasurementSchema) => {
-      fields += StructField(series.getMeasurementId, series.getType match {
+    tsfileSchema.foreach((series: Series) => {
+      fields += StructField(series.getName, series.getType match {
         case TSDataType.BOOLEAN => BooleanType
         case TSDataType.INT32 => IntegerType
         case TSDataType.INT64 => LongType
@@ -165,7 +181,7 @@ object Converter {
     * @param tsfileSchema all time series information in TSFile
     * @return SparkSQL table schema with the time field added
     */
-  def toSqlSchema(tsfileSchema: util.ArrayList[MeasurementSchema]): Option[StructType] = {
+  def toSqlSchema(tsfileSchema: util.ArrayList[Series]): Option[StructType] = {
     val fields = toSqlField(tsfileSchema, true) // true to add the time field
 
     SchemaType(StructType(fields.toList), nullable = false).dataType match {

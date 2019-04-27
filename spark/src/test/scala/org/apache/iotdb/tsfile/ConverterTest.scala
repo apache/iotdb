@@ -24,14 +24,13 @@ import java.util
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
+import org.apache.iotdb.tool.TsFileWrite
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
 import org.apache.iotdb.tsfile.io.HDFSInput
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Field
-import org.apache.iotdb.tool.TsFileWrite
 import org.apache.iotdb.tsfile.utils.Binary
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.sources._
@@ -90,12 +89,12 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     val series = Converter.getSeries(tsFileMetaData)
 
     Assert.assertEquals(6, series.size())
-    Assert.assertEquals("[device_1.sensor_3,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(0).toString)
-    Assert.assertEquals("[device_1.sensor_1,FLOAT,RLE,{},UNCOMPRESSED]", series.get(1).toString)
-    Assert.assertEquals("[device_1.sensor_2,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(2).toString)
-    Assert.assertEquals("[device_2.sensor_3,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(3).toString)
-    Assert.assertEquals("[device_2.sensor_1,FLOAT,RLE,{},UNCOMPRESSED]", series.get(4).toString)
-    Assert.assertEquals("[device_2.sensor_2,INT32,TS_2DIFF,{},UNCOMPRESSED]", series.get(5).toString)
+    Assert.assertEquals("[device_1.sensor_3,INT32]", series.get(0).toString)
+    Assert.assertEquals("[device_1.sensor_1,FLOAT]", series.get(1).toString)
+    Assert.assertEquals("[device_1.sensor_2,INT32]", series.get(2).toString)
+    Assert.assertEquals("[device_2.sensor_3,INT32]", series.get(3).toString)
+    Assert.assertEquals("[device_2.sensor_1,FLOAT]", series.get(4).toString)
+    Assert.assertEquals("[device_2.sensor_2,INT32]", series.get(5).toString)
 
     in.close()
   }
@@ -114,12 +113,12 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     val tsfileSchema = Converter.getUnionSeries(statusSeq, conf)
 
     Assert.assertEquals(tsfileSchema.size(), 6)
-    Assert.assertEquals("[device_1.sensor_3,INT32,TS_2DIFF,{},UNCOMPRESSED]", tsfileSchema.get(0).toString)
-    Assert.assertEquals("[device_1.sensor_1,FLOAT,RLE,{},UNCOMPRESSED]", tsfileSchema.get(1).toString)
-    Assert.assertEquals("[device_1.sensor_2,INT32,TS_2DIFF,{},UNCOMPRESSED]", tsfileSchema.get(2).toString)
-    Assert.assertEquals("[device_2.sensor_3,INT32,TS_2DIFF,{},UNCOMPRESSED]", tsfileSchema.get(3).toString)
-    Assert.assertEquals("[device_2.sensor_1,FLOAT,RLE,{},UNCOMPRESSED]", tsfileSchema.get(4).toString)
-    Assert.assertEquals("[device_2.sensor_2,INT32,TS_2DIFF,{},UNCOMPRESSED]", tsfileSchema.get(5).toString)
+    Assert.assertEquals("[device_1.sensor_3,INT32]", tsfileSchema.get(0).toString)
+    Assert.assertEquals("[device_1.sensor_1,FLOAT]", tsfileSchema.get(1).toString)
+    Assert.assertEquals("[device_1.sensor_2,INT32]", tsfileSchema.get(2).toString)
+    Assert.assertEquals("[device_2.sensor_3,INT32]", tsfileSchema.get(3).toString)
+    Assert.assertEquals("[device_2.sensor_1,FLOAT]", tsfileSchema.get(4).toString)
+    Assert.assertEquals("[device_2.sensor_2,INT32]", tsfileSchema.get(5).toString)
   }
 
   test("testToSqlValue") {
@@ -145,13 +144,13 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
   }
 
   test("testToSparkSqlSchema") {
-    val fields: util.ArrayList[MeasurementSchema] = new util.ArrayList[MeasurementSchema]()
-    fields.add(new MeasurementSchema("device_1.sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF))
-    fields.add(new MeasurementSchema("device_1.sensor_1", TSDataType.FLOAT, TSEncoding.RLE))
-    fields.add(new MeasurementSchema("device_1.sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF))
-    fields.add(new MeasurementSchema("device_2.sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF))
-    fields.add(new MeasurementSchema("device_2.sensor_1", TSDataType.FLOAT, TSEncoding.RLE))
-    fields.add(new MeasurementSchema("device_2.sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF))
+    val fields: util.ArrayList[Series] = new util.ArrayList[Series]()
+    fields.add(new Series("device_1.sensor_3", TSDataType.INT32))
+    fields.add(new Series("device_1.sensor_1", TSDataType.FLOAT))
+    fields.add(new Series("device_1.sensor_2", TSDataType.INT32))
+    fields.add(new Series("device_2.sensor_3", TSDataType.INT32))
+    fields.add(new Series("device_2.sensor_1", TSDataType.FLOAT))
+    fields.add(new Series("device_2.sensor_2", TSDataType.INT32))
 
     val sqlSchema = Converter.toSqlSchema(fields)
 
