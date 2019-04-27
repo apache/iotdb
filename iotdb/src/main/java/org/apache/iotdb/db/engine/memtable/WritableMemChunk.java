@@ -67,6 +67,32 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
   }
 
+  public void write(long insertTime, Object value) {
+    switch (dataType) {
+      case BOOLEAN:
+        putBoolean(insertTime, (Boolean)value);
+        break;
+      case INT32:
+        putInt(insertTime, (Integer)value);
+        break;
+      case INT64:
+        putLong(insertTime, (Long)value);
+        break;
+      case FLOAT:
+        putFloat(insertTime, (Float)value);
+        break;
+      case DOUBLE:
+        putDouble(insertTime, (Double)value);
+        break;
+      case TEXT:
+        putBinary(insertTime, (Binary)value);
+        break;
+      default:
+        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+    }
+  }
+
+
   @Override
   public void putLong(long t, long v) {
     list.putTimestamp(t, v);
@@ -101,7 +127,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   // TODO: Consider using arrays to sort and remove duplicates
   public List<TimeValuePair> getSortedTimeValuePairList() {
     int length = list.size();
-
     Map<Long, TsPrimitiveType> map = new HashMap<>(length, 1.0f);
     for (int i = 0; i < length; i++) {
       map.put(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i)));

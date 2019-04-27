@@ -33,9 +33,9 @@ public interface WriteLogNodeManager {
    * processorStoreFilePath are provided, if either restoreFilePath or processorStoreFilePath is not
    * provided and the LogNode does not exist, null is returned.
    *
-   * @param identifier -identifier
-   * @param processorStoreFilePath -processor store file path
-   * @param restoreFilePath -restore file path
+   * @param identifier -identifier, the format: "{storageGroupName}-bufferwrite/overflow"
+   * @param restoreFilePath -restore file path of the data file. e.g, data/settled/{storageGroupName}/{tsfileName}.restore
+   * @param processorStoreFilePath -processor store file path. e.g., data/system/info/{storageGroupName}/{storageGroupName}.restore
    */
   WriteLogNode getNode(String identifier, String restoreFilePath, String processorStoreFilePath)
       throws IOException;

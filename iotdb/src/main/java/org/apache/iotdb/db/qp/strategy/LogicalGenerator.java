@@ -445,15 +445,15 @@ public class LogicalGenerator {
           "number of measurement is NOT EQUAL TO the number of values");
     }
     insertOp.setTime(timestamp);
-    List<String> measurementList = new ArrayList<>();
+    String[] measurementList = new String[astNode.getChild(1).getChildCount() - 1];
     for (int i = 1; i < astNode.getChild(1).getChildCount(); i++) {
-      measurementList.add(astNode.getChild(1).getChild(i).getText());
+      measurementList[i - 1] = astNode.getChild(1).getChild(i).getText();
     }
     insertOp.setMeasurementList(measurementList);
 
-    List<String> valueList = new ArrayList<>();
+    String[] valueList = new String[astNode.getChild(2).getChildCount() - 1];
     for (int i = 1; i < astNode.getChild(2).getChildCount(); i++) {
-      valueList.add(astNode.getChild(2).getChild(i).getText());
+      valueList[i - 1] = astNode.getChild(2).getChild(i).getText();
     }
     insertOp.setValueList(valueList);
   }

@@ -58,7 +58,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private static final int TS_METADATA_BYTE_SIZE = 4;
   private static final int TS_POSITION_BYTE_SIZE = 8;
 
-  private static final String RESTORE_SUFFIX = ".restore";
+  public static final String RESTORE_SUFFIX = ".restore";
   private static final String DEFAULT_MODE = "rw";
 
   private int lastFlushedChunkGroupIndex = 0;
@@ -83,7 +83,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private boolean isNewResource = false;
 
-  RestorableTsFileIOWriter(String processorName, String insertFilePath) throws IOException {
+  public RestorableTsFileIOWriter(String processorName, String insertFilePath) throws IOException {
     super();
     this.insertFilePath = insertFilePath;
     this.restoreFilePath = insertFilePath + RESTORE_SUFFIX;
@@ -121,7 +121,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       } catch (IOException e) {
         LOGGER.info("remove unsealed tsfile restore file failed: ", e);
       }
-
       this.out = new DefaultTsFileOutput(new FileOutputStream(insertFile));
       this.chunkGroupMetaDataList = new ArrayList<>();
       lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
@@ -157,8 +156,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
     this.getAppendedRowGroupMetadata();
     tsDeviceMetadata.setChunkGroupMetadataList(this.append);
-    RandomAccessFile out = new RandomAccessFile(restoreFilePath, DEFAULT_MODE);
-    try {
+
+    try (RandomAccessFile out = new RandomAccessFile(restoreFilePath, DEFAULT_MODE)) {
       if (out.length() > 0) {
         out.seek(out.length() - TS_POSITION_BYTE_SIZE);
       }
@@ -172,8 +171,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       // write tsfile position using byte[8] which is a long
       byte[] lastPositionBytes = BytesUtils.longToBytes(lastPosition);
       out.write(lastPositionBytes);
-    } finally {
-      out.close();
     }
   }
 
@@ -222,7 +219,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @param dataType the value type
    * @return chunks' metadata
    */
-  List<ChunkMetaData> getMetadatas(String deviceId, String measurementId, TSDataType dataType) {
+  public List<ChunkMetaData> getMetadatas(String deviceId, String measurementId, TSDataType dataType) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
     if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
       for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
@@ -241,7 +238,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return insertFilePath;
   }
 
-  String getRestoreFilePath() {
+  public String getRestoreFilePath() {
     return restoreFilePath;
   }
 
@@ -261,7 +258,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * add all appendChunkGroupMetadatas into memory. After calling this method, other classes can
    * read these metadata.
    */
-  void appendMetadata() {
+  public void appendMetadata() {
     if (!append.isEmpty()) {
       for (ChunkGroupMetaData rowGroupMetaData : append) {
         for (ChunkMetaData chunkMetaData : rowGroupMetaData.getChunkMetaDataList()) {
@@ -290,7 +287,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     try {
       Files.delete(Paths.get(restoreFilePath));
     } catch (IOException e) {
-      LOGGER.info("delete restore file {} failed, because ", restoreFilePath, e);
+      LOGGER.info("delete restore file {} failed, because {}", restoreFilePath, e.getMessage());
     }
   }
 
