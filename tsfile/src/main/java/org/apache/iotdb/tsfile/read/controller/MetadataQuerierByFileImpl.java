@@ -292,6 +292,12 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
   }
 
+  /**
+   * check if the given chunk group can be accessed under the current load mode
+   * @param chunkGroupMetaData a chunk group's metadata
+   * @return True if the chunk group can be accessed. False otherwise.
+   * @throws IOException illegal mode
+   */
   private boolean checkAccess(ChunkGroupMetaData chunkGroupMetaData) throws IOException {
     long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
     long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();
