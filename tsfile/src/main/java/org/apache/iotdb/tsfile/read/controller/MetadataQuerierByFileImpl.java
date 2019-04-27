@@ -229,15 +229,14 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     // get all ChunkMetaData of this path included in all ChunkGroups of this device
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      if (!checkAccess(chunkGroupMetaData)) {
-        continue;
-      }
-      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-          .getChunkMetaDataList();
-      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-        if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
-          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-          chunkMetaDataList.add(chunkMetaData);
+      if (checkAccess(chunkGroupMetaData)) {
+        List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
+            .getChunkMetaDataList();
+        for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
+          if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
+            chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+            chunkMetaDataList.add(chunkMetaData);
+          }
         }
       }
     }
@@ -301,18 +300,10 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
       case NoPartition:
         return true; // always true
       case InPartition:
-        if (partitionStartOffset <= middleOffsetOfChunkGroup
-            && middleOffsetOfChunkGroup < partitionEndOffset) {
-          return true;
-        } else {
-          return false;
-        }
+        return (partitionStartOffset <= middleOffsetOfChunkGroup
+            && middleOffsetOfChunkGroup < partitionEndOffset);
       case PrevPartition:
-        if (middleOffsetOfChunkGroup < partitionStartOffset) {
-          return true;
-        } else {
-          return false;
-        }
+        return (middleOffsetOfChunkGroup < partitionStartOffset);
       default:
         throw new IOException(
             "unexpected mode! It should be one of {NoPartition, InPartition, BeforePartition}");
