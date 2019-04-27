@@ -190,8 +190,8 @@ public abstract class QueryProcessExecutor {
    * @param insertValues values to be inserted
    * @return - Operate Type.
    */
-  public abstract int multiInsert(String deviceId, long insertTime, List<String> measurementList,
-      List<String> insertValues) throws ProcessorException;
+  public abstract int multiInsert(String deviceId, long insertTime, String[] measurementList,
+      String[] insertValues) throws ProcessorException;
 
   public abstract List<String> getAllPaths(String originPath) throws PathErrorException;
 

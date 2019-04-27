@@ -94,8 +94,8 @@ public class PerformanceTest {
         long time = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
           InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
-              Arrays.asList("s1", "s2", "s3", "s4"),
-              Arrays.asList("1.0", "15", "str", "false"));
+              new String[]{"s1", "s2", "s3", "s4"},
+              new String[]{"1.0", "15", "str", "false"});
           UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
               new Path("root.logTestDevice.s1"));
           DeletePlan deletePlan = new DeletePlan(50,
@@ -156,7 +156,7 @@ public class PerformanceTest {
 
     for (int i = 0; i < 1000000; i++) {
       InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-          Arrays.asList("s1", "s2", "s3", "s4"), Arrays.asList("1.0", "15", "str", "false"));
+      new String[]{"s1", "s2", "s3", "s4"}, new String[]{"1.0", "15", "str", "false"});
       UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
           new Path("root.logTestDevice.s1"));
       DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
@@ -190,8 +190,8 @@ public class PerformanceTest {
     byte[] bytes1 = null;
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-        Arrays.asList("s1", "s2", "s3", "s4"),
-        Arrays.asList("1.0", "15", "str", "false"));
+        new String[]{"s1", "s2", "s3", "s4"},
+    new String[]{"1.0", "15", "str", "false"});
     UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
         new Path("root.logTestDevice.s1"));
     for (int i = 0; i < 20; i++) {
@@ -220,8 +220,8 @@ public class PerformanceTest {
     String sql = "INSERT INTO root.logTestDevice(time,s1,s2,s3,s4) "
         + "VALUES (100,1.0,15,\"str\",false)";
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-        Arrays.asList("s1", "s2", "s3", "s4"),
-        Arrays.asList("1.0", "15", "str", "false"));
+        new String[]{"s1", "s2", "s3", "s4"},
+        new String[]{"1.0", "15", "str", "false"});
     long time = System.currentTimeMillis();
     for (int i = 0; i < 1000000; i++) {
       byte[] bytes = PhysicalPlanLogTransfer.operatorToLog(bwInsertPlan);

@@ -22,7 +22,9 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.After;
@@ -36,12 +38,12 @@ public class TsFileResourceTest {
 
   public static TsFileResource constructTsfileResource() {
     TsFileResource tsFileResource;
-    String relativePath = "relativePath";
+    String relativePath = "data/data/settled/b/relativePath";
     Map<String, Long> startTimes = new HashMap<>();
     Map<String, Long> endTimes = new HashMap<>();
 
-    tsFileResource = new TsFileResource(OverflowChangeType.MERGING_CHANGE,
-        relativePath);
+    tsFileResource = new TsFileResource(Collections.emptyMap(), Collections.emptyMap(),
+        OverflowChangeType.MERGING_CHANGE, new File(relativePath));
     for (int i = 0; i < 10; i++) {
       startTimes.put("d" + i, (long) i);
     }
@@ -77,7 +79,7 @@ public class TsFileResourceTest {
   @Test
   public void testSerdeializeCornerCase() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream(0);
-    tsFileResource.setRelativePath(null);
+    tsFileResource.setFile(null);
     tsFileResource.serialize(outputStream);
     ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     TsFileResource deTsfileResource = TsFileResource.deSerialize(inputStream);
@@ -87,7 +89,7 @@ public class TsFileResourceTest {
   public static void assertTsfileRecource(TsFileResource tsFileResource,
       TsFileResource deTsfileResource) {
     assertEquals(tsFileResource.getBaseDirIndex(), deTsfileResource.getBaseDirIndex());
-    assertEquals(tsFileResource.getRelativePath(), deTsfileResource.getRelativePath());
+    assertEquals(tsFileResource.getFile(), deTsfileResource.getFile());
     assertEquals(tsFileResource.getOverflowChangeType(), deTsfileResource.getOverflowChangeType());
     assertEquals(tsFileResource.getStartTimeMap(), deTsfileResource.getStartTimeMap());
     assertEquals(tsFileResource.getEndTimeMap(), deTsfileResource.getEndTimeMap());

@@ -113,8 +113,13 @@ public class TsFileSequenceReader implements AutoCloseable{
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize)
       throws IOException {
     this.tsFileInput = input;
-    if (loadMetadataSize) { // NOTE no autoRepair here
-      loadMetadataSize();
+    try {
+      if (loadMetadataSize) { // NOTE no autoRepair here
+        loadMetadataSize();
+      }
+    } catch (Throwable e) {
+      tsFileInput.close();
+      throw e;
     }
   }
 
@@ -458,7 +463,7 @@ public class TsFileSequenceReader implements AutoCloseable{
    * Self Check the file and return the position before where the data is safe.
    *
    * @param newSchema @OUT.  the measurement schema in the file will be added into
-   * this parameter.
+   * this parameter. (can be null)
    * @param newMetaData @OUT can not be null, the chunk group metadta in the file will be added into
    * this parameter.
    * @param fastFinish if true and the file is complete, then newSchema and newMetaData parameter
@@ -600,6 +605,4 @@ public class TsFileSequenceReader implements AutoCloseable{
       return truncatedPosition;
     }
   }
-
-
 }
