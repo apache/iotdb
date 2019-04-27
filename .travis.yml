@@ -112,7 +112,7 @@ matrix:
       sudo: required
       before_install:
         - wget http://hg.openjdk.java.net/jdk-updates/jdk11u/archive/jdk-11.0.2+9.tar.bz2 -O jdk11.tar.bz2
-        - tar -xzf jdk11.tar.bz2
+        - tar -xjf jdk11.tar.bz2
       before_script:
         - export JAVA_HOME=$PWD/jdk-11.0.2/
         - export PATH=$JAVA_HOME/bin:$PATH
