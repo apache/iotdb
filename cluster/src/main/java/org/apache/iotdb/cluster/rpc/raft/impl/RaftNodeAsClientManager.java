@@ -55,8 +55,8 @@ public class RaftNodeAsClientManager {
   private static final int TASK_TIMEOUT_MS = CLUSTER_CONFIG.getQpTaskTimeout();
 
   /**
-   * Max valid number of @NodeAsClient usage, represent the number can triggerAction simultaneously at the
-   * same time
+   * Max valid number of @NodeAsClient usage, represent the number can triggerAction simultaneously
+   * at the same time
    */
   private static final int MAX_VALID_CLIENT_NUM = CLUSTER_CONFIG.getMaxNumOfInnerRpcClient();
 
@@ -95,11 +95,6 @@ public class RaftNodeAsClientManager {
    */
   private volatile boolean isShuttingDown;
 
-  /**
-   * Interval of thread sleep, unit is millisecond.
-   */
-  private static final int THREAD_SLEEP_INTERVAL = 10;
-
   private RaftNodeAsClientManager() {
 
   }
@@ -120,15 +115,24 @@ public class RaftNodeAsClientManager {
                 CLUSTER_CONFIG.getMaxNumOfInnerRpcClient() + CLUSTER_CONFIG
                     .getMaxQueueNumOfInnerRpcClient()));
       }
-      checkShuttingDown();
-      if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
-        clientNumInUse.incrementAndGet();
-        return getClient();
+      queueClientNum++;
+      try {
+        while (true) {
+          checkShuttingDown();
+          if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
+            clientNumInUse.incrementAndGet();
+            return getClient();
+          }
+          resourceCondition.await();
+        }
+      } catch (InterruptedException e) {
+        throw new RaftConnectionException("An error occurred when trying to get NodeAsClient", e);
+      } finally {
+        queueClientNum--;
       }
     } finally {
       resourceLock.unlock();
     }
-    return tryToGetClient();
   }
 
   private void checkShuttingDown() throws RaftConnectionException {
@@ -136,32 +140,6 @@ public class RaftNodeAsClientManager {
       throw new RaftConnectionException(
           "Reject to provide RaftNodeAsClient client because cluster system is shutting down");
     }
-  }
-
-  /**
-   * Check whether it can get the clientList
-   */
-  private RaftNodeAsClient tryToGetClient() throws RaftConnectionException {
-    resourceLock.lock();
-    queueClientNum++;
-    try {
-      while (true) {
-        if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
-          checkShuttingDown();
-          if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
-            clientNumInUse.incrementAndGet();
-            return getClient();
-          }
-        }
-        resourceCondition.await();
-      }
-    } catch (InterruptedException e) {
-      throw new RaftConnectionException("An error occurred when trying to get NodeAsClient", e);
-    } finally {
-      queueClientNum--;
-      resourceLock.unlock();
-    }
-
   }
 
   /**
@@ -182,9 +160,7 @@ public class RaftNodeAsClientManager {
     resourceLock.lock();
     try {
       clientNumInUse.decrementAndGet();
-      if (clientList.isEmpty() && queueClientNum > 0) {
-        resourceCondition.signal();
-      }
+      resourceCondition.signalAll();
       clientList.addLast(client);
     } finally {
       resourceLock.unlock();
@@ -195,7 +171,7 @@ public class RaftNodeAsClientManager {
     isShuttingDown = true;
     while (clientNumInUse.get() != 0 && queueClientNum != 0) {
       // wait until releasing all usage of clients.
-      Thread.sleep(THREAD_SLEEP_INTERVAL);
+      resourceCondition.await();
     }
     while (!clientList.isEmpty()) {
       clientList.removeFirst().shutdown();
