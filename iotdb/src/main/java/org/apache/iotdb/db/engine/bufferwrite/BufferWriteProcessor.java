@@ -549,6 +549,10 @@ public class BufferWriteProcessor extends Processor {
     return "BufferWriteProcessor in " + insertFilePath;
   }
 
+  public String getInsertFilePath() {
+    return insertFilePath;
+  }
+
   public boolean isClosed() {
     return isClosed;
   }
