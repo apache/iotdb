@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.bufferwrite;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -77,7 +78,6 @@ public class BufferWriteProcessor extends Processor {
   private long valueCount = 0;
 
   private String baseDir;
-  private String fileName;
   private String insertFilePath;
   private String bufferWriteRelativePath;
 
@@ -108,7 +108,6 @@ public class BufferWriteProcessor extends Processor {
     bufferwriteCloseAction = parameters.get(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
     filenodeFlushAction = parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
 
-
     reopen(fileName);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -128,22 +127,11 @@ public class BufferWriteProcessor extends Processor {
     if (!isClosed) {
       return;
     }
-    this.fileName = fileName;
-    String bDir = baseDir;
-    if (bDir.length() > 0 && bDir.charAt(bDir.length() - 1) != File.separatorChar) {
-      bDir = bDir + File.separatorChar;
-    }
-    String dataDirPath = bDir + getProcessorName();
-    File dataDir = new File(dataDirPath);
-    if (!dataDir.exists()) {
-      dataDir.mkdirs();
-      LOGGER.debug("The bufferwrite processor data dir doesn't exists, create new directory {}.",
-          dataDirPath);
-    }
-    this.insertFilePath = new File(dataDir, fileName).getPath();
-    bufferWriteRelativePath = getProcessorName() + File.separatorChar + fileName;
+    new File(baseDir, processorName).mkdirs();
+    this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
+    bufferWriteRelativePath = processorName + File.separatorChar + fileName;
     try {
-      writer = new RestorableTsFileIOWriter(getProcessorName(), insertFilePath);
+      writer = new RestorableTsFileIOWriter(processorName, insertFilePath);
     } catch (IOException e) {
       throw new BufferWriteProcessorException(e);
     }
@@ -161,6 +149,7 @@ public class BufferWriteProcessor extends Processor {
       throw new BufferWriteProcessorException("BufferWriteProcessor already closed");
     }
   }
+
 
   /**
    * write one data point to the buffer write.
@@ -433,7 +422,7 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.info(
             "Close bufferwrite processor {}, the file name is {}, start time is {}, end time is {}, "
                 + "time consumption is {}ms",
-            getProcessorName(), fileName,
+            getProcessorName(), insertFilePath,
             DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
             DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
             closeEndTime - closeStartTime);
@@ -489,9 +478,6 @@ public class BufferWriteProcessor extends Processor {
     return baseDir;
   }
 
-  public String getFileName() {
-    return fileName;
-  }
 
   public String getFileRelativePath() {
     return bufferWriteRelativePath;

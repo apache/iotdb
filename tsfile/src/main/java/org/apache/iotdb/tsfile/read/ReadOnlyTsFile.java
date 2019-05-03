@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.executor.TsFileExecutor;
 
-public class ReadOnlyTsFile {
+public class ReadOnlyTsFile implements AutoCloseable {
 
   private TsFileSequenceReader fileReader;
   private MetadataQuerier metadataQuerier;

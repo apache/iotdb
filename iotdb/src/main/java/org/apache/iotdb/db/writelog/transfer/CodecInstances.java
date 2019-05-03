@@ -183,14 +183,14 @@ public class CodecInstances {
 
       putString(buffer, plan.getDeviceId());
 
-      List<String> measurementList = plan.getMeasurements();
-      buffer.putInt(measurementList.size());
+      String[] measurementList = plan.getMeasurements();
+      buffer.putInt(measurementList.length);
       for (String m : measurementList) {
         putString(buffer, m);
       }
 
-      List<String> valueList = plan.getValues();
-      buffer.putInt(valueList.size());
+      String[] valueList = plan.getValues();
+      buffer.putInt(valueList.length);
       for (String m : valueList) {
         putString(buffer, m);
       }
@@ -209,18 +209,18 @@ public class CodecInstances {
       String device = readString(buffer);
 
       int mmListLength = buffer.getInt();
-      List<String> measurementsList = new ArrayList<>(mmListLength);
+      String[] measurements = new String[mmListLength];
       for (int i = 0; i < mmListLength; i++) {
-        measurementsList.add(readString(buffer));
+        measurements[i] = readString(buffer);
       }
 
       int valueListLength = buffer.getInt();
-      List<String> valuesList = new ArrayList<>(valueListLength);
+      String[] values = new String[valueListLength];
       for (int i = 0; i < valueListLength; i++) {
-        valuesList.add(readString(buffer));
+        values[i] = readString(buffer);
       }
 
-      InsertPlan ans = new InsertPlan(device, time, measurementsList, valuesList);
+      InsertPlan ans = new InsertPlan(device, time, measurements, values);
       ans.setInsertType(insertType);
       return ans;
     }
