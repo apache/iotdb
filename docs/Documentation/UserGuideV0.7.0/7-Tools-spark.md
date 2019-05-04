@@ -113,7 +113,7 @@ Note:
 <a id="5-schema-inference"></a>
 ## 5. Schema Inference
 
-The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three Measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is as follows:
+The way to display TsFile is dependent on the schema. Take the following TsFile structure as an example: There are three Measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is as follows:
 
 <center>
 <table style="text-align:center">
@@ -124,7 +124,7 @@ The way to display TsFile is related to TsFile Schema. Take the following TsFile
 </table>
 </center>
 
-The existing data in the file is as follows:
+The existing data in the TsFile is as follows:
 
 
 <center>
