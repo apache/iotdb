@@ -71,7 +71,7 @@ matrix:
         - choco install jdk11 -params 'installdir=c:\\java11'
         - export PATH=$PATH:"/c/java11/bin"
         - export JAVA_HOME="/c/java11"
-        - wget https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
+        - wget -q https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.1-bin.zip -o/c/mvn361
         - export "MAVEN_HOME=/c/mvn361/apache-maven-3.6.1"
         - export "M2_HOME=/c/mvn361/apache-maven-3.6.1"
