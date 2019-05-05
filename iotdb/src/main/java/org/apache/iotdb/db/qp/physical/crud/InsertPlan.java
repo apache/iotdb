@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -28,16 +29,16 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public class InsertPlan extends PhysicalPlan {
 
   private String deviceId;
-  private List<String> measurements;
-  private List<String> values;
+  private String[] measurements;
+  private String[] values;
   private long time;
 
   // insertType
   // 1 : BufferWrite Insert 2 : Overflow Insert
   private int insertType;
 
-  public InsertPlan(String deviceId, long insertTime, List<String> measurementList,
-      List<String> insertValues) {
+  public InsertPlan(String deviceId, long insertTime, String[] measurementList,
+      String[] insertValues) {
     super(false, Operator.OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = deviceId;
@@ -45,8 +46,8 @@ public class InsertPlan extends PhysicalPlan {
     this.values = insertValues;
   }
 
-  public InsertPlan(int insertType, String deviceId, long insertTime, List<String> measurementList,
-      List<String> insertValues) {
+  public InsertPlan(int insertType, String deviceId, long insertTime, String[] measurementList,
+      String[] insertValues) {
     super(false, Operator.OperatorType.INSERT);
     this.insertType = insertType;
     this.time = insertTime;
@@ -89,19 +90,19 @@ public class InsertPlan extends PhysicalPlan {
     this.deviceId = deviceId;
   }
 
-  public List<String> getMeasurements() {
+  public String[] getMeasurements() {
     return this.measurements;
   }
 
-  public void setMeasurements(List<String> measurements) {
+  public void setMeasurements(String[] measurements) {
     this.measurements = measurements;
   }
 
-  public List<String> getValues() {
+  public String[] getValues() {
     return this.values;
   }
 
-  public void setValues(List<String> values) {
+  public void setValues(String[] values) {
     this.values = values;
   }
 
@@ -115,8 +116,8 @@ public class InsertPlan extends PhysicalPlan {
     }
     InsertPlan that = (InsertPlan) o;
     return time == that.time && Objects.equals(deviceId, that.deviceId)
-        && Objects.equals(measurements, that.measurements)
-        && Objects.equals(values, that.values);
+        && Arrays.equals(measurements, that.measurements)
+        && Arrays.equals(values, that.values);
   }
 
 }

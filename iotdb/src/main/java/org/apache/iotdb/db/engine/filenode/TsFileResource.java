@@ -20,16 +20,25 @@ package org.apache.iotdb.db.engine.filenode;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
 import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.engine.bufferwrite.RestorableTsFileIOWriter;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -38,71 +47,90 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 public class TsFileResource {
 
   private OverflowChangeType overflowChangeType;
+
+  //the file index of `settled` folder in the Directories.
   private int baseDirIndex;
-  private String relativePath;
+  private File file;
   private Map<String, Long> startTimeMap;
   private Map<String, Long> endTimeMap;
   private Set<String> mergeChanged = new HashSet<>();
 
   private transient ModificationFile modFile;
 
-  public TsFileResource(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
-      OverflowChangeType type, int baseDirIndex, String relativePath) {
-
-    this.overflowChangeType = type;
-    this.baseDirIndex = baseDirIndex;
-    this.relativePath = relativePath;
-
-    this.startTimeMap = startTimeMap;
-    this.endTimeMap = endTimeMap;
-    this.modFile = new ModificationFile(
-        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-            + relativePath + ModificationFile.FILE_SUFFIX);
+  /**
+   * @param autoRead whether read the file to initialize startTimeMap and endTimeMap
+   */
+  public TsFileResource(File file, boolean autoRead) throws IOException {
+    this(new HashMap<>(), new HashMap<>(), OverflowChangeType.NO_CHANGE, file);
+    if (autoRead) {
+      //init startTime and endTime
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
+        if (reader.readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
+          //this is a complete tsfile, and we can read the metadata directly.
+          for (Map.Entry<String, TsDeviceMetadataIndex> deviceEntry : reader.readFileMetadata()
+              .getDeviceMap().entrySet()) {
+            startTimeMap.put(deviceEntry.getKey(), deviceEntry.getValue().getStartTime());
+            endTimeMap.put(deviceEntry.getKey(), deviceEntry.getValue().getEndTime());
+          }
+        } else {
+          //sadly, this is not a complete tsfile. we have to repair it bytes by bytes
+          //TODO will implement it
+          List<ChunkGroupMetaData> metaDataList = new ArrayList<>();
+          reader.selfCheck(null, metaDataList, false);
+          initTimeMapFromChunGroupMetaDatas(metaDataList);
+        }
+      }
+    }
   }
 
   /**
-   * This is just used to construct a new bufferwritefile.
-   *
-   * @param type whether this file is affected by overflow and how it is affected.
-   * @param relativePath the path of the file relative to the FileNode.
+   * @param writer an unclosed TsFile Writer
    */
-  public TsFileResource(OverflowChangeType type, int baseDirIndex, String relativePath) {
-
-    this.overflowChangeType = type;
-    this.baseDirIndex = baseDirIndex;
-    this.relativePath = relativePath;
-
-    startTimeMap = new HashMap<>();
-    endTimeMap = new HashMap<>();
-    this.modFile = new ModificationFile(
-        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-            + relativePath + ModificationFile.FILE_SUFFIX);
+  public TsFileResource(File file, RestorableTsFileIOWriter writer) {
+    this(new HashMap<>(), new HashMap<>(), OverflowChangeType.NO_CHANGE, file);
+    initTimeMapFromChunGroupMetaDatas(writer.getChunkGroupMetaDatas());
   }
 
-  public TsFileResource(OverflowChangeType type, String baseDir, String relativePath) {
-
-    this.overflowChangeType = type;
-    this.baseDirIndex = Directories.getInstance().getTsFileFolderIndex(baseDir);
-    this.relativePath = relativePath;
-
-    startTimeMap = new HashMap<>();
-    endTimeMap = new HashMap<>();
-    this.modFile = new ModificationFile(
-        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-            + relativePath + ModificationFile.FILE_SUFFIX);
+  private void initTimeMapFromChunGroupMetaDatas(List<ChunkGroupMetaData> metaDataList) {
+    for (ChunkGroupMetaData metaData : metaDataList) {
+      long startTime = startTimeMap.getOrDefault(metaData.getDeviceID(), Long.MAX_VALUE);
+      long endTime = endTimeMap.getOrDefault(metaData.getDeviceID(), Long.MIN_VALUE);
+      for (ChunkMetaData chunk : metaData.getChunkMetaDataList()) {
+        if (chunk.getStartTime() < startTime) {
+          startTime = chunk.getStartTime();
+        }
+        if (chunk.getEndTime() > endTime) {
+          endTime = chunk.getEndTime();
+        }
+      }
+      startTimeMap.put(metaData.getDeviceID(), startTime);
+      endTimeMap.put(metaData.getDeviceID(), endTime);
+    }
   }
 
-  public TsFileResource(OverflowChangeType type, String relativePath) {
 
-    this(type, 0, relativePath);
+  public TsFileResource(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
+      OverflowChangeType type, File file) {
+
+    this.overflowChangeType = type;
+    if (file != null) {
+      this.baseDirIndex = Directories.getInstance()
+          .getTsFileFolderIndex(file.getParentFile().getParent());
+      this.modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+    }
+    this.file = file;
+
+    this.startTimeMap = startTimeMap;
+    this.endTimeMap = endTimeMap;
+
   }
 
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(this.overflowChangeType.serialize(), outputStream);
     ReadWriteIOUtils.write(this.baseDirIndex, outputStream);
-    ReadWriteIOUtils.writeIsNull(this.relativePath, outputStream);
-    if (this.relativePath != null) {
-      ReadWriteIOUtils.write(this.relativePath, outputStream);
+    ReadWriteIOUtils.writeIsNull(this.file, outputStream);
+    if (this.file != null) {
+      ReadWriteIOUtils.write(getRelativePath(), outputStream);
     }
     ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
     for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
@@ -125,9 +153,11 @@ public class TsFileResource {
         .deserialize(ReadWriteIOUtils.readShort(inputStream));
     int baseDirIndex = ReadWriteIOUtils.readInt(inputStream);
     boolean hasRelativePath = ReadWriteIOUtils.readIsNull(inputStream);
-    String relativePath = null;
+
+    File file = null;
     if (hasRelativePath) {
-      relativePath = ReadWriteIOUtils.readString(inputStream);
+      String relativePath = ReadWriteIOUtils.readString(inputStream);
+      file = new File(Directories.getInstance().getTsFileFolder(baseDirIndex), relativePath);
     }
     int size = ReadWriteIOUtils.readInt(inputStream);
     Map<String, Long> startTimes = new HashMap<>();
@@ -149,11 +179,11 @@ public class TsFileResource {
       String path = ReadWriteIOUtils.readString(inputStream);
       mergeChanaged.add(path);
     }
-    TsFileResource tsFileResource = new TsFileResource(startTimes, endTimes, overflowChangeType,
-        baseDirIndex, relativePath);
+    TsFileResource tsFileResource = new TsFileResource(startTimes, endTimes, overflowChangeType, file);
     tsFileResource.mergeChanged = mergeChanaged;
     return tsFileResource;
   }
+
 
   public void setStartTime(String deviceId, long startTime) {
 
@@ -212,31 +242,14 @@ public class TsFileResource {
     endTimeMap.remove(deviceId);
   }
 
-  public String getFilePath() {
 
-    if (relativePath == null) {
-      return relativePath;
-    }
-    return new File(Directories.getInstance().getTsFileFolder(baseDirIndex),
-        relativePath).getPath();
+  public File getFile() {
+    return file;
   }
+
 
   public int getBaseDirIndex() {
     return baseDirIndex;
-  }
-
-  public void setBaseDirIndex(int baseDirIndex) {
-    this.baseDirIndex = baseDirIndex;
-  }
-
-  public String getRelativePath() {
-
-    return relativePath;
-  }
-
-  public void setRelativePath(String relativePath) {
-
-    this.relativePath = relativePath;
   }
 
   public boolean checkEmpty() {
@@ -245,12 +258,10 @@ public class TsFileResource {
   }
 
   public void clear() {
-
     startTimeMap.clear();
     endTimeMap.clear();
     mergeChanged.clear();
     overflowChangeType = OverflowChangeType.NO_CHANGE;
-    relativePath = null;
   }
 
   public void changeTypeToChanged(FileNodeProcessorStatus fileNodeProcessorState) {
@@ -287,8 +298,12 @@ public class TsFileResource {
 
     Map<String, Long> startTimeMapCopy = new HashMap<>(this.startTimeMap);
     Map<String, Long> endTimeMapCopy = new HashMap<>(this.endTimeMap);
-    return new TsFileResource(startTimeMapCopy, endTimeMapCopy, overflowChangeType,
-        baseDirIndex, relativePath);
+    return new TsFileResource(startTimeMapCopy,
+        endTimeMapCopy, overflowChangeType, file);
+  }
+
+  public Set<String> getDevices() {
+    return this.startTimeMap.keySet();
   }
 
   @Override
@@ -297,37 +312,31 @@ public class TsFileResource {
     final int prime = 31;
     int result = 1;
     result = prime * result + ((endTimeMap == null) ? 0 : endTimeMap.hashCode());
-    result = prime * result + ((relativePath == null) ? 0 : relativePath.hashCode());
+    result = prime * result + ((file == null) ? 0 : file.hashCode());
     result = prime * result + ((overflowChangeType == null) ? 0 : overflowChangeType.hashCode());
     result = prime * result + ((startTimeMap == null) ? 0 : startTimeMap.hashCode());
     return result;
   }
+
 
   @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof TsFileResource)) {
       return false;
     }
-    TsFileResource fileNode = (TsFileResource) o;
-    return baseDirIndex == fileNode.baseDirIndex &&
-        overflowChangeType == fileNode.overflowChangeType &&
-        Objects.equals(relativePath, fileNode.relativePath) &&
-        Objects.equals(startTimeMap, fileNode.startTimeMap) &&
-        Objects.equals(endTimeMap, fileNode.endTimeMap) &&
-        Objects.equals(mergeChanged, fileNode.mergeChanged);
+    TsFileResource that = (TsFileResource) o;
+    return baseDirIndex == that.baseDirIndex &&
+        overflowChangeType == that.overflowChangeType &&
+        Objects.equals(file, that.file) &&
+        Objects.equals(startTimeMap, that.startTimeMap) &&
+        Objects.equals(endTimeMap, that.endTimeMap) &&
+        Objects.equals(mergeChanged, that.mergeChanged) &&
+        Objects.equals(modFile, that.modFile);
   }
 
-  @Override
-  public String toString() {
-
-    return String.format(
-        "TsFileResource [relativePath=%s,overflowChangeType=%s, startTimeMap=%s,"
-            + " endTimeMap=%s, mergeChanged=%s]",
-        relativePath, overflowChangeType, startTimeMap, endTimeMap, mergeChanged);
-  }
 
   public OverflowChangeType getOverflowChangeType() {
     return overflowChangeType;
@@ -339,9 +348,7 @@ public class TsFileResource {
 
   public synchronized ModificationFile getModFile() {
     if (modFile == null) {
-      modFile = new ModificationFile(
-          Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-              + relativePath + ModificationFile.FILE_SUFFIX);
+      modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
     }
     return modFile;
   }
@@ -352,5 +359,32 @@ public class TsFileResource {
 
   public void setModFile(ModificationFile modFile) {
     this.modFile = modFile;
+  }
+
+  public void close() throws IOException {
+    modFile.close();
+  }
+
+  public String getRelativePath() {
+    if (file == null) {
+      return null;
+    }
+    return this.getFile().getParentFile().getName() + File.separator + this.getFile().getName();
+  }
+
+  public void setFile(File file) throws IOException {
+    this.file = file;
+    if (file != null) {
+      this.baseDirIndex = Directories.getInstance()
+          .getTsFileFolderIndex(file.getParentFile().getParent());
+      if (this.modFile != null) {
+        this.modFile.close();
+      }
+      this.modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+    }
+  }
+
+  public String getFilePath() {
+    return this.getFile().getAbsolutePath();
   }
 }

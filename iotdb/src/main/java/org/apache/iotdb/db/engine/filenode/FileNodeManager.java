@@ -325,11 +325,13 @@ public class FileNodeManager implements IStatistic, IService {
       throws FileNodeManagerException {
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        List<String> measurementList = new ArrayList<>();
-        List<String> insertValues = new ArrayList<>();
+        String[] measurementList = new String[tsRecord.dataPointList.size()];
+        String[] insertValues = new String[tsRecord.dataPointList.size()];
+        int i=0;
         for (DataPoint dp : tsRecord.dataPointList) {
-          measurementList.add(dp.getMeasurementId());
-          insertValues.add(dp.getValue().toString());
+          measurementList[i] = dp.getMeasurementId();
+          insertValues[i] = dp.getValue().toString();
+          i++;
         }
         logNode.write(new InsertPlan(2, tsRecord.deviceId, tsRecord.time, measurementList,
             insertValues));
@@ -410,7 +412,7 @@ public class FileNodeManager implements IStatistic, IService {
       String bufferwriteBaseDir = bufferWriteProcessor.getBaseDir();
       String bufferwriteRelativePath = bufferWriteProcessor.getFileRelativePath();
       try {
-        fileNodeProcessor.addIntervalFileNode(bufferwriteBaseDir, bufferwriteRelativePath);
+        fileNodeProcessor.addIntervalFileNode(new File(new File(bufferwriteBaseDir), bufferwriteRelativePath));
       } catch (Exception e) {
         if (!isMonitor) {
           updateStatHashMapWhenFail(tsRecord);
@@ -447,7 +449,7 @@ public class FileNodeManager implements IStatistic, IService {
             "The filenode processor {} will close the bufferwrite processor, "
                 + "because the size[{}] of tsfile {} reaches the threshold {}",
             filenodeName, MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize()),
-            bufferWriteProcessor.getFileName(), MemUtils.bytesCntToStr(
+            bufferWriteProcessor.getInsertFilePath(), MemUtils.bytesCntToStr(
                 IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold()));
       }
 
@@ -568,14 +570,16 @@ public class FileNodeManager implements IStatistic, IService {
       Iterator<Map.Entry<String, FileNodeProcessor>> processorIterator)
       throws FileNodeManagerException {
     if (!processorMap.containsKey(processorName)) {
+      //TODO do we need to call processorIterator.remove() ?
       LOGGER.warn("The processorMap doesn't contain the filenode processor {}.", processorName);
       return;
     }
     LOGGER.info("Try to delete the filenode processor {}.", processorName);
     FileNodeProcessor processor = processorMap.get(processorName);
     if (!processor.tryWriteLock()) {
-      LOGGER.warn("Can't get the write lock of the filenode processor {}.", processorName);
-      return;
+      throw new FileNodeManagerException(String
+          .format("Can't delete the filenode processor %s because Can't get the write lock.",
+              processorName));
     }
 
     try {
@@ -605,7 +609,7 @@ public class FileNodeManager implements IStatistic, IService {
     FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
     try {
       fileNodeProcessor.deleteBufferWrite(deviceId, measurementId, timestamp);
-    } catch (IOException e) {
+    } catch (BufferWriteProcessorException | IOException e) {
       throw new FileNodeManagerException(e);
     } finally {
       fileNodeProcessor.writeUnlock();
@@ -722,7 +726,7 @@ public class FileNodeManager implements IStatistic, IService {
       // append file to storage group.
       fileNodeProcessor.appendFile(appendFile, appendFilePath);
     } catch (FileNodeProcessorException e) {
-      LOGGER.error("Cannot append the file {} to {}", appendFile.getFilePath(), fileNodeName, e);
+      LOGGER.error("Cannot append the file {} to {}", appendFile.getFile().getAbsolutePath(), fileNodeName, e);
       throw new FileNodeManagerException(e);
     } finally {
       fileNodeProcessor.writeUnlock();
