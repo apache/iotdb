@@ -106,14 +106,6 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     dir.delete()
   }
 
-  //  test("test write to HDFS") {
-  //    val df = spark.read.tsfile(tsfile2)
-  //    df.write.tsfile(outputHDFSPath)
-  //    val newDf = spark.read.tsfile(outputHDFSPathFile)
-  //    val count = newDf.count()
-  //    Assert.assertEquals(TsFileWrite.largeNum, count)
-  //  }
-
   test("test write 1") {
     val df = spark.read.tsfile(tsfile1)
     df.write.tsfile(outputPath)
