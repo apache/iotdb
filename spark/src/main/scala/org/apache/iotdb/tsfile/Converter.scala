@@ -47,17 +47,17 @@ import scala.collection.mutable.ListBuffer
 /**
   * A series has a name and a type.
   *
-  * @param seriesName name
-  * @param seriesType type
+  * @param nameVar name
+  * @param typeVar type
   */
-class Series(seriesName: String, seriesType: TSDataType) {
-  var _name: String = seriesName
-  var _type: TSDataType = seriesType
+class Series(nameVar: String, typeVar: TSDataType) {
+  var seriesName: String = nameVar
+  var seriesType: TSDataType = typeVar
 
-  def getName = _name
-  def getType = _type
+  def getName = seriesName
+  def getType = seriesType
 
-  override def toString = s"[" + _name + "," + _type + "]"
+  override def toString = s"[" + seriesName + "," + seriesType + "]"
 }
 
 /**
