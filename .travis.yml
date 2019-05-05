@@ -31,11 +31,6 @@ matrix:
     - os: osx
       osx_image: xcode10.1 # with JDK11.0.1+13 installed
       name: osx-oraclejdk11
-      script:
-        - java -version
-        - mvn -version
-        - mvn -B apache-rat:check
-        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-oraclejdk8
@@ -49,19 +44,14 @@ matrix:
             - AdoptOpenJDK/openjdk
           update: true
           casks: adoptopenjdk-openjdk11
-      script:
-        - java -version
-        - mvn -version
-        - mvn -B apache-rat:check
-        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-openjdk8
       addons:
         homebrew:
           taps:
-            #- homebrew/cask-versions
-            - AdoptOpenJDK/openjdk
+           #- homebrew/cask-versions
+           - AdoptOpenJDK/openjdk
           update: true
           casks: adoptopenjdk-openjdk8
     - os: windows
@@ -79,7 +69,7 @@ matrix:
       script:
         - java -version
         - mvn -version
-        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
+        - mvn -B clean integration-test
       cache:
         directories:
           - '$HOME/.m2/repository'
@@ -112,13 +102,13 @@ matrix:
       sudo: required
       before_install:
         - wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz
-        - tar -xjf jdk11.tar.gz
+        - tar -xzf jdk11.tar.gz
       before_script:
         - export JAVA_HOME=$PWD/jdk-11.0.2/
         - export PATH=$JAVA_HOME/bin:$PATH
       script:
         - java -version
-        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
+        - mvn -B clean integration-test
     - os: linux
       name: linux-openjdk8
       dist: trusty
@@ -131,11 +121,6 @@ matrix:
       name: linux-oraclejdk11
       dist: trusty
       jdk: oraclejdk11
-      script:
-        - java -version
-        - mvn -version
-        - mvn -B apache-rat:check
-        - mvn -B clean package -pl iotdb,grafana,iotdb-cli,example,:kafka-example,:rocketmq-example -am integration-test
 
 cache:
   directories:
@@ -152,7 +137,6 @@ install: true
 
 script:
   - java -version
-  - mvn -version
   - mvn -B apache-rat:check
   - mvn -B clean integration-test
 
