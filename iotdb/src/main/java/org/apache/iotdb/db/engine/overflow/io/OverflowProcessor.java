@@ -667,41 +667,12 @@ public class OverflowProcessor extends Processor implements MemUser {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    OverflowProcessor that = (OverflowProcessor) o;
-    return isMerge == that.isMerge &&
-            valueCount == that.valueCount &&
-            lastFlushTime == that.lastFlushTime &&
-            memThreshold == that.memThreshold &&
-            Objects.equals(workResource, that.workResource) &&
-            Objects.equals(mergeResource, that.mergeResource) &&
-            Objects.equals(workSupport, that.workSupport) &&
-            Objects.equals(flushSupport, that.flushSupport) &&
-            Objects.equals(flushFuture, that.flushFuture) &&
-            Objects.equals(parentPath, that.parentPath) &&
-            Objects.equals(dataPathCount, that.dataPathCount) &&
-            Objects.equals(queryFlushLock, that.queryFlushLock) &&
-            Objects.equals(overflowFlushAction, that.overflowFlushAction) &&
-            Objects.equals(filenodeFlushAction, that.filenodeFlushAction) &&
-            Objects.equals(fileSchema, that.fileSchema) &&
-            Objects.equals(memDataSize, that.memDataSize) &&
-            Objects.equals(logNode, that.logNode);
+    return this == o;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), workResource, mergeResource, workSupport,
-            flushSupport, flushFuture, isMerge, valueCount, parentPath, lastFlushTime,
-            dataPathCount, queryFlushLock, overflowFlushAction, filenodeFlushAction, fileSchema,
-            memThreshold, memDataSize, logNode, flushFuture);
+    return super.hashCode();
   }
 
   /**
