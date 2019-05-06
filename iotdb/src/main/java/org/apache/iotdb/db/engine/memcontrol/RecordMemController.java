@@ -167,7 +167,12 @@ public class RecordMemController extends BasicMemController {
       LOGGER.warn("Unregistering unregistered MemUser {}", user);
       return;
     }
-    memMap.remove(user);
+    AtomicLong usage = memMap.remove(user);
+    long usageLong = usage.get();
+    if (usageLong != 0) {
+      LOGGER.warn("MemUser {} unregistered before releasing all its memory", user);
+      totalMemUsed.addAndGet(-usageLong);
+    }
   }
 
   private AtomicLong getUsage(MemUser user) throws MemControlException {

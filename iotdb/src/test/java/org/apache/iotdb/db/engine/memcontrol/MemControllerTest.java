@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.exception.MemControlException;
+import org.junit.After;
 import org.junit.Test;
 
 public class MemControllerTest {
@@ -32,6 +33,11 @@ public class MemControllerTest {
   private static long GB = 1024 * 1024 * 1024L;
   private static long MB = 1024 * 1024L;
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  @After
+  public void tearDown() {
+    BasicMemController.getInstance().clear();
+  }
 
   @Test
   public void testNormal() throws MemControlException {
@@ -116,7 +122,6 @@ public class MemControllerTest {
     }
 
     for (int i = 0; i < dummyUsers.length; i++) {
-      dummyUsers[i] = new DummyUser();
       dummyUsers[i].unregister();
     }
   }
