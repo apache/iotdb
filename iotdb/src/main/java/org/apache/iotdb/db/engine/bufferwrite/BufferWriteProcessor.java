@@ -20,19 +20,16 @@ package org.apache.iotdb.db.engine.bufferwrite;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.ESTIMATED_CHUNK_METADATA_SIZE;
 
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils.IO;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
