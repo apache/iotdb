@@ -95,7 +95,7 @@ public class EnvironmentUtils {
     // FileNodeManager.getInstance().reset();
     // reset MemController
 
-    BasicMemController.getInstance().close();
+    BasicMemController.getInstance().stop();
   }
 
   private static void cleanAllDir() throws IOException {
