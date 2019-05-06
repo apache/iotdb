@@ -223,7 +223,8 @@ public class BufferWriteProcessor extends Processor implements MemUser {
         }
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
         LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
-        throw new BufferWriteProcessorException("Memory usage will exceed dangerous threshold.");
+        throw new BufferWriteProcessorException(String
+            .format("Memory usage will exceed dangerous threshold, current %s", memory));
     }
   }
 
