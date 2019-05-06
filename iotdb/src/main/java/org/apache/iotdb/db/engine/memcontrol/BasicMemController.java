@@ -51,8 +51,10 @@ public abstract class BasicMemController implements IService {
     switch (ControllerType.values()[IoTDBDescriptor.getInstance().getConfig()
         .getMemControllerType()]) {
       case RECORD:
-      default:
         return RecordMemController.getInstance();
+      case DISABLED:
+      default:
+        return DisabledMemController.getInstance();
     }
   }
 
@@ -187,7 +189,7 @@ public abstract class BasicMemController implements IService {
   public abstract void unregister(MemUser user);
 
   public enum ControllerType {
-    RECORD
+    RECORD, DISABLED
   }
 
   public enum UsageLevel {

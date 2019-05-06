@@ -37,35 +37,29 @@ public class OverflowResourceTest {
 
   private OverflowResource work;
   private File insertFile;
-  private File updateFile;
-  private File positionFile;
   private String insertFileName = "unseqTsFile";
-  private String updateDeleteFileName = "overflowFile";
-  private String positionFileName = "positionFile";
-  private String filePath = "overflow";
+  private String folderPath = "overflow";
   private String dataPath = "1";
-  private OverflowMemtable support = new OverflowMemtable();
+  private OverflowMemtable memtable = new OverflowMemtable();
 
   @Before
   public void setUp() throws Exception {
-    work = new OverflowResource(filePath, dataPath, SysTimeVersionController.INSTANCE);
-    insertFile = new File(new File(filePath, dataPath), insertFileName);
-    updateFile = new File(new File(filePath, dataPath), updateDeleteFileName);
-    positionFile = new File(new File(filePath, dataPath), positionFileName);
+    work = new OverflowResource(folderPath, dataPath, SysTimeVersionController.INSTANCE);
+    insertFile = new File(new File(folderPath, dataPath), insertFileName);
   }
 
   @After
   public void tearDown() throws Exception {
     work.close();
-    support.clear();
-    EnvironmentUtils.cleanDir(filePath);
+    memtable.clear();
+    EnvironmentUtils.cleanDir(folderPath);
   }
 
   @Test
   public void testOverflowInsert() throws IOException {
-    OverflowTestUtils.produceInsertData(support);
+    OverflowTestUtils.produceInsertData(memtable);
     QueryContext context = new QueryContext();
-    work.flush(OverflowTestUtils.getFileSchema(), support.getMemTabale(), "processorName");
+    work.flush(OverflowTestUtils.getFileSchema(), memtable.getMemTabale(), "processorName");
     List<ChunkMetaData> chunkMetaDatas = work.getInsertMetadatas(OverflowTestUtils.deviceId1,
         OverflowTestUtils.measurementId1, OverflowTestUtils.dataType2, context);
     assertEquals(0, chunkMetaDatas.size());
@@ -85,7 +79,7 @@ public class OverflowResourceTest {
     fileOutputStream.write(new byte[20]);
     fileOutputStream.close();
     assertEquals(originlength + 20, insertFile.length());
-    work = new OverflowResource(filePath, dataPath, SysTimeVersionController.INSTANCE);
+    work = new OverflowResource(folderPath, dataPath, SysTimeVersionController.INSTANCE);
     chunkMetaDatas = work
         .getInsertMetadatas(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
             OverflowTestUtils.dataType1, context);

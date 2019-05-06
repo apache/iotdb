@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.Map;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -35,6 +36,9 @@ public interface IMemTable {
 
   void write(String deviceId, String measurement, TSDataType dataType,
       long insertTime, String insertValue);
+
+  void write(String deviceId, String measurement, TSDataType dataType,
+      long insertTime, Object value);
 
   int size();
 
@@ -57,8 +61,9 @@ public interface IMemTable {
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
    * @param timestamp the upper-bound of deletion time.
+   * @return true if there is data that been deleted. otherwise false.
    */
-  void delete(String deviceId, String measurementId, long timestamp);
+  boolean delete(String deviceId, String measurementId, long timestamp);
 
   /**
    * Make a copy of this MemTable.

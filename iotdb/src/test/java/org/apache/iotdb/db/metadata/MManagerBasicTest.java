@@ -79,7 +79,7 @@ public class MManagerBasicTest {
       manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections
               .emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e) {
+    } catch (PathErrorException | IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -90,7 +90,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+    } catch (PathErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -125,7 +125,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+    } catch (PathErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -133,7 +133,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+    } catch (PathErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -178,7 +178,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree("root.laptop.d2.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+    } catch (PathErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -186,7 +186,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree("root.laptop.d2.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+    } catch (PathErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -207,7 +207,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+    } catch (PathErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -215,7 +215,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+    } catch (PathErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -232,7 +232,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree("root.laptop.d1.s2", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+    } catch (PathErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -248,7 +248,7 @@ public class MManagerBasicTest {
     try {
       manager.addPathToMTree("root.laptop.d1.s3", TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+    } catch (PathErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
@@ -309,7 +309,7 @@ public class MManagerBasicTest {
       list.add("root.laptop.d2");
       assertEquals(list, manager.getAllFileNamesByPath("root.laptop"));
       assertEquals(list, manager.getAllFileNamesByPath("root"));
-    } catch (PathErrorException | IOException | MetadataArgsErrorException e) {
+    } catch (PathErrorException | IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

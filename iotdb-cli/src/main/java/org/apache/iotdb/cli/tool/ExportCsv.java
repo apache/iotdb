@@ -68,6 +68,8 @@ public class ExportCsv extends AbstractCsvTool {
   private static String targetFile = DUMP_FILE_NAME_DEFAULT;
 
   private static String targetDirectory;
+
+  private static final int EXPORT_PER_LINE_COUNT = 10000;
   
   /**
    * main function of export csv tool.
@@ -147,6 +149,9 @@ public class ExportCsv extends AbstractCsvTool {
       throws ArgsErrorException {
     targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine);
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
+    if(targetFile == null){
+      targetFile = DUMP_FILE_NAME_DEFAULT;
+    }
     timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
     if (timeFormat == null) {
       timeFormat = "default";
@@ -252,7 +257,7 @@ public class ExportCsv extends AbstractCsvTool {
       System.out.println("Cannot create dump file "+ path + "because: " + e.getMessage());
       return;
     }
-
+    System.out.println("Start to export data from sql statement: "+ sql);
     try (Statement statement = connection.createStatement();
         ResultSet rs = statement.executeQuery(sql);
         BufferedWriter bw = new BufferedWriter(new FileWriter(tf))) {
@@ -263,9 +268,9 @@ public class ExportCsv extends AbstractCsvTool {
       // write data in csv file
       writeMetadata(bw, count, metadata);
 
-      writeResultSet(rs, bw, count);
-      System.out.println(String.format("Statement [%s] has dumped to file %s successfully! "
-          + "It costs %dms.", sql, path, System.currentTimeMillis() - startTime));
+      int line = writeResultSet(rs, bw, count);
+      System.out.println(String.format("Statement [%s] has dumped to file %s successfully! It costs "
+          + "%dms to export %d lines.", sql, path, System.currentTimeMillis() - startTime, line));
     } catch (IOException e) {
       System.out.println("Cannot dump result because: " + e.getMessage());
     }
@@ -282,8 +287,10 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
-  private static void writeResultSet(ResultSet rs, BufferedWriter bw, int count)
+  private static int writeResultSet(ResultSet rs, BufferedWriter bw, int count)
       throws SQLException, IOException {
+    int line = 0;
+    long timestamp = System.currentTimeMillis();
     while (rs.next()) {
       if (rs.getString(1) == null ||
           "null".equalsIgnoreCase(rs.getString(1))) {
@@ -292,7 +299,14 @@ public class ExportCsv extends AbstractCsvTool {
         writeTime(rs, bw);
         writeValue(rs, count, bw);
       }
+      line++;
+      if(line % EXPORT_PER_LINE_COUNT == 0){
+        long tmp = System.currentTimeMillis();
+        System.out.println(String.format("%d lines have been exported, it takes %dms", line, (tmp-timestamp)));
+        timestamp = tmp;
+      }
     }
+    return line;
   }
 
   private static void writeTime(ResultSet rs, BufferedWriter bw) throws SQLException, IOException {

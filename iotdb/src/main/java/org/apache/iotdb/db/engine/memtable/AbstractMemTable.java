@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -73,6 +74,13 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
+      Object value) {
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
+    memSeries.write(insertTime, value);
+  }
+
+  @Override
   public int size() {
     int sum = 0;
     for (Map<String, IWritableMemChunk> seriesMap : memTableMap.values()) {
@@ -116,15 +124,19 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void delete(String deviceId, String measurementId, long timestamp) {
+  public boolean delete(String deviceId, String measurementId, long timestamp) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
     if (deviceMap != null) {
       IWritableMemChunk chunk = deviceMap.get(measurementId);
+      //TODO: if the memtable is thread safe, then we do not need to copy data again,
+      // otherwise current implementation is error.
       IWritableMemChunk newChunk = filterChunk(chunk, timestamp);
       if (newChunk != null) {
         deviceMap.put(measurementId, newChunk);
+        return newChunk.count() != chunk.count();
       }
     }
+    return false;
   }
 
   /**
