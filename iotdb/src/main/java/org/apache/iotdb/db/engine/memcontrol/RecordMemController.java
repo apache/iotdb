@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memcontrol;
 
-import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
