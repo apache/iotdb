@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.MemControlException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -151,8 +152,8 @@ public abstract class BasicMemController implements IService {
   /**
    * Any object (like OverflowProcessor or BufferWriteProcessor) that wants to hold some fixed size
    * of memory should call this method to check the returned memory usage level to decide any
-   * further actions.
-   * @param user an object that wants some memory as a buffer or anything.
+   * further actions. Applications from unregistered MemUsers result in nothing.
+   * @param user an MemUser that wants some memory as a buffer or anything.
    * @param usage how many bytes does the object want.
    * @return one of the three UsageLevels:
    *          safe - there are still sufficient memories left, the user may go on freely and this
@@ -162,15 +163,28 @@ public abstract class BasicMemController implements IService {
    *          dangerous - there is almost no memories unused, the user cannot proceed before enough
    *                    memory usages are released but this usage is still recorded.
    */
-  public abstract UsageLevel acquireUsage(Object user, long usage);
+  public abstract UsageLevel acquireUsage(MemUser user, long usage) throws MemControlException;
 
   /**
-   * When the memories held by one object (like OverflowProcessor or BufferWriteProcessor) is no
-   * more useful, this object should call this method to release the memories.
+   * When the memories held by one MemUser (like OverflowProcessor or BufferWriteProcessor) is no
+   * more useful, this MemUser should call this method to release the memories. Applications from
+   * unregistered MemUsers result in nothing.
    * @param user an object that holds some memory as a buffer or anything.
    * @param freeSize how many bytes does the object want to release.
    */
-  public abstract void releaseUsage(Object user, long freeSize);
+  public abstract void releaseUsage(MemUser user, long freeSize) throws MemControlException;
+
+  /**
+   * Start the memory monitoring of the given user.
+   * @param user an MemUser that holds some memory as a buffer or anything.
+   */
+  public abstract void register(MemUser user);
+
+  /**
+   * Stop the memory monitoring of the given user.
+   * @param user an MemUser that holds some memory as a buffer or anything.
+   */
+  public abstract void unregister(MemUser user);
 
   public enum ControllerType {
     RECORD

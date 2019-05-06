@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.bufferwrite;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.ESTIMATED_CHUNK_METADATA_SIZE;
 
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils.IO;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
+import org.apache.iotdb.db.engine.memcontrol.MemUser;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
@@ -44,6 +46,7 @@ import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
+import org.apache.iotdb.db.exception.MemControlException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -59,7 +62,7 @@ import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BufferWriteProcessor extends Processor {
+public class BufferWriteProcessor extends Processor implements MemUser {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessor.class);
   private RestorableTsFileIOWriter writer;
@@ -140,6 +143,7 @@ public class BufferWriteProcessor extends Processor {
       }
     }
     this.versionController = versionController;
+    this.register();
   }
 
   /**
@@ -170,8 +174,13 @@ public class BufferWriteProcessor extends Processor {
    */
   public void write(TSRecord tsRecord) throws BufferWriteProcessorException {
     long memUsage = MemUtils.getRecordSize(tsRecord);
-    BasicMemController.UsageLevel level = BasicMemController.getInstance()
-        .acquireUsage(this, memUsage);
+    BasicMemController.UsageLevel level = null;
+    try {
+      level = BasicMemController.getInstance()
+          .acquireUsage(this, memUsage);
+    } catch (MemControlException e) {
+      throw new BufferWriteProcessorException(e);
+    }
 
     String memory;
     switch (level) {
@@ -197,7 +206,11 @@ public class BufferWriteProcessor extends Processor {
         break;
       case DANGEROUS:
       default:
-        BasicMemController.getInstance().releaseUsage(this, memUsage);
+        try {
+          BasicMemController.getInstance().releaseUsage(this, memUsage);
+        } catch (MemControlException e) {
+          throw new BufferWriteProcessorException(e);
+        }
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
         LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
         throw new BufferWriteProcessorException("Memory usage will exceed dangerous threshold.");
@@ -369,7 +382,11 @@ public class BufferWriteProcessor extends Processor {
       valueCount = 0;
       switchWorkToFlush();
       long version = versionController.nextVersion();
-      BasicMemController.getInstance().releaseUsage(this, memDataSize.get());
+      try {
+        BasicMemController.getInstance().releaseUsage(this, memDataSize.get());
+      } catch (MemControlException e) {
+        throw new IOException(e);
+      }
       memDataSize.set(0);
       // switch
       flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",

@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.engine.memcontrol;
 
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.MemControlException;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,8 +80,8 @@ public class RecordMemController extends BasicMemController {
    * report the increased memory usage of the object user.
    */
   @Override
-  public UsageLevel acquireUsage(Object user, long usage) {
-    AtomicLong userUsage = memMap.computeIfAbsent(user, k -> new AtomicLong(0));
+  public UsageLevel acquireUsage(MemUser user, long usage) throws MemControlException {
+    AtomicLong userUsage = getUsage(user);
     long oldUsage = userUsage.get();
 
     long newTotUsage = totalMemUsed.addAndGet(usage);
@@ -127,12 +129,9 @@ public class RecordMemController extends BasicMemController {
    * report the decreased memory usage of the object user.
    */
   @Override
-  public void releaseUsage(Object user, long freeSize) {
-    AtomicLong usage = memMap.get(user);
-    if (usage == null) {
-      LOGGER.error("Unregistered memory usage from {}", user);
-      return;
-    }
+  public void releaseUsage(MemUser user, long freeSize) throws MemControlException {
+    AtomicLong usage = getUsage(user);
+
     long usageLong = usage.get();
     if (freeSize > usageLong) {
       LOGGER
@@ -150,6 +149,34 @@ public class RecordMemController extends BasicMemController {
             MemUtils.bytesCntToStr(newTotalMemUsage));
       }
     }
+  }
+
+  @Override
+  public void register(MemUser user) {
+    if (memMap.containsKey(user)) {
+      LOGGER.warn("Duplicated registration of {}", user);
+      return;
+    }
+    memMap.computeIfAbsent(user, k -> new AtomicLong(0));
+  }
+
+  @Override
+  public void unregister(MemUser user) {
+
+    if (!memMap.containsKey(user)) {
+      LOGGER.warn("Unregistering unregistered MemUser {}", user);
+      return;
+    }
+    memMap.remove(user);
+  }
+
+  private AtomicLong getUsage(MemUser user) throws MemControlException {
+    AtomicLong usage = memMap.get(user);
+    if (usage == null) {
+      throw new MemControlException(String.format("Memory acquirement from unregistered user: %s",
+          user.toString()));
+    }
+    return usage;
   }
 
   private static class InstanceHolder {

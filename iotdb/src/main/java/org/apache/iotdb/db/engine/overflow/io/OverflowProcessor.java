@@ -43,6 +43,7 @@ import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
+import org.apache.iotdb.db.engine.memcontrol.MemUser;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.pool.FlushManager;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.MemControlException;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -70,7 +72,7 @@ import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class OverflowProcessor extends Processor {
+public class OverflowProcessor extends Processor implements MemUser {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OverflowProcessor.class);
   private static final IoTDBConfig TsFileDBConf = IoTDBDescriptor.getInstance().getConfig();
@@ -129,6 +131,7 @@ public class OverflowProcessor extends Processor {
           getOverflowRestoreFile(),
           FileNodeManager.getInstance().getRestoreFilePath(processorName));
     }
+    this.register();
   }
 
   private void recovery(File parentFile) throws IOException {
@@ -178,7 +181,12 @@ public class OverflowProcessor extends Processor {
   public void insert(TSRecord tsRecord) throws IOException {
     // memory control
     long memUage = MemUtils.getRecordSize(tsRecord);
-    UsageLevel usageLevel = BasicMemController.getInstance().acquireUsage(this, memUage);
+    UsageLevel usageLevel = null;
+    try {
+      usageLevel = BasicMemController.getInstance().acquireUsage(this, memUage);
+    } catch (MemControlException e) {
+      throw new IOException(e);
+    }
     switch (usageLevel) {
       case SAFE:
         // write data
@@ -537,7 +545,11 @@ public class OverflowProcessor extends Processor {
               getProcessorName(), e);
         }
       }
-      BasicMemController.getInstance().releaseUsage(this, memDataSize.get());
+      try {
+        BasicMemController.getInstance().releaseUsage(this, memDataSize.get());
+      } catch (MemControlException e) {
+        throw new IOException(e);
+      }
       memDataSize.set(0);
       valueCount = 0;
       // switch from work to flush
