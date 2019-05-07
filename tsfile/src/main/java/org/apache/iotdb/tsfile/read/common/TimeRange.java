@@ -44,14 +44,19 @@ public class TimeRange implements Comparable<TimeRange> {
   private long max = 0;
 
   /**
-   * @param min
-   * @param max
+   * Initialize a closed interval [min,max].
+   * @param min the left endpoint of the closed interval
+   * @param max the right endpoint of the closed interval
    */
   public TimeRange(long min, long max) {
     set(min, max);
   }
 
+  @Override
   public int compareTo(TimeRange r) {
+    if (r == null) {
+      throw new NullPointerException("The input cannot be null!");
+    }
     long res1 = this.min - r.min;
     if (res1 > 0) {
       return 1;
@@ -164,8 +169,12 @@ public class TimeRange implements Comparable<TimeRange> {
    * @return <code>true</code> if the ranges overlap
    */
   public static boolean overlaps(long minA, long maxA, long minB, long maxB) {
-    assert minA <= maxA;
-    assert minB <= maxB;
+    if (minA > maxA) {
+      throw new IllegalArgumentException("Invalid input: minA should not be larger than maxA.");
+    }
+    if (minB > maxB) {
+      throw new IllegalArgumentException("Invalid input: minB should not be larger than maxB.");
+    }
 
     // Because timestamp is long data type, x and x+1 are considered continuous.
     return !(minA >= maxB + 2 || maxA <= minB - 2);
@@ -260,7 +269,8 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   public IExpression getExpression() {
-    IExpression left, right;
+    IExpression left;
+    IExpression right;
     if (leftClose) {
       left = new GlobalTimeExpression(TimeFilter.gtEq(min));
     } else {
@@ -273,7 +283,6 @@ public class TimeRange implements Comparable<TimeRange> {
       right = new GlobalTimeExpression(TimeFilter.lt(max));
     }
 
-    IExpression expression = BinaryExpression.and(left, right);
-    return expression;
+    return BinaryExpression.and(left, right);
   }
 }
