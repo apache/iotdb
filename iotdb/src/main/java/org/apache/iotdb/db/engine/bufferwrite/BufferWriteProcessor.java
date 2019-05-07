@@ -536,32 +536,21 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    BufferWriteProcessor that = (BufferWriteProcessor) o;
-    return Objects.equals(baseDir, that.baseDir) &&
-        Objects.equals(insertFilePath, that.insertFilePath);
+    return this == o;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), baseDir, insertFilePath);
-  }
-
-  public String getInsertFilePath() {
-    return insertFilePath;
+    return Objects.hash(super.hashCode());
   }
 
   @Override
   public String toString() {
     return "BufferWriteProcessor in " + insertFilePath;
+  }
+
+  public String getInsertFilePath() {
+    return insertFilePath;
   }
 
   public boolean isClosed() {
