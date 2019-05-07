@@ -137,6 +137,19 @@ public class ClusterConfig {
    */
   private int concurrentQPSubTaskThread = Runtime.getRuntime().availableProcessors() * 10;
 
+  /**
+   * Batch data size read from remote query node once while reading, default value is 10000.
+   * The smaller the parameter, the more communication times and the more time-consuming it is.
+   */
+  private int batchReadSize = 10000;
+
+  /**
+   * Maximum number of cached batch data list for each series in coordinator node while reading,
+   * default value is 2. The coordinator node is responsible for receiving client requests and
+   * requesting data from query nodes and collecting them.
+   */
+  private int maxCachedBatchDataListSize = 2;
+
   public ClusterConfig() {
     // empty constructor
   }
@@ -322,5 +335,21 @@ public class ClusterConfig {
 
   public void setConcurrentQPSubTaskThread(int concurrentQPSubTaskThread) {
     this.concurrentQPSubTaskThread = concurrentQPSubTaskThread;
+  }
+
+  public int getBatchReadSize() {
+    return batchReadSize;
+  }
+
+  public void setBatchReadSize(int batchReadSize) {
+    this.batchReadSize = batchReadSize;
+  }
+
+  public int getMaxCachedBatchDataListSize() {
+    return maxCachedBatchDataListSize;
+  }
+
+  public void setMaxCachedBatchDataListSize(int maxCachedBatchDataListSize) {
+    this.maxCachedBatchDataListSize = maxCachedBatchDataListSize;
   }
 }

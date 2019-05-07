@@ -78,12 +78,13 @@ public class ClusterExecutorWithTimeGenerator {
 
     /** add query token for filter series which can handle locally **/
     Set<String> deviceIdSet = new HashSet<>();
-    for(FilterGroupEntity filterGroupEntity:queryManager.getFilterGroupEntityMap().values()){
+    for (FilterGroupEntity filterGroupEntity : queryManager.getFilterGroupEntityMap().values()) {
       List<Path> remoteFilterSeries = filterGroupEntity.getFilterPaths();
       remoteFilterSeries.forEach(seriesPath -> deviceIdSet.add(seriesPath.getDevice()));
     }
     QueryResourceManager.getInstance()
-        .beginQueryOfGivenExpression(context.getJobId(), queryExpression.getExpression(), deviceIdSet);
+        .beginQueryOfGivenExpression(context.getJobId(), queryExpression.getExpression(),
+            deviceIdSet);
 
     ClusterTimeGenerator timestampGenerator;
     List<EngineReaderByTimeStamp> readersOfSelectedSeries;
@@ -99,7 +100,8 @@ public class ClusterExecutorWithTimeGenerator {
 
     /** Get data type of select paths **/
     List<TSDataType> dataTypes = new ArrayList<>();
-    Map<Path, ClusterSelectSeriesReader> selectSeriesReaders = queryManager.getSelectSeriesReaders();
+    Map<Path, ClusterSelectSeriesReader> selectSeriesReaders = queryManager
+        .getSelectSeriesReaders();
     for (Path path : queryExpression.getSelectedSeries()) {
       try {
         if (selectSeriesReaders.containsKey(path)) {
@@ -107,14 +109,22 @@ public class ClusterExecutorWithTimeGenerator {
         } else {
           dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
         }
-      }catch (PathErrorException e) {
+      } catch (PathErrorException e) {
         throw new FileNodeManagerException(e);
       }
 
     }
 
+    EngineReaderByTimeStamp[] readersOfSelectedSeriesArray = new EngineReaderByTimeStamp[readersOfSelectedSeries
+        .size()];
+    int index = 0;
+    for (EngineReaderByTimeStamp reader : readersOfSelectedSeries) {
+      readersOfSelectedSeriesArray[index] = reader;
+      index++;
+    }
+
     return new ClusterDataSetWithTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
         timestampGenerator,
-        readersOfSelectedSeries, queryManager);
+        readersOfSelectedSeriesArray, queryManager);
   }
 }

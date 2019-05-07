@@ -45,7 +45,7 @@ public abstract class MultiQPTask extends QPTask {
         task.cancel(true);
       }
     }
-    while(taskCountDownLatch.getCount()!=0) {
+    while (taskCountDownLatch.getCount() != 0) {
       this.taskCountDownLatch.countDown();
     }
   }

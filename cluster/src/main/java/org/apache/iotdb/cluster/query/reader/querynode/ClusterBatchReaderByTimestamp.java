@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 /**
  * BatchReader by timestamp for cluster which is used in query node.
  */
-public class ClusterBatchReaderByTimestamp extends IClusterBatchReader {
+public class ClusterBatchReaderByTimestamp extends AbstractClusterBatchReader {
 
   /**
    * Reader
@@ -53,7 +53,7 @@ public class ClusterBatchReaderByTimestamp extends IClusterBatchReader {
 
   @Override
   public BatchData nextBatch() throws IOException {
-    throw new IOException(
+    throw new UnsupportedOperationException(
         "nextBatch() in ClusterBatchReaderByTimestamp is an empty method.");
   }
 

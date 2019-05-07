@@ -20,7 +20,7 @@ package org.apache.iotdb.cluster.query.reader.coordinatornode;
 
 import java.io.IOException;
 import java.util.LinkedList;
-import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
@@ -32,7 +32,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 /**
  * Select series reader which is used in coordinator node.
  */
-public class ClusterSelectSeriesReader extends AbstractClusterPointReader implements EngineReaderByTimeStamp {
+public class ClusterSelectSeriesReader extends AbstractClusterPointReader implements
+    EngineReaderByTimeStamp {
 
   /**
    * Data group id
@@ -115,7 +116,7 @@ public class ClusterSelectSeriesReader extends AbstractClusterPointReader implem
 
   @Override
   public void close() throws IOException {
-    //Do nothing
+    batchDataList = null;
   }
 
   public Path getSeriesPath() {
@@ -160,6 +161,7 @@ public class ClusterSelectSeriesReader extends AbstractClusterPointReader implem
    */
   public boolean enableFetchData() {
     return !remoteDataFinish
-        && batchDataList.size() <= ClusterConstant.MAX_CACHE_BATCH_DATA_LIST_SIZE;
+        && batchDataList.size() <= ClusterDescriptor.getInstance().getConfig()
+        .getMaxCachedBatchDataListSize();
   }
 }

@@ -32,7 +32,8 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 public interface IClusterRpcSingleQueryManager {
 
   /**
-   * Divide physical plan into several sub physical plans according to timeseries full path.
+   * Divide physical plan into several sub physical plans according to timeseries full path and
+   * create sereis reader.
    *
    * @param queryType query type
    * @param readDataConsistencyLevel consistency level of reading data

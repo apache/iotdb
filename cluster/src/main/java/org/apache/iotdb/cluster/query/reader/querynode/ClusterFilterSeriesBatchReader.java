@@ -21,7 +21,9 @@ package org.apache.iotdb.cluster.query.reader.querynode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -36,8 +38,12 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class ClusterFilterSeriesBatchReader implements IClusterFilterSeriesBatchReader {
 
   private List<Path> allFilterPath;
+
   private List<Filter> filters;
+
   private QueryDataSet queryDataSet;
+
+  private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
 
   public ClusterFilterSeriesBatchReader(QueryDataSet queryDataSet, List<Path> allFilterPath,
       List<Filter> filters) {
@@ -64,7 +70,7 @@ public class ClusterFilterSeriesBatchReader implements IClusterFilterSeriesBatch
     }
     int dataPointCount = 0;
     while(true){
-      if(!hasNext() || dataPointCount == ClusterConstant.BATCH_READ_SIZE){
+      if(!hasNext() || dataPointCount == CLUSTER_CONF.getBatchReadSize()){
         break;
       }
       if(hasNext() && addTimeValuePair(batchDataList, dataTypeList)){

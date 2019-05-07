@@ -23,7 +23,12 @@ public enum ThreadName {
   /**
    * QP Task thread
    */
-  QP_TASK("QP-Task-Thread");
+  QP_TASK("QP-Task-Thread"),
+
+  /**
+   * Remote query timer
+   */
+  REMOTE_QUERY_TIMER("Remote-Query-Timer");
 
   private String name;
 

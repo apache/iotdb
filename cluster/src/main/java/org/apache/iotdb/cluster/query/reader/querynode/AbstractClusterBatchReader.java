@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 /**
  * Cluster batch reader, which provides another method to get batch data by batch timestamp.
  */
-public abstract class IClusterBatchReader implements IBatchReader {
+public abstract class AbstractClusterBatchReader implements IBatchReader {
 
   /**
    * Get batch data by batch time

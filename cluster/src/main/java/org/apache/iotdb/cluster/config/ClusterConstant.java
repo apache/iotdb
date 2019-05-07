@@ -23,6 +23,9 @@ public class ClusterConstant {
   private ClusterConstant() {
   }
 
+  /**
+   * Set read metadata consistency level pattern
+   */
   public static final String SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN = "set\\s+read\\s+metadata\\s+level\\s+to\\s+\\d+";
   public static final String SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN = "set\\s+read\\s+data\\s+level\\s+to\\s+\\d+";
   public static final int MAX_CONSISTENCY_LEVEL = 2;
@@ -35,16 +38,6 @@ public class ClusterConstant {
    * several sub-tasks.The unit is milliseconds.
    */
   public static final int CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT = 1000;
-
-  /**
-   * Batch data size read from remote query node once.
-   */
-  public static final int BATCH_READ_SIZE = 10000;
-
-  /**
-   * Maximum number of cached batch data list for each series.
-   */
-  public static final int MAX_CACHE_BATCH_DATA_LIST_SIZE = 2;
 
   /**
    * Query timeout in query node. If time interval between last communications with coordinator node

@@ -22,7 +22,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.query.timegenerator.ClusterTimeGenerator;
@@ -39,14 +40,20 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
 
   private ClusterRpcSingleQueryManager queryManager;
+
   private ClusterTimeGenerator timeGenerator;
-  private List<EngineReaderByTimeStamp> readers;
+
+  private EngineReaderByTimeStamp[] readers;
+
+  private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
 
   /**
    * Cached batch timestamp
    */
   private Iterator<Long> cachedBatchTimestamp;
+
   private boolean hasCachedRowRecord;
+
   private RowRecord cachedRowRecord;
 
   /**
@@ -58,7 +65,7 @@ public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
    * @param readers readers in List(EngineReaderByTimeStamp) structure
    */
   public ClusterDataSetWithTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
-      ClusterTimeGenerator timeGenerator, List<EngineReaderByTimeStamp> readers,
+      ClusterTimeGenerator timeGenerator, EngineReaderByTimeStamp[] readers,
       ClusterRpcSingleQueryManager queryManager) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
@@ -93,8 +100,8 @@ public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
       boolean hasField = false;
       long timestamp = cachedBatchTimestamp.next();
       RowRecord rowRecord = new RowRecord(timestamp);
-      for (int i = 0; i < readers.size(); i++) {
-        EngineReaderByTimeStamp reader = readers.get(i);
+      for (int i = 0; i < readers.length; i++) {
+        EngineReaderByTimeStamp reader = readers[i];
         Object value = reader.getValueInTimestamp(timestamp);
         if (value == null) {
           rowRecord.addField(new Field(null));
@@ -118,7 +125,7 @@ public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
   private boolean hasNextTimestamp() throws IOException {
     if (cachedBatchTimestamp == null || !cachedBatchTimestamp.hasNext()) {
       List<Long> batchTimestamp = new ArrayList<>();
-      for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
+      for (int i = 0; i < CLUSTER_CONF.getBatchReadSize(); i++) {
         if (timeGenerator.hasNext()) {
           batchTimestamp.add(timeGenerator.next());
         } else {

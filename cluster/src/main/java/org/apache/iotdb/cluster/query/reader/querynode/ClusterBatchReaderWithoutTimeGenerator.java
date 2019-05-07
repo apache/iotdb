@@ -20,7 +20,9 @@ package org.apache.iotdb.cluster.query.reader.querynode;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -29,7 +31,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 /**
  * BatchReader without time generator for cluster which is used in query node.
  */
-public class ClusterBatchReaderWithoutTimeGenerator extends IClusterBatchReader {
+public class ClusterBatchReaderWithoutTimeGenerator extends AbstractClusterBatchReader {
 
   /**
    * Data type
@@ -40,6 +42,8 @@ public class ClusterBatchReaderWithoutTimeGenerator extends IClusterBatchReader 
    * Point reader
    */
   private IPointReader reader;
+
+  private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
 
   public ClusterBatchReaderWithoutTimeGenerator(
       TSDataType dataType, IPointReader reader) {
@@ -55,7 +59,7 @@ public class ClusterBatchReaderWithoutTimeGenerator extends IClusterBatchReader 
   @Override
   public BatchData nextBatch() throws IOException {
     BatchData batchData = new BatchData(dataType, true);
-    for (int i = 0; i < ClusterConstant.BATCH_READ_SIZE; i++) {
+    for (int i = 0; i < CLUSTER_CONF.getBatchReadSize(); i++) {
       if (hasNext()) {
         TimeValuePair pair = reader.next();
         batchData.putTime(pair.getTimestamp());
@@ -69,7 +73,9 @@ public class ClusterBatchReaderWithoutTimeGenerator extends IClusterBatchReader 
 
   @Override
   public void close() throws IOException {
-    // do nothing
+    if (reader != null) {
+      reader.close();
+    }
   }
 
   @Override

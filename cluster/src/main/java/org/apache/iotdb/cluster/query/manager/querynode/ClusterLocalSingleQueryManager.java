@@ -23,13 +23,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
+import org.apache.iotdb.cluster.concurrent.pool.QueryTimerManager;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
-import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalQueryManager.QueryRepeaterTimer;
+import org.apache.iotdb.cluster.query.reader.querynode.AbstractClusterBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderWithoutTimeGenerator;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterSeriesBatchReader;
-import org.apache.iotdb.cluster.query.reader.querynode.IClusterBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.IClusterFilterSeriesBatchReader;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
@@ -59,16 +61,20 @@ import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterLocalSingleQueryManager.class);
 
   private String groupId;
 
   /**
    * Timer of Query, if the time is up, close query resource.
    */
-  private QueryRepeaterTimer queryRepeaterTimer;
+  private ScheduledFuture<?> queryTimer;
 
   /**
    * Job id assigned by local QueryResourceManager
@@ -83,7 +89,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   /**
    * Key is series full path, value is reader of select series
    */
-  private Map<String, IClusterBatchReader> selectSeriesReaders = new HashMap<>();
+  private Map<String, AbstractClusterBatchReader> selectSeriesReaders = new HashMap<>();
 
   /**
    * Filter reader
@@ -105,10 +111,10 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   /**
    * Constructor of ClusterLocalSingleQueryManager
    */
-  public ClusterLocalSingleQueryManager(long jobId, QueryRepeaterTimer queryRepeaterTimer) {
+  public ClusterLocalSingleQueryManager(long jobId) {
     this.jobId = jobId;
-    this.queryRepeaterTimer = queryRepeaterTimer;
-    this.queryRepeaterTimer.start();
+    queryTimer = QueryTimerManager.getInstance()
+        .execute(new QueryTimerRunnable(), ClusterConstant.QUERY_TIMEOUT_IN_QUERY_NODE);
   }
 
   @Override
@@ -247,7 +253,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       this.queryRound = targetQueryRounds;
       List<BatchData> batchDataList = new ArrayList<>();
       for (String series : fetchDataSeries) {
-        IClusterBatchReader reader = selectSeriesReaders.get(series);
+        AbstractClusterBatchReader reader = selectSeriesReaders.get(series);
         batchDataList.add(reader.nextBatch(request.getBatchTimestamp()));
       }
       cachedBatchDataResult = batchDataList;
@@ -258,7 +264,9 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
 
   @Override
   public void resetQueryTimer() {
-    queryRepeaterTimer.reset();
+    queryTimer.cancel(false);
+    queryTimer = QueryTimerManager.getInstance()
+        .execute(new QueryTimerRunnable(), ClusterConstant.QUERY_TIMEOUT_IN_QUERY_NODE);
   }
 
   /**
@@ -289,7 +297,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
 
   @Override
   public void close() throws FileNodeManagerException {
-    queryRepeaterTimer.stop();
+    queryTimer.cancel(false);
     QueryResourceManager.getInstance().endQueryForGivenJob(jobId);
   }
 
@@ -301,7 +309,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
     return queryRound;
   }
 
-  public Map<String, IClusterBatchReader> getSelectSeriesReaders() {
+  public Map<String, AbstractClusterBatchReader> getSelectSeriesReaders() {
     return selectSeriesReaders;
   }
 
@@ -311,5 +319,17 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
 
   public Map<String, TSDataType> getDataTypeMap() {
     return dataTypeMap;
+  }
+
+  public class QueryTimerRunnable implements Runnable {
+
+    @Override
+    public void run() {
+      try {
+        close();
+      } catch (FileNodeManagerException e) {
+        LOGGER.error(e.getMessage());
+      }
+    }
   }
 }

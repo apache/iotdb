@@ -28,7 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.QueryType;
@@ -103,6 +104,8 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    */
   private Map<String, FilterGroupEntity> filterGroupEntityMap = new HashMap<>();
 
+  private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
+
   public ClusterRpcSingleQueryManager(String taskId,
       QueryPlan queryPlan) {
     this.taskId = taskId;
@@ -114,8 +117,6 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       throws PathErrorException, IOException, RaftConnectionException {
     switch (queryType) {
       case NO_FILTER:
-        QueryPlanPartitionUtils.splitQueryPlanWithoutValueFilter(this);
-        break;
       case GLOBAL_TIME:
         QueryPlanPartitionUtils.splitQueryPlanWithoutValueFilter(this);
         break;
@@ -138,7 +139,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     for (Entry<String, QueryPlan> entry : selectPathPlans.entrySet()) {
       String groupId = entry.getKey();
       QueryPlan queryPlan = entry.getValue();
-      if (!canHandleQueryLocally(groupId)) {
+      if (!QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
         PeerId randomPeer = RaftUtils.getRandomPeerID(groupId);
         queryNodes.put(groupId, randomPeer);
         Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
@@ -283,7 +284,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       String series = fetchDataSeries.get(i);
       BatchData batchData = batchDataList.get(i);
       selectSeriesReaders.get(new Path(series))
-          .addBatchData(batchData, batchData.length() < ClusterConstant.BATCH_READ_SIZE);
+          .addBatchData(batchData, batchData.length() < CLUSTER_CONF.getBatchReadSize());
     }
   }
 
@@ -305,17 +306,10 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
     }
     for (int i = 0; i < fetchDataSeries.size(); i++) {
       BatchData batchData = batchDataList.get(i);
-      if(batchData.length() != 0) {
+      if (batchData.length() != 0) {
         filterReaders.get(i).addBatchData(batchData, remoteDataFinish);
       }
     }
-  }
-
-  /**
-   * Check whether coordinator can handle the query of a specific data group
-   */
-  private boolean canHandleQueryLocally(String groupId) {
-    return QPExecutorUtils.canHandleQueryByGroupId(groupId);
   }
 
   @Override
