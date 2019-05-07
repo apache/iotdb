@@ -23,12 +23,6 @@ import java.util.Map;
 public interface ClusterMonitorMBean {
 
   /**
-   * Original format = String.format("%s:%s=%s",
-   * IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName()
-   */
-  public static final String MBEAN_NAME = "org.apache.iotdb.service:type=Cluster Monitor";
-
-  /**
    * Get physical hash ring
    *
    * @return key: hash value, value: node ip

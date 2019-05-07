@@ -236,8 +236,10 @@ public class RaftUtils {
       }
       asyncContext.sendResponse(response);
     });
-    LOGGER.debug(
-        String.format("Processor batch size() : %d", request.getPhysicalPlanBytes().size()));
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          String.format("Processor batch size() : %d", request.getPhysicalPlanBytes().size()));
+    }
     task.setDone(closure);
     try {
       task.setData(ByteBuffer
@@ -312,6 +314,7 @@ public class RaftUtils {
           });
       nullReadTask.await();
     } catch (InterruptedException e) {
+      LOGGER.warn("Exception {} occurs while handling null read to metadata group.", e);
       status.setCode(-1);
       status.setErrorMsg(e.getMessage());
     }
@@ -324,7 +327,7 @@ public class RaftUtils {
     return status;
   }
 
-  public static ConcurrentHashMap<String, PeerId> getGroupLeaderCache() {
+  public static Map<String, PeerId> getGroupLeaderCache() {
     return groupLeaderCache;
   }
 
@@ -520,6 +523,7 @@ public class RaftUtils {
       }
       return value;
     } catch (RaftConnectionException | InterruptedException e) {
+      LOGGER.error("Fail to get replica metric from remote node because of {}.", e);
       return null;
     }
   }

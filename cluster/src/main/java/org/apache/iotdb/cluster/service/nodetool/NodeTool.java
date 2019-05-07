@@ -42,6 +42,7 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+import org.apache.iotdb.cluster.service.ClusterMonitor;
 import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
 public class NodeTool {
@@ -79,8 +80,8 @@ public class NodeTool {
         ParseCommandUnrecognizedException e) {
       badUse(e);
       status = 1;
-    } catch (Throwable throwable) {
-      err(Throwables.getRootCause(throwable));
+    } catch (Exception e) {
+      err(Throwables.getRootCause(e));
       status = 2;
     }
 
@@ -98,7 +99,7 @@ public class NodeTool {
     System.err.println(Throwables.getStackTraceAsString(e));
   }
 
-  public static abstract class NodeToolCmd implements Runnable {
+  public abstract static class NodeToolCmd implements Runnable {
 
     @Option(type = OptionType.GLOBAL, name = {"-h",
         "--host"}, description = "Node hostname or ip address")
@@ -108,13 +109,13 @@ public class NodeTool {
         "--port"}, description = "Remote jmx agent port number")
     private String port = "31999";
 
-    private final String JMX_URL_FORMAT = "service:jmx:rmi:///jndi/rmi://%s:%s/jmxrmi";
+    private static final String JMX_URL_FORMAT = "service:jmx:rmi:///jndi/rmi://%s:%s/jmxrmi";
 
     @Override
     public void run() {
       try {
         MBeanServerConnection mbsc = connect();
-        ObjectName name = new ObjectName(ClusterMonitorMBean.MBEAN_NAME);
+        ObjectName name = new ObjectName(ClusterMonitor.MBEAN_NAME);
         ClusterMonitorMBean clusterMonitorProxy = JMX
             .newMBeanProxy(mbsc, name, ClusterMonitorMBean.class);
         execute(clusterMonitorProxy);

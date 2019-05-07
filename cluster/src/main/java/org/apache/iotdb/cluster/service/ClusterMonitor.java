@@ -26,12 +26,14 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterMonitor.class);
+  /**
+   * Original format = String.format("%s:%s=%s",
+   * IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName()
+   */
+  public static final String MBEAN_NAME = "org.apache.iotdb.service:type=Cluster Monitor";
 
   public static final ClusterMonitor INSTANCE = new ClusterMonitor();
 
