@@ -99,18 +99,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected static final String INFO_NOT_LOGIN = "{}: Not login.";
   protected static final String ERROR_NOT_LOGIN = "Not login";
 
-  protected QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+  protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
   // login is failed.
   protected ThreadLocal<String> username = new ThreadLocal<>();
-  private ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
-  private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
+  protected ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
+  protected ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
   protected ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
+  protected ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
   public TSServiceImpl() throws IOException {
-    // do nothing because there is no need
+     processor = new QueryProcessor(new OverflowQPExecutor());
   }
 
   @Override
@@ -118,9 +118,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     LOGGER.info("{}: receive open session request from username {}", IoTDBConstant.GLOBAL_DB_NAME,
         req.getUsername());
 
-    initClusterService();
     boolean status;
-    IAuthorizer authorizer = null;
+    IAuthorizer authorizer;
     try {
       authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {
@@ -160,10 +159,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     queryRet.set(new HashMap<>());
   }
 
-  public void initClusterService() {
-
-  }
-
   @Override
   public TSCloseSessionResp closeSession(TSCloseSessionReq req) throws TException {
     LOGGER.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
@@ -197,13 +192,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       releaseQueryResource(req);
 
       clearAllStatusForCurrentRequest();
-    } catch (FileNodeManagerException e) {
+    } catch (Exception e) {
       LOGGER.error("Error in closeOperation : {}", e.getMessage());
     }
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
   }
 
-  private void releaseQueryResource(TSCloseOperationReq req) throws FileNodeManagerException {
+  public void releaseQueryResource(TSCloseOperationReq req) throws Exception {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       return;
@@ -213,13 +208,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (QueryContext context : contextMap.values()) {
         QueryResourceManager.getInstance().endQueryForGivenJob(context.getJobId());
       }
+      contextMapLocal.set(new HashMap<>());
     } else {
       QueryResourceManager.getInstance()
           .endQueryForGivenJob(contextMap.remove(req.queryId).getJobId());
     }
   }
 
-  private void clearAllStatusForCurrentRequest() {
+  public void clearAllStatusForCurrentRequest() {
     if (this.queryRet.get() != null) {
       this.queryRet.get().clear();
     }
@@ -383,20 +379,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getMetadataInString();
   }
 
-  protected Metadata getMetadata() throws PathErrorException, InterruptedException, ProcessorException {
+  protected Metadata getMetadata()
+      throws PathErrorException, InterruptedException, ProcessorException {
     return MManager.getInstance().getMetadata();
   }
 
-  protected TSDataType getSeriesType(String path) throws PathErrorException, InterruptedException, ProcessorException {
+  protected TSDataType getSeriesType(String path)
+      throws PathErrorException, InterruptedException, ProcessorException {
     return MManager.getInstance().getSeriesType(path);
   }
 
-  protected List<String> getPaths(String path) throws PathErrorException, InterruptedException, ProcessorException {
+  protected List<String> getPaths(String path)
+      throws PathErrorException, InterruptedException, ProcessorException {
     return MManager.getInstance().getPaths(path);
   }
 
   /**
-   * Judge whether the statement is ADMIN COMMAND and if true, executeWithGlobalTimeFilter it.
+   * Judge whether the statement is ADMIN COMMAND and if true, execute it.
    *
    * @param statement command
    * @return true if the statement is ADMIN COMMAND
@@ -463,7 +462,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         } catch (Exception e) {
           String errMessage = String.format(
-              "Fail to generate physcial plan and executeWithGlobalTimeFilter for statement "
+              "Fail to generate physcial plan and execute for statement "
                   + "%s beacuse %s",
               statement, e.getMessage());
           result.add(Statement.EXECUTE_FAILED);
@@ -571,8 +570,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       // check file level set
+
       try {
-        MManager.getInstance().checkFileLevel(paths);
+        checkFileLevelSet(paths);
       } catch (PathErrorException e) {
         LOGGER.error("meet error while checking file level.", e);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -653,6 +653,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
+  public void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+      MManager.getInstance().checkFileLevel(paths);
+  }
+
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) throws TException {
     try {
@@ -688,24 +692,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
+  public QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
     processor.getExecutor().setFetchSize(fetchSize);
 
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
-    Map<Long, QueryContext> contextMap = contextMapLocal.get();
-    if (contextMap == null) {
-      contextMap = new HashMap<>();
-      contextMapLocal.set(contextMap);
-    }
-    contextMap.put(req.queryId, context);
+
+    initContextMap();
+    contextMapLocal.get().put(req.queryId, context);
 
     QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
         context);
     queryRet.get().put(statement, queryDataSet);
     return queryDataSet;
+  }
+
+  public void initContextMap(){
+    Map<Long, QueryContext> contextMap = contextMapLocal.get();
+    if (contextMap == null) {
+      contextMap = new HashMap<>();
+      contextMapLocal.set(contextMap);
+    }
   }
 
   @Override
@@ -785,7 +794,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return executeUpdateStatement(physicalPlan);
   }
 
-  private void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
+  public void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
     queryStatus.get().put(statement, physicalPlan);
     // refresh current queryRet for statement
     if (queryRet.get().containsKey(statement)) {

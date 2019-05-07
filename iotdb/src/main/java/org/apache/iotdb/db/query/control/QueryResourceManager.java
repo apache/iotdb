@@ -140,6 +140,23 @@ public class QueryResourceManager {
     }
   }
 
+  /**
+   * Begin query and set query tokens of all filter paths in expression. This method is used in
+   * filter calculation.
+   * @param remoteDeviceIdSet device id set which can not handle locally
+   * Note : the method is for cluster
+   */
+  public void beginQueryOfGivenExpression(long jobId, IExpression expression,
+      Set<String> remoteDeviceIdSet) throws FileNodeManagerException {
+    Set<String> deviceIdSet = new HashSet<>();
+    getUniquePaths(expression, deviceIdSet);
+    deviceIdSet.removeAll(remoteDeviceIdSet);
+    for (String deviceId : deviceIdSet) {
+      putQueryTokenForCurrentRequestThread(jobId, deviceId,
+          FileNodeManager.getInstance().beginQuery(deviceId));
+    }
+  }
+
   public QueryDataSource getQueryDataSource(Path selectedPath,
       QueryContext context)
       throws FileNodeManagerException {
@@ -163,12 +180,12 @@ public class QueryResourceManager {
       // no resource need to be released.
       return;
     }
-      for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
-        for (int token : entry.getValue()) {
-          FileNodeManager.getInstance().endQuery(entry.getKey(), token);
-        }
+    for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
+      for (int token : entry.getValue()) {
+        FileNodeManager.getInstance().endQuery(entry.getKey(), token);
       }
-      queryTokensMap.remove(jobId);
+    }
+    queryTokensMap.remove(jobId);
     // remove usage of opened file paths of current thread
     filePathsManager.removeUsedFilesForGivenJob(jobId);
   }

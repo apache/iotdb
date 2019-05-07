@@ -49,4 +49,7 @@ public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Se
 
   @Override
   public abstract String toString();
+
+  @Override
+  public abstract Filter clone();
 }

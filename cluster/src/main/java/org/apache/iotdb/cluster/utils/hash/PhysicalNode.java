@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.cluster.utils.hash;
 
+import com.alipay.sofa.jraft.util.OnlyForTest;
+
 public class PhysicalNode {
 
-  public final String ip;
-  public final int port;
+  private String ip;
+  private int port;
 
   public PhysicalNode(String ip, int port) {
     this.ip = ip;
@@ -73,5 +75,15 @@ public class PhysicalNode {
 
   public int getPort() {
     return port;
+  }
+
+  @OnlyForTest
+  public void setIp(String ip) {
+    this.ip = ip;
+  }
+
+  @OnlyForTest
+  public void setPort(int port) {
+    this.port = port;
   }
 }

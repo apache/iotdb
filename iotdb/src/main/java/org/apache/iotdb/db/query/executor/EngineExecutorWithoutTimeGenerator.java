@@ -22,18 +22,11 @@ package org.apache.iotdb.db.query.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
-import org.apache.iotdb.db.query.reader.AllDataReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -44,7 +37,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 /**
  * IoTDB query executor with global time filter.
  */
-public class EngineExecutorWithoutTimeGenerator {
+public class EngineExecutorWithoutTimeGenerator extends ExecutorWithoutTimeGenerator {
 
   private QueryExpression queryExpression;
 
@@ -53,12 +46,15 @@ public class EngineExecutorWithoutTimeGenerator {
   }
 
   /**
-   * with global time filter.
+   * without filter or with global time filter.
    */
-  public QueryDataSet executeWithGlobalTimeFilter(QueryContext context)
+  public QueryDataSet execute(QueryContext context)
       throws FileNodeManagerException {
 
-    Filter timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
+    Filter timeFilter = null;
+    if (queryExpression.hasQueryFilter()) {
+      timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
+    }
 
     List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -68,36 +64,8 @@ public class EngineExecutorWithoutTimeGenerator {
 
     for (Path path : queryExpression.getSelectedSeries()) {
 
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
-          context);
-
-      // add data type
-      try {
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-      } catch (PathErrorException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // sequence reader for one sealed tsfile
-      SequenceDataReader tsFilesReader;
-      try {
-        tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-            timeFilter, context);
-      } catch (IOException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // unseq reader for all chunk groups in unSeqFile
-      PriorityMergeReader unSeqMergeReader;
-      try {
-        unSeqMergeReader = SeriesReaderFactory.getInstance()
-            .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
-      } catch (IOException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // merge sequence data with unsequence data.
-      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
+      IPointReader reader = createSeriesReader(context, path, dataTypes, timeFilter);
+      readersOfSelectedSeries.add(reader);
     }
 
     try {
@@ -107,59 +75,4 @@ public class EngineExecutorWithoutTimeGenerator {
       throw new FileNodeManagerException(e);
     }
   }
-
-  /**
-   * without filter.
-   */
-  public QueryDataSet executeWithoutFilter(QueryContext context)
-      throws FileNodeManagerException {
-
-    List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-
-    QueryResourceManager.getInstance()
-        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
-
-    for (Path path : queryExpression.getSelectedSeries()) {
-
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path,
-          context);
-
-      // add data type
-      try {
-        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-      } catch (PathErrorException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // sequence insert data
-      SequenceDataReader tsFilesReader;
-      try {
-        tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-            null, context);
-      } catch (IOException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // unseq insert data
-      PriorityMergeReader unSeqMergeReader;
-      try {
-        unSeqMergeReader = SeriesReaderFactory.getInstance()
-            .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
-      } catch (IOException e) {
-        throw new FileNodeManagerException(e);
-      }
-
-      // merge sequence data with unsequence data.
-      readersOfSelectedSeries.add(new AllDataReader(tsFilesReader, unSeqMergeReader));
-    }
-
-    try {
-      return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
-          readersOfSelectedSeries);
-    } catch (IOException e) {
-      throw new FileNodeManagerException(e);
-    }
-  }
-
 }

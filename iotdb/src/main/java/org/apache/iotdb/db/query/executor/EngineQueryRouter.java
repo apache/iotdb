@@ -47,11 +47,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
  * plan, physical plan will be executed by EngineQueryRouter.
  */
-public class EngineQueryRouter {
+public class EngineQueryRouter implements IEngineQueryRouter{
 
-  /**
-   * execute physical plan.
-   */
+  @Override
   public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
       throws FileNodeManagerException {
 
@@ -64,7 +62,7 @@ public class EngineQueryRouter {
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
           EngineExecutorWithoutTimeGenerator engineExecutor =
               new EngineExecutorWithoutTimeGenerator(queryExpression);
-          return engineExecutor.executeWithGlobalTimeFilter(context);
+          return engineExecutor.execute(context);
         } else {
           EngineExecutorWithTimeGenerator engineExecutor = new EngineExecutorWithTimeGenerator(
               queryExpression);
@@ -77,13 +75,11 @@ public class EngineQueryRouter {
     } else {
       EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
           queryExpression);
-      return engineExecutor.executeWithoutFilter(context);
+      return engineExecutor.execute(context);
     }
   }
 
-  /**
-   * execute aggregation query.
-   */
+  @Override
   public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context) throws QueryFilterOptimizationException,
       FileNodeManagerException, IOException, PathErrorException, ProcessorException {
@@ -105,17 +101,7 @@ public class EngineQueryRouter {
     }
   }
 
-  /**
-   * execute groupBy query.
-   *
-   * @param selectedSeries select path list
-   * @param aggres aggregation name list
-   * @param expression filter expression
-   * @param unit time granularity for interval partitioning, unit is ms.
-   * @param origin the datum time point for interval division is divided into a time interval for
-   * each TimeUnit time from this point forward and backward.
-   * @param intervals time intervals, closed interval.
-   */
+  @Override
   public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
       QueryContext context)
@@ -175,13 +161,7 @@ public class EngineQueryRouter {
     }
   }
 
-  /**
-   * execute fill query.
-   *
-   * @param fillPaths select path list
-   * @param queryTime timestamp
-   * @param fillType type IFill map
-   */
+  @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context)
       throws FileNodeManagerException, PathErrorException, IOException {

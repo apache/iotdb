@@ -102,7 +102,7 @@ public class ClusterConfig {
    * then it sends requests to other nodes in the cluster. This parameter represents the maximum
    * timeout for these requests. The unit is milliseconds.
    **/
-  private int qpTaskTimeout = 1000;
+  private int qpTaskTimeout = 5000;
 
   /**
    * Number of virtual nodes
@@ -136,6 +136,19 @@ public class ClusterConfig {
    * this value is the sum of all sub-tasks. When this value <= 0, use CPU core number * 10
    */
   private int concurrentQPSubTaskThread = Runtime.getRuntime().availableProcessors() * 10;
+
+  /**
+   * Batch data size read from remote query node once while reading, default value is 10000.
+   * The smaller the parameter, the more communication times and the more time-consuming it is.
+   */
+  private int batchReadSize = 10000;
+
+  /**
+   * Maximum number of cached batch data list for each series in coordinator node while reading,
+   * default value is 2. The coordinator node is responsible for receiving client requests and
+   * requesting data from query nodes and collecting them.
+   */
+  private int maxCachedBatchDataListSize = 2;
 
   public ClusterConfig() {
     // empty constructor
@@ -322,5 +335,21 @@ public class ClusterConfig {
 
   public void setConcurrentQPSubTaskThread(int concurrentQPSubTaskThread) {
     this.concurrentQPSubTaskThread = concurrentQPSubTaskThread;
+  }
+
+  public int getBatchReadSize() {
+    return batchReadSize;
+  }
+
+  public void setBatchReadSize(int batchReadSize) {
+    this.batchReadSize = batchReadSize;
+  }
+
+  public int getMaxCachedBatchDataListSize() {
+    return maxCachedBatchDataListSize;
+  }
+
+  public void setMaxCachedBatchDataListSize(int maxCachedBatchDataListSize) {
+    this.maxCachedBatchDataListSize = maxCachedBatchDataListSize;
   }
 }

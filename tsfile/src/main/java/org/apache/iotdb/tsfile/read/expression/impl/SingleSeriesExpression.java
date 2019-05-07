@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.tsfile.read.expression.impl;
 
+import java.io.Serializable;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class SingleSeriesExpression implements IUnaryExpression {
+public class SingleSeriesExpression implements IUnaryExpression, Serializable {
 
+  private static final long serialVersionUID = 7131207370394865228L;
   private Path seriesPath;
   private Filter filter;
 
@@ -36,6 +39,11 @@ public class SingleSeriesExpression implements IUnaryExpression {
   @Override
   public ExpressionType getType() {
     return ExpressionType.SERIES;
+  }
+
+  @Override
+  public IExpression clone() {
+    return new SingleSeriesExpression(seriesPath.clone(), filter.clone());
   }
 
   @Override

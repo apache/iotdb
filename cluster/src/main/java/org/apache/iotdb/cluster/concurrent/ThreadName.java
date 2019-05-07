@@ -19,8 +19,16 @@
 package org.apache.iotdb.cluster.concurrent;
 
 public enum ThreadName {
+
+  /**
+   * QP Task thread
+   */
   QP_TASK("QP-Task-Thread"),
-  RAFT_TASK("Raft-Task-Thread");
+
+  /**
+   * Remote query timer
+   */
+  REMOTE_QUERY_TIMER("Remote-Query-Timer");
 
   private String name;
 

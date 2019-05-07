@@ -21,6 +21,9 @@ package org.apache.iotdb.cluster.utils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class Utils {
   public static String getCurrentPath(String... command) throws IOException {
@@ -30,5 +33,29 @@ public class Utils {
     BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
     String path = r.readLine();
     return path;
+  }
+
+
+  public static void insertData(Connection connection, String[] createSQLs, String[] insertSQLs) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      for (String createSql : createSQLs) {
+        statement.execute(createSql);
+      }
+      for (String insertSql : insertSQLs) {
+        statement.execute(insertSql);
+      }
+    }
+  }
+
+  public static void insertBatchData(Connection connection, String[] createSQLs, String[] insertSQLs) throws SQLException {
+    try (Statement statement = connection.createStatement()) {
+      for (String createSql : createSQLs) {
+        statement.addBatch(createSql);
+      }
+      for (String insertSql : insertSQLs) {
+        statement.addBatch(insertSql);
+      }
+      statement.executeBatch();
+    }
   }
 }

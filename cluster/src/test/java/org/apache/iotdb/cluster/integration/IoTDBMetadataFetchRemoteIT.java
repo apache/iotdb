@@ -29,7 +29,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
 public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
   @BeforeClass
   public static void  setUp() throws Exception {
@@ -44,11 +43,11 @@ public class IoTDBMetadataFetchRemoteIT extends IoTDBMetadataFetchAbstract{
 
   @Test
   public void test() throws IOException {
-    String dir = Utils.getCurrentPath("pwd");
-    String node = "3";
-    String replicator = "3";
-    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh", node, replicator, dir);
-    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh", node, replicator, dir);
+//    String dir = Utils.getCurrentPath("pwd");
+//    String node = "3";
+//    String replicator = "3";
+//    startScript("sh", dir + File.separator + "script" + File.separator + "deploy.sh", node, replicator, dir);
+//    startScript("sh", dir + File.separator + "script" + File.separator + "stop.sh", node, replicator, dir);
   }
 
   private void startScript(String... command) throws IOException {

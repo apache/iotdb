@@ -25,14 +25,16 @@ import com.alipay.sofa.jraft.option.CliOptions;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 import java.util.LinkedList;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.qp.callback.QPTask;
-import org.apache.iotdb.cluster.qp.callback.QPTask.TaskState;
+import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
+import org.apache.iotdb.cluster.qp.task.QueryTask;
+import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
@@ -53,8 +55,8 @@ public class RaftNodeAsClientManager {
   private static final int TASK_TIMEOUT_MS = CLUSTER_CONFIG.getQpTaskTimeout();
 
   /**
-   * Max valid number of @NodeAsClient usage, represent the number can run simultaneously at the
-   * same time
+   * Max valid number of @NodeAsClient usage, represent the number can run simultaneously
+   * at the same time
    */
   private static final int MAX_VALID_CLIENT_NUM = CLUSTER_CONFIG.getMaxNumOfInnerRpcClient();
 
@@ -81,17 +83,17 @@ public class RaftNodeAsClientManager {
   /**
    * Lock to update clientNumInUse
    */
-  private ReentrantLock resourceLock = new ReentrantLock();
+  private Lock resourceLock = new ReentrantLock();
+
+  /**
+   * Condition to get client
+   */
+  private Condition resourceCondition = resourceLock.newCondition();
 
   /**
    * Mark whether system is shutting down
    */
   private volatile boolean isShuttingDown;
-
-  /**
-   * Interval of thread sleep, unit is millisecond.
-   */
-  private static final int THREAD_SLEEP_INTERVAL = 10;
 
   private RaftNodeAsClientManager() {
 
@@ -105,59 +107,38 @@ public class RaftNodeAsClientManager {
    * Try to get clientList, return null if num of queue clientList exceeds threshold.
    */
   public RaftNodeAsClient getRaftNodeAsClient() throws RaftConnectionException {
+    resourceLock.lock();
     try {
-      resourceLock.lock();
       if (queueClientNum >= MAX_QUEUE_CLIENT_NUM) {
         throw new RaftConnectionException(String
             .format("Raft inner rpc clients have reached the max numbers %s",
                 CLUSTER_CONFIG.getMaxNumOfInnerRpcClient() + CLUSTER_CONFIG
                     .getMaxQueueNumOfInnerRpcClient()));
       }
-      checkShuttingDown();
-      if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
-        clientNumInUse.incrementAndGet();
-        return getClient();
-      }
       queueClientNum++;
+      try {
+        while (true) {
+          checkShuttingDown();
+          if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
+            clientNumInUse.incrementAndGet();
+            return getClient();
+          }
+          resourceCondition.await();
+        }
+      } catch (InterruptedException e) {
+        throw new RaftConnectionException("An error occurred when trying to get NodeAsClient", e);
+      } finally {
+        queueClientNum--;
+      }
     } finally {
       resourceLock.unlock();
     }
-    return tryToGetClient();
   }
 
   private void checkShuttingDown() throws RaftConnectionException {
     if (isShuttingDown) {
       throw new RaftConnectionException(
           "Reject to provide RaftNodeAsClient client because cluster system is shutting down");
-    }
-  }
-
-  /**
-   * Check whether it can get the clientList
-   */
-  private RaftNodeAsClient tryToGetClient() throws RaftConnectionException {
-    for (; ; ) {
-      if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
-        resourceLock.lock();
-        try {
-          checkShuttingDown();
-          if (clientNumInUse.get() < MAX_VALID_CLIENT_NUM) {
-            clientNumInUse.incrementAndGet();
-            queueClientNum--;
-            return getClient();
-          }
-        } catch (RaftConnectionException e) {
-          queueClientNum--;
-          throw new RaftConnectionException(e);
-        } finally {
-          resourceLock.unlock();
-        }
-      }
-      try {
-        Thread.sleep(THREAD_SLEEP_INTERVAL);
-      } catch (InterruptedException e) {
-        throw new RaftConnectionException("An error occurred when trying to get NodeAsClient", e);
-      }
     }
   }
 
@@ -179,6 +160,7 @@ public class RaftNodeAsClientManager {
     resourceLock.lock();
     try {
       clientNumInUse.decrementAndGet();
+      resourceCondition.signalAll();
       clientList.addLast(client);
     } finally {
       resourceLock.unlock();
@@ -189,7 +171,7 @@ public class RaftNodeAsClientManager {
     isShuttingDown = true;
     while (clientNumInUse.get() != 0 && queueClientNum != 0) {
       // wait until releasing all usage of clients.
-      Thread.sleep(THREAD_SLEEP_INTERVAL);
+      resourceCondition.await();
     }
     while (!clientList.isEmpty()) {
       clientList.removeFirst().shutdown();
@@ -246,7 +228,7 @@ public class RaftNodeAsClientManager {
 
     @Override
     public void asyncHandleRequest(BasicRequest request, PeerId leader,
-        QPTask qpTask)
+        SingleQPTask qpTask)
         throws RaftConnectionException {
       LOGGER.debug("Node as client to send request to leader: {}", leader);
       try {
@@ -284,17 +266,13 @@ public class RaftNodeAsClientManager {
     }
 
     @Override
-    public void syncHandleRequest(BasicRequest request, PeerId leader,
-        QPTask qpTask)
-        throws RaftConnectionException {
+    public QueryTask syncHandleRequest(BasicRequest request, PeerId peerId) {
       try {
         BasicResponse response = (BasicResponse) boltClientService.getRpcClient()
-            .invokeSync(leader.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
-        qpTask.run(response);
+            .invokeSync(peerId.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
+        return new QueryTask(response, TaskState.FINISH);
       } catch (RemotingException | InterruptedException e) {
-        qpTask.setTaskState(TaskState.EXCEPTION);
-        qpTask.run(null);
-        throw new RaftConnectionException(e);
+        return new QueryTask(null, TaskState.EXCEPTION);
       } finally {
         releaseClient(RaftNodeAsClient.this);
       }

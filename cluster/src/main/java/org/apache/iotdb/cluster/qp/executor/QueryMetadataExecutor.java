@@ -26,27 +26,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.cluster.qp.callback.SingleQPTask;
+import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
-import org.apache.iotdb.cluster.rpc.raft.request.QueryMetadataInStringRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.QueryMetadataRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.QueryPathsRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.QuerySeriesTypeRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.QueryStorageGroupRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.QueryTimeSeriesRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryMetadataInStringRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryMetadataRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryPathsRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QuerySeriesTypeRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryStorageGroupRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryTimeSeriesRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.QueryMetadataInStringResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.QueryMetadataResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.QueryPathsResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.QuerySeriesTypeResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.QueryStorageGroupResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.QueryTimeSeriesResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetadata.QueryMetadataInStringResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetadata.QueryMetadataResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetadata.QueryPathsResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetadata.QuerySeriesTypeResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetadata.QueryStorageGroupResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetadata.QueryTimeSeriesResponse;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -59,7 +58,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Handle < show timeseries <path> > logic
  */
-public class QueryMetadataExecutor extends ClusterQPExecutor {
+public class QueryMetadataExecutor extends AbstractQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
   private static final String DOUB_SEPARATOR = "\\.";
@@ -83,7 +82,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     if (storageGroupList.isEmpty()) {
       return new ArrayList<>();
     } else {
-      Map<String, Set<String>> groupIdSGMap = classifySGByGroupId(storageGroupList);
+      Map<String, Set<String>> groupIdSGMap = QPExecutorUtils.classifySGByGroupId(storageGroupList);
       for (Entry<String, Set<String>> entry : groupIdSGMap.entrySet()) {
         List<String> paths = getSubQueryPaths(entry.getValue(), path);
         String groupId = entry.getKey();
@@ -126,13 +125,13 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   private void handleTimseriesQuery(String groupId, List<String> pathList, List<List<String>> res)
       throws ProcessorException, InterruptedException {
     QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId,
-        readMetadataConsistencyLevel, pathList);
+        getReadMetadataConsistencyLevel(), pathList);
     SingleQPTask task = new SingleQPTask(false, request);
 
     LOGGER.debug("Execute show timeseries {} statement for group {}.", pathList, groupId);
     PeerId holder;
     /** Check if the plan can be executed locally. **/
-    if (canHandleQueryByGroupId(groupId)) {
+    if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
       LOGGER.debug("Execute show timeseries {} statement locally for group {} by sending request to local node.", pathList, groupId);
       holder = this.server.getServerId();
     } else {
@@ -153,21 +152,21 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     List<SingleQPTask> taskList = new ArrayList<>();
     for (String groupId : groupIdSet) {
       QueryMetadataInStringRequest request = new QueryMetadataInStringRequest(groupId,
-          readMetadataConsistencyLevel);
+          getReadMetadataConsistencyLevel());
       SingleQPTask task = new SingleQPTask(false, request);
       taskList.add(task);
 
       LOGGER.debug("Execute show metadata in string statement for group {}.", groupId);
       PeerId holder;
       /** Check if the plan can be executed locally. **/
-      if (canHandleQueryByGroupId(groupId)) {
+      if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
         LOGGER.debug("Execute show metadata in string statement locally for group {} by sending request to local node.", groupId);
         holder = this.server.getServerId();
       } else {
         holder = RaftUtils.getRandomPeerID(groupId);
       }
       try {
-        asyncSendNonQueryTask(task, holder, 0);
+        asyncSendNonQuerySingleTask(task, holder, 0);
       } catch (RaftConnectionException e) {
         throw new ProcessorException("Raft connection occurs error.", e);
       }
@@ -192,21 +191,21 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     List<SingleQPTask> taskList = new ArrayList<>();
     for (String groupId : groupIdSet) {
       QueryMetadataRequest request = new QueryMetadataRequest(groupId,
-          readMetadataConsistencyLevel);
+          getReadMetadataConsistencyLevel());
       SingleQPTask task = new SingleQPTask(false, request);
       taskList.add(task);
 
       LOGGER.debug("Execute query metadata statement for group {}.", groupId);
       PeerId holder;
       /** Check if the plan can be executed locally. **/
-      if (canHandleQueryByGroupId(groupId)) {
+      if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
         LOGGER.debug("Execute query metadata statement locally for group {} by sending request to local node.", groupId);
         holder = this.server.getServerId();
       } else {
         holder = RaftUtils.getRandomPeerID(groupId);
       }
       try {
-        asyncSendNonQueryTask(task, holder, 0);
+        asyncSendNonQuerySingleTask(task, holder, 0);
       } catch (RaftConnectionException e) {
         throw new ProcessorException("Raft connection occurs error.", e);
       }
@@ -229,20 +228,20 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   public TSDataType processSeriesTypeQuery(String path)
       throws InterruptedException, ProcessorException, PathErrorException {
-    TSDataType dataType = null;
+    TSDataType dataType;
     List<String> storageGroupList = mManager.getAllFileNamesByPath(path);
     if (storageGroupList.size() != 1) {
       throw new PathErrorException("path " + path + " is not valid.");
     } else {
-      String groupId = getGroupIdBySG(storageGroupList.get(0));
+      String groupId = router.getGroupIdBySG(storageGroupList.get(0));
       QuerySeriesTypeRequest request = new QuerySeriesTypeRequest(groupId,
-          readMetadataConsistencyLevel, path);
+          getReadMetadataConsistencyLevel(), path);
       SingleQPTask task = new SingleQPTask(false, request);
 
       LOGGER.debug("Execute get series type for {} statement for group {}.", path, groupId);
       PeerId holder;
       /** Check if the plan can be executed locally. **/
-      if (canHandleQueryByGroupId(groupId)) {
+      if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
         LOGGER.debug("Execute get series type for {} statement locally for group {} by sending request to local node.", path, groupId);
         holder = this.server.getServerId();
       } else {
@@ -267,7 +266,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
     if (storageGroupList.isEmpty()) {
       return new ArrayList<>();
     } else {
-      Map<String, Set<String>> groupIdSGMap = classifySGByGroupId(storageGroupList);
+      Map<String, Set<String>> groupIdSGMap = QPExecutorUtils.classifySGByGroupId(storageGroupList);
       for (Entry<String, Set<String>> entry : groupIdSGMap.entrySet()) {
         List<String> paths = getSubQueryPaths(entry.getValue(), path);
         String groupId = entry.getKey();
@@ -285,13 +284,13 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   private void handlePathsQuery(String groupId, List<String> pathList, List<String> res)
       throws ProcessorException, InterruptedException {
     QueryPathsRequest request = new QueryPathsRequest(groupId,
-        readMetadataConsistencyLevel, pathList);
+        getReadMetadataConsistencyLevel(), pathList);
     SingleQPTask task = new SingleQPTask(false, request);
 
     LOGGER.debug("Execute get paths for {} statement for group {}.", pathList, groupId);
     PeerId holder;
     /** Check if the plan can be executed locally. **/
-    if (canHandleQueryByGroupId(groupId)) {
+    if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
       LOGGER.debug("Execute get paths for {} statement locally for group {} by sending request to local node.", pathList, groupId);
       holder = this.server.getServerId();
     } else {
@@ -306,14 +305,14 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private List<List<String>> queryTimeSeries(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
     return response == null ? new ArrayList<>()
         : ((QueryTimeSeriesResponse) response).getTimeSeries();
   }
 
   private TSDataType querySeriesType(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
     return response == null ? null
         : ((QuerySeriesTypeResponse) response).getDataType();
   }
@@ -326,10 +325,10 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
   private Set<String> queryStorageGroupLocally() throws InterruptedException {
     final byte[] reqContext = RaftUtils.createRaftRequestContext();
     QueryStorageGroupRequest request = new QueryStorageGroupRequest(
-        ClusterConfig.METADATA_GROUP_ID, readMetadataConsistencyLevel);
+        ClusterConfig.METADATA_GROUP_ID, getReadMetadataConsistencyLevel());
     SingleQPTask task = new SingleQPTask(false, request);
     MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
-    if (readMetadataConsistencyLevel == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
+    if (getReadMetadataConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryStorageGroupResponse response;
       try {
         response = QueryStorageGroupResponse
@@ -365,7 +364,7 @@ public class QueryMetadataExecutor extends ClusterQPExecutor {
 
   private List<String> queryPaths(SingleQPTask task, PeerId leader)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
     return response == null ? new ArrayList<>()
         : ((QueryPathsResponse) response).getPaths();
   }

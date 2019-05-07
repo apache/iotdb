@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.rpc.raft.request;
 
 public abstract class BasicQueryRequest extends BasicRequest {
 
+  private static final long serialVersionUID = 2993000692822502110L;
   /**
    * Read Consistency Level
    */
@@ -28,6 +29,10 @@ public abstract class BasicQueryRequest extends BasicRequest {
   public BasicQueryRequest(String groupID, int readConsistencyLevel) {
     super(groupID);
     this.readConsistencyLevel = readConsistencyLevel;
+  }
+
+  public BasicQueryRequest(String groupID) {
+    super(groupID);
   }
 
   public int getReadConsistencyLevel() {

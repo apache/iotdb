@@ -24,7 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-import org.apache.iotdb.cluster.rpc.service.TSServiceClusterImpl;
+import org.apache.iotdb.cluster.service.TSServiceClusterImpl;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -52,9 +52,8 @@ public class ClusterDescriptor {
   }
 
   /**
-   * Load an property file and set ClusterConfig variables.
-   * Change this method to public only for test.
-   * In most case, you should invoke this method.
+   * Load an property file and set ClusterConfig variables. Change this method to public only for
+   * test. In most case, you should invoke this method.
    */
   public void loadProps() {
     ioTDBConf.setRpcImplClassName(TSServiceClusterImpl.class.getName());
@@ -104,9 +103,11 @@ public class ClusterDescriptor {
 
       conf.setRaftLogPath(properties.getProperty("raft_log_path", conf.getRaftLogPath()));
 
-      conf.setRaftSnapshotPath(properties.getProperty("raft_snapshot_path", conf.getRaftSnapshotPath()));
+      conf.setRaftSnapshotPath(
+          properties.getProperty("raft_snapshot_path", conf.getRaftSnapshotPath()));
 
-      conf.setRaftMetadataPath(properties.getProperty("raft_metadata_path", conf.getRaftMetadataPath()));
+      conf.setRaftMetadataPath(
+          properties.getProperty("raft_metadata_path", conf.getRaftMetadataPath()));
 
       conf.setElectionTimeoutMs(Integer
           .parseInt(properties.getProperty("election_timeout_ms",
@@ -155,8 +156,24 @@ public class ClusterDescriptor {
       conf.setConcurrentQPSubTaskThread(Integer
           .parseInt(properties.getProperty("concurrent_qp_sub_task_thread",
               Integer.toString(conf.getConcurrentQPSubTaskThread()))));
+
+      conf.setBatchReadSize(Integer.parseInt(properties.getProperty("batch_read_size",
+          Integer.toString(conf.getBatchReadSize()))));
+
+      conf.setMaxCachedBatchDataListSize(Integer.parseInt(properties
+          .getProperty("max_cached_batch_data_list_size",
+              Integer.toString(conf.getMaxCachedBatchDataListSize()))));
+
       if (conf.getConcurrentQPSubTaskThread() <= 0) {
         conf.setConcurrentQPSubTaskThread(Runtime.getRuntime().availableProcessors() * 10);
+      }
+
+      if (conf.getMaxCachedBatchDataListSize() <= 0) {
+        conf.setMaxCachedBatchDataListSize(2);
+      }
+
+      if (conf.getBatchReadSize() <= 0) {
+        conf.setBatchReadSize(10000);
       }
 
     } catch (IOException e) {
@@ -174,6 +191,7 @@ public class ClusterDescriptor {
   }
 
   private static class ClusterDescriptorHolder {
+
     private static final ClusterDescriptor INSTANCE = new ClusterDescriptor();
   }
 }
