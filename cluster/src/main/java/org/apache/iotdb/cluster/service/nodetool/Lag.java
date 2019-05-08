@@ -32,6 +32,9 @@ public class Lag extends NodeToolCmd {
   {
     Map<String, Map<String, Long>> groupMap = proxy.getReplicaLagMap();
     for (Entry<String, Map<String, Long>> entry : groupMap.entrySet()) {
+      if (entry.getValue() == null) {
+        continue;
+      }
       System.out.println(entry.getKey() + ":");
       entry.getValue().forEach((node, lag) -> System.out.println("\t" + node + "\t->\t" + lag));
     }
