@@ -37,7 +37,7 @@ public class LastAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
-    resultData.reSet();
+    resultData.reset();
   }
 
   @Override

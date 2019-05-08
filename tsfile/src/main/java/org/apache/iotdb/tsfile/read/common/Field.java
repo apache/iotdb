@@ -132,4 +132,26 @@ public class Field {
   public boolean isNull() {
     return this.isNull;
   }
+
+  public Object getObjectValue(TSDataType dataType) {
+    if (isNull) {
+      return null;
+    }
+    switch (dataType) {
+      case DOUBLE:
+        return getDoubleV();
+      case FLOAT:
+        return getFloatV();
+      case INT64:
+        return getLongV();
+      case INT32:
+        return getIntV();
+      case BOOLEAN:
+        return getBoolV();
+      case TEXT:
+        return getBinaryV();
+      default:
+        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+    }
+  }
 }

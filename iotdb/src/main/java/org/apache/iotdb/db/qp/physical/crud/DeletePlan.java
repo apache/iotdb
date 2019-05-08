@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DeletePlan extends PhysicalPlan {
 
+  private static final long serialVersionUID = -6532570247476907037L;
   private long deleteTime;
   private List<Path> paths = new ArrayList<>();
 

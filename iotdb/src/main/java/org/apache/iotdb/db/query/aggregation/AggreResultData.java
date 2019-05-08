@@ -44,7 +44,7 @@ public class AggreResultData {
     this.isSetValue = false;
   }
 
-  public void reSet() {
+  public void reset() {
     isSetValue = false;
     isSetTime = false;
   }

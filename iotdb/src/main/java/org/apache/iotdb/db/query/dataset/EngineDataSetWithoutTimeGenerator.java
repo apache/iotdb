@@ -154,4 +154,8 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
     timeSet.remove(t);
     return t;
   }
+
+  public List<IPointReader> getReaders() {
+    return readers;
+  }
 }

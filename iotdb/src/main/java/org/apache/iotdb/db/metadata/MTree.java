@@ -52,6 +52,15 @@ public class MTree implements Serializable {
   private static final String NOT_SERIES_PATH = "The prefix of the seriesPath %s is not one storage group seriesPath";
   private MNode root;
 
+  private static final Set<String> TIMESERIES_METADATA_NAMESET = new HashSet<>();
+  static {
+    TIMESERIES_METADATA_NAMESET.add("DataType");
+    TIMESERIES_METADATA_NAMESET.add("Encoding");
+    TIMESERIES_METADATA_NAMESET.add("Compressor");
+    TIMESERIES_METADATA_NAMESET.add("args");
+    TIMESERIES_METADATA_NAMESET.add("StorageGroup");
+  }
+
   public MTree(String rootName) {
     this.root = new MNode(rootName, null, false);
   }
@@ -244,38 +253,6 @@ public class MTree implements Serializable {
       return false;
     } else {
       return true;
-    }
-  }
-
-  /**
-   * Check whether the storage group of the path exists or not
-   * @param path input path
-   * @return If it's storage group exists, return true. Else return false
-   * @apiNote :for cluster
-   */
-  public boolean checkStorageExistOfPath(String path) {
-    String[] nodeNames = path.split(DOUB_SEPARATOR);
-    MNode cur = root;
-    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
-      return false;
-    }
-    int i = 1;
-    while (i < nodeNames.length - 1) {
-      MNode temp = cur.getChild(nodeNames[i]);
-      if (temp == null) {
-        return false;
-      }
-      if(temp.isStorageLevel()){
-        return true;
-      }
-      cur = cur.getChild(nodeNames[i]);
-      i++;
-    }
-    MNode temp = cur.getChild(nodeNames[i]);
-    if(temp != null && temp.isStorageLevel()) {
-      return true;
-    } else {
-      return false;
     }
   }
 

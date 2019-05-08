@@ -20,6 +20,7 @@ package org.apache.iotdb.db.sync.receiver;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -149,8 +150,10 @@ public class SyncServiceManager implements IService {
         protocolFactory = new TBinaryProtocol.Factory();
         processor = new SyncService.Processor<>(new SyncServiceImpl());
         poolArgs = new TThreadPoolServer.Args(serverTransport);
-        poolArgs.processor(processor);
+        poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
+            ThreadName.SYNC_CLIENT.getName());
         poolArgs.protocolFactory(protocolFactory);
+        poolArgs.processor(processor);
         poolServer = new TThreadPoolServer(poolArgs);
         poolServer.setServerEventHandler(new SyncServiceEventHandler(threadStartLatch));
         poolServer.serve();

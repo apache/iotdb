@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 
@@ -76,6 +77,11 @@ public class NotEq<T extends Comparable<T>> extends UnaryFilter<T> {
     } else {
       return true;
     }
+  }
+
+  @Override
+  public Filter clone() {
+    return new NotEq(value, filterType);
   }
 
   @Override
