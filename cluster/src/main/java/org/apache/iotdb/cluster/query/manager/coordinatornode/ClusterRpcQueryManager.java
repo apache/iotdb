@@ -80,7 +80,7 @@ public class ClusterRpcQueryManager implements IClusterRpcQueryManager {
   public Map<String, Integer> getAllReadUsage() {
     Map<String, Integer> readerUsageMap = new HashMap<>();
     SINGLE_QUERY_MANAGER_MAP.values().forEach(singleQueryManager -> {
-      for(String groupId:singleQueryManager.getDataGroupUsage()) {
+      for (String groupId : singleQueryManager.getDataGroupUsage()) {
         readerUsageMap.put(groupId, readerUsageMap.getOrDefault(groupId, 0) + 1);
       }
     });

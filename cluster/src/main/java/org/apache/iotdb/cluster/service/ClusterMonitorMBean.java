@@ -71,7 +71,7 @@ public interface ClusterMonitorMBean {
   Map<String, Map<String, Long>> getReplicaLagMap();
 
   /**
-   * Get number of query jobs for metadata group and each data partition
+   * Get number of query jobs for each data partition
    *
    * @return key: groupId, value: number of query jobs
    */

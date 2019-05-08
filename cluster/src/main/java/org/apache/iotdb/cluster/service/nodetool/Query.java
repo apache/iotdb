@@ -23,7 +23,7 @@ import java.util.Map;
 import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
 import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
-@Command(name = "query", description = "Print number of query jobs for all groups of connected host")
+@Command(name = "query", description = "Print number of query jobs for all data partitions of connected host")
 public class Query extends NodeToolCmd {
 
   @Override

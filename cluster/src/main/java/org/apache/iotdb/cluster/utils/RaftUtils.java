@@ -54,6 +54,7 @@ import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
@@ -577,8 +578,13 @@ public class RaftUtils {
     }
   }
 
+  /**
+   * Get query job number running on each data partition
+   *
+   * @return key: data partition ID, value: query job number
+   */
   public static Map<String, Integer> getQueryJobNumMap() {
-    return null;
+    return ClusterRpcQueryManager.getInstance().getAllReadUsage();
   }
 
   /**

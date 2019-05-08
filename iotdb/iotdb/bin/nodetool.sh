@@ -27,7 +27,7 @@ MAIN_CLASS=org.apache.iotdb.cluster.service.nodetool.NodeTool
 
 
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in ${IOTDB_HOME}/lib_cluster/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 

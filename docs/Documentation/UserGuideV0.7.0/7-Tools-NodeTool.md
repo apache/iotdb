@@ -258,7 +258,7 @@ The above output indicates that the current cluster contains 2 data groups, wher
 
 ### Query Number of Query Tasks among All Storage Groups (query)
 
-IoTDB Cluster contains one metadata group and multiple data partitions, where there may be multiple concurrent query tasks running on each data group. With this command, users are able to know the query task load and the total query task load of each data group on the current node, and the task load is represented by the number of tasks.
+IoTDB Cluster contains multiple data partitions, where there may be multiple concurrent query tasks running on each data partition. With this command, users are able to know the query task load and the total query task load of each data group on the current node, and the task load is represented by the number of tasks.
 
 #### Input
 
@@ -266,11 +266,11 @@ The command to query number of query tasks is `query`, no additional parameters 
 
 #### Output
 
-The output is multiple string lines, each line represents a key-value pair ,where the key is data group ID and the value is number of query tasks running on this data group. The format of each line is `key -> value`. The last line represents the total number of query tasks running on current node.
+The output is multiple string lines, each line represents a key-value pair ,where the key is data group ID and the value is number of query tasks running on this data partition. The format of each line is `key -> value`. The last line represents the total number of query tasks running on current node.
 
 #### Example
 
-Assume that the IoTDB Cluster is running on 3 nodes: 192.168.130.14, 192.168.130.16 and 192.168.130.18, and number of replicas is 3.
+Assume that the IoTDB Cluster is running on 3 nodes: 192.168.130.14, 192.168.130.16 and 192.168.130.18, and number of replicas is 2.
 
 The Linux and MacOS system startup commands are as follows:
 ```
@@ -285,8 +285,8 @@ The Windows system startup commands are as follows:
 After using the command, the successful output will be as follows: 
 	
 ```
-metadata	->	1
-data-group-0	->	3
+data-group-0	->	1
+data-group-3	->	3
 Total	->	4
 ```
-The above output indicates that node 192.168.130.14 contains 2 data groups and 4 query tasks are running on it, wherein 1 query tasks is running on metadata group, and 3 query tasks are running on data partition data-group-0 .
+The above output indicates that node 192.168.130.14 contains 2 data partitions and 4 query tasks are running on it, wherein 1 query tasks is running on data partition data-group-0, and 3 query tasks are running on data partition data-group-1.
