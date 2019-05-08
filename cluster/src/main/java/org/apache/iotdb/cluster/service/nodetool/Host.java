@@ -48,6 +48,11 @@ public class Host extends NodeToolCmd {
       map = proxy.getDataPartitonOfNode(ip, port);
     }
 
+    if (map == null) {
+      System.out.println("Can't find the input IP.");
+      return;
+    }
+
     for (Entry<String[], String[]> entry : map.entrySet()) {
       StringBuilder builder = new StringBuilder();
       String[] ips = entry.getKey();

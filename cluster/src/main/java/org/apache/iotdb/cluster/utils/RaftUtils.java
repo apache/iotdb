@@ -446,6 +446,9 @@ public class RaftUtils {
 
   public static Map<String[], String[]> getDataPartitionOfNode(String ip, int port, Server server, Router router) {
     PhysicalNode[][] groups = router.getGroupsNodes(ip, port);
+    if (groups == null) {
+      return null;
+    }
 
     Map<String, List<String>> groupSGMap = new LinkedHashMap<>();
     for (int i = 0; i < groups.length; i++) {
