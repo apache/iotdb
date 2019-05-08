@@ -34,17 +34,17 @@ import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.qp.ClusterQPExecutor;
-import org.apache.iotdb.cluster.qp.callback.BatchQPTask;
-import org.apache.iotdb.cluster.qp.callback.QPTask;
-import org.apache.iotdb.cluster.qp.callback.SingleQPTask;
+import org.apache.iotdb.cluster.qp.task.BatchQPTask;
+import org.apache.iotdb.cluster.qp.task.QPTask;
+import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.DataGroupNonQueryRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.MetaGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.nonquery.DataGroupNonQueryRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.nonquery.MetaGroupNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.DataGroupNonQueryResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.MetaGroupNonQueryResponse;
-import org.apache.iotdb.cluster.rpc.service.TSServiceClusterImpl.BatchResult;
+import org.apache.iotdb.cluster.rpc.raft.response.nonquery.DataGroupNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.nonquery.MetaGroupNonQueryResponse;
+import org.apache.iotdb.cluster.service.TSServiceClusterImpl.BatchResult;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Handle distributed non-query logic
  */
-public class NonQueryExecutor extends ClusterQPExecutor {
+public class NonQueryExecutor extends AbstractQPExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NonQueryExecutor.class);
 
@@ -100,10 +100,13 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    * @param batchResult batch result
    */
   public void processBatch(PhysicalPlan[] physicalPlans, BatchResult batchResult)
-      throws InterruptedException {
+      throws InterruptedException, ProcessorException {
 
     Status nullReadTaskStatus = Status.OK();
     RaftUtils.handleNullReadToMetaGroup(nullReadTaskStatus);
+    if(!nullReadTaskStatus.isOk()){
+      throw new ProcessorException("Null read while processing batch failed");
+    }
     nullReaderEnable = false;
 
     /** 1. Classify physical plans by group id **/
@@ -112,12 +115,12 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     classifyPhysicalPlanByGroupId(physicalPlans, batchResult, physicalPlansMap, planIndexMap);
 
     /** 2. Construct Multiple Data Group Requests **/
-    Map<String, QPTask> subTaskMap = new HashMap<>();
+    Map<String, SingleQPTask> subTaskMap = new HashMap<>();
     constructMultipleRequests(physicalPlansMap, planIndexMap, subTaskMap, batchResult);
 
     /** 3. Execute Multiple Sub Tasks **/
     BatchQPTask task = new BatchQPTask(subTaskMap.size(), batchResult, subTaskMap, planIndexMap);
-    currentTask = task;
+    currentTask.set(task);
     task.execute(this);
     task.await();
     batchResult.setAllSuccessful(task.isAllSuccessful());
@@ -165,7 +168,7 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    * Construct multiple data group requests
    */
   private void constructMultipleRequests(Map<String, List<PhysicalPlan>> physicalPlansMap,
-      Map<String, List<Integer>> planIndexMap, Map<String, QPTask> subTaskMap,
+      Map<String, List<Integer>> planIndexMap, Map<String, SingleQPTask> subTaskMap,
       BatchResult batchResult) {
     int[] result = batchResult.getResult();
     for (Entry<String, List<PhysicalPlan>> entry : physicalPlansMap.entrySet()) {
@@ -197,16 +200,16 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     switch (plan.getOperatorType()) {
       case DELETE:
         storageGroup = getStorageGroupFromDeletePlan((DeletePlan) plan);
-        groupId = getGroupIdBySG(storageGroup);
+        groupId = router.getGroupIdBySG(storageGroup);
         break;
       case UPDATE:
         Path path = ((UpdatePlan) plan).getPath();
-        storageGroup = getStroageGroupByDevice(path.getDevice());
-        groupId = getGroupIdBySG(storageGroup);
+        storageGroup = QPExecutorUtils.getStroageGroupByDevice(path.getDevice());
+        groupId = router.getGroupIdBySG(storageGroup);
         break;
       case INSERT:
-        storageGroup = getStroageGroupByDevice(((InsertPlan) plan).getDeviceId());
-        groupId = getGroupIdBySG(storageGroup);
+        storageGroup = QPExecutorUtils.getStroageGroupByDevice(((InsertPlan) plan).getDeviceId());
+        groupId = router.getGroupIdBySG(storageGroup);
         break;
       case CREATE_ROLE:
       case DELETE_ROLE:
@@ -285,8 +288,8 @@ public class NonQueryExecutor extends ClusterQPExecutor {
       case ADD_PATH:
       case DELETE_PATH:
         String deviceId = path.getDevice();
-        String storageGroup = getStroageGroupByDevice(deviceId);
-        groupId = getGroupIdBySG(storageGroup);
+        String storageGroup = QPExecutorUtils.getStroageGroupByDevice(deviceId);
+        groupId = router.getGroupIdBySG(storageGroup);
         break;
       case SET_FILE_LEVEL:
         boolean fileLevelExist = mManager.checkStorageLevelOfMTree(path.getFullPath());
@@ -316,11 +319,11 @@ public class NonQueryExecutor extends ClusterQPExecutor {
     } else {
       request = new DataGroupNonQueryRequest(groupId, plans);
     }
-    QPTask qpTask = new SingleQPTask(false, request);
-    currentTask = qpTask;
+    SingleQPTask qpTask = new SingleQPTask(false, request);
+    currentTask.set(qpTask);
 
     /** Check if the plan can be executed locally. **/
-    if (canHandleNonQueryByGroupId(groupId)) {
+    if (QPExecutorUtils.canHandleNonQueryByGroupId(groupId)) {
       return handleNonQueryRequestLocally(groupId, qpTask);
     } else {
       PeerId leader = RaftUtils.getLeaderPeerID(groupId);
@@ -358,9 +361,9 @@ public class NonQueryExecutor extends ClusterQPExecutor {
    * @param leader leader of the target raft group
    * @return request result
    */
-  public boolean asyncHandleNonQueryTask(QPTask task, PeerId leader)
+  public boolean asyncHandleNonQueryTask(SingleQPTask task, PeerId leader)
       throws RaftConnectionException, InterruptedException {
-    BasicResponse response = asyncHandleNonQueryTaskGetRes(task, leader, 0);
+    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
     return response != null && response.isSuccess();
   }
 

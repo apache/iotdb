@@ -28,7 +28,6 @@ import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.entity.Task;
 import com.alipay.sofa.jraft.util.Bits;
 import com.alipay.sofa.jraft.util.OnlyForTest;
-
 import com.codahale.metrics.Gauge;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -44,25 +43,27 @@ import java.util.SortedMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.entity.raft.MetadataStateManchine;
-import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.qp.callback.QPTask;
-import org.apache.iotdb.cluster.qp.callback.QPTask.TaskState;
-import org.apache.iotdb.cluster.qp.callback.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
+import org.apache.iotdb.cluster.entity.raft.MetadataStateManchine;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.qp.task.QPTask;
+import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
+import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.QueryMetricRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.QueryMetricResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.nonquery.DataGroupNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.nonquery.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.cluster.utils.hash.VirtualNode;
@@ -71,11 +72,18 @@ import org.slf4j.LoggerFactory;
 
 public class RaftUtils {
 
+  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
+
   private static final Logger LOGGER = LoggerFactory.getLogger(RaftUtils.class);
   private static final Server server = Server.getInstance();
   private static final Router router = Router.getInstance();
   private static final AtomicInteger requestId = new AtomicInteger(0);
   private static final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  /**
+   * Raft as client manager.
+   */
+  private static final RaftNodeAsClientManager CLIENT_MANAGER = RaftNodeAsClientManager
+      .getInstance();
 
   /**
    * The cache will be update in two case: 1. When @onLeaderStart() method of state machine is
@@ -131,7 +139,7 @@ public class RaftUtils {
   }
 
   public static PeerId getPeerIDFrom(PhysicalNode node) {
-    return new PeerId(node.ip, node.port);
+    return new PeerId(node.getIp(), node.getPort());
   }
 
   public static PhysicalNode getPhysicalNodeFrom(PeerId peer) {
@@ -186,6 +194,15 @@ public class RaftUtils {
     LOGGER.info("group leader cache:{}", groupLeaderCache);
   }
 
+  /**
+   * Remove cached raft group leader if occurs exception in the process of executing qp task.
+   *
+   * @param groupId data group id
+   */
+  public static void removeCachedRaftGroupLeader(String groupId) {
+    groupLeaderCache.remove(groupId);
+  }
+
   @OnlyForTest
   public static void clearRaftGroupLeader() {
 	  groupLeaderCache.clear();
@@ -227,7 +244,7 @@ public class RaftUtils {
    * @param service raft service
    */
   public static void executeRaftTaskForRpcProcessor(RaftService service, AsyncContext asyncContext,
-      BasicRequest request, BasicResponse response) {
+      BasicNonQueryRequest request, BasicResponse response) {
     final Task task = new Task();
     ResponseClosure closure = new ResponseClosure(response, status -> {
       response.addResult(status.isOk());
@@ -285,8 +302,6 @@ public class RaftUtils {
 
   /**
    * Handle null-read process in metadata group if the request is to set path.
-   *
-   * @param status status to return result if this node is leader of the data group
    */
   public static void handleNullReadToMetaGroup(Status status) {
     SingleQPTask nullReadTask = new SingleQPTask(false, null);
@@ -296,7 +311,7 @@ public class RaftUtils {
   public static void handleNullReadToMetaGroup(Status status, Server server,
       SingleQPTask nullReadTask) {
     try {
-      LOGGER.debug("Handle null-read in meta group for adding path request.");
+      LOGGER.debug("Handle null-read in meta group for metadata request.");
       final byte[] reqContext = RaftUtils.createRaftRequestContext();
       MetadataRaftHolder metadataRaftHolder = (MetadataRaftHolder) server.getMetadataHolder();
       ((RaftService) metadataRaftHolder.getService()).getNode()
@@ -315,6 +330,40 @@ public class RaftUtils {
       nullReadTask.await();
     } catch (InterruptedException e) {
       LOGGER.warn("Exception {} occurs while handling null read to metadata group.", e);
+      status.setCode(-1);
+      status.setErrorMsg(e.getMessage());
+    }
+  }
+
+  /**
+   * Handle null-read process in data group while reading process
+   */
+  public static void handleNullReadToDataGroup(Status status, String groupId) {
+    SingleQPTask nullReadTask = new SingleQPTask(false, null);
+    handleNullReadToDataGroup(status, server, nullReadTask, groupId);
+  }
+
+  private static void handleNullReadToDataGroup(Status status, Server server,
+      SingleQPTask nullReadTask, String groupId) {
+    try {
+      LOGGER.debug("Handle null-read in data group for reading.");
+      final byte[] reqContext = RaftUtils.createRaftRequestContext();
+      DataPartitionRaftHolder dataPartitionRaftHolder = (DataPartitionRaftHolder) server.getDataPartitionHolder(groupId);
+      ((RaftService) dataPartitionRaftHolder.getService()).getNode()
+          .readIndex(reqContext, new ReadIndexClosure() {
+            @Override
+            public void run(Status status, long index, byte[] reqCtx) {
+              BasicResponse response = DataGroupNonQueryResponse
+                  .createEmptyResponse(groupId);
+              if (!status.isOk()) {
+                status.setCode(-1);
+                status.setErrorMsg(status.getErrorMsg());
+              }
+              nullReadTask.run(response);
+            }
+          });
+      nullReadTask.await();
+    } catch (InterruptedException e) {
       status.setCode(-1);
       status.setErrorMsg(e.getMessage());
     }
@@ -413,7 +462,7 @@ public class RaftUtils {
     for (int i = 0; i < groups.length; i++) {
       groupIps[i] = new String[groups[i].length];
       for (int j = 0; j < groups[i].length; j++) {
-        groupIps[i][j] = groups[i][j].ip;
+        groupIps[i][j] = groups[i][j].getIp();
       }
     }
 
@@ -530,5 +579,19 @@ public class RaftUtils {
 
   public static Map<String, Integer> getQueryJobNumMap() {
     return null;
+  }
+
+  /**
+   * try to get raft rpc client
+   */
+  public static NodeAsClient getRaftNodeAsClient() throws RaftConnectionException {
+    NodeAsClient client = CLIENT_MANAGER.getRaftNodeAsClient();
+    if (client == null) {
+      throw new RaftConnectionException(String
+          .format("Raft inner rpc clients have reached the max numbers %s",
+              CLUSTER_CONFIG.getMaxNumOfInnerRpcClient() + CLUSTER_CONFIG
+                  .getMaxQueueNumOfInnerRpcClient()));
+    }
+    return client;
   }
 }

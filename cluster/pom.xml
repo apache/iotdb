@@ -26,10 +26,10 @@
         <version>0.8.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>IoTDB-cluster</artifactId>
+    <artifactId>iotdb-cluster</artifactId>
     <name>IoTDB Cluster</name>
     <properties>
-        <jraft.version>1.2.4</jraft.version>
+        <jraft.version>1.2.5</jraft.version>
         <antlr3.version>3.5.2</antlr3.version>
         <common.lang3.version>3.8.1</common.lang3.version>
         <cluster.test.skip>false</cluster.test.skip>
@@ -89,21 +89,21 @@
                 <configuration>
                     <filesets>
                         <fileset>
-                            <directory>${project.basedir}/../iotdb/lib_cluster</directory>
+                            <directory>${project.basedir}/../iotdb/iotdb/lib_cluster</directory>
                             <includes>
                                 <include>**/*.jar</include>
                             </includes>
                             <followSymlinks>false</followSymlinks>
                         </fileset>
                         <fileset>
-                            <directory>${project.basedir}/../iotdb/data</directory>
+                            <directory>${project.basedir}/../iotdb/iotdb/data</directory>
                             <includes>
                                 <include>**/*</include>
                             </includes>
                             <followSymlinks>false</followSymlinks>
                         </fileset>
                         <fileset>
-                            <directory>${project.basedir}/../iotdb/logs</directory>
+                            <directory>${project.basedir}/../iotdb/iotdb/logs</directory>
                             <includes>
                                 <include>**/*</include>
                             </includes>
@@ -147,7 +147,7 @@
                     <outputDirectory>${project.basedir}/../iotdb/iotdb/lib_cluster</outputDirectory>
                 </configuration>
             </plugin>
-            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+            <!--using `mvn test` to triggerAction UT, `mvn verify` to triggerAction ITs
                         Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

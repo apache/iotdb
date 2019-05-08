@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -35,28 +34,18 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
-import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 
-public abstract class QueryProcessExecutor {
+public abstract class QueryProcessExecutor implements IQueryProcessExecutor {
 
   protected ThreadLocal<Integer> fetchSize = new ThreadLocal<>();
-  protected EngineQueryRouter queryRouter = new EngineQueryRouter();
+  protected IEngineQueryRouter queryRouter = new EngineQueryRouter();
 
-  public QueryProcessExecutor() {
-  }
-
-  /**
-   * process query plan of qp layer, construct queryDataSet.
-   * @param queryPlan QueryPlan
-   * @return QueryDataSet
-   */
+  @Override
   public QueryDataSet processQuery(QueryPlan queryPlan, QueryContext context)
       throws IOException, FileNodeManagerException, PathErrorException,
       QueryFilterOptimizationException, ProcessorException {
@@ -72,7 +61,7 @@ public abstract class QueryProcessExecutor {
 
     if (queryPlan instanceof AggregationPlan) {
       return aggregate(queryPlan.getPaths(), queryPlan.getAggregations(),
-          ((AggregationPlan) queryPlan).getExpression(), context);
+          queryPlan.getExpression(), context);
     }
 
     if (queryPlan instanceof FillQueryPlan) {
@@ -83,14 +72,7 @@ public abstract class QueryProcessExecutor {
     return queryRouter.query(queryExpression, context);
   }
 
-  public abstract TSDataType getSeriesType(Path fullPath) throws PathErrorException;
-
-  public abstract boolean judgePathExists(Path fullPath);
-
-  public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
-    throw new UnsupportedOperationException();
-  }
-
+  @Override
   public int getFetchSize() {
     if (fetchSize.get() == null) {
       return 100;
@@ -98,42 +80,12 @@ public abstract class QueryProcessExecutor {
     return fetchSize.get();
   }
 
+  @Override
   public void setFetchSize(int fetchSize) {
     this.fetchSize.set(fetchSize);
   }
 
-  public abstract QueryDataSet aggregate(List<Path> paths, List<String> aggres,
-      IExpression expression, QueryContext context) throws ProcessorException, IOException,
-      PathErrorException, FileNodeManagerException, QueryFilterOptimizationException;
-
-  public abstract QueryDataSet groupBy(List<Path> paths, List<String> aggres,
-      IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
-      QueryContext context) throws ProcessorException, IOException, PathErrorException,
-      FileNodeManagerException, QueryFilterOptimizationException;
-
-  public abstract QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType,
-      IFill> fillTypes, QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException;
-
-  /**
-   * executeWithGlobalTimeFilter update command and return whether the operator is successful.
-   *
-   * @param path : update series seriesPath
-   * @param startTime start time in update command
-   * @param endTime end time in update command
-   * @param value - in type of string
-   * @return - whether the operator is successful.
-   */
-  public abstract boolean update(Path path, long startTime, long endTime, String value)
-      throws ProcessorException;
-
-  /**
-   * executeWithGlobalTimeFilter delete command and return whether the operator is successful.
-   *
-   * @param paths : delete series paths
-   * @param deleteTime end time in delete command
-   * @return - whether the operator is successful.
-   */
+  @Override
   public boolean delete(List<Path> paths, long deleteTime) throws ProcessorException {
     try {
       boolean result = true;
@@ -161,38 +113,4 @@ public abstract class QueryProcessExecutor {
       throw new ProcessorException(e.getMessage());
     }
   }
-
-  /**
-   * executeWithGlobalTimeFilter delete command and return whether the operator is successful.
-   *
-   * @param path : delete series seriesPath
-   * @param deleteTime end time in delete command
-   * @return - whether the operator is successful.
-   */
-  protected abstract boolean delete(Path path, long deleteTime) throws ProcessorException;
-
-  /**
-   * insert a single value. Only used in test
-   *
-   * @param path seriesPath to be inserted
-   * @param insertTime - it's time point but not a range
-   * @param value value to be inserted
-   * @return - Operate Type.
-   */
-  public abstract int insert(Path path, long insertTime, String value) throws ProcessorException;
-
-  /**
-   * executeWithGlobalTimeFilter insert command and return whether the operator is successful.
-   *
-   * @param deviceId deviceId to be inserted
-   * @param insertTime - it's time point but not a range
-   * @param measurementList measurements to be inserted
-   * @param insertValues values to be inserted
-   * @return - Operate Type.
-   */
-  public abstract int multiInsert(String deviceId, long insertTime, List<String> measurementList,
-      List<String> insertValues) throws ProcessorException;
-
-  public abstract List<String> getAllPaths(String originPath) throws PathErrorException;
-
 }

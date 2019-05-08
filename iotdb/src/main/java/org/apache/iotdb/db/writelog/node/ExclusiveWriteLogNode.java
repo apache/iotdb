@@ -36,7 +36,7 @@ import org.apache.iotdb.db.writelog.io.ILogWriter;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.db.writelog.recover.ExclusiveLogRecoverPerformer;
 import org.apache.iotdb.db.writelog.recover.RecoverPerformer;
-import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
+import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

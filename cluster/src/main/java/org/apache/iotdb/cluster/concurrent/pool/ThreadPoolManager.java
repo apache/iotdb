@@ -29,7 +29,7 @@ public abstract class ThreadPoolManager {
 
   ExecutorService pool;
 
-  private void checkInit() {
+  public void checkInit() {
     if (pool == null) {
       init();
     }

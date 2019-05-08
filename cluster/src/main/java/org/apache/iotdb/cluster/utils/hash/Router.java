@@ -193,6 +193,7 @@ public class Router {
     sgRouter.clear();
     dataPartitionCache.clear();
     nodeMapGroupIdCache.clear();
+    groupIdMapNodeCache.clear();
   }
 
   @OnlyForTest
@@ -247,5 +248,12 @@ public class Router {
 
   public SortedMap<Integer, VirtualNode> getVirtualRing() {
     return virtualRing;
+  }
+
+  /**
+   * Get raft group id by storage group name
+   */
+  public String getGroupIdBySG(String storageGroup) {
+    return getGroupID(routeGroup(storageGroup));
   }
 }

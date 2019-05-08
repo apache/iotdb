@@ -26,6 +26,10 @@ public class FileNodeManagerException extends Exception {
     super();
   }
 
+  public FileNodeManagerException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
   public FileNodeManagerException(String message) {
     super(message);
   }

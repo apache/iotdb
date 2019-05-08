@@ -58,6 +58,11 @@ public class NotFilter implements Filter, Serializable {
     return !that.satisfyStartEndTime(startTime, endTime);
   }
 
+  @Override
+  public Filter clone() {
+    return new NotFilter(that.clone());
+  }
+
   public Filter getFilter() {
     return this.that;
   }

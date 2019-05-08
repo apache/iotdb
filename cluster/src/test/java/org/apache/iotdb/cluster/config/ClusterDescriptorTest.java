@@ -78,7 +78,6 @@ public class ClusterDescriptorTest {
   private int testMetadataConsistencyOld;
   private int testDataConsistencyOld;
   private int testConcurrentQPTaskThreadOld;
-  private int testConcurrentRaftTaskThreadOld;
   private Map<String, String> testConfigMap = new HashMap<String, String>() {
     private static final long serialVersionUID = 7832408957178621132L;
 
@@ -121,6 +120,7 @@ public class ClusterDescriptorTest {
 
   @Test
   public void test() throws IOException {
+    String oldConfig = System.getProperty(IoTDBConstant.IOTDB_CONF);
     System.setProperty(IoTDBConstant.IOTDB_CONF, absoultePath);
     ClusterDescriptor.getInstance().loadProps();
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
@@ -149,8 +149,11 @@ public class ClusterDescriptorTest {
     assertEquals(testDataConsistencyNew, config.getReadDataConsistencyLevel() + "");
     assertEquals(testConcurrentQPTaskThreadNew, config.getConcurrentQPSubTaskThread() + "");
 
-
-    System.setProperty(IoTDBConstant.IOTDB_CONF, "");
+    if (oldConfig == null) {
+      System.clearProperty(IoTDBConstant.IOTDB_CONF);
+    } else {
+      System.setProperty(IoTDBConstant.IOTDB_CONF, oldConfig);
+    }
     config.deleteAllPath();
   }
 

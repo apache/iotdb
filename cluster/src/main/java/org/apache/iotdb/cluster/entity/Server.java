@@ -32,14 +32,18 @@ import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
-import org.apache.iotdb.cluster.rpc.raft.processor.DataGroupNonQueryAsyncProcessor;
-import org.apache.iotdb.cluster.rpc.raft.processor.MetaGroupNonQueryAsyncProcessor;
-import org.apache.iotdb.cluster.rpc.raft.processor.QueryMetadataAsyncProcessor;
-import org.apache.iotdb.cluster.rpc.raft.processor.QueryMetadataInStringAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.QueryMetricAsyncProcessor;
-import org.apache.iotdb.cluster.rpc.raft.processor.QueryPathsAsyncProcessor;
-import org.apache.iotdb.cluster.rpc.raft.processor.QuerySeriesTypeAsyncProcessor;
-import org.apache.iotdb.cluster.rpc.raft.processor.QueryTimeSeriesAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.DataGroupNonQueryAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.MetaGroupNonQueryAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querydata.CloseSeriesReaderSyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querydata.InitSeriesReaderSyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querydata.QuerySeriesDataByTimestampSyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querydata.QuerySeriesDataSyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryMetadataAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryMetadataInStringAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryPathsAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QuerySeriesTypeAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryTimeSeriesAsyncProcessor;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
@@ -102,14 +106,10 @@ public class Server {
     RpcServer rpcServer = new RpcServer(serverId.getPort());
     RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
 
-    rpcServer.registerUserProcessor(new DataGroupNonQueryAsyncProcessor());
-    rpcServer.registerUserProcessor(new MetaGroupNonQueryAsyncProcessor());
-    rpcServer.registerUserProcessor(new QueryTimeSeriesAsyncProcessor());
-    rpcServer.registerUserProcessor(new QueryMetadataInStringAsyncProcessor());
-    rpcServer.registerUserProcessor(new QueryMetadataAsyncProcessor());
-    rpcServer.registerUserProcessor(new QuerySeriesTypeAsyncProcessor());
-    rpcServer.registerUserProcessor(new QueryPathsAsyncProcessor());
-    rpcServer.registerUserProcessor(new QueryMetricAsyncProcessor());
+    registerNonQueryProcessor(rpcServer);
+    registerQueryMetadataProcessor(rpcServer);
+    registerQueryDataProcessor(rpcServer);
+    registerQueryMetricProcessor(rpcServer);
 
     metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer, true);
     metadataHolder.init();
@@ -140,6 +140,30 @@ public class Server {
       stop();
       return;
     }
+  }
+
+  private void registerNonQueryProcessor(RpcServer rpcServer) {
+    rpcServer.registerUserProcessor(new DataGroupNonQueryAsyncProcessor());
+    rpcServer.registerUserProcessor(new MetaGroupNonQueryAsyncProcessor());
+  }
+
+  private void registerQueryMetadataProcessor(RpcServer rpcServer) {
+    rpcServer.registerUserProcessor(new QueryTimeSeriesAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryMetadataInStringAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryMetadataAsyncProcessor());
+    rpcServer.registerUserProcessor(new QuerySeriesTypeAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryPathsAsyncProcessor());
+  }
+
+  private void registerQueryDataProcessor(RpcServer rpcServer) {
+    rpcServer.registerUserProcessor(new InitSeriesReaderSyncProcessor());
+    rpcServer.registerUserProcessor(new QuerySeriesDataSyncProcessor());
+    rpcServer.registerUserProcessor(new QuerySeriesDataByTimestampSyncProcessor());
+    rpcServer.registerUserProcessor(new CloseSeriesReaderSyncProcessor());
+  }
+
+  private void registerQueryMetricProcessor(RpcServer rpcServer) {
+    rpcServer.registerUserProcessor(new QueryMetricAsyncProcessor());
   }
 
   public void stop() throws ProcessorException, InterruptedException {

@@ -47,4 +47,7 @@ public abstract class BinaryFilter implements Filter, Serializable {
   public String toString() {
     return "( " + left + "," + right + " )";
   }
+
+  @Override
+  public abstract Filter clone();
 }

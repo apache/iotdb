@@ -20,10 +20,12 @@ package org.apache.iotdb.cluster.config;
 
 public class ClusterConstant {
 
-  private ClusterConstant(){
-
+  private ClusterConstant() {
   }
 
+  /**
+   * Set read metadata consistency level pattern
+   */
   public static final String SET_READ_METADATA_CONSISTENCY_LEVEL_PATTERN = "set\\s+read\\s+metadata\\s+level\\s+to\\s+\\d+";
   public static final String SET_READ_DATA_CONSISTENCY_LEVEL_PATTERN = "set\\s+read\\s+data\\s+level\\s+to\\s+\\d+";
   public static final int MAX_CONSISTENCY_LEVEL = 2;
@@ -36,5 +38,12 @@ public class ClusterConstant {
    * several sub-tasks.The unit is milliseconds.
    */
   public static final int CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT = 1000;
+
+  /**
+   * Query timeout in query node. If time interval between last communications with coordinator node
+   * and now exceed this parameter, release corresponding query resource.Each query in query node
+   * has a <code>QueryRepeaterTimer</code>, the unit is milliseconds. Default value is 30 minutes.
+   */
+  public static final int QUERY_TIMEOUT_IN_QUERY_NODE = 30 * 60 * 1000;
 
 }
