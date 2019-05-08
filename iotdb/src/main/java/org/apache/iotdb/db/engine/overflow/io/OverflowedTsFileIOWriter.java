@@ -16,29 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
 
-public class FileNodeProcessorException extends ProcessorException {
+package org.apache.iotdb.db.engine.overflow.io;
 
-  private static final long serialVersionUID = 7373978140952977661L;
+import java.io.File;
+import java.io.FileNotFoundException;
+import org.apache.iotdb.tsfile.write.writer.DefaultTsFileOutput;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-  public FileNodeProcessorException() {
+public class OverflowedTsFileIOWriter extends TsFileIOWriter {
+
+  public OverflowedTsFileIOWriter(File file) throws FileNotFoundException {
     super();
+    this.out = new DefaultTsFileOutput(file, true);
+
   }
 
-  public FileNodeProcessorException(PathErrorException pathExcp) {
-    super(pathExcp.getMessage());
-  }
 
-  public FileNodeProcessorException(String msg) {
-    super(msg);
-  }
-
-  public FileNodeProcessorException(Throwable throwable) {
-    super(throwable.getMessage());
-  }
-
-  public FileNodeProcessorException(String msg, Throwable e) {
-    super(msg, e);
-  }
 }

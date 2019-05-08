@@ -470,8 +470,9 @@ public class SyncServiceImpl implements SyncService.Iface {
         String header = syncDataPath;
         String relativePath = path.substring(header.length());
         TsFileResource fileNode = new TsFileResource(startTimeMap, endTimeMap,
-            OverflowChangeType.NO_CHANGE,
-            Directories.getInstance().getNextFolderIndexForTsFile(), relativePath);
+            OverflowChangeType.NO_CHANGE, new File(
+            Directories.getInstance().getNextFolderIndexForTsFile() + File.separator + relativePath)
+        );
         // call interface of load external file
         try {
           if (!fileNodeManager.appendFileToFileNode(storageGroup, fileNode, path)) {
@@ -556,7 +557,8 @@ public class SyncServiceImpl implements SyncService.Iface {
             }
           }
           if (insertExecutor
-              .multiInsert(deviceId, record.getTimestamp(), measurementList, insertValues) <= 0) {
+              .multiInsert(deviceId, record.getTimestamp(), measurementList.toArray(new String[]{}),
+                  insertValues.toArray(new String[]{})) <= 0) {
             throw new IOException("Inserting series data to IoTDB engine has failed.");
           }
         }
@@ -612,77 +614,37 @@ public class SyncServiceImpl implements SyncService.Iface {
 
         /** secondly, use tsFile Reader to form SQL **/
         ReadOnlyTsFile readOnlyTsFile = tsfilesReaders.get(filePath);
-        ArrayList<Path> paths = new ArrayList<>();
+        List<Path> paths = new ArrayList<>();
         /** compare data with one timeseries in a round to get valid data **/
         for (String timeseries : timeseriesList) {
           paths.clear();
           paths.add(new Path(timeseries));
-          Map<InsertPlan, String> originDataPoint = new HashMap<>();
-          Map<InsertPlan, String> newDataPoint = new HashMap<>();
+          Set<InsertPlan> originDataPoints = new HashSet<>();
           QueryExpression queryExpression = QueryExpression.create(paths, null);
           QueryDataSet queryDataSet = readOnlyTsFile.query(queryExpression);
-          while (queryDataSet.hasNext()) {
-            RowRecord record = queryDataSet.next();
-            List<Field> fields = record.getFields();
-            /** get all data with the timeseries in the sync file **/
-            for (int i = 0; i < fields.size(); i++) {
-              Field field = fields.get(i);
-              List<String> measurementList = new ArrayList<>();
-              if (!field.isNull()) {
-                measurementList.add(paths.get(i).getMeasurement());
-                InsertPlan insertPlan = new InsertPlan(deviceID, record.getTimestamp(),
-                    measurementList, new ArrayList<>());
-                newDataPoint.put(insertPlan,
-                    field.getDataType() == TSDataType.TEXT ? String.format("'%s'", field.toString())
-                        : field.toString());
-              }
-            }
-          }
+          Set<InsertPlan> newDataPoints = convertToInserPlans(queryDataSet, paths, deviceID);
+
           /** get all data with the timeseries in all overlap files. **/
           for (String overlapFile : overlapFiles) {
             ReadOnlyTsFile readTsFileOverlap = tsfilesReaders.get(overlapFile);
             QueryDataSet queryDataSetOverlap = readTsFileOverlap.query(queryExpression);
-            while (queryDataSetOverlap.hasNext()) {
-              RowRecord recordOverlap = queryDataSetOverlap.next();
-              List<Field> fields = recordOverlap.getFields();
-              for (int i = 0; i < fields.size(); i++) {
-                Field field = fields.get(i);
-                List<String> measurementList = new ArrayList<>();
-                if (!field.isNull()) {
-                  measurementList.add(paths.get(i).getMeasurement());
-                  InsertPlan insertPlan = new InsertPlan(deviceID, recordOverlap.getTimestamp(),
-                      measurementList, new ArrayList<>());
-                  originDataPoint.put(insertPlan,
-                      field.getDataType() == TSDataType.TEXT ? String
-                          .format("'%s'", field.toString())
-                          : field.toString());
-                }
-              }
-            }
+            originDataPoints.addAll(convertToInserPlans(queryDataSetOverlap, paths, deviceID));
           }
 
           /** If there has no overlap data with the timeseries, inserting all data in the sync file **/
-          if (originDataPoint.isEmpty()) {
-            for (Map.Entry<InsertPlan, String> entry : newDataPoint.entrySet()) {
-              InsertPlan insertPlan = entry.getKey();
-              List<String> insertValues = new ArrayList<>();
-              insertValues.add(entry.getValue());
+          if (originDataPoints.isEmpty()) {
+            for (InsertPlan insertPlan : newDataPoints) {
               if (insertExecutor.multiInsert(insertPlan.getDeviceId(), insertPlan.getTime(),
-                  insertPlan.getMeasurements(), insertValues) <= 0) {
+                  insertPlan.getMeasurements(), insertPlan.getValues()) <= 0) {
                 throw new IOException("Inserting series data to IoTDB engine has failed.");
               }
             }
           } else {
             /** Compare every data to get valid data **/
-            for (Map.Entry<InsertPlan, String> entry : newDataPoint.entrySet()) {
-              if (!originDataPoint.containsKey(entry.getKey())
-                  || (originDataPoint.containsKey(entry.getKey())
-                  && !originDataPoint.get(entry.getKey()).equals(entry.getValue()))) {
-                InsertPlan insertPlan = entry.getKey();
-                List<String> insertValues = new ArrayList<>();
-                insertValues.add(entry.getValue());
+            for (InsertPlan insertPlan : newDataPoints) {
+              if (!originDataPoints.contains(insertPlan)) {
                 if (insertExecutor.multiInsert(insertPlan.getDeviceId(), insertPlan.getTime(),
-                    insertPlan.getMeasurements(), insertValues) <= 0) {
+                    insertPlan.getMeasurements(), insertPlan.getValues()) <= 0) {
                   throw new IOException("Inserting series data to IoTDB engine has failed.");
                 }
               }
@@ -703,6 +665,27 @@ public class SyncServiceImpl implements SyncService.Iface {
         logger.error("Cannot close file stream {}", filePath, e);
       }
     }
+  }
+
+  private Set<InsertPlan> convertToInserPlans(QueryDataSet queryDataSet, List<Path> paths, String deviceID) throws IOException {
+    Set<InsertPlan> plans = new HashSet<>();
+    while (queryDataSet.hasNext()) {
+      RowRecord record = queryDataSet.next();
+      List<Field> fields = record.getFields();
+      /** get all data with the timeseries in the sync file **/
+      for (int i = 0; i < fields.size(); i++) {
+        Field field = fields.get(i);
+        String[] measurementList = new String[1];
+        if (!field.isNull()) {
+          measurementList[0] = paths.get(i).getMeasurement();
+          InsertPlan insertPlan = new InsertPlan(deviceID, record.getTimestamp(),
+              measurementList, new String[]{field.getDataType() == TSDataType.TEXT ? String.format("'%s'", field.toString())
+              : field.toString()});
+          plans.add(insertPlan);
+        }
+      }
+    }
+    return plans;
   }
 
   /**

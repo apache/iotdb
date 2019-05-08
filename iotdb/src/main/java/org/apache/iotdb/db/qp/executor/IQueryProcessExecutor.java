@@ -121,8 +121,8 @@ public interface IQueryProcessExecutor {
    * @param insertValues values to be inserted
    * @return - Operate Type.
    */
-  int multiInsert(String deviceId, long insertTime, List<String> measurementList,
-      List<String> insertValues) throws ProcessorException;
+  int multiInsert(String deviceId, long insertTime, String[] measurementList,
+      String[] insertValues) throws ProcessorException;
 
   boolean judgePathExists(Path fullPath);
 

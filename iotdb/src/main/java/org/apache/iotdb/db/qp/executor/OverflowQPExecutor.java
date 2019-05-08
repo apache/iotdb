@@ -265,31 +265,31 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public int multiInsert(String deviceId, long insertTime, List<String> measurementList,
-      List<String> insertValues)
+  public int multiInsert(String deviceId, long insertTime, String[] measurementList,
+      String[] insertValues)
       throws ProcessorException {
     try {
       TSRecord tsRecord = new TSRecord(insertTime, deviceId);
 
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
 
-      for (int i = 0; i < measurementList.size(); i++) {
-        if (!node.hasChild(measurementList.get(i))) {
+      for (int i = 0; i < measurementList.length; i++) {
+        if (!node.hasChild(measurementList[i])) {
           throw new ProcessorException(
               String.format("Current deviceId[%s] does not contains measurement:%s",
-                  deviceId, measurementList.get(i)));
+                  deviceId, measurementList[i]));
         }
-        MNode measurementNode = node.getChild(measurementList.get(i));
+        MNode measurementNode = node.getChild(measurementList[i]);
         if (!measurementNode.isLeaf()) {
           throw new ProcessorException(
               String.format("Current Path is not leaf node. %s.%s", deviceId,
-                  measurementList.get(i)));
+                  measurementList[i]));
         }
 
         TSDataType dataType = measurementNode.getSchema().getType();
-        String value = insertValues.get(i);
+        String value = insertValues[i];
         value = checkValue(dataType, value);
-        DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
+        DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList[i], value);
         tsRecord.addTuple(dataPoint);
       }
       return fileNodeManager.insert(tsRecord, false);

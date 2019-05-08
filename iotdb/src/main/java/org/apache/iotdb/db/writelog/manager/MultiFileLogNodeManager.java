@@ -104,6 +104,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     return InstanceHolder.instance;
   }
 
+
   @Override
   public WriteLogNode getNode(String identifier, String restoreFilePath,
       String processorStoreFilePath)

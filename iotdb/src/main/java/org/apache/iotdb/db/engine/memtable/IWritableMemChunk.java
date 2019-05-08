@@ -37,6 +37,8 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
 
   void write(long insertTime, String insertValue);
 
+  void write(long insertTime, Object insertValue);
+
   void reset();
 
   int count();

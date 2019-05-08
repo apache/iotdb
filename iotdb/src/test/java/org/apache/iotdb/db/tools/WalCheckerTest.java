@@ -24,6 +24,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,8 +78,8 @@ public class WalCheckerTest {
 
         List<byte[]> binaryPlans = new ArrayList<>();
         String deviceId = "device1";
-        List<String> measurements = Arrays.asList("s1", "s2", "s3");
-        List<String> values = Arrays.asList("5", "6", "7");
+        String[] measurements = new String[]{"s1", "s2", "s3"};
+        String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
           binaryPlans.add(PhysicalPlanLogTransfer
               .operatorToLog(new InsertPlan(deviceId, j, measurements, values)));
@@ -109,8 +111,8 @@ public class WalCheckerTest {
 
         List<byte[]> binaryPlans = new ArrayList<>();
         String deviceId = "device1";
-        List<String> measurements = Arrays.asList("s1", "s2", "s3");
-        List<String> values = Arrays.asList("5", "6", "7");
+        String[] measurements = new String[]{"s1", "s2", "s3"};
+        String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
           binaryPlans.add(PhysicalPlanLogTransfer
               .operatorToLog(new InsertPlan(deviceId, j, measurements, values)));
@@ -129,5 +131,29 @@ public class WalCheckerTest {
     } finally {
       FileUtils.deleteDirectory(tempRoot);
     }
+
+  }
+
+  @Test
+  public void testOneDamagedCheck() throws IOException, SysCheckException {
+    File tempRoot = new File("root");
+    tempRoot.mkdir();
+
+    try {
+      for (int i = 0; i < 5; i++) {
+        File subDir = new File(tempRoot, "storage_group" + i);
+        subDir.mkdir();
+
+        FileOutputStream fileOutputStream = new FileOutputStream(new File(subDir, WAL_FILE_NAME));
+        fileOutputStream.write(i);
+        fileOutputStream.close();
+      }
+
+      WalChecker checker = new WalChecker(tempRoot.getAbsolutePath());
+      assertEquals(5, checker.doCheck().size());
+    } finally {
+      FileUtils.deleteDirectory(tempRoot);
+    }
+
   }
 }
