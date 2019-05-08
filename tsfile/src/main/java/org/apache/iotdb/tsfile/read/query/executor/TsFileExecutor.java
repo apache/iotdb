@@ -77,7 +77,7 @@ public class TsFileExecutor implements QueryExecutor {
       // (4) calculate the remaining time range
       ArrayList<TimeRange> timeRangesRemains = new ArrayList<>();
       for (TimeRange in : timeRangesIn) {
-        ArrayList<TimeRange> remains = in.getRemains(timeRangesPrev);
+        ArrayList<TimeRange> remains = new ArrayList<>(in.getRemains(timeRangesPrev));
         timeRangesRemains.addAll(remains);
       }
 
