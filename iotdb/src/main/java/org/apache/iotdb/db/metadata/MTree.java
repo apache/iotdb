@@ -52,15 +52,6 @@ public class MTree implements Serializable {
   private static final String NOT_SERIES_PATH = "The prefix of the seriesPath %s is not one storage group seriesPath";
   private MNode root;
 
-  private static final Set<String> TIMESERIES_METADATA_NAMESET = new HashSet<>();
-  static {
-    TIMESERIES_METADATA_NAMESET.add("DataType");
-    TIMESERIES_METADATA_NAMESET.add("Encoding");
-    TIMESERIES_METADATA_NAMESET.add("Compressor");
-    TIMESERIES_METADATA_NAMESET.add("args");
-    TIMESERIES_METADATA_NAMESET.add("StorageGroup");
-  }
-
   public MTree(String rootName) {
     this.root = new MNode(rootName, null, false);
   }
