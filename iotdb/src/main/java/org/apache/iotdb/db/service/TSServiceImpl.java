@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.metadata.MGraph;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -527,7 +528,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeUpdateStatement(physicalPlan);
       }
     } catch (Exception e) {
-      LOGGER.warn("meet error: {}  while executing statement: {}", e.getMessage(), req.getStatement());
+      LOGGER.info("meet error: {}  while executing statement: {}", e.getMessage(), req.getStatement());
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }

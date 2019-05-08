@@ -37,6 +37,7 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -74,8 +75,8 @@ public class WriteLogNodeTest {
         tempProcessorStore.getPath());
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-        Arrays.asList("s1", "s2", "s3", "s4"),
-        Arrays.asList("1.0", "15", "str", "false"));
+        new String[]{"s1", "s2", "s3", "s4"},
+        new String[]{"1.0", "15", "str", "false"});
     UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
@@ -99,9 +100,9 @@ public class WriteLogNodeTest {
     crc32.update(buffer, 0, logSize);
     assertEquals(checksum, crc32.getValue());
     InsertPlan bwInsertPlan2 = (InsertPlan) PhysicalPlanLogTransfer.logToOperator(buffer);
-    assertEquals(bwInsertPlan.getMeasurements(), bwInsertPlan2.getMeasurements());
+    Assert.assertArrayEquals(bwInsertPlan.getMeasurements(), bwInsertPlan2.getMeasurements());
     assertEquals(bwInsertPlan.getTime(), bwInsertPlan2.getTime());
-    assertEquals(bwInsertPlan.getValues(), bwInsertPlan2.getValues());
+    Assert.assertArrayEquals(bwInsertPlan.getValues(), bwInsertPlan2.getValues());
     assertEquals(bwInsertPlan.getPaths(), bwInsertPlan2.getPaths());
     assertEquals(bwInsertPlan.getDeviceId(), bwInsertPlan2.getDeviceId());
 
@@ -148,8 +149,8 @@ public class WriteLogNodeTest {
         tempProcessorStore.getPath());
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-        Arrays.asList("s1", "s2", "s3", "s4"),
-        Arrays.asList("1.0", "15", "str", "false"));
+        new String[]{"s1", "s2", "s3", "s4"},
+        new String[]{"1.0", "15", "str", "false"});
     UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
@@ -194,8 +195,8 @@ public class WriteLogNodeTest {
         tempProcessorStore.getPath());
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-        Arrays.asList("s1", "s2", "s3", "s4"),
-        Arrays.asList("1.0", "15", "str", "false"));
+        new String[]{"s1", "s2", "s3", "s4"},
+        new String[]{"1.0", "15", "str", "false"});
     UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
@@ -230,8 +231,8 @@ public class WriteLogNodeTest {
         tempProcessorStore.getPath());
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
-        Arrays.asList("s1", "s2", "s3", "s4"),
-        Arrays.asList("1.0", "15", "str", "false"));
+        new String[]{"s1", "s2", "s3", "s4"},
+        new String[]{"1.0", "15", "str", "false"});
     UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
@@ -268,8 +269,8 @@ public class WriteLogNodeTest {
         tempProcessorStore.getPath());
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice.oversize", 100,
-        Arrays.asList("s1", "s2", "s3", "s4"),
-        Arrays.asList("1.0", "15", new String(new char[4 * 1024 * 1024]), "false"));
+        new String[]{"s1", "s2", "s3", "s4"},
+        new String[]{"1.0", "15", new String(new char[4 * 1024 * 1024]), "false"});
 
     boolean caught = false;
     try {

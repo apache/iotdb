@@ -116,6 +116,7 @@ public class OverflowProcessorTest {
     }
     // flush synchronously
     processor.close();
+    processor.reopen();
     overflowSeriesDataSource = processor
         .query(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
             OverflowTestUtils.dataType1, Collections.emptyMap(), context);
@@ -153,6 +154,7 @@ public class OverflowProcessorTest {
     processor.close();
     QueryContext context = new QueryContext();
     // test query
+    processor.reopen();
     OverflowSeriesDataSource overflowSeriesDataSource = processor.query(OverflowTestUtils.deviceId1,
         OverflowTestUtils.measurementId1, OverflowTestUtils.dataType2, Collections.emptyMap(),
         context);

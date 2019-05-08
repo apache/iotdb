@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.bufferwrite;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -77,12 +78,14 @@ public class BufferWriteProcessor extends Processor {
   private long valueCount = 0;
 
   private String baseDir;
-  private String fileName;
   private String insertFilePath;
   private String bufferWriteRelativePath;
 
   private WriteLogNode logNode;
   private VersionController versionController;
+
+  private boolean isClosed = true;
+  private boolean isFlush = false;
 
   /**
    * constructor of BufferWriteProcessor.
@@ -100,32 +103,12 @@ public class BufferWriteProcessor extends Processor {
     super(processorName);
     this.fileSchema = fileSchema;
     this.baseDir = baseDir;
-    this.fileName = fileName;
-
-    String bDir = baseDir;
-    if (bDir.length() > 0 && bDir.charAt(bDir.length() - 1) != File.separatorChar) {
-      bDir = bDir + File.separatorChar;
-    }
-    String dataDirPath = bDir + processorName;
-    File dataDir = new File(dataDirPath);
-    if (!dataDir.exists()) {
-      dataDir.mkdirs();
-      LOGGER.debug("The bufferwrite processor data dir doesn't exists, create new directory {}.",
-          dataDirPath);
-    }
-    this.insertFilePath = new File(dataDir, fileName).getPath();
-    bufferWriteRelativePath = processorName + File.separatorChar + fileName;
-    try {
-      writer = new RestorableTsFileIOWriter(processorName, insertFilePath);
-    } catch (IOException e) {
-      throw new BufferWriteProcessorException(e);
-    }
 
     bufferwriteFlushAction = parameters.get(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
     bufferwriteCloseAction = parameters.get(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
     filenodeFlushAction = parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
-    workMemTable = new PrimitiveMemTable();
 
+    reopen(fileName);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
@@ -137,7 +120,36 @@ public class BufferWriteProcessor extends Processor {
       }
     }
     this.versionController = versionController;
+
   }
+
+  public void reopen(String fileName) throws BufferWriteProcessorException {
+    if (!isClosed) {
+      return;
+    }
+    new File(baseDir, processorName).mkdirs();
+    this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
+    bufferWriteRelativePath = processorName + File.separatorChar + fileName;
+    try {
+      writer = new RestorableTsFileIOWriter(processorName, insertFilePath);
+    } catch (IOException e) {
+      throw new BufferWriteProcessorException(e);
+    }
+    if (workMemTable == null) {
+      workMemTable = new PrimitiveMemTable();
+    } else {
+      workMemTable.clear();
+    }
+    isClosed = false;
+    isFlush = false;
+  }
+
+  public void checkOpen() throws BufferWriteProcessorException {
+    if (isClosed) {
+      throw new BufferWriteProcessorException("BufferWriteProcessor already closed");
+    }
+  }
+
 
   /**
    * write one data point to the buffer write.
@@ -153,6 +165,7 @@ public class BufferWriteProcessor extends Processor {
   public boolean write(String deviceId, String measurementId, long timestamp, TSDataType dataType,
       String value)
       throws BufferWriteProcessorException {
+    checkOpen();
     TSRecord record = new TSRecord(timestamp, deviceId);
     DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, value);
     record.addTuple(dataPoint);
@@ -168,6 +181,7 @@ public class BufferWriteProcessor extends Processor {
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
   public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
+    checkOpen();
     long memUsage = MemUtils.getRecordSize(tsRecord);
     BasicMemController.UsageLevel level = BasicMemController.getInstance()
         .acquireUsage(this, memUsage);
@@ -233,7 +247,9 @@ public class BufferWriteProcessor extends Processor {
    * @return corresponding chunk data and chunk metadata in memory
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryBufferWriteData(String deviceId,
-      String measurementId, TSDataType dataType, Map<String, String> props) {
+      String measurementId, TSDataType dataType, Map<String, String> props)
+      throws BufferWriteProcessorException {
+    checkOpen();
     flushQueryLock.lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -255,10 +271,10 @@ public class BufferWriteProcessor extends Processor {
   private void switchWorkToFlush() {
     flushQueryLock.lock();
     try {
-      if (flushMemTable == null) {
-        flushMemTable = workMemTable;
-        workMemTable = new PrimitiveMemTable();
-      }
+      IMemTable temp = flushMemTable == null ? new PrimitiveMemTable() : flushMemTable;
+      flushMemTable = workMemTable;
+      workMemTable = temp;
+      isFlush = true;
     } finally {
       flushQueryLock.unlock();
     }
@@ -268,8 +284,8 @@ public class BufferWriteProcessor extends Processor {
     flushQueryLock.lock();
     try {
       flushMemTable.clear();
-      flushMemTable = null;
       writer.appendMetadata();
+      isFlush = false;
     } finally {
       flushQueryLock.unlock();
     }
@@ -329,6 +345,9 @@ public class BufferWriteProcessor extends Processor {
   // keyword synchronized is added in this method, so that only one flush task can be submitted now.
   @Override
   public synchronized Future<Boolean> flush() throws IOException {
+    if (isClosed) {
+      throw new IOException("BufferWriteProcessor closed");
+    }
     // statistic information for flush
     if (lastFlushTime > 0) {
       if (LOGGER.isInfoEnabled()) {
@@ -381,12 +400,18 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public void close() throws BufferWriteProcessorException {
+    if (isClosed) {
+      return;
+    }
     try {
       long closeStartTime = System.currentTimeMillis();
       // flush data and wait for finishing flush
       flush().get();
       // end file
       writer.endFile(fileSchema);
+      writer = null;
+      workMemTable.clear();
+
       // update the IntervalFile for interval list
       bufferwriteCloseAction.act();
       // flush the changed information for filenode
@@ -397,11 +422,12 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.info(
             "Close bufferwrite processor {}, the file name is {}, start time is {}, end time is {}, "
                 + "time consumption is {}ms",
-            getProcessorName(), fileName,
+            getProcessorName(), insertFilePath,
             DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
             DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
             closeEndTime - closeStartTime);
       }
+      isClosed = true;
     } catch (IOException e) {
       LOGGER.error("Close the bufferwrite processor error, the bufferwrite is {}.",
           getProcessorName(), e);
@@ -424,13 +450,7 @@ public class BufferWriteProcessor extends Processor {
    * @return True if flushing
    */
   public boolean isFlush() {
-    // starting a flush task has two steps: set the flushMemtable, and then set the flushFuture
-    // So, the following case exists: flushMemtable != null but flushFuture is done (because the
-    // flushFuture refers to the last finished flush.
-    // And, the following case exists,too: flushMemtable == null, but flushFuture is not done.
-    // (flushTask() is not finished, but switchToWork() has done)
-    // So, checking flushMemTable is more meaningful than flushFuture.isDone().
-    return  flushMemTable != null;
+    return isFlush;
   }
 
   /**
@@ -454,45 +474,10 @@ public class BufferWriteProcessor extends Processor {
     return file.length() + memoryUsage();
   }
 
-  /**
-   * Close current TsFile and open a new one for future writes. Block new writes and wait until
-   * current writes finish.
-   */
-  public void rollToNewFile() {
-    // TODO : [MemControl] implement this
-  }
-
-  /**
-   * Check if this TsFile has too big metadata or file. If true, close current file and open a new
-   * one.
-   */
-  private boolean checkSize() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    long metaSize = getMetaSize();
-    long fileSize = getFileSize();
-    if (metaSize >= config.getBufferwriteMetaSizeThreshold()
-        || fileSize >= config.getBufferwriteFileSizeThreshold()) {
-      LOGGER.info(
-          "The bufferwrite processor {}, size({}) of the file {} reaches threshold {}, "
-              + "size({}) of metadata reaches threshold {}.",
-          getProcessorName(), MemUtils.bytesCntToStr(fileSize), this.fileName,
-          MemUtils.bytesCntToStr(config.getBufferwriteFileSizeThreshold()),
-          MemUtils.bytesCntToStr(metaSize),
-          MemUtils.bytesCntToStr(config.getBufferwriteFileSizeThreshold()));
-
-      rollToNewFile();
-      return true;
-    }
-    return false;
-  }
-
   public String getBaseDir() {
     return baseDir;
   }
 
-  public String getFileName() {
-    return fileName;
-  }
 
   public String getFileRelativePath() {
     return bufferWriteRelativePath;
@@ -538,7 +523,9 @@ public class BufferWriteProcessor extends Processor {
    * @param measurementId the measurementId of the timeseries to be deleted.
    * @param timestamp the upper-bound of deletion time.
    */
-  public void delete(String deviceId, String measurementId, long timestamp) {
+  public void delete(String deviceId, String measurementId, long timestamp)
+      throws BufferWriteProcessorException {
+    checkOpen();
     workMemTable.delete(deviceId, measurementId, timestamp);
     if (isFlush()) {
       // flushing MemTable cannot be directly modified since another thread is reading it
@@ -549,27 +536,24 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    BufferWriteProcessor that = (BufferWriteProcessor) o;
-    return Objects.equals(baseDir, that.baseDir) &&
-        Objects.equals(fileName, that.fileName);
+    return this == o;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), baseDir, fileName);
+    return Objects.hash(super.hashCode());
   }
 
   @Override
   public String toString() {
     return "BufferWriteProcessor in " + insertFilePath;
+  }
+
+  public String getInsertFilePath() {
+    return insertFilePath;
+  }
+
+  public boolean isClosed() {
+    return isClosed;
   }
 }

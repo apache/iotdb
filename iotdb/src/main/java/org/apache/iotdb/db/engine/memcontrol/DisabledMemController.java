@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,29 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.engine.memcontrol;
 
-public class FileNodeProcessorException extends ProcessorException {
+import org.apache.iotdb.db.conf.IoTDBConfig;
 
-  private static final long serialVersionUID = 7373978140952977661L;
+/**
+ * DisabledMemController is used when the overhead of memory control is too high.
+ */
+public class DisabledMemController extends BasicMemController {
 
-  public FileNodeProcessorException() {
-    super();
+  DisabledMemController(IoTDBConfig config) {
+    super(config);
   }
 
-  public FileNodeProcessorException(PathErrorException pathExcp) {
-    super(pathExcp.getMessage());
+  @Override
+  public long getTotalUsage() {
+    return 0;
   }
 
-  public FileNodeProcessorException(String msg) {
-    super(msg);
+  @Override
+  public UsageLevel getCurrLevel() {
+    return UsageLevel.SAFE;
   }
 
-  public FileNodeProcessorException(Throwable throwable) {
-    super(throwable.getMessage());
+  @Override
+  public void clear() {
+
   }
 
-  public FileNodeProcessorException(String msg, Throwable e) {
-    super(msg, e);
+  @Override
+  public UsageLevel acquireUsage(Object user, long usage) {
+    return UsageLevel.SAFE;
+  }
+
+  @Override
+  public void releaseUsage(Object user, long freeSize) {
+
   }
 }

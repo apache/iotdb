@@ -201,8 +201,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public int multiInsert(String deviceId, long insertTime, List<String> measurementList,
-      List<String> insertValues) {
+  public int multiInsert(String deviceId, long insertTime, String[] measurementList,
+      String[] insertValues) {
     return 0;
   }
 

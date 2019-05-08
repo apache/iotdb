@@ -49,8 +49,8 @@ import org.junit.Test;
 public class TsFileReadWriteTest {
 
   private final double delta = 0.0000001;
-  private String path = "read_write_rle.tsfile";
-  private File f;
+  String path = "read_write_rle.tsfile";
+  File f;
 
   @Before
   public void setUp() throws Exception {

@@ -165,8 +165,8 @@ public class ClusterQueryProcessExecutor extends AbstractQPExecutor implements I
   }
 
   @Override
-  public int multiInsert(String deviceId, long insertTime, List<String> measurementList,
-      List<String> insertValues) throws ProcessorException {
+  public int multiInsert(String deviceId, long insertTime, String[] measurementList,
+      String[] insertValues) throws ProcessorException {
     throw new UnsupportedOperationException();
   }
 

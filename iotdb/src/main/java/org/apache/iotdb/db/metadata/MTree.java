@@ -1062,9 +1062,6 @@ public class MTree implements Serializable {
 
   private static JSONObject combineJSONObjects(JSONObject a, JSONObject b) {
     JSONObject res = new JSONObject();
-    if (a.keySet().equals(TIMESERIES_METADATA_NAMESET) && b.keySet().equals(TIMESERIES_METADATA_NAMESET)) {
-      return a;
-    }
 
     Set<String> retainSet = new HashSet<>(a.keySet());
     retainSet.retainAll(b.keySet());
@@ -1079,7 +1076,13 @@ public class MTree implements Serializable {
       res.put(key, b.get(key));
     }
     for (String key : retainSet) {
-      res.put(key, combineJSONObjects(a.getJSONObject(key), b.getJSONObject(key)));
+      Object v1 = a.get(key);
+      Object v2 = b.get(key);
+      if (v1 instanceof JSONObject && v2 instanceof JSONObject) {
+        res.put(key, combineJSONObjects((JSONObject) v1, (JSONObject) v2));
+      } else {
+        res.put(key, v1);
+      }
     }
     return res;
   }

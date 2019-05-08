@@ -179,6 +179,7 @@
                     <groupId>org.apache.rat</groupId>
                     <artifactId>apache-rat-plugin</artifactId>
                     <configuration>
+                        <consoleOutput>true</consoleOutput>
                         <excludes>
                             <!-- Git related files -->
                             <exclude>**/.git/**</exclude>

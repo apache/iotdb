@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
@@ -69,6 +70,29 @@ public class MemUtils {
         return 8L + 8L;
     }
   }
+
+  /**
+   * @param value can be null if the type is not TEXT
+   */
+  public static long getPointSize(TSDataType type, String value) {
+    switch (type) {
+      case INT32:
+        return 8L + 4L;
+      case INT64:
+        return 8L + 8L;
+      case FLOAT:
+        return 8L + 4L;
+      case DOUBLE:
+        return 8L + 8L;
+      case BOOLEAN:
+        return 8L + 1L;
+      case TEXT:
+        return 8L + value.length() * 2;
+      default:
+        return 8L + 8L;
+    }
+  }
+
 
   /**
    * Calculate how much memory will be used if the given record is written to Bufferwrite.

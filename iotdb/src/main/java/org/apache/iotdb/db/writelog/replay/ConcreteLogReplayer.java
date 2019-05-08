@@ -65,15 +65,15 @@ public class ConcreteLogReplayer implements LogReplayer {
       throws PathErrorException, FileNodeManagerException {
     String deviceId = insertPlan.getDeviceId();
     long insertTime = insertPlan.getTime();
-    List<String> measurementList = insertPlan.getMeasurements();
-    List<String> insertValues = insertPlan.getValues();
+    String[] measurementList = insertPlan.getMeasurements();
+    String[] insertValues = insertPlan.getValues();
 
     TSRecord tsRecord = new TSRecord(insertTime, deviceId);
-    for (int i = 0; i < measurementList.size(); i++) {
-      String pathKey = deviceId + "." + measurementList.get(i);
+    for (int i = 0; i < measurementList.length; i++) {
+      String pathKey = deviceId + "." + measurementList[i];
       TSDataType dataType = MManager.getInstance().getSeriesType(pathKey);
-      String value = insertValues.get(i);
-      DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
+      String value = insertValues[i];
+      DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList[i], value);
       tsRecord.addTuple(dataPoint);
     }
     FileNodeManager.getInstance().insert(tsRecord, true);

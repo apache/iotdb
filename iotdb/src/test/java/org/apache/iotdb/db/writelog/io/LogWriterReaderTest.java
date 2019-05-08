@@ -45,10 +45,10 @@ public class LogWriterReaderTest {
     if (new File(filePath).exists()) {
       new File(filePath).delete();
     }
-    InsertPlan insertPlan1 = new InsertPlan(1, "d1", 10L, Arrays.asList("s1", "s2"),
-        Arrays.asList("1", "2"));
-    InsertPlan insertPlan2 = new InsertPlan(2, "d1", 10L, Arrays.asList("s1", "s2"),
-        Arrays.asList("1", "2"));
+    InsertPlan insertPlan1 = new InsertPlan(1, "d1", 10L, new String[]{"s1", "s2"},
+        new String[]{"1", "2"});
+    InsertPlan insertPlan2 = new InsertPlan(2, "d1", 10L, new String[]{"s1", "s2"},
+        new String[]{"1", "2"});
     UpdatePlan updatePlan = new UpdatePlan(8L, 11L, "3", new Path("root.d1.s1"));
     DeletePlan deletePlan = new DeletePlan(10L, new Path("root.d1.s1"));
     plans.add(insertPlan1);

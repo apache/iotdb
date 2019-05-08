@@ -75,8 +75,8 @@ public class WriteLogNodeManagerTest {
         .getNode("root.managerTest", tempRestore.getPath(), tempProcessorStore.getPath());
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
-        Arrays.asList("s1", "s2", "s3", "s4"),
-        Arrays.asList("1.0", "15", "str", "false"));
+        new String[]{"s1", "s2", "s3", "s4"},
+        new String[]{"1.0", "15", "str", "false"});
     UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
@@ -122,8 +122,8 @@ public class WriteLogNodeManagerTest {
           .getNode(deviceName, tempRestore.getPath(), tempProcessorStore.getPath());
 
       InsertPlan bwInsertPlan = new InsertPlan(1, deviceName, 100,
-          Arrays.asList("s1", "s2", "s3", "s4"),
-          Arrays.asList("1.0", "15", "str", "false"));
+          new String[]{"s1", "s2", "s3", "s4"},
+          new String[]{"1.0", "15", "str", "false"});
       UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path(deviceName + ".s1"));
       DeletePlan deletePlan = new DeletePlan(50, new Path(deviceName + ".s1"));
 

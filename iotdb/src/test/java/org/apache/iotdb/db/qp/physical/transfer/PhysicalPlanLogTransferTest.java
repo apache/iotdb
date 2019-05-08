@@ -43,7 +43,7 @@ public class PhysicalPlanLogTransferTest {
 
   private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
   private InsertPlan insertPlan = new InsertPlan(1, "device", 100,
-      Arrays.asList("s1", "s2", "s3", "s4"), Arrays.asList("0.1", "100", "test", "false"));
+      new String[]{"s1", "s2", "s3", "s4"}, new String[]{"0.1", "100", "test", "false"});
   private DeletePlan deletePlan = new DeletePlan(50, new Path("root.vehicle.device"));
   private UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
       new Path("root.vehicle.device.sensor"));
