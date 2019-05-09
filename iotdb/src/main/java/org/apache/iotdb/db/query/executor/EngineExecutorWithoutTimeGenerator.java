@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.executor;
 
 import java.io.IOException;
@@ -35,9 +34,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 /**
- * IoTDB query executor with global time filter.
+ * IoTDB query executor of Stand-alone version with global time filter.
  */
-public class EngineExecutorWithoutTimeGenerator extends ExecutorWithoutTimeGenerator {
+public class EngineExecutorWithoutTimeGenerator extends AbstractExecutorWithoutTimeGenerator {
 
   private QueryExpression queryExpression;
 
