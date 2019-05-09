@@ -35,7 +35,7 @@ public class TimeRangeTest {
     ArrayList<TimeRange> prevRanges = new ArrayList<>();
     prevRanges.add(new TimeRange(20, 25));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 10);
@@ -53,7 +53,7 @@ public class TimeRangeTest {
     ArrayList<TimeRange> prevRanges = new ArrayList<>();
     prevRanges.add(new TimeRange(0, 10));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(0, remainRanges.size());
   }
 
@@ -68,7 +68,7 @@ public class TimeRangeTest {
     ArrayList<TimeRange> prevRanges = new ArrayList<>();
     prevRanges.add(new TimeRange(1, 3));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 3);
     assertEquals(remainRanges.get(0).getMax(), 10);
@@ -87,7 +87,7 @@ public class TimeRangeTest {
     ArrayList<TimeRange> prevRanges = new ArrayList<>();
     prevRanges.add(new TimeRange(5, 10));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 5);
@@ -106,7 +106,7 @@ public class TimeRangeTest {
     ArrayList<TimeRange> prevRanges = new ArrayList<>();
     prevRanges.add(new TimeRange(3, 8));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(2, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 3);
@@ -130,7 +130,7 @@ public class TimeRangeTest {
     ArrayList<TimeRange> prevRanges = new ArrayList<>();
     prevRanges.add(new TimeRange(0, 5));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 5);
     assertEquals(remainRanges.get(0).getMax(), 10);
@@ -149,7 +149,7 @@ public class TimeRangeTest {
     ArrayList<TimeRange> prevRanges = new ArrayList<>();
     prevRanges.add(new TimeRange(0, 2));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 2);
     assertEquals(remainRanges.get(0).getMax(), 10);
@@ -168,7 +168,7 @@ public class TimeRangeTest {
     ArrayList<TimeRange> prevRanges = new ArrayList<>();
     prevRanges.add(new TimeRange(6, 12));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 6);
@@ -187,7 +187,7 @@ public class TimeRangeTest {
     ArrayList<TimeRange> prevRanges = new ArrayList<>();
     prevRanges.add(new TimeRange(11, 13));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 11);
@@ -206,7 +206,7 @@ public class TimeRangeTest {
     prevRanges.add(new TimeRange(3, 4));
     prevRanges.add(new TimeRange(6, 8));
 
-    ArrayList<TimeRange> remainRanges = r.getRemains(prevRanges);
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(3, remainRanges.size());
     assertEquals(remainRanges.get(0).getMin(), 1);
     assertEquals(remainRanges.get(0).getMax(), 3);
