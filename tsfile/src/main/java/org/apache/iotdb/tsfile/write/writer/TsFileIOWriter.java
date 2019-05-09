@@ -89,6 +89,17 @@ public class TsFileIOWriter {
   }
 
   /**
+   * for writing a new tsfile.
+   *
+   * @param output be used to output written data
+   * @throws IOException
+   */
+  public TsFileIOWriter(TsFileOutput output) throws IOException {
+    this.out = output;
+    startFile();
+  }
+
+  /**
    * for writing data into an existing and incomplete Tsfile. The caller need to guarantee existing
    * data in the TsFileOutput matches the given metadata list
    *

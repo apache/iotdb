@@ -343,7 +343,7 @@ public class ReadTest {
       if (cnt == 2) {
         assertEquals(1480562618990L, r.getTimestamp());
         Field f2 = r.getFields().get(0);
-        assertEquals(110.0, f2.getFloatV(),0.0);
+        assertEquals(110.0, f2.getFloatV(), 0.0);
       }
       cnt++;
     }

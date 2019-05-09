@@ -19,16 +19,21 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public interface MetadataQuerier {
 
   List<ChunkMetaData> getChunkMetaDataList(Path path) throws IOException;
+
+  Map<Path, List<ChunkMetaData>> getChunkMetaDataMap(List<Path> paths) throws IOException;
 
   TsFileMetaData getWholeFileMetadata();
 
@@ -47,4 +52,39 @@ public interface MetadataQuerier {
    * @throws NoMeasurementException if the measurement not exists.
    */
   TSDataType getDataType(String measurement) throws NoMeasurementException;
+
+  /**
+   * get time ranges of chunkGroups in or before the current partition and return the union result in ascending order
+   *
+   * @param paths timeseries paths
+   * @param targetMode InPartition or PrevPartition
+   * @return time ranges union in ascending order
+   * @throws IOException
+   */
+  public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode)
+      throws IOException;
+
+  /**
+   * get the load mode of the MetadataQuerier
+   *
+   * @return LoadMode enum
+   */
+  LoadMode getLoadMode();
+
+  /**
+   * set the load mode of the MetadataQuerier
+   *
+   * @param mode enum
+   */
+  void setLoadMode(LoadMode mode);
+
+  /**
+   * The load mode of the MetadataQuerier:
+   * NoPartition - load metadata of all chunkgroups in the file
+   * InPartition - load metadata of chunkgroups which fall in the current partition
+   * PrevPartition - load metadata of chunkgroups which fall ahead the current partition
+   */
+  enum LoadMode {
+    NoPartition, InPartition, PrevPartition
+  }
 }

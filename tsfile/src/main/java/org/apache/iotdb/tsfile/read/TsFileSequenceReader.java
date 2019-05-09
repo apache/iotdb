@@ -85,7 +85,7 @@ public class TsFileSequenceReader implements AutoCloseable{
     tsFileInput = new DefaultTsFileInput(path);
     try {
       if (loadMetadataSize) {
-       loadMetadataSize();
+        loadMetadataSize();
       }
     } catch (Throwable e) {
       tsFileInput.close();
