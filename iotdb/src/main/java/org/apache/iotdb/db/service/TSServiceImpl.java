@@ -792,6 +792,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           "Statement is a query statement.");
     }
 
+    // if operation belongs to add/delete/update
     return executeUpdateStatement(physicalPlan);
   }
 

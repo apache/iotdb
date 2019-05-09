@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.read.expression;
 /**
  * @author Jinrui Zhang
  */
-public interface IBinaryExpression extends IExpression{
+public interface IBinaryExpression extends IExpression {
 
   IExpression getLeft();
 
