@@ -41,7 +41,6 @@ public class MGraph implements Serializable {
   private static final long serialVersionUID = 8214849219614352834L;
   private static final String DOUB_SEPARATOR = "\\.";
   private static final String TIME_SERIES_INCORRECT = "Timeseries's root is not Correct. RootName: ";
-  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
   private MTree mtree;
   private HashMap<String, PTree> ptreeMap;
 
@@ -241,7 +240,7 @@ public class MGraph implements Serializable {
   public Metadata getMetadata() throws PathErrorException {
     Map<String, List<MeasurementSchema>> seriesMap = getSchemaForAllType();
     Map<String, List<String>> deviceIdMap = getDeviceForAllType();
-    return new Metadata(seriesMap, deviceIdMap);
+    return new Metadata(deviceIdMap);
   }
 
   public HashSet<String> getAllStorageGroup() throws PathErrorException {
