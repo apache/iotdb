@@ -50,7 +50,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.executor.ExecutorWithoutTimeGenerator;
+import org.apache.iotdb.db.query.executor.AbstractExecutorWithoutTimeGenerator;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -185,7 +185,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
         .beginQueryOfGivenQueryPaths(context.getJobId(), plan.getPaths());
     for (int i = 0; i < paths.size(); i++) {
       String fullPath = paths.get(i).getFullPath();
-      IPointReader reader = ExecutorWithoutTimeGenerator
+      IPointReader reader = AbstractExecutorWithoutTimeGenerator
           .createSeriesReader(context, paths.get(i), dataTypes, timeFilter);
       selectSeriesReaders
           .put(fullPath, new ClusterBatchReaderWithoutTimeGenerator(dataTypes.get(i), reader));

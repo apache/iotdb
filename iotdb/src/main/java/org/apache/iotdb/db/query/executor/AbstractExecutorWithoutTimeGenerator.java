@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public abstract class ExecutorWithoutTimeGenerator {
+public abstract class AbstractExecutorWithoutTimeGenerator {
   /**
    * Create reader of a series
    *

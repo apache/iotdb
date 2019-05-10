@@ -28,7 +28,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
-import org.apache.iotdb.db.query.executor.ExecutorWithoutTimeGenerator;
+import org.apache.iotdb.db.query.executor.AbstractExecutorWithoutTimeGenerator;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class ClusterExecutorWithoutTimeGenerator extends ExecutorWithoutTimeGenerator {
+public class ClusterExecutorWithoutTimeGenerator extends AbstractExecutorWithoutTimeGenerator {
 
   /**
    * Query expression

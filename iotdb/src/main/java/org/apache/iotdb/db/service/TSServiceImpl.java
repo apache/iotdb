@@ -42,7 +42,6 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
-import org.apache.iotdb.db.metadata.MGraph;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -111,7 +110,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
   public TSServiceImpl() throws IOException {
-     processor = new QueryProcessor(new OverflowQPExecutor());
+    processor = new QueryProcessor(new OverflowQPExecutor());
   }
 
   @Override
@@ -199,7 +198,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
   }
 
-  public void releaseQueryResource(TSCloseOperationReq req) throws Exception {
+  protected void releaseQueryResource(TSCloseOperationReq req) throws Exception {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       return;
@@ -216,7 +215,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  public void clearAllStatusForCurrentRequest() {
+  private void clearAllStatusForCurrentRequest() {
     if (this.queryRet.get() != null) {
       this.queryRet.get().clear();
     }
@@ -225,7 +224,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  public TS_Status getErrorStatus(String message) {
+  private TS_Status getErrorStatus(String message) {
     TS_Status status = new TS_Status(TS_StatusCode.ERROR_STATUS);
     status.setErrorMessage(message);
     return status;
@@ -402,7 +401,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @return true if the statement is ADMIN COMMAND
    * @throws IOException exception
    */
-  public boolean execAdminCommand(String statement) throws IOException {
+  private boolean execAdminCommand(String statement) throws IOException {
     if (!"root".equals(username.get())) {
       return false;
     }
@@ -528,7 +527,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeUpdateStatement(physicalPlan);
       }
     } catch (Exception e) {
-      LOGGER.info("meet error: {}  while executing statement: {}", e.getMessage(), req.getStatement());
+      LOGGER.info("meet error: {}  while executing statement: {}", e.getMessage(),
+          req.getStatement());
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
@@ -654,8 +654,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  public void checkFileLevelSet(List<Path> paths) throws PathErrorException {
-      MManager.getInstance().checkFileLevel(paths);
+  protected void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+    MManager.getInstance().checkFileLevel(paths);
   }
 
   @Override
@@ -693,7 +693,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  public QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
+  protected QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
@@ -710,7 +710,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return queryDataSet;
   }
 
-  public void initContextMap(){
+  protected void initContextMap() {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       contextMap = new HashMap<>();
@@ -736,7 +736,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  public TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
+  private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
     List<Path> paths = plan.getPaths();
 
     try {
@@ -795,7 +795,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return executeUpdateStatement(physicalPlan);
   }
 
-  public void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
+  private void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
     queryStatus.get().put(statement, physicalPlan);
     // refresh current queryRet for statement
     if (queryRet.get().containsKey(statement)) {
@@ -808,11 +808,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    *
    * @return true: If logined; false: If not logined
    */
-  public boolean checkLogin() {
+  protected boolean checkLogin() {
     return username.get() != null;
   }
 
-  public boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
+  protected boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
       targetUser = ((AuthorPlan) plan).getUserName();
@@ -820,7 +820,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return AuthorityChecker.check(username.get(), paths, plan.getOperatorType(), targetUser);
   }
 
-  public TSExecuteStatementResp getTSExecuteStatementResp(TS_StatusCode code, String msg) {
+  private TSExecuteStatementResp getTSExecuteStatementResp(TS_StatusCode code, String msg) {
     TSExecuteStatementResp resp = new TSExecuteStatementResp();
     TS_Status tsStatus = new TS_Status(code);
     tsStatus.setErrorMessage(msg);
@@ -833,7 +833,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  public TSExecuteBatchStatementResp getTSBathExecuteStatementResp(TS_StatusCode code, String msg,
+  protected TSExecuteBatchStatementResp getTSBathExecuteStatementResp(TS_StatusCode code,
+      String msg,
       List<Integer> result) {
     TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
     TS_Status tsStatus = new TS_Status(code);
@@ -843,7 +844,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  public TSFetchResultsResp getTSFetchResultsResp(TS_StatusCode code, String msg) {
+  private TSFetchResultsResp getTSFetchResultsResp(TS_StatusCode code, String msg) {
     TSFetchResultsResp resp = new TSFetchResultsResp();
     TS_Status tsStatus = new TS_Status(code);
     tsStatus.setErrorMessage(msg);

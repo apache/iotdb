@@ -270,11 +270,11 @@ public class TSServiceClusterImpl extends TSServiceImpl {
    * It's unnecessary to do this check. It has benn checked in transforming query physical plan.
    */
   @Override
-  public void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+  protected void checkFileLevelSet(List<Path> paths) throws PathErrorException {
   }
 
   @Override
-  public void releaseQueryResource(TSCloseOperationReq req) throws Exception {
+  protected void releaseQueryResource(TSCloseOperationReq req) throws Exception {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       return;
@@ -294,7 +294,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   }
 
   @Override
-  public QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
+  protected QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
