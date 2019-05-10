@@ -29,13 +29,18 @@ import com.alipay.sofa.jraft.entity.Task;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import com.alipay.sofa.jraft.entity.PeerId;
+import java.util.Map;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
+import org.apache.iotdb.cluster.entity.raft.MetadataStateManchine;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.qp.task.QPTask;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
@@ -67,6 +72,14 @@ public class RaftUtilsTest {
   };
   private int replicator = 3;
 
+  private String[] storageGroups = {
+      "root.d1",
+      "root.d2",
+      "root.d3",
+      "root.d4",
+      "root.d5"
+  };
+
   @Mock
   private Server server;
   @Mock
@@ -87,6 +100,11 @@ public class RaftUtilsTest {
   @Mock
   private SingleQPTask nullReadTask;
 
+  @Mock
+  Router router;
+  @Mock
+  MetadataStateManchine metadataStateManchine;
+
   private List<PeerId> peerIds;
 
   @Before
@@ -100,6 +118,8 @@ public class RaftUtilsTest {
     when(metadataHolder.getService()).thenReturn(service);
     when(service.getPeerIdList()).thenReturn(peerIds);
     when(service.getNode()).thenReturn(node);
+    when((service).getFsm()).thenReturn(metadataStateManchine);
+    when(metadataStateManchine.getAllStorageGroups()).thenReturn(new HashSet<>(Arrays.asList(storageGroups)));
     Mockito.doNothing().when(node).apply(any(Task.class));
     Mockito.doNothing().when(response).addResult(any(boolean.class));
     Mockito.doNothing().when(response).setErrorMsg(any(String.class));
@@ -108,11 +128,12 @@ public class RaftUtilsTest {
     numOfVirtualNodesOld = config.getNumOfVirtualNodes();
 
     int numOfVirtualNodes = 2;
+    config.setPort(PORT);
     config.setNodes(ipList);
     config.setReplication(replicator);
     config.setNumOfVirtualNodes(numOfVirtualNodes);
-    Router router = Router.getInstance();
-    router.init();
+    router = Router.getInstance();
+    router.init(config);
     router.showPhysicalRing();
   }
 
@@ -233,5 +254,51 @@ public class RaftUtilsTest {
   public void testHandleNullReadToMetaGroup() throws InterruptedException {
     Mockito.doNothing().when(nullReadTask).await();
     RaftUtils.handleNullReadToMetaGroup(new Status(), server, nullReadTask);
+  }
+
+  @Test
+  public void testGetDataPartitionOfSG() {
+    PeerId metadtaLeader = PeerId.parsePeer(ipList[0]);
+    RaftUtils.updateRaftGroupLeader(ClusterConfig.METADATA_GROUP_ID, metadtaLeader);
+    PeerId[] metadataGroup = RaftUtils.getDataPartitionOfSG(null, server, router);
+    assertArrayEquals(peerIds.toArray(new PeerId[peerIds.size()]), metadataGroup);
+
+    String sg = storageGroups[0];
+    PhysicalNode[] physicalGroup = router.routeGroup(sg);
+    String groupId = router.getGroupID(physicalGroup);
+    PeerId[] expectGroup = RaftUtils.getPeerIdArrayFrom(physicalGroup);
+    RaftUtils.updateRaftGroupLeader(groupId, expectGroup[0]);
+    PeerId[] dataGroup = RaftUtils.getDataPartitionOfSG(sg, server, router);
+    assertArrayEquals(expectGroup, dataGroup);
+  }
+
+  @Test
+  public void testGetDataPartitionOfNode() {
+    PeerId node = peerIds.get(0);
+    Map<String[], String[]> dataPartition = RaftUtils.getDataPartitionOfNode(node.getIp(), node.getPort(), server, router);
+    Map<String, String[]> dataPartitionMap = new HashMap<>();
+    dataPartition.forEach((key, value) -> dataPartitionMap.put(buildKey(key), value));
+
+    String[][] keys = {{"192.168.130.1", "192.168.130.3", "192.168.130.4"},
+        {"192.168.130.3", "192.168.130.4", "192.168.130.5"},
+        {"192.168.130.2", "192.168.130.4", "192.168.130.5"}};
+    String[][] values = {{},
+        {"root.d1", "root.d4"},
+        {"root.d3", "root.d2"}};
+    Map<String, String[]> expectMap = new HashMap<>();
+    for (int i = 0; i < keys.length; i++) {
+      expectMap.put(buildKey(keys[i]), values[i]);
+    }
+
+    assertEquals(dataPartitionMap.size(), expectMap.size());
+    dataPartitionMap.forEach((key, value) -> assertArrayEquals(value, expectMap.get(key)));
+  }
+
+  private String buildKey(String[] ss) {
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < ss.length; i++) {
+      builder.append(ss[i]).append('#');
+    }
+    return builder.toString();
   }
 }

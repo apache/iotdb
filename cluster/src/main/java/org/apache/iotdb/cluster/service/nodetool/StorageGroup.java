@@ -16,28 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.hash;
+package org.apache.iotdb.cluster.service.nodetool;
 
-public class VirtualNode {
-  //the index of the virtual node in the physicalNode
-  private final int replicaIndex;
-  private final PhysicalNode physicalNode;
+import io.airlift.airline.Command;
+import io.airlift.airline.Option;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
+import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
 
-  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
-    this.replicaIndex = replicaIndex;
-    this.physicalNode = physicalNode;
-  }
+@Command(name = "storagegroup", description = "Print all hosts information of specific storage group")
+public class StorageGroup extends NodeToolCmd {
 
-  public PhysicalNode getPhysicalNode() {
-    return this.physicalNode;
-  }
-
-  String getKey() {
-    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
-  }
+  @Option(title = "storage group", name = {"-sg",
+      "--storagegroup"}, description = "Specify a storage group for accurate hosts information")
+  private String sg = null;
 
   @Override
-  public String toString() {
-    return getKey();
+  public void execute(ClusterMonitorMBean proxy) {
+    String nodes = proxy.getDataPartitionOfSG(sg);
+    System.out.println(nodes);
   }
 }

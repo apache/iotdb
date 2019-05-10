@@ -330,12 +330,8 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     MetadataRaftHolder metadataHolder = (MetadataRaftHolder) server.getMetadataHolder();
     if (getReadMetadataConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
       QueryStorageGroupResponse response;
-      try {
-        response = QueryStorageGroupResponse
-            .createSuccessResponse(metadataHolder.getFsm().getAllStorageGroups());
-      } catch (final PathErrorException e) {
-        response = QueryStorageGroupResponse.createErrorResponse(e.getMessage());
-      }
+      response = QueryStorageGroupResponse
+          .createSuccessResponse(metadataHolder.getFsm().getAllStorageGroups());
       task.run(response);
     } else {
       ((RaftService) metadataHolder.getService()).getNode()
@@ -345,12 +341,8 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
             public void run(Status status, long index, byte[] reqCtx) {
               QueryStorageGroupResponse response;
               if (status.isOk()) {
-                try {
-                  response = QueryStorageGroupResponse
-                      .createSuccessResponse(metadataHolder.getFsm().getAllStorageGroups());
-                } catch (final PathErrorException e) {
-                  response = QueryStorageGroupResponse.createErrorResponse(e.getMessage());
-                }
+                response = QueryStorageGroupResponse
+                    .createSuccessResponse(metadataHolder.getFsm().getAllStorageGroups());
               } else {
                 response = QueryStorageGroupResponse.createErrorResponse(status.getErrorMsg());
               }

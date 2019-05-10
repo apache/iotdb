@@ -148,7 +148,7 @@ public class MetadataStateManchine extends StateMachineAdapter {
     mManager.setStorageLevelToMTree(sg);
   }
 
-  public Set<String> getAllStorageGroups() throws PathErrorException {
+  public Set<String> getAllStorageGroups() {
     return mManager.getAllStorageGroup();
   }
 

@@ -16,28 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.hash;
+package org.apache.iotdb.cluster.rpc.raft.response;
 
-public class VirtualNode {
-  //the index of the virtual node in the physicalNode
-  private final int replicaIndex;
-  private final PhysicalNode physicalNode;
+import java.util.Map;
 
-  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
-    this.replicaIndex = replicaIndex;
-    this.physicalNode = physicalNode;
+public class QueryMetricResponse extends BasicResponse {
+
+  private Map<String, Long> value;
+
+  private QueryMetricResponse(String groupId, boolean redirected, String leaderStr,
+      String errorMsg) {
+    super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public PhysicalNode getPhysicalNode() {
-    return this.physicalNode;
+  public static QueryMetricResponse createSuccessResponse(String groupId, Map<String, Long> value) {
+    QueryMetricResponse response = new QueryMetricResponse(groupId, false, null,
+        null);
+    response.value = value;
+    return response;
   }
 
-  String getKey() {
-    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
+  public static QueryMetricResponse createErrorResponse(String groupId, String errorMsg) {
+    return new QueryMetricResponse(groupId, false, null, errorMsg);
   }
 
-  @Override
-  public String toString() {
-    return getKey();
+  public Map<String, Long> getValue() {
+    return value;
   }
 }

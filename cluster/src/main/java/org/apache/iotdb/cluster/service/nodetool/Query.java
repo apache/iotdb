@@ -16,28 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.hash;
+package org.apache.iotdb.cluster.service.nodetool;
 
-public class VirtualNode {
-  //the index of the virtual node in the physicalNode
-  private final int replicaIndex;
-  private final PhysicalNode physicalNode;
+import io.airlift.airline.Command;
+import java.util.Map;
+import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
-  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
-    this.replicaIndex = replicaIndex;
-    this.physicalNode = physicalNode;
-  }
-
-  public PhysicalNode getPhysicalNode() {
-    return this.physicalNode;
-  }
-
-  String getKey() {
-    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
-  }
+@Command(name = "query", description = "Print number of query jobs for all data partitions of connected host")
+public class Query extends NodeToolCmd {
 
   @Override
-  public String toString() {
-    return getKey();
+  public void execute(ClusterMonitorMBean proxy)
+  {
+    Map<String, Integer> queryNumMap = proxy.getQueryJobNumMap();
+    queryNumMap.forEach((groupId, num) -> System.out.println(groupId + "\t->\t" + num));
+    int sum = queryNumMap.values().stream().mapToInt(num -> num).sum();
+    System.out.println("Total\t->\t" + sum);
   }
 }

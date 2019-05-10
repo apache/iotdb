@@ -244,7 +244,7 @@ public class MGraph implements Serializable {
     return new Metadata(seriesMap, deviceIdMap);
   }
 
-  public HashSet<String> getAllStorageGroup() throws PathErrorException {
+  public HashSet<String> getAllStorageGroup() {
     return mtree.getAllStorageGroup();
   }
 

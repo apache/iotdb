@@ -1,3 +1,4 @@
+#!/bin/sh
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,19 +18,31 @@
 # under the License.
 #
 
-# Sync server port address
-server_ip=127.0.0.1
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+fi
 
-# Sync client port
-server_port=5555
 
-# The cycle time of post data back to receiver, the unit of time is second
-upload_cycle_in_seconds=600
+MAIN_CLASS=org.apache.iotdb.cluster.service.nodetool.NodeTool
 
-# Set bufferWrite data absolute metric of IoTDB
-# It needs to be set with iotdb_schema_directory, they have to belong to the same IoTDB
-# iotdb_bufferWrite_directory = D:\\iotdb\\data\\data\\settled
 
-# Set schema file absolute metric of IoTDB
-# It needs to be set with iotdb_bufferWrite_directory, they have to belong to the same IoTDB
-# iotdb_schema_directory = D:\\iotdb\\data\\system\\schema\\mlog.txt
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib_cluster/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
+
+
+if [ -n "$JAVA_HOME" ]; then
+    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+        if [ -x "$java" ]; then
+            JAVA="$java"
+            break
+        fi
+    done
+else
+    JAVA=java
+fi
+
+exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+
+exit $?

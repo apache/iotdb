@@ -25,9 +25,11 @@ import com.alipay.sofa.jraft.StateMachine;
 import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.entity.PeerId;
 import com.alipay.sofa.jraft.option.NodeOptions;
+import com.codahale.metrics.ConsoleReporter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.service.IService;
@@ -61,6 +63,7 @@ public class RaftService implements IService {
     nodeOptions.setRaftMetaUri(FilePathUtils.regularizePath(config.getRaftMetadataPath()) + groupId);
     nodeOptions.setSnapshotUri(FilePathUtils.regularizePath(config.getRaftSnapshotPath()) + groupId);
     nodeOptions.setElectionTimeoutMs(config.getElectionTimeoutMs());
+    nodeOptions.setEnableMetrics(true);
     final Configuration initConf = new Configuration();
     initConf.setPeers(peerIdList);
     nodeOptions.setInitialConf(initConf);
@@ -70,6 +73,12 @@ public class RaftService implements IService {
   @Override
   public void start() {
     this.node = raftGroupService.start(startRpcServer);
+
+//    ConsoleReporter reporter = ConsoleReporter.forRegistry(node.getNodeMetrics().getMetricRegistry())
+//        .convertRatesTo(TimeUnit.SECONDS)
+//        .convertDurationsTo(TimeUnit.MILLISECONDS)
+//        .build();
+//    reporter.start(30, TimeUnit.SECONDS);
   }
 
   @Override
@@ -93,4 +102,11 @@ public class RaftService implements IService {
     this.node = node;
   }
 
+  public StateMachine getFsm() {
+    return fsm;
+  }
+
+  public String getGroupId() {
+    return groupId;
+  }
 }

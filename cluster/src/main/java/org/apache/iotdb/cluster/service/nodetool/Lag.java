@@ -16,28 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.hash;
+package org.apache.iotdb.cluster.service.nodetool;
 
-public class VirtualNode {
-  //the index of the virtual node in the physicalNode
-  private final int replicaIndex;
-  private final PhysicalNode physicalNode;
+import io.airlift.airline.Command;
+import java.util.Map;
+import java.util.Map.Entry;
+import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
-  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
-    this.replicaIndex = replicaIndex;
-    this.physicalNode = physicalNode;
-  }
-
-  public PhysicalNode getPhysicalNode() {
-    return this.physicalNode;
-  }
-
-  String getKey() {
-    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
-  }
+@Command(name = "lag", description = "Print log lag for all groups of connected host")
+public class Lag extends NodeToolCmd {
 
   @Override
-  public String toString() {
-    return getKey();
+  public void execute(ClusterMonitorMBean proxy)
+  {
+    Map<String, Map<String, Long>> groupMap = proxy.getReplicaLagMap();
+    for (Entry<String, Map<String, Long>> entry : groupMap.entrySet()) {
+      if (entry.getValue() == null) {
+        continue;
+      }
+      System.out.println(entry.getKey() + ":");
+      entry.getValue().forEach((node, lag) -> System.out.println("\t" + node + "\t->\t" + lag));
+    }
   }
 }

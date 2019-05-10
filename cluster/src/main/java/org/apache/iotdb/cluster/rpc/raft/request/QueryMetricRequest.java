@@ -16,28 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.hash;
+package org.apache.iotdb.cluster.rpc.raft.request;
 
-public class VirtualNode {
-  //the index of the virtual node in the physicalNode
-  private final int replicaIndex;
-  private final PhysicalNode physicalNode;
+import java.io.Serializable;
 
-  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
-    this.replicaIndex = replicaIndex;
-    this.physicalNode = physicalNode;
+public class QueryMetricRequest extends BasicQueryRequest implements Serializable {
+
+  private String metric;
+
+  public QueryMetricRequest(String groupID, int readConsistencyLevel, String metric) {
+    super(groupID, readConsistencyLevel);
+    this.metric = metric;
   }
 
-  public PhysicalNode getPhysicalNode() {
-    return this.physicalNode;
-  }
-
-  String getKey() {
-    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
-  }
-
-  @Override
-  public String toString() {
-    return getKey();
+  public String getMetric() {
+    return metric;
   }
 }

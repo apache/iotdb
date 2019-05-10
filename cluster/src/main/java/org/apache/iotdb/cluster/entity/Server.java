@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
+import org.apache.iotdb.cluster.rpc.raft.processor.QueryMetricAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.DataGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.MetaGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querydata.CloseSeriesReaderSyncProcessor;
@@ -46,8 +47,11 @@ import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryTimeSeries
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.RegisterManager;
+import org.apache.iotdb.cluster.service.ClusterMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,12 +87,14 @@ public class Server {
    */
   private IoTDB iotdb;
 
-  public static void main(String[] args) {
+  private RegisterManager registerManager = new RegisterManager();
+
+  public static void main(String[] args) throws ProcessorException, InterruptedException {
     Server server = Server.getInstance();
     server.start();
   }
 
-  public void start() {
+  public void start() throws ProcessorException, InterruptedException {
     /** Stand-alone version of IoTDB, be careful to replace the internal JDBC Server with a cluster version **/
     iotdb = new IoTDB();
     iotdb.active();
@@ -103,6 +109,7 @@ public class Server {
     registerNonQueryProcessor(rpcServer);
     registerQueryMetadataProcessor(rpcServer);
     registerQueryDataProcessor(rpcServer);
+    registerQueryMetricProcessor(rpcServer);
 
     metadataHolder = new MetadataRaftHolder(peerIds, serverId, rpcServer, true);
     metadataHolder.init();
@@ -126,6 +133,13 @@ public class Server {
       Router.getInstance().showPhysicalNodes(groupId);
     }
 
+    try {
+      LOGGER.info("Register Cluster Monitor to JMX service.");
+      registerManager.register(ClusterMonitor.INSTANCE);
+    } catch (StartupException e) {
+      stop();
+      return;
+    }
   }
 
   private void registerNonQueryProcessor(RpcServer rpcServer) {
@@ -148,6 +162,10 @@ public class Server {
     rpcServer.registerUserProcessor(new CloseSeriesReaderSyncProcessor());
   }
 
+  private void registerQueryMetricProcessor(RpcServer rpcServer) {
+    rpcServer.registerUserProcessor(new QueryMetricAsyncProcessor());
+  }
+
   public void stop() throws ProcessorException, InterruptedException {
     QPTaskManager.getInstance().close(true, ClusterConstant.CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT);
     iotdb.deactivate();
@@ -156,6 +174,8 @@ public class Server {
     for (DataPartitionHolder dataPartitionHolder : dataPartitionHolderMap.values()) {
       dataPartitionHolder.stop();
     }
+
+    registerManager.deregisterAll();
   }
 
   public PeerId getServerId() {

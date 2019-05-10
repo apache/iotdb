@@ -66,6 +66,7 @@ public class Router {
   public static final String DATA_GROUP_STR = "data-group-";
 
   private HashFunction hashFunction = new MD5Hash();
+
   private final SortedMap<Integer, PhysicalNode> physicalRing = new TreeMap<>();
   private final SortedMap<Integer, VirtualNode> virtualRing = new TreeMap<>();
 
@@ -86,8 +87,11 @@ public class Router {
    * Change this method to public for test, you should not invoke this method explicitly.
    */
   public void init() {
+    init(ClusterDescriptor.getInstance().getConfig());
+  }
+
+  public void init(ClusterConfig config) {
     reset();
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     String[] hosts = config.getNodes();
     int replicator = config.getReplication();
     int numOfVirtualNodes = config.getNumOfVirtualNodes();
@@ -236,6 +240,14 @@ public class Router {
 
   public Set<String> getAllGroupId() {
     return groupIdMapNodeCache.keySet();
+  }
+
+  public SortedMap<Integer, PhysicalNode> getPhysicalRing() {
+    return physicalRing;
+  }
+
+  public SortedMap<Integer, VirtualNode> getVirtualRing() {
+    return virtualRing;
   }
 
   /**

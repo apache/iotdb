@@ -16,28 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.utils.hash;
+package org.apache.iotdb.cluster.service.nodetool;
 
-public class VirtualNode {
-  //the index of the virtual node in the physicalNode
-  private final int replicaIndex;
-  private final PhysicalNode physicalNode;
+import io.airlift.airline.Command;
+import io.airlift.airline.Option;
+import java.util.Map;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
+import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
 
-  VirtualNode(int replicaIndex, PhysicalNode physicalNode) {
-    this.replicaIndex = replicaIndex;
-    this.physicalNode = physicalNode;
-  }
-
-  public PhysicalNode getPhysicalNode() {
-    return this.physicalNode;
-  }
-
-  String getKey() {
-    return String.format("%s-%d", physicalNode.getKey(), replicaIndex);
-  }
+@Command(name = "ring", description = "Print information about the hash ring")
+public class Ring extends NodeToolCmd {
+  @Option(title = "physical_ring", name = {"-p", "--physical"}, description = "Show physical nodes instead of virtual ones")
+  private boolean physical = false;
 
   @Override
-  public String toString() {
-    return getKey();
+  public void execute(ClusterMonitorMBean proxy)
+  {
+    Map<Integer, String> map = physical ? proxy.getPhysicalRing() : proxy.getVirtualRing();
+    map.forEach((hash, ip) -> System.out.println(hash + "\t->\t" + ip));
   }
 }
