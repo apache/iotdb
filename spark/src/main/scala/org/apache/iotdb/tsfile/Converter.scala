@@ -238,9 +238,9 @@ object Converter {
     */
   def getTsDataType(dataType: DataType): TSDataType = {
     dataType match {
+      case BooleanType => TSDataType.BOOLEAN
       case IntegerType => TSDataType.INT32
       case LongType => TSDataType.INT64
-      case BooleanType => TSDataType.BOOLEAN
       case FloatType => TSDataType.FLOAT
       case DoubleType => TSDataType.DOUBLE
       case StringType => TSDataType.TEXT
@@ -259,6 +259,7 @@ object Converter {
     val conf = TSFileDescriptor.getInstance.getConfig
     val dataType = getTsDataType(field.dataType)
     val encodingStr = dataType match {
+      case TSDataType.BOOLEAN => options.getOrElse(QueryConstant.BOOLEAN, TSEncoding.PLAIN.toString)
       case TSDataType.INT32 => options.getOrElse(QueryConstant.INT32, TSEncoding.RLE.toString)
       case TSDataType.INT64 => options.getOrElse(QueryConstant.INT64, TSEncoding.RLE.toString)
       case TSDataType.FLOAT => options.getOrElse(QueryConstant.FLOAT, TSEncoding.RLE.toString)
@@ -317,6 +318,7 @@ object Converter {
       val index = row.fieldIndex(name)
       if (!row.isNullAt(index)) {
         val value = f.dataType match {
+          case BooleanType => row.getAs[Boolean](name)
           case IntegerType => row.getAs[Int](name)
           case LongType => row.getAs[Long](name)
           case FloatType => row.getAs[Float](name)
@@ -468,6 +470,10 @@ object Converter {
       filterType match {
         case FilterTypes.Eq =>
           dataType match {
+            case BooleanType =>
+              val filter = new SingleSeriesExpression(new Path(nodeName),
+                ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Boolean]))
+              filter
             case IntegerType =>
               val filter = new SingleSeriesExpression(new Path(nodeName),
                 ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Integer]))
@@ -487,10 +493,6 @@ object Converter {
             case StringType =>
               val filter = new SingleSeriesExpression(new Path(nodeName),
                 ValueFilter.eq(new Binary(nodeValue.toString)))
-              filter
-            case BooleanType =>
-              val filter = new SingleSeriesExpression(new Path(nodeName),
-                ValueFilter.eq(nodeValue.asInstanceOf[java.lang.Boolean]))
               filter
             case other => throw new UnsupportedOperationException(s"Unsupported type $other")
           }
