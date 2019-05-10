@@ -95,7 +95,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       usedIndex++;
     }
 
-    //end
+    // end
     if (usedIndex >= mergedIntervals.size()) {
       return false;
     }
