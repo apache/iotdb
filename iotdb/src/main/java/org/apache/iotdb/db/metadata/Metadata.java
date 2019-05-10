@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -34,39 +33,10 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  */
 public class Metadata implements Serializable {
 
-  private Map<String, List<MeasurementSchema>> seriesMap;
   private Map<String, List<String>> deviceIdMap;
 
-  public Metadata(Map<String, List<MeasurementSchema>> seriesMap,
-      Map<String, List<String>> deviceIdMap) {
-    this.seriesMap = seriesMap;
+  public Metadata(Map<String, List<String>> deviceIdMap) {
     this.deviceIdMap = deviceIdMap;
-  }
-
-  /**
-   * function for getting series for one type.
-   */
-  public List<MeasurementSchema> getSeriesForOneType(String type) throws PathErrorException {
-    if (this.seriesMap.containsKey(type)) {
-      return seriesMap.get(type);
-    } else {
-      throw new PathErrorException("Input deviceIdType is not exist. " + type);
-    }
-  }
-
-  /**
-   * function for getting devices for one type.
-   */
-  public List<String> getDevicesForOneType(String type) throws PathErrorException {
-    if (this.seriesMap.containsKey(type)) {
-      return deviceIdMap.get(type);
-    } else {
-      throw new PathErrorException("Input deviceIdType is not exist. " + type);
-    }
-  }
-
-  public Map<String, List<MeasurementSchema>> getSeriesMap() {
-    return seriesMap;
   }
 
   public Map<String, List<String>> getDeviceMap() {
@@ -79,27 +49,12 @@ public class Metadata implements Serializable {
   public static Metadata combineMetadatas(Metadata[] metadatas) {
     Map<String, List<MeasurementSchema>> seriesMap = new HashMap<>();
     Map<String, List<String>> deviceIdMap = new HashMap<>();
-    Map<String, Map<String, MeasurementSchema>> typeSchemaMap = new HashMap<>();
 
     if (metadatas == null || metadatas.length == 0) {
-      return new Metadata(seriesMap, deviceIdMap);
+      return new Metadata(deviceIdMap);
     }
 
     for (int i = 0; i < metadatas.length; i++) {
-      Map<String, List<MeasurementSchema>> subSeriesMap = metadatas[i].seriesMap;
-      for (Entry<String, List<MeasurementSchema>> entry : subSeriesMap.entrySet()) {
-        Map<String, MeasurementSchema> map;
-        if (typeSchemaMap.containsKey(entry.getKey())) {
-          map = typeSchemaMap.get(entry.getKey());
-        } else {
-          map = new HashMap<>();
-        }
-        entry.getValue().forEach(schema -> map.put(schema.getMeasurementId(), schema));
-        if (!typeSchemaMap.containsKey(entry.getKey())) {
-          typeSchemaMap.put(entry.getKey(), map);
-        }
-      }
-
       Map<String, List<String>> subDeviceIdMap = metadatas[i].deviceIdMap;
       for (Entry<String, List<String>> entry : subDeviceIdMap.entrySet()) {
         List<String> list;
@@ -115,18 +70,12 @@ public class Metadata implements Serializable {
       }
     }
 
-    for (Entry<String, Map<String, MeasurementSchema>> entry : typeSchemaMap.entrySet()) {
-      List<MeasurementSchema> list = new ArrayList<>();
-      list.addAll(entry.getValue().values());
-      seriesMap.put(entry.getKey(), list);
-    }
-
-    return new Metadata(seriesMap, deviceIdMap);
+    return new Metadata(deviceIdMap);
   }
 
   @Override
   public String toString() {
-    return seriesMap.toString() + "\n" + deviceIdMap.toString();
+    return deviceIdMap.toString();
   }
 
   @Override
@@ -142,26 +91,7 @@ public class Metadata implements Serializable {
     }
 
     Metadata metadata = (Metadata) obj;
-    return seriesMapEquals(seriesMap, metadata.seriesMap) && deviceIdMapEquals(deviceIdMap, metadata.deviceIdMap);
-  }
-
-  /**
-   * only used to check if seriesMap is equal to another seriesMap
-   */
-  private boolean seriesMapEquals(Map<String, List<MeasurementSchema>> map1, Map<String, List<MeasurementSchema>> map2) {
-    if (!map1.keySet().equals(map2.keySet())) {
-      return false;
-    }
-
-    for (Entry<String, List<MeasurementSchema>> entry : map1.entrySet()) {
-      List list1 = entry.getValue();
-      List list2 = map2.get(entry.getKey());
-
-      if (!listEquals(list1, list2)) {
-        return false;
-      }
-    }
-    return true;
+    return deviceIdMapEquals(deviceIdMap, metadata.deviceIdMap);
   }
 
   /**
