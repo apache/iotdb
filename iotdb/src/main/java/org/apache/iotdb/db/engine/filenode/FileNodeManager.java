@@ -190,10 +190,7 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   /**
-   *
    * @param filenodeName storage name, e.g., root.a.b
-   * @return
-   * @throws FileNodeManagerException
    */
   private FileNodeProcessor constructNewProcessor(String filenodeName)
       throws FileNodeManagerException {
@@ -638,7 +635,8 @@ public class FileNodeManager implements IStatistic, IService {
 
   /**
    * begin query.
-   * @param  deviceId queried deviceId
+   *
+   * @param deviceId queried deviceId
    * @return a query token for the device.
    */
   public int beginQuery(String deviceId) throws FileNodeManagerException {
@@ -646,7 +644,7 @@ public class FileNodeManager implements IStatistic, IService {
     try {
       LOGGER.debug("Get the FileNodeProcessor: filenode is {}, begin query.",
           fileNodeProcessor.getProcessorName());
-      return fileNodeProcessor.addMultiPassLock();
+      return fileNodeProcessor.addMultiPassCount();
     } finally {
       fileNodeProcessor.writeUnlock();
     }
@@ -697,7 +695,10 @@ public class FileNodeManager implements IStatistic, IService {
     try {
       LOGGER.debug("Get the FileNodeProcessor: {} end query.",
           fileNodeProcessor.getProcessorName());
-      fileNodeProcessor.removeMultiPassLock(token);
+      fileNodeProcessor.decreaseMultiPassCount(token);
+    } catch (FileNodeProcessorException e) {
+      LOGGER.error("Failed to end query: the deviceId {}, token {}.", deviceId, token, e);
+      throw new FileNodeManagerException(e);
     } finally {
       fileNodeProcessor.writeUnlock();
     }
@@ -956,7 +957,8 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * add time series.
    */
-  public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding, CompressionType compressor,
+  public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor,
       Map<String, String> props) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(path.getFullPath(), true);
     try {

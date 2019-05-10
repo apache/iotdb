@@ -567,13 +567,13 @@ public class BufferWriteProcessor extends Processor implements MemUser {
     return super.hashCode();
   }
 
-  public String getInsertFilePath() {
-    return insertFilePath;
-  }
-
   @Override
   public String toString() {
     return "BufferWriteProcessor in " + insertFilePath;
+  }
+
+  public String getInsertFilePath() {
+    return insertFilePath;
   }
 
   public boolean isClosed() {

@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.query.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -67,20 +68,26 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
     List<SeriesReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    for (int i = 0; i < cached.size(); i++) {
+    Iterator<Boolean> cachedIterator = cached.iterator();
+    Iterator<Path> selectedPathIterator = selectedPathList.iterator();
+    while (cachedIterator.hasNext()) {
+      boolean cachedValue = cachedIterator.next();
+      Path selectedPath = selectedPathIterator.next();
 
-      List<ChunkMetaData> chunkMetaDataList = metadataQuerier
-          .getChunkMetaDataList(selectedPathList.get(i));
-      dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
-
-      if (cached.get(i)) {
-        readersOfSelectedSeries.add(null);
-        continue;
+      List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(selectedPath);
+      if (chunkMetaDataList.size() != 0) {
+        dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
+        if (cachedValue) {
+          readersOfSelectedSeries.add(null);
+          continue;
+        }
+        SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(chunkLoader,
+            chunkMetaDataList);
+        readersOfSelectedSeries.add(seriesReader);
+      } else {
+        selectedPathIterator.remove();
+        cachedIterator.remove();
       }
-
-      SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(chunkLoader,
-          chunkMetaDataList);
-      readersOfSelectedSeries.add(seriesReader);
     }
 
     return new DataSetWithTimeGenerator(selectedPathList, cached, dataTypes, timeGenerator,
