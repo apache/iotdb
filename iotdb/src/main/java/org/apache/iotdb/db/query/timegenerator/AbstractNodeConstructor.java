@@ -40,6 +40,9 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 
+/**
+ * Construct node in expression tree while reading process.
+ */
 public abstract class AbstractNodeConstructor {
 
   /**
@@ -55,6 +58,7 @@ public abstract class AbstractNodeConstructor {
 
   /**
    * Construct not series type node.
+   *
    * @param expression expression
    * @return Node object
    * @throws FileNodeManagerException FileNodeManagerException

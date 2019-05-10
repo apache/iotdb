@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,6 +37,12 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface IQueryProcessExecutor {
 
+  /**
+   * Process Non-Query Physical plan, including insert/update/delete operation of
+   * data/metadata/Privilege
+   *
+   * @param plan Physical Non-Query Plan
+   */
   boolean processNonQuery(PhysicalPlan plan) throws ProcessorException;
 
   /**
@@ -52,7 +57,6 @@ public interface IQueryProcessExecutor {
 
   /**
    * process aggregate plan of qp layer, construct queryDataSet.
-   *
    */
   QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
       QueryContext context)
