@@ -47,7 +47,6 @@ public class Metadata implements Serializable {
    * combine multiple metadatas
    */
   public static Metadata combineMetadatas(Metadata[] metadatas) {
-    Map<String, List<MeasurementSchema>> seriesMap = new HashMap<>();
     Map<String, List<String>> deviceIdMap = new HashMap<>();
 
     if (metadatas == null || metadatas.length == 0) {
