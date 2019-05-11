@@ -27,6 +27,7 @@ public class QueryConstant {
 
   public static final String RESERVED_TIME = "time";
 
+  public static final String BOOLEAN = "BOOLEAN";
   public static final String INT32 = "INT32";
   public static final String INT64 = "INT64";
   public static final String FLOAT = "FLOAT";
