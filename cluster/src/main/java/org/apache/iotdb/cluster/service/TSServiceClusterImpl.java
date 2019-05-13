@@ -311,11 +311,18 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     queryRet.get().put(statement, queryDataSet);
     return queryDataSet;
   }
+
+  @Override
+  public void handleClientExit() throws TException {
+    closeClusterService();
+    closeOperation(null);
+    closeSession(null);
+  }
+
   /**
    * Close cluster service
    */
-  @Override
-  public void closeClusterService() {
+  private void closeClusterService() {
     nonQueryExecutor.shutdown();
     queryMetadataExecutor.shutdown();
   }

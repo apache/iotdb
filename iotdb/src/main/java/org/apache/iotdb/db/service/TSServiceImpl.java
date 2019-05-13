@@ -852,17 +852,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  public void handleClientExit() throws TException {
-    closeClusterService();
+  protected void handleClientExit() throws TException {
     closeOperation(null);
     closeSession(null);
-  }
-
-  /**
-   * Close cluster service
-   */
-  public void closeClusterService() {
-
   }
 
   @Override
