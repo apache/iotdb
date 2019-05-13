@@ -25,8 +25,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class stores all the metadata info for every deviceId and every timeseries.
@@ -88,6 +88,11 @@ public class Metadata implements Serializable {
 
     Metadata metadata = (Metadata) obj;
     return deviceIdMapEquals(deviceIdMap, metadata.deviceIdMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(deviceIdMap);
   }
 
   /**
