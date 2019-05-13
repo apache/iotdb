@@ -39,23 +39,26 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ReadInPartitionTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
   private TsFileSequenceReader reader;
   private static ReadOnlyTsFile roTsFile = null;
+  private static final Logger LOG = LoggerFactory.getLogger(ReadInPartitionTest.class);
 
   @Before
   public void before() throws InterruptedException, WriteProcessException, IOException {
     TsFileGeneratorForTest.generateFile(1000000, 1024 * 1024, 10000);
     reader = new TsFileSequenceReader(FILE_PATH);
 
-    System.out.println("file length: " + new File(FILE_PATH).length());
-    System.out.println("file magic head: " + reader.readHeadMagic());
-    System.out.println("file magic tail: " + reader.readTailMagic());
-    System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
-    System.out.println("Level 1 metadata size: " + reader.getFileMetadataPos());
+    LOG.info("file length: {}", new File(FILE_PATH).length());
+    LOG.info("file magic head: {}", reader.readHeadMagic());
+    LOG.info("file magic tail: {}", reader.readTailMagic());
+    LOG.info("Level 1 metadata position: {}", reader.getFileMetadataPos());
+    LOG.info("Level 1 metadata size: {}", reader.getFileMetadataPos());
     TsFileMetaData metaData = reader.readFileMetadata();
     System.out.println("[Metadata]");
     List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
@@ -64,9 +67,9 @@ public class ReadInPartitionTest {
       TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
       List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
       for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-        System.out.println(String
-            .format("\t[Device]Device %s", chunkGroupMetaData.getDeviceID()));
-        System.out.println("chunkGroupMetaData.start: "+chunkGroupMetaData.getStartOffsetOfChunkGroup()+" ,end: "+
+        LOG.info("t[Device]Device:{}", chunkGroupMetaData.getDeviceID());
+        LOG.info("chunkGroupMetaData.start:{}, end:{}",
+            chunkGroupMetaData.getStartOffsetOfChunkGroup(),
             chunkGroupMetaData.getEndOffsetOfChunkGroup());
 
 //        for (ChunkMetaData chunkMetadata : chunkGroupMetaData.getChunkMetaDataList()) {
