@@ -18,11 +18,18 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -43,6 +50,32 @@ public class ReadInPartitionTest {
   public void before() throws InterruptedException, WriteProcessException, IOException {
     TsFileGeneratorForTest.generateFile(1000000, 1024 * 1024, 10000);
     reader = new TsFileSequenceReader(FILE_PATH);
+
+    System.out.println("file length: " + new File(FILE_PATH).length());
+    System.out.println("file magic head: " + reader.readHeadMagic());
+    System.out.println("file magic tail: " + reader.readTailMagic());
+    System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
+    System.out.println("Level 1 metadata size: " + reader.getFileMetadataPos());
+    TsFileMetaData metaData = reader.readFileMetadata();
+    System.out.println("[Metadata]");
+    List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
+        .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
+    for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
+      TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
+      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
+      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+        System.out.println(String
+            .format("\t[Device]Device %s", chunkGroupMetaData.getDeviceID()));
+        System.out.println("chunkGroupMetaData.start: "+chunkGroupMetaData.getStartOffsetOfChunkGroup()+" ,end: "+
+            chunkGroupMetaData.getEndOffsetOfChunkGroup());
+
+//        for (ChunkMetaData chunkMetadata : chunkGroupMetaData.getChunkMetaDataList()) {
+//          System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
+//          System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
+//        }
+
+      }
+    }
   }
 
   @After
