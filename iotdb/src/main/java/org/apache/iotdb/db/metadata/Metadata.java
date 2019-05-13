@@ -56,17 +56,14 @@ public class Metadata implements Serializable {
     for (int i = 0; i < metadatas.length; i++) {
       Map<String, List<String>> subDeviceIdMap = metadatas[i].deviceIdMap;
       for (Entry<String, List<String>> entry : subDeviceIdMap.entrySet()) {
-        List<String> list;
-        if (deviceIdMap.containsKey(entry.getKey())) {
-          list = deviceIdMap.get(entry.getKey());
-        } else {
-          list = new ArrayList<>();
-        }
+        List<String> list = deviceIdMap.getOrDefault(entry.getKey(), new ArrayList<>());
         list.addAll(entry.getValue());
+
         if (!deviceIdMap.containsKey(entry.getKey())) {
           deviceIdMap.put(entry.getKey(), list);
         }
       }
+      metadatas[i] = null;
     }
 
     return new Metadata(deviceIdMap);
