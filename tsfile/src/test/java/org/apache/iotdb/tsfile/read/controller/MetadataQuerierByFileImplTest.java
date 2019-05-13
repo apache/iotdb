@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.constant.QueryConstant;
@@ -26,6 +27,8 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.controller.MetadataQuerier.LoadMode;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
@@ -49,8 +52,9 @@ public class MetadataQuerierByFileImplTest {
   }
 
   @Test
-  public void test1() throws IOException {
+  public void test_NoPartition() throws IOException {
     fileReader = new TsFileSequenceReader(FILE_PATH);
+
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d2.s1"));
@@ -60,17 +64,60 @@ public class MetadataQuerierByFileImplTest {
   }
 
   @Test
-  public void test2() throws IOException {
+  public void test_InPartition() throws IOException {
     fileReader = new TsFileSequenceReader(FILE_PATH);
 
     HashMap<String, Long> params = new HashMap<>();
-    params.put(QueryConstant.PARTITION_START_OFFSET, 2618269L);
-    params.put(QueryConstant.PARTITION_END_OFFSET, 3006840L);
+    params.put(QueryConstant.PARTITION_START_OFFSET, 12L);
+    params.put(QueryConstant.PARTITION_END_OFFSET, 1999000L);
 
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader,
         params);
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d2.s1"));
-    Assert.assertEquals(1, chunkMetaDataList.size());
+    Assert.assertEquals(2, chunkMetaDataList.size());
+    // NOTE different systems have different exact split points.
+    // Therefore specific start and end time are not tested.
   }
+
+  @Test
+  public void test_getTimeRangeInPartition() throws IOException {
+    fileReader = new TsFileSequenceReader(FILE_PATH);
+
+    HashMap<String, Long> params = new HashMap<>();
+    params.put(QueryConstant.PARTITION_START_OFFSET, 1608255L);
+    params.put(QueryConstant.PARTITION_END_OFFSET, 3006837L);
+
+    MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader,
+        params);
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("d1.s6"));
+    paths.add(new Path("d2.s1"));
+    ArrayList<TimeRange> timeRanges = metadataQuerierByFile
+        .getTimeRangeInOrPrev(paths, LoadMode.InPartition);
+    Assert.assertEquals(2, timeRanges.size());
+    // NOTE different systems have different exact split points.
+    // Therefore specific start and end time are not tested.
+  }
+
+  @Test
+  public void test_getTimeRangePrePartition() throws IOException {
+    fileReader = new TsFileSequenceReader(FILE_PATH);
+
+    HashMap<String, Long> params = new HashMap<>();
+    params.put(QueryConstant.PARTITION_START_OFFSET, 1608255L);
+    params.put(QueryConstant.PARTITION_END_OFFSET, 3006837L);
+
+    MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader,
+        params);
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("d1.s6"));
+    paths.add(new Path("d2.s1"));
+    ArrayList<TimeRange> timeRanges = metadataQuerierByFile
+        .getTimeRangeInOrPrev(paths, LoadMode.PrevPartition);
+    Assert.assertEquals(2, timeRanges.size());
+    // NOTE different systems have different exact split points.
+    // Therefore specific start and end time are not tested.
+  }
+
 }
