@@ -39,6 +39,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
  */
 public class ClusterSeriesReaderFactory {
 
+  private ClusterSeriesReaderFactory() {
+  }
+
   /**
    * Construct ReaderByTimestamp , include sequential data and unsequential data.
    *

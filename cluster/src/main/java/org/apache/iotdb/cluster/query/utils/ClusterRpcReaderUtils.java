@@ -51,6 +51,9 @@ public class ClusterRpcReaderUtils {
   private static final int TASK_MAX_RETRY = ClusterDescriptor.getInstance().getConfig()
       .getQpTaskRedoCount();
 
+  private ClusterRpcReaderUtils() {
+  }
+
   /**
    * Create cluster series reader
    *
@@ -60,8 +63,7 @@ public class ClusterRpcReaderUtils {
    */
   public static BasicResponse createClusterSeriesReader(String groupId, PeerId peerId,
       int readDataConsistencyLevel, Map<PathType, QueryPlan> allQueryPlan, String taskId,
-      List<Filter> filterList)
-      throws IOException, RaftConnectionException {
+      List<Filter> filterList) throws RaftConnectionException {
 
     /** handle request **/
     BasicRequest request = InitSeriesReaderRequest

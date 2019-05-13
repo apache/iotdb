@@ -40,9 +40,6 @@ public class DataGroupNonQueryAsyncProcessor extends
   private static final Logger LOGGER = LoggerFactory
       .getLogger(DataGroupNonQueryAsyncProcessor.class);
 
-  public DataGroupNonQueryAsyncProcessor() {
-  }
-
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
       DataGroupNonQueryRequest request) {

@@ -158,16 +158,6 @@ public class RaftUtils {
     return peerIds;
   }
 
-  @Deprecated
-  public static int getIndexOfIpFromRaftNodeList(String ip, PeerId[] peerIds) {
-    for (int i = 0; i < peerIds.length; i++) {
-      if (peerIds[i].getIp().equals(ip)) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
   public static PhysicalNode[] getPhysicalNodeArrayFrom(PeerId[] peerIds) {
     PhysicalNode[] physicalNodes = new PhysicalNode[peerIds.length];
     for (int i = 0; i < peerIds.length; i++) {

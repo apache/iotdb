@@ -19,9 +19,7 @@
 package org.apache.iotdb.cluster.concurrent.pool;
 
 import org.apache.iotdb.cluster.concurrent.ThreadName;
-import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 
 /**
  * Manage all qp tasks in thread.

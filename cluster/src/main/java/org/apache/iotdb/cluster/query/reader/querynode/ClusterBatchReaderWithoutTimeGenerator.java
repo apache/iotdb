@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.query.reader.querynode;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;

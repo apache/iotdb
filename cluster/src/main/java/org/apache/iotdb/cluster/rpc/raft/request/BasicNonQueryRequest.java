@@ -19,7 +19,6 @@
 package org.apache.iotdb.cluster.rpc.raft.request;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;

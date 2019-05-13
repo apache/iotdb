@@ -141,9 +141,6 @@ public class ClusterDataSetWithTimeGenerator extends QueryDataSet {
         }
       }
     }
-    if (cachedBatchTimestamp != null && cachedBatchTimestamp.hasNext()) {
-      return true;
-    }
-    return false;
+    return cachedBatchTimestamp != null && cachedBatchTimestamp.hasNext();
   }
 }

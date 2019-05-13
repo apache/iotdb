@@ -322,7 +322,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   /**
    * Close cluster service
    */
-  private void closeClusterService() {
+  public void closeClusterService() {
     nonQueryExecutor.shutdown();
     queryMetadataExecutor.shutdown();
   }
