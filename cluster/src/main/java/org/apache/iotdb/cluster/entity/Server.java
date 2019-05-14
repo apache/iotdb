@@ -138,7 +138,6 @@ public class Server {
       registerManager.register(ClusterMonitor.INSTANCE);
     } catch (StartupException e) {
       stop();
-      return;
     }
   }
 

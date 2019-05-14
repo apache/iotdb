@@ -45,9 +45,12 @@ public class QPExecutorUtils {
   private static final PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
       CLUSTER_CONFIG.getPort());
 
-  private static final  MManager mManager = MManager.getInstance();
+  private static final MManager mManager = MManager.getInstance();
 
   private static final Server server = Server.getInstance();
+
+  private QPExecutorUtils() {
+  }
 
   /**
    * Get Storage Group Name by device name
@@ -102,9 +105,9 @@ public class QPExecutorUtils {
    */
   public static boolean canHandleNonQueryByGroupId(String groupId) {
     boolean canHandle = false;
-    if(groupId.equals(ClusterConfig.METADATA_GROUP_ID)){
+    if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
       canHandle = ((MetadataRaftHolder) (server.getMetadataHolder())).getFsm().isLeader();
-    }else {
+    } else {
       if (checkDataGroupLeader(groupId)) {
         canHandle = true;
       }
@@ -141,8 +144,7 @@ public class QPExecutorUtils {
    */
   public static String getGroupIdByDevice(String device) throws PathErrorException {
     String storageGroup = QPExecutorUtils.getStroageGroupByDevice(device);
-    String groupId = Router.getInstance().getGroupIdBySG(storageGroup);
-    return groupId;
+    return Router.getInstance().getGroupIdBySG(storageGroup);
   }
 
   /**

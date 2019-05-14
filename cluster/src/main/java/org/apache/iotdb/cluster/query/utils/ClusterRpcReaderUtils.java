@@ -19,7 +19,6 @@
 package org.apache.iotdb.cluster.query.utils;
 
 import com.alipay.sofa.jraft.entity.PeerId;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;

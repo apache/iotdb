@@ -266,11 +266,9 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     return nonQueryExecutor.processNonQuery(plan);
   }
 
-  /**
-   * It's unnecessary to do this check. It has benn checked in transforming query physical plan.
-   */
   @Override
   protected void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+    //It's unnecessary to do this check. It has benn checked in transforming query physical plan.
   }
 
   @Override

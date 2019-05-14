@@ -25,7 +25,6 @@ import java.util.Map.Entry;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
-import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -33,7 +32,6 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
  * Utils for splitting query plan to several sub query plans by group id.
@@ -47,7 +45,8 @@ public class QueryPlanPartitionUtils {
   /**
    * Split query plan with no filter or with only global time filter by group id
    */
-  public static void splitQueryPlanWithoutValueFilter(ClusterRpcSingleQueryManager singleQueryManager)
+  public static void splitQueryPlanWithoutValueFilter(
+      ClusterRpcSingleQueryManager singleQueryManager)
       throws PathErrorException {
     splitQueryPlanBySelectPath(singleQueryManager);
   }
@@ -108,10 +107,11 @@ public class QueryPlanPartitionUtils {
       ClusterRpcSingleQueryManager singleQueryManager) throws PathErrorException {
     splitQueryPlanBySelectPath(singleQueryManager);
     // split query plan by filter path
-    Map<String, FilterGroupEntity> filterGroupEntityMap = singleQueryManager.getFilterGroupEntityMap();
+    Map<String, FilterGroupEntity> filterGroupEntityMap = singleQueryManager
+        .getFilterGroupEntityMap();
     IExpression expression = queryPlan.getExpression();
     ExpressionUtils.getAllExpressionSeries(expression, filterGroupEntityMap);
-    for(FilterGroupEntity filterGroupEntity: filterGroupEntityMap.values()){
+    for (FilterGroupEntity filterGroupEntity : filterGroupEntityMap.values()) {
       List<Path> filterSeriesList = filterGroupEntity.getFilterPaths();
       // create filter sub query plan
       QueryPlan subQueryPlan = new QueryPlan();

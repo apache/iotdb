@@ -96,22 +96,25 @@ public class NonQueryExecutorTest {
   }
 
   @Test
-  public void getStorageGroupFromDeletePlan() throws Exception{
+  public void getStorageGroupFromDeletePlan() throws Exception {
 
     String deleteStatement = "DELETE FROM root.vehicle.device.sensor,root.device0.sensor1 WHERE time <= 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(deleteStatement);
     try {
       executor.getStorageGroupFromDeletePlan((DeletePlan) plan);
-    } catch (Exception e){
-      assertEquals("org.apache.iotdb.db.exception.PathErrorException: The prefix of the seriesPath root.device0.sensor1 is not one storage group seriesPath", e.getMessage());
+    } catch (Exception e) {
+      assertEquals(
+          "org.apache.iotdb.db.exception.PathErrorException: The prefix of the seriesPath root.device0.sensor1 is not one storage group seriesPath",
+          e.getMessage());
     }
 
     deleteStatement = "DELETE FROM root.vehicle.device.sensor,root.vehicle1.device0.sensor1 WHERE time <= 5000";
     plan = processor.parseSQLToPhysicalPlan(deleteStatement);
     try {
       executor.getStorageGroupFromDeletePlan((DeletePlan) plan);
-    } catch (Exception e){
-      assertEquals("Delete function in distributed iotdb only supports single storage group", e.getMessage());
+    } catch (Exception e) {
+      assertEquals("Delete function in distributed iotdb only supports single storage group",
+          e.getMessage());
     }
 
     deleteStatement = "DELETE FROM root.vehicle.device1.sensor1, root.vehicle.device2.sensor2 WHERE time <= 5000";
@@ -119,13 +122,13 @@ public class NonQueryExecutorTest {
     String storageGroup = executor.getStorageGroupFromDeletePlan((DeletePlan) plan);
     assertEquals("root.vehicle", storageGroup);
 
-
     deleteStatement = "DELETE FROM root WHERE time <= 5000";
     plan = processor.parseSQLToPhysicalPlan(deleteStatement);
     try {
       executor.getStorageGroupFromDeletePlan((DeletePlan) plan);
-    } catch (Exception e){
-      assertEquals("Delete function in distributed iotdb only supports single storage group", e.getMessage());
+    } catch (Exception e) {
+      assertEquals("Delete function in distributed iotdb only supports single storage group",
+          e.getMessage());
     }
 
     deleteStatement = "DELETE FROM root.vehicle1.device0.sensor1, root.vehicle1.vehicle3.sensor2 WHERE time <= 5000";
@@ -136,12 +139,12 @@ public class NonQueryExecutorTest {
   }
 
   @Test
-  public void getGroupIdFromMetadataPlan() throws Exception{
+  public void getGroupIdFromMetadataPlan() throws Exception {
 
     String setSG = "set storage group to root.vehicle2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(setSG);
     String groupId = executor.getGroupIdFromMetadataPlan((MetadataPlan) plan);
-    assertEquals(groupId, ClusterConfig.METADATA_GROUP_ID);
+    assertEquals(ClusterConfig.METADATA_GROUP_ID, groupId);
 
   }
 }

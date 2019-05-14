@@ -134,7 +134,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    * group
    */
   private void initSeriesReader(int readDataConsistencyLevel)
-      throws IOException, RaftConnectionException {
+      throws RaftConnectionException {
     // Init all series with data group of select series,if filter series has the same data group, init them together.
     for (Entry<String, QueryPlan> entry : selectPathPlans.entrySet()) {
       String groupId = entry.getKey();

@@ -95,7 +95,7 @@ public abstract class AbstractQPExecutor {
       int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
     asyncSendNonQuerySingleTask(task, leader, taskRetryNum);
-    return syncGetNonQueryRes(task, leader, taskRetryNum);
+    return syncGetNonQueryRes(task, taskRetryNum);
   }
 
   /**
@@ -119,13 +119,13 @@ public abstract class AbstractQPExecutor {
    * Synchronous get task response. If it's redirected or status is exception, the task needs to be
    * resent. Note: If status is Exception, it marks that an exception occurred during the task is
    * being sent instead of executed.
-   *  @param task rpc task
-   * @param leader leader node of the group
+   * @param task rpc task
    * @param taskRetryNum Retry time of the task
    */
-  private BasicResponse syncGetNonQueryRes(SingleQPTask task, PeerId leader, int taskRetryNum)
+  private BasicResponse syncGetNonQueryRes(SingleQPTask task, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
     task.await();
+    PeerId leader;
     if (task.getTaskState() != TaskState.FINISH) {
       if (task.getTaskState() == TaskState.REDIRECT) {
         /** redirect to the right leader **/

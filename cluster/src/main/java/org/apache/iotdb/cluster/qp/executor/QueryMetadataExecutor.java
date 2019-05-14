@@ -63,6 +63,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryMetadataExecutor.class);
   private static final String DOUB_SEPARATOR = "\\.";
   private static final char SINGLE_SEPARATOR = '.';
+  private static final String RAFT_CONNECTION_ERROR = "Raft connection occurs error.";
 
   public QueryMetadataExecutor() {
     super();
@@ -140,7 +141,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     try {
       res.addAll(queryTimeSeries(task, holder));
     } catch (RaftConnectionException e) {
-      throw new ProcessorException("Raft connection occurs error.", e);
+      throw new ProcessorException(RAFT_CONNECTION_ERROR, e);
     }
   }
 
@@ -168,7 +169,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       try {
         asyncSendNonQuerySingleTask(task, holder, 0);
       } catch (RaftConnectionException e) {
-        throw new ProcessorException("Raft connection occurs error.", e);
+        throw new ProcessorException(RAFT_CONNECTION_ERROR, e);
       }
     }
     for (int i = 0; i < taskList.size(); i++) {
@@ -184,7 +185,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
   }
 
   public Metadata processMetadataQuery()
-      throws InterruptedException, ProcessorException, PathErrorException {
+      throws InterruptedException, ProcessorException {
     Set<String> groupIdSet = router.getAllGroupId();
 
     Metadata[] metadatas = new Metadata[groupIdSet.size()];
@@ -207,7 +208,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       try {
         asyncSendNonQuerySingleTask(task, holder, 0);
       } catch (RaftConnectionException e) {
-        throw new ProcessorException("Raft connection occurs error.", e);
+        throw new ProcessorException(RAFT_CONNECTION_ERROR, e);
       }
     }
     for (int i = 0; i < taskList.size(); i++) {
@@ -250,7 +251,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       try {
         dataType = querySeriesType(task, holder);
       } catch (RaftConnectionException e) {
-        throw new ProcessorException("Raft connection occurs error.", e);
+        throw new ProcessorException(RAFT_CONNECTION_ERROR, e);
       }
     }
     return dataType;
@@ -299,7 +300,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     try {
       res.addAll(queryPaths(task, holder));
     } catch (RaftConnectionException e) {
-      throw new ProcessorException("Raft connection occurs error.", e);
+      throw new ProcessorException(RAFT_CONNECTION_ERROR, e);
     }
   }
 
