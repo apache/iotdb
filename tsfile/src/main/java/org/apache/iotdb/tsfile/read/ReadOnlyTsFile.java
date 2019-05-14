@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read;
 
 import java.io.IOException;
 import java.util.HashMap;
-import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
@@ -50,7 +49,8 @@ public class ReadOnlyTsFile implements AutoCloseable {
     return tsFileExecutor.execute(queryExpression);
   }
 
-  public QueryDataSet query(QueryExpression queryExpression, HashMap<String, Long> params) throws IOException {
+  public QueryDataSet query(QueryExpression queryExpression, HashMap<String, Long> params)
+      throws IOException {
     return tsFileExecutor.execute(queryExpression, params);
   }
 

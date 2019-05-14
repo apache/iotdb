@@ -54,22 +54,27 @@ public interface MetadataQuerier {
   TSDataType getDataType(String measurement) throws NoMeasurementException;
 
   /**
+   * Load chunkGroupMetaData in or before the current partition and return the union time ranges of
+   * these chunkGroupMetaData in ascending order.
    *
-   * @param paths
-   * @param targetMode
-   * @param partitionStartOffset
-   * @param partitionEndOffset
-   * @return
-   * @throws IOException
+   * @param paths given paths
+   * @param targetMode either InPartition or PrevPartition
+   * @param partitionStartOffset the start offset of the partition
+   * @param partitionEndOffset the end offset of the partition
+   * @return the union time ranges in ascending order.
    */
   ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode,
       long partitionStartOffset, long partitionEndOffset) throws IOException;
 
   /**
-   * The load mode of the MetadataQuerier:
-   * NoPartition - load metadata of all chunkgroups in the file
-   * InPartition - load metadata of chunkgroups which fall in the current partition
-   * PrevPartition - load metadata of chunkgroups which fall ahead the current partition
+   * The accessible status of the chunkGroupMetaData:
+   *
+   * NoPartition - all chunkGroupMetaData in the TsFile are accessible.
+   *
+   * InPartition - only chunkGroupMetaData which fall in the current partition are accessible.
+   *
+   * PrevPartition - only chunkGroupMetaData which fall before the current partition are
+   * accessible.
    */
   enum LoadMode {
     NoPartition, InPartition, PrevPartition

@@ -84,11 +84,11 @@ public class TsFileExecutor implements QueryExecutor {
   }
 
   /**
+   * Query with the partition constraint.
    *
-   * @param queryExpression
-   * @param params
-   * @return
-   * @throws IOException
+   * @param queryExpression query expression
+   * @param params [partition_start_offset:long, partition_end_offset:long]
+   * @return QueryDataSet
    */
   public QueryDataSet execute(QueryExpression queryExpression, HashMap<String, Long> params) throws IOException {
     if (!params.containsKey(QueryConstant.PARTITION_START_OFFSET)

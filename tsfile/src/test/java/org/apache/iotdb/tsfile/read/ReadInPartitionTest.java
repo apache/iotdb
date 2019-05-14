@@ -127,7 +127,7 @@ public class ReadInPartitionTest {
   }
 
   @Test
-  public void test_empty() throws IOException {
+  public void test0() throws IOException {
     HashMap<String, Long> params = new HashMap<>();
     params.put(QueryConstant.PARTITION_START_OFFSET, 0L);
     params.put(QueryConstant.PARTITION_END_OFFSET, 0L);

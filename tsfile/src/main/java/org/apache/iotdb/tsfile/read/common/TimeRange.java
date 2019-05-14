@@ -47,6 +47,7 @@ public class TimeRange implements Comparable<TimeRange> {
 
   /**
    * Initialize a closed interval [min,max].
+   *
    * @param min the left endpoint of the closed interval
    * @param max the right endpoint of the closed interval
    */
@@ -91,8 +92,7 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * @param min
-   * @param max
+   *
    */
   public void set(long min, long max) {
     this.min = min;
@@ -102,7 +102,7 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * @param r
+   *
    */
   public void set(TimeRange r) {
     set(r.getMin(), r.getMax());
@@ -116,7 +116,7 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * @param min
+   *
    */
   public void setMin(long min) {
     this.min = min;
@@ -132,7 +132,7 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * @param max
+   *
    */
   public void setMax(long max) {
     this.max = max;

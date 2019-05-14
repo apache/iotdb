@@ -213,7 +213,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   }
 
   public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode,
-      long partitionStartOffset, long partitionEndOffset) throws IOException{
+      long partitionStartOffset, long partitionEndOffset) throws IOException {
     if (targetMode == LoadMode.NoPartition) {
       throw new IllegalArgumentException(
           "The target mode should be either InPartition or PrevPartition");
@@ -242,8 +242,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
   /**
    * Check if the given chunk group can be accessed under the current load mode and possible
-   * partition constraints.
-   * Used to control the behavior of the loadChunkMetaData function.
+   * partition constraints. Used to control the behavior of the loadChunkMetaData function.
    *
    * @param chunkGroupMetaData a chunk group's metadata
    * @return True if the chunk group can be accessed under the current load mode. False otherwise.

@@ -241,5 +241,4 @@ public class TimeRangeTest {
     assertEquals(remainRanges.get(2).getLeftClose(), false);
     assertEquals(remainRanges.get(2).getRightClose(), true);
   }
-
 }
