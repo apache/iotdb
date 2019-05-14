@@ -107,8 +107,8 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       // construct queryExpression based on queriedSchema and filters
       val queryExpression = Converter.toQueryExpression(queriedSchema, filters)
 
-      val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader, params)
-      val queryDataSet = readTsFile.query(queryExpression)
+      val readTsFile: ReadOnlyTsFile = new ReadOnlyTsFile(reader)
+      val queryDataSet = readTsFile.query(queryExpression, params)
 
       new Iterator[InternalRow] {
         private val rowBuffer = Array.fill[Any](requiredSchema.length)(null)
