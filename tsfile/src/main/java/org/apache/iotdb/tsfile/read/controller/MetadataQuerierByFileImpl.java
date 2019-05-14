@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -235,28 +234,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     Collections.sort(unionCandidates);
 
     // union the increasingly sorted candidates
-    ArrayList<TimeRange> unionResult = new ArrayList<>();
-    Iterator<TimeRange> iterator = unionCandidates.iterator();
-    TimeRange range_curr;
-
-    if (!iterator.hasNext()) {
-      return unionResult;
-    } else {
-      TimeRange r = iterator.next();
-      range_curr = new TimeRange(r.getMin(), r.getMax());
-    }
-
-    while (iterator.hasNext()) {
-      TimeRange range_next = iterator.next();
-      if (range_curr.intersects(range_next)) {
-        range_curr.set(Math.min(range_curr.getMin(), range_next.getMin()),
-            Math.max(range_curr.getMax(), range_next.getMax()));
-      } else {
-        unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
-        range_curr.set(range_next.getMin(), range_next.getMax());
-      }
-    }
-    unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
+    ArrayList<TimeRange> unionResult = new ArrayList<>(TimeRange.getUnions(unionCandidates));
 
     this.mode = LoadMode.NoPartition; // restore the default mode. DO NOT REMOVE THIS LINE.
     return unionResult;

@@ -144,7 +144,7 @@ public class TsFileExecutor implements QueryExecutor {
       queryExpression.setExpression(addTimeExpression);
     }
 
-    // (8) Having converted the partition constraint to an additional time filter, we can now query as normal.
+    // (8) Having converted the query partition constraint to an additional time filter, we can now query as normal.
     return execute(queryExpression);
   }
 

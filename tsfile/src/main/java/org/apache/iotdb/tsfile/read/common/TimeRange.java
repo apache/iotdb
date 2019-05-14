@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -183,7 +184,19 @@ public class TimeRange implements Comparable<TimeRange> {
 
   @Override
   public String toString() {
-    return "[ " + min + " : " + max + " ]";
+    String res;
+    if (leftClose) {
+      res = "[ ";
+    } else {
+      res = "( ";
+    }
+    res = res + min + " : " + max;
+    if (rightClose) {
+      res += " ]";
+    } else {
+      res += " )";
+    }
+    return res;
   }
 
   // NOTE the primitive timeRange is always a closed interval [min,max] and
@@ -205,6 +218,38 @@ public class TimeRange implements Comparable<TimeRange> {
 
   public boolean getRightClose() {
     return rightClose;
+  }
+
+  /**
+   * Return the union of the given time ranges.
+   *
+   * @param unionCandidates time ranges already sorted in ascending order
+   * @return the union of time ranges
+   */
+  public static List<TimeRange> getUnions(ArrayList<TimeRange> unionCandidates) {
+    ArrayList<TimeRange> unionResult = new ArrayList<>();
+    Iterator<TimeRange> iterator = unionCandidates.iterator();
+    TimeRange range_curr;
+
+    if (!iterator.hasNext()) {
+      return unionResult;
+    } else {
+      TimeRange r = iterator.next();
+      range_curr = new TimeRange(r.getMin(), r.getMax());
+    }
+
+    while (iterator.hasNext()) {
+      TimeRange range_next = iterator.next();
+      if (range_curr.intersects(range_next)) {
+        range_curr.set(Math.min(range_curr.getMin(), range_next.getMin()),
+            Math.max(range_curr.getMax(), range_next.getMax()));
+      } else {
+        unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
+        range_curr.set(range_next.getMin(), range_next.getMax());
+      }
+    }
+    unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
+    return unionResult;
   }
 
   /**
