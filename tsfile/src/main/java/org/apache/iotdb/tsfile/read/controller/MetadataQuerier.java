@@ -54,29 +54,16 @@ public interface MetadataQuerier {
   TSDataType getDataType(String measurement) throws NoMeasurementException;
 
   /**
-   * get time ranges of chunkGroups in or before the current partition and return the union result in ascending order
    *
-   * @param paths timeseries paths
-   * @param targetMode InPartition or PrevPartition
-   * @return time ranges union in ascending order
+   * @param paths
+   * @param targetMode
+   * @param partitionStartOffset
+   * @param partitionEndOffset
+   * @return
    * @throws IOException
    */
-  public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode)
-      throws IOException;
-
-  /**
-   * get the load mode of the MetadataQuerier
-   *
-   * @return LoadMode enum
-   */
-  LoadMode getLoadMode();
-
-  /**
-   * set the load mode of the MetadataQuerier
-   *
-   * @param mode enum
-   */
-  void setLoadMode(LoadMode mode);
+  ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode,
+      long partitionStartOffset, long partitionEndOffset) throws IOException;
 
   /**
    * The load mode of the MetadataQuerier:

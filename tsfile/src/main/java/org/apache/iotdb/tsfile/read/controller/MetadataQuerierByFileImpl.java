@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -52,18 +51,10 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
   private TsFileSequenceReader tsFileReader;
 
-  private LoadMode mode;
+  private LoadMode mode; // be the default mode (NoPartition) most of the time
 
   private long partitionStartOffset = 0L;
   private long partitionEndOffset = 0L;
-
-  public LoadMode getLoadMode() {
-    return mode;
-  }
-
-  public void setLoadMode(LoadMode mode) {
-    this.mode = mode;
-  }
 
   /**
    * Constructor of MetadataQuerierByFileImpl.
@@ -71,31 +62,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader) throws IOException {
     this.tsFileReader = tsFileReader;
     this.fileMetaData = tsFileReader.readFileMetadata();
-    this.mode = LoadMode.NoPartition;
-    chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
-      @Override
-      public List<ChunkMetaData> loadObjectByKey(Path key) throws IOException {
-        return loadChunkMetadata(key);
-      }
-    };
-  }
-
-  /**
-   * Constructor of MetadataQuerierByFileImpl.
-   */
-  public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader, HashMap<String, Long> params)
-      throws IOException {
-    this.tsFileReader = tsFileReader;
-    this.fileMetaData = tsFileReader.readFileMetadata();
-
-    if (!params.containsKey(QueryConstant.PARTITION_START_OFFSET) || !params
-        .containsKey(QueryConstant.PARTITION_END_OFFSET)) {
-      throw new IllegalArgumentException(
-          "Input parameters miss partition_start_offset or partition_end_offset");
-    }
-    this.mode = LoadMode.InPartition;
-    this.partitionStartOffset = params.get(QueryConstant.PARTITION_START_OFFSET);
-    this.partitionEndOffset = params.get(QueryConstant.PARTITION_END_OFFSET);
+    this.mode = LoadMode.NoPartition; // default mode
     chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
       @Override
       public List<ChunkMetaData> loadObjectByKey(Path key) throws IOException {
@@ -168,9 +135,6 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
           break;
         }
 
-        if (!checkAccess(chunkGroupMetaData)) {
-          continue;
-        }
         // s1, s2
         for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
 
@@ -214,6 +178,12 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     throw new NoMeasurementException(String.format("%s not found.", measurement));
   }
 
+  /**
+   * Return the chunk metadata of a given path under the control of the checkAccess function.
+   *
+   * @param path the given path
+   * @return the accessible chunk metadata of a given path
+   */
   private List<ChunkMetaData> loadChunkMetadata(Path path) throws IOException {
 
     if (!fileMetaData.containsDevice(path.getDevice())) {
@@ -243,15 +213,16 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     return chunkMetaDataList;
   }
 
-  public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode)
-      throws IOException {
-    if (mode == LoadMode.NoPartition) {
-      throw new IOException(
-          "Wrong use of getTimeRangeInOrPrev: should not be in NoPartition mode");
+  public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode,
+      long partitionStartOffset, long partitionEndOffset) throws IOException{
+    if (targetMode == LoadMode.NoPartition) {
+      throw new IllegalArgumentException(
+          "The target mode should be either InPartition or PrevPartition");
     }
-
-    // change the mode temporarily to control loadChunkMetadata's checkAccess function
+    // switch to the target mode temporarily to control loadChunkMetadata's checkAccess behavior
     this.mode = targetMode;
+    this.partitionStartOffset = partitionStartOffset;
+    this.partitionEndOffset = partitionEndOffset;
 
     ArrayList<TimeRange> unionCandidates = new ArrayList<>();
     for (Path path : paths) {
@@ -263,10 +234,10 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     }
     Collections.sort(unionCandidates);
 
-    // union
+    // union the increasingly sorted candidates
     ArrayList<TimeRange> unionResult = new ArrayList<>();
     Iterator<TimeRange> iterator = unionCandidates.iterator();
-    TimeRange range_curr = null;
+    TimeRange range_curr;
 
     if (!iterator.hasNext()) {
       return unionResult;
@@ -287,24 +258,27 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     }
     unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
 
-    this.mode = LoadMode.InPartition; // restore the mode to InPartition
+    this.mode = LoadMode.NoPartition; // restore the default mode. DO NOT REMOVE THIS LINE.
     return unionResult;
-
   }
 
   /**
-   * check if the given chunk group can be accessed under the current load mode
+   * Check if the given chunk group can be accessed under the current load mode and possible
+   * partition constraints.
+   * Used to control the behavior of the loadChunkMetaData function.
+   *
    * @param chunkGroupMetaData a chunk group's metadata
-   * @return True if the chunk group can be accessed. False otherwise.
+   * @return True if the chunk group can be accessed under the current load mode. False otherwise.
    * @throws IOException illegal mode
    */
   private boolean checkAccess(ChunkGroupMetaData chunkGroupMetaData) throws IOException {
+    if (mode == LoadMode.NoPartition) {
+      return true; // always true
+    }
     long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
     long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();
     long middleOffsetOfChunkGroup = (startOffsetOfChunkGroup + endOffsetOfChunkGroup) / 2;
     switch (mode) {
-      case NoPartition:
-        return true; // always true
       case InPartition:
         return (partitionStartOffset <= middleOffsetOfChunkGroup
             && middleOffsetOfChunkGroup < partitionEndOffset);
@@ -312,7 +286,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
         return (middleOffsetOfChunkGroup < partitionStartOffset);
       default:
         throw new IOException(
-            "unexpected mode! It should be one of {NoPartition, InPartition, BeforePartition}");
+            "Illegal mode! It should be one of {NoPartition, InPartition, PrevPartition}.");
     }
   }
 }

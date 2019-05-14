@@ -93,14 +93,14 @@ public class ReadInPartitionTest {
     params.put(QueryConstant.PARTITION_START_OFFSET, 0L);
     params.put(QueryConstant.PARTITION_END_OFFSET, 603242L);
 
-    roTsFile = new ReadOnlyTsFile(reader, params);
+    roTsFile = new ReadOnlyTsFile(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
-    QueryDataSet queryDataSet = roTsFile.query(queryExpression);
+    QueryDataSet queryDataSet = roTsFile.query(queryExpression, params);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -121,14 +121,14 @@ public class ReadInPartitionTest {
     params.put(QueryConstant.PARTITION_START_OFFSET, 603242L);
     params.put(QueryConstant.PARTITION_END_OFFSET, 993790L);
 
-    roTsFile = new ReadOnlyTsFile(reader, params);
+    roTsFile = new ReadOnlyTsFile(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
-    QueryDataSet queryDataSet = roTsFile.query(queryExpression);
+    QueryDataSet queryDataSet = roTsFile.query(queryExpression, params);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -147,14 +147,14 @@ public class ReadInPartitionTest {
     params.put(QueryConstant.PARTITION_START_OFFSET, 993790L);
     params.put(QueryConstant.PARTITION_END_OFFSET, 1608255L);
 
-    roTsFile = new ReadOnlyTsFile(reader, params);
+    roTsFile = new ReadOnlyTsFile(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
-    QueryDataSet queryDataSet = roTsFile.query(queryExpression);
+    QueryDataSet queryDataSet = roTsFile.query(queryExpression, params);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
@@ -175,14 +175,14 @@ public class ReadInPartitionTest {
     params.put(QueryConstant.PARTITION_START_OFFSET, 1608255L);
     params.put(QueryConstant.PARTITION_END_OFFSET, 1999353L);
 
-    roTsFile = new ReadOnlyTsFile(reader, params);
+    roTsFile = new ReadOnlyTsFile(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
-    QueryDataSet queryDataSet = roTsFile.query(queryExpression);
+    QueryDataSet queryDataSet = roTsFile.query(queryExpression, params);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
