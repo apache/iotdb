@@ -49,6 +49,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*
   This test is designed for the TsFileExecutor's execute(queryExpression, params) function.
@@ -68,6 +70,7 @@ public class ReadInPartitionTest {
   private ArrayList<TimeRange> d2s1timeRangeList = new ArrayList<>();
   private ArrayList<long[]> d1chunkGroupMetaDataOffsetList = new ArrayList<>();
   private ArrayList<long[]> d2chunkGroupMetaDataOffsetList = new ArrayList<>();
+
 
   @Before
   public void before() throws InterruptedException, WriteProcessException, IOException {
