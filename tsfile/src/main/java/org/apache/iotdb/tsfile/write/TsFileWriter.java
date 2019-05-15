@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.JsonConverter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,6 +106,17 @@ public class TsFileWriter implements AutoCloseable{
    */
   public TsFileWriter(File file, FileSchema schema) throws IOException {
     this(new TsFileIOWriter(file), schema, TSFileDescriptor.getInstance().getConfig());
+  }
+
+  /**
+   * init this TsFileWriter.
+   *
+   * @param output the TsFileOutput of the file to be written by this TsFileWriter
+   * @param schema the schema of this TsFile
+   * @throws IOException
+   */
+  public TsFileWriter(TsFileOutput output, FileSchema schema) throws IOException {
+    this(new TsFileIOWriter(output), schema, TSFileDescriptor.getInstance().getConfig());
   }
 
   /**

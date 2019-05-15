@@ -29,12 +29,12 @@
 ## How to package only jdbc project
 
 In root directory:
-> mvn clean package -pl iotdb-jdbc -am -Dmaven.test.skip=true
+> mvn clean package -pl jdbc -am -Dmaven.test.skip=true
 
 ## How to install in local maven repository
 
 In root directory:
-> mvn clean install -pl iotdb-jdbc -am -Dmaven.test.skip=true
+> mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 
 ## Using IoTDB JDBC with Maven
 

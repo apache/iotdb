@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.util.ArrayList;
@@ -24,9 +23,9 @@ import java.util.List;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
+import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -95,7 +94,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       usedIndex++;
     }
 
-    //end
+    // end
     if (usedIndex >= mergedIntervals.size()) {
       return false;
     }

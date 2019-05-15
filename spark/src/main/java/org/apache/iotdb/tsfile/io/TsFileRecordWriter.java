@@ -23,31 +23,32 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
-import org.apache.iotdb.tsfile.write.exception.WriteProcessException;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 
 public class TsFileRecordWriter extends RecordWriter<NullWritable, TSRecord> {
 
-  private TsFile tsFile = null;
+  private TsFileWriter tsFileWriter = null;
 
   public TsFileRecordWriter(TaskAttemptContext job, Path file, FileSchema fileSchema)
-      throws IOException, WriteProcessException {
-    HDFSOutputStream hdfsOutputStream = new HDFSOutputStream(file.toString(),
-        job.getConfiguration(), false);
-    tsFile = new TsFile(hdfsOutputStream, fileSchema);
+      throws IOException {
+    HDFSOutput hdfsOutput = new HDFSOutput(file.toString(),
+        job.getConfiguration(), false); //NOTE overwrite false here
+
+    tsFileWriter = new TsFileWriter(hdfsOutput, fileSchema);
   }
 
   @Override
   public void close(TaskAttemptContext context) throws IOException {
-    tsFile.close();
+    tsFileWriter.close();
   }
 
   @Override
   public synchronized void write(NullWritable arg0, TSRecord tsRecord) throws IOException {
     try {
-      tsFile.writeRecord(tsRecord);
+      tsFileWriter.write(tsRecord);
     } catch (WriteProcessException e) {
       e.printStackTrace();
     }

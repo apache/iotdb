@@ -241,7 +241,7 @@ public class MGraph implements Serializable {
   public Metadata getMetadata() throws PathErrorException {
     Map<String, List<MeasurementSchema>> seriesMap = getSchemaForAllType();
     Map<String, List<String>> deviceIdMap = getDeviceForAllType();
-    return new Metadata(seriesMap, deviceIdMap);
+    return new Metadata(deviceIdMap);
   }
 
   public HashSet<String> getAllStorageGroup() {
