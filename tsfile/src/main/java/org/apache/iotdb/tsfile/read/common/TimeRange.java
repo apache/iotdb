@@ -184,19 +184,19 @@ public class TimeRange implements Comparable<TimeRange> {
 
   @Override
   public String toString() {
-    String res;
+    StringBuilder res = new StringBuilder();
     if (leftClose) {
-      res = "[ ";
+      res.append("[ ");
     } else {
-      res = "( ";
+      res.append("( ");
     }
-    res = res + min + " : " + max;
+    res.append(min).append(" : ").append(max);
     if (rightClose) {
-      res += " ]";
+      res.append(" ]");
     } else {
-      res += " )";
+      res.append(" )");
     }
-    return res;
+    return res.toString();
   }
 
   // NOTE the primitive timeRange is always a closed interval [min,max] and
