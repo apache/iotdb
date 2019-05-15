@@ -110,18 +110,18 @@ public class IoTDBThreadPoolFactory {
   }
 
   /**
-   * function for creating JDBC client thread pool.
+   * function for creating thrift rpc client thread pool.
    */
-  public static ExecutorService createJDBCClientThreadPool(Args args, String poolName) {
+  public static ExecutorService createThriftRpcClientThreadPool(Args args, String poolName) {
     SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
     return new ThreadPoolExecutor(args.minWorkerThreads, args.maxWorkerThreads, args.stopTimeoutVal,
         args.stopTimeoutUnit, executorQueue, new IoTThreadFactory(poolName));
   }
 
   /**
-   * function for creating JDBC client thread pool.
+   * function for creating thrift rpc client thread pool.
    */
-  public static ExecutorService createJDBCClientThreadPool(Args args, String poolName,
+  public static ExecutorService createThriftRpcClientThreadPool(Args args, String poolName,
       Thread.UncaughtExceptionHandler handler) {
     SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
     return new ThreadPoolExecutor(args.minWorkerThreads, args.maxWorkerThreads, args.stopTimeoutVal,

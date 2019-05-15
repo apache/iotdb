@@ -41,7 +41,7 @@ public enum ThreadName {
 
   private String name;
 
-  private ThreadName(String name) {
+  ThreadName(String name) {
     this.name = name;
   }
 

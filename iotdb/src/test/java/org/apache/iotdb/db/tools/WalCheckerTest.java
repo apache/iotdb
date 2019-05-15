@@ -34,7 +34,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.exception.SysCheckException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
-import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
+import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.junit.Test;
 
 public class WalCheckerTest {

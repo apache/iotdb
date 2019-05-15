@@ -51,6 +51,7 @@ public class IoTDBDescriptor {
    */
   private void loadProps() {
     InputStream inputStream;
+
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -112,10 +113,10 @@ public class IoTDBDescriptor {
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
-              Integer.toString(conf.getRpcPort()))));
+          Integer.toString(conf.getRpcPort()))));
 
       conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
-              Boolean.toString(conf.isEnableWal()))));
+          Boolean.toString(conf.isEnableWal()))));
 
       conf.setFlushWalThreshold(Integer
           .parseInt(properties.getProperty("flush_wal_threshold",
@@ -196,7 +197,7 @@ public class IoTDBDescriptor {
       conf.setSyncServerPort(Integer
           .parseInt(properties.getProperty("sync_server_port",
                   Integer.toString(conf.getSyncServerPort())).trim()));
-      conf.setUpdate_historical_data_possibility(Boolean.parseBoolean(
+      conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
           properties.getProperty("update_historical_data_possibility",
                   Boolean.toString(conf.isSyncEnable()))));
       conf.setIpWhiteList(properties.getProperty("IP_white_list", conf.getIpWhiteList()));

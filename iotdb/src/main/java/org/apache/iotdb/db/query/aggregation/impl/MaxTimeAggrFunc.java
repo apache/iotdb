@@ -37,7 +37,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
   @Override
   public void init() {
-    resultData.reSet();
+    resultData.reset();
   }
 
   @Override

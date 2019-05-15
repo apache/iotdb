@@ -20,22 +20,76 @@ package org.apache.iotdb.db.qp;
 
 import static org.junit.Assert.assertEquals;
 
-import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import java.util.Collections;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class QueryProcessorTest {
 
-  private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+  private CompressionType compressionType = CompressionType.valueOf(TSFileConfig.compressor);
+  private MManager mManager = MManager.getInstance();
+  private QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+
+  @Before
+  public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
+    mManager.setStorageLevelToMTree("root.vehicle");
+    mManager.setStorageLevelToMTree("root.vehicle1");
+    mManager.addPathToMTree("root.vehicle.device1.sensor1", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle.device1.sensor2", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle.device1.sensor3", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle.device2.sensor1", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle.device2.sensor2", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle.device2.sensor3", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle1.device1.sensor1", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle1.device1.sensor2", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle1.device1.sensor3", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle1.device2.sensor1", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle1.device2.sensor2", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+    mManager.addPathToMTree("root.vehicle1.device2.sensor3", TSDataType.valueOf("INT32"),
+        TSEncoding.valueOf("RLE"), compressionType, Collections
+            .emptyMap());
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
 
   @Test
-  public void parseSQLToPhysicalPlan()
-      throws ArgsErrorException, ProcessorException, QueryProcessorException {
+  public void parseSQLToPhysicalPlan() throws Exception {
     String createSGStatement = "set storage group to root.vehicle";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(createSGStatement);
     assertEquals(OperatorType.SET_STORAGE_GROUP, plan1.getOperatorType());
@@ -55,6 +109,26 @@ public class QueryProcessorTest {
     String propertyStatement = "add label label1021 to property propropro";
     PhysicalPlan plan5 = processor.parseSQLToPhysicalPlan(propertyStatement);
     assertEquals(OperatorType.PROPERTY, plan5.getOperatorType());
+
+    String deleteStatement = "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
+    PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
+    assertEquals(OperatorType.DELETE, plan6.getOperatorType());
+
+    String queryStatement = "select * from root.vehicle where root.vehicle.device1.sensor1 > 50";
+    PhysicalPlan plan7 = processor.parseSQLToPhysicalPlan(queryStatement);
+    assertEquals(OperatorType.QUERY, plan7.getOperatorType());
+
+    String aggregationStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50";
+    PhysicalPlan plan8 = processor.parseSQLToPhysicalPlan(aggregationStatement);
+    assertEquals(OperatorType.AGGREGATION, plan8.getOperatorType());
+
+    String groupbyStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50 group by (20ms, [100,1100])";
+    PhysicalPlan plan9 = processor.parseSQLToPhysicalPlan(groupbyStatement);
+    assertEquals(OperatorType.GROUPBY, plan9.getOperatorType());
+
+    String fillStatement = "select sensor1 from root.vehicle.device1 where time = 50 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
+    PhysicalPlan plan10 = processor.parseSQLToPhysicalPlan(fillStatement);
+    assertEquals(OperatorType.FILL, plan10.getOperatorType());
 
   }
 }

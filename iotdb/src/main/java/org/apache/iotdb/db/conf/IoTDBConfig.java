@@ -23,6 +23,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.TSServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -269,12 +270,17 @@ public class IoTDBConfig {
    * data, choose "true". 2. It's more likely not to update historical data or you don't know
    * exactly, choose "false".
    */
-  private boolean update_historical_data_possibility = false;
+  private boolean updateHistoricalDataPossibility = false;
   private String ipWhiteList = "0.0.0.0/0";
   /**
    * Examining period of cache file reader : 100 seconds.
    */
   private long cacheFileReaderClearPeriod = 100000;
+
+  /**
+   * Replace implementation class of JDBC service
+   */
+  private String rpcImplClassName = TSServiceImpl.class.getName();
 
   public IoTDBConfig() {
     // empty constructor
@@ -792,12 +798,12 @@ public class IoTDBConfig {
     this.languageVersion = languageVersion;
   }
 
-  public boolean isUpdate_historical_data_possibility() {
-    return update_historical_data_possibility;
+  public boolean isUpdateHistoricalDataPossibility() {
+    return updateHistoricalDataPossibility;
   }
 
-  public void setUpdate_historical_data_possibility(boolean update_historical_data_possibility) {
-    this.update_historical_data_possibility = update_historical_data_possibility;
+  public void setUpdateHistoricalDataPossibility(boolean updateHistoricalDataPossibility) {
+    this.updateHistoricalDataPossibility = updateHistoricalDataPossibility;
   }
 
   public String getIpWhiteList() {
@@ -814,5 +820,13 @@ public class IoTDBConfig {
 
   public void setCacheFileReaderClearPeriod(long cacheFileReaderClearPeriod) {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
+  }
+
+  public String getRpcImplClassName() {
+    return rpcImplClassName;
+  }
+
+  public void setRpcImplClassName(String rpcImplClassName) {
+    this.rpcImplClassName = rpcImplClassName;
   }
 }

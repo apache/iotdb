@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.tsfile.read.expression.impl;
 
+import java.io.Serializable;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class GlobalTimeExpression implements IUnaryExpression {
+public class GlobalTimeExpression implements IUnaryExpression, Serializable {
 
+  private static final long serialVersionUID = 1146132942359113670L;
   private Filter filter;
 
   public GlobalTimeExpression(Filter filter) {
@@ -43,6 +46,11 @@ public class GlobalTimeExpression implements IUnaryExpression {
   @Override
   public ExpressionType getType() {
     return ExpressionType.GLOBAL_TIME;
+  }
+
+  @Override
+  public IExpression clone() {
+    return new GlobalTimeExpression(filter.clone());
   }
 
   @Override
