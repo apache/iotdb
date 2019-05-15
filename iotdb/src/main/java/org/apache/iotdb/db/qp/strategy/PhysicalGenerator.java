@@ -24,7 +24,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteOperator;
@@ -57,9 +57,9 @@ import org.slf4j.LoggerFactory;
 public class PhysicalGenerator {
 
   private static final Logger logger = LoggerFactory.getLogger(PhysicalGenerator.class);
-  private QueryProcessExecutor executor;
+  private IQueryProcessExecutor executor;
 
-  public PhysicalGenerator(QueryProcessExecutor executor) {
+  public PhysicalGenerator(IQueryProcessExecutor executor) {
     this.executor = executor;
   }
 

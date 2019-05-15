@@ -18,58 +18,108 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * This class stores all the metadata info for every deviceId and every timeseries.
  */
-public class Metadata {
+public class Metadata implements Serializable {
 
-  private Map<String, List<MeasurementSchema>> seriesMap;
   private Map<String, List<String>> deviceIdMap;
 
-  public Metadata(Map<String, List<MeasurementSchema>> seriesMap,
-      Map<String, List<String>> deviceIdMap) {
-    this.seriesMap = seriesMap;
+  public Metadata(Map<String, List<String>> deviceIdMap) {
     this.deviceIdMap = deviceIdMap;
-  }
-
-  /**
-   * function for getting series for one type.
-   */
-  public List<MeasurementSchema> getSeriesForOneType(String type) throws PathErrorException {
-    if (this.seriesMap.containsKey(type)) {
-      return seriesMap.get(type);
-    } else {
-      throw new PathErrorException("Input deviceIdType is not exist. " + type);
-    }
-  }
-
-  /**
-   * function for getting devices for one type.
-   */
-  public List<String> getDevicesForOneType(String type) throws PathErrorException {
-    if (this.seriesMap.containsKey(type)) {
-      return deviceIdMap.get(type);
-    } else {
-      throw new PathErrorException("Input deviceIdType is not exist. " + type);
-    }
-  }
-
-  public Map<String, List<MeasurementSchema>> getSeriesMap() {
-    return seriesMap;
   }
 
   public Map<String, List<String>> getDeviceMap() {
     return deviceIdMap;
   }
 
-  @Override
-  public String toString() {
-    return seriesMap.toString() + "\n" + deviceIdMap.toString();
+  /**
+   * combine multiple metadatas
+   */
+  public static Metadata combineMetadatas(Metadata[] metadatas) {
+    Map<String, List<String>> deviceIdMap = new HashMap<>();
+
+    if (metadatas == null || metadatas.length == 0) {
+      return new Metadata(deviceIdMap);
+    }
+
+    for (int i = 0; i < metadatas.length; i++) {
+      Map<String, List<String>> subDeviceIdMap = metadatas[i].deviceIdMap;
+      for (Entry<String, List<String>> entry : subDeviceIdMap.entrySet()) {
+        List<String> list = deviceIdMap.getOrDefault(entry.getKey(), new ArrayList<>());
+        list.addAll(entry.getValue());
+
+        if (!deviceIdMap.containsKey(entry.getKey())) {
+          deviceIdMap.put(entry.getKey(), list);
+        }
+      }
+      metadatas[i] = null;
+    }
+
+    return new Metadata(deviceIdMap);
   }
 
+  @Override
+  public String toString() {
+    return deviceIdMap.toString();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if(this == obj){
+      return true;
+    }
+    if(obj == null){
+      return false;
+    }
+    if(this.getClass() != obj.getClass()){
+      return false;
+    }
+
+    Metadata metadata = (Metadata) obj;
+    return deviceIdMapEquals(deviceIdMap, metadata.deviceIdMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(deviceIdMap);
+  }
+
+  /**
+   * only used to check if deviceIdMap is equal to another deviceIdMap
+   */
+  private boolean deviceIdMapEquals(Map<String, List<String>> map1, Map<String, List<String>> map2) {
+    if (!map1.keySet().equals(map2.keySet())) {
+      return false;
+    }
+
+    for (Entry<String, List<String>> entry : map1.entrySet()) {
+      List list1 = entry.getValue();
+      List list2 = map2.get(entry.getKey());
+
+      if (!listEquals(list1, list2)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean listEquals(List list1, List list2) {
+    Set set1 = new HashSet();
+    set1.addAll(list1);
+    Set set2 = new HashSet();
+    set2.addAll(list2);
+
+    return set1.equals(set2);
+  }
 }

@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class AuthorPlan extends PhysicalPlan {
 
+  private static final long serialVersionUID = 6501894026593590182L;
   private final AuthorOperator.AuthorType authorType;
   private String userName;
   private String roleName;

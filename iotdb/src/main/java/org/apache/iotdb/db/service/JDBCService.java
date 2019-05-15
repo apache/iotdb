@@ -129,7 +129,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
       jdbcServiceThread.setName(ThreadName.JDBC_SERVICE.getName());
       jdbcServiceThread.start();
       startLatch.await();
-    } catch (IOException | InterruptedException e) {
+    } catch (IOException | InterruptedException | ClassNotFoundException | IllegalAccessException | InstantiationException e) {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
@@ -187,9 +187,11 @@ public class JDBCService implements JDBCServiceMBean, IService {
     private CountDownLatch threadStartLatch;
     private CountDownLatch threadStopLatch;
 
-    public JDBCServiceThread(CountDownLatch threadStartLatch, CountDownLatch threadStopLatch) throws IOException {
+    public JDBCServiceThread(CountDownLatch threadStartLatch, CountDownLatch threadStopLatch)
+        throws IOException, ClassNotFoundException, IllegalAccessException, InstantiationException {
       protocolFactory = new TBinaryProtocol.Factory();
-      impl = new TSServiceImpl();
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      impl = (TSServiceImpl) Class.forName(config.getRpcImplClassName()).newInstance();
       processor = new TSIService.Processor<>(impl);
       this.threadStartLatch = threadStartLatch;
       this.threadStopLatch = threadStopLatch;
@@ -202,7 +204,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
         serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
             config.getRpcPort()));
         poolArgs = new TThreadPoolServer.Args(serverTransport);
-        poolArgs.executorService = IoTDBThreadPoolFactory.createJDBCClientThreadPool(poolArgs,
+        poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
             ThreadName.JDBC_CLIENT.getName());
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);

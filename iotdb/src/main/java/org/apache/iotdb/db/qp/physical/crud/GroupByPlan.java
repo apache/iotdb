@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByPlan extends AggregationPlan {
 
+  private static final long serialVersionUID = 8769258112457178898L;
   private long unit;
   private long origin;
   private List<Pair<Long, Long>> intervals; // show intervals

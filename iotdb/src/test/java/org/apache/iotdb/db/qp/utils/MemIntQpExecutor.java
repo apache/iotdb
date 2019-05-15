@@ -37,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -161,7 +162,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  protected boolean delete(Path path, long deleteTime) {
+  public boolean delete(Path path, long deleteTime) {
     if (!demoMemDataBase.containsKey(path.toString())) {
       return true;
     }

@@ -357,19 +357,6 @@ public class MManager {
   }
 
   /**
-   * function for checking if the storage group of given path exists in mTree or not.
-   * @apiNote :for cluster
-   */
-  public boolean checkStorageExistOfPath(String path) {
-    lock.readLock().lock();
-    try {
-      return mgraph.checkStorageExistOfPath(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
    * function for adding a pTree.
    */
   public void addAPTree(String ptreeRootName) throws IOException, MetadataArgsErrorException {

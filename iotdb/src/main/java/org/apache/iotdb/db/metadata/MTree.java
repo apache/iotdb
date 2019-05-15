@@ -248,38 +248,6 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Check whether the storage group of the path exists or not
-   * @param path input path
-   * @return If it's storage group exists, return true. Else return false
-   * @apiNote :for cluster
-   */
-  public boolean checkStorageExistOfPath(String path) {
-    String[] nodeNames = path.split(DOUB_SEPARATOR);
-    MNode cur = root;
-    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
-      return false;
-    }
-    int i = 1;
-    while (i < nodeNames.length - 1) {
-      MNode temp = cur.getChild(nodeNames[i]);
-      if (temp == null) {
-        return false;
-      }
-      if(temp.isStorageLevel()){
-        return true;
-      }
-      cur = cur.getChild(nodeNames[i]);
-      i++;
-    }
-    MNode temp = cur.getChild(nodeNames[i]);
-    if(temp != null && temp.isStorageLevel()) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  /**
    * Check whether set file seriesPath for this node or not. If not, throw an exception
    */
   private void checkStorageGroup(MNode node) throws PathErrorException {

@@ -61,7 +61,6 @@ public class EngineTimeGenerator implements TimeGenerator {
 
   @Override
   public Object getValue(Path path, long time) {
-    // TODO implement the optimization
     return null;
   }
 

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import java.io.Serializable;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -25,8 +26,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
 /**
  * This class is a abstract class for all type of PhysicalPlan.
  */
-public abstract class PhysicalPlan {
+public abstract class PhysicalPlan implements Serializable {
 
+  private static final long serialVersionUID = -6274856391535568352L;
   private boolean isQuery;
   private Operator.OperatorType operatorType;
 

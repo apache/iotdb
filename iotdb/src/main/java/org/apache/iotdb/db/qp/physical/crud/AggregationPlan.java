@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 
 public class AggregationPlan extends QueryPlan {
 
+  private static final long serialVersionUID = -2049810573809076643L;
   private List<String> aggregations = new ArrayList<>();
 
   public AggregationPlan() {

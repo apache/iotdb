@@ -20,7 +20,8 @@ package org.apache.iotdb.db.conf;
 
 public class IoTDBConstant {
 
-  private IoTDBConstant() {}
+  private IoTDBConstant() {
+  }
 
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
@@ -55,4 +56,7 @@ public class IoTDBConstant {
   public static final String MAX_TIME = "max_time";
   public static final String MIN_TIME = "min_time";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
+
+  // for cluster, set read consistency level
+  public static final String SET_READ_CONSISTENCY_LEVEL_PATTERN = "set\\s+read.*level.*";
 }

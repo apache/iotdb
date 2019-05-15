@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.writelog.transfer;
+package org.apache.iotdb.db.qp.physical.transfer;
 
 /**
  * To avoid conflict with org.apache.iotdb.tsfiledb.qp.constant.SQLConstant.Operator.

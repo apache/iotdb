@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.writelog.transfer;
+package org.apache.iotdb.db.qp.physical.transfer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -81,8 +81,9 @@ public class CodecInstances {
    */
   static String readString(ByteBuffer buffer) {
     int valueLen = buffer.getInt();
-    if(valueLen == NULL_VALUE_LEN)
+    if (valueLen == NULL_VALUE_LEN) {
       return null;
+    }
     return ReadWriteIOUtils.readStringWithoutLength(buffer, valueLen);
   }
 

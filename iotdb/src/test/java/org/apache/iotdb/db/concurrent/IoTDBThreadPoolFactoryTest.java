@@ -173,7 +173,7 @@ public class IoTDBThreadPoolFactoryTest {
     int threadCount = 50;
     latch = new CountDownLatch(threadCount);
     ExecutorService exec = IoTDBThreadPoolFactory
-        .createJDBCClientThreadPool(args, POOL_NAME, handler);
+        .createThriftRpcClientThreadPool(args, POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
       Runnable task = new TestThread(reason);
       exec.execute(task);

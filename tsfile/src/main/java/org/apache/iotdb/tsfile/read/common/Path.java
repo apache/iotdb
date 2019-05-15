@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
+import java.io.Serializable;
 import org.apache.iotdb.tsfile.common.constant.SystemConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.slf4j.Logger;
@@ -31,8 +32,9 @@ import java.io.IOException;
  *
  * @author Kangrong
  */
-public class Path {
+public class Path implements Serializable {
 
+  private static final long serialVersionUID = 3405277066329298200L;
   private String measurement = null;
   private String device = null;
   private String fullPath;

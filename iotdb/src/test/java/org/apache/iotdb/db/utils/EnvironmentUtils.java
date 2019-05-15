@@ -155,7 +155,7 @@ public class EnvironmentUtils {
     config.setEnableMemMonitor(false);
     // disable the system monitor
     config.setEnableStatMonitor(false);
-    IAuthorizer authorizer = null;
+    IAuthorizer authorizer;
     try {
       authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {

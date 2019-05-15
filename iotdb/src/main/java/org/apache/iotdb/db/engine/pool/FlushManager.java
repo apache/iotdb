@@ -94,16 +94,16 @@ public class FlushManager {
    *
    * @param block
    *            if set to true, this method will wait for timeOut milliseconds.
-   * @param timeOut
+   * @param timeout
    *            block time out in milliseconds.
    * @throws ProcessorException
    *             if timeOut is reached or being interrupted while waiting to exit.
    */
-  public void close(boolean block, long timeOut) throws ProcessorException {
+  public void close(boolean block, long timeout) throws ProcessorException {
     pool.shutdown();
     if (block) {
       try {
-        if (!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS)) {
+        if (!pool.awaitTermination(timeout, TimeUnit.MILLISECONDS)) {
           throw new ProcessorException("Flush thread pool doesn't exit after "
               + EXIT_WAIT_TIME + " ms");
         }

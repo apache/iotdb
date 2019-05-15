@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -28,8 +29,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
  * <code>BatchData</code> is a self-defined data structure which is optimized for different type of
  * values. This class can be viewed as a collection which is more efficient than ArrayList.
  */
-public class BatchData {
+public class BatchData implements Serializable {
 
+  private static final long serialVersionUID = -4620310601188394839L;
   private int timeCapacity = 1;
   private int valueCapacity = 1;
   private int emptyTimeCapacity = 1;

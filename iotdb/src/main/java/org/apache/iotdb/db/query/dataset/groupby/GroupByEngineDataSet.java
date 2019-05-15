@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.executor.groupby;
+package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.aggregation.AggreFuncFactory;
+import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -90,15 +90,12 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       return true;
     }
 
-    // end
-    if (usedIndex >= mergedIntervals.size()) {
-      return false;
-    }
-
     // skip the intervals in coverage of last time-partition
     while (usedIndex < mergedIntervals.size() && mergedIntervals.get(usedIndex).right < endTime) {
       usedIndex++;
     }
+
+    // end
     if (usedIndex >= mergedIntervals.size()) {
       return false;
     }
