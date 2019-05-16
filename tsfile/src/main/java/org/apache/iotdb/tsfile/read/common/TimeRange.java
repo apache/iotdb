@@ -197,28 +197,28 @@ public class TimeRange implements Comparable<TimeRange> {
    * @param unionCandidates time ranges already sorted in ascending order of the start time
    * @return the union of time ranges
    */
-  public static List<TimeRange> getUnions(ArrayList<TimeRange> unionCandidates) {
+  public static List<TimeRange> getUnions(List<TimeRange> unionCandidates) {
     ArrayList<TimeRange> unionResult = new ArrayList<>();
     Iterator<TimeRange> iterator = unionCandidates.iterator();
-    TimeRange range_curr;
+    TimeRange rangeCurr;
 
     if (!iterator.hasNext()) {
       return unionResult;
     } else {
-      range_curr = iterator.next();
+      rangeCurr = iterator.next();
     }
 
     while (iterator.hasNext()) {
-      TimeRange range_next = iterator.next();
-      if (range_curr.intersects(range_next)) {
-        range_curr.set(Math.min(range_curr.getMin(), range_next.getMin()),
-            Math.max(range_curr.getMax(), range_next.getMax()));
+      TimeRange rangeNext = iterator.next();
+      if (rangeCurr.intersects(rangeNext)) {
+        rangeCurr.set(Math.min(rangeCurr.getMin(), rangeNext.getMin()),
+            Math.max(rangeCurr.getMax(), rangeNext.getMax()));
       } else {
-        unionResult.add(range_curr);
-        range_curr = range_next;
+        unionResult.add(rangeCurr);
+        rangeCurr = rangeNext;
       }
     }
-    unionResult.add(range_curr);
+    unionResult.add(rangeCurr);
     return unionResult;
   }
 
@@ -231,7 +231,7 @@ public class TimeRange implements Comparable<TimeRange> {
    * @param timeRangesPrev time ranges union in ascending order of the start time
    * @return the remaining time ranges
    */
-  public List<TimeRange> getRemains(ArrayList<TimeRange> timeRangesPrev) {
+  public List<TimeRange> getRemains(List<TimeRange> timeRangesPrev) {
     List<TimeRange> remains = new ArrayList<>();
 
     for (TimeRange prev : timeRangesPrev) {
