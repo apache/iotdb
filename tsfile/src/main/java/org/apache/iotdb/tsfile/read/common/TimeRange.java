@@ -78,34 +78,25 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * @return true if the value lies between the min and max values, inclusively
-   */
-  public boolean contains(long value) {
-    return min <= value && max >= value;
-  }
-
-  /**
    * @return true if the given range lies in this range, inclusively
    */
   public boolean contains(TimeRange r) {
     return min <= r.min && max >= r.max;
   }
 
+
   /**
+   * Set a closed interval [min,max].
    *
+   * @param min the left endpoint of the closed interval
+   * @param max the right endpoint of the closed interval
    */
   public void set(long min, long max) {
+    if (min > max) {
+      throw new IllegalArgumentException("min should not be larger than max.");
+    }
     this.min = min;
     this.max = max;
-
-    sort();
-  }
-
-  /**
-   *
-   */
-  public void set(TimeRange r) {
-    set(r.getMin(), r.getMax());
   }
 
   /**
@@ -116,70 +107,50 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   *
-   */
-  public void setMin(long min) {
-    this.min = min;
-
-    sort();
-  }
-
-  /**
    * @return The upper range boundary
    */
   public long getMax() {
     return max;
   }
 
+
   /**
+   * Here are some examples.
    *
+   * [1,3] does not intersect with (4,5].
+   *
+   * [1,3) does not intersect with (3,5]
+   *
+   * [1,3] does not intersect with [5,6].
+   *
+   * [1,3] intersects with [2,5].
+   *
+   * [1,3] intersects with (3,5].
+   *
+   * [1,3) intersects with (2,5].
+   *
+   * @param r the given time range
+   * @return true if the current time range intersects with the given time range r
    */
-  public void setMax(long max) {
-    this.max = max;
-
-    sort();
-  }
-
-  private void sort() {
-    if (min > max) {
-      long t = min;
-      min = max;
-      max = t;
-    }
-  }
-
-  /**
-   * @return <code>true</code> if the intersection exists
-   */
-  public boolean intersection(TimeRange r, TimeRange dest) {
-    if (intersects(r)) {
-      dest.set(Math.max(min, r.min), Math.min(max, r.max));
+  private boolean intersects(TimeRange r) {
+    if ((!leftClose || !r.rightClose) && (r.max
+        < min)) { // e.g., [1,3] does not intersect with (4,5].
+      return false;
+    } else if (!leftClose && !r.rightClose
+        && r.max <= min) { // e.g.,[1,3) does not intersect with (3,5]
+      return false;
+    } else if (leftClose && r.rightClose
+        && r.max <= min - 2) { // e.g.,[1,3] does not intersect with [5,6].
+      return true;
+    } else if ((!rightClose || !r.leftClose) && (r.min > max)) {
+      return false;
+    } else if (!rightClose && r.leftClose && r.min >= max) {
+      return false;
+    } else if (rightClose && r.leftClose && r.min >= max + 2) {
+      return false;
+    } else {
       return true;
     }
-
-    return false;
-  }
-
-  /**
-   * @return <code>true</code> if the ranges have values in common
-   */
-  public boolean intersects(TimeRange r) {
-    return overlaps(min, max, r.min, r.max);
-  }
-
-  /**
-   * @return <code>true</code> if the ranges overlap
-   */
-  public static boolean overlaps(long minA, long maxA, long minB, long maxB) {
-    if (minA > maxA) {
-      throw new IllegalArgumentException("Invalid input: minA should not be larger than maxA.");
-    }
-    if (minB > maxB) {
-      throw new IllegalArgumentException("Invalid input: minB should not be larger than maxB.");
-    }
-
-    // Because timestamp is long data type, x and x+1 are considered continuous.
-    return !(minA >= maxB + 2 || maxA <= minB - 2);
   }
 
   @Override
@@ -223,7 +194,7 @@ public class TimeRange implements Comparable<TimeRange> {
   /**
    * Return the union of the given time ranges.
    *
-   * @param unionCandidates time ranges already sorted in ascending order
+   * @param unionCandidates time ranges already sorted in ascending order of the start time
    * @return the union of time ranges
    */
   public static List<TimeRange> getUnions(ArrayList<TimeRange> unionCandidates) {
@@ -234,8 +205,7 @@ public class TimeRange implements Comparable<TimeRange> {
     if (!iterator.hasNext()) {
       return unionResult;
     } else {
-      TimeRange r = iterator.next();
-      range_curr = new TimeRange(r.getMin(), r.getMax());
+      range_curr = iterator.next();
     }
 
     while (iterator.hasNext()) {
@@ -258,14 +228,14 @@ public class TimeRange implements Comparable<TimeRange> {
    * NOTE the primitive timeRange is always a closed interval [min,max] and only in this function
    * are leftClose and rightClose changed.
    *
-   * @param timeRangesPrev time ranges union in ascending order
+   * @param timeRangesPrev time ranges union in ascending order of the start time
    * @return the remaining time ranges
    */
   public List<TimeRange> getRemains(ArrayList<TimeRange> timeRangesPrev) {
     List<TimeRange> remains = new ArrayList<>();
 
     for (TimeRange prev : timeRangesPrev) {
-      if (prev.min >= max + 2) { // keep consistent with the definition of `overlap`
+      if (prev.min >= max + 2) { // keep consistent with the definition of `intersects`
         break; // break early since timeRangesPrev is sorted
       }
 

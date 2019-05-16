@@ -168,10 +168,10 @@ public class ReadInPartitionTest {
     // test the transformed expression
     Assert.assertEquals(ExpressionType.GLOBAL_TIME, transformedExpression.getType());
 
-    IExpression oracleTimeExpression = d1s6timeRangeList.get(0).getExpression();
-    String oracle = ExpressionOptimizer.getInstance().optimize(oracleTimeExpression,
+    IExpression expectedTimeExpression = d1s6timeRangeList.get(0).getExpression();
+    String expected = ExpressionOptimizer.getInstance().optimize(expectedTimeExpression,
         queryExpression.getSelectedSeries()).toString();
-    Assert.assertEquals(oracle, transformedExpression.toString());
+    Assert.assertEquals(expected, transformedExpression.toString());
 
     // test the equivalence of the query result:
     QueryDataSet queryDataSet_eq = roTsFile.query(queryExpression);
@@ -203,11 +203,11 @@ public class ReadInPartitionTest {
     // test the transformed expression
     Assert.assertEquals(ExpressionType.GLOBAL_TIME, transformedExpression.getType());
 
-    IExpression oracleTimeExpression = BinaryExpression
+    IExpression expectedTimeExpression = BinaryExpression
         .and(expression, d1s6timeRangeList.get(0).getExpression());
-    String oracle = ExpressionOptimizer.getInstance().optimize(oracleTimeExpression,
+    String expected = ExpressionOptimizer.getInstance().optimize(expectedTimeExpression,
         queryExpression.getSelectedSeries()).toString();
-    Assert.assertEquals(oracle, transformedExpression.toString());
+    Assert.assertEquals(expected, transformedExpression.toString());
 
     // test the equivalence of the query result:
     QueryDataSet queryDataSet_eq = roTsFile.query(queryExpression);
@@ -240,11 +240,11 @@ public class ReadInPartitionTest {
     // test the transformed expression
     Assert.assertEquals(ExpressionType.SERIES, transformedExpression.getType());
 
-    IExpression oracleTimeExpression = BinaryExpression
+    IExpression expectedTimeExpression = BinaryExpression
         .and(expression, d1s6timeRangeList.get(0).getExpression());
-    String oracle = ExpressionOptimizer.getInstance().optimize(oracleTimeExpression,
+    String expected = ExpressionOptimizer.getInstance().optimize(expectedTimeExpression,
         queryExpression.getSelectedSeries()).toString();
-    Assert.assertEquals(oracle, transformedExpression.toString());
+    Assert.assertEquals(expected, transformedExpression.toString());
 
     // test the equivalence of the query result:
     QueryDataSet queryDataSet_eq = roTsFile.query(queryExpression);

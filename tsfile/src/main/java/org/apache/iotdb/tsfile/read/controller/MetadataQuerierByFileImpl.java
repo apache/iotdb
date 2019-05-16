@@ -61,7 +61,8 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader) throws IOException {
     this.tsFileReader = tsFileReader;
     this.fileMetaData = tsFileReader.readFileMetadata();
-    this.mode = LoadMode.NoPartition; // default mode
+    // default mode
+    this.mode = LoadMode.NoPartition;
     chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
       @Override
       public List<ChunkMetaData> loadObjectByKey(Path key) throws IOException {
@@ -225,6 +226,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
     ArrayList<TimeRange> unionCandidates = new ArrayList<>();
     for (Path path : paths) {
+      //TODO 优先用cache 多个device只查一次
       List<ChunkMetaData> chunkMetaDataList = loadChunkMetadata(path);
       for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
         unionCandidates
@@ -236,7 +238,8 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     // union the increasingly sorted candidates
     ArrayList<TimeRange> unionResult = new ArrayList<>(TimeRange.getUnions(unionCandidates));
 
-    this.mode = LoadMode.NoPartition; // restore the default mode. DO NOT REMOVE THIS LINE.
+    // restore the default mode. DO NOT REMOVE THIS LINE.
+    this.mode = LoadMode.NoPartition;
     return unionResult;
   }
 
@@ -250,7 +253,8 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
    */
   private boolean checkAccess(ChunkGroupMetaData chunkGroupMetaData) throws IOException {
     if (mode == LoadMode.NoPartition) {
-      return true; // always true
+      // always true
+      return true;
     }
     long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
     long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();

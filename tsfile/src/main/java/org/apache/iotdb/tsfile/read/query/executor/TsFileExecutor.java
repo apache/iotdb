@@ -108,6 +108,7 @@ public class TsFileExecutor implements QueryExecutor {
     if (timeRangesIn.size() == 0) {
       return new DataSetWithoutTimeGenerator(new ArrayList<>(), new ArrayList<>(),
           new ArrayList<>()); // return empty QueryDataSet
+      //TODO emptylist
     }
 
     // (3) get the sorted union covered time ranges of chunkGroups before the current partition
