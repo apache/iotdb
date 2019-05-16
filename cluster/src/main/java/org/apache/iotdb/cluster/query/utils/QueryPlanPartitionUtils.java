@@ -19,6 +19,8 @@
 package org.apache.iotdb.cluster.query.utils;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -27,8 +29,11 @@ import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -43,12 +48,17 @@ public class QueryPlanPartitionUtils {
   }
 
   /**
-   * Split query plan with no filter or with only global time filter by group id
+   * Split query plan with no filter, with only global time filter by group id or fill query
    */
   public static void splitQueryPlanWithoutValueFilter(
       ClusterRpcSingleQueryManager singleQueryManager)
       throws PathErrorException {
-    splitQueryPlanBySelectPath(singleQueryManager);
+    QueryPlan queryPLan = singleQueryManager.getOriginQueryPlan();
+    if (queryPLan instanceof FillQueryPlan) {
+      splitFillPlan((FillQueryPlan)queryPLan, singleQueryManager);
+    } else {
+      splitQueryPlanBySelectPath(singleQueryManager);
+    }
   }
 
   /**
@@ -93,7 +103,7 @@ public class QueryPlanPartitionUtils {
     }
   }
 
-  private static void splitGroupByPlan(GroupByPlan queryPlan,
+  private static void splitGroupByPlan(GroupByPlan groupByPlan,
       ClusterRpcSingleQueryManager singleQueryManager) {
     throw new UnsupportedOperationException();
   }
@@ -101,6 +111,31 @@ public class QueryPlanPartitionUtils {
   private static void splitAggregationPlan(AggregationPlan aggregationPlan,
       ClusterRpcSingleQueryManager singleQueryManager) {
     throw new UnsupportedOperationException();
+  }
+
+  private static void splitFillPlan(FillQueryPlan fillQueryPlan,
+      ClusterRpcSingleQueryManager singleQueryManager) throws PathErrorException {
+    List<Path> selectPaths = fillQueryPlan.getPaths();
+    Map<String, List<Path>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
+    Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
+    for (Path path : selectPaths) {
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
+      if (!selectSeriesByGroupId.containsKey(groupId)) {
+        selectSeriesByGroupId.put(groupId, new ArrayList<>());
+      }
+      selectSeriesByGroupId.get(groupId).add(path);
+    }
+    for (Entry<String, List<Path>> entry : selectSeriesByGroupId.entrySet()) {
+      String groupId = entry.getKey();
+      List<Path> paths = entry.getValue();
+      FillQueryPlan subQueryPlan = new FillQueryPlan();
+      subQueryPlan.setProposer(fillQueryPlan.getProposer());
+      subQueryPlan.setPaths(paths);
+      subQueryPlan.setExpression(fillQueryPlan.getExpression());
+      subQueryPlan.setQueryTime(fillQueryPlan.getQueryTime());
+      subQueryPlan.setFillType(new EnumMap<>(fillQueryPlan.getFillType()));
+      selectPathPlans.put(groupId, subQueryPlan);
+    }
   }
 
   private static void splitQueryPlan(QueryPlan queryPlan,

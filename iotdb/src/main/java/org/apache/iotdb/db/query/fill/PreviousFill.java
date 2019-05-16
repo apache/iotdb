@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
+import java.io.Serializable;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -26,8 +27,9 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class PreviousFill extends IFill {
+public class PreviousFill extends IFill implements Serializable {
 
+  private static final long serialVersionUID = -7946089166912781464L;
   private long beforeRange;
 
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
@@ -57,7 +59,7 @@ public class PreviousFill extends IFill {
   @Override
   public IPointReader getFillResult() throws IOException {
     TimeValuePair beforePair = null;
-    TimeValuePair cachedPair = null;
+    TimeValuePair cachedPair;
     while (allDataReader.hasNext()) {
       cachedPair = allDataReader.next();
       if (cachedPair.getTimestamp() <= queryTime) {

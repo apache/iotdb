@@ -19,21 +19,21 @@
 package org.apache.iotdb.cluster.query.reader.querynode;
 
 import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.cluster.query.manager.common.FillBatchData;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-/**
- * Cluster batch reader, which provides another method to get batch data by batch timestamp.
- */
-public abstract class AbstractClusterBatchReader implements IBatchReader {
+public class ClusterFillSelectSeriesBatchReader extends ClusterSelectSeriesBatchReader {
 
-  /**
-   * Get batch data by batch time
-   *
-   * @param batchTime valid batch timestamp
-   * @return corresponding batch data
-   */
-  public abstract BatchData nextBatch(List<Long> batchTime) throws IOException;
+  public ClusterFillSelectSeriesBatchReader(
+      TSDataType dataType,
+      IPointReader reader) {
+    super(dataType, reader);
+  }
 
+  @Override
+  public BatchData nextBatch() throws IOException {
+    return hasNext() ? new FillBatchData(reader.next(), false) : new FillBatchData(null, true);
+  }
 }

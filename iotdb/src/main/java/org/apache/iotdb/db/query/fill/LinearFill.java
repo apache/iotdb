@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
+import java.io.Serializable;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -29,8 +30,9 @@ import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class LinearFill extends IFill {
+public class LinearFill extends IFill implements Serializable {
 
+  private static final long serialVersionUID = -1774599523110930574L;
   private long beforeRange;
   private long afterRange;
 

@@ -39,10 +39,10 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalQueryManager;
 import org.apache.iotdb.cluster.query.manager.querynode.ClusterLocalSingleQueryManager;
-import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderByTimestamp;
-import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderWithoutTimeGenerator;
+import org.apache.iotdb.cluster.query.reader.querynode.AbstractClusterSelectSeriesBatchReader;
+import org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSeriesBatchReader;
+import org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSeriesBatchReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterSeriesBatchReader;
-import org.apache.iotdb.cluster.query.reader.querynode.AbstractClusterBatchReader;
 import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
@@ -220,17 +220,17 @@ public class ClusterLocalManagerTest {
         assertEquals((long) map.get(taskId), singleQueryManager.getJobId());
         assertEquals(0, singleQueryManager.getQueryRound());
         assertNull(singleQueryManager.getFilterReader());
-        Map<String, AbstractClusterBatchReader> selectSeriesReaders = singleQueryManager
+        Map<String, AbstractClusterSelectSeriesBatchReader> selectSeriesReaders = singleQueryManager
             .getSelectSeriesReaders();
         assertEquals(3, selectSeriesReaders.size());
         Map<String, TSDataType> typeMap = singleQueryManager.getDataTypeMap();
-        for (Entry<String, AbstractClusterBatchReader> entry : selectSeriesReaders.entrySet()) {
+        for (Entry<String, AbstractClusterSelectSeriesBatchReader> entry : selectSeriesReaders.entrySet()) {
           String path = entry.getKey();
           TSDataType dataType = typeMap.get(path);
-          AbstractClusterBatchReader clusterBatchReader = entry.getValue();
-          assertNotNull(((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getReader());
+          AbstractClusterSelectSeriesBatchReader clusterBatchReader = entry.getValue();
+          assertNotNull(((ClusterSelectSeriesBatchReader) clusterBatchReader).getReader());
           assertEquals(dataType,
-              ((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getDataType());
+              ((ClusterSelectSeriesBatchReader) clusterBatchReader).getDataType());
         }
       }
 
@@ -247,17 +247,17 @@ public class ClusterLocalManagerTest {
         assertEquals((long) map.get(taskId), singleQueryManager.getJobId());
         assertEquals(0, singleQueryManager.getQueryRound());
         assertNull(singleQueryManager.getFilterReader());
-        Map<String, AbstractClusterBatchReader> selectSeriesReaders = singleQueryManager
+        Map<String, AbstractClusterSelectSeriesBatchReader> selectSeriesReaders = singleQueryManager
             .getSelectSeriesReaders();
         assertEquals(3, selectSeriesReaders.size());
         Map<String, TSDataType> typeMap = singleQueryManager.getDataTypeMap();
-        for (Entry<String, AbstractClusterBatchReader> entry : selectSeriesReaders.entrySet()) {
+        for (Entry<String, AbstractClusterSelectSeriesBatchReader> entry : selectSeriesReaders.entrySet()) {
           String path = entry.getKey();
           TSDataType dataType = typeMap.get(path);
-          AbstractClusterBatchReader clusterBatchReader = entry.getValue();
-          assertNotNull(((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getReader());
+          AbstractClusterSelectSeriesBatchReader clusterBatchReader = entry.getValue();
+          assertNotNull(((ClusterSelectSeriesBatchReader) clusterBatchReader).getReader());
           assertEquals(dataType,
-              ((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getDataType());
+              ((ClusterSelectSeriesBatchReader) clusterBatchReader).getDataType());
         }
       }
 
@@ -274,17 +274,17 @@ public class ClusterLocalManagerTest {
         assertEquals((long) map.get(taskId), singleQueryManager.getJobId());
         assertEquals(0, singleQueryManager.getQueryRound());
         assertNull(singleQueryManager.getFilterReader());
-        Map<String, AbstractClusterBatchReader> selectSeriesReaders = singleQueryManager
+        Map<String, AbstractClusterSelectSeriesBatchReader> selectSeriesReaders = singleQueryManager
             .getSelectSeriesReaders();
         assertEquals(3, selectSeriesReaders.size());
         Map<String, TSDataType> typeMap = singleQueryManager.getDataTypeMap();
-        for (Entry<String, AbstractClusterBatchReader> entry : selectSeriesReaders.entrySet()) {
+        for (Entry<String, AbstractClusterSelectSeriesBatchReader> entry : selectSeriesReaders.entrySet()) {
           String path = entry.getKey();
           TSDataType dataType = typeMap.get(path);
-          AbstractClusterBatchReader clusterBatchReader = entry.getValue();
-          assertNotNull(((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getReader());
+          AbstractClusterSelectSeriesBatchReader clusterBatchReader = entry.getValue();
+          assertNotNull(((ClusterSelectSeriesBatchReader) clusterBatchReader).getReader());
           assertEquals(dataType,
-              ((ClusterBatchReaderWithoutTimeGenerator) clusterBatchReader).getDataType());
+              ((ClusterSelectSeriesBatchReader) clusterBatchReader).getDataType());
         }
       }
       statement.close();
@@ -317,18 +317,18 @@ public class ClusterLocalManagerTest {
         assertTrue(allFilterPaths.containsAll(filterReader.getAllFilterPath()));
         assertNotNull(filterReader.getQueryDataSet());
 
-        Map<String, AbstractClusterBatchReader> selectSeriesReaders = singleQueryManager
+        Map<String, AbstractClusterSelectSeriesBatchReader> selectSeriesReaders = singleQueryManager
             .getSelectSeriesReaders();
         assertNotNull(selectSeriesReaders);
         assertEquals(3, selectSeriesReaders.size());
         Map<String, TSDataType> typeMap = singleQueryManager.getDataTypeMap();
-        for (Entry<String, AbstractClusterBatchReader> entry : selectSeriesReaders.entrySet()) {
+        for (Entry<String, AbstractClusterSelectSeriesBatchReader> entry : selectSeriesReaders.entrySet()) {
           String path = entry.getKey();
           TSDataType dataType = typeMap.get(path);
-          AbstractClusterBatchReader clusterBatchReader = entry.getValue();
-          assertNotNull(((ClusterBatchReaderByTimestamp) clusterBatchReader).getReaderByTimeStamp());
+          AbstractClusterSelectSeriesBatchReader clusterBatchReader = entry.getValue();
+          assertNotNull(((ClusterSelectSeriesBatchReaderByTimestamp) clusterBatchReader).getReaderByTimeStamp());
           assertEquals(dataType,
-              ((ClusterBatchReaderByTimestamp) clusterBatchReader).getDataType());
+              ((ClusterSelectSeriesBatchReaderByTimestamp) clusterBatchReader).getDataType());
         }
       }
 
@@ -351,18 +351,18 @@ public class ClusterLocalManagerTest {
         assertTrue(allFilterPaths.containsAll(filterReader.getAllFilterPath()));
         assertNotNull(filterReader.getQueryDataSet());
 
-        Map<String, AbstractClusterBatchReader> selectSeriesReaders = singleQueryManager
+        Map<String, AbstractClusterSelectSeriesBatchReader> selectSeriesReaders = singleQueryManager
             .getSelectSeriesReaders();
         assertNotNull(selectSeriesReaders);
         assertEquals(3, selectSeriesReaders.size());
         Map<String, TSDataType> typeMap = singleQueryManager.getDataTypeMap();
-        for (Entry<String, AbstractClusterBatchReader> entry : selectSeriesReaders.entrySet()) {
+        for (Entry<String, AbstractClusterSelectSeriesBatchReader> entry : selectSeriesReaders.entrySet()) {
           String path = entry.getKey();
           TSDataType dataType = typeMap.get(path);
-          AbstractClusterBatchReader clusterBatchReader = entry.getValue();
-          assertNotNull(((ClusterBatchReaderByTimestamp) clusterBatchReader).getReaderByTimeStamp());
+          AbstractClusterSelectSeriesBatchReader clusterBatchReader = entry.getValue();
+          assertNotNull(((ClusterSelectSeriesBatchReaderByTimestamp) clusterBatchReader).getReaderByTimeStamp());
           assertEquals(dataType,
-              ((ClusterBatchReaderByTimestamp) clusterBatchReader).getDataType());
+              ((ClusterSelectSeriesBatchReaderByTimestamp) clusterBatchReader).getDataType());
         }
       }
 
@@ -385,18 +385,18 @@ public class ClusterLocalManagerTest {
         assertTrue(allFilterPaths.containsAll(filterReader.getAllFilterPath()));
         assertNotNull(filterReader.getQueryDataSet());
 
-        Map<String, AbstractClusterBatchReader> selectSeriesReaders = singleQueryManager
+        Map<String, AbstractClusterSelectSeriesBatchReader> selectSeriesReaders = singleQueryManager
             .getSelectSeriesReaders();
         assertNotNull(selectSeriesReaders);
         assertEquals(3, selectSeriesReaders.size());
         Map<String, TSDataType> typeMap = singleQueryManager.getDataTypeMap();
-        for (Entry<String, AbstractClusterBatchReader> entry : selectSeriesReaders.entrySet()) {
+        for (Entry<String, AbstractClusterSelectSeriesBatchReader> entry : selectSeriesReaders.entrySet()) {
           String path = entry.getKey();
           TSDataType dataType = typeMap.get(path);
-          AbstractClusterBatchReader clusterBatchReader = entry.getValue();
-          assertNotNull(((ClusterBatchReaderByTimestamp) clusterBatchReader).getReaderByTimeStamp());
+          AbstractClusterSelectSeriesBatchReader clusterBatchReader = entry.getValue();
+          assertNotNull(((ClusterSelectSeriesBatchReaderByTimestamp) clusterBatchReader).getReaderByTimeStamp());
           assertEquals(dataType,
-              ((ClusterBatchReaderByTimestamp) clusterBatchReader).getDataType());
+              ((ClusterSelectSeriesBatchReaderByTimestamp) clusterBatchReader).getDataType());
         }
       }
       statement.close();

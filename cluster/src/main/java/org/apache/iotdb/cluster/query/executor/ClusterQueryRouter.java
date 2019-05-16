@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.FillEngineExecutor;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -108,7 +109,17 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context) throws FileNodeManagerException, PathErrorException, IOException {
-    throw new UnsupportedOperationException();
+    ClusterRpcSingleQueryManager queryManager = ClusterRpcQueryManager.getInstance()
+        .getSingleQuery(context.getJobId());
+    try {
+      queryManager.initQueryResource(QueryType.NO_FILTER, getReadDataConsistencyLevel());
+
+      ClusterFillEngineExecutor fillEngineExecutor = new ClusterFillEngineExecutor(fillPaths, queryTime,
+          fillType, queryManager);
+      return fillEngineExecutor.execute(context);
+    } catch (IOException | RaftConnectionException e) {
+      throw new FileNodeManagerException(e);
+    }
   }
 
   public int getReadDataConsistencyLevel() {

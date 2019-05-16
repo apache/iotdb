@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query;
+package org.apache.iotdb.cluster.integration;
 
 import static org.apache.iotdb.cluster.utils.Utils.insertData;
 import static org.junit.Assert.assertEquals;
@@ -41,7 +41,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ClusterQueryLargeDataTest {
+public class IoTDBQueryLargeDataIT {
 
 
   private Server server;

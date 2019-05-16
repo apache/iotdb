@@ -28,9 +28,10 @@ import org.apache.iotdb.cluster.concurrent.pool.QueryTimerManager;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
-import org.apache.iotdb.cluster.query.reader.querynode.AbstractClusterBatchReader;
-import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderByTimestamp;
-import org.apache.iotdb.cluster.query.reader.querynode.ClusterBatchReaderWithoutTimeGenerator;
+import org.apache.iotdb.cluster.query.reader.querynode.AbstractClusterSelectSeriesBatchReader;
+import org.apache.iotdb.cluster.query.reader.querynode.ClusterFillSelectSeriesBatchReader;
+import org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSeriesBatchReader;
+import org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSeriesBatchReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.IClusterFilterSeriesBatchReader;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
@@ -39,6 +40,7 @@ import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataReques
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.InitSeriesReaderResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -46,11 +48,14 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.AbstractExecutorWithoutTimeGenerator;
+import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -89,7 +94,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   /**
    * Key is series full path, value is reader of select series
    */
-  private Map<String, AbstractClusterBatchReader> selectSeriesReaders = new HashMap<>();
+  private Map<String, AbstractClusterSelectSeriesBatchReader> selectSeriesReaders = new HashMap<>();
 
   /**
    * Filter reader
@@ -130,6 +135,8 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
         throw new UnsupportedOperationException();
       } else if (plan instanceof AggregationPlan) {
         throw new UnsupportedOperationException();
+      } else if (plan instanceof FillQueryPlan) {
+        handleFillSeriesRerader(plan, context, response);
       } else {
         if (plan.getExpression() == null
             || plan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
@@ -147,22 +154,40 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   }
 
   /**
-   * Handle filter series reader
+   * Handle fill series reader
    *
-   * @param plan filter series query plan
+   * @param queryPlan fill query plan
    */
-  private void handleFilterSeriesReader(QueryPlan plan, QueryContext context,
-      InitSeriesReaderRequest request, InitSeriesReaderResponse response, PathType pathType)
-      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException {
-    QueryDataSet queryDataSet = queryProcessExecutor
-        .processQuery(plan, context);
-    List<Path> paths = plan.getPaths();
-    List<TSDataType> dataTypes = queryDataSet.getDataTypes();
-    for (int i = 0; i < paths.size(); i++) {
-      dataTypeMap.put(paths.get(i).getFullPath(), dataTypes.get(i));
+  private void handleFillSeriesRerader(QueryPlan queryPlan, QueryContext context,
+      InitSeriesReaderResponse response)
+      throws FileNodeManagerException, PathErrorException, IOException {
+    FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
+
+    List<Path> selectedPaths = queryPlan.getPaths();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedPaths);
+
+    Map<TSDataType, IFill> typeIFillMap = fillQueryPlan.getFillType();
+    for (Path path : selectedPaths) {
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(path, context);
+      TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+      dataTypes.add(dataType);
+      IFill fill;
+      if (!typeIFillMap.containsKey(dataType)) {
+        fill = new PreviousFill(dataType, fillQueryPlan.getQueryTime(), 0);
+      } else {
+        fill = typeIFillMap.get(dataType).copy(path);
+      }
+      fill.setDataType(dataType);
+      fill.setQueryTime(fillQueryPlan.getQueryTime());
+      fill.constructReaders(queryDataSource, context);
+      selectSeriesReaders.put(path.getFullPath(),
+          new ClusterFillSelectSeriesBatchReader(dataType, fill.getFillResult()));
+      dataTypeMap.put(path.getFullPath(), dataType);
     }
-    response.getSeriesDataTypes().put(pathType, dataTypes);
-    filterReader = new ClusterFilterSeriesBatchReader(queryDataSet, paths, request.getFilterList());
+
+    response.getSeriesDataTypes().put(PathType.SELECT_PATH, dataTypes);
   }
 
   /**
@@ -188,10 +213,29 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       IPointReader reader = AbstractExecutorWithoutTimeGenerator
           .createSeriesReader(context, paths.get(i), dataTypes, timeFilter);
       selectSeriesReaders
-          .put(fullPath, new ClusterBatchReaderWithoutTimeGenerator(dataTypes.get(i), reader));
+          .put(fullPath, new ClusterSelectSeriesBatchReader(dataTypes.get(i), reader));
       dataTypeMap.put(fullPath, dataTypes.get(i));
     }
     response.getSeriesDataTypes().put(PathType.SELECT_PATH, dataTypes);
+  }
+
+  /**
+   * Handle filter series reader
+   *
+   * @param plan filter series query plan
+   */
+  private void handleFilterSeriesReader(QueryPlan plan, QueryContext context,
+      InitSeriesReaderRequest request, InitSeriesReaderResponse response, PathType pathType)
+      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException {
+    QueryDataSet queryDataSet = queryProcessExecutor
+        .processQuery(plan, context);
+    List<Path> paths = plan.getPaths();
+    List<TSDataType> dataTypes = queryDataSet.getDataTypes();
+    for (int i = 0; i < paths.size(); i++) {
+      dataTypeMap.put(paths.get(i).getFullPath(), dataTypes.get(i));
+    }
+    response.getSeriesDataTypes().put(pathType, dataTypes);
+    filterReader = new ClusterFilterSeriesBatchReader(queryDataSet, paths, request.getFilterList());
   }
 
   /**
@@ -212,7 +256,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
           .createReaderByTimeStamp(path, context);
       TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
       selectSeriesReaders
-          .put(path.getFullPath(), new ClusterBatchReaderByTimestamp(readerByTimeStamp, dataType));
+          .put(path.getFullPath(), new ClusterSelectSeriesBatchReaderByTimestamp(readerByTimeStamp, dataType));
       dataTypeMap.put(path.getFullPath(), dataType);
       dataTypeList.add(dataType);
     }
@@ -253,7 +297,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       this.queryRound = targetQueryRounds;
       List<BatchData> batchDataList = new ArrayList<>();
       for (String series : fetchDataSeries) {
-        AbstractClusterBatchReader reader = selectSeriesReaders.get(series);
+        AbstractClusterSelectSeriesBatchReader reader = selectSeriesReaders.get(series);
         batchDataList.add(reader.nextBatch(request.getBatchTimestamp()));
       }
       cachedBatchDataResult = batchDataList;
@@ -309,7 +353,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
     return queryRound;
   }
 
-  public Map<String, AbstractClusterBatchReader> getSelectSeriesReaders() {
+  public Map<String, AbstractClusterSelectSeriesBatchReader> getSelectSeriesReaders() {
     return selectSeriesReaders;
   }
 
