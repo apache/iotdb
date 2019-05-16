@@ -30,9 +30,9 @@ import org.apache.iotdb.cluster.query.PathType;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
 import org.apache.iotdb.cluster.query.reader.querynode.AbstractClusterSelectSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterFillSelectSeriesBatchReader;
+import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSeriesBatchReaderByTimestamp;
-import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.IClusterFilterSeriesBatchReader;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
@@ -54,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.AbstractExecutorWithoutTimeGenerator;
+import org.apache.iotdb.db.query.executor.AggregateEngineExecutor;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -63,7 +64,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
@@ -134,16 +137,11 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       if (plan instanceof GroupByPlan) {
         throw new UnsupportedOperationException();
       } else if (plan instanceof AggregationPlan) {
-        throw new UnsupportedOperationException();
+        handleAggreSeriesReader(plan, context, response);
       } else if (plan instanceof FillQueryPlan) {
-        handleFillSeriesRerader(plan, context, response);
+        handleFillSeriesReader(plan, context, response);
       } else {
-        if (plan.getExpression() == null
-            || plan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
-          handleSelectReaderWithoutTimeGenerator(plan, context, response);
-        } else {
-          handleSelectReaderWithTimeGenerator(plan, context, response);
-        }
+        handleSelectSeriesReader(plan, context, response);
       }
     }
     if (queryPlanMap.containsKey(PathType.FILTER_PATH)) {
@@ -158,7 +156,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
    *
    * @param queryPlan fill query plan
    */
-  private void handleFillSeriesRerader(QueryPlan queryPlan, QueryContext context,
+  private void handleFillSeriesReader(QueryPlan queryPlan, QueryContext context,
       InitSeriesReaderResponse response)
       throws FileNodeManagerException, PathErrorException, IOException {
     FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
@@ -188,6 +186,73 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
     }
 
     response.getSeriesDataTypes().put(PathType.SELECT_PATH, dataTypes);
+  }
+
+
+  /**
+   * Handle aggregation series reader
+   *
+   * @param queryPlan fill query plan
+   */
+  private void handleAggreSeriesReader(QueryPlan queryPlan, QueryContext context,
+      InitSeriesReaderResponse response)
+      throws FileNodeManagerException, PathErrorException, IOException, QueryFilterOptimizationException, ProcessorException {
+    if (queryPlan.getExpression() == null
+        || queryPlan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
+      handleAggreSeriesReaderWithoutTimeGenerator(queryPlan,context,response);
+    } else {
+      handleSelectReaderWithTimeGenerator(queryPlan, context, response);
+    }
+  }
+
+  /**
+   * Handle aggregation series reader without value filter
+   *
+   * @param queryPlan fill query plan
+   */
+  private void handleAggreSeriesReaderWithoutTimeGenerator(QueryPlan queryPlan, QueryContext context,
+      InitSeriesReaderResponse response)
+      throws FileNodeManagerException, PathErrorException, IOException, QueryFilterOptimizationException, ProcessorException {
+    AggregationPlan fillQueryPlan = (AggregationPlan) queryPlan;
+
+    List<Path> selectedPaths = fillQueryPlan.getPaths();
+    QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedPaths);
+
+    IExpression optimizedExpression = ExpressionOptimizer.getInstance()
+        .optimize(fillQueryPlan.getExpression(), selectedPaths);
+    AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
+        selectedPaths, fillQueryPlan.getAggregations(), optimizedExpression);
+
+    List<IPointReader> readers = engineExecutor.constructAggreReadersWithoutTimeGenerator(context);
+
+    List<TSDataType> dataTypes = engineExecutor.getDataTypes();
+
+    for (int i =0 ; i < selectedPaths.size(); i ++) {
+      Path path = selectedPaths.get(i);
+      selectSeriesReaders.put(path.getFullPath(),
+          new ClusterSelectSeriesBatchReader(dataTypes.get(i), readers.get(i)));
+      dataTypeMap.put(path.getFullPath(), dataTypes.get(i));
+    }
+
+    response.getSeriesDataTypes().put(PathType.SELECT_PATH, dataTypes);
+  }
+
+  /**
+   * Handle select series query
+   *
+   * @param plan plan query plan
+   * @param context query context
+   * @param response response for coordinator node
+   */
+  private void handleSelectSeriesReader(QueryPlan plan, QueryContext context,
+      InitSeriesReaderResponse response)
+      throws FileNodeManagerException, IOException, PathErrorException {
+    if (plan.getExpression() == null
+        || plan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
+      handleSelectReaderWithoutTimeGenerator(plan, context, response);
+    } else {
+      handleSelectReaderWithTimeGenerator(plan, context, response);
+    }
   }
 
   /**

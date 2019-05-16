@@ -56,9 +56,7 @@ public interface IQueryProcessExecutor {
       QueryFilterOptimizationException, ProcessorException;
 
   /**
-   * process aggregate plan of qp layer, construct queryDataSet. <<<<<<< HEAD
-   *
-   * ======= >>>>>>> master
+   * process aggregate plan of qp layer, construct queryDataSet.
    */
   QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
       QueryContext context)
