@@ -20,9 +20,8 @@ package org.apache.iotdb.tsfile.read.query.executor;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -31,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerier.LoadMode;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -87,56 +85,32 @@ public class TsFileExecutor implements QueryExecutor {
    * Query with the partition constraint.
    *
    * @param queryExpression query expression
-   * @param params [partition_start_offset:long, partition_end_offset:long]
+   * @param spacePartitionStartPos the start position of the space partition
+   * @param spacePartitionEndPos the end position of the space partition
    * @return QueryDataSet
    */
-  public QueryDataSet execute(QueryExpression queryExpression, HashMap<String, Long> params) throws IOException {
-    if (!params.containsKey(QueryConstant.PARTITION_START_OFFSET)
-        || !params.containsKey(QueryConstant.PARTITION_END_OFFSET)) {
-      throw new IllegalArgumentException(
-          "Current supported query parameters are the pair of [partition_start_offset:long, partition_end_offset:long].");
-    }
-    long partitionStartOffset = params.get(QueryConstant.PARTITION_START_OFFSET);
-    long partitionEndOffset = params.get(QueryConstant.PARTITION_END_OFFSET);
+  public QueryDataSet execute(QueryExpression queryExpression, long spacePartitionStartPos,
+      long spacePartitionEndPos) throws IOException {
+    // project the space partition constraint to time partition constraint
+    ArrayList<TimeRange> resTimeRanges = new ArrayList<>(metadataQuerier
+        .projectSpace2TimePartition(queryExpression.getSelectedSeries(), spacePartitionStartPos,
+            spacePartitionEndPos));
 
-    // (1) get the sorted union covered time ranges of chunkGroups in the current partition
-    ArrayList<TimeRange> timeRangesIn = metadataQuerier
-        .getTimeRangeInOrPrev(queryExpression.getSelectedSeries(), LoadMode.InPartition,
-            partitionStartOffset, partitionEndOffset);
-
-    // (2) check if null
-    if (timeRangesIn.size() == 0) {
-      return new DataSetWithoutTimeGenerator(new ArrayList<>(), new ArrayList<>(),
-          new ArrayList<>()); // return empty QueryDataSet
-      //TODO emptylist
+    // check if resTimeRanges is empty
+    if (resTimeRanges.size() == 0) {
+      // return an empty QueryDataSet
+      return new DataSetWithoutTimeGenerator(Collections.EMPTY_LIST, Collections.EMPTY_LIST,
+          Collections.EMPTY_LIST);
     }
 
-    // (3) get the sorted union covered time ranges of chunkGroups before the current partition
-    ArrayList<TimeRange> timeRangesPrev = metadataQuerier
-        .getTimeRangeInOrPrev(queryExpression.getSelectedSeries(), LoadMode.PrevPartition,
-            partitionStartOffset, partitionEndOffset);
-
-    // (4) calculate the remaining time ranges
-    ArrayList<TimeRange> timeRangesRemains = new ArrayList<>();
-    for (TimeRange in : timeRangesIn) {
-      ArrayList<TimeRange> remains = new ArrayList<>(in.getRemains(timeRangesPrev));
-      timeRangesRemains.addAll(remains);
-    }
-
-    // (5) check if null
-    if (timeRangesRemains.size() == 0) {
-      return new DataSetWithoutTimeGenerator(new ArrayList<>(), new ArrayList<>(),
-          new ArrayList<>()); // return empty QueryDataSet
-    }
-
-    // (6) construct an additional time filter based on the remaining time ranges
-    IExpression addTimeExpression = timeRangesRemains.get(0).getExpression();
-    for (int i = 1; i < timeRangesRemains.size(); i++) {
+    // construct an additional time filter based on the time partition constraint
+    IExpression addTimeExpression = resTimeRanges.get(0).getExpression();
+    for (int i = 1; i < resTimeRanges.size(); i++) {
       addTimeExpression = BinaryExpression
-          .or(addTimeExpression, timeRangesRemains.get(i).getExpression());
+          .or(addTimeExpression, resTimeRanges.get(i).getExpression());
     }
 
-    // (7) combine the original query expression and the additional time filter
+    // combine the original query expression and the additional time filter
     if (queryExpression.hasQueryFilter()) {
       IExpression combinedExpression = BinaryExpression
           .and(queryExpression.getExpression(), addTimeExpression);
@@ -145,7 +119,7 @@ public class TsFileExecutor implements QueryExecutor {
       queryExpression.setExpression(addTimeExpression);
     }
 
-    // (8) Having converted the query partition constraint to an additional time filter, we can now query as normal.
+    // Having converted the space partition constraint to an additional time filter, we can now query as normal.
     return execute(queryExpression);
   }
 

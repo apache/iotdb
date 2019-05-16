@@ -50,10 +50,10 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
   private TsFileSequenceReader tsFileReader;
 
-  private LoadMode mode; // be the default mode (NoPartition) most of the time
-
-  private long partitionStartOffset = 0L;
-  private long partitionEndOffset = 0L;
+//  private LoadMode mode; // be the default mode (NoPartition) most of the time
+//
+//  private long partitionStartOffset = 0L;
+//  private long partitionEndOffset = 0L;
 
   /**
    * Constructor of MetadataQuerierByFileImpl.
@@ -61,8 +61,6 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader) throws IOException {
     this.tsFileReader = tsFileReader;
     this.fileMetaData = tsFileReader.readFileMetadata();
-    // default mode
-    this.mode = LoadMode.NoPartition;
     chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
       @Override
       public List<ChunkMetaData> loadObjectByKey(Path key) throws IOException {
@@ -178,12 +176,6 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     throw new NoMeasurementException(String.format("%s not found.", measurement));
   }
 
-  /**
-   * Return the chunk metadata of a given path under the control of the checkAccess function.
-   *
-   * @param path the given path
-   * @return the accessible chunk metadata of a given path
-   */
   private List<ChunkMetaData> loadChunkMetadata(Path path) throws IOException {
 
     if (!fileMetaData.containsDevice(path.getDevice())) {
@@ -199,75 +191,120 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     // get all ChunkMetaData of this path included in all ChunkGroups of this device
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      if (checkAccess(chunkGroupMetaData)) {
-        List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-            .getChunkMetaDataList();
-        for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-          if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
-            chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-            chunkMetaDataList.add(chunkMetaData);
-          }
+      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
+          .getChunkMetaDataList();
+      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
+        if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
+          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+          chunkMetaDataList.add(chunkMetaData);
         }
       }
     }
     return chunkMetaDataList;
   }
 
-  public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode,
-      long partitionStartOffset, long partitionEndOffset) throws IOException {
-    if (targetMode == LoadMode.NoPartition) {
+  @Override
+  public List<TimeRange> projectSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
+      long spacePartitionEndPos) throws IOException {
+    if (spacePartitionStartPos > spacePartitionEndPos) {
       throw new IllegalArgumentException(
-          "The target mode should be either InPartition or PrevPartition");
+          "spacePartitionStartPos should not be larger than spacePartitionEndPos.");
     }
-    // switch to the target mode temporarily to control loadChunkMetadata's checkAccess behavior
-    this.mode = targetMode;
-    this.partitionStartOffset = partitionStartOffset;
-    this.partitionEndOffset = partitionEndOffset;
+    List<TimeRange> resTimeRanges = new ArrayList<>();
+    ArrayList<TimeRange> timeRangesInCandidates = new ArrayList<>();
+    ArrayList<TimeRange> timeRangesBeforeCandidates = new ArrayList<>();
 
-    ArrayList<TimeRange> unionCandidates = new ArrayList<>();
+    // group measurements by device
+    TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
-      //TODO 优先用cache 多个device只查一次
-      List<ChunkMetaData> chunkMetaDataList = loadChunkMetadata(path);
-      for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
-        unionCandidates
-            .add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+      if (!deviceMeasurementsMap.containsKey(path.getDevice())) {
+        deviceMeasurementsMap.put(path.getDevice(), new HashSet<>());
+      }
+      deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
+    }
+    // calculate timeRangesInCandidates and timeRangesBeforeCandidates
+    for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
+      String selectedDevice = deviceMeasurements.getKey();
+      Set<String> selectedMeasurements = deviceMeasurements.getValue();
+
+      TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(selectedDevice);
+      TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
+
+      for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata
+          .getChunkGroupMetaDataList()) {
+        LocatePatition mode = checkAccess(chunkGroupMetaData, spacePartitionStartPos,
+            spacePartitionEndPos);
+        if (mode == LocatePatition.after) {
+          // skip
+          continue;
+        }
+        for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+          String currentMeasurement = chunkMetaData.getMeasurementUid();
+          if (selectedMeasurements.contains(currentMeasurement)) {
+            TimeRange timeRange = new TimeRange(chunkMetaData.getStartTime(),
+                chunkMetaData.getEndTime());
+            if (mode == LocatePatition.in) {
+              timeRangesInCandidates.add(timeRange);
+            } else {
+              timeRangesBeforeCandidates.add(timeRange);
+            }
+          }
+        }
       }
     }
-    Collections.sort(unionCandidates);
 
-    // union the increasingly sorted candidates
-    ArrayList<TimeRange> unionResult = new ArrayList<>(TimeRange.getUnions(unionCandidates));
+    // (1) sort and union the timeRangesInCandidates
+    Collections.sort(timeRangesInCandidates);
+    ArrayList<TimeRange> timeRangesIn = new ArrayList<>(
+        TimeRange.getUnions(timeRangesInCandidates));
+    // check if timeRangesIn is empty
+    if (timeRangesIn.size() == 0) {
+      // leave resTimeRanges empty
+      return resTimeRanges;
+    }
 
-    // restore the default mode. DO NOT REMOVE THIS LINE.
-    this.mode = LoadMode.NoPartition;
-    return unionResult;
+    // (2) sort and union the timeRangesBeforeCandidates
+    Collections.sort(timeRangesBeforeCandidates);
+    ArrayList<TimeRange> timeRangesBefore = new ArrayList<>(
+        TimeRange.getUnions(timeRangesBeforeCandidates));
+
+    // (3) calculate the remaining time ranges
+    for (TimeRange in : timeRangesIn) {
+      ArrayList<TimeRange> remains = new ArrayList<>(in.getRemains(timeRangesBefore));
+      resTimeRanges.addAll(remains);
+    }
+
+    return resTimeRanges;
   }
 
+
   /**
-   * Check if the given chunk group can be accessed under the current load mode and possible
-   * partition constraints. Used to control the behavior of the loadChunkMetaData function.
-   *
+   *TODO
    * @param chunkGroupMetaData a chunk group's metadata
-   * @return True if the chunk group can be accessed under the current load mode. False otherwise.
-   * @throws IOException illegal mode
+   * @param spacePartitionStartPos the start position of the space partition
+   * @param spacePartitionEndPos the end position of the space partition
+   * @return
+   * @throws IOException
    */
-  private boolean checkAccess(ChunkGroupMetaData chunkGroupMetaData) throws IOException {
-    if (mode == LoadMode.NoPartition) {
-      // always true
-      return true;
-    }
+  private LocatePatition checkAccess(ChunkGroupMetaData chunkGroupMetaData,
+      long spacePartitionStartPos, long spacePartitionEndPos) {
     long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
     long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();
     long middleOffsetOfChunkGroup = (startOffsetOfChunkGroup + endOffsetOfChunkGroup) / 2;
-    switch (mode) {
-      case InPartition:
-        return (partitionStartOffset <= middleOffsetOfChunkGroup
-            && middleOffsetOfChunkGroup < partitionEndOffset);
-      case PrevPartition:
-        return (middleOffsetOfChunkGroup < partitionStartOffset);
-      default:
-        throw new IOException(
-            "Illegal mode! It should be one of {NoPartition, InPartition, PrevPartition}.");
+    if (spacePartitionStartPos <= middleOffsetOfChunkGroup
+        && middleOffsetOfChunkGroup < spacePartitionEndPos) {
+      return LocatePatition.in;
+    } else if (middleOffsetOfChunkGroup < spacePartitionStartPos) {
+      return LocatePatition.before;
+    } else {
+      return LocatePatition.after;
     }
+  }
+
+  /*
+  TODO
+   */
+  enum LocatePatition {
+    in, before, after
   }
 }

@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerier.LoadMode;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
@@ -104,44 +103,32 @@ public class MetadataQuerierByFileImplTest {
   }
 
   @Test
-  public void test_getTimeRangeInPartition() throws IOException {
+  public void testEmpty() throws IOException {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
 
-    long partitionStartOffset = d1chunkGroupMetaDataOffsetList.get(0)[0];
-    long partitionEndOffset = d1chunkGroupMetaDataOffsetList.get(1)[1];
+    ArrayList<TimeRange> resTimeRanges = new ArrayList<>(metadataQuerierByFile
+        .projectSpace2TimePartition(paths, 0L, 0L));
 
-    ArrayList<TimeRange> actualRanges = metadataQuerierByFile
-        .getTimeRangeInOrPrev(paths, LoadMode.InPartition, partitionStartOffset,
-            partitionEndOffset);
-
-    ArrayList<TimeRange> unionCandidates = new ArrayList<>();
-    unionCandidates.add(d1s6timeRangeList.get(0));
-    unionCandidates.add(d2s1timeRangeList.get(0));
-    unionCandidates.add(d1s6timeRangeList.get(1));
-    Collections.sort(unionCandidates);
-    ArrayList<TimeRange> expectedRanges = new ArrayList<>(TimeRange.getUnions(unionCandidates));
-
-    Assert.assertEquals(expectedRanges.toString(), actualRanges.toString());
+    Assert.assertEquals(0, resTimeRanges.size());
   }
 
   @Test
-  public void test_getTimeRangePrePartition() throws IOException {
+  public void testProjectSpace2TimePartition() throws IOException {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
 
-    long partitionStartOffset = d2chunkGroupMetaDataOffsetList.get(1)[0];
-    long partitionEndOffset = d2chunkGroupMetaDataOffsetList.get(1)[1];
+    long spacePartitionStartPos = d1chunkGroupMetaDataOffsetList.get(0)[0];
+    long spacePartitionEndPos = d1chunkGroupMetaDataOffsetList.get(1)[1];
 
-    ArrayList<TimeRange> actualRanges = metadataQuerierByFile
-        .getTimeRangeInOrPrev(paths, LoadMode.PrevPartition, partitionStartOffset,
-            partitionEndOffset);
+    ArrayList<TimeRange> resTimeRanges = new ArrayList<>(metadataQuerierByFile
+        .projectSpace2TimePartition(paths, spacePartitionStartPos, spacePartitionEndPos));
 
     ArrayList<TimeRange> unionCandidates = new ArrayList<>();
     unionCandidates.add(d1s6timeRangeList.get(0));
@@ -150,6 +137,33 @@ public class MetadataQuerierByFileImplTest {
     Collections.sort(unionCandidates);
     ArrayList<TimeRange> expectedRanges = new ArrayList<>(TimeRange.getUnions(unionCandidates));
 
-    Assert.assertEquals(expectedRanges.toString(), actualRanges.toString());
+    Assert.assertEquals(expectedRanges.toString(), resTimeRanges.toString());
+  }
+
+  @Test
+  public void testProjectSpace2TimePartition2() throws IOException {
+    MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
+
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("d1.s6"));
+    paths.add(new Path("d2.s1"));
+
+    long spacePartitionStartPos = d2chunkGroupMetaDataOffsetList.get(0)[0];
+    long spacePartitionEndPos = d2chunkGroupMetaDataOffsetList.get(0)[1];
+
+    ArrayList<TimeRange> resTimeRanges = new ArrayList<>(metadataQuerierByFile
+        .projectSpace2TimePartition(paths, spacePartitionStartPos, spacePartitionEndPos));
+
+    ArrayList<TimeRange> inCandidates = new ArrayList<>();
+    ArrayList<TimeRange> beforeCandidates = new ArrayList<>();
+    inCandidates.add(d2s1timeRangeList.get(0));
+    beforeCandidates.add(d1s6timeRangeList.get(0));
+    ArrayList<TimeRange> expectedRanges = new ArrayList<>();
+    for (TimeRange in : inCandidates) {
+      ArrayList<TimeRange> remains = new ArrayList<>(in.getRemains(beforeCandidates));
+      expectedRanges.addAll(remains);
+    }
+
+    Assert.assertEquals(expectedRanges.toString(), resTimeRanges.toString());
   }
 }

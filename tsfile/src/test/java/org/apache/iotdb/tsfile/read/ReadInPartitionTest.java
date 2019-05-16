@@ -20,9 +20,7 @@ package org.apache.iotdb.tsfile.read;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -49,8 +47,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /*
   This test is designed for the TsFileExecutor's execute(queryExpression, params) function.
@@ -64,7 +60,6 @@ import org.slf4j.LoggerFactory;
 public class ReadInPartitionTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
-  private TsFileSequenceReader reader;
   private static ReadOnlyTsFile roTsFile = null;
   private ArrayList<TimeRange> d1s6timeRangeList = new ArrayList<>();
   private ArrayList<TimeRange> d2s1timeRangeList = new ArrayList<>();
@@ -75,7 +70,7 @@ public class ReadInPartitionTest {
   @Before
   public void before() throws InterruptedException, WriteProcessException, IOException {
     TsFileGeneratorForTest.generateFile(1000000, 1024 * 1024, 10000);
-    reader = new TsFileSequenceReader(FILE_PATH);
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
     roTsFile = new ReadOnlyTsFile(reader);
 
     // Because the size of the generated chunkGroupMetaData may differ under different test environments,
@@ -131,16 +126,12 @@ public class ReadInPartitionTest {
 
   @Test
   public void test0() throws IOException {
-    HashMap<String, Long> params = new HashMap<>();
-    params.put(QueryConstant.PARTITION_START_OFFSET, 0L);
-    params.put(QueryConstant.PARTITION_END_OFFSET, 0L);
-
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
-    QueryDataSet queryDataSet = roTsFile.query(queryExpression, params);
+    QueryDataSet queryDataSet = roTsFile.query(queryExpression, 0L, 0L);
 
     // test the transformed expression
     Assert.assertNull(queryExpression.getExpression());
@@ -151,17 +142,14 @@ public class ReadInPartitionTest {
 
   @Test
   public void test1() throws IOException, QueryFilterOptimizationException {
-    // simply the first chunkGroupMetadata
-    HashMap<String, Long> params = new HashMap<>();
-    params.put(QueryConstant.PARTITION_START_OFFSET, d1chunkGroupMetaDataOffsetList.get(0)[0]);
-    params.put(QueryConstant.PARTITION_END_OFFSET, d1chunkGroupMetaDataOffsetList.get(0)[1]);
-
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
-    QueryDataSet queryDataSet = roTsFile.query(queryExpression, params);
+    QueryDataSet queryDataSet = roTsFile
+        .query(queryExpression, d1chunkGroupMetaDataOffsetList.get(0)[0],
+            d1chunkGroupMetaDataOffsetList.get(0)[1]);
     IExpression transformedExpression = queryExpression
         .getExpression(); // the expression is transformed
 
@@ -185,18 +173,15 @@ public class ReadInPartitionTest {
 
   @Test
   public void test2() throws IOException, QueryFilterOptimizationException {
-    // simply the first chunkGroupMetadata
-    HashMap<String, Long> params = new HashMap<>();
-    params.put(QueryConstant.PARTITION_START_OFFSET, d1chunkGroupMetaDataOffsetList.get(0)[0]);
-    params.put(QueryConstant.PARTITION_END_OFFSET, d1chunkGroupMetaDataOffsetList.get(0)[1]);
-
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
     IExpression expression = new GlobalTimeExpression(TimeFilter.gt(50L));
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
 
-    QueryDataSet queryDataSet = roTsFile.query(queryExpression, params);
+    QueryDataSet queryDataSet = roTsFile
+        .query(queryExpression, d1chunkGroupMetaDataOffsetList.get(0)[0],
+            d1chunkGroupMetaDataOffsetList.get(0)[1]);
     IExpression transformedExpression = queryExpression
         .getExpression(); // the expression is transformed
 
@@ -221,11 +206,6 @@ public class ReadInPartitionTest {
 
   @Test
   public void test3() throws IOException, QueryFilterOptimizationException {
-    // simply the first chunkGroupMetadata
-    HashMap<String, Long> params = new HashMap<>();
-    params.put(QueryConstant.PARTITION_START_OFFSET, d1chunkGroupMetaDataOffsetList.get(0)[0]);
-    params.put(QueryConstant.PARTITION_END_OFFSET, d1chunkGroupMetaDataOffsetList.get(0)[1]);
-
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("d1.s6"));
     paths.add(new Path("d2.s1"));
@@ -233,7 +213,9 @@ public class ReadInPartitionTest {
     IExpression expression = new SingleSeriesExpression(new Path("d1.s3"), filter);
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
 
-    QueryDataSet queryDataSet = roTsFile.query(queryExpression, params);
+    QueryDataSet queryDataSet = roTsFile
+        .query(queryExpression, d1chunkGroupMetaDataOffsetList.get(0)[0],
+            d1chunkGroupMetaDataOffsetList.get(0)[1]);
     IExpression transformedExpression = queryExpression
         .getExpression(); // the expression is transformed
 

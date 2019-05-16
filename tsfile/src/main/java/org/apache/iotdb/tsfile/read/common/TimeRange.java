@@ -216,9 +216,12 @@ public class TimeRange implements Comparable<TimeRange> {
       } else {
         unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
         range_curr.set(range_next.getMin(), range_next.getMax());
+//        unionResult.add(range_curr); //TODO
+//        range_curr = range_next;
       }
     }
     unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
+//    unionResult.add(range_curr);
     return unionResult;
   }
 
