@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.response;
+package org.apache.iotdb.cluster.rpc.raft.response.querymetric;
 
 import java.util.Map;
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
 public class QueryMetricResponse extends BasicResponse {
 

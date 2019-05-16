@@ -16,16 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.request;
+package org.apache.iotdb.cluster.rpc.raft.request.querymetric;
 
 import java.io.Serializable;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 
-public class QueryMetricRequest extends BasicQueryRequest implements Serializable {
+public class QueryMetricRequest extends BasicRequest implements Serializable {
+
+  private static final long serialVersionUID = 8434915883945730829L;
 
   private String metric;
 
-  public QueryMetricRequest(String groupID, int readConsistencyLevel, String metric) {
-    super(groupID, readConsistencyLevel);
+  public QueryMetricRequest(String groupID, String metric) {
+    super(groupID);
     this.metric = metric;
   }
 

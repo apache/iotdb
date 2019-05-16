@@ -107,7 +107,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public Map<String, Integer> getQueryJobNumMap() {
-    return RaftUtils.getQueryJobNumMap();
+  public Map<String, Map<String, Integer>> getQueryJobNumMap() {
+    return RaftUtils.getQueryJobNumMapForCluster();
   }
 }
