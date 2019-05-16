@@ -110,4 +110,9 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   public Map<String, Map<String, Integer>> getQueryJobNumMap() {
     return RaftUtils.getQueryJobNumMapForCluster();
   }
+
+  @Override
+  public Map<String, Boolean> getStatusMap() {
+    return RaftUtils.getStatusMapForCluster();
+  }
 }

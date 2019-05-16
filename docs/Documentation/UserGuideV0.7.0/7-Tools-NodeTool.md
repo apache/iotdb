@@ -295,6 +295,40 @@ After using the command, the successful output will be as follows:
   data-group-0  ->   0
   data-group-2  ->   1
 Total  ->   7
-
 ```
 The above output indicates that 7 query tasks are running on cluster. Moreover, node 192.168.130.14 contains 2 data partitions and 4 query tasks are running on it, wherein 1 query task is running on data partition data-group-0, and 3 query tasks are running on data partition data-group-1; node 192.168.130.16 contains 2 data partitions and 2 query tasks are running on it, wherein 2 query tasks is running on data partition data-group-2, and no query task is running on data partition data-group-0; node 192.168.130.18 contains 2 data partitions and 1 query task is running on it, wherein no query task is running on data partition data-group-0, and 1 query task is running on data partition data-group-2.
+
+### Query Status of Nodes in Cluster (status)
+
+IoTDB Cluster contains multiple nodes. For any node, there is a possibility that the service cannot be provided normally due to problems of network and hardware. With this command, users are able to know the current status of all nodes in the cluster.
+
+#### Input
+
+The command to query status of nodes is `status`, no additional parameters are needed.
+
+#### Output
+
+The output is multiple string lines, each line represents a key-value pair, where the key is node IP and the value is status of this node (`on` represents normal and `off` represents abnormal. The format of each line is `key -> value`.
+
+#### Example
+
+Assume that the IoTDB Cluster is running on 3 nodes: 192.168.130.14, 192.168.130.16 and 192.168.130.18, and number of replicas is 2.
+
+The Linux and MacOS system startup commands are as follows:
+```
+  Shell > ./bin/nodetool.sh -h 192.168.130.14 status
+```
+  
+The Windows system startup commands are as follows:
+```
+  Shell > \bin\nodetool.bat -h 192.168.130.14 status
+```
+  
+After using the command, the successful output will be as follows: 
+	
+```
+192.168.130.14  ->  on
+192.168.130.16  ->  on
+192.168.130.18  ->  off
+```
+The above output indicates that node 192.168.130.14 and node 192.168.130.16 are in normal state, and node 192.168.130.18 cannot provide services.

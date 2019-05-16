@@ -76,4 +76,11 @@ public interface ClusterMonitorMBean {
    * @return outer key: ip, inner key: groupId, value: number of query jobs
    */
   Map<String, Map<String, Integer>> getQueryJobNumMap();
+
+  /**
+   * Get status of all nodes
+   *
+   * @return key: node ip, value: live or not
+   */
+  Map<String, Boolean> getStatusMap();
 }

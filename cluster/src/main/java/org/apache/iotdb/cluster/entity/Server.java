@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryMetadataIn
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryPathsAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QuerySeriesTypeAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryTimeSeriesAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryStatusAsyncProcessor;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
@@ -165,6 +166,7 @@ public class Server {
   private void registerQueryMetricProcessor(RpcServer rpcServer) {
     rpcServer.registerUserProcessor(new QueryMetricAsyncProcessor());
     rpcServer.registerUserProcessor(new QueryJobNumAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryStatusAsyncProcessor());
   }
 
   public void stop() throws ProcessorException, InterruptedException {
