@@ -82,7 +82,7 @@ public class TsFileExecutor implements QueryExecutor {
   }
 
   /**
-   * Query with the partition constraint.
+   * Query with the space partition constraint.
    *
    * @param queryExpression query expression
    * @param spacePartitionStartPos the start position of the space partition
@@ -91,16 +91,15 @@ public class TsFileExecutor implements QueryExecutor {
    */
   public QueryDataSet execute(QueryExpression queryExpression, long spacePartitionStartPos,
       long spacePartitionEndPos) throws IOException {
-    // project the space partition constraint to time partition constraint
+    // convert the space partition constraint to the time partition constraint
     ArrayList<TimeRange> resTimeRanges = new ArrayList<>(metadataQuerier
-        .projectSpace2TimePartition(queryExpression.getSelectedSeries(), spacePartitionStartPos,
+        .convertSpace2TimePartition(queryExpression.getSelectedSeries(), spacePartitionStartPos,
             spacePartitionEndPos));
 
     // check if resTimeRanges is empty
     if (resTimeRanges.size() == 0) {
-      // return an empty QueryDataSet
       return new DataSetWithoutTimeGenerator(Collections.EMPTY_LIST, Collections.EMPTY_LIST,
-          Collections.EMPTY_LIST);
+          Collections.EMPTY_LIST); // return an empty QueryDataSet
     }
 
     // construct an additional time filter based on the time partition constraint

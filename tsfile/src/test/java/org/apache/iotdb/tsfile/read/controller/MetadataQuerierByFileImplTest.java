@@ -111,13 +111,13 @@ public class MetadataQuerierByFileImplTest {
     paths.add(new Path("d2.s1"));
 
     ArrayList<TimeRange> resTimeRanges = new ArrayList<>(metadataQuerierByFile
-        .projectSpace2TimePartition(paths, 0L, 0L));
+        .convertSpace2TimePartition(paths, 0L, 0L));
 
     Assert.assertEquals(0, resTimeRanges.size());
   }
 
   @Test
-  public void testProjectSpace2TimePartition() throws IOException {
+  public void testConvertSpace2TimePartition() throws IOException {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
@@ -126,9 +126,8 @@ public class MetadataQuerierByFileImplTest {
 
     long spacePartitionStartPos = d1chunkGroupMetaDataOffsetList.get(0)[0];
     long spacePartitionEndPos = d1chunkGroupMetaDataOffsetList.get(1)[1];
-
     ArrayList<TimeRange> resTimeRanges = new ArrayList<>(metadataQuerierByFile
-        .projectSpace2TimePartition(paths, spacePartitionStartPos, spacePartitionEndPos));
+        .convertSpace2TimePartition(paths, spacePartitionStartPos, spacePartitionEndPos));
 
     ArrayList<TimeRange> unionCandidates = new ArrayList<>();
     unionCandidates.add(d1s6timeRangeList.get(0));
@@ -141,7 +140,7 @@ public class MetadataQuerierByFileImplTest {
   }
 
   @Test
-  public void testProjectSpace2TimePartition2() throws IOException {
+  public void testConvertSpace2TimePartition2() throws IOException {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
@@ -150,9 +149,8 @@ public class MetadataQuerierByFileImplTest {
 
     long spacePartitionStartPos = d2chunkGroupMetaDataOffsetList.get(0)[0];
     long spacePartitionEndPos = d2chunkGroupMetaDataOffsetList.get(0)[1];
-
     ArrayList<TimeRange> resTimeRanges = new ArrayList<>(metadataQuerierByFile
-        .projectSpace2TimePartition(paths, spacePartitionStartPos, spacePartitionEndPos));
+        .convertSpace2TimePartition(paths, spacePartitionStartPos, spacePartitionEndPos));
 
     ArrayList<TimeRange> inCandidates = new ArrayList<>();
     ArrayList<TimeRange> beforeCandidates = new ArrayList<>();

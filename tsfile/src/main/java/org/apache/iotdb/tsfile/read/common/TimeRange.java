@@ -214,14 +214,11 @@ public class TimeRange implements Comparable<TimeRange> {
         range_curr.set(Math.min(range_curr.getMin(), range_next.getMin()),
             Math.max(range_curr.getMax(), range_next.getMax()));
       } else {
-        unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
-        range_curr.set(range_next.getMin(), range_next.getMax());
-//        unionResult.add(range_curr); //TODO
-//        range_curr = range_next;
+        unionResult.add(range_curr);
+        range_curr = range_next;
       }
     }
-    unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
-//    unionResult.add(range_curr);
+    unionResult.add(range_curr);
     return unionResult;
   }
 
@@ -239,7 +236,8 @@ public class TimeRange implements Comparable<TimeRange> {
 
     for (TimeRange prev : timeRangesPrev) {
       if (prev.min >= max + 2) { // keep consistent with the definition of `intersects`
-        break; // break early since timeRangesPrev is sorted
+        // break early since timeRangesPrev is sorted
+        break;
       }
 
       if (intersects(prev)) {

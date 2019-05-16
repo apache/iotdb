@@ -54,7 +54,7 @@ import org.junit.Test;
   The test target here is the logic of converting the query partition constraint to an additional time filter.
 
   Note that the correctness of the constructed additional time filter, which is guaranteed and tested in
-  MetadataQuerierByFileImplTest and TimeRangeTest, is not the test target here.
+  MetadataQuerierByFileImplTest and TimeRangeTest, is not the test focus here.
 
  */
 public class ReadInPartitionTest {
@@ -150,8 +150,8 @@ public class ReadInPartitionTest {
     QueryDataSet queryDataSet = roTsFile
         .query(queryExpression, d1chunkGroupMetaDataOffsetList.get(0)[0],
             d1chunkGroupMetaDataOffsetList.get(0)[1]);
-    IExpression transformedExpression = queryExpression
-        .getExpression(); // the expression is transformed
+    // get the transformed expression
+    IExpression transformedExpression = queryExpression.getExpression();
 
     // test the transformed expression
     Assert.assertEquals(ExpressionType.GLOBAL_TIME, transformedExpression.getType());
@@ -182,8 +182,8 @@ public class ReadInPartitionTest {
     QueryDataSet queryDataSet = roTsFile
         .query(queryExpression, d1chunkGroupMetaDataOffsetList.get(0)[0],
             d1chunkGroupMetaDataOffsetList.get(0)[1]);
-    IExpression transformedExpression = queryExpression
-        .getExpression(); // the expression is transformed
+    // get the transformed expression
+    IExpression transformedExpression = queryExpression.getExpression();
 
     // test the transformed expression
     Assert.assertEquals(ExpressionType.GLOBAL_TIME, transformedExpression.getType());
@@ -216,8 +216,8 @@ public class ReadInPartitionTest {
     QueryDataSet queryDataSet = roTsFile
         .query(queryExpression, d1chunkGroupMetaDataOffsetList.get(0)[0],
             d1chunkGroupMetaDataOffsetList.get(0)[1]);
-    IExpression transformedExpression = queryExpression
-        .getExpression(); // the expression is transformed
+    // get the transformed expression
+    IExpression transformedExpression = queryExpression.getExpression();
 
     // test the transformed expression
     Assert.assertEquals(ExpressionType.SERIES, transformedExpression.getType());

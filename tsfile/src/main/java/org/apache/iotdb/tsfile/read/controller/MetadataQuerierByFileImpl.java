@@ -50,11 +50,6 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
   private TsFileSequenceReader tsFileReader;
 
-//  private LoadMode mode; // be the default mode (NoPartition) most of the time
-//
-//  private long partitionStartOffset = 0L;
-//  private long partitionEndOffset = 0L;
-
   /**
    * Constructor of MetadataQuerierByFileImpl.
    */
@@ -204,13 +199,14 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   }
 
   @Override
-  public List<TimeRange> projectSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
+  public List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
       long spacePartitionEndPos) throws IOException {
     if (spacePartitionStartPos > spacePartitionEndPos) {
       throw new IllegalArgumentException(
-          "spacePartitionStartPos should not be larger than spacePartitionEndPos.");
+          "'spacePartitionStartPos' should not be larger than 'spacePartitionEndPos'.");
     }
-    List<TimeRange> resTimeRanges = new ArrayList<>();
+
+    // (1) get timeRangesInCandidates and timeRangesBeforeCandidates by iterating through the metadata
     ArrayList<TimeRange> timeRangesInCandidates = new ArrayList<>();
     ArrayList<TimeRange> timeRangesBeforeCandidates = new ArrayList<>();
 
@@ -222,7 +218,6 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
       }
       deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
     }
-    // calculate timeRangesInCandidates and timeRangesBeforeCandidates
     for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
       String selectedDevice = deviceMeasurements.getKey();
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
@@ -232,10 +227,9 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
       for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata
           .getChunkGroupMetaDataList()) {
-        LocatePatition mode = checkAccess(chunkGroupMetaData, spacePartitionStartPos,
+        LocateStatus mode = checkLocateStatus(chunkGroupMetaData, spacePartitionStartPos,
             spacePartitionEndPos);
-        if (mode == LocatePatition.after) {
-          // skip
+        if (mode == LocateStatus.after) {
           continue;
         }
         for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
@@ -243,7 +237,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
           if (selectedMeasurements.contains(currentMeasurement)) {
             TimeRange timeRange = new TimeRange(chunkMetaData.getStartTime(),
                 chunkMetaData.getEndTime());
-            if (mode == LocatePatition.in) {
+            if (mode == LocateStatus.in) {
               timeRangesInCandidates.add(timeRange);
             } else {
               timeRangesBeforeCandidates.add(timeRange);
@@ -253,22 +247,21 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
       }
     }
 
-    // (1) sort and union the timeRangesInCandidates
+    // (2) sort and union the timeRangesInCandidates
     Collections.sort(timeRangesInCandidates);
     ArrayList<TimeRange> timeRangesIn = new ArrayList<>(
         TimeRange.getUnions(timeRangesInCandidates));
-    // check if timeRangesIn is empty
     if (timeRangesIn.size() == 0) {
-      // leave resTimeRanges empty
-      return resTimeRanges;
+      return Collections.emptyList(); // return an empty list
     }
 
-    // (2) sort and union the timeRangesBeforeCandidates
+    // (3) sort and union the timeRangesBeforeCandidates
     Collections.sort(timeRangesBeforeCandidates);
     ArrayList<TimeRange> timeRangesBefore = new ArrayList<>(
         TimeRange.getUnions(timeRangesBeforeCandidates));
 
-    // (3) calculate the remaining time ranges
+    // (4) calculate the remaining time ranges
+    List<TimeRange> resTimeRanges = new ArrayList<>();
     for (TimeRange in : timeRangesIn) {
       ArrayList<TimeRange> remains = new ArrayList<>(in.getRemains(timeRangesBefore));
       resTimeRanges.addAll(remains);
@@ -277,34 +270,38 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     return resTimeRanges;
   }
 
-
   /**
-   *TODO
-   * @param chunkGroupMetaData a chunk group's metadata
+   * Check the location of a given chunkGroupMetaData with respect to a space partition constraint.
+   *
+   * @param chunkGroupMetaData the given chunkGroupMetaData
    * @param spacePartitionStartPos the start position of the space partition
    * @param spacePartitionEndPos the end position of the space partition
-   * @return
-   * @throws IOException
+   * @return LocateStatus
    */
-  private LocatePatition checkAccess(ChunkGroupMetaData chunkGroupMetaData,
+  private LocateStatus checkLocateStatus(ChunkGroupMetaData chunkGroupMetaData,
       long spacePartitionStartPos, long spacePartitionEndPos) {
     long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
     long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();
     long middleOffsetOfChunkGroup = (startOffsetOfChunkGroup + endOffsetOfChunkGroup) / 2;
     if (spacePartitionStartPos <= middleOffsetOfChunkGroup
         && middleOffsetOfChunkGroup < spacePartitionEndPos) {
-      return LocatePatition.in;
+      return LocateStatus.in;
     } else if (middleOffsetOfChunkGroup < spacePartitionStartPos) {
-      return LocatePatition.before;
+      return LocateStatus.before;
     } else {
-      return LocatePatition.after;
+      return LocateStatus.after;
     }
   }
 
-  /*
-  TODO
+  /**
+   * The location of a chunkGroupMetaData with respect to a space partition constraint.
+   *
+   * in - the middle point of the chunkGroupMetaData is located in the current space partition.
+   * before - the middle point of the chunkGroupMetaData is located before the current space
+   * partition. after - the middle point of the chunkGroupMetaData is located after the current
+   * space partition.
    */
-  enum LocatePatition {
+  private enum LocateStatus {
     in, before, after
   }
 }

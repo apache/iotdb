@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
@@ -53,10 +52,14 @@ public interface MetadataQuerier {
    */
   TSDataType getDataType(String measurement) throws NoMeasurementException;
 
-
-  /*
-  TODO
+  /**
+   * Convert the space partition constraint to the time partition constraint.
+   *
+   * @param paths selected paths in a query expression
+   * @param spacePartitionStartPos the start position of the space partition
+   * @param spacePartitionEndPos the end position of the space partition
+   * @return the converted time partition constraint
    */
-  List<TimeRange> projectSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
+  List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
       long spacePartitionEndPos) throws IOException;
 }
