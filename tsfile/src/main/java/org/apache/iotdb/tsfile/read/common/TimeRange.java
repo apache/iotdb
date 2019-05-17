@@ -190,11 +190,11 @@ public class TimeRange implements Comparable<TimeRange> {
   private boolean leftClose = true; // default true
   private boolean rightClose = true; // default true
 
-  public void setLeftClose(boolean leftClose) {
+  private void setLeftClose(boolean leftClose) {
     this.leftClose = leftClose;
   }
 
-  public void setRightClose(boolean rightClose) {
+  private void setRightClose(boolean rightClose) {
     this.rightClose = rightClose;
   }
 
@@ -253,7 +253,8 @@ public class TimeRange implements Comparable<TimeRange> {
     List<TimeRange> remains = new ArrayList<>();
 
     for (TimeRange prev : timeRangesPrev) {
-      if (prev.min >= max + 2) { // keep consistent with the definition of `intersects`
+      // +2 is to keep consistent with the definition of `intersects` of two closed intervals
+      if (prev.min >= max + 2) {
         // break early since timeRangesPrev is sorted
         break;
       }
@@ -269,8 +270,10 @@ public class TimeRange implements Comparable<TimeRange> {
             this.setMax(prev.min);
             this.setRightClose(false);
             remains.add(this);
-            return remains; // because timeRangesPrev is sorted
-          } else if (prev.min == this.min) { // && prev.max < this.max.
+            // return the final result because timeRangesPrev is sorted
+            return remains;
+          } else if (prev.min == this.min) {
+            // Note prev.max < this.max
             // e.g., this=[1,10], prev=[1,4]
             min = prev.max;
             leftClose = false;
@@ -283,7 +286,8 @@ public class TimeRange implements Comparable<TimeRange> {
             min = prev.max;
             leftClose = false;
           }
-        } else { // intersect without one containing the other
+        } else {
+          // intersect without one containing the other
           if (prev.min < this.min) {
             // e.g., this=[3,10], prev=[1,6]
             min = prev.max;
@@ -293,7 +297,8 @@ public class TimeRange implements Comparable<TimeRange> {
             this.setMax(prev.min);
             this.setRightClose(false);
             remains.add(this);
-            return remains; // because timeRangesPrev is sorted
+            // return the final result because timeRangesPrev is sorted
+            return remains;
           }
         }
       }
