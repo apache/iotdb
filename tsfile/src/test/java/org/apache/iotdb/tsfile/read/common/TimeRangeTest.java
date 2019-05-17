@@ -21,11 +21,11 @@ package org.apache.iotdb.tsfile.read.common;
 import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class TimeRangeTest {
+
   @Test
   public void mergeTest() {
     ArrayList<TimeRange> unionCandidates = new ArrayList<>();
