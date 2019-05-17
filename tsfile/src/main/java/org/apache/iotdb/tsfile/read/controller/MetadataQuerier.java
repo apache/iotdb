@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
@@ -54,37 +53,13 @@ public interface MetadataQuerier {
   TSDataType getDataType(String measurement) throws NoMeasurementException;
 
   /**
-   * get time ranges of chunkGroups in or before the current partition and return the union result in ascending order
+   * Convert the space partition constraint to the time partition constraint.
    *
-   * @param paths timeseries paths
-   * @param targetMode InPartition or PrevPartition
-   * @return time ranges union in ascending order
-   * @throws IOException
+   * @param paths selected paths in a query expression
+   * @param spacePartitionStartPos the start position of the space partition
+   * @param spacePartitionEndPos the end position of the space partition
+   * @return the converted time partition constraint
    */
-  public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode)
-      throws IOException;
-
-  /**
-   * get the load mode of the MetadataQuerier
-   *
-   * @return LoadMode enum
-   */
-  LoadMode getLoadMode();
-
-  /**
-   * set the load mode of the MetadataQuerier
-   *
-   * @param mode enum
-   */
-  void setLoadMode(LoadMode mode);
-
-  /**
-   * The load mode of the MetadataQuerier:
-   * NoPartition - load metadata of all chunkgroups in the file
-   * InPartition - load metadata of chunkgroups which fall in the current partition
-   * PrevPartition - load metadata of chunkgroups which fall ahead the current partition
-   */
-  enum LoadMode {
-    NoPartition, InPartition, PrevPartition
-  }
+  List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
+      long spacePartitionEndPos) throws IOException;
 }

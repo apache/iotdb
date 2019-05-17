@@ -23,13 +23,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -52,50 +50,12 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
   private TsFileSequenceReader tsFileReader;
 
-  private LoadMode mode;
-
-  private long partitionStartOffset = 0L;
-  private long partitionEndOffset = 0L;
-
-  public LoadMode getLoadMode() {
-    return mode;
-  }
-
-  public void setLoadMode(LoadMode mode) {
-    this.mode = mode;
-  }
-
   /**
    * Constructor of MetadataQuerierByFileImpl.
    */
   public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader) throws IOException {
     this.tsFileReader = tsFileReader;
     this.fileMetaData = tsFileReader.readFileMetadata();
-    this.mode = LoadMode.NoPartition;
-    chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
-      @Override
-      public List<ChunkMetaData> loadObjectByKey(Path key) throws IOException {
-        return loadChunkMetadata(key);
-      }
-    };
-  }
-
-  /**
-   * Constructor of MetadataQuerierByFileImpl.
-   */
-  public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader, HashMap<String, Long> params)
-      throws IOException {
-    this.tsFileReader = tsFileReader;
-    this.fileMetaData = tsFileReader.readFileMetadata();
-
-    if (!params.containsKey(QueryConstant.PARTITION_START_OFFSET) || !params
-        .containsKey(QueryConstant.PARTITION_END_OFFSET)) {
-      throw new IllegalArgumentException(
-          "Input parameters miss partition_start_offset or partition_end_offset");
-    }
-    this.mode = LoadMode.InPartition;
-    this.partitionStartOffset = params.get(QueryConstant.PARTITION_START_OFFSET);
-    this.partitionEndOffset = params.get(QueryConstant.PARTITION_END_OFFSET);
     chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
       @Override
       public List<ChunkMetaData> loadObjectByKey(Path key) throws IOException {
@@ -168,9 +128,6 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
           break;
         }
 
-        if (!checkAccess(chunkGroupMetaData)) {
-          continue;
-        }
         // s1, s2
         for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
 
@@ -229,90 +186,120 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     // get all ChunkMetaData of this path included in all ChunkGroups of this device
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      if (checkAccess(chunkGroupMetaData)) {
-        List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-            .getChunkMetaDataList();
-        for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-          if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
-            chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-            chunkMetaDataList.add(chunkMetaData);
-          }
+      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
+          .getChunkMetaDataList();
+      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
+        if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
+          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+          chunkMetaDataList.add(chunkMetaData);
         }
       }
     }
     return chunkMetaDataList;
   }
 
-  public ArrayList<TimeRange> getTimeRangeInOrPrev(List<Path> paths, LoadMode targetMode)
-      throws IOException {
-    if (mode == LoadMode.NoPartition) {
-      throw new IOException(
-          "Wrong use of getTimeRangeInOrPrev: should not be in NoPartition mode");
+  @Override
+  public List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
+      long spacePartitionEndPos) throws IOException {
+    if (spacePartitionStartPos > spacePartitionEndPos) {
+      throw new IllegalArgumentException(
+          "'spacePartitionStartPos' should not be larger than 'spacePartitionEndPos'.");
     }
 
-    // change the mode temporarily to control loadChunkMetadata's checkAccess function
-    this.mode = targetMode;
+    // (1) get timeRangesInCandidates and timeRangesBeforeCandidates by iterating through the metadata
+    ArrayList<TimeRange> timeRangesInCandidates = new ArrayList<>();
+    ArrayList<TimeRange> timeRangesBeforeCandidates = new ArrayList<>();
 
-    ArrayList<TimeRange> unionCandidates = new ArrayList<>();
+    // group measurements by device
+    TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
-      List<ChunkMetaData> chunkMetaDataList = loadChunkMetadata(path);
-      for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
-        unionCandidates
-            .add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
+      if (!deviceMeasurementsMap.containsKey(path.getDevice())) {
+        deviceMeasurementsMap.put(path.getDevice(), new HashSet<>());
+      }
+      deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
+    }
+    for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
+      String selectedDevice = deviceMeasurements.getKey();
+      Set<String> selectedMeasurements = deviceMeasurements.getValue();
+
+      TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(selectedDevice);
+      TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
+
+      for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata
+          .getChunkGroupMetaDataList()) {
+        LocateStatus mode = checkLocateStatus(chunkGroupMetaData, spacePartitionStartPos,
+            spacePartitionEndPos);
+        if (mode == LocateStatus.after) {
+          continue;
+        }
+        for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+          String currentMeasurement = chunkMetaData.getMeasurementUid();
+          if (selectedMeasurements.contains(currentMeasurement)) {
+            TimeRange timeRange = new TimeRange(chunkMetaData.getStartTime(),
+                chunkMetaData.getEndTime());
+            if (mode == LocateStatus.in) {
+              timeRangesInCandidates.add(timeRange);
+            } else {
+              timeRangesBeforeCandidates.add(timeRange);
+            }
+          }
+        }
       }
     }
-    Collections.sort(unionCandidates);
 
-    // union
-    ArrayList<TimeRange> unionResult = new ArrayList<>();
-    Iterator<TimeRange> iterator = unionCandidates.iterator();
-    TimeRange range_curr = null;
-
-    if (!iterator.hasNext()) {
-      return unionResult;
-    } else {
-      TimeRange r = iterator.next();
-      range_curr = new TimeRange(r.getMin(), r.getMax());
+    // (2) sort and merge the timeRangesInCandidates
+    ArrayList<TimeRange> timeRangesIn = new ArrayList<>(
+        TimeRange.sortAndMerge(timeRangesInCandidates));
+    if (timeRangesIn.isEmpty()) {
+      return Collections.emptyList(); // return an empty list
     }
 
-    while (iterator.hasNext()) {
-      TimeRange range_next = iterator.next();
-      if (range_curr.intersects(range_next)) {
-        range_curr.set(Math.min(range_curr.getMin(), range_next.getMin()),
-            Math.max(range_curr.getMax(), range_next.getMax()));
-      } else {
-        unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
-        range_curr.set(range_next.getMin(), range_next.getMax());
-      }
+    // (3) sort and merge the timeRangesBeforeCandidates
+    ArrayList<TimeRange> timeRangesBefore = new ArrayList<>(
+        TimeRange.sortAndMerge(timeRangesBeforeCandidates));
+
+    // (4) calculate the remaining time ranges
+    List<TimeRange> resTimeRanges = new ArrayList<>();
+    for (TimeRange in : timeRangesIn) {
+      ArrayList<TimeRange> remains = new ArrayList<>(in.getRemains(timeRangesBefore));
+      resTimeRanges.addAll(remains);
     }
-    unionResult.add(new TimeRange(range_curr.getMin(), range_curr.getMax()));
 
-    this.mode = LoadMode.InPartition; // restore the mode to InPartition
-    return unionResult;
-
+    return resTimeRanges;
   }
 
   /**
-   * check if the given chunk group can be accessed under the current load mode
-   * @param chunkGroupMetaData a chunk group's metadata
-   * @return True if the chunk group can be accessed. False otherwise.
-   * @throws IOException illegal mode
+   * Check the location of a given chunkGroupMetaData with respect to a space partition constraint.
+   *
+   * @param chunkGroupMetaData the given chunkGroupMetaData
+   * @param spacePartitionStartPos the start position of the space partition
+   * @param spacePartitionEndPos the end position of the space partition
+   * @return LocateStatus
    */
-  private boolean checkAccess(ChunkGroupMetaData chunkGroupMetaData) throws IOException {
+  private LocateStatus checkLocateStatus(ChunkGroupMetaData chunkGroupMetaData,
+      long spacePartitionStartPos, long spacePartitionEndPos) {
     long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
     long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();
     long middleOffsetOfChunkGroup = (startOffsetOfChunkGroup + endOffsetOfChunkGroup) / 2;
-    switch (mode) {
-      case NoPartition:
-        return true; // always true
-      case InPartition:
-        return (partitionStartOffset <= middleOffsetOfChunkGroup
-            && middleOffsetOfChunkGroup < partitionEndOffset);
-      case PrevPartition:
-        return (middleOffsetOfChunkGroup < partitionStartOffset);
-      default:
-        throw new IOException(
-            "unexpected mode! It should be one of {NoPartition, InPartition, BeforePartition}");
+    if (spacePartitionStartPos <= middleOffsetOfChunkGroup
+        && middleOffsetOfChunkGroup < spacePartitionEndPos) {
+      return LocateStatus.in;
+    } else if (middleOffsetOfChunkGroup < spacePartitionStartPos) {
+      return LocateStatus.before;
+    } else {
+      return LocateStatus.after;
     }
+  }
+
+  /**
+   * The location of a chunkGroupMetaData with respect to a space partition constraint.
+   *
+   * in - the middle point of the chunkGroupMetaData is located in the current space partition.
+   * before - the middle point of the chunkGroupMetaData is located before the current space
+   * partition. after - the middle point of the chunkGroupMetaData is located after the current
+   * space partition.
+   */
+  private enum LocateStatus {
+    in, before, after
   }
 }

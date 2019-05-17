@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read;
 
 import java.io.IOException;
-import java.util.HashMap;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
@@ -45,19 +44,13 @@ public class ReadOnlyTsFile implements AutoCloseable {
     tsFileExecutor = new TsFileExecutor(metadataQuerier, chunkLoader);
   }
 
-  /**
-   * constructor, create ReadOnlyTsFile with TsFileSequenceReader.
-   */
-  public ReadOnlyTsFile(TsFileSequenceReader fileReader, HashMap<String, Long> params)
-      throws IOException {
-    this.fileReader = fileReader;
-    this.metadataQuerier = new MetadataQuerierByFileImpl(fileReader, params);
-    this.chunkLoader = new ChunkLoaderImpl(fileReader);
-    tsFileExecutor = new TsFileExecutor(metadataQuerier, chunkLoader);
-  }
-
   public QueryDataSet query(QueryExpression queryExpression) throws IOException {
     return tsFileExecutor.execute(queryExpression);
+  }
+
+  public QueryDataSet query(QueryExpression queryExpression, long partitionStartOffset,
+      long partitionEndOffset) throws IOException {
+    return tsFileExecutor.execute(queryExpression, partitionStartOffset, partitionEndOffset);
   }
 
   public void close() throws IOException {

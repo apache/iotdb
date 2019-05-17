@@ -21,9 +21,27 @@ package org.apache.iotdb.tsfile.read.common;
 import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class TimeRangeTest {
+
+  @Test
+  public void mergeTest() {
+    ArrayList<TimeRange> unionCandidates = new ArrayList<>();
+    unionCandidates.add(new TimeRange(0L, 10L));
+    unionCandidates.add(new TimeRange(3L, 10L));
+    unionCandidates.add(new TimeRange(100L, 200L));
+    unionCandidates.add(new TimeRange(20L, 30L));
+    unionCandidates.add(new TimeRange(5L, 6L));
+
+    ArrayList<TimeRange> res = new ArrayList<>(TimeRange.sortAndMerge(unionCandidates));
+
+    Assert.assertEquals(3, res.size());
+    Assert.assertEquals("[ 0 : 10 ]", res.get(0).toString());
+    Assert.assertEquals("[ 20 : 30 ]", res.get(1).toString());
+    Assert.assertEquals("[ 100 : 200 ]", res.get(2).toString());
+  }
 
   @Test
   /*
@@ -197,7 +215,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     more than one timerange in previous ranges
+     more than one time ranges in previous ranges
    */
   public void getRemainsTest9() {
     TimeRange r = new TimeRange(1, 10);
@@ -222,4 +240,26 @@ public class TimeRangeTest {
     assertEquals(remainRanges.get(2).getRightClose(), true);
   }
 
+  @Test
+  /*
+     more than one time ranges in previous ranges
+   */
+  public void getRemainsTest10() {
+    TimeRange r = new TimeRange(1, 10);
+
+    ArrayList<TimeRange> prevRanges = new ArrayList<>();
+    prevRanges.add(new TimeRange(3, 4));
+    prevRanges.add(new TimeRange(11, 20));
+
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
+    assertEquals(2, remainRanges.size());
+    assertEquals(remainRanges.get(0).getMin(), 1);
+    assertEquals(remainRanges.get(0).getMax(), 3);
+    assertEquals(remainRanges.get(0).getLeftClose(), true);
+    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertEquals(remainRanges.get(1).getMin(), 4);
+    assertEquals(remainRanges.get(1).getMax(), 11); // NOTE here is the technical detail.
+    assertEquals(remainRanges.get(1).getLeftClose(), false);
+    assertEquals(remainRanges.get(1).getRightClose(), false);
+  }
 }
