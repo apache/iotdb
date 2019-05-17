@@ -98,8 +98,8 @@ public class TsFileExecutor implements QueryExecutor {
 
     // check if resTimeRanges is empty
     if (resTimeRanges.isEmpty()) {
-      return new DataSetWithoutTimeGenerator(Collections.EMPTY_LIST, Collections.EMPTY_LIST,
-          Collections.EMPTY_LIST); // return an empty QueryDataSet
+      return new DataSetWithoutTimeGenerator(Collections.emptyList(), Collections.emptyList(),
+          Collections.emptyList()); // return an empty QueryDataSet
     }
 
     // construct an additional time filter based on the time partition constraint

@@ -148,14 +148,14 @@ public class TimeRange implements Comparable<TimeRange> {
    * @return true if the current time range intersects with the given time range r
    */
   private boolean intersects(TimeRange r) {
-    if ((!leftClose || !r.rightClose) && (r.max
-        < min)) { // e.g., [1,3] does not intersect with (4,5].
+    if ((!leftClose || !r.rightClose) && (r.max < min)) {
+      // e.g., [1,3] does not intersect with (4,5].
       return false;
-    } else if (!leftClose && !r.rightClose
-        && r.max <= min) { // e.g.,[1,3) does not intersect with (3,5]
+    } else if (!leftClose && !r.rightClose && r.max <= min) {
+      // e.g.,[1,3) does not intersect with (3,5]
       return false;
-    } else if (leftClose && r.rightClose
-        && r.max <= min - 2) { // e.g.,[1,3] does not intersect with [5,6].
+    } else if (leftClose && r.rightClose && r.max <= min - 2) {
+      // e.g.,[1,3] does not intersect with [5,6].
       return true;
     } else if ((!rightClose || !r.leftClose) && (r.min > max)) {
       return false;
