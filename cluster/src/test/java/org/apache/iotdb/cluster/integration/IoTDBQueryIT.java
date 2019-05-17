@@ -126,7 +126,6 @@ public class IoTDBQueryIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
     CLUSTER_CONFIG.createAllPath();

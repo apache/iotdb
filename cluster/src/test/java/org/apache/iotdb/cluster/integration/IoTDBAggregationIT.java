@@ -182,11 +182,6 @@ public class IoTDBAggregationIT {
   public void remoteTest() throws SQLException {
     QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
     test();
-    try {
-      Thread.sleep(200);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
   }
 
   @Test

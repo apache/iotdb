@@ -43,7 +43,6 @@ import org.junit.Test;
 
 public class IoTDBQueryLargeDataIT {
 
-
   private Server server;
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
   private static final PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
@@ -176,7 +175,6 @@ public class IoTDBQueryLargeDataIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
     CLUSTER_CONFIG.createAllPath();

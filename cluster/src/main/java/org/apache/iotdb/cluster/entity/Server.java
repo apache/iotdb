@@ -121,16 +121,20 @@ public class Server {
     Router router = Router.getInstance();
     PhysicalNode[][] groups = router.getGroupsNodes(serverId.getIp(), serverId.getPort());
 
-    for (int i = 0; i < groups.length; i++) {
-      PhysicalNode[] group = groups[i];
-      String groupId = router.getGroupID(group);
-      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId,
-          RaftUtils.getPeerIdArrayFrom(group), serverId, rpcServer, false);
-      dataPartitionHolder.init();
-      dataPartitionHolder.start();
-      dataPartitionHolderMap.put(groupId, dataPartitionHolder);
-      LOGGER.info("{} group has started", groupId);
-      Router.getInstance().showPhysicalNodes(groupId);
+    try {
+      for (int i = 0; i < groups.length; i++) {
+        PhysicalNode[] group = groups[i];
+        String groupId = router.getGroupID(group);
+        DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId,
+            RaftUtils.getPeerIdArrayFrom(group), serverId, rpcServer, false);
+        dataPartitionHolder.init();
+        dataPartitionHolder.start();
+        dataPartitionHolderMap.put(groupId, dataPartitionHolder);
+        LOGGER.info("{} group has started", groupId);
+        Router.getInstance().showPhysicalNodes(groupId);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
     }
 
     try {

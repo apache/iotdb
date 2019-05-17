@@ -551,6 +551,9 @@ public class FileNodeManager implements IStatistic, IService {
         try {
           fileNodeProcessor.delete(deviceId, measurementId, timestamp);
         } catch (IOException e) {
+          System.out.println(deviceId);
+          System.out.println(measurementId);
+          System.out.println(timestamp);
           throw new FileNodeManagerException(e);
         }
         // change the type of tsfile to overflowed
