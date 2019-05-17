@@ -117,7 +117,7 @@ public class MetadataQuerierByFileImplTest {
   }
 
   @Test
-  public void testConvertSpace2TimePartition() throws IOException {
+  public void testConvert1() throws IOException {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
 
     ArrayList<Path> paths = new ArrayList<>();
@@ -133,14 +133,13 @@ public class MetadataQuerierByFileImplTest {
     unionCandidates.add(d1s6timeRangeList.get(0));
     unionCandidates.add(d2s1timeRangeList.get(0));
     unionCandidates.add(d1s6timeRangeList.get(1));
-    Collections.sort(unionCandidates);
-    ArrayList<TimeRange> expectedRanges = new ArrayList<>(TimeRange.getUnions(unionCandidates));
+    ArrayList<TimeRange> expectedRanges = new ArrayList<>(TimeRange.sortAndMerge(unionCandidates));
 
     Assert.assertEquals(expectedRanges.toString(), resTimeRanges.toString());
   }
 
   @Test
-  public void testConvertSpace2TimePartition2() throws IOException {
+  public void testConvert2() throws IOException {
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(reader);
 
     ArrayList<Path> paths = new ArrayList<>();

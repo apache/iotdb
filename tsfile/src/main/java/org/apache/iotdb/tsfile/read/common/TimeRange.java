@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -194,10 +195,13 @@ public class TimeRange implements Comparable<TimeRange> {
   /**
    * Return the union of the given time ranges.
    *
-   * @param unionCandidates time ranges already sorted in ascending order of the start time
+   * @param unionCandidates time ranges to be merged
    * @return the union of time ranges
    */
-  public static List<TimeRange> getUnions(List<TimeRange> unionCandidates) {
+  public static List<TimeRange> sortAndMerge(List<TimeRange> unionCandidates) {
+    //sort the time ranges in ascending order of the start time
+    Collections.sort(unionCandidates);
+
     ArrayList<TimeRange> unionResult = new ArrayList<>();
     Iterator<TimeRange> iterator = unionCandidates.iterator();
     TimeRange rangeCurr;
@@ -241,19 +245,19 @@ public class TimeRange implements Comparable<TimeRange> {
       }
 
       if (intersects(prev)) {
-        if (prev.contains(this)) {
+        if (prev.contains(this)) { // e.g., this=[3,5], prev=[1,10]
           return remains;
         } else if (this.contains(prev)) {
-          if (prev.min > this.min && prev.max == this.max) {
+          if (prev.min > this.min && prev.max == this.max) { // e.g., this=[1,6], prev=[3,6]
             TimeRange r = new TimeRange(this.min, prev.min);
             r.setLeftClose(this.leftClose);
             r.setRightClose(false);
             remains.add(r);
             return remains; // because timeRangesPrev is sorted
-          } else if (prev.min == this.min) { // && prev.max < this.max
+          } else if (prev.min == this.min) { // && prev.max < this.max. e.g., this=[1,10], prev=[1,4]
             min = prev.max;
             leftClose = false;
-          } else {
+          } else { // e.g., prev=[3,6], this=[1,10]
             TimeRange r = new TimeRange(this.min, prev.min);
             r.setLeftClose(this.leftClose);
             r.setRightClose(false);
@@ -263,15 +267,15 @@ public class TimeRange implements Comparable<TimeRange> {
             leftClose = false;
           }
         } else { // intersect without one containing the other
-          if (prev.min < this.min) {
+          if (prev.min < this.min) { // e.g., this=[3,10], prev=[1,6]
             min = prev.max;
             leftClose = false;
-          } else {
+          } else { // e.g., this=[1,8], prev=[5,12]
             TimeRange r = new TimeRange(this.min, prev.min);
             r.setLeftClose(this.leftClose);
             r.setRightClose(false);
             remains.add(r);
-            return remains;
+            return remains; // because timeRangesPrev is sorted
           }
         }
       }

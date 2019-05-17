@@ -247,18 +247,16 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
       }
     }
 
-    // (2) sort and union the timeRangesInCandidates
-    Collections.sort(timeRangesInCandidates);
+    // (2) sort and merge the timeRangesInCandidates
     ArrayList<TimeRange> timeRangesIn = new ArrayList<>(
-        TimeRange.getUnions(timeRangesInCandidates));
+        TimeRange.sortAndMerge(timeRangesInCandidates));
     if (timeRangesIn.size() == 0) {
       return Collections.emptyList(); // return an empty list
     }
 
-    // (3) sort and union the timeRangesBeforeCandidates
-    Collections.sort(timeRangesBeforeCandidates);
+    // (3) sort and merge the timeRangesBeforeCandidates
     ArrayList<TimeRange> timeRangesBefore = new ArrayList<>(
-        TimeRange.getUnions(timeRangesBeforeCandidates));
+        TimeRange.sortAndMerge(timeRangesBeforeCandidates));
 
     // (4) calculate the remaining time ranges
     List<TimeRange> resTimeRanges = new ArrayList<>();

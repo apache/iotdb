@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.common;
 
 import static org.junit.Assert.assertEquals;
 
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Collections;
 import org.junit.Assert;
@@ -28,7 +27,7 @@ import org.junit.Test;
 
 public class TimeRangeTest {
   @Test
-  public void getUnionsTest() {
+  public void mergeTest() {
     ArrayList<TimeRange> unionCandidates = new ArrayList<>();
     unionCandidates.add(new TimeRange(0L, 10L));
     unionCandidates.add(new TimeRange(3L, 10L));
@@ -36,8 +35,7 @@ public class TimeRangeTest {
     unionCandidates.add(new TimeRange(20L, 30L));
     unionCandidates.add(new TimeRange(5L, 6L));
 
-    Collections.sort(unionCandidates);
-    ArrayList<TimeRange> res = new ArrayList<>(TimeRange.getUnions(unionCandidates));
+    ArrayList<TimeRange> res = new ArrayList<>(TimeRange.sortAndMerge(unionCandidates));
 
     Assert.assertEquals(3, res.size());
     Assert.assertEquals("[ 0 : 10 ]", res.get(0).toString());
