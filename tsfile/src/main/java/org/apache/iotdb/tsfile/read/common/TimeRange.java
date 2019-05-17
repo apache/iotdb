@@ -78,6 +78,20 @@ public class TimeRange implements Comparable<TimeRange> {
     }
   }
 
+  public void setMin(long min) {
+    if (min < 0 || min > this.max) {
+      throw new IllegalArgumentException("Invalid input!");
+    }
+    this.min = min;
+  }
+
+  public void setMax(long max) {
+    if (max < 0 || max < this.min) {
+      throw new IllegalArgumentException("Invalid input!");
+    }
+    this.max = max;
+  }
+
   /**
    * @return true if the given range lies in this range, inclusively
    */
@@ -245,47 +259,47 @@ public class TimeRange implements Comparable<TimeRange> {
       }
 
       if (intersects(prev)) {
-        if (prev.contains(this)) { // e.g., this=[3,5], prev=[1,10]
+        if (prev.contains(this)) {
+          // e.g., this=[3,5], prev=[1,10]
+          // e.g., this=[3,5], prev=[3,5] Note that in this case, prev contains this and vice versa.
           return remains;
         } else if (this.contains(prev)) {
-          if (prev.min > this.min && prev.max == this.max) { // e.g., this=[1,6], prev=[3,6]
-            TimeRange r = new TimeRange(this.min, prev.min);
-            r.setLeftClose(this.leftClose);
-            r.setRightClose(false);
-            remains.add(r);
+          if (prev.min > this.min && prev.max == this.max) {
+            // e.g., this=[1,6], prev=[3,6]
+            this.setMax(prev.min);
+            this.setRightClose(false);
+            remains.add(this);
             return remains; // because timeRangesPrev is sorted
-          } else if (prev.min == this.min) { // && prev.max < this.max. e.g., this=[1,10], prev=[1,4]
+          } else if (prev.min == this.min) { // && prev.max < this.max.
+            // e.g., this=[1,10], prev=[1,4]
             min = prev.max;
             leftClose = false;
-          } else { // e.g., prev=[3,6], this=[1,10]
+          } else {
+            // e.g., prev=[3,6], this=[1,10]
             TimeRange r = new TimeRange(this.min, prev.min);
             r.setLeftClose(this.leftClose);
             r.setRightClose(false);
             remains.add(r);
-
             min = prev.max;
             leftClose = false;
           }
         } else { // intersect without one containing the other
-          if (prev.min < this.min) { // e.g., this=[3,10], prev=[1,6]
+          if (prev.min < this.min) {
+            // e.g., this=[3,10], prev=[1,6]
             min = prev.max;
             leftClose = false;
-          } else { // e.g., this=[1,8], prev=[5,12]
-            TimeRange r = new TimeRange(this.min, prev.min);
-            r.setLeftClose(this.leftClose);
-            r.setRightClose(false);
-            remains.add(r);
+          } else {
+            // e.g., this=[1,8], prev=[5,12]
+            this.setMax(prev.min);
+            this.setRightClose(false);
+            remains.add(this);
             return remains; // because timeRangesPrev is sorted
           }
         }
       }
     }
 
-    TimeRange r = new TimeRange(this.min, this.max);
-    r.setLeftClose(this.leftClose);
-    r.setRightClose(this.rightClose);
-    remains.add(r);
-
+    remains.add(this);
     return remains;
   }
 

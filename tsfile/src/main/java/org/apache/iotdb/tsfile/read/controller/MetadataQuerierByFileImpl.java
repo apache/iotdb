@@ -250,7 +250,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     // (2) sort and merge the timeRangesInCandidates
     ArrayList<TimeRange> timeRangesIn = new ArrayList<>(
         TimeRange.sortAndMerge(timeRangesInCandidates));
-    if (timeRangesIn.size() == 0) {
+    if (timeRangesIn.isEmpty()) {
       return Collections.emptyList(); // return an empty list
     }
 

@@ -97,7 +97,7 @@ public class TsFileExecutor implements QueryExecutor {
             spacePartitionEndPos));
 
     // check if resTimeRanges is empty
-    if (resTimeRanges.size() == 0) {
+    if (resTimeRanges.isEmpty()) {
       return new DataSetWithoutTimeGenerator(Collections.EMPTY_LIST, Collections.EMPTY_LIST,
           Collections.EMPTY_LIST); // return an empty QueryDataSet
     }
