@@ -134,7 +134,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    * group
    */
   private void initSeriesReader(int readDataConsistencyLevel)
-      throws RaftConnectionException {
+      throws RaftConnectionException, IOException {
     // Init all series with data group of select series,if filter series has the same data group, init them together.
     for (Entry<String, QueryPlan> entry : selectPathPlans.entrySet()) {
       String groupId = entry.getKey();
@@ -144,7 +144,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
         queryNodes.put(groupId, randomPeer);
         Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
         allQueryPlan.put(PathType.SELECT_PATH, queryPlan);
-        List<Filter> filterList = null;
+        List<Filter> filterList = new ArrayList<>();
         if (filterGroupEntityMap.containsKey(groupId)) {
           FilterGroupEntity filterGroupEntity = filterGroupEntityMap.get(groupId);
           allQueryPlan.put(PathType.FILTER_PATH, filterGroupEntity.getQueryPlan());

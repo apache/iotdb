@@ -68,12 +68,12 @@ public class ClusterFilterSeriesBatchReader implements IClusterFilterSeriesBatch
       batchDataList.add(new BatchData(dataTypeList.get(i), true));
     }
     int dataPointCount = 0;
-    while(true){
-      if(!hasNext() || dataPointCount == CLUSTER_CONF.getBatchReadSize()){
+    while (true) {
+      if (!hasNext() || dataPointCount == CLUSTER_CONF.getBatchReadSize()) {
         break;
       }
-      if(hasNext() && addTimeValuePair(batchDataList, dataTypeList)){
-          dataPointCount++;
+      if (hasNext() && addTimeValuePair(batchDataList, dataTypeList)) {
+        dataPointCount++;
       }
     }
     return batchDataList;

@@ -64,9 +64,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
@@ -75,7 +73,8 @@ import org.slf4j.LoggerFactory;
 
 public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterLocalSingleQueryManager.class);
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(ClusterLocalSingleQueryManager.class);
 
   private String groupId;
 
@@ -127,7 +126,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
 
   @Override
   public InitSeriesReaderResponse createSeriesReader(InitSeriesReaderRequest request)
-      throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException {
+      throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException, ClassNotFoundException {
     this.groupId = request.getGroupID();
     InitSeriesReaderResponse response = new InitSeriesReaderResponse(groupId);
     QueryContext context = new QueryContext(jobId);
@@ -199,7 +198,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       throws FileNodeManagerException, PathErrorException, IOException, QueryFilterOptimizationException, ProcessorException {
     if (queryPlan.getExpression() == null
         || queryPlan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
-      handleAggreSeriesReaderWithoutTimeGenerator(queryPlan,context,response);
+      handleAggreSeriesReaderWithoutTimeGenerator(queryPlan, context, response);
     } else {
       handleSelectReaderWithTimeGenerator(queryPlan, context, response);
     }
@@ -210,24 +209,23 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
    *
    * @param queryPlan fill query plan
    */
-  private void handleAggreSeriesReaderWithoutTimeGenerator(QueryPlan queryPlan, QueryContext context,
+  private void handleAggreSeriesReaderWithoutTimeGenerator(QueryPlan queryPlan,
+      QueryContext context,
       InitSeriesReaderResponse response)
-      throws FileNodeManagerException, PathErrorException, IOException, QueryFilterOptimizationException, ProcessorException {
+      throws FileNodeManagerException, PathErrorException, IOException, ProcessorException {
     AggregationPlan fillQueryPlan = (AggregationPlan) queryPlan;
 
     List<Path> selectedPaths = fillQueryPlan.getPaths();
     QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedPaths);
 
-    IExpression optimizedExpression = ExpressionOptimizer.getInstance()
-        .optimize(fillQueryPlan.getExpression(), selectedPaths);
     AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
-        selectedPaths, fillQueryPlan.getAggregations(), optimizedExpression);
+        selectedPaths, fillQueryPlan.getAggregations(), fillQueryPlan.getExpression());
 
     List<IPointReader> readers = engineExecutor.constructAggreReadersWithoutTimeGenerator(context);
 
     List<TSDataType> dataTypes = engineExecutor.getDataTypes();
 
-    for (int i =0 ; i < selectedPaths.size(); i ++) {
+    for (int i = 0; i < selectedPaths.size(); i++) {
       Path path = selectedPaths.get(i);
       selectSeriesReaders.put(path.getFullPath(),
           new ClusterSelectSeriesBatchReader(dataTypes.get(i), readers.get(i)));
@@ -291,7 +289,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
    */
   private void handleFilterSeriesReader(QueryPlan plan, QueryContext context,
       InitSeriesReaderRequest request, InitSeriesReaderResponse response, PathType pathType)
-      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException {
+      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException, ClassNotFoundException {
     QueryDataSet queryDataSet = queryProcessExecutor
         .processQuery(plan, context);
     List<Path> paths = plan.getPaths();
@@ -321,7 +319,8 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
           .createReaderByTimeStamp(path, context);
       TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
       selectSeriesReaders
-          .put(path.getFullPath(), new ClusterSelectSeriesBatchReaderByTimestamp(readerByTimeStamp, dataType));
+          .put(path.getFullPath(),
+              new ClusterSelectSeriesBatchReaderByTimestamp(readerByTimeStamp, dataType));
       dataTypeMap.put(path.getFullPath(), dataType);
       dataTypeList.add(dataType);
     }

@@ -40,18 +40,19 @@ public interface IClusterLocalSingleQueryManager {
 
   /**
    * Initially create corresponding series readers.
+   *
    * @param request request of querying series data
    */
   InitSeriesReaderResponse createSeriesReader(InitSeriesReaderRequest request)
-      throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException;
+      throws IOException, PathErrorException, FileNodeManagerException, ProcessorException, QueryFilterOptimizationException, ClassNotFoundException;
 
   /**
    * <p>
    * Read batch data If query round in cache is equal to target query round, it means that batch
    * data in query node transfer to coordinator fail and return cached batch data.
    * </p>
-   *  @param request request of querying series data
    *
+   * @param request request of querying series data
    */
   QuerySeriesDataResponse readBatchData(QuerySeriesDataRequest request)
       throws IOException;

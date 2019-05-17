@@ -50,18 +50,22 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
+/**
+ * Handle aggregation query and construct dataset
+ */
 public class AggregateEngineExecutor {
 
   protected List<Path> selectedSeries;
   protected List<String> aggres;
   protected IExpression expression;
-  protected List<TSDataType> dataTypes;
+  private List<TSDataType> dataTypes;
 
   /**
    * aggregation batch calculation size.
    **/
-  private int aggregateFetchSize;
+  protected int aggregateFetchSize;
 
   /**
    * constructor.
@@ -317,9 +321,9 @@ public class AggregateEngineExecutor {
   /**
    * calculation aggregate result with value filter.
    */
-  private List<AggreResultData> aggregateWithTimeGenerator(
+  protected List<AggreResultData> aggregateWithTimeGenerator(
       List<AggregateFunction> aggregateFunctions,
-      EngineTimeGenerator timestampGenerator,
+      TimeGenerator timestampGenerator,
       List<EngineReaderByTimeStamp> readersOfSelectedSeries)
       throws IOException {
 
@@ -334,6 +338,8 @@ public class AggregateEngineExecutor {
         }
         timeArray[timeArrayLength++] = timestampGenerator.next();
       }
+
+
 
       // cal part of aggregate result
       for (int i = 0; i < readersOfSelectedSeries.size(); i++) {

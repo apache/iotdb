@@ -156,7 +156,7 @@ public class QueryPlanPartitionUtils {
       throws PathErrorException {
     AggregationPlan queryPlan = (AggregationPlan) singleQueryManager.getOriginQueryPlan();
     List<Path> selectPaths = queryPlan.getPaths();
-    List<String> aggregations = new ArrayList<>();
+    List<String> aggregations = queryPlan.getAggregations();
     Map<String, List<Path>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
     Map<String, List<String>> selectAggregationByGroupId = new HashMap<>();
     Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();

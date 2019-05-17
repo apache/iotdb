@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.query.utils;
 
 import com.alipay.sofa.jraft.entity.PeerId;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -62,7 +63,7 @@ public class ClusterRpcReaderUtils {
    */
   public static BasicResponse createClusterSeriesReader(String groupId, PeerId peerId,
       int readDataConsistencyLevel, Map<PathType, QueryPlan> allQueryPlan, String taskId,
-      List<Filter> filterList) throws RaftConnectionException {
+      List<Filter> filterList) throws RaftConnectionException, IOException {
 
     /** handle request **/
     BasicRequest request = InitSeriesReaderRequest
@@ -71,14 +72,35 @@ public class ClusterRpcReaderUtils {
     return handleQueryRequest(request, peerId, 0);
   }
 
-  public static QuerySeriesDataResponse fetchBatchData(String groupID, PeerId peerId, String taskId,
+  /**
+   * Fetch batch data for select series in a query without value filter or filter series.
+   *
+   * @param groupId data group id
+   * @param peerId query node id
+   * @param taskId task id of query task
+   * @param pathType type of path
+   * @param fetchDataSeries series list which need to fetch data
+   * @param queryRounds query rounds
+   */
+  public static QuerySeriesDataResponse fetchBatchData(String groupId, PeerId peerId, String taskId,
       PathType pathType, List<String> fetchDataSeries, long queryRounds)
       throws RaftConnectionException {
     BasicRequest request = QuerySeriesDataRequest
-        .createFetchDataRequest(groupID, taskId, pathType, fetchDataSeries, queryRounds);
+        .createFetchDataRequest(groupId, taskId, pathType, fetchDataSeries, queryRounds);
     return (QuerySeriesDataResponse) handleQueryRequest(request, peerId, 0);
   }
 
+  /**
+   * Fetch batch data corresponding to a given list of timestamp for select series in a query with
+   * value filter.
+   *
+   * @param groupId data group id
+   * @param peerId query node id
+   * @param taskId task id of query task
+   * @param queryRounds query rounds
+   * @param batchTimestamp list of valid timestamp
+   * @param fetchDataSeries series list which need to fetch data
+   */
   public static QuerySeriesDataByTimestampResponse fetchBatchDataByTimestamp(String groupId,
       PeerId peerId, String taskId, long queryRounds, List<Long> batchTimestamp,
       List<String> fetchDataSeries)

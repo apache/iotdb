@@ -40,7 +40,6 @@ import org.junit.Test;
 
 public class IoTDBFillQueryIT {
 
-
   private Server server;
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
   private static final PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
