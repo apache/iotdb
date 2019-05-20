@@ -25,7 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterSeriesGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.SelectSeriesGroupEntity;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -84,24 +85,24 @@ public class QueryPlanPartitionUtils {
   private static void splitQueryPlanBySelectPath(ClusterRpcSingleQueryManager singleQueryManager)
       throws PathErrorException {
     QueryPlan queryPlan = singleQueryManager.getOriginQueryPlan();
-    Map<String, List<Path>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
-    Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
+    // split query plan by select path
+    Map<String, SelectSeriesGroupEntity> selectGroupEntityMap = singleQueryManager
+        .getSelectSeriesGroupEntityMap();
     List<Path> selectPaths = queryPlan.getPaths();
     for (Path path : selectPaths) {
       String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
-      if (!selectSeriesByGroupId.containsKey(groupId)) {
-        selectSeriesByGroupId.put(groupId, new ArrayList<>());
+      if (!selectGroupEntityMap.containsKey(groupId)) {
+        selectGroupEntityMap.put(groupId, new SelectSeriesGroupEntity(groupId));
       }
-      selectSeriesByGroupId.get(groupId).add(path);
+      selectGroupEntityMap.get(groupId).addSelectPaths(path);
     }
-    for (Entry<String, List<Path>> entry : selectSeriesByGroupId.entrySet()) {
-      String groupId = entry.getKey();
-      List<Path> paths = entry.getValue();
+    for (SelectSeriesGroupEntity entity : selectGroupEntityMap.values()) {
+      List<Path> paths = entity.getSelectPaths();
       QueryPlan subQueryPlan = new QueryPlan();
       subQueryPlan.setProposer(queryPlan.getProposer());
       subQueryPlan.setPaths(paths);
       subQueryPlan.setExpression(queryPlan.getExpression());
-      selectPathPlans.put(groupId, subQueryPlan);
+      entity.setQueryPlan(subQueryPlan);
     }
   }
 
@@ -113,12 +114,12 @@ public class QueryPlanPartitionUtils {
       throws PathErrorException {
     QueryPlan queryPlan = singleQueryManager.getOriginQueryPlan();
     // split query plan by filter path
-    Map<String, FilterGroupEntity> filterGroupEntityMap = singleQueryManager
-        .getFilterGroupEntityMap();
+    Map<String, FilterSeriesGroupEntity> filterGroupEntityMap = singleQueryManager
+        .getFilterSeriesGroupEntityMap();
     IExpression expression = queryPlan.getExpression();
     ExpressionUtils.getAllExpressionSeries(expression, filterGroupEntityMap);
-    for (FilterGroupEntity filterGroupEntity : filterGroupEntityMap.values()) {
-      List<Path> filterSeriesList = filterGroupEntity.getFilterPaths();
+    for (FilterSeriesGroupEntity filterSeriesGroupEntity : filterGroupEntityMap.values()) {
+      List<Path> filterSeriesList = filterSeriesGroupEntity.getFilterPaths();
       // create filter sub query plan
       QueryPlan subQueryPlan = new QueryPlan();
       subQueryPlan.setPaths(filterSeriesList);
@@ -127,7 +128,7 @@ public class QueryPlanPartitionUtils {
       if (subExpression.getType() != ExpressionType.TRUE) {
         subQueryPlan.setExpression(subExpression);
       }
-      filterGroupEntity.setQueryPlan(subQueryPlan);
+      filterSeriesGroupEntity.setQueryPlan(subQueryPlan);
     }
   }
 
@@ -157,29 +158,30 @@ public class QueryPlanPartitionUtils {
     AggregationPlan queryPlan = (AggregationPlan) singleQueryManager.getOriginQueryPlan();
     List<Path> selectPaths = queryPlan.getPaths();
     List<String> aggregations = queryPlan.getAggregations();
-    Map<String, List<Path>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
     Map<String, List<String>> selectAggregationByGroupId = new HashMap<>();
-    Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
+    Map<String, SelectSeriesGroupEntity> selectGroupEntityMap = singleQueryManager
+        .getSelectSeriesGroupEntityMap();
     for (int i = 0; i < selectPaths.size(); i++) {
       Path path = selectPaths.get(i);
       String aggregation = aggregations.get(i);
       String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
-      if (!selectSeriesByGroupId.containsKey(groupId)) {
-        selectSeriesByGroupId.put(groupId, new ArrayList<>());
+      if (!selectGroupEntityMap.containsKey(groupId)) {
+        selectGroupEntityMap.put(groupId, new SelectSeriesGroupEntity(groupId));
         selectAggregationByGroupId.put(groupId, new ArrayList<>());
       }
       selectAggregationByGroupId.get(groupId).add(aggregation);
-      selectSeriesByGroupId.get(groupId).add(path);
+      selectGroupEntityMap.get(groupId).addSelectPaths(path);
     }
-    for (Entry<String, List<Path>> entry : selectSeriesByGroupId.entrySet()) {
+    for (Entry<String, SelectSeriesGroupEntity> entry : selectGroupEntityMap.entrySet()) {
       String groupId = entry.getKey();
-      List<Path> paths = entry.getValue();
+      SelectSeriesGroupEntity entity = entry.getValue();
+      List<Path> paths = entity.getSelectPaths();
       AggregationPlan subQueryPlan = new AggregationPlan();
       subQueryPlan.setProposer(queryPlan.getProposer());
       subQueryPlan.setPaths(paths);
       subQueryPlan.setExpression(queryPlan.getExpression());
       subQueryPlan.setAggregations(selectAggregationByGroupId.get(groupId));
-      selectPathPlans.put(groupId, subQueryPlan);
+      entity.setQueryPlan(subQueryPlan);
     }
   }
 
@@ -200,25 +202,24 @@ public class QueryPlanPartitionUtils {
       throws PathErrorException {
     FillQueryPlan fillQueryPlan = (FillQueryPlan) singleQueryManager.getOriginQueryPlan();
     List<Path> selectPaths = fillQueryPlan.getPaths();
-    Map<String, List<Path>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
-    Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
+    Map<String, SelectSeriesGroupEntity> selectGroupEntityMap = singleQueryManager
+        .getSelectSeriesGroupEntityMap();
     for (Path path : selectPaths) {
       String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
-      if (!selectSeriesByGroupId.containsKey(groupId)) {
-        selectSeriesByGroupId.put(groupId, new ArrayList<>());
+      if (!selectGroupEntityMap.containsKey(groupId)) {
+        selectGroupEntityMap.put(groupId, new SelectSeriesGroupEntity(groupId));
       }
-      selectSeriesByGroupId.get(groupId).add(path);
+      selectGroupEntityMap.get(groupId).addSelectPaths(path);
     }
-    for (Entry<String, List<Path>> entry : selectSeriesByGroupId.entrySet()) {
-      String groupId = entry.getKey();
-      List<Path> paths = entry.getValue();
+    for (SelectSeriesGroupEntity entity : selectGroupEntityMap.values()) {
+      List<Path> paths = entity.getSelectPaths();
       FillQueryPlan subQueryPlan = new FillQueryPlan();
       subQueryPlan.setProposer(fillQueryPlan.getProposer());
       subQueryPlan.setPaths(paths);
       subQueryPlan.setExpression(fillQueryPlan.getExpression());
       subQueryPlan.setQueryTime(fillQueryPlan.getQueryTime());
       subQueryPlan.setFillType(new EnumMap<>(fillQueryPlan.getFillType()));
-      selectPathPlans.put(groupId, subQueryPlan);
+      entity.setQueryPlan(subQueryPlan);
     }
   }
 

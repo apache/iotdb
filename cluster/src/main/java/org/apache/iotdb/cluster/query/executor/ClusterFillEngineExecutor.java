@@ -20,10 +20,13 @@ package org.apache.iotdb.cluster.query.executor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.SelectSeriesGroupEntity;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -58,16 +61,22 @@ public class ClusterFillEngineExecutor implements IFillEngineExecutor {
   @Override
   public QueryDataSet execute(QueryContext context)
       throws FileNodeManagerException, PathErrorException, IOException {
-    Map<Path, ClusterSelectSeriesReader> selectPathReaders = queryManager.getSelectSeriesReaders();
     List<Path> paths = new ArrayList<>();
     List<IFill> fillList = new ArrayList<>();
     List<TSDataType> dataTypeList = new ArrayList<>();
     List<IPointReader> readers = new ArrayList<>();
+    Map<String, SelectSeriesGroupEntity> selectSeriesEntityMap = queryManager.getSelectSeriesGroupEntityMap();
+    //Mark filter series reader index group by group id
+    Map<String, Integer> selectSeriesReaderIndex = new HashMap<>();
     for (Path path : selectedSeries) {
-      if (selectPathReaders.containsKey(path)) {
-        ClusterSelectSeriesReader reader = selectPathReaders.get(path);
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
+
+      if (selectSeriesEntityMap.containsKey(groupId)) {
+        int index = selectSeriesReaderIndex.getOrDefault(groupId, 0);
+        ClusterSelectSeriesReader reader = selectSeriesEntityMap.get(groupId).getSelectSeriesReaders().get(index);
         readers.add(reader);
         dataTypeList.add(reader.getDataType());
+        selectSeriesReaderIndex.put(groupId, index + 1);
       } else {
         QueryDataSource queryDataSource = QueryResourceManager.getInstance()
             .getQueryDataSource(path, context);

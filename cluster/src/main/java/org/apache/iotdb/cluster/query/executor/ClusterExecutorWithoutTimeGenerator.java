@@ -20,11 +20,15 @@ package org.apache.iotdb.cluster.query.executor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.SelectSeriesGroupEntity;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
@@ -62,7 +66,7 @@ public class ClusterExecutorWithoutTimeGenerator extends AbstractExecutorWithout
    * Execute query without filter or with only global time filter.
    */
   public QueryDataSet execute(QueryContext context)
-      throws FileNodeManagerException {
+      throws FileNodeManagerException, PathErrorException {
 
     Filter timeFilter = null;
     if (queryExpression.getExpression() != null) {
@@ -72,15 +76,22 @@ public class ClusterExecutorWithoutTimeGenerator extends AbstractExecutorWithout
     List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    Map<Path, ClusterSelectSeriesReader> selectPathReaders = queryManager.getSelectSeriesReaders();
+    Map<String, SelectSeriesGroupEntity> selectSeriesGroupEntityMap = queryManager
+        .getSelectSeriesGroupEntityMap();
     List<Path> paths = new ArrayList<>();
+    //Mark filter series reader index group by group id
+    Map<String, Integer> selectSeriesReaderIndex = new HashMap<>();
     for (Path path : queryExpression.getSelectedSeries()) {
 
-      if (selectPathReaders.containsKey(path)) {
-        ClusterSelectSeriesReader reader = selectPathReaders.get(path);
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
+
+      if (selectSeriesGroupEntityMap.containsKey(groupId)) {
+        int index = selectSeriesReaderIndex.getOrDefault(groupId, 0);
+        ClusterSelectSeriesReader reader = selectSeriesGroupEntityMap.get(groupId)
+            .getSelectSeriesReaders().get(index);
         readersOfSelectedSeries.add(reader);
         dataTypes.add(reader.getDataType());
-
+        selectSeriesReaderIndex.put(groupId, index + 1);
       } else {
         IPointReader reader = createSeriesReader(context, path, dataTypes, timeFilter);
         readersOfSelectedSeries.add(reader);

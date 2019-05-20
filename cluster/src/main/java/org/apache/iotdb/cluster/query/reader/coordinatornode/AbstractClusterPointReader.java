@@ -71,4 +71,6 @@ public abstract class AbstractClusterPointReader implements IPointReader {
     }
     return null;
   }
+
+  public abstract void addBatchData(BatchData batchData, boolean remoteDataFinish);
 }

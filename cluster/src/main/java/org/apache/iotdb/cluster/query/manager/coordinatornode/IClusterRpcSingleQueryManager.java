@@ -69,13 +69,6 @@ public interface IClusterRpcSingleQueryManager {
       throws RaftConnectionException;
 
   /**
-   * Get query plan of select path
-   *
-   * @param fullPath Timeseries full path in select paths
-   */
-  QueryPlan getSelectPathQueryPlan(String fullPath);
-
-  /**
    * Set reader node of a data group
    *
    * @param groupId data group id

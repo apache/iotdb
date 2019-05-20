@@ -26,7 +26,7 @@ import static org.apache.iotdb.tsfile.read.expression.ExpressionType.TRUE;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.expression.TrueExpression;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterSeriesGroupEntity;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -46,17 +46,17 @@ public class ExpressionUtils {
    * Get all series path of expression group by group id
    */
   public static void getAllExpressionSeries(IExpression expression,
-      Map<String, FilterGroupEntity> filterGroupEntityMap)
+      Map<String, FilterSeriesGroupEntity> filterGroupEntityMap)
       throws PathErrorException {
     if (expression.getType() == ExpressionType.SERIES) {
       Path path = ((SingleSeriesExpression) expression).getSeriesPath();
       String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
       if (!filterGroupEntityMap.containsKey(groupId)) {
-        filterGroupEntityMap.put(groupId, new FilterGroupEntity(groupId));
+        filterGroupEntityMap.put(groupId, new FilterSeriesGroupEntity(groupId));
       }
-      FilterGroupEntity filterGroupEntity = filterGroupEntityMap.get(groupId);
-      filterGroupEntity.addFilterPaths(path);
-      filterGroupEntity.addFilter(((SingleSeriesExpression) expression).getFilter());
+      FilterSeriesGroupEntity filterSeriesGroupEntity = filterGroupEntityMap.get(groupId);
+      filterSeriesGroupEntity.addFilterPaths(path);
+      filterSeriesGroupEntity.addFilter(((SingleSeriesExpression) expression).getFilter());
     } else if (expression.getType() == OR || expression.getType() == AND) {
       getAllExpressionSeries(((IBinaryExpression) expression).getLeft(), filterGroupEntityMap);
       getAllExpressionSeries(((IBinaryExpression) expression).getRight(), filterGroupEntityMap);

@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.query.executor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,9 +30,11 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterSeriesGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.SelectSeriesGroupEntity;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
 import org.apache.iotdb.cluster.query.timegenerator.ClusterTimeGenerator;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -79,18 +82,25 @@ public class ClusterAggregateEngineExecutor extends AggregateEngineExecutor {
   public QueryDataSet executeWithoutTimeGenerator(QueryContext context)
       throws FileNodeManagerException, IOException, PathErrorException, ProcessorException {
     Filter timeFilter = expression != null ? ((GlobalTimeExpression) expression).getFilter() : null;
-    Map<Path, ClusterSelectSeriesReader> selectPathReaders = queryManager.getSelectSeriesReaders();
+    Map<String, SelectSeriesGroupEntity> selectSeriesGroupEntityMap = queryManager
+        .getSelectSeriesGroupEntityMap();
 
     List<Path> paths = new ArrayList<>();
     List<IPointReader> readers = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
+    //Mark filter series reader index group by group id
+    Map<String, Integer> selectSeriesReaderIndex = new HashMap<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       Path path = selectedSeries.get(i);
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
 
-      if (selectPathReaders.containsKey(path)) {
-        ClusterSelectSeriesReader reader = selectPathReaders.get(path);
+      if (selectSeriesGroupEntityMap.containsKey(groupId)) {
+        int index = selectSeriesReaderIndex.getOrDefault(groupId, 0);
+        ClusterSelectSeriesReader reader = selectSeriesGroupEntityMap.get(groupId)
+            .getSelectSeriesReaders().get(index);
         readers.add(reader);
         dataTypes.add(reader.getDataType());
+        selectSeriesReaderIndex.put(groupId, index + 1);
       } else {
         paths.add(path);
         // construct AggregateFunction
@@ -140,15 +150,19 @@ public class ClusterAggregateEngineExecutor extends AggregateEngineExecutor {
 
     /** add query token for query series which can handle locally **/
     List<Path> localQuerySeries = new ArrayList<>(selectedSeries);
-    Set<Path> remoteQuerySeries = queryManager.getSelectSeriesReaders().keySet();
+    Set<Path> remoteQuerySeries = new HashSet<>();
+    queryManager.getSelectSeriesGroupEntityMap().values().forEach(
+        selectSeriesGroupEntity -> selectSeriesGroupEntity.getSelectPaths()
+            .forEach(path -> remoteQuerySeries.add(path)));
     localQuerySeries.removeAll(remoteQuerySeries);
     QueryResourceManager.getInstance()
         .beginQueryOfGivenQueryPaths(context.getJobId(), localQuerySeries);
 
     /** add query token for filter series which can handle locally **/
     Set<String> deviceIdSet = new HashSet<>();
-    for (FilterGroupEntity filterGroupEntity : queryManager.getFilterGroupEntityMap().values()) {
-      List<Path> remoteFilterSeries = filterGroupEntity.getFilterPaths();
+    for (FilterSeriesGroupEntity filterSeriesGroupEntity : queryManager
+        .getFilterSeriesGroupEntityMap().values()) {
+      List<Path> remoteFilterSeries = filterSeriesGroupEntity.getFilterPaths();
       remoteFilterSeries.forEach(seriesPath -> deviceIdSet.add(seriesPath.getDevice()));
     }
     QueryResourceManager.getInstance()
@@ -156,30 +170,16 @@ public class ClusterAggregateEngineExecutor extends AggregateEngineExecutor {
 
     ClusterTimeGenerator timestampGenerator;
     List<EngineReaderByTimeStamp> readersOfSelectedSeries;
+    // origin data type of select paths
+    List<TSDataType> originDataTypes = new ArrayList<>();
     try {
       timestampGenerator = new ClusterTimeGenerator(expression, context,
           queryManager);
       readersOfSelectedSeries = ClusterSeriesReaderFactory
           .createReadersByTimestampOfSelectedPaths(selectedSeries, context,
-              queryManager);
+              queryManager, originDataTypes);
     } catch (IOException ex) {
       throw new FileNodeManagerException(ex);
-    }
-
-    /** Get data type of select paths **/
-    List<TSDataType> originDataTypes = new ArrayList<>();
-    Map<Path, ClusterSelectSeriesReader> selectSeriesReaders = queryManager
-        .getSelectSeriesReaders();
-    for (Path path : selectedSeries) {
-      try {
-        if (selectSeriesReaders.containsKey(path)) {
-          originDataTypes.add(selectSeriesReaders.get(path).getDataType());
-        } else {
-          originDataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-        }
-      } catch (PathErrorException e) {
-        throw new FileNodeManagerException(e);
-      }
     }
 
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();

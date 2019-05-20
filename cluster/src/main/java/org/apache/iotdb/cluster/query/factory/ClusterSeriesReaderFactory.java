@@ -20,18 +20,24 @@ package org.apache.iotdb.cluster.query.factory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.SelectSeriesGroupEntity;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderByTimestamp;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
@@ -43,27 +49,35 @@ public class ClusterSeriesReaderFactory {
   }
 
   /**
-   * Construct ReaderByTimestamp , include sequential data and unsequential data.
+   * Construct ReaderByTimestamp , include sequential data and unsequential data. And get all series dataType.
    *
    * @param paths selected series path
    * @param context query context
    * @return the list of EngineReaderByTimeStamp
    */
   public static List<EngineReaderByTimeStamp> createReadersByTimestampOfSelectedPaths(
-      List<Path> paths, QueryContext context, ClusterRpcSingleQueryManager queryManager)
-      throws IOException, FileNodeManagerException {
+      List<Path> paths, QueryContext context, ClusterRpcSingleQueryManager queryManager, List<TSDataType> dataTypes)
+      throws IOException, FileNodeManagerException, PathErrorException {
 
-    Map<Path, ClusterSelectSeriesReader> selectSeriesReaders = queryManager.getSelectSeriesReaders();
+    Map<String, SelectSeriesGroupEntity> selectSeriesEntityMap = queryManager
+        .getSelectSeriesGroupEntityMap();
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
+    //Mark filter series reader index group by group id
+    Map<String, Integer> selectSeriesReaderIndex = new HashMap<>();
 
     for (Path path : paths) {
-
-      if (selectSeriesReaders.containsKey(path)) {
-        readersOfSelectedSeries.add(selectSeriesReaders.get(path));
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
+      if (selectSeriesEntityMap.containsKey(groupId)) {
+        int index = selectSeriesReaderIndex.getOrDefault(groupId, 0);
+        ClusterSelectSeriesReader reader = selectSeriesEntityMap.get(groupId).getSelectSeriesReaders().get(index);
+        readersOfSelectedSeries.add(reader);
+        dataTypes.add(reader.getDataType());
+        selectSeriesReaderIndex.put(groupId, index + 1);
       } else {
         /** can handle series query locally **/
         EngineReaderByTimeStamp readerByTimeStamp = createReaderByTimeStamp(path, context);
         readersOfSelectedSeries.add(readerByTimeStamp);
+        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
       }
     }
     return readersOfSelectedSeries;
