@@ -42,8 +42,7 @@ public interface NodeAsClient {
    * @param peerId leader node of the target group
    *
    */
-  QueryTask syncHandleRequest(BasicRequest request, PeerId peerId)
-      throws RaftConnectionException;
+  QueryTask syncHandleRequest(BasicRequest request, PeerId peerId);
 
   /**
    * Shut down client

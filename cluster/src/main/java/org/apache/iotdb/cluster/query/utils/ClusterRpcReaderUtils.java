@@ -19,31 +19,33 @@
 package org.apache.iotdb.cluster.query.utils;
 
 import com.alipay.sofa.jraft.entity.PeerId;
-import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.qp.task.QueryTask;
 import org.apache.iotdb.cluster.query.PathType;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.CloseSeriesReaderRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.cluster.utils.hash.Router;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utils for cluster reader which needs to acquire data from remote query node.
  */
 public class ClusterRpcReaderUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterRpcReaderUtils.class);
 
   /**
    * Count limit to redo a task
@@ -56,72 +58,27 @@ public class ClusterRpcReaderUtils {
 
   /**
    * Create cluster series reader
-   *
-   * @param peerId query node to fetch data
-   * @param readDataConsistencyLevel consistency level of read data
-   * @param taskId task id assigned by coordinator node
    */
-  public static BasicResponse createClusterSeriesReader(String groupId, PeerId peerId,
-      int readDataConsistencyLevel, Map<PathType, QueryPlan> allQueryPlan, String taskId,
-      List<Filter> filterList) throws RaftConnectionException, IOException {
-
-    /** handle request **/
-    BasicRequest request = InitSeriesReaderRequest
-        .createInitialQueryRequest(groupId, taskId, readDataConsistencyLevel,
-            allQueryPlan, filterList);
-    return handleQueryRequest(request, peerId, 0);
-  }
-
-  /**
-   * Fetch batch data for select series in a query without value filter or filter series.
-   *
-   * @param groupId data group id
-   * @param peerId query node id
-   * @param taskId task id of query task
-   * @param pathType type of path
-   * @param fetchDataSeries series list which need to fetch data
-   * @param queryRounds query rounds
-   */
-  public static QuerySeriesDataResponse fetchBatchData(String groupId, PeerId peerId, String taskId,
-      PathType pathType, List<String> fetchDataSeries, long queryRounds)
-      throws RaftConnectionException {
-    BasicRequest request = QuerySeriesDataRequest
-        .createFetchDataRequest(groupId, taskId, pathType, fetchDataSeries, queryRounds);
-    return (QuerySeriesDataResponse) handleQueryRequest(request, peerId, 0);
-  }
-
-  /**
-   * Fetch batch data corresponding to a given list of timestamp for select series in a query with
-   * value filter.
-   *
-   * @param groupId data group id
-   * @param peerId query node id
-   * @param taskId task id of query task
-   * @param queryRounds query rounds
-   * @param batchTimestamp list of valid timestamp
-   * @param fetchDataSeries series list which need to fetch data
-   */
-  public static QuerySeriesDataByTimestampResponse fetchBatchDataByTimestamp(String groupId,
-      PeerId peerId, String taskId, long queryRounds, List<Long> batchTimestamp,
-      List<String> fetchDataSeries)
-      throws RaftConnectionException {
-    BasicRequest request = QuerySeriesDataByTimestampRequest
-        .createRequest(groupId, queryRounds, taskId, batchTimestamp, fetchDataSeries);
-    return (QuerySeriesDataByTimestampResponse) handleQueryRequest(request, peerId, 0);
-  }
-
-  /**
-   * Release remote query resources
-   *
-   * @param groupId data group id
-   * @param peerId target query node
-   * @param taskId unique task id
-   */
-  public static void releaseRemoteQueryResource(String groupId, PeerId peerId, String taskId)
+  public static BasicResponse createClusterSeriesReader(String groupId, BasicRequest request,
+      ClusterRpcSingleQueryManager manager)
       throws RaftConnectionException {
 
-    BasicRequest request = CloseSeriesReaderRequest.createReleaseResourceRequest(groupId, taskId);
-    handleQueryRequest(request, peerId, 0);
+    List<PeerId> peerIdList = RaftUtils
+        .getPeerIDList(groupId, Server.getInstance(), Router.getInstance());
+    int randomPeerIndex = RaftUtils.getRandomInt(peerIdList.size());
+    BasicResponse response;
+    for (int i = 0; i < peerIdList.size(); i++) {
+      PeerId peerId = peerIdList.get((i + randomPeerIndex) % peerIdList.size());
+      try {
+        response = handleQueryRequest(request, peerId, 0);
+        manager.setQueryNode(groupId, peerId);
+        return response;
+      } catch (RaftConnectionException e) {
+        LOGGER.error("Can not init series reader in Node<{}> of group<{}>", peerId, groupId, e);
+      }
+    }
+    throw new RaftConnectionException(
+        String.format("Can not init series reader in all nodes of group<%s>.", groupId));
   }
 
   /**
@@ -132,7 +89,7 @@ public class ClusterRpcReaderUtils {
    * @param taskRetryNum retry num of the request
    * @return Response from remote query node
    */
-  private static BasicResponse handleQueryRequest(BasicRequest request, PeerId peerId,
+  public static BasicResponse handleQueryRequest(BasicRequest request, PeerId peerId,
       int taskRetryNum)
       throws RaftConnectionException {
     if (taskRetryNum > TASK_MAX_RETRY) {

@@ -35,7 +35,6 @@ import java.sql.Statement;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
-import org.apache.iotdb.cluster.integration.Constant;
 import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;

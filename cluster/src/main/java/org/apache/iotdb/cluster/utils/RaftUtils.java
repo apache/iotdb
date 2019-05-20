@@ -118,18 +118,29 @@ public class RaftUtils {
     return getRandomPeerID(groupId, server, router);
   }
 
+  /**
+   * Get random peer id
+   */
   public static PeerId getRandomPeerID(String groupId, Server server, Router router) {
-    PeerId randomPeerId;
+    List<PeerId> peerIdList = getPeerIDList(groupId, server, router);
+    return peerIdList.get(getRandomInt(peerIdList.size()));
+  }
+
+  /**
+   * Get peer id list by groupid
+   */
+  public static List<PeerId> getPeerIDList(String groupId, Server server, Router router) {
+    List<PeerId> peerIdList = new ArrayList<>();
     if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
       RaftService service = (RaftService) server.getMetadataHolder().getService();
-      List<PeerId> peerIdList = service.getPeerIdList();
-      randomPeerId = peerIdList.get(getRandomInt(peerIdList.size()));
+      peerIdList.addAll(service.getPeerIdList());
     } else {
       PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
-      PhysicalNode node = physicalNodes[getRandomInt(physicalNodes.length)];
-      randomPeerId = getPeerIDFrom(node);
+      for (PhysicalNode node : physicalNodes) {
+        peerIdList.add(getPeerIDFrom(node));
+      }
     }
-    return randomPeerId;
+    return peerIdList;
   }
 
   /**
@@ -196,7 +207,7 @@ public class RaftUtils {
 
   @OnlyForTest
   public static void clearRaftGroupLeader() {
-	  groupLeaderCache.clear();
+    groupLeaderCache.clear();
   }
 
   /**
@@ -339,7 +350,8 @@ public class RaftUtils {
     try {
       LOGGER.debug("Handle null-read in data group for reading.");
       final byte[] reqContext = RaftUtils.createRaftRequestContext();
-      DataPartitionRaftHolder dataPartitionRaftHolder = (DataPartitionRaftHolder) server.getDataPartitionHolder(groupId);
+      DataPartitionRaftHolder dataPartitionRaftHolder = (DataPartitionRaftHolder) server
+          .getDataPartitionHolder(groupId);
       ((RaftService) dataPartitionRaftHolder.getService()).getNode()
           .readIndex(reqContext, new ReadIndexClosure() {
             @Override
@@ -360,7 +372,7 @@ public class RaftUtils {
     }
   }
 
-  public static Status createErrorStatus(String errorMsg){
+  public static Status createErrorStatus(String errorMsg) {
     Status status = new Status();
     status.setErrorMsg(errorMsg);
     status.setCode(-1);
@@ -386,8 +398,8 @@ public class RaftUtils {
   }
 
   /**
-   * Get all node information of the data group of input storage group.
-   * The first node is the current leader
+   * Get all node information of the data group of input storage group. The first node is the
+   * current leader
    *
    * @param sg storage group ID. If null, return metadata group info
    */
@@ -400,7 +412,8 @@ public class RaftUtils {
     PeerId[] nodes;
     if (sg == null) {
       groupId = ClusterConfig.METADATA_GROUP_ID;
-      List<PeerId> peerIdList = ((RaftService) server.getMetadataHolder().getService()).getPeerIdList();
+      List<PeerId> peerIdList = ((RaftService) server.getMetadataHolder().getService())
+          .getPeerIdList();
       nodes = peerIdList.toArray(new PeerId[peerIdList.size()]);
     } else {
       PhysicalNode[] group = router.routeGroup(sg);
@@ -434,7 +447,8 @@ public class RaftUtils {
     return getDataPartitionOfNode(ip, port, server, router);
   }
 
-  public static Map<String[], String[]> getDataPartitionOfNode(String ip, int port, Server server, Router router) {
+  public static Map<String[], String[]> getDataPartitionOfNode(String ip, int port, Server server,
+      Router router) {
     PhysicalNode[][] groups = router.getGroupsNodes(ip, port);
     if (groups == null) {
       return null;
@@ -444,7 +458,8 @@ public class RaftUtils {
     for (int i = 0; i < groups.length; i++) {
       groupSGMap.put(generateStringKey(groups[i]), new ArrayList<>());
     }
-    Set<String> allSGList = ((MetadataStateManchine)((RaftService)server.getMetadataHolder().getService()).getFsm()).getAllStorageGroups();
+    Set<String> allSGList = ((MetadataStateManchine) ((RaftService) server.getMetadataHolder()
+        .getService()).getFsm()).getAllStorageGroups();
     for (String sg : allSGList) {
       String key = generateStringKey(router.routeGroup(sg));
       if (groupSGMap.containsKey(key)) {
@@ -496,7 +511,8 @@ public class RaftUtils {
     RaftService raftService = (RaftService) server.getMetadataHolder().getService();
     metricMap.put(raftService.getGroupId(), getReplicaMetricFromRaftService(raftService, metric));
 
-    router.getAllGroupId().forEach(groupId -> metricMap.put(groupId, getReplicaMetric(groupId, metric)));
+    router.getAllGroupId()
+        .forEach(groupId -> metricMap.put(groupId, getReplicaMetric(groupId, metric)));
     return metricMap;
   }
 
@@ -505,12 +521,14 @@ public class RaftUtils {
       RaftService service = (RaftService) server.getDataPartitionHolder(groupId).getService();
       return getReplicaMetricFromRaftService(service, metric);
     } else {
-      LOGGER.debug("Current host does not contain group {}, all groups are {}.", groupId, server.getDataPartitionHolderMap().keySet());
+      LOGGER.debug("Current host does not contain group {}, all groups are {}.", groupId,
+          server.getDataPartitionHolderMap().keySet());
       return getReplicaMetricFromRemoteNode(groupId, metric);
     }
   }
 
-  private static Map<String, Long> getReplicaMetricFromRaftService(RaftService service, String metric) {
+  private static Map<String, Long> getReplicaMetricFromRaftService(RaftService service,
+      String metric) {
     String groupId = service.getGroupId();
     LOGGER.debug("Get replica metric {} for group {}.", metric, service.getGroupId());
     NodeImpl node = (NodeImpl) service.getNode();
