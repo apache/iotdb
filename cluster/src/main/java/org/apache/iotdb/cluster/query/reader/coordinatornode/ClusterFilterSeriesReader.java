@@ -83,7 +83,7 @@ public class ClusterFilterSeriesReader extends AbstractClusterPointReader {
   @Override
   protected void updateCurrentBatchData() throws RaftConnectionException {
     if (batchDataList.isEmpty() && !remoteDataFinish) {
-      queryManager.fetchBatchDataForFilterPaths(groupId);
+      queryManager.fetchBatchDataForAllFilterPaths(groupId);
     }
     if (!batchDataList.isEmpty()) {
       currentBatchData = batchDataList.removeFirst();

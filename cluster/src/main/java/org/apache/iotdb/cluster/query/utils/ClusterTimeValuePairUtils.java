@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.cluster.query.utils;
 
-import org.apache.iotdb.cluster.query.manager.common.FillBatchData;
+import org.apache.iotdb.cluster.query.common.FillBatchData;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;

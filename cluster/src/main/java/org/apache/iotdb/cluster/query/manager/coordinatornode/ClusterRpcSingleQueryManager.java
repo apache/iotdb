@@ -211,29 +211,26 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
 
   @Override
   public void fetchBatchDataForSelectPaths(String groupId) throws RaftConnectionException {
-    List<String> fetchDataSeries = new ArrayList<>();
-    List<Integer> selectSeriesIndexs = new ArrayList<>();
+    List<Integer> fetchDataSeriesIndexs = new ArrayList<>();
     List<Path> selectSeries = selectSeriesGroupEntityMap.get(groupId).getSelectPaths();
     List<ClusterSelectSeriesReader> seriesReaders = selectSeriesGroupEntityMap.get(groupId)
         .getSelectSeriesReaders();
     for (int i = 0; i < selectSeries.size(); i++) {
-      Path series = selectSeries.get(i);
       if (seriesReaders.get(i).enableFetchData()) {
-        fetchDataSeries.add(series.getFullPath());
-        selectSeriesIndexs.add(i);
+        fetchDataSeriesIndexs.add(i);
       }
     }
     BasicRequest request = QuerySeriesDataRequest
-        .createFetchDataRequest(groupId, taskId, PathType.SELECT_PATH, fetchDataSeries,
+        .createFetchDataRequest(groupId, taskId, PathType.SELECT_PATH, fetchDataSeriesIndexs,
             queryRounds++);
     QuerySeriesDataResponse response = (QuerySeriesDataResponse) ClusterRpcReaderUtils
         .handleQueryRequest(request, queryNodes.get(groupId), 0);
 
-    handleFetchDataResponseForSelectPaths(groupId, selectSeriesIndexs, response);
+    handleFetchDataResponseForSelectPaths(groupId, fetchDataSeriesIndexs, response);
   }
 
   @Override
-  public void fetchBatchDataForFilterPaths(String groupId) throws RaftConnectionException {
+  public void fetchBatchDataForAllFilterPaths(String groupId) throws RaftConnectionException {
     BasicRequest request = QuerySeriesDataRequest
         .createFetchDataRequest(groupId, taskId, PathType.FILTER_PATH, null, queryRounds++);
     QuerySeriesDataResponse response = (QuerySeriesDataResponse) ClusterRpcReaderUtils
@@ -248,27 +245,22 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       throws RaftConnectionException {
     for (Entry<String, SelectSeriesGroupEntity> entry : selectSeriesGroupEntityMap.entrySet()) {
       String groupId = entry.getKey();
-      List<String> fetchDataFilterSeries = new ArrayList<>();
-      entry.getValue().getSelectPaths()
-          .forEach(path -> fetchDataFilterSeries.add(path.getFullPath()));
       BasicRequest request = QuerySeriesDataByTimestampRequest
-          .createRequest(groupId, queryRounds++, taskId, batchTimestamp, fetchDataFilterSeries);
+          .createRequest(groupId, queryRounds++, taskId, batchTimestamp);
       QuerySeriesDataByTimestampResponse response = (QuerySeriesDataByTimestampResponse) ClusterRpcReaderUtils
           .handleQueryRequest(request, queryNodes.get(groupId), 0);
-      handleFetchDataByTimestampResponseForSelectPaths(groupId, fetchDataFilterSeries, response);
+      handleFetchDataByTimestampResponseForSelectPaths(groupId, response);
     }
   }
 
   /**
    * Handle response of fetching data, and add batch data to corresponding reader.
    */
-  private void handleFetchDataByTimestampResponseForSelectPaths(String groupId,
-      List<String> fetchDataSeries,
-      BasicQueryDataResponse response) {
+  private void handleFetchDataByTimestampResponseForSelectPaths(String groupId, BasicQueryDataResponse response) {
     List<BatchData> batchDataList = response.getSeriesBatchData();
     List<ClusterSelectSeriesReader> selectSeriesReaders = selectSeriesGroupEntityMap.get(groupId)
         .getSelectSeriesReaders();
-    for (int i = 0; i < fetchDataSeries.size(); i++) {
+    for (int i = 0; i < selectSeriesReaders.size(); i++) {
       BatchData batchData = batchDataList.get(i);
       selectSeriesReaders.get(i).addBatchData(batchData, true);
     }

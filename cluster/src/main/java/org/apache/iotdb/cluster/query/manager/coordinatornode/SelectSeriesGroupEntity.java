@@ -20,7 +20,6 @@ package org.apache.iotdb.cluster.query.manager.coordinatornode;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterFilterSeriesReader;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;

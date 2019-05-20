@@ -18,22 +18,45 @@
  */
 package org.apache.iotdb.cluster.query.reader.querynode;
 
-import java.io.IOException;
-import org.apache.iotdb.cluster.query.common.FillBatchData;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import java.util.ArrayList;
+import java.util.List;
 
-public class ClusterFillSelectSeriesBatchReader extends ClusterSelectSeriesBatchReader {
+/**
+ * Batch reader entity for all select paths.
+ */
+public class ClusterSelectSeriesBatchReaderEntity {
+  /**
+   * All select paths
+   */
+  List<String> paths;
 
-  public ClusterFillSelectSeriesBatchReader(
-      TSDataType dataType,
-      IPointReader reader) {
-    super(dataType, reader);
+  /**
+   * All select readers
+   */
+  List<AbstractClusterSelectSeriesBatchReader> readers;
+
+  public ClusterSelectSeriesBatchReaderEntity() {
+    paths = new ArrayList<>();
+    readers = new ArrayList<>();
   }
 
-  @Override
-  public BatchData nextBatch() throws IOException {
-    return hasNext() ? new FillBatchData(reader.next(), false) : new FillBatchData(null, true);
+  public void addPath(String path) {
+    this.paths.add(path);
+  }
+
+  public void addReaders(AbstractClusterSelectSeriesBatchReader reader) {
+    this.readers.add(reader);
+  }
+
+  public List<AbstractClusterSelectSeriesBatchReader> getAllReaders() {
+    return readers;
+  }
+
+  public AbstractClusterSelectSeriesBatchReader getReaderByIndex(int index){
+    return readers.get(index);
+  }
+
+  public List<String> getAllPaths() {
+    return paths;
   }
 }

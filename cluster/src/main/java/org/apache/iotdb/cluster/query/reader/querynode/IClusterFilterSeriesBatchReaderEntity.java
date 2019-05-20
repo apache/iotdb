@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 /**
  * Batch reader for filter series which is used in query node.
  */
-public interface IClusterFilterSeriesBatchReader {
+public interface IClusterFilterSeriesBatchReaderEntity {
 
   boolean hasNext() throws IOException;
 

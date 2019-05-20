@@ -181,13 +181,6 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  @Ignore
-  public void countOnlyTimeFilterRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    countOnlyTimeFilterTest();
-  }
-
-  @Test
   public void functionsNoFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,4,0,6,1",
@@ -286,13 +279,6 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  @Ignore
-  public void functionsNoFilterRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    functionsNoFilterTest();
-  }
-
-  @Test
   public void lastAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,22222,55555"
@@ -319,13 +305,6 @@ public class IoTDBAggregationSmallDataIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  @Ignore
-  public void lastAggreWithSingleFilterRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    lastAggreWithSingleFilterTest();
   }
 
   @Test
@@ -358,13 +337,6 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  @Ignore
-  public void firstAggreWithSingleFilterRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    firstAggreWithSingleFilterTest();
-  }
-
-  @Test
   public void sumAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,22321.0,55934.0,1029"
@@ -391,13 +363,6 @@ public class IoTDBAggregationSmallDataIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  @Ignore
-  public void sumAggreWithSingleFilterRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    sumAggreWithSingleFilterTest();
   }
 
   @Test
@@ -430,13 +395,6 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  @Ignore
-  public void meanAggreWithSingleFilterRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    meanAggreWithSingleFilterTest();
-  }
-
-  @Test
   public void countAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,2,3,5,1,0"
@@ -465,13 +423,6 @@ public class IoTDBAggregationSmallDataIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  @Ignore
-  public void countAggreWithSingleFilterRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    countAggreWithSingleFilterTest();
   }
 
   @Test
@@ -507,13 +458,6 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  @Ignore
-  public void minTimeAggreWithSingleFilterRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    minTimeAggreWithSingleFilterTest();
-  }
-
-  @Test
   public void maxTimeAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,105,105,105,102,100"
@@ -543,13 +487,6 @@ public class IoTDBAggregationSmallDataIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  @Ignore
-  public void maxTimeAggreWithSingleFilterRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    maxTimeAggreWithSingleFilterTest();
   }
 
   @Test
@@ -588,14 +525,6 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  @Ignore
-  public void minValueAggreWithSingleFilterRemoteTest()
-      throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    minValueAggreWithSingleFilterTest();
-  }
-
-  @Test
   public void maxValueAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
     String[] retArray = new String[]{
         "0,99,50000,11.11,fffff,true"
@@ -630,14 +559,6 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  @Ignore
-  public void maxValueAggreWithSingleFilterRemoteTest()
-      throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    maxValueAggreWithSingleFilterTest();
-  }
-
-  @Test
   public void countAggreWithMultiMultiFilterTest() {
     String[] retArray = new String[]{
         "0,2",
@@ -664,14 +585,6 @@ public class IoTDBAggregationSmallDataIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  @Ignore
-  public void countAggreWithMultiMultiFilterRemoteTest()
-      throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    countAggreWithMultiMultiFilterTest();
   }
 
   @Test
@@ -737,13 +650,6 @@ public class IoTDBAggregationSmallDataIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  @Ignore
-  public void selectAllSQLRemoteTest() throws ClassNotFoundException, SQLException {
-    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
-    selectAllSQLTest();
   }
 
   private static void insertSQL() {

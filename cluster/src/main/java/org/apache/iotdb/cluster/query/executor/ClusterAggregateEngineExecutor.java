@@ -69,7 +69,6 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 public class ClusterAggregateEngineExecutor extends AggregateEngineExecutor {
 
   private ClusterRpcSingleQueryManager queryManager;
-  private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
 
 
   public ClusterAggregateEngineExecutor(List<Path> selectedSeries, List<String> aggres,

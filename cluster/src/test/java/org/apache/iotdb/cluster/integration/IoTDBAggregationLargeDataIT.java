@@ -163,7 +163,6 @@ public class IoTDBAggregationLargeDataIT {
   }
 
   @Test
-  @Ignore
   public void remoteTest() throws ClassNotFoundException, SQLException {
     QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
     insertSQL();
@@ -183,7 +182,7 @@ public class IoTDBAggregationLargeDataIT {
     maxTimeAggreWithMultiFilterTest();
     minValueAggreWithMultiFilterTest();
     maxValueAggreWithMultiFilterTest();
-//    meanAggreWithMultiFilterTest();
+    meanAggreWithMultiFilterTest();
     sumAggreWithMultiFilterTest();
     firstAggreWithMultiFilterTest();
   }

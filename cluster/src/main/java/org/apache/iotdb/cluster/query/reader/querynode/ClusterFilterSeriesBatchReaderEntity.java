@@ -32,9 +32,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 /**
- * Batch reader for all filter paths.
+ * Batch reader entity for all filter paths.
  */
-public class ClusterFilterSeriesBatchReader implements IClusterFilterSeriesBatchReader {
+public class ClusterFilterSeriesBatchReaderEntity implements IClusterFilterSeriesBatchReaderEntity {
 
   private List<Path> allFilterPath;
 
@@ -44,7 +44,7 @@ public class ClusterFilterSeriesBatchReader implements IClusterFilterSeriesBatch
 
   private static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
 
-  public ClusterFilterSeriesBatchReader(QueryDataSet queryDataSet, List<Path> allFilterPath,
+  public ClusterFilterSeriesBatchReaderEntity(QueryDataSet queryDataSet, List<Path> allFilterPath,
       List<Filter> filters) {
     this.queryDataSet = queryDataSet;
     this.allFilterPath = allFilterPath;
