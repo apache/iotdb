@@ -98,6 +98,18 @@ public class RaftUtils {
    */
   private static final ConcurrentHashMap<String, PeerId> groupLeaderCache = new ConcurrentHashMap<>();
 
+  private static ThreadLocal<Map<String, Integer>> nodeIndexMap = new ThreadLocal<Map<String, Integer>>() {
+    @Override
+    protected Map<String, Integer> initialValue() {
+      Map<String, Integer> map = new HashMap<>();
+      router.getAllGroupId().forEach(groupId -> {
+        PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
+        map.put(groupId, getRandomInt(physicalNodes.length));
+      });
+      return map;
+    }
+  };
+
   private RaftUtils() {
   }
 
@@ -115,6 +127,32 @@ public class RaftUtils {
       }
     }
     return null;
+  }
+
+  /**
+   * Get peer ID in order
+   *
+   * @return node id
+   */
+  public static PeerId getPeerIDInOrder(String groupId) {
+    int index;
+    PeerId peerId;
+    int len;
+    if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
+      RaftService service = (RaftService) server.getMetadataHolder().getService();
+      List<PeerId> peerIdList = service.getPeerIdList();
+      len = peerIdList.size();
+      index = nodeIndexMap.get().getOrDefault(groupId, getRandomInt(peerIdList.size()));
+      peerId = peerIdList.get(index);
+    } else {
+      PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
+      len = physicalNodes.length;
+      index = nodeIndexMap.get().getOrDefault(groupId, getRandomInt(physicalNodes.length));
+      peerId = getPeerIDFrom(physicalNodes[index]);
+    }
+    nodeIndexMap.get().put(groupId, (index + 1) % len);
+
+    return peerId;
   }
 
   /**
