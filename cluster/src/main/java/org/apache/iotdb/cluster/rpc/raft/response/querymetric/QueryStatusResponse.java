@@ -16,31 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.response;
+package org.apache.iotdb.cluster.rpc.raft.response.querymetric;
 
-import java.util.Map;
+import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
-public class QueryMetricResponse extends BasicResponse {
+public class QueryStatusResponse extends BasicResponse {
 
-  private Map<String, Long> value;
+  private boolean status;
 
-  private QueryMetricResponse(String groupId, boolean redirected, String leaderStr,
+  private QueryStatusResponse(String groupId, boolean redirected, String leaderStr,
       String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public static QueryMetricResponse createSuccessResponse(String groupId, Map<String, Long> value) {
-    QueryMetricResponse response = new QueryMetricResponse(groupId, false, null,
+  public static QueryStatusResponse createSuccessResponse(String groupId, boolean status) {
+    QueryStatusResponse response = new QueryStatusResponse(groupId, false, null,
         null);
-    response.value = value;
+    response.status = status;
     return response;
   }
 
-  public static QueryMetricResponse createErrorResponse(String groupId, String errorMsg) {
-    return new QueryMetricResponse(groupId, false, null, errorMsg);
+  public static QueryStatusResponse createErrorResponse(String groupId, String errorMsg) {
+    return new QueryStatusResponse(groupId, false, null, errorMsg);
   }
 
-  public Map<String, Long> getValue() {
-    return value;
+  public boolean getStatus() {
+    return status;
   }
 }

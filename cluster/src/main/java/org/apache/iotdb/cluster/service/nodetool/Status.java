@@ -16,20 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.request;
+package org.apache.iotdb.cluster.service.nodetool;
 
-import java.io.Serializable;
+import io.airlift.airline.Command;
+import java.util.Map;
+import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
+import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
-public class QueryMetricRequest extends BasicQueryRequest implements Serializable {
+@Command(name = "status", description = "Print status of all hosts")
+public class Status extends NodeToolCmd {
 
-  private String metric;
-
-  public QueryMetricRequest(String groupID, int readConsistencyLevel, String metric) {
-    super(groupID, readConsistencyLevel);
-    this.metric = metric;
-  }
-
-  public String getMetric() {
-    return metric;
+  @Override
+  public void execute(ClusterMonitorMBean proxy)
+  {
+    Map<String, Boolean> statusMap = proxy.getStatusMap();
+    statusMap.forEach((ip, status) -> System.out.println(ip + "\t->\t" + (status ? "on" : "off")));
   }
 }

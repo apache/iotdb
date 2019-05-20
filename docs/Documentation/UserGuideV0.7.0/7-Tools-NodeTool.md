@@ -226,7 +226,7 @@ The command to query replica lag is `lag`, no additional parameters are needed.
 
 #### Output
 
-The output is multiple string lines, where is divided into multiplt data groups info. the first line of each data group info is data group ID, each line after the ID represents a key-value pair ,where the key is IP of the replica holder and the value is difference of committed log index between replica and leader. The format of each line is `key -> value`.
+The output is multiple string lines, where is divided into multiple data groups info. The first line of each data group info is data group ID, each line after the ID represents a key-value pair, where the key is IP of the replica holder and the value is difference of committed log index between replica and leader. The format of each line is `key -> value`.
 
 #### Example
 
@@ -256,9 +256,9 @@ data-group-0:
 ```
 The above output indicates that the current cluster contains 2 data groups, wherein the metadata group contains 3 nodes and 2 replicas, of which 192.168.130.14 acts as leader, each replica has a lag of 0; and the data partition data-group-0 contains 3 nodes and 2 replicas, of which 192.168.130.14 acts as leader, and each replica has a lag of 0.
 
-### Query Number of Query Tasks among All Storage Groups (query)
+### Query Number of Query Tasks among Cluster (query)
 
-IoTDB Cluster contains multiple data partitions, where there may be multiple concurrent query tasks running on each data partition. With this command, users are able to know the query task load and the total query task load of each data group on the current node, and the task load is represented by the number of tasks.
+In IoTDB Cluster, each node belongs to multiple data partitions, where there may be multiple concurrent query tasks running on each data partition. With this command, users are able to know the query task load and the total query task load of each data group on all nodes of cluster, and the task load is represented by the number of tasks.
 
 #### Input
 
@@ -266,7 +266,7 @@ The command to query number of query tasks is `query`, no additional parameters 
 
 #### Output
 
-The output is multiple string lines, each line represents a key-value pair ,where the key is data group ID and the value is number of query tasks running on this data partition. The format of each line is `key -> value`. The last line represents the total number of query tasks running on current node.
+The output is multiple string lines, where is divided into multiple nodes info. The first line of each node info is node IP, each line after the IP represents a key-value pair, where the key is data group ID and the value is number of query tasks running on this data partition. The format of each line is `key -> value`. The last line represents the total number of query tasks running on cluster.
 
 #### Example
 
@@ -285,8 +285,50 @@ The Windows system startup commands are as follows:
 After using the command, the successful output will be as follows: 
 	
 ```
-data-group-0	->	1
-data-group-3	->	3
-Total	->	4
+192.168.130.14:
+  data-group-0  ->   1
+  data-group-1  ->   3
+192.168.130.16:
+  data-group-2  ->   2
+  data-group-1  ->   0
+192.168.130.18:
+  data-group-0  ->   0
+  data-group-2  ->   1
+Total  ->   7
 ```
-The above output indicates that node 192.168.130.14 contains 2 data partitions and 4 query tasks are running on it, wherein 1 query tasks is running on data partition data-group-0, and 3 query tasks are running on data partition data-group-1.
+The above output indicates that 7 query tasks are running on cluster. Moreover, node 192.168.130.14 contains 2 data partitions and 4 query tasks are running on it, wherein 1 query task is running on data partition data-group-0, and 3 query tasks are running on data partition data-group-1; node 192.168.130.16 contains 2 data partitions and 2 query tasks are running on it, wherein 2 query tasks is running on data partition data-group-2, and no query task is running on data partition data-group-0; node 192.168.130.18 contains 2 data partitions and 1 query task is running on it, wherein no query task is running on data partition data-group-0, and 1 query task is running on data partition data-group-2.
+
+### Query Status of Nodes in Cluster (status)
+
+IoTDB Cluster contains multiple nodes. For any node, there is a possibility that the service cannot be provided normally due to problems of network and hardware. With this command, users are able to know the current status of all nodes in the cluster.
+
+#### Input
+
+The command to query status of nodes is `status`, no additional parameters are needed.
+
+#### Output
+
+The output is multiple string lines, each line represents a key-value pair, where the key is node IP and the value is status of this node (`on` represents normal and `off` represents abnormal. The format of each line is `key -> value`.
+
+#### Example
+
+Assume that the IoTDB Cluster is running on 3 nodes: 192.168.130.14, 192.168.130.16 and 192.168.130.18, and number of replicas is 2.
+
+The Linux and MacOS system startup commands are as follows:
+```
+  Shell > ./bin/nodetool.sh -h 192.168.130.14 status
+```
+  
+The Windows system startup commands are as follows:
+```
+  Shell > \bin\nodetool.bat -h 192.168.130.14 status
+```
+  
+After using the command, the successful output will be as follows: 
+	
+```
+192.168.130.14  ->  on
+192.168.130.16  ->  on
+192.168.130.18  ->  off
+```
+The above output indicates that node 192.168.130.14 and node 192.168.130.16 are in normal state, and node 192.168.130.18 cannot provide services.

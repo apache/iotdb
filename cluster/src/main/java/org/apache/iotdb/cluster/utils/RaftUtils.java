@@ -60,11 +60,15 @@ import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.QueryMetricRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryJobNumRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryMetricRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryStatusRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.QueryMetricResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryJobNumResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryMetricResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.nonquery.DataGroupNonQueryResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.nonquery.MetaGroupNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryStatusResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.apache.iotdb.cluster.utils.hash.VirtualNode;
@@ -94,7 +98,61 @@ public class RaftUtils {
    */
   private static final ConcurrentHashMap<String, PeerId> groupLeaderCache = new ConcurrentHashMap<>();
 
+  private static ThreadLocal<Map<String, Integer>> nodeIndexMap = new ThreadLocal<Map<String, Integer>>() {
+    @Override
+    protected Map<String, Integer> initialValue() {
+      Map<String, Integer> map = new HashMap<>();
+      router.getAllGroupId().forEach(groupId -> {
+        PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
+        map.put(groupId, getRandomInt(physicalNodes.length));
+      });
+      return map;
+    }
+  };
+
   private RaftUtils() {
+  }
+
+  /**
+   * Get peer id by input ip
+   *
+   * @return null if not found
+   */
+  public static PeerId getPeerIDByIP(String ip) {
+    RaftService service = (RaftService) server.getMetadataHolder().getService();
+    List<PeerId> peerIdList = service.getPeerIdList();
+    for (int i = 0; i < peerIdList.size(); i++) {
+      if (peerIdList.get(i).getIp().equals(ip)) {
+        return peerIdList.get(i);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get peer ID in order
+   *
+   * @return node id
+   */
+  public static PeerId getPeerIDInOrder(String groupId) {
+    int index;
+    PeerId peerId;
+    int len;
+    if (groupId.equals(ClusterConfig.METADATA_GROUP_ID)) {
+      RaftService service = (RaftService) server.getMetadataHolder().getService();
+      List<PeerId> peerIdList = service.getPeerIdList();
+      len = peerIdList.size();
+      index = nodeIndexMap.get().getOrDefault(groupId, getRandomInt(peerIdList.size()));
+      peerId = peerIdList.get(index);
+    } else {
+      PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
+      len = physicalNodes.length;
+      index = nodeIndexMap.get().getOrDefault(groupId, getRandomInt(physicalNodes.length));
+      peerId = getPeerIDFrom(physicalNodes[index]);
+    }
+    nodeIndexMap.get().put(groupId, (index + 1) % len);
+
+    return peerId;
   }
 
   /**
@@ -564,8 +622,7 @@ public class RaftUtils {
   }
 
   private static Map<String, Long> getReplicaMetricFromRemoteNode(String groupId, String metric) {
-    QueryMetricRequest request = new QueryMetricRequest(groupId,
-        config.getReadDataConsistencyLevel(), metric);
+    QueryMetricRequest request = new QueryMetricRequest(groupId, metric);
     SingleQPTask task = new SingleQPTask(false, request);
 
     LOGGER.debug("Execute get metric for {} statement for group {}.", metric, groupId);
@@ -590,12 +647,85 @@ public class RaftUtils {
   }
 
   /**
-   * Get query job number running on each data partition
+   * Get query job number running on each data partition for all nodes
    *
-   * @return key: data partition ID, value: query job number
+   * @return outer key: ip, inner key: groupId, value: number of query jobs
    */
-  public static Map<String, Integer> getQueryJobNumMap() {
+  public static Map<String, Map<String, Integer>> getQueryJobNumMapForCluster() {
+    PeerId[] peerIds = RaftUtils.convertStringArrayToPeerIdArray(config.getNodes());
+    Map<String, Map<String, Integer>> res = new HashMap<>();
+    for (int i = 0; i < peerIds.length; i++) {
+      PeerId peerId = peerIds[i];
+      res.put(peerId.getIp(), getQueryJobNumMapFromRemoteNode(peerId));
+    }
+
+    return res;
+  }
+
+  public static Map<String, Integer> getLocalQueryJobNumMap() {
     return ClusterRpcQueryManager.getInstance().getAllReadUsage();
+  }
+
+  private static Map<String, Integer> getQueryJobNumMapFromRemoteNode(PeerId peerId) {
+    QueryJobNumRequest request = new QueryJobNumRequest("");
+    SingleQPTask task = new SingleQPTask(false, request);
+
+    LOGGER.debug("Execute get query job num map for node {}.", peerId);
+    try {
+      NodeAsClient client = RaftNodeAsClientManager.getInstance().getRaftNodeAsClient();
+      /** Call async method **/
+      client.asyncHandleRequest(task.getRequest(), peerId, task);
+
+      task.await();
+      Map<String, Integer> value = null;
+      if (task.getTaskState() == TaskState.FINISH) {
+        BasicResponse response = task.getResponse();
+        value = response == null ? null : ((QueryJobNumResponse) response).getValue();
+      }
+      return value;
+    } catch (RaftConnectionException | InterruptedException e) {
+      LOGGER.error("Fail to get query job num map from remote node {} because of {}.", peerId, e);
+      return null;
+    }
+  }
+
+  /**
+   * Get status of each node in cluster
+   *
+   * @return key: node ip, value: live or not
+   */
+  public static Map<String, Boolean> getStatusMapForCluster() {
+    PeerId[] peerIds = RaftUtils.convertStringArrayToPeerIdArray(config.getNodes());
+    Map<String, Boolean> res = new HashMap<>();
+    for (int i = 0; i < peerIds.length; i++) {
+      PeerId peerId = peerIds[i];
+      res.put(peerId.getIp(), getStatusOfNode(peerId));
+    }
+
+    return res;
+  }
+
+  private static boolean getStatusOfNode(PeerId peerId) {
+    QueryStatusRequest request = new QueryStatusRequest("");
+    SingleQPTask task = new SingleQPTask(false, request);
+
+    LOGGER.debug("Execute get status for node {}.", peerId);
+    try {
+      NodeAsClient client = RaftNodeAsClientManager.getInstance().getRaftNodeAsClient();
+      /** Call async method **/
+      client.asyncHandleRequest(task.getRequest(), peerId, task);
+
+      task.await();
+      boolean status = false;
+      if (task.getTaskState() == TaskState.FINISH) {
+        BasicResponse response = task.getResponse();
+        status = response == null ? null : ((QueryStatusResponse) response).getStatus();
+      }
+      return status;
+    } catch (RaftConnectionException | InterruptedException e) {
+      LOGGER.error("Fail to get status from remote node {} because of {}.", peerId, e);
+      return false;
+    }
   }
 
   /**

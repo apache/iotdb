@@ -16,29 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.rpc.raft.processor;
+package org.apache.iotdb.cluster.rpc.raft.processor.querymetric;
 
 import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
-import org.apache.iotdb.cluster.rpc.raft.request.QueryMetricRequest;
-import org.apache.iotdb.cluster.rpc.raft.response.QueryMetricResponse;
+import org.apache.iotdb.cluster.rpc.raft.processor.BasicAsyncUserProcessor;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryJobNumRequest;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryJobNumResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 
-public class QueryMetricAsyncProcessor extends BasicAsyncUserProcessor<QueryMetricRequest> {
+public class QueryJobNumAsyncProcessor extends BasicAsyncUserProcessor<QueryJobNumRequest> {
 
   @Override
   public void handleRequest(BizContext bizContext, AsyncContext asyncContext,
-      QueryMetricRequest request) {
+      QueryJobNumRequest request) {
     String groupId = request.getGroupID();
 
-    QueryMetricResponse response = QueryMetricResponse.createSuccessResponse(groupId,
-        RaftUtils.getReplicaMetric(request.getGroupID(), request.getMetric()));
+    QueryJobNumResponse response = QueryJobNumResponse.createSuccessResponse(groupId,
+        RaftUtils.getLocalQueryJobNumMap());
     response.addResult(true);
     asyncContext.sendResponse(response);
   }
 
   @Override
   public String interest() {
-    return QueryMetricRequest.class.getName();
+    return QueryJobNumRequest.class.getName();
   }
 }

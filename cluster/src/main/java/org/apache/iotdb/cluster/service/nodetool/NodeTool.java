@@ -54,7 +54,8 @@ public class NodeTool {
         StorageGroup.class,
         Host.class,
         Lag.class,
-        Query.class
+        Query.class,
+        Status.class
     );
 
     Cli.CliBuilder<Runnable> builder = Cli.builder("nodetool");

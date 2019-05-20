@@ -23,15 +23,25 @@ import java.util.Map;
 import org.apache.iotdb.cluster.service.nodetool.NodeTool.NodeToolCmd;
 import org.apache.iotdb.cluster.service.ClusterMonitorMBean;
 
-@Command(name = "query", description = "Print number of query jobs for all data partitions of connected host")
+@Command(name = "query", description = "Print number of query jobs for all data partitions for all hosts")
 public class Query extends NodeToolCmd {
 
   @Override
   public void execute(ClusterMonitorMBean proxy)
   {
-    Map<String, Integer> queryNumMap = proxy.getQueryJobNumMap();
-    queryNumMap.forEach((groupId, num) -> System.out.println(groupId + "\t->\t" + num));
-    int sum = queryNumMap.values().stream().mapToInt(num -> num).sum();
-    System.out.println("Total\t->\t" + sum);
+    Map<String, Map<String, Integer>> queryNumMap = proxy.getQueryJobNumMap();
+    queryNumMap.forEach((ip, map) -> {
+      System.out.println(ip + ":");
+      if (map != null) {
+        map.forEach((groupId, num) -> System.out.println("\t" + groupId + "\t->\t" + num));
+      }
+    });
+    final int[] sum = {0};
+    queryNumMap.forEach((ip, map) -> {
+      if (map != null) {
+        map.forEach((groupId, num) -> sum[0] += num);
+      }
+    });
+    System.out.println("Total\t->\t" + sum[0]);
   }
 }
