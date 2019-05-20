@@ -414,7 +414,6 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
           success = true;
         } catch (RaftConnectionException e1) {
           LOGGER.debug("Get paths for {} task for group {} to node {} fail.", pathList, groupId, nextNode);
-          continue;
         }
       }
       LOGGER.debug("The final result for get paths for {} task is {}", pathList, success);

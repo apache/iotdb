@@ -72,9 +72,10 @@ public class ClusterRpcReaderUtils {
       try {
         response = handleQueryRequest(request, peerId, 0);
         manager.setQueryNode(groupId, peerId);
+        LOGGER.debug("Init series reader in Node<{}> of group<{}> success.", peerId, groupId);
         return response;
       } catch (RaftConnectionException e) {
-        LOGGER.error("Can not init series reader in Node<{}> of group<{}>", peerId, groupId, e);
+        LOGGER.debug("Can not init series reader in Node<{}> of group<{}>", peerId, groupId, e);
       }
     }
     throw new RaftConnectionException(

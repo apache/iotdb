@@ -98,35 +98,16 @@ public class RaftUtils {
    */
   private static final ConcurrentHashMap<String, PeerId> groupLeaderCache = new ConcurrentHashMap<>();
 
-  private static ThreadLocal<Map<String, Integer>> nodeIndexMap = new ThreadLocal<Map<String, Integer>>() {
-    @Override
-    protected Map<String, Integer> initialValue() {
-      Map<String, Integer> map = new HashMap<>();
-      router.getAllGroupId().forEach(groupId -> {
-        PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
-        map.put(groupId, getRandomInt(physicalNodes.length));
-      });
-      return map;
-    }
-  };
+  private static ThreadLocal<Map<String, Integer>> nodeIndexMap = ThreadLocal.withInitial(() -> {
+    Map<String, Integer> map = new HashMap<>();
+    router.getAllGroupId().forEach(groupId -> {
+      PhysicalNode[] physicalNodes = router.getNodesByGroupId(groupId);
+      map.put(groupId, getRandomInt(physicalNodes.length));
+    });
+    return map;
+  });
 
   private RaftUtils() {
-  }
-
-  /**
-   * Get peer id by input ip
-   *
-   * @return null if not found
-   */
-  public static PeerId getPeerIDByIP(String ip) {
-    RaftService service = (RaftService) server.getMetadataHolder().getService();
-    List<PeerId> peerIdList = service.getPeerIdList();
-    for (int i = 0; i < peerIdList.size(); i++) {
-      if (peerIdList.get(i).getIp().equals(ip)) {
-        return peerIdList.get(i);
-      }
-    }
-    return null;
   }
 
   /**

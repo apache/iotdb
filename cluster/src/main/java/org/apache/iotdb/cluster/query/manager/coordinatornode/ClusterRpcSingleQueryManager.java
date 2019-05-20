@@ -53,12 +53,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manage all remote series reader resource in a query resource in coordinator node.
  */
 public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManager {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterRpcSingleQueryManager.class);
   /**
    * Statistic all usage of local data group.
    */
@@ -133,6 +136,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
       SelectSeriesGroupEntity selectEntity = entry.getValue();
       QueryPlan queryPlan = selectEntity.getQueryPlan();
       if (!QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
+        LOGGER.debug("Init series reader for group id {} from remote node." , groupId);
         Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
         allQueryPlan.put(PathType.SELECT_PATH, queryPlan);
         List<Filter> filterList = new ArrayList<>();
@@ -149,6 +153,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
             .createClusterSeriesReader(groupId, request, this);
         handleInitReaderResponse(groupId, allQueryPlan, response);
       } else {
+        LOGGER.debug("Init series reader for group id {} locally." , groupId);
         dataGroupUsage.add(groupId);
         selectSeriesGroupEntityMap.remove(groupId);
         filterSeriesGroupEntityMap.remove(groupId);

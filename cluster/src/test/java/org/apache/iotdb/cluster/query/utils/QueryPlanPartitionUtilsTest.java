@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.qp.executor.ClusterQueryProcessExecutor;
+import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterSeriesGroupEntity;
@@ -61,7 +62,8 @@ public class QueryPlanPartitionUtilsTest {
   private static final String LOCAL_ADDR = String
       .format("%s:%d", CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
   private static ClusterRpcQueryManager manager = ClusterRpcQueryManager.getInstance();
-  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor();
+  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor(
+      new QueryMetadataExecutor());
   private QueryProcessor queryProcessor = new QueryProcessor(queryDataExecutor);
   private static final PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
       CLUSTER_CONFIG.getPort());

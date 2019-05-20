@@ -90,6 +90,7 @@ public class QueryPathsAsyncProcessor extends BasicAsyncUserProcessor<QueryPaths
     for (String path : request.getPath()) {
       response.addPaths(mManager.getPaths(path));
     }
+    System.out.println("Paths: " + response.getPaths());
   }
 
   @Override

@@ -66,9 +66,10 @@ public class TSServiceClusterImpl extends TSServiceImpl {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceClusterImpl.class);
 
-  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor();
-  private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor();
   private QueryMetadataExecutor queryMetadataExecutor = new QueryMetadataExecutor();
+  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor(
+      queryMetadataExecutor);
+  private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor();
 
   private IClusterRpcQueryManager queryManager = ClusterRpcQueryManager.getInstance();
 

@@ -19,26 +19,20 @@
 package org.apache.iotdb.cluster.query.utils;
 
 import static org.apache.iotdb.cluster.utils.Utils.insertData;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.qp.executor.ClusterQueryProcessExecutor;
+import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
 import org.apache.iotdb.cluster.query.expression.TrueExpression;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.utils.EnvironmentUtils;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -54,7 +48,8 @@ import org.junit.Test;
 public class ExpressionUtilsTest {
   private Server server;
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
-  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor();
+  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor(
+      new QueryMetadataExecutor());
   private QueryProcessor queryProcessor = new QueryProcessor(queryDataExecutor);
 
   private static final String URL = "127.0.0.1:6667/";
