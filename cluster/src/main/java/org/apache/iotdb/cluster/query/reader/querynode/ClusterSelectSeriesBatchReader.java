@@ -62,6 +62,7 @@ public class ClusterSelectSeriesBatchReader extends
     for (int i = 0; i < CLUSTER_CONF.getBatchReadSize(); i++) {
       if (hasNext()) {
         TimeValuePair pair = reader.next();
+        System.out.println("reader value:" + pair);
         batchData.putTime(pair.getTimestamp());
         batchData.putAnObject(pair.getValue().getValue());
       } else {

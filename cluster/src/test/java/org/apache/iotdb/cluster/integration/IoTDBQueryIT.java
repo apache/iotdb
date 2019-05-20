@@ -291,7 +291,6 @@ public class IoTDBQueryIT {
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
       insertData(connection, createSQLs, insertSQLs);
       Statement statement = connection.createStatement();
-      statement.execute("set read metadata level to 2");
 
       for(int i =0 ; i < queryStatementsWithoutFilter.length; i++) {
         String queryStatement = queryStatementsWithoutFilter[i];

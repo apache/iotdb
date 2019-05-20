@@ -307,7 +307,14 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     queryManager.addSingleQuery(jobId, (QueryPlan) physicalPlan);
     QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
         context);
-    queryRet.get().put(statement, queryDataSet);
+    System.out.println("Create new Data Set");
+    try {
+      queryRet.get().put(statement, queryDataSet);
+    }catch (Exception e){
+      e.printStackTrace();
+    }
+    System.out.println("Create new Data Set complete");
+    System.out.println(queryDataSet == null);
     return queryDataSet;
   }
 

@@ -187,6 +187,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
    */
   private void handleInitReaderResponse(String groupId, Map<PathType, QueryPlan> allQueryPlan,
       InitSeriesReaderResponse response) {
+    LOGGER.debug("Handle init reader response of group id {}", groupId);
     /** create cluster series reader **/
     if (allQueryPlan.containsKey(PathType.SELECT_PATH)) {
       QueryPlan plan = allQueryPlan.get(PathType.SELECT_PATH);
@@ -217,14 +218,18 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   @Override
   public void fetchBatchDataForSelectPaths(String groupId) throws RaftConnectionException {
     List<Integer> fetchDataSeriesIndexs = new ArrayList<>();
+    List<Path> fetchDataSeries = new ArrayList<>();
     List<Path> selectSeries = selectSeriesGroupEntityMap.get(groupId).getSelectPaths();
     List<ClusterSelectSeriesReader> seriesReaders = selectSeriesGroupEntityMap.get(groupId)
         .getSelectSeriesReaders();
     for (int i = 0; i < selectSeries.size(); i++) {
       if (seriesReaders.get(i).enableFetchData()) {
         fetchDataSeriesIndexs.add(i);
+        fetchDataSeries.add(selectSeries.get(i));
       }
     }
+    LOGGER.debug("Fetch data for paths {} of group id {} from node {}", fetchDataSeries, groupId,
+        queryNodes.get(groupId));
     BasicRequest request = QuerySeriesDataRequest
         .createFetchDataRequest(groupId, taskId, PathType.SELECT_PATH, fetchDataSeriesIndexs,
             queryRounds++);
@@ -236,6 +241,8 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
 
   @Override
   public void fetchBatchDataForAllFilterPaths(String groupId) throws RaftConnectionException {
+    LOGGER.debug("Fetch Data for filter paths {} of group id {} from node {}",
+        filterSeriesGroupEntityMap.get(groupId).getFilterPaths(), groupId, queryNodes.get(groupId));
     BasicRequest request = QuerySeriesDataRequest
         .createFetchDataRequest(groupId, taskId, PathType.FILTER_PATH, null, queryRounds++);
     QuerySeriesDataResponse response = (QuerySeriesDataResponse) ClusterRpcReaderUtils
