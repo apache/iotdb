@@ -55,6 +55,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   public LocalTextModificationAccessor(String filePath) {
     this.filePath = filePath;
   }
+
   @Override
   public Collection<Modification> read() throws IOException {
     BufferedReader reader;

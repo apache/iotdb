@@ -164,6 +164,7 @@ public class QueryResourceManager {
       throws FileNodeManagerException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
+    System.out.println("查询的path为：" + selectedPath);
     QueryDataSource queryDataSource = FileNodeManager.getInstance()
         .query(singleSeriesExpression, context);
 

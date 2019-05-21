@@ -60,10 +60,12 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
       throws IOException {
     super(paths, dataTypes);
     this.readers = readers;
+    System.out.println("EngineDataSetWithoutTimeGenerator inner set");
     initHeap();
   }
 
   private void initHeap() throws IOException {
+    System.out.println("Start init heap");
     timeSet = new HashSet<>();
     timeHeap = new PriorityQueue<>();
     cacheTimeValueList = new TimeValuePair[readers.size()];
@@ -72,10 +74,12 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
       IPointReader reader = readers.get(i);
       if (reader.hasNext()) {
         TimeValuePair timeValuePair = reader.next();
+        System.out.println(timeValuePair);
         cacheTimeValueList[i] = timeValuePair;
         timeHeapPut(timeValuePair.getTimestamp());
       }
     }
+    System.out.println("Stop init heap");
   }
 
   @Override

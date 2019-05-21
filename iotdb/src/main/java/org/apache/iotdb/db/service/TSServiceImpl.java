@@ -673,12 +673,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       int fetchSize = req.getFetch_size();
       QueryDataSet queryDataSet;
       if (!queryRet.get().containsKey(statement)) {
+        System.out.println("Create new data set");
         queryDataSet = createNewDataSet(statement, fetchSize, req);
+        System.out.println("Create new data set success");
+        LOGGER.error("Create new data set success.");
       } else {
         queryDataSet = queryRet.get().get(statement);
       }
+      System.out.println("Get next value");
       TSQueryDataSet result = Utils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       boolean hasResultSet = !result.getRecords().isEmpty();
+      System.out.println("hasResultSet : " + hasResultSet);
       if (!hasResultSet && queryRet.get() != null) {
         queryRet.get().remove(statement);
       }
