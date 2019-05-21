@@ -18,48 +18,62 @@
  */
 package org.apache.iotdb.cluster.query.common;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
- * <code>FillBatchData</code> is a self-defined data structure which is used in cluster query
- * process of fill type, which only contains one TimeValuePair and value can be null.
+ * <code>ClusterNullableBatchData</code> is a self-defined data structure which is used in cluster
+ * query process of fill type and group by type, which may contain <code>null</code> in list of
+ * TimeValuePair.
  */
-public class FillBatchData extends BatchData {
+public class ClusterNullableBatchData extends BatchData {
 
-  private TimeValuePair timeValuePair;
-  private boolean isUsed;
+  private List<TimeValuePair> timeValuePairList;
+  private int index;
 
-  public FillBatchData(TimeValuePair timeValuePair, boolean isUsed) {
-    this.timeValuePair = timeValuePair;
-    this.isUsed = isUsed;
+  public ClusterNullableBatchData() {
+    this.timeValuePairList = new ArrayList<>();
+    this.index = 0;
   }
 
   @Override
   public boolean hasNext() {
-    return !isUsed;
+    return index < timeValuePairList.size();
   }
 
   @Override
   public void next() {
-    isUsed = true;
+    index++;
   }
 
   @Override
   public long currentTime() {
-    return timeValuePair.getTimestamp();
+    rangeCheckForTime(index);
+    return timeValuePairList.get(index).getTimestamp();
   }
 
   @Override
   public Object currentValue() {
-    if (!isUsed) {
-      return timeValuePair.getValue() == null ? null : timeValuePair.getValue().getValue();
+    if (index < length()) {
+      return timeValuePairList.get(index).getValue() == null ? null
+          : timeValuePairList.get(index).getValue().getValue();
     } else {
       return null;
     }
   }
 
+  @Override
+  public int length() {
+    return timeValuePairList.size();
+  }
+
   public TimeValuePair getTimeValuePair() {
-    return isUsed ? null : timeValuePair;
+    return index < length() ? timeValuePairList.get(index) : null;
+  }
+
+  public void addTimeValuePair(TimeValuePair timeValuePair){
+    timeValuePairList.add(timeValuePair);
   }
 }

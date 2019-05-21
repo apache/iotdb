@@ -64,7 +64,7 @@ public class ClusterGroupByDataSetWithOnlyTimeFilter extends GroupByWithOnlyTime
       List<Path> paths, long unit, long origin,
       List<Pair<Long, Long>> mergedIntervals, ClusterRpcSingleQueryManager queryManager) {
     super(jobId, paths, unit, origin, mergedIntervals);
-    this.queryManager  =queryManager;
+    this.queryManager = queryManager;
     this.readersOfSelectedSeries = new ArrayList<>();
   }
 
@@ -132,10 +132,14 @@ public class ClusterGroupByDataSetWithOnlyTimeFilter extends GroupByWithOnlyTime
     RowRecord record = new RowRecord(startTime);
     for (int i = 0; i < functions.size(); i++) {
       IPointReader reader = readersOfSelectedSeries.get(i);
-      if(reader != null){
+      if (reader != null) {
         TimeValuePair timeValuePair = reader.next();
-        record.addField(getField(timeValuePair.getValue().getValue(), dataTypes.get(i)));
-      }else {
+        if (timeValuePair == null) {
+          record.addField(new Field(null));
+        } else {
+          record.addField(getField(timeValuePair.getValue().getValue(), dataTypes.get(i)));
+        }
+      } else {
         AggreResultData res;
         try {
           res = nextSeries(i);

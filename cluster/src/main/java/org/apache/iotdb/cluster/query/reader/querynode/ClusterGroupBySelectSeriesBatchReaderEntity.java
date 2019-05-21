@@ -23,7 +23,10 @@ import static org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSerie
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.cluster.query.common.ClusterNullableBatchData;
+import org.apache.iotdb.cluster.query.utils.ClusterTimeValuePairUtils;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithOnlyTimeFilterDataSet;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -56,7 +59,7 @@ public class ClusterGroupBySelectSeriesBatchReaderEntity implements
   public List<BatchData> nextBatchList() throws IOException {
     List<BatchData> batchDataList = new ArrayList<>(paths.size());
     for (int i = 0; i < paths.size(); i++) {
-      batchDataList.add(new BatchData(dataTypes.get(i), true));
+      batchDataList.add(new ClusterNullableBatchData());
     }
     int dataPointCount = 0;
     while (true) {
@@ -68,10 +71,9 @@ public class ClusterGroupBySelectSeriesBatchReaderEntity implements
       long time = rowRecord.getTimestamp();
       List<Field> fieldList = rowRecord.getFields();
       for (int j = 0; j < paths.size(); j++) {
-        BatchData batchData = batchDataList.get(j);
+        ClusterNullableBatchData batchData = (ClusterNullableBatchData) batchDataList.get(j);
         Object value = fieldList.get(j).getObjectValue(dataTypes.get(j));
-        batchData.putTime(time);
-        batchData.putAnObject(value);
+        batchData.addTimeValuePair(fieldList.get(j).toString().equals("null") ? null : ClusterTimeValuePairUtils.getTimeValuePair(time, value,dataTypes.get(j)));
       }
     }
     return batchDataList;

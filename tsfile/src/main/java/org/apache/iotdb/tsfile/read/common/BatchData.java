@@ -378,11 +378,11 @@ public class BatchData implements Serializable {
   /**
    * Checks if the given index is in range. If not, throws an appropriate runtime exception.
    */
-  private void rangeCheckForTime(int idx) {
+  protected void rangeCheckForTime(int idx) {
     if (idx < 0) {
       throw new IndexOutOfBoundsException("BatchData time range check, Index is negative: " + idx);
     }
-    if (idx >= timeLength) {
+    if (idx >= length()) {
       throw new IndexOutOfBoundsException(
           "BatchData time range check, Index : " + idx + ". Length : " + timeLength);
     }

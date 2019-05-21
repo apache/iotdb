@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.cluster.query.utils;
 
-import org.apache.iotdb.cluster.query.common.FillBatchData;
+import org.apache.iotdb.cluster.query.common.ClusterNullableBatchData;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
+import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ClusterTimeValuePairUtils {
 
@@ -35,10 +39,32 @@ public class ClusterTimeValuePairUtils {
    * @return -given data's (time,value) pair
    */
   public static TimeValuePair getCurrentTimeValuePair(BatchData data) {
-    if (data instanceof FillBatchData){
-      return ((FillBatchData)data).getTimeValuePair();
-    }else{
+    if (data instanceof ClusterNullableBatchData) {
+      return ((ClusterNullableBatchData) data).getTimeValuePair();
+    } else {
       return TimeValuePairUtils.getCurrentTimeValuePair(data);
+    }
+  }
+
+  /**
+   * Get (time,value) pair according to data type
+   */
+  public static TimeValuePair getTimeValuePair(long time, Object v, TSDataType dataType) {
+    switch (dataType) {
+      case INT32:
+        return new TimeValuePair(time, new TsPrimitiveType.TsInt((int) v));
+      case INT64:
+        return new TimeValuePair(time, new TsPrimitiveType.TsLong((long) v));
+      case FLOAT:
+        return new TimeValuePair(time, new TsPrimitiveType.TsFloat((float) v));
+      case DOUBLE:
+        return new TimeValuePair(time, new TsPrimitiveType.TsDouble((double) v));
+      case TEXT:
+        return new TimeValuePair(time, new TsPrimitiveType.TsBinary((Binary) v));
+      case BOOLEAN:
+        return new TimeValuePair(time, new TsPrimitiveType.TsBoolean((boolean) v));
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(v));
     }
   }
 }

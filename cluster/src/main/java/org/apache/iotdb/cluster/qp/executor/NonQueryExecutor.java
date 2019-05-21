@@ -352,8 +352,6 @@ public class NonQueryExecutor extends AbstractQPExecutor {
     return RaftUtils.executeRaftTaskForLocalProcessor(service, qpTask, response);
   }
 
-
-
   /**
    * Async handle task by QPTask and leader id.
    *

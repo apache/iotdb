@@ -59,12 +59,7 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
     TASK_ID_MAP_JOB_ID.put(taskId, jobId);
     ClusterLocalSingleQueryManager localQueryManager = new ClusterLocalSingleQueryManager(jobId);
     SINGLE_QUERY_MANAGER_MAP.put(jobId, localQueryManager);
-    try {
-      return localQueryManager.createSeriesReader(request);
-    }catch (Exception e){
-      e.printStackTrace();
-      return null;
-    }
+    return localQueryManager.createSeriesReader(request);
   }
 
   @Override

@@ -42,19 +42,21 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   protected List<EngineReaderByTimeStamp> allDataReaderList;
   protected TimeGenerator timestampGenerator;
+
   /**
    * cached timestamp for next group by partition.
    */
-  private long timestamp;
+  protected long timestamp;
+
   /**
    * if this object has cached timestamp for next group by partition.
    */
-  private boolean hasCachedTimestamp;
+  protected boolean hasCachedTimestamp;
 
   /**
    * group by batch calculation size.
    */
-  private int timestampFetchSize;
+  protected int timestampFetchSize;
 
   /**
    * constructor.
@@ -152,7 +154,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     return timeArrayLength;
   }
 
-  private RowRecord constructRowRecord() {
+  protected RowRecord constructRowRecord() {
     RowRecord record = new RowRecord(startTime);
     functions.forEach(function -> record.addField(getField(function.getResult())));
     return record;

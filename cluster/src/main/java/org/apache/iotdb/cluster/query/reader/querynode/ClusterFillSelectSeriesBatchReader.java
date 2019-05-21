@@ -19,8 +19,9 @@
 package org.apache.iotdb.cluster.query.reader.querynode;
 
 import java.io.IOException;
-import org.apache.iotdb.cluster.query.common.FillBatchData;
+import org.apache.iotdb.cluster.query.common.ClusterNullableBatchData;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
@@ -34,6 +35,12 @@ public class ClusterFillSelectSeriesBatchReader extends ClusterSelectSeriesBatch
 
   @Override
   public BatchData nextBatch() throws IOException {
-    return hasNext() ? new FillBatchData(reader.next(), false) : new FillBatchData(null, true);
+    if(hasNext()){
+      ClusterNullableBatchData batchData = new ClusterNullableBatchData();
+      batchData.addTimeValuePair(reader.next());
+      return batchData;
+    }else{
+      return new ClusterNullableBatchData();
+    }
   }
 }

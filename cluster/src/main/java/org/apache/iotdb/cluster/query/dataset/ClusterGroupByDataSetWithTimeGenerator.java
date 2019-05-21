@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterSeriesGroupEntity;
@@ -30,11 +31,13 @@ import org.apache.iotdb.cluster.query.timegenerator.ClusterTimeGenerator;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -87,5 +90,103 @@ public class ClusterGroupByDataSetWithTimeGenerator extends GroupByWithValueFilt
     this.allDataReaderList = ClusterSeriesReaderFactory
         .createReadersByTimestampOfSelectedPaths(selectedSeries, context, queryManager,
             selectSeriesDataTypes);
+  }
+
+  @Override
+  public RowRecord next() throws IOException {
+    if (!hasCachedTimeInterval) {
+      throw new IOException("need to call hasNext() before calling next()"
+          + " in GroupByWithOnlyTimeFilterDataSet.");
+    }
+    hasCachedTimeInterval = false;
+    for (AggregateFunction function : functions) {
+      function.init();
+    }
+
+    long[] timestampArray = new long[timestampFetchSize];
+    int timeArrayLength = 0;
+    if (hasCachedTimestamp) {
+      if (timestamp < endTime) {
+        hasCachedTimestamp = false;
+        timestampArray[timeArrayLength++] = timestamp;
+      } else {
+        return constructRowRecord();
+      }
+    }
+
+    while (timestampGenerator.hasNext()) {
+      // construct timestamp array
+      timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
+
+      fetchSelectDataFromRemoteNode(timeArrayLength, timestampArray);
+
+      // cal result using timestamp array
+      for (int i = 0; i < selectedSeries.size(); i++) {
+        functions.get(i).calcAggregationUsingTimestamps(
+            timestampArray, timeArrayLength, allDataReaderList.get(i));
+      }
+
+      timeArrayLength = 0;
+      // judge if it's end
+      if (timestamp >= endTime) {
+        hasCachedTimestamp = true;
+        break;
+      }
+    }
+
+    // fetch select series data from remote node
+    fetchSelectDataFromRemoteNode(timeArrayLength, timestampArray);
+
+    if (timeArrayLength > 0) {
+      // cal result using timestamp array
+      for (int i = 0; i < selectedSeries.size(); i++) {
+        functions.get(i).calcAggregationUsingTimestamps(
+            timestampArray, timeArrayLength, allDataReaderList.get(i));
+      }
+    }
+    return constructRowRecord();
+  }
+
+  /**
+   * Get select series batch data by batch timestamp
+   * @param timeArrayLength length of batch timestamp
+   * @param timestampArray timestamp array
+   */
+  private void fetchSelectDataFromRemoteNode(int timeArrayLength, long[] timestampArray)
+      throws IOException {
+    if(timeArrayLength != 0){
+      List<Long> batchTimestamp = new ArrayList<>();
+      for(int i = 0 ; i < timeArrayLength; i++){
+        batchTimestamp.add(timestampArray[i]);
+      }
+
+      try {
+        queryManager.fetchBatchDataByTimestampForAllSelectPaths(batchTimestamp);
+      } catch (
+          RaftConnectionException e) {
+        throw new IOException(e);
+      }
+    }
+  }
+
+  /**
+   * construct an array of timestamps for one batch of a group by partition calculating.
+   *
+   * @param timestampArray timestamp array
+   * @param timeArrayLength the current length of timestamp array
+   * @return time array length
+   */
+  private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
+      throws IOException {
+    for (int cnt = 1; cnt < timestampFetchSize && timestampGenerator.hasNext(); cnt++) {
+      timestamp = timestampGenerator.next();
+      if (timestamp < endTime) {
+        timestampArray[timeArrayLength++] = timestamp;
+      } else {
+        hasCachedTimestamp = true;
+        break;
+      }
+    }
+    return timeArrayLength;
   }
 }
