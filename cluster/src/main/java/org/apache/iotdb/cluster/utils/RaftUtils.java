@@ -61,10 +61,12 @@ import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicNonQueryRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryJobNumRequest;
+import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryLeaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryMetricRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryStatusRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryJobNumResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryLeaderResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryMetricResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.nonquery.DataGroupNonQueryResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.nonquery.MetaGroupNonQueryResponse;
@@ -92,7 +94,7 @@ public class RaftUtils {
 
   /**
    * The cache will be update in two case: 1. When @onLeaderStart() method of state machine is
-   * called, the cache will be update. 2. When @getLeaderPeerID() in this class is called and cache
+   * called, the cache will be update. 2. When @getLocalLeaderPeerID() in this class is called and cache
    * don't have the key, it's will get random peer and update. 3. When @redirected of BasicRequest
    * is true, the task will be retry and the cache will update.
    */
@@ -142,12 +144,44 @@ public class RaftUtils {
    *
    * @return leader id
    */
-  public static PeerId getLeaderPeerID(String groupId) {
+  public static PeerId getLocalLeaderPeerID(String groupId) {
     if (!groupLeaderCache.containsKey(groupId)) {
       PeerId randomPeerId = getRandomPeerID(groupId);
       groupLeaderCache.put(groupId, randomPeerId);
     }
-    return groupLeaderCache.get(groupId);
+    PeerId leader = groupLeaderCache.get(groupId);
+    LOGGER.debug("Get local cached leader {} of group {}.", leader, groupId);
+    return leader;
+  }
+
+  /**
+   * Get peer id to send request. If groupLeaderCache has the group id, then return leader id of the
+   * group.Otherwise, random get a peer of the group.
+   *
+   * @return leader id
+   */
+  public static PeerId getLeaderPeerIDFromRemoteNode(PeerId peerId, String groupId) {
+    QueryLeaderRequest request = new QueryLeaderRequest(groupId);
+    SingleQPTask task = new SingleQPTask(false, request);
+
+    LOGGER.debug("Execute get leader of group {} from node {}.", groupId, peerId);
+    try {
+      NodeAsClient client = RaftNodeAsClientManager.getInstance().getRaftNodeAsClient();
+      /** Call async method **/
+      client.asyncHandleRequest(task.getRequest(), peerId, task);
+
+      task.await();
+      PeerId leader = null;
+      if (task.getTaskState() == TaskState.FINISH) {
+        BasicResponse response = task.getResponse();
+        leader = response == null ? null : ((QueryLeaderResponse) response).getLeader();
+      }
+      LOGGER.debug("Get leader {} of group {} from node {}.", leader, groupId, peerId);
+      return leader;
+    } catch (RaftConnectionException | InterruptedException e) {
+      LOGGER.error("Fail to get leader of group {} from remote node {} because of {}.", groupId, peerId, e.getMessage());
+      return null;
+    }
   }
 
   /**
@@ -459,7 +493,23 @@ public class RaftUtils {
       groupId = router.getGroupID(group);
       nodes = getPeerIdArrayFrom(group);
     }
-    PeerId leader = RaftUtils.getLeaderPeerID(groupId);
+
+    PeerId leader = null;
+    for (PeerId node : nodes) {
+      LOGGER.debug("Try to get leader of group {} from node {}.", groupId, node);
+      leader = getLeaderPeerIDFromRemoteNode(node, groupId);
+      LOGGER.debug("Get leader {} of group {} from node {}.", leader, groupId, node);
+      if (leader != null) {
+        break;
+      }
+    }
+
+    if (leader == null) {
+      LOGGER.debug("Fail to get leader of group {} from all remote nodes, get it locally.", groupId);
+      leader = RaftUtils.getLocalLeaderPeerID(groupId);
+      LOGGER.debug("Get leader {} of group {} locally.", leader, groupId);
+    }
+
     for (int i = 0; i < nodes.length; i++) {
       if (leader.equals(nodes[i])) {
         PeerId t = nodes[i];
@@ -607,7 +657,7 @@ public class RaftUtils {
     SingleQPTask task = new SingleQPTask(false, request);
 
     LOGGER.debug("Execute get metric for {} statement for group {}.", metric, groupId);
-    PeerId holder = RaftUtils.getLeaderPeerID(groupId);
+    PeerId holder = RaftUtils.getLocalLeaderPeerID(groupId);
     LOGGER.debug("Get metric from node {}.", holder);
     try {
       NodeAsClient client = RaftNodeAsClientManager.getInstance().getRaftNodeAsClient();

@@ -153,18 +153,18 @@ public class RaftUtilsTest {
     RaftUtils.clearRaftGroupLeader();
     PeerId metadtaLeader = PeerId.parsePeer(ipList[0]);
     RaftUtils.updateRaftGroupLeader(ClusterConfig.METADATA_GROUP_ID, metadtaLeader);
-    assertEquals(metadtaLeader, RaftUtils.getLeaderPeerID(ClusterConfig.METADATA_GROUP_ID));
+    assertEquals(metadtaLeader, RaftUtils.getLocalLeaderPeerID(ClusterConfig.METADATA_GROUP_ID));
 
     boolean[] isLeaderCached = {true, false, true, false, true};
     for (int i = 0; i < ipList.length; i++) {
       if (isLeaderCached[i]) {
         PeerId leaderExpeted = PeerId.parsePeer(ipList[(i + 1) % ipList.length]);
         RaftUtils.updateRaftGroupLeader(Router.DATA_GROUP_STR + i, leaderExpeted);
-        PeerId leaderActual = RaftUtils.getLeaderPeerID(Router.DATA_GROUP_STR + i);
+        PeerId leaderActual = RaftUtils.getLocalLeaderPeerID(Router.DATA_GROUP_STR + i);
         assertTrue(leaderExpeted.equals(leaderActual));
 
       } else {
-        PeerId leader = RaftUtils.getLeaderPeerID(Router.DATA_GROUP_STR + i);
+        PeerId leader = RaftUtils.getLocalLeaderPeerID(Router.DATA_GROUP_STR + i);
         boolean flag = false;
         for (int j = 0; j < replicator; j++) {
           String addr = ipList[(i + j) % ipList.length];

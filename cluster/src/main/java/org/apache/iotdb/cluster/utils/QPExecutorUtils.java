@@ -124,7 +124,7 @@ public class QPExecutorUtils {
   public static boolean checkDataGroupLeader(String groupId) {
     boolean isLeader = false;
     if (router.containPhysicalNodeByGroupId(groupId, localNode) && RaftUtils
-        .getPhysicalNodeFrom(RaftUtils.getLeaderPeerID(groupId)).equals(localNode)) {
+        .getPhysicalNodeFrom(RaftUtils.getLocalLeaderPeerID(groupId)).equals(localNode)) {
       isLeader = true;
     }
     return isLeader;

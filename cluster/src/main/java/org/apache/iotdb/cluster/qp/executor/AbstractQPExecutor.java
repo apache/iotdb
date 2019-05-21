@@ -136,7 +136,7 @@ public abstract class AbstractQPExecutor {
         String groupId = task.getRequest().getGroupID();
         RaftUtils.removeCachedRaftGroupLeader(groupId);
         LOGGER.debug("Remove cached raft group leader of {}", groupId);
-        leader = RaftUtils.getLeaderPeerID(groupId);
+        leader = RaftUtils.getLocalLeaderPeerID(groupId);
       }
       task.resetTask();
       return asyncHandleNonQuerySingleTaskGetRes(task, leader, taskRetryNum + 1);

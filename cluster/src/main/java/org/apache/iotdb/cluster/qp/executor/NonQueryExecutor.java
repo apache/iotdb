@@ -326,7 +326,7 @@ public class NonQueryExecutor extends AbstractQPExecutor {
     if (QPExecutorUtils.canHandleNonQueryByGroupId(groupId)) {
       return handleNonQueryRequestLocally(groupId, qpTask);
     } else {
-      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
+      PeerId leader = RaftUtils.getLocalLeaderPeerID(groupId);
       return asyncHandleNonQueryTask(qpTask, leader);
     }
   }
