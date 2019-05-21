@@ -47,11 +47,8 @@ public class Utils {
     tsQueryDataSet.setRecords(new ArrayList<>());
     for (int i = 0; i < fetchsize; i++) {
       if (queryDataSet.hasNext()) {
-        System.out.println("Get value in convertQueryDataSetByFetchSize");
         RowRecord rowRecord = queryDataSet.next();
-        System.out.println(rowRecord);
         tsQueryDataSet.getRecords().add(convertToTSRecord(rowRecord));
-        System.out.println("Get value success in convertQueryDataSetByFetchSize");
       } else {
         break;
       }
