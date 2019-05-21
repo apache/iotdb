@@ -25,7 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterSeriesGroupEntity;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterFilterSeriesReader;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -65,7 +65,7 @@ public class ClusterNodeConstructor extends AbstractNodeConstructor {
    * Init filter series reader
    */
   private void init(ClusterRpcSingleQueryManager queryManager) {
-    Map<String, FilterGroupEntity> filterGroupEntityMap = queryManager.getFilterGroupEntityMap();
+    Map<String, FilterSeriesGroupEntity> filterGroupEntityMap = queryManager.getFilterSeriesGroupEntityMap();
     filterGroupEntityMap.forEach(
         (key, value) -> filterSeriesReadersByGroupId.put(key, value.getFilterSeriesReaders()));
     filterSeriesReadersByGroupId.forEach((key, value) -> filterSeriesReaderIndex.put(key, 0));

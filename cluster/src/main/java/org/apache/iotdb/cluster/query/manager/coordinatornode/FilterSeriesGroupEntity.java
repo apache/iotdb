@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 /**
  * Filter entities of a data group, concluding QueryPlan, filters, all filter paths and filter readers
  */
-public class FilterGroupEntity {
+public class FilterSeriesGroupEntity {
 
   /**
    * Group id
@@ -62,7 +62,7 @@ public class FilterGroupEntity {
    */
   private List<ClusterFilterSeriesReader> filterSeriesReaders;
 
-  public FilterGroupEntity(String groupId) {
+  public FilterSeriesGroupEntity(String groupId) {
     this.groupId = groupId;
     this.filterPaths = new ArrayList<>();
     this.filters = new ArrayList<>();

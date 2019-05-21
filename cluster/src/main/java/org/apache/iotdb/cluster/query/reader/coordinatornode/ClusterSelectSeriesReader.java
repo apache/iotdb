@@ -119,14 +119,6 @@ public class ClusterSelectSeriesReader extends AbstractClusterPointReader implem
     batchDataList = null;
   }
 
-  public Path getSeriesPath() {
-    return seriesPath;
-  }
-
-  public void setSeriesPath(Path seriesPath) {
-    this.seriesPath = seriesPath;
-  }
-
   public TSDataType getDataType() {
     return dataType;
   }
@@ -135,24 +127,9 @@ public class ClusterSelectSeriesReader extends AbstractClusterPointReader implem
     this.dataType = dataType;
   }
 
-  public BatchData getCurrentBatchData() {
-    return currentBatchData;
-  }
-
-  public void setCurrentBatchData(BatchData currentBatchData) {
-    this.currentBatchData = currentBatchData;
-  }
-
+  @Override
   public void addBatchData(BatchData batchData, boolean remoteDataFinish) {
     batchDataList.addLast(batchData);
-    this.remoteDataFinish = remoteDataFinish;
-  }
-
-  public boolean isRemoteDataFinish() {
-    return remoteDataFinish;
-  }
-
-  public void setRemoteDataFinish(boolean remoteDataFinish) {
     this.remoteDataFinish = remoteDataFinish;
   }
 

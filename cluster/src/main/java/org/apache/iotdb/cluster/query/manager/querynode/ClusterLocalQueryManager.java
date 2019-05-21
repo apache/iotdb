@@ -53,7 +53,7 @@ public class ClusterLocalQueryManager implements IClusterLocalQueryManager {
 
   @Override
   public InitSeriesReaderResponse createQueryDataSet(InitSeriesReaderRequest request)
-      throws IOException, FileNodeManagerException, PathErrorException, ProcessorException, QueryFilterOptimizationException {
+      throws IOException, FileNodeManagerException, PathErrorException, ProcessorException, QueryFilterOptimizationException, ClassNotFoundException {
     long jobId = QueryResourceManager.getInstance().assignJobId();
     String taskId = request.getTaskId();
     TASK_ID_MAP_JOB_ID.put(taskId, jobId);

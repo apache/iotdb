@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.AggregateEngineExecutor;
 import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -93,8 +94,33 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context)
-      throws QueryFilterOptimizationException, FileNodeManagerException, IOException, PathErrorException, ProcessorException {
-    throw new UnsupportedOperationException();
+      throws FileNodeManagerException, PathErrorException, ProcessorException {
+
+    ClusterRpcSingleQueryManager queryManager = ClusterRpcQueryManager.getInstance()
+        .getSingleQuery(context.getJobId());
+
+    try {
+      if (expression != null) {
+        IExpression optimizedExpression = ExpressionOptimizer.getInstance()
+            .optimize(expression, selectedSeries);
+        AggregateEngineExecutor engineExecutor = new ClusterAggregateEngineExecutor(
+            selectedSeries, aggres, optimizedExpression, queryManager);
+        if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+          queryManager.initQueryResource(QueryType.GLOBAL_TIME, getReadDataConsistencyLevel());
+          return engineExecutor.executeWithoutTimeGenerator(context);
+        } else {
+          queryManager.initQueryResource(QueryType.FILTER, getReadDataConsistencyLevel());
+          return engineExecutor.executeWithTimeGenerator(context);
+        }
+      } else {
+        AggregateEngineExecutor engineExecutor = new ClusterAggregateEngineExecutor(
+            selectedSeries, aggres, null, queryManager);
+        queryManager.initQueryResource(QueryType.NO_FILTER, getReadDataConsistencyLevel());
+        return engineExecutor.executeWithoutTimeGenerator(context);
+      }
+    } catch (QueryFilterOptimizationException | IOException | RaftConnectionException e) {
+      throw new FileNodeManagerException(e);
+    }
   }
 
   @Override
@@ -108,7 +134,17 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context) throws FileNodeManagerException, PathErrorException, IOException {
-    throw new UnsupportedOperationException();
+    ClusterRpcSingleQueryManager queryManager = ClusterRpcQueryManager.getInstance()
+        .getSingleQuery(context.getJobId());
+    try {
+      queryManager.initQueryResource(QueryType.NO_FILTER, getReadDataConsistencyLevel());
+
+      ClusterFillEngineExecutor fillEngineExecutor = new ClusterFillEngineExecutor(fillPaths, queryTime,
+          fillType, queryManager);
+      return fillEngineExecutor.execute(context);
+    } catch (IOException | RaftConnectionException e) {
+      throw new FileNodeManagerException(e);
+    }
   }
 
   public int getReadDataConsistencyLevel() {

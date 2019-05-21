@@ -20,67 +20,76 @@ package org.apache.iotdb.cluster.query.reader.querynode;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
- * BatchReader by timestamp for cluster which is used in query node.
+ * BatchReader without time generator for cluster which is used in query node.
  */
-public class ClusterBatchReaderByTimestamp extends AbstractClusterBatchReader {
-
-  /**
-   * Reader
-   */
-  private EngineReaderByTimeStamp readerByTimeStamp;
+public class ClusterSelectSeriesBatchReader extends
+    AbstractClusterSelectSeriesBatchReader {
 
   /**
    * Data type
    */
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
-  public ClusterBatchReaderByTimestamp(
-      EngineReaderByTimeStamp readerByTimeStamp,
-      TSDataType dataType) {
-    this.readerByTimeStamp = readerByTimeStamp;
+  /**
+   * Point reader
+   */
+  protected IPointReader reader;
+
+  static final ClusterConfig CLUSTER_CONF = ClusterDescriptor.getInstance().getConfig();
+
+  public ClusterSelectSeriesBatchReader(
+      TSDataType dataType, IPointReader reader) {
     this.dataType = dataType;
+    this.reader = reader;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    return readerByTimeStamp.hasNext();
+    return reader.hasNext();
   }
 
   @Override
   public BatchData nextBatch() throws IOException {
-    throw new UnsupportedOperationException(
-        "nextBatch() in ClusterBatchReaderByTimestamp is an empty method.");
-  }
-
-
-  @Override
-  public void close() throws IOException {
-    // do nothing
-  }
-
-  @Override
-  public BatchData nextBatch(List<Long> batchTime) throws IOException {
     BatchData batchData = new BatchData(dataType, true);
-    for(long time: batchTime){
-      Object value = readerByTimeStamp.getValueInTimestamp(time);
-      if(value != null){
-        batchData.putTime(time);
-        batchData.putAnObject(value);
+    for (int i = 0; i < CLUSTER_CONF.getBatchReadSize(); i++) {
+      if (hasNext()) {
+        TimeValuePair pair = reader.next();
+        System.out.println("reader value:" + pair);
+        batchData.putTime(pair.getTimestamp());
+        batchData.putAnObject(pair.getValue().getValue());
+      } else {
+        break;
       }
     }
     return batchData;
   }
 
-  public EngineReaderByTimeStamp getReaderByTimeStamp() {
-    return readerByTimeStamp;
+  @Override
+  public void close() throws IOException {
+    if (reader != null) {
+      reader.close();
+    }
+  }
+
+  @Override
+  public BatchData nextBatch(List<Long> batchTime) throws IOException {
+    throw new IOException(
+        "nextBatch(List<Long> batchTime) in ClusterSelectSeriesBatchReader is an empty method.");
   }
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public IPointReader getReader() {
+    return reader;
   }
 }

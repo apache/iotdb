@@ -58,10 +58,7 @@ public abstract class AbstractNodeConstructor {
 
   /**
    * Construct not series type node.
-<<<<<<< HEAD
-=======
    *
->>>>>>> master
    * @param expression expression
    * @return Node object
    * @throws FileNodeManagerException FileNodeManagerException

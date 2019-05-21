@@ -41,13 +41,21 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClusterQueryProcessExecutor extends AbstractQPExecutor implements IQueryProcessExecutor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterQueryProcessExecutor.class);
   private ThreadLocal<Integer> fetchSize = new ThreadLocal<>();
   private ClusterQueryRouter clusterQueryRouter = new ClusterQueryRouter();
 
-  private QueryMetadataExecutor queryMetadataExecutor = new QueryMetadataExecutor();
+  private QueryMetadataExecutor queryMetadataExecutor;
+
+  public ClusterQueryProcessExecutor(
+      QueryMetadataExecutor queryMetadataExecutor) {
+    this.queryMetadataExecutor = queryMetadataExecutor;
+  }
 
   @Override
   public QueryDataSet processQuery(QueryPlan queryPlan, QueryContext context)
@@ -117,6 +125,7 @@ public class ClusterQueryProcessExecutor extends AbstractQPExecutor implements I
   public List<String> getAllPaths(String originPath)
       throws PathErrorException {
     try {
+      LOGGER.debug("read metadata level :" + getReadMetadataConsistencyLevel());
       return queryMetadataExecutor.processPathsQuery(originPath);
     } catch (InterruptedException | ProcessorException e) {
       throw new PathErrorException(e.getMessage());

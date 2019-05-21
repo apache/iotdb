@@ -20,9 +20,9 @@ package org.apache.iotdb.cluster.query.reader.coordinatornode;
 
 import java.io.IOException;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.query.utils.ClusterTimeValuePairUtils;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
@@ -63,11 +63,14 @@ public abstract class AbstractClusterPointReader implements IPointReader {
   @Override
   public TimeValuePair next() throws IOException {
     if (hasNext()) {
-      TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(currentBatchData);
+      TimeValuePair timeValuePair = ClusterTimeValuePairUtils
+          .getCurrentTimeValuePair(currentBatchData);
       currentTimeValuePair = timeValuePair;
       currentBatchData.next();
       return timeValuePair;
     }
     return null;
   }
+
+  public abstract void addBatchData(BatchData batchData, boolean remoteDataFinish);
 }

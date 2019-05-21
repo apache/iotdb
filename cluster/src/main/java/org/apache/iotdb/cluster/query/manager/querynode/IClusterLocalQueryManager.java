@@ -42,7 +42,7 @@ public interface IClusterLocalQueryManager {
    * @param request request for query data from coordinator node
    */
   InitSeriesReaderResponse createQueryDataSet(InitSeriesReaderRequest request)
-      throws IOException, FileNodeManagerException, PathErrorException, ProcessorException, QueryFilterOptimizationException;
+      throws IOException, FileNodeManagerException, PathErrorException, ProcessorException, QueryFilterOptimizationException, ClassNotFoundException;
 
   /**
    * Read batch data of all querying series in request and set response.
@@ -54,8 +54,8 @@ public interface IClusterLocalQueryManager {
 
   /**
    * Read batch data of select series by batch timestamp which is used in query with value filter
-   *  @param request request of querying select paths
    *
+   * @param request request of querying select paths
    */
   QuerySeriesDataByTimestampResponse readBatchDataByTimestamp(
       QuerySeriesDataByTimestampRequest request) throws IOException;

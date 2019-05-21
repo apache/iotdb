@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query;
+package org.apache.iotdb.cluster.integration;
 
 import static org.apache.iotdb.cluster.utils.Utils.insertBatchData;
 import static org.apache.iotdb.cluster.utils.Utils.insertData;
@@ -43,7 +43,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ClusterQueryTest {
+public class IoTDBQueryIT {
 
   private Server server;
   private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
@@ -126,7 +126,6 @@ public class ClusterQueryTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
     CLUSTER_CONFIG.createAllPath();

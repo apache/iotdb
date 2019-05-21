@@ -60,15 +60,16 @@ public class RaftUtilsTest {
 
   private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   private String[] ipListOld;
+  private int portOld;
   private int replicatorOld;
   private int numOfVirtualNodesOld;
-  private int PORT = 7777;
+  private int port = 7777;
   private String[] ipList = {
-      "192.168.130.4:" + PORT,
-      "192.168.130.5:" + PORT,
-      "192.168.130.2:" + PORT,
-      "192.168.130.1:" + PORT,
-      "192.168.130.3:" + PORT
+      "192.168.130.4:" + port,
+      "192.168.130.5:" + port,
+      "192.168.130.2:" + port,
+      "192.168.130.1:" + port,
+      "192.168.130.3:" + port
   };
   private int replicator = 3;
 
@@ -124,11 +125,12 @@ public class RaftUtilsTest {
     Mockito.doNothing().when(response).addResult(any(boolean.class));
     Mockito.doNothing().when(response).setErrorMsg(any(String.class));
     ipListOld = config.getNodes();
+    portOld = config.getPort();
     replicatorOld = config.getReplication();
     numOfVirtualNodesOld = config.getNumOfVirtualNodes();
 
     int numOfVirtualNodes = 2;
-    config.setPort(PORT);
+    config.setPort(port);
     config.setNodes(ipList);
     config.setReplication(replicator);
     config.setNumOfVirtualNodes(numOfVirtualNodes);
@@ -138,8 +140,9 @@ public class RaftUtilsTest {
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
     peerIds.clear();
+    config.setPort(portOld);
     config.setNodes(ipListOld);
     config.setReplication(replicatorOld);
     config.setNumOfVirtualNodes(numOfVirtualNodesOld);

@@ -53,11 +53,11 @@ public interface IClusterRpcSingleQueryManager {
   void fetchBatchDataForSelectPaths(String groupId) throws RaftConnectionException;
 
   /**
-   * Fetch data for filter path.
+   * Fetch data for all filter paths.
    *
    * @param groupId data group id
    */
-  void fetchBatchDataForFilterPaths(String groupId) throws RaftConnectionException;
+  void fetchBatchDataForAllFilterPaths(String groupId) throws RaftConnectionException;
 
   /**
    * Fetch batch data for all select paths by batch timestamp. If target data can be fetched, skip
@@ -67,13 +67,6 @@ public interface IClusterRpcSingleQueryManager {
    */
   void fetchBatchDataByTimestampForAllSelectPaths(List<Long> batchTimestamp)
       throws RaftConnectionException;
-
-  /**
-   * Get query plan of select path
-   *
-   * @param fullPath Timeseries full path in select paths
-   */
-  QueryPlan getSelectPathQueryPlan(String fullPath);
 
   /**
    * Set reader node of a data group

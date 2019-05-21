@@ -19,14 +19,18 @@
 package org.apache.iotdb.cluster.query.utils;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterSeriesGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.SelectSeriesGroupEntity;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -43,38 +47,20 @@ public class QueryPlanPartitionUtils {
   }
 
   /**
-   * Split query plan with no filter or with only global time filter by group id
+   * Split query plan with no filter, with only global time filter by group id or fill query
    */
   public static void splitQueryPlanWithoutValueFilter(
       ClusterRpcSingleQueryManager singleQueryManager)
       throws PathErrorException {
-    splitQueryPlanBySelectPath(singleQueryManager);
-  }
-
-  /**
-   * Split query plan by select paths
-   */
-  private static void splitQueryPlanBySelectPath(ClusterRpcSingleQueryManager singleQueryManager)
-      throws PathErrorException {
-    QueryPlan queryPlan = singleQueryManager.getOriginQueryPlan();
-    Map<String, List<Path>> selectSeriesByGroupId = singleQueryManager.getSelectSeriesByGroupId();
-    Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
-    List<Path> selectPaths = queryPlan.getPaths();
-    for (Path path : selectPaths) {
-      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
-      if (!selectSeriesByGroupId.containsKey(groupId)) {
-        selectSeriesByGroupId.put(groupId, new ArrayList<>());
-      }
-      selectSeriesByGroupId.get(groupId).add(path);
-    }
-    for (Entry<String, List<Path>> entry : selectSeriesByGroupId.entrySet()) {
-      String groupId = entry.getKey();
-      List<Path> paths = entry.getValue();
-      QueryPlan subQueryPlan = new QueryPlan();
-      subQueryPlan.setProposer(queryPlan.getProposer());
-      subQueryPlan.setPaths(paths);
-      subQueryPlan.setExpression(queryPlan.getExpression());
-      selectPathPlans.put(groupId, subQueryPlan);
+    QueryPlan queryPLan = singleQueryManager.getOriginQueryPlan();
+    if (queryPLan instanceof FillQueryPlan) {
+      splitFillPlan(singleQueryManager);
+    } else if (queryPLan instanceof AggregationPlan) {
+      splitAggregationPlanBySelectPath(singleQueryManager);
+    } else if (queryPLan instanceof GroupByPlan) {
+      splitGroupByPlanBySelectPath(singleQueryManager);
+    } else {
+      splitQueryPlanBySelectPath(singleQueryManager);
     }
   }
 
@@ -85,34 +71,55 @@ public class QueryPlanPartitionUtils {
       ClusterRpcSingleQueryManager singleQueryManager) throws PathErrorException {
     QueryPlan queryPlan = singleQueryManager.getOriginQueryPlan();
     if (queryPlan instanceof GroupByPlan) {
-      splitGroupByPlan((GroupByPlan) queryPlan, singleQueryManager);
+      splitGroupByPlanWithFilter(singleQueryManager);
     } else if (queryPlan instanceof AggregationPlan) {
-      splitAggregationPlan((AggregationPlan) queryPlan, singleQueryManager);
+      splitAggregationPlanWithFilter(singleQueryManager);
     } else {
-      splitQueryPlan(queryPlan, singleQueryManager);
+      splitQueryPlanWithFilter(singleQueryManager);
     }
   }
 
-  private static void splitGroupByPlan(GroupByPlan queryPlan,
-      ClusterRpcSingleQueryManager singleQueryManager) {
-    throw new UnsupportedOperationException();
+  /**
+   * Split query plan by select paths
+   */
+  private static void splitQueryPlanBySelectPath(ClusterRpcSingleQueryManager singleQueryManager)
+      throws PathErrorException {
+    QueryPlan queryPlan = singleQueryManager.getOriginQueryPlan();
+    // split query plan by select path
+    Map<String, SelectSeriesGroupEntity> selectGroupEntityMap = singleQueryManager
+        .getSelectSeriesGroupEntityMap();
+    List<Path> selectPaths = queryPlan.getPaths();
+    for (Path path : selectPaths) {
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
+      if (!selectGroupEntityMap.containsKey(groupId)) {
+        selectGroupEntityMap.put(groupId, new SelectSeriesGroupEntity(groupId));
+      }
+      selectGroupEntityMap.get(groupId).addSelectPaths(path);
+    }
+    for (SelectSeriesGroupEntity entity : selectGroupEntityMap.values()) {
+      List<Path> paths = entity.getSelectPaths();
+      QueryPlan subQueryPlan = new QueryPlan();
+      subQueryPlan.setProposer(queryPlan.getProposer());
+      subQueryPlan.setPaths(paths);
+      subQueryPlan.setExpression(queryPlan.getExpression());
+      entity.setQueryPlan(subQueryPlan);
+    }
   }
 
-  private static void splitAggregationPlan(AggregationPlan aggregationPlan,
-      ClusterRpcSingleQueryManager singleQueryManager) {
-    throw new UnsupportedOperationException();
-  }
 
-  private static void splitQueryPlan(QueryPlan queryPlan,
-      ClusterRpcSingleQueryManager singleQueryManager) throws PathErrorException {
-    splitQueryPlanBySelectPath(singleQueryManager);
+  /**
+   * Split query plan by filter paths
+   */
+  private static void splitQueryPlanByFilterPath(ClusterRpcSingleQueryManager singleQueryManager)
+      throws PathErrorException {
+    QueryPlan queryPlan = singleQueryManager.getOriginQueryPlan();
     // split query plan by filter path
-    Map<String, FilterGroupEntity> filterGroupEntityMap = singleQueryManager
-        .getFilterGroupEntityMap();
+    Map<String, FilterSeriesGroupEntity> filterGroupEntityMap = singleQueryManager
+        .getFilterSeriesGroupEntityMap();
     IExpression expression = queryPlan.getExpression();
     ExpressionUtils.getAllExpressionSeries(expression, filterGroupEntityMap);
-    for (FilterGroupEntity filterGroupEntity : filterGroupEntityMap.values()) {
-      List<Path> filterSeriesList = filterGroupEntity.getFilterPaths();
+    for (FilterSeriesGroupEntity filterSeriesGroupEntity : filterGroupEntityMap.values()) {
+      List<Path> filterSeriesList = filterSeriesGroupEntity.getFilterPaths();
       // create filter sub query plan
       QueryPlan subQueryPlan = new QueryPlan();
       subQueryPlan.setPaths(filterSeriesList);
@@ -121,7 +128,108 @@ public class QueryPlanPartitionUtils {
       if (subExpression.getType() != ExpressionType.TRUE) {
         subQueryPlan.setExpression(subExpression);
       }
-      filterGroupEntity.setQueryPlan(subQueryPlan);
+      filterSeriesGroupEntity.setQueryPlan(subQueryPlan);
     }
   }
+
+  /**
+   * Split group by plan by select path
+   */
+  private static void splitGroupByPlanBySelectPath(
+      ClusterRpcSingleQueryManager singleQueryManager) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Split group by plan with filter path
+   */
+  private static void splitGroupByPlanWithFilter(ClusterRpcSingleQueryManager singleQueryManager)
+      throws PathErrorException {
+    splitGroupByPlanBySelectPath(singleQueryManager);
+    splitQueryPlanByFilterPath(singleQueryManager);
+  }
+
+  /**
+   * Split aggregation plan by select path
+   */
+  private static void splitAggregationPlanBySelectPath(
+      ClusterRpcSingleQueryManager singleQueryManager)
+      throws PathErrorException {
+    AggregationPlan queryPlan = (AggregationPlan) singleQueryManager.getOriginQueryPlan();
+    List<Path> selectPaths = queryPlan.getPaths();
+    List<String> aggregations = queryPlan.getAggregations();
+    Map<String, List<String>> selectAggregationByGroupId = new HashMap<>();
+    Map<String, SelectSeriesGroupEntity> selectGroupEntityMap = singleQueryManager
+        .getSelectSeriesGroupEntityMap();
+    for (int i = 0; i < selectPaths.size(); i++) {
+      Path path = selectPaths.get(i);
+      String aggregation = aggregations.get(i);
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
+      if (!selectGroupEntityMap.containsKey(groupId)) {
+        selectGroupEntityMap.put(groupId, new SelectSeriesGroupEntity(groupId));
+        selectAggregationByGroupId.put(groupId, new ArrayList<>());
+      }
+      selectAggregationByGroupId.get(groupId).add(aggregation);
+      selectGroupEntityMap.get(groupId).addSelectPaths(path);
+    }
+    for (Entry<String, SelectSeriesGroupEntity> entry : selectGroupEntityMap.entrySet()) {
+      String groupId = entry.getKey();
+      SelectSeriesGroupEntity entity = entry.getValue();
+      List<Path> paths = entity.getSelectPaths();
+      AggregationPlan subQueryPlan = new AggregationPlan();
+      subQueryPlan.setProposer(queryPlan.getProposer());
+      subQueryPlan.setPaths(paths);
+      subQueryPlan.setExpression(queryPlan.getExpression());
+      subQueryPlan.setAggregations(selectAggregationByGroupId.get(groupId));
+      entity.setQueryPlan(subQueryPlan);
+    }
+  }
+
+  /**
+   * Split aggregation plan with filter path
+   */
+  private static void splitAggregationPlanWithFilter(
+      ClusterRpcSingleQueryManager singleQueryManager)
+      throws PathErrorException {
+    splitAggregationPlanBySelectPath(singleQueryManager);
+    splitQueryPlanByFilterPath(singleQueryManager);
+  }
+
+  /**
+   * Split fill plan which only contain select paths.
+   */
+  private static void splitFillPlan(ClusterRpcSingleQueryManager singleQueryManager)
+      throws PathErrorException {
+    FillQueryPlan fillQueryPlan = (FillQueryPlan) singleQueryManager.getOriginQueryPlan();
+    List<Path> selectPaths = fillQueryPlan.getPaths();
+    Map<String, SelectSeriesGroupEntity> selectGroupEntityMap = singleQueryManager
+        .getSelectSeriesGroupEntityMap();
+    for (Path path : selectPaths) {
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
+      if (!selectGroupEntityMap.containsKey(groupId)) {
+        selectGroupEntityMap.put(groupId, new SelectSeriesGroupEntity(groupId));
+      }
+      selectGroupEntityMap.get(groupId).addSelectPaths(path);
+    }
+    for (SelectSeriesGroupEntity entity : selectGroupEntityMap.values()) {
+      List<Path> paths = entity.getSelectPaths();
+      FillQueryPlan subQueryPlan = new FillQueryPlan();
+      subQueryPlan.setProposer(fillQueryPlan.getProposer());
+      subQueryPlan.setPaths(paths);
+      subQueryPlan.setExpression(fillQueryPlan.getExpression());
+      subQueryPlan.setQueryTime(fillQueryPlan.getQueryTime());
+      subQueryPlan.setFillType(new EnumMap<>(fillQueryPlan.getFillType()));
+      entity.setQueryPlan(subQueryPlan);
+    }
+  }
+
+  /**
+   * Split query plan with filter
+   */
+  private static void splitQueryPlanWithFilter(ClusterRpcSingleQueryManager singleQueryManager)
+      throws PathErrorException {
+    splitQueryPlanBySelectPath(singleQueryManager);
+    splitQueryPlanByFilterPath(singleQueryManager);
+  }
+
 }

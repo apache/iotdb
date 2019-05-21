@@ -66,9 +66,10 @@ public class TSServiceClusterImpl extends TSServiceImpl {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceClusterImpl.class);
 
-  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor();
-  private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor();
   private QueryMetadataExecutor queryMetadataExecutor = new QueryMetadataExecutor();
+  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor(
+      queryMetadataExecutor);
+  private NonQueryExecutor nonQueryExecutor = new NonQueryExecutor();
 
   private IClusterRpcQueryManager queryManager = ClusterRpcQueryManager.getInstance();
 
@@ -306,7 +307,11 @@ public class TSServiceClusterImpl extends TSServiceImpl {
     queryManager.addSingleQuery(jobId, (QueryPlan) physicalPlan);
     QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
         context);
-    queryRet.get().put(statement, queryDataSet);
+    try {
+      queryRet.get().put(statement, queryDataSet);
+    }catch (Exception e){
+      e.printStackTrace();
+    }
     return queryDataSet;
   }
 

@@ -16,24 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.query.reader.querynode;
+package org.apache.iotdb.cluster.query.utils;
 
-import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.cluster.query.common.FillBatchData;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-/**
- * Cluster batch reader, which provides another method to get batch data by batch timestamp.
- */
-public abstract class AbstractClusterBatchReader implements IBatchReader {
+public class ClusterTimeValuePairUtils {
+
+  private ClusterTimeValuePairUtils() {
+  }
 
   /**
-   * Get batch data by batch time
+   * get given data's current (time,value) pair.
    *
-   * @param batchTime valid batch timestamp
-   * @return corresponding batch data
+   * @param data -batch data
+   * @return -given data's (time,value) pair
    */
-  public abstract BatchData nextBatch(List<Long> batchTime) throws IOException;
-
+  public static TimeValuePair getCurrentTimeValuePair(BatchData data) {
+    if (data instanceof FillBatchData){
+      return ((FillBatchData)data).getTimeValuePair();
+    }else{
+      return TimeValuePairUtils.getCurrentTimeValuePair(data);
+    }
+  }
 }

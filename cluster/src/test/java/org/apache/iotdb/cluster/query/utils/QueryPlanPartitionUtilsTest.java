@@ -37,10 +37,14 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.qp.executor.ClusterQueryProcessExecutor;
+import org.apache.iotdb.cluster.qp.executor.QueryMetadataExecutor;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.FilterSeriesGroupEntity;
+import org.apache.iotdb.cluster.query.manager.coordinatornode.SelectSeriesGroupEntity;
 import org.apache.iotdb.cluster.utils.EnvironmentUtils;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
+import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.jdbc.Config;
@@ -58,8 +62,12 @@ public class QueryPlanPartitionUtilsTest {
   private static final String LOCAL_ADDR = String
       .format("%s:%d", CLUSTER_CONFIG.getIp(), CLUSTER_CONFIG.getPort());
   private static ClusterRpcQueryManager manager = ClusterRpcQueryManager.getInstance();
-  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor();
+  private ClusterQueryProcessExecutor queryDataExecutor = new ClusterQueryProcessExecutor(
+      new QueryMetadataExecutor());
   private QueryProcessor queryProcessor = new QueryProcessor(queryDataExecutor);
+  private static final PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
+      CLUSTER_CONFIG.getPort());
+
 
   private static final String URL = "127.0.0.1:6667/";
 
@@ -105,6 +113,7 @@ public class QueryPlanPartitionUtilsTest {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
+    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
     CLUSTER_CONFIG.createAllPath();
     server = Server.getInstance();
     server.start();
@@ -115,6 +124,7 @@ public class QueryPlanPartitionUtilsTest {
   @After
   public void tearDown() throws Exception {
     server.stop();
+    QPExecutorUtils.setLocalNodeAddr(localNode.getIp(), localNode.getPort());
     EnvironmentUtils.cleanEnv();
   }
 
@@ -230,14 +240,14 @@ public class QueryPlanPartitionUtilsTest {
   }
 
   @Test
-  public void splitQueryPlanWithoutValueFilter() throws Exception{
+  public void splitQueryPlanWithoutValueFilter() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
       insertData(connection, createSQLs, insertSQLs);
       initCorrectResult();
-      for(int i = 0 ; i < queryStatementsWithoutFilters.length; i++) {
+      for (int i = 0; i < queryStatementsWithoutFilters.length; i++) {
         String queryStatementsWithoutFilter = queryStatementsWithoutFilters[i];
-        try(Statement statement = connection.createStatement()) {
+        try (Statement statement = connection.createStatement()) {
           boolean hasResultSet = statement.execute(queryStatementsWithoutFilter);
           assertTrue(hasResultSet);
           ResultSet resultSet = statement.getResultSet();
@@ -256,14 +266,15 @@ public class QueryPlanPartitionUtilsTest {
             assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
             ClusterRpcSingleQueryManager singleQueryManager = ClusterRpcQueryManager.getInstance()
                 .getSingleQuery(jobId);
-            assertTrue(singleQueryManager.getFilterGroupEntityMap().isEmpty());
-            Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
-            assertFalse(selectPathPlans.isEmpty());
-            for(Entry<String, QueryPlan> entry1: selectPathPlans.entrySet()){
-              QueryPlan queryPlan = entry1.getValue();
+            assertTrue(singleQueryManager.getFilterSeriesGroupEntityMap().isEmpty());
+            Map<String, SelectSeriesGroupEntity> selectSeriesGroupEntityMap = singleQueryManager
+                .getSelectSeriesGroupEntityMap();
+            assertFalse(selectSeriesGroupEntityMap.isEmpty());
+            for (SelectSeriesGroupEntity entity : selectSeriesGroupEntityMap.values()) {
+              QueryPlan queryPlan = entity.getQueryPlan();
               QueryPlan correctQueryPlan = withoutFilterResults.get(i + 1);
               assertTrue(correctQueryPlan.getPaths().containsAll(queryPlan.getPaths()));
-              assertEquals(correctQueryPlan.getExpression(),queryPlan.getExpression());
+              assertEquals(correctQueryPlan.getExpression(), queryPlan.getExpression());
               assertEquals(correctQueryPlan.isQuery(), queryPlan.isQuery());
               assertEquals(correctQueryPlan.getOperatorType(), queryPlan.getOperatorType());
               assertEquals(correctQueryPlan.getAggregations(), queryPlan.getAggregations());
@@ -275,14 +286,14 @@ public class QueryPlanPartitionUtilsTest {
   }
 
   @Test
-  public void splitQueryPlanWithValueFilter() throws Exception{
+  public void splitQueryPlanWithValueFilter() throws Exception {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + URL, "root", "root")) {
       insertData(connection, createSQLs, insertSQLs);
       initCorrectResult();
-      for(int i = 0 ; i < queryStatementsWithFilters.length; i++) {
+      for (int i = 0; i < queryStatementsWithFilters.length; i++) {
         String queryStatementsWithoutFilter = queryStatementsWithFilters[i];
-        try(Statement statement = connection.createStatement()) {
+        try (Statement statement = connection.createStatement()) {
           boolean hasResultSet = statement.execute(queryStatementsWithoutFilter);
           assertTrue(hasResultSet);
           ResultSet resultSet = statement.getResultSet();
@@ -301,21 +312,24 @@ public class QueryPlanPartitionUtilsTest {
             assertEquals(taskId, String.format("%s:%d", LOCAL_ADDR, jobId));
             ClusterRpcSingleQueryManager singleQueryManager = ClusterRpcQueryManager.getInstance()
                 .getSingleQuery(jobId);
-            assertTrue(singleQueryManager.getFilterGroupEntityMap().isEmpty());
-            Map<String, QueryPlan> selectPathPlans = singleQueryManager.getSelectPathPlans();
-            assertFalse(selectPathPlans.isEmpty());
-            for(Entry<String, QueryPlan> entry1 : selectPathPlans.entrySet()) {
-              QueryPlan queryPlan = entry1.getValue();
+            assertFalse(singleQueryManager.getFilterSeriesGroupEntityMap().isEmpty());
+            Map<String, SelectSeriesGroupEntity> selectSeriesGroupEntityMap = singleQueryManager
+                .getSelectSeriesGroupEntityMap();
+            assertFalse(selectSeriesGroupEntityMap.isEmpty());
+            for (SelectSeriesGroupEntity entity : selectSeriesGroupEntityMap.values()) {
+              QueryPlan queryPlan = entity.getQueryPlan();
               QueryPlan correctQueryPlan = withFilterSelectResults.get(i + 1);
               assertTrue(correctQueryPlan.getPaths().containsAll(queryPlan.getPaths()));
-              assertEquals(correctQueryPlan.getExpression().getType(), queryPlan.getExpression().getType());
+              assertEquals(correctQueryPlan.getExpression().getType(),
+                  queryPlan.getExpression().getType());
               assertEquals(correctQueryPlan.isQuery(), queryPlan.isQuery());
               assertEquals(correctQueryPlan.getOperatorType(), queryPlan.getOperatorType());
               assertEquals(correctQueryPlan.getAggregations(), queryPlan.getAggregations());
             }
-            Map<String, FilterGroupEntity> filterGroupEntityMap = singleQueryManager.getFilterGroupEntityMap();
-            for (FilterGroupEntity filterGroupEntity:filterGroupEntityMap.values()) {
-              QueryPlan queryPlan = filterGroupEntity.getQueryPlan();
+            Map<String, FilterSeriesGroupEntity> filterGroupEntityMap = singleQueryManager
+                .getFilterSeriesGroupEntityMap();
+            for (FilterSeriesGroupEntity filterSeriesGroupEntity : filterGroupEntityMap.values()) {
+              QueryPlan queryPlan = filterSeriesGroupEntity.getQueryPlan();
               QueryPlan correctQueryPlan = withFilterFilterResults.get(i + 1);
               assertTrue(correctQueryPlan.getPaths().containsAll(queryPlan.getPaths()));
               assertEquals(correctQueryPlan.getExpression().getType(),

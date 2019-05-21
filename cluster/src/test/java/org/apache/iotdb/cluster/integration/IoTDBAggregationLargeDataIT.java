@@ -16,16 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.cluster.integration;
 
-package org.apache.iotdb.db.integration;
-
-import static org.apache.iotdb.db.integration.Constant.count;
-import static org.apache.iotdb.db.integration.Constant.first;
-import static org.apache.iotdb.db.integration.Constant.max_time;
-import static org.apache.iotdb.db.integration.Constant.max_value;
-import static org.apache.iotdb.db.integration.Constant.mean;
-import static org.apache.iotdb.db.integration.Constant.min_value;
-import static org.apache.iotdb.db.integration.Constant.sum;
+import static org.apache.iotdb.cluster.integration.Constant.count;
+import static org.apache.iotdb.cluster.integration.Constant.first;
+import static org.apache.iotdb.cluster.integration.Constant.max_time;
+import static org.apache.iotdb.cluster.integration.Constant.max_value;
+import static org.apache.iotdb.cluster.integration.Constant.mean;
+import static org.apache.iotdb.cluster.integration.Constant.min_value;
+import static org.apache.iotdb.cluster.integration.Constant.sum;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
@@ -33,15 +32,25 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.entity.Server;
+import org.apache.iotdb.cluster.utils.EnvironmentUtils;
+import org.apache.iotdb.cluster.utils.QPExecutorUtils;
+import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class IoTDBAggregationLargeDataIT {
+
+  private Server server;
+  private static final ClusterConfig CLUSTER_CONFIG = ClusterDescriptor.getInstance().getConfig();
+  private static final PhysicalNode localNode = new PhysicalNode(CLUSTER_CONFIG.getIp(),
+      CLUSTER_CONFIG.getPort());
 
   private static final String TIMESTAMP_STR = "Time";
   private final String d0s0 = "root.vehicle.d0.s0";
@@ -109,29 +118,30 @@ public class IoTDBAggregationLargeDataIT {
       "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
   };
 
-  private IoTDB daemon;
-
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
-    daemon = IoTDB.getInstance();
-    daemon.active();
+    CLUSTER_CONFIG.createAllPath();
+    server = Server.getInstance();
+
+    server.start();
     EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
+    server.stop();
+    QPExecutorUtils.setLocalNodeAddr(localNode.getIp(), localNode.getPort());
     EnvironmentUtils.cleanEnv();
   }
+
 
   @Test
   public void test() throws ClassNotFoundException, SQLException {
     insertSQL();
 
-    Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
     lastAggreWithSingleFilterTest();
     meanAggreWithSingleFilterTest();
     sumAggreWithSingleFilterTest();
@@ -150,8 +160,31 @@ public class IoTDBAggregationLargeDataIT {
     meanAggreWithMultiFilterTest();
     sumAggreWithMultiFilterTest();
     firstAggreWithMultiFilterTest();
-    connection.close();
+  }
 
+  @Test
+  public void remoteTest() throws ClassNotFoundException, SQLException {
+    QPExecutorUtils.setLocalNodeAddr("0.0.0.0", 0);
+    insertSQL();
+
+    lastAggreWithSingleFilterTest();
+    meanAggreWithSingleFilterTest();
+    sumAggreWithSingleFilterTest();
+    firstAggreWithSingleFilterTest();
+    countAggreWithSingleFilterTest();
+    minMaxTimeAggreWithSingleFilterTest();
+    minValueAggreWithSingleFilterTest();
+    maxValueAggreWithSingleFilterTest();
+
+    lastAggreWithMultiFilterTest();
+    countAggreWithMultiFilterTest();
+    minTimeAggreWithMultiFilterTest();
+    maxTimeAggreWithMultiFilterTest();
+    minValueAggreWithMultiFilterTest();
+    maxValueAggreWithMultiFilterTest();
+    meanAggreWithMultiFilterTest();
+    sumAggreWithMultiFilterTest();
+    firstAggreWithMultiFilterTest();
   }
 
   private void lastAggreWithMultiFilterTest() throws SQLException {
@@ -177,7 +210,6 @@ public class IoTDBAggregationLargeDataIT {
             + "," + resultSet.getString(Constant.last(d0s2)) + "," +
             resultSet.getString(Constant.last(d0s3)) + "," + resultSet
             .getString(Constant.last(d0s4));
-        // System.out.println("============ " + ans);
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
       }
@@ -366,12 +398,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void minMaxTimeAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+  private void minMaxTimeAggreWithSingleFilterTest() throws SQLException {
     String[] retArray = new String[]{
         "0,104,1,2,101,100"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.
@@ -431,7 +462,6 @@ public class IoTDBAggregationLargeDataIT {
         "0,0,0,0.0,B,true"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -450,7 +480,6 @@ public class IoTDBAggregationLargeDataIT {
                   .getString(min_value(d0s2))
                   + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet
                   .getString(min_value(d0s4));
-          //System.out.println("============ " + ans);
           Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
         }
@@ -472,7 +501,6 @@ public class IoTDBAggregationLargeDataIT {
         "0,99,40000,122.0,fffff,true"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.
@@ -492,7 +520,6 @@ public class IoTDBAggregationLargeDataIT {
                   .getString(max_value(d0s2))
                   + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet
                   .getString(max_value(d0s4));
-          //System.out.println("============ " + ans);
           Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
         }
@@ -514,11 +541,8 @@ public class IoTDBAggregationLargeDataIT {
         "0,55061.0,733,75,212,28"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager.
-          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try(Connection connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root")){
       Statement statement = connection.createStatement();
       boolean hasResultSet = statement.execute("select sum(s0),count(s0),mean(s0),mean(s1),"
           + "mean(s2) from root.vehicle.d0 " +
@@ -533,7 +557,6 @@ public class IoTDBAggregationLargeDataIT {
                 + "," +
                 Math.round(resultSet.getDouble(mean(d0s1))) + "," + Math
                 .round(resultSet.getDouble(mean(d0s2)));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -542,10 +565,6 @@ public class IoTDBAggregationLargeDataIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -554,7 +573,6 @@ public class IoTDBAggregationLargeDataIT {
         "0,55061.0,156752.0,20262"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.
@@ -569,8 +587,6 @@ public class IoTDBAggregationLargeDataIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
             + "," + resultSet.getString(sum(d0s1)) + "," + Math
             .round(resultSet.getDouble(sum(d0s2)));
-        //String ans = resultSet.getString(sum(d0s3));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -586,12 +602,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void firstAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void firstAggreWithMultiFilterTest() throws SQLException {
     String[] retArray = new String[]{
         "0,90,1101,2.22,ddddd,true"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.
@@ -606,8 +621,6 @@ public class IoTDBAggregationLargeDataIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0))
             + "," + resultSet.getString(first(d0s1)) + "," + resultSet.getString(first(d0s2))
             + "," + resultSet.getString(first(d0s3)) + "," + resultSet.getString(first(d0s4));
-        //String ans = resultSet.getString(first(d0s3));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -628,7 +641,6 @@ public class IoTDBAggregationLargeDataIT {
         "0,733,740,736,482,1"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.
@@ -643,8 +655,6 @@ public class IoTDBAggregationLargeDataIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
             + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
             + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
-        //String ans = resultSet.getString(count(d0s3));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -665,7 +675,6 @@ public class IoTDBAggregationLargeDataIT {
         "0,104,1,2,101,100"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.
@@ -683,7 +692,6 @@ public class IoTDBAggregationLargeDataIT {
             resultSet.getString(Constant.min_time(d0s2)) + "," +
             resultSet.getString(Constant.min_time(d0s3)) + "," +
             resultSet.getString(Constant.min_time(d0s4));
-        // System.out.println("============ " + ans);
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
       }
@@ -699,12 +707,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void maxTimeAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void maxTimeAggreWithMultiFilterTest() throws SQLException {
     String[] retArray = new String[]{
         "0,3999,3999,3999,3599,100"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.
@@ -720,7 +727,6 @@ public class IoTDBAggregationLargeDataIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
             + "," + resultSet.getString(max_time(d0s1)) + "," + resultSet.getString(max_time(d0s2))
             + "," + resultSet.getString(max_time(d0s3)) + "," + resultSet.getString(max_time(d0s4));
-        //System.out.println("============ " + ans);
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
       }
@@ -736,12 +742,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void minValueAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void minValueAggreWithMultiFilterTest() throws SQLException {
     String[] retArray = new String[]{
         "0,0,0,0.0,B,true"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.
@@ -759,7 +764,6 @@ public class IoTDBAggregationLargeDataIT {
             .getString(min_value(d0s2))
             + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet
             .getString(min_value(d0s4));
-        //System.out.println("============ " + ans);
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
       }
@@ -780,7 +784,6 @@ public class IoTDBAggregationLargeDataIT {
         "0,99,40000,122.0,fffff,true"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager.
@@ -814,8 +817,7 @@ public class IoTDBAggregationLargeDataIT {
 
   private static String[] stringValue = new String[]{"A", "B", "C", "D", "E"};
 
-  public static void insertSQL() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
+  private static void insertSQL() throws SQLException {
     Connection connection = null;
     double d0s0sum = 0.0, d0s1sum = 0.0, d0s2sum = 0.0;
     int cnt = 0;
@@ -852,7 +854,6 @@ public class IoTDBAggregationLargeDataIT {
       }
 
       statement.execute("flush");
-      System.out.println("cnt = " + cnt);
 
       // insert large amount of data
       for (int time = 3700; time < 4000; time++) {
@@ -878,9 +879,6 @@ public class IoTDBAggregationLargeDataIT {
 
       statement.execute("merge");
 
-      System.out.println("large insert cnt = " + cnt);
-      System.out
-          .println("d0s0sum = " + d0s0sum + "; d0s1sum = " + d0s1sum + "; d0s2sum = " + d0s2sum);
       for (String sql : insertSql) {
         statement.execute(sql);
       }

@@ -26,6 +26,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class Utils {
+
+  private Utils() {
+
+  }
+
   public static String getCurrentPath(String... command) throws IOException {
     ProcessBuilder builder = new ProcessBuilder(command);
     builder.redirectErrorStream(true);

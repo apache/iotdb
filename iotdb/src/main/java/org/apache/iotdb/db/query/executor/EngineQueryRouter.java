@@ -90,14 +90,14 @@ public class EngineQueryRouter implements IEngineQueryRouter{
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
           selectedSeries, aggres, optimizedExpression);
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-        return engineExecutor.executeWithOutTimeGenerator(context);
+        return engineExecutor.executeWithoutTimeGenerator(context);
       } else {
         return engineExecutor.executeWithTimeGenerator(context);
       }
     } else {
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
           selectedSeries, aggres, null);
-      return engineExecutor.executeWithOutTimeGenerator(context);
+      return engineExecutor.executeWithoutTimeGenerator(context);
     }
   }
 

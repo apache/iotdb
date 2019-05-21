@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.executor;
 
 import java.io.IOException;
@@ -37,7 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class FillEngineExecutor {
+public class FillEngineExecutor implements IFillEngineExecutor{
 
   private long jobId;
   private List<Path> selectedSeries;
@@ -52,11 +51,7 @@ public class FillEngineExecutor {
     this.typeIFillMap = typeIFillMap;
   }
 
-  /**
-   * execute fill.
-   *
-   * @param context query context
-   */
+  @Override
   public QueryDataSet execute(QueryContext context)
       throws FileNodeManagerException, PathErrorException, IOException {
     QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
@@ -68,7 +63,7 @@ public class FillEngineExecutor {
           .getQueryDataSource(path, context);
       TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
       dataTypeList.add(dataType);
-      IFill fill = null;
+      IFill fill;
       if (!typeIFillMap.containsKey(dataType)) {
         fill = new PreviousFill(dataType, queryTime, 0);
       } else {

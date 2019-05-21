@@ -83,7 +83,7 @@ public class ClusterFilterSeriesReader extends AbstractClusterPointReader {
   @Override
   protected void updateCurrentBatchData() throws RaftConnectionException {
     if (batchDataList.isEmpty() && !remoteDataFinish) {
-      queryManager.fetchBatchDataForFilterPaths(groupId);
+      queryManager.fetchBatchDataForAllFilterPaths(groupId);
     }
     if (!batchDataList.isEmpty()) {
       currentBatchData = batchDataList.removeFirst();
@@ -95,14 +95,6 @@ public class ClusterFilterSeriesReader extends AbstractClusterPointReader {
     //Do nothing
   }
 
-  public Path getSeriesPath() {
-    return seriesPath;
-  }
-
-  public void setSeriesPath(Path seriesPath) {
-    this.seriesPath = seriesPath;
-  }
-
   public TSDataType getDataType() {
     return dataType;
   }
@@ -111,14 +103,7 @@ public class ClusterFilterSeriesReader extends AbstractClusterPointReader {
     this.dataType = dataType;
   }
 
-  public BatchData getCurrentBatchData() {
-    return currentBatchData;
-  }
-
-  public void setCurrentBatchData(BatchData currentBatchData) {
-    this.currentBatchData = currentBatchData;
-  }
-
+  @Override
   public void addBatchData(BatchData batchData, boolean remoteDataFinish) {
     batchDataList.addLast(batchData);
     this.remoteDataFinish = remoteDataFinish;

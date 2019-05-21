@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
+import java.io.Serializable;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
@@ -33,12 +33,13 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public abstract class IFill {
+public abstract class IFill implements Serializable {
 
+  private static final long serialVersionUID = -357739398193527464L;
   long queryTime;
   TSDataType dataType;
 
-  IPointReader allDataReader;
+  transient IPointReader allDataReader;
 
   public IFill(TSDataType dataType, long queryTime) {
     this.dataType = dataType;
@@ -106,8 +107,11 @@ public abstract class IFill {
 
     @Override
     public TimeValuePair next() {
-      isUsed = true;
-      return pair;
+      if (!isUsed) {
+        isUsed = true;
+        return pair;
+      }
+      return null;
     }
 
     @Override

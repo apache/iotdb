@@ -20,17 +20,20 @@ package org.apache.iotdb.cluster.query.reader.querynode;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
- * Batch reader for filter series which is used in query node.
+ * Cluster batch reader, which provides another method to get batch data by batch timestamp.
  */
-public interface IClusterFilterSeriesBatchReader {
-
-  boolean hasNext() throws IOException;
+public abstract class AbstractClusterSelectSeriesBatchReader implements IBatchReader {
 
   /**
-   * Get next batch data of all filter series.
+   * Get batch data by batch time
+   *
+   * @param batchTime valid batch timestamp
+   * @return corresponding batch data
    */
-  List<BatchData> nextBatchList() throws IOException;
+  public abstract BatchData nextBatch(List<Long> batchTime) throws IOException;
+
 }

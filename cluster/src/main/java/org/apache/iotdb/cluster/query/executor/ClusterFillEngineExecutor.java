@@ -27,87 +27,78 @@ import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQu
 import org.apache.iotdb.cluster.query.manager.coordinatornode.SelectSeriesGroupEntity;
 import org.apache.iotdb.cluster.query.reader.coordinatornode.ClusterSelectSeriesReader;
 import org.apache.iotdb.cluster.utils.QPExecutorUtils;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
-import org.apache.iotdb.db.query.executor.AbstractExecutorWithoutTimeGenerator;
+import org.apache.iotdb.db.query.executor.IFillEngineExecutor;
+import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class ClusterExecutorWithoutTimeGenerator extends AbstractExecutorWithoutTimeGenerator {
+public class ClusterFillEngineExecutor implements IFillEngineExecutor {
 
-  /**
-   * Query expression
-   */
-  private QueryExpression queryExpression;
-
-  /**
-   * Manger for all remote query series reader resource in the query
-   */
+  private List<Path> selectedSeries;
+  private long queryTime;
+  private Map<TSDataType, IFill> typeIFillMap;
   private ClusterRpcSingleQueryManager queryManager;
 
-  /**
-   * Constructor of ClusterExecutorWithoutTimeGenerator
-   */
-  public ClusterExecutorWithoutTimeGenerator(QueryExpression queryExpression,
-      ClusterRpcSingleQueryManager queryManager) {
-    this.queryExpression = queryExpression;
+
+  public ClusterFillEngineExecutor(List<Path> selectedSeries, long queryTime,
+      Map<TSDataType, IFill> typeIFillMap, ClusterRpcSingleQueryManager queryManager) {
+    this.selectedSeries = selectedSeries;
+    this.queryTime = queryTime;
+    this.typeIFillMap = typeIFillMap;
     this.queryManager = queryManager;
   }
 
-  /**
-   * Execute query without filter or with only global time filter.
-   */
+  @Override
   public QueryDataSet execute(QueryContext context)
-      throws FileNodeManagerException, PathErrorException {
-
-    Filter timeFilter = null;
-    if (queryExpression.getExpression() != null) {
-      timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
-    }
-
-    List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-
-    Map<String, SelectSeriesGroupEntity> selectSeriesGroupEntityMap = queryManager
-        .getSelectSeriesGroupEntityMap();
+      throws FileNodeManagerException, PathErrorException, IOException {
     List<Path> paths = new ArrayList<>();
+    List<IFill> fillList = new ArrayList<>();
+    List<TSDataType> dataTypeList = new ArrayList<>();
+    List<IPointReader> readers = new ArrayList<>();
+    Map<String, SelectSeriesGroupEntity> selectSeriesEntityMap = queryManager.getSelectSeriesGroupEntityMap();
     //Mark filter series reader index group by group id
     Map<String, Integer> selectSeriesReaderIndex = new HashMap<>();
-    for (Path path : queryExpression.getSelectedSeries()) {
-
+    for (Path path : selectedSeries) {
       String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
 
-      if (selectSeriesGroupEntityMap.containsKey(groupId)) {
+      if (selectSeriesEntityMap.containsKey(groupId)) {
         int index = selectSeriesReaderIndex.getOrDefault(groupId, 0);
-        ClusterSelectSeriesReader reader = selectSeriesGroupEntityMap.get(groupId)
-            .getSelectSeriesReaders().get(index);
-        readersOfSelectedSeries.add(reader);
-        dataTypes.add(reader.getDataType());
+        ClusterSelectSeriesReader reader = selectSeriesEntityMap.get(groupId).getSelectSeriesReaders().get(index);
+        readers.add(reader);
+        dataTypeList.add(reader.getDataType());
         selectSeriesReaderIndex.put(groupId, index + 1);
       } else {
-        IPointReader reader = createSeriesReader(context, path, dataTypes, timeFilter);
-        readersOfSelectedSeries.add(reader);
-        paths.add(path);
+        QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+            .getQueryDataSource(path, context);
+        TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+        dataTypeList.add(dataType);
+        IFill fill;
+        if (!typeIFillMap.containsKey(dataType)) {
+          fill = new PreviousFill(dataType, queryTime, 0);
+        } else {
+          fill = typeIFillMap.get(dataType).copy(path);
+        }
+        fill.setDataType(dataType);
+        fill.setQueryTime(queryTime);
+        fill.constructReaders(queryDataSource, context);
+        fillList.add(fill);
+        readers.add(fill.getFillResult());
       }
     }
 
     QueryResourceManager.getInstance()
         .beginQueryOfGivenQueryPaths(context.getJobId(), paths);
 
-    try {
-      return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
-          readersOfSelectedSeries);
-    } catch (IOException e) {
-      throw new FileNodeManagerException(e);
-    }
+    return new EngineDataSetWithoutTimeGenerator(selectedSeries, dataTypeList, readers);
   }
-
 }

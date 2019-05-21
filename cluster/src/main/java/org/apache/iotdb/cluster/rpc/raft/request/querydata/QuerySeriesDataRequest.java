@@ -46,9 +46,9 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   private PathType pathType;
 
   /**
-   * Key is series type, value is series list
+   * list of series path index.
    */
-  private List<String> seriesPaths = new ArrayList<>();
+  private List<Integer> seriesPathIndexs = new ArrayList<>();
 
   private QuerySeriesDataRequest(String groupID, String taskId) {
     super(groupID);
@@ -56,10 +56,10 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
   }
 
   public static QuerySeriesDataRequest createFetchDataRequest(String groupId, String taskId,
-      PathType pathType, List<String> seriesPaths, long queryRounds) {
+      PathType pathType, List<Integer> seriesPathIndexs, long queryRounds) {
     QuerySeriesDataRequest request = new QuerySeriesDataRequest(groupId, taskId);
     request.pathType = pathType;
-    request.seriesPaths = seriesPaths;
+    request.seriesPathIndexs = seriesPathIndexs;
     request.queryRounds = queryRounds;
     return request;
   }
@@ -88,11 +88,7 @@ public class QuerySeriesDataRequest extends BasicQueryRequest {
     this.pathType = pathType;
   }
 
-  public List<String> getSeriesPaths() {
-    return seriesPaths;
-  }
-
-  public void setSeriesPaths(List<String> seriesPaths) {
-    this.seriesPaths = seriesPaths;
+  public List<Integer> getSeriesPathIndexs() {
+    return seriesPathIndexs;
   }
 }

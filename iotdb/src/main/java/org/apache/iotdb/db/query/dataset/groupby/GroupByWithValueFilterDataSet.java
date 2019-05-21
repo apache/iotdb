@@ -54,7 +54,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * group by batch calculation size.
    */
-  private int timeStampFetchSize;
+  private int timestampFetchSize;
 
   /**
    * constructor.
@@ -63,7 +63,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       List<Pair<Long, Long>> mergedIntervals) {
     super(jobId, paths, unit, origin, mergedIntervals);
     this.allDataReaderList = new ArrayList<>();
-    this.timeStampFetchSize = 10 * IoTDBDescriptor.getInstance().getConfig().getFetchSize();
+    this.timestampFetchSize = 10 * IoTDBDescriptor.getInstance().getConfig().getFetchSize();
   }
 
   /**
@@ -92,7 +92,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       function.init();
     }
 
-    long[] timestampArray = new long[timeStampFetchSize];
+    long[] timestampArray = new long[timestampFetchSize];
     int timeArrayLength = 0;
     if (hasCachedTimestamp) {
       if (timestamp < endTime) {
@@ -140,7 +140,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    */
   private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
       throws IOException {
-    for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
+    for (int cnt = 1; cnt < timestampFetchSize && timestampGenerator.hasNext(); cnt++) {
       timestamp = timestampGenerator.next();
       if (timestamp < endTime) {
         timestampArray[timeArrayLength++] = timestamp;
