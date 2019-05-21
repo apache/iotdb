@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 /**
  * Batch reader entity for all filter paths.
  */
-public class ClusterFilterSeriesBatchReaderEntity implements IClusterFilterSeriesBatchReaderEntity {
+public class ClusterFilterSeriesBatchReaderEntity implements IClusterSeriesBatchReaderEntity {
 
   private List<Path> allFilterPath;
 

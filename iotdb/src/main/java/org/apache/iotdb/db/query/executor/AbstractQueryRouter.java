@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.executor;
 
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -34,18 +35,18 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-public interface IEngineQueryRouter {
+public abstract class AbstractQueryRouter {
 
   /**
    * Execute physical plan.
    */
-  QueryDataSet query(QueryExpression queryExpression, QueryContext context)
+  public abstract QueryDataSet query(QueryExpression queryExpression, QueryContext context)
       throws FileNodeManagerException, PathErrorException;
 
   /**
    * Execute aggregation query.
    */
-  QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
+  public abstract QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context)
       throws QueryFilterOptimizationException, FileNodeManagerException, IOException, PathErrorException, ProcessorException;
 
@@ -60,7 +61,7 @@ public interface IEngineQueryRouter {
    * each TimeUnit time from this point forward and backward.
    * @param intervals time intervals, closed interval.
    */
-  QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
+  public abstract QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
       QueryContext context)
       throws ProcessorException, QueryFilterOptimizationException, FileNodeManagerException,
@@ -72,7 +73,48 @@ public interface IEngineQueryRouter {
    * @param queryTime timestamp
    * @param fillType type IFill map
    */
-  QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
+  public abstract QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context) throws FileNodeManagerException, PathErrorException, IOException;
+
+
+  /**
+   * sort intervals by start time and merge overlapping intervals.
+   *
+   * @param intervals time interval
+   */
+  protected List<Pair<Long, Long>> mergeInterval(List<Pair<Long, Long>> intervals) {
+    // sort by interval start time.
+    intervals.sort(((o1, o2) -> (int) (o1.left - o2.left)));
+
+    LinkedList<Pair<Long, Long>> merged = new LinkedList<>();
+    for (Pair<Long, Long> interval : intervals) {
+      // if the list of merged intervals is empty or
+      // if the current interval does not overlap with the previous, simply append it.
+      if (merged.isEmpty() || merged.getLast().right < interval.left) {
+        merged.add(interval);
+      } else {
+        // otherwise, there is overlap, so we merge the current and previous intervals.
+        merged.getLast().right = Math.max(merged.getLast().right, interval.right);
+      }
+    }
+    return merged;
+  }
+
+  /**
+   * Check the legitimacy of intervals
+   */
+  protected void checkIntervals(List<Pair<Long, Long>> intervals) throws ProcessorException {
+    for (Pair<Long, Long> pair : intervals) {
+      if (!(pair.left > 0 && pair.right > 0)) {
+        throw new ProcessorException(
+            String.format("Time interval<%d, %d> must be greater than 0.", pair.left, pair.right));
+      }
+      if (pair.right < pair.left) {
+        throw new ProcessorException(String.format(
+            "Interval starting time must be greater than the interval ending time, "
+                + "found error interval<%d, %d>", pair.left, pair.right));
+      }
+    }
+  }
 
 }

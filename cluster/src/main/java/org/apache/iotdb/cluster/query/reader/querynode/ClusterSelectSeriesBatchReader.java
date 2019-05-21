@@ -51,6 +51,9 @@ public class ClusterSelectSeriesBatchReader extends
     this.reader = reader;
   }
 
+  public ClusterSelectSeriesBatchReader() {
+  }
+
   @Override
   public boolean hasNext() throws IOException {
     return reader.hasNext();
@@ -62,7 +65,6 @@ public class ClusterSelectSeriesBatchReader extends
     for (int i = 0; i < CLUSTER_CONF.getBatchReadSize(); i++) {
       if (hasNext()) {
         TimeValuePair pair = reader.next();
-        System.out.println("reader value:" + pair);
         batchData.putTime(pair.getTimestamp());
         batchData.putAnObject(pair.getValue().getValue());
       } else {

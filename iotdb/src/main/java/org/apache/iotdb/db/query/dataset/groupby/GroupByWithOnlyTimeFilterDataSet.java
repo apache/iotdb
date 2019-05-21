@@ -51,7 +51,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
   protected List<IAggregateReader> sequenceReaderList;
   private List<BatchData> batchDataList;
   private List<Boolean> hasCachedSequenceDataList;
-  private Filter timeFilter;
+  protected Filter timeFilter;
 
   /**
    * constructor.
@@ -96,7 +96,6 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
       sequenceReaderList.add(sequenceReader);
       unSequenceReaderList.add(unSeqMergeReader);
     }
-
   }
 
   @Override
@@ -128,7 +127,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
    *
    * @param idx series id
    */
-  private AggreResultData nextSeries(int idx) throws IOException, ProcessorException {
+  protected AggreResultData nextSeries(int idx) throws IOException, ProcessorException {
     IPointReader unsequenceReader = unSequenceReaderList.get(idx);
     IAggregateReader sequenceReader = sequenceReaderList.get(idx);
     AggregateFunction function = functions.get(idx);

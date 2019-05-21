@@ -25,15 +25,16 @@ import java.util.List;
  * Batch reader entity for all select paths.
  */
 public class ClusterSelectSeriesBatchReaderEntity {
+
   /**
    * All select paths
    */
-  List<String> paths;
+  private List<String> paths;
 
   /**
    * All select readers
    */
-  List<AbstractClusterSelectSeriesBatchReader> readers;
+  private List<AbstractClusterSelectSeriesBatchReader> readers;
 
   public ClusterSelectSeriesBatchReaderEntity() {
     paths = new ArrayList<>();
@@ -52,7 +53,7 @@ public class ClusterSelectSeriesBatchReaderEntity {
     return readers;
   }
 
-  public AbstractClusterSelectSeriesBatchReader getReaderByIndex(int index){
+  public AbstractClusterSelectSeriesBatchReader getReaderByIndex(int index) {
     return readers.get(index);
   }
 

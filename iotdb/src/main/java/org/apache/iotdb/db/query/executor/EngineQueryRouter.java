@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.executor;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -47,7 +46,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
  * plan, physical plan will be executed by EngineQueryRouter.
  */
-public class EngineQueryRouter implements IEngineQueryRouter{
+public class EngineQueryRouter extends AbstractQueryRouter {
 
   @Override
   public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
@@ -110,18 +109,9 @@ public class EngineQueryRouter implements IEngineQueryRouter{
 
     long nextJobId = context.getJobId();
 
-    // check the legitimacy of intervals
-    for (Pair<Long, Long> pair : intervals) {
-      if (!(pair.left > 0 && pair.right > 0)) {
-        throw new ProcessorException(
-            String.format("Time interval<%d, %d> must be greater than 0.", pair.left, pair.right));
-      }
-      if (pair.right < pair.left) {
-        throw new ProcessorException(String.format(
-            "Interval starting time must be greater than the interval ending time, "
-                + "found error interval<%d, %d>", pair.left, pair.right));
-      }
-    }
+    //check the legitimacy of intervals
+    checkIntervals(intervals);
+
     // merge intervals
     List<Pair<Long, Long>> mergedIntervalList = mergeInterval(intervals);
 
@@ -172,29 +162,5 @@ public class EngineQueryRouter implements IEngineQueryRouter{
         fillType);
     return fillEngineExecutor.execute(context);
   }
-
-  /**
-   * sort intervals by start time and merge overlapping intervals.
-   *
-   * @param intervals time interval
-   */
-  private List<Pair<Long, Long>> mergeInterval(List<Pair<Long, Long>> intervals) {
-    // sort by interval start time.
-    intervals.sort(((o1, o2) -> (int) (o1.left - o2.left)));
-
-    LinkedList<Pair<Long, Long>> merged = new LinkedList<>();
-    for (Pair<Long, Long> interval : intervals) {
-      // if the list of merged intervals is empty or
-      // if the current interval does not overlap with the previous, simply append it.
-      if (merged.isEmpty() || merged.getLast().right < interval.left) {
-        merged.add(interval);
-      } else {
-        // otherwise, there is overlap, so we merge the current and previous intervals.
-        merged.getLast().right = Math.max(merged.getLast().right, interval.right);
-      }
-    }
-    return merged;
-  }
-
 
 }

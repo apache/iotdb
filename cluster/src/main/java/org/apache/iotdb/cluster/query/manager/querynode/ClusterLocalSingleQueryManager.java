@@ -31,10 +31,10 @@ import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
 import org.apache.iotdb.cluster.query.reader.querynode.AbstractClusterSelectSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterFillSelectSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterFilterSeriesBatchReaderEntity;
+import org.apache.iotdb.cluster.query.reader.querynode.ClusterGroupBySelectSeriesBatchReaderEntity;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSeriesBatchReader;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSeriesBatchReaderByTimestamp;
 import org.apache.iotdb.cluster.query.reader.querynode.ClusterSelectSeriesBatchReaderEntity;
-import org.apache.iotdb.cluster.query.reader.querynode.IClusterFilterSeriesBatchReaderEntity;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.InitSeriesReaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
@@ -54,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithOnlyTimeFilterDataSet;
 import org.apache.iotdb.db.query.executor.AbstractExecutorWithoutTimeGenerator;
 import org.apache.iotdb.db.query.executor.AggregateEngineExecutor;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -105,9 +106,14 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   private ClusterSelectSeriesBatchReaderEntity selectReaderEntity;
 
   /**
+   * Select reader entity of group by query, which handle group by query with only time filter
+   */
+  private ClusterGroupBySelectSeriesBatchReaderEntity groupBySelectReaderEntity;
+
+  /**
    * Filter reader entity
    */
-  private IClusterFilterSeriesBatchReaderEntity filterReaderEntity;
+  private ClusterFilterSeriesBatchReaderEntity filterReaderEntity;
 
   /**
    * Key is series full path, value is data type of series
@@ -146,7 +152,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       selectReaderEntity = new ClusterSelectSeriesBatchReaderEntity();
       QueryPlan plan = queryPlanMap.get(PathType.SELECT_PATH);
       if (plan instanceof GroupByPlan) {
-        throw new UnsupportedOperationException();
+        handleGroupBySeriesReader(plan, context, response);
       } else if (plan instanceof AggregationPlan) {
         handleAggreSeriesReader(plan, context, response);
       } else if (plan instanceof FillQueryPlan) {
@@ -200,6 +206,43 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
     response.getSeriesDataTypes().put(PathType.SELECT_PATH, dataTypes);
   }
 
+
+  /**
+   * Handle aggregation series reader
+   *
+   * @param queryPlan fill query plan
+   */
+  private void handleGroupBySeriesReader(QueryPlan queryPlan, QueryContext context,
+      InitSeriesReaderResponse response)
+      throws FileNodeManagerException, PathErrorException, IOException, ProcessorException, QueryFilterOptimizationException {
+    if (queryPlan.getExpression() == null
+        || queryPlan.getExpression().getType() == ExpressionType.GLOBAL_TIME) {
+      handleGroupBySeriesReaderWithoutTimeGenerator(queryPlan, context, response);
+    } else {
+      handleSelectReaderWithTimeGenerator(queryPlan, context, response);
+    }
+  }
+
+
+  /**
+   * Handle aggregation series reader without value filter
+   *
+   * @param queryPlan fill query plan
+   */
+  private void handleGroupBySeriesReaderWithoutTimeGenerator(QueryPlan queryPlan,
+      QueryContext context,
+      InitSeriesReaderResponse response)
+      throws FileNodeManagerException, PathErrorException, IOException, ProcessorException, QueryFilterOptimizationException {
+    QueryDataSet queryDataSet = queryProcessExecutor.processQuery(queryPlan, context);
+    List<Path> paths = queryDataSet.getPaths();
+    List<TSDataType> dataTypes = queryDataSet.getDataTypes();
+    for (int i = 0; i < paths.size(); i++) {
+      dataTypeMap.put(paths.get(i).getFullPath(), dataTypes.get(i));
+    }
+    groupBySelectReaderEntity = new ClusterGroupBySelectSeriesBatchReaderEntity(paths, dataTypes,
+        (GroupByWithOnlyTimeFilterDataSet) queryDataSet);
+    response.getSeriesDataTypes().put(PathType.SELECT_PATH, dataTypes);
+  }
 
   /**
    * Handle aggregation series reader
@@ -304,8 +347,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
   private void handleFilterSeriesReader(QueryPlan plan, QueryContext context,
       InitSeriesReaderRequest request, InitSeriesReaderResponse response, PathType pathType)
       throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException, ProcessorException, IOException, ClassNotFoundException {
-    QueryDataSet queryDataSet = queryProcessExecutor
-        .processQuery(plan, context);
+    QueryDataSet queryDataSet = queryProcessExecutor.processQuery(plan, context);
     List<Path> paths = plan.getPaths();
     List<TSDataType> dataTypes = queryDataSet.getDataTypes();
     for (int i = 0; i < paths.size(); i++) {
@@ -353,7 +395,10 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
       PathType pathType = request.getPathType();
       List<BatchData> batchDataList;
       if (pathType == PathType.SELECT_PATH) {
-        batchDataList = readSelectSeriesBatchData(request.getSeriesPathIndexs());
+        // check whether it's a group by query with only time filter
+        batchDataList =
+            groupBySelectReaderEntity != null ? groupBySelectReaderEntity.nextBatchList()
+                : readSelectSeriesBatchData(request.getSeriesPathIndexs());
       } else {
         batchDataList = readFilterSeriesBatchData();
       }
@@ -435,7 +480,7 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
     return selectReaderEntity;
   }
 
-  public IClusterFilterSeriesBatchReaderEntity getFilterReaderEntity() {
+  public ClusterFilterSeriesBatchReaderEntity getFilterReaderEntity() {
     return filterReaderEntity;
   }
 

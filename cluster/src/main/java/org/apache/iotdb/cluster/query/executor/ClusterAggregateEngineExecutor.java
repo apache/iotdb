@@ -25,8 +25,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.factory.ClusterSeriesReaderFactory;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
@@ -151,8 +149,8 @@ public class ClusterAggregateEngineExecutor extends AggregateEngineExecutor {
     List<Path> localQuerySeries = new ArrayList<>(selectedSeries);
     Set<Path> remoteQuerySeries = new HashSet<>();
     queryManager.getSelectSeriesGroupEntityMap().values().forEach(
-        selectSeriesGroupEntity -> selectSeriesGroupEntity.getSelectPaths()
-            .forEach(path -> remoteQuerySeries.add(path)));
+        selectSeriesGroupEntity -> remoteQuerySeries
+            .addAll(selectSeriesGroupEntity.getSelectPaths()));
     localQuerySeries.removeAll(remoteQuerySeries);
     QueryResourceManager.getInstance()
         .beginQueryOfGivenQueryPaths(context.getJobId(), localQuerySeries);

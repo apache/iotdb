@@ -55,10 +55,10 @@ public class QueryPlanPartitionUtils {
     QueryPlan queryPLan = singleQueryManager.getOriginQueryPlan();
     if (queryPLan instanceof FillQueryPlan) {
       splitFillPlan(singleQueryManager);
-    } else if (queryPLan instanceof AggregationPlan) {
-      splitAggregationPlanBySelectPath(singleQueryManager);
     } else if (queryPLan instanceof GroupByPlan) {
       splitGroupByPlanBySelectPath(singleQueryManager);
+    } else if (queryPLan instanceof AggregationPlan) {
+      splitAggregationPlanBySelectPath(singleQueryManager);
     } else {
       splitQueryPlanBySelectPath(singleQueryManager);
     }
@@ -136,8 +136,38 @@ public class QueryPlanPartitionUtils {
    * Split group by plan by select path
    */
   private static void splitGroupByPlanBySelectPath(
-      ClusterRpcSingleQueryManager singleQueryManager) {
-    throw new UnsupportedOperationException();
+      ClusterRpcSingleQueryManager singleQueryManager) throws PathErrorException {
+    GroupByPlan queryPlan = (GroupByPlan) singleQueryManager.getOriginQueryPlan();
+    List<Path> selectPaths = queryPlan.getPaths();
+    List<String> aggregations = queryPlan.getAggregations();
+    Map<String, SelectSeriesGroupEntity> selectGroupEntityMap = singleQueryManager
+        .getSelectSeriesGroupEntityMap();
+    Map<String, List<String>> selectAggregationByGroupId = new HashMap<>();
+    for (int i = 0; i < selectPaths.size(); i++) {
+      String aggregation = aggregations.get(i);
+      Path path = selectPaths.get(i);
+      String groupId = QPExecutorUtils.getGroupIdByDevice(path.getDevice());
+      if (!selectGroupEntityMap.containsKey(groupId)) {
+        selectGroupEntityMap.put(groupId, new SelectSeriesGroupEntity(groupId));
+        selectAggregationByGroupId.put(groupId, new ArrayList<>());
+      }
+      selectGroupEntityMap.get(groupId).addSelectPaths(path);
+      selectAggregationByGroupId.get(groupId).add(aggregation);
+    }
+    for (Entry<String, SelectSeriesGroupEntity> entry : selectGroupEntityMap.entrySet()) {
+      String groupId = entry.getKey();
+      SelectSeriesGroupEntity entity = entry.getValue();
+      List<Path> paths = entity.getSelectPaths();
+      GroupByPlan subQueryPlan = new GroupByPlan();
+      subQueryPlan.setIntervals(queryPlan.getIntervals());
+      subQueryPlan.setOrigin(queryPlan.getOrigin());
+      subQueryPlan.setUnit(queryPlan.getUnit());
+      subQueryPlan.setProposer(queryPlan.getProposer());
+      subQueryPlan.setPaths(paths);
+      subQueryPlan.setExpression(queryPlan.getExpression());
+      subQueryPlan.setAggregations(selectAggregationByGroupId.get(groupId));
+      entity.setQueryPlan(subQueryPlan);
+    }
   }
 
   /**

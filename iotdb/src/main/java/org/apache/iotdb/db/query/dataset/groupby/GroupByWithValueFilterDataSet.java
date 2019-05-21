@@ -40,8 +40,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<EngineReaderByTimeStamp> allDataReaderList;
-  private TimeGenerator timestampGenerator;
+  protected List<EngineReaderByTimeStamp> allDataReaderList;
+  protected TimeGenerator timestampGenerator;
   /**
    * cached timestamp for next group by partition.
    */

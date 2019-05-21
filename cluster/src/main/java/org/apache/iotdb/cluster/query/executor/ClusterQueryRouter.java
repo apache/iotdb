@@ -23,14 +23,16 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.query.QueryType;
+import org.apache.iotdb.cluster.query.dataset.ClusterGroupByDataSetWithOnlyTimeFilter;
+import org.apache.iotdb.cluster.query.dataset.ClusterGroupByDataSetWithTimeGenerator;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.AbstractQueryRouter;
 import org.apache.iotdb.db.query.executor.AggregateEngineExecutor;
-import org.apache.iotdb.db.query.executor.IEngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,7 +40,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -46,7 +51,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
  * Query entrance class of cluster query process. All query clause will be transformed to physical
  * plan, physical plan will be executed by ClusterQueryRouter.
  */
-public class ClusterQueryRouter implements IEngineQueryRouter {
+public class ClusterQueryRouter extends AbstractQueryRouter {
 
   /**
    * Consistency level of reading data
@@ -128,7 +133,55 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
       QueryContext context)
       throws ProcessorException, QueryFilterOptimizationException, FileNodeManagerException, PathErrorException, IOException {
-    throw new UnsupportedOperationException();
+
+    long jobId = context.getJobId();
+    ClusterRpcSingleQueryManager queryManager = ClusterRpcQueryManager.getInstance()
+        .getSingleQuery(jobId);
+
+    //check the legitimacy of intervals
+    checkIntervals(intervals);
+
+    // merge intervals
+    List<Pair<Long, Long>> mergedIntervalList = mergeInterval(intervals);
+
+    // construct groupBy intervals filter
+    BinaryExpression intervalFilter = null;
+    for (Pair<Long, Long> pair : mergedIntervalList) {
+      BinaryExpression pairFilter = BinaryExpression
+          .and(new GlobalTimeExpression(TimeFilter.gtEq(pair.left)),
+              new GlobalTimeExpression(TimeFilter.ltEq(pair.right)));
+      if (intervalFilter != null) {
+        intervalFilter = BinaryExpression.or(intervalFilter, pairFilter);
+      } else {
+        intervalFilter = pairFilter;
+      }
+    }
+
+    // merge interval filter and filtering conditions after where statements
+    if (expression == null) {
+      expression = intervalFilter;
+    } else {
+      expression = BinaryExpression.and(expression, intervalFilter);
+    }
+
+    IExpression optimizedExpression = ExpressionOptimizer.getInstance()
+        .optimize(expression, selectedSeries);
+    try {
+      if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+        ClusterGroupByDataSetWithOnlyTimeFilter groupByEngine = new ClusterGroupByDataSetWithOnlyTimeFilter(
+            jobId, selectedSeries, unit, origin, mergedIntervalList, queryManager);
+        groupByEngine.initGroupBy(context, aggres, optimizedExpression);
+        return groupByEngine;
+      } else {
+        queryManager.initQueryResource(QueryType.FILTER, getReadDataConsistencyLevel());
+        ClusterGroupByDataSetWithTimeGenerator groupByEngine = new ClusterGroupByDataSetWithTimeGenerator(
+            jobId, selectedSeries, unit, origin, mergedIntervalList, queryManager);
+        groupByEngine.initGroupBy(context, aggres, optimizedExpression);
+        return groupByEngine;
+      }
+    } catch (RaftConnectionException e) {
+      throw new FileNodeManagerException(e);
+    }
   }
 
   @Override
@@ -139,7 +192,8 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
     try {
       queryManager.initQueryResource(QueryType.NO_FILTER, getReadDataConsistencyLevel());
 
-      ClusterFillEngineExecutor fillEngineExecutor = new ClusterFillEngineExecutor(fillPaths, queryTime,
+      ClusterFillEngineExecutor fillEngineExecutor = new ClusterFillEngineExecutor(fillPaths,
+          queryTime,
           fillType, queryManager);
       return fillEngineExecutor.execute(context);
     } catch (IOException | RaftConnectionException e) {
