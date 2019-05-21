@@ -350,7 +350,6 @@ public class IoTDBAggregationLargeDataIT {
             resultSet.getString(TIMESTAMP_STR) + "," + Math.round(resultSet.getDouble(mean(d0s0)))
                 + "," + Math.round(resultSet.getDouble(mean(d0s1))) + "," +
                 Math.round(resultSet.getDouble(mean(d0s2)));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -384,7 +383,6 @@ public class IoTDBAggregationLargeDataIT {
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
             + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -482,7 +480,6 @@ public class IoTDBAggregationLargeDataIT {
                   .getString(min_value(d0s2))
                   + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet
                   .getString(min_value(d0s4));
-          //System.out.println("============ " + ans);
           Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
         }
@@ -523,7 +520,6 @@ public class IoTDBAggregationLargeDataIT {
                   .getString(max_value(d0s2))
                   + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet
                   .getString(max_value(d0s4));
-          //System.out.println("============ " + ans);
           Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
         }
@@ -561,7 +557,6 @@ public class IoTDBAggregationLargeDataIT {
                 + "," +
                 Math.round(resultSet.getDouble(mean(d0s1))) + "," + Math
                 .round(resultSet.getDouble(mean(d0s2)));
-        System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -592,8 +587,6 @@ public class IoTDBAggregationLargeDataIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
             + "," + resultSet.getString(sum(d0s1)) + "," + Math
             .round(resultSet.getDouble(sum(d0s2)));
-        //String ans = resultSet.getString(sum(d0s3));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -609,7 +602,7 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void firstAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void firstAggreWithMultiFilterTest() throws SQLException {
     String[] retArray = new String[]{
         "0,90,1101,2.22,ddddd,true"
     };
@@ -628,8 +621,6 @@ public class IoTDBAggregationLargeDataIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0))
             + "," + resultSet.getString(first(d0s1)) + "," + resultSet.getString(first(d0s2))
             + "," + resultSet.getString(first(d0s3)) + "," + resultSet.getString(first(d0s4));
-        //String ans = resultSet.getString(first(d0s3));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -664,8 +655,6 @@ public class IoTDBAggregationLargeDataIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
             + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
             + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
-        //String ans = resultSet.getString(count(d0s3));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -703,7 +692,6 @@ public class IoTDBAggregationLargeDataIT {
             resultSet.getString(Constant.min_time(d0s2)) + "," +
             resultSet.getString(Constant.min_time(d0s3)) + "," +
             resultSet.getString(Constant.min_time(d0s4));
-        // System.out.println("============ " + ans);
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
       }
@@ -719,7 +707,7 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void maxTimeAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void maxTimeAggreWithMultiFilterTest() throws SQLException {
     String[] retArray = new String[]{
         "0,3999,3999,3999,3599,100"
     };
@@ -739,7 +727,6 @@ public class IoTDBAggregationLargeDataIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
             + "," + resultSet.getString(max_time(d0s1)) + "," + resultSet.getString(max_time(d0s2))
             + "," + resultSet.getString(max_time(d0s3)) + "," + resultSet.getString(max_time(d0s4));
-        //System.out.println("============ " + ans);
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
       }
@@ -755,7 +742,7 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void minValueAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void minValueAggreWithMultiFilterTest() throws SQLException {
     String[] retArray = new String[]{
         "0,0,0,0.0,B,true"
     };
@@ -777,7 +764,6 @@ public class IoTDBAggregationLargeDataIT {
             .getString(min_value(d0s2))
             + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet
             .getString(min_value(d0s4));
-        //System.out.println("============ " + ans);
         Assert.assertEquals(ans, retArray[cnt]);
         cnt++;
       }
@@ -868,7 +854,6 @@ public class IoTDBAggregationLargeDataIT {
       }
 
       statement.execute("flush");
-      System.out.println("cnt = " + cnt);
 
       // insert large amount of data
       for (int time = 3700; time < 4000; time++) {
@@ -894,9 +879,6 @@ public class IoTDBAggregationLargeDataIT {
 
       statement.execute("merge");
 
-      System.out.println("large insert cnt = " + cnt);
-      System.out
-          .println("d0s0sum = " + d0s0sum + "; d0s1sum = " + d0s1sum + "; d0s2sum = " + d0s2sum);
       for (String sql : insertSql) {
         statement.execute(sql);
       }

@@ -94,7 +94,7 @@ public class ClusterQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context)
-      throws QueryFilterOptimizationException, FileNodeManagerException, IOException, PathErrorException, ProcessorException {
+      throws FileNodeManagerException, PathErrorException, ProcessorException {
 
     ClusterRpcSingleQueryManager queryManager = ClusterRpcQueryManager.getInstance()
         .getSingleQuery(context.getJobId());

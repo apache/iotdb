@@ -151,7 +151,6 @@ public class IoTDBFillQueryIT {
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
             + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        System.out.println(ans);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
       }
@@ -169,7 +168,6 @@ public class IoTDBFillQueryIT {
             + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
-        System.out.println(ans);
       }
       statement.close();
 
@@ -185,7 +183,6 @@ public class IoTDBFillQueryIT {
             + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
-        System.out.println(ans);
       }
       statement.close();
 
@@ -199,7 +196,6 @@ public class IoTDBFillQueryIT {
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR)
             + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
-        System.out.println(cnt + " " + ans);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
       }
@@ -260,7 +256,6 @@ public class IoTDBFillQueryIT {
             + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
-        System.out.println(ans);
       }
       statement.close();
 
@@ -276,7 +271,6 @@ public class IoTDBFillQueryIT {
             + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
-        System.out.println(ans);
       }
       statement.close();
       Assert.assertEquals(retArray1.length, cnt);
@@ -334,7 +328,6 @@ public class IoTDBFillQueryIT {
             + "," + resultSet.getString(STATUS_STR) + "," + resultSet.getString(HARDWARE_STR);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
-        System.out.println(ans);
       }
       statement.close();
       Assert.assertEquals(retArray1.length, cnt);

@@ -108,7 +108,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(startTime);
     for (int i = 0; i < functions.size(); i++) {
-      AggreResultData res = null;
+      AggreResultData res;
       try {
         res = nextSeries(i);
       } catch (ProcessorException e) {

@@ -318,7 +318,6 @@ public class IoTDBAggregationLargeDataIT {
             resultSet.getString(TIMESTAMP_STR) + "," + Math.round(resultSet.getDouble(mean(d0s0)))
                 + "," + Math.round(resultSet.getDouble(mean(d0s1))) + "," +
                 Math.round(resultSet.getDouble(mean(d0s2)));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
@@ -352,7 +351,6 @@ public class IoTDBAggregationLargeDataIT {
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
             + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2));
-        //System.out.println("!!!!!============ " + ans);
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }

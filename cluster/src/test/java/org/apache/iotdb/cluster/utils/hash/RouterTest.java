@@ -64,10 +64,7 @@ public class RouterTest {
     config.setNumOfVirtualNodes(numOfVirtulaNodes);
     Router router = Router.getInstance();
     router.init();
-//    router.showPhysicalRing();
-//    router.showVirtualRing();
     String sg1 = "root.device.sensor";
-//    System.out.println(function.hash(sg1));
     assertTrue(router.routeNode(sg1).equals(new PhysicalNode("192.168.130.4", PORT)));
     PhysicalNode[] expected1 = {
         new PhysicalNode("192.168.130.4", PORT),
@@ -80,7 +77,6 @@ public class RouterTest {
     assertEquals(Router.DATA_GROUP_STR + "0", router.getGroupID(router.routeGroup(sg1)));
 
     String sg2 = "root.device.sensor2";
-//    System.out.println(function.hash(sg2));
     assertTrue(router.routeNode(sg2).equals(new PhysicalNode("192.168.130.3", PORT)));
     PhysicalNode[] expected2 = {
         new PhysicalNode("192.168.130.3", PORT),
@@ -105,11 +101,8 @@ public class RouterTest {
 
     Router router = Router.getInstance();
     router.init();
-//    router.showPhysicalRing();
-//    router.showVirtualRing();
     String sg1 = "root.device.sensor";
-//    System.out.println(function.hash(sg1));
-    assertTrue(router.routeNode(sg1).equals(new PhysicalNode("192.168.130.3", PORT)));
+    assertEquals(router.routeNode(sg1), new PhysicalNode("192.168.130.3", PORT));
     PhysicalNode[] expected1 = {
         new PhysicalNode("192.168.130.3", PORT),
         new PhysicalNode("192.168.130.2", PORT),
@@ -121,8 +114,7 @@ public class RouterTest {
     assertEquals(Router.DATA_GROUP_STR + "0", router.getGroupID(router.routeGroup(sg1)));
 
     String sg2 = "root.vehicle.d1";
-//    System.out.println(function.hash(sg2));
-    assertTrue(router.routeNode(sg2).equals(new PhysicalNode("192.168.130.2", PORT)));
+    assertEquals(router.routeNode(sg2), new PhysicalNode("192.168.130.2", PORT));
     PhysicalNode[] expected2 = {
         new PhysicalNode("192.168.130.2", PORT),
         new PhysicalNode("192.168.130.1", PORT),
@@ -149,7 +141,6 @@ public class RouterTest {
 
     Router router = Router.getInstance();
     router.init();
-//    router.showPhysicalRing();
     String[][][] ipIndex = {
         {
             {"192.168.130.1", "192.168.130.3", "192.168.130.4",},
@@ -195,7 +186,6 @@ public class RouterTest {
 
     Router router = Router.getInstance();
     router.init();
-//    router.showPhysicalRing();
     String[][][] ipIndex = {
         {
             {"192.168.130.1", "192.168.130.3", "192.168.130.2",},
