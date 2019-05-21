@@ -168,6 +168,7 @@ public class ClusterQueryRouter extends AbstractQueryRouter {
         .optimize(expression, selectedSeries);
     try {
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
+//        queryManager.initQueryResource(QueryType.GLOBAL_TIME, getReadDataConsistencyLevel());
         ClusterGroupByDataSetWithOnlyTimeFilter groupByEngine = new ClusterGroupByDataSetWithOnlyTimeFilter(
             jobId, selectedSeries, unit, origin, mergedIntervalList, queryManager);
         groupByEngine.initGroupBy(context, aggres, optimizedExpression);

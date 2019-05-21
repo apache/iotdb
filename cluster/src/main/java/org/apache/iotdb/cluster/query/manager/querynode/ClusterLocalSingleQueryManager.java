@@ -492,11 +492,11 @@ public class ClusterLocalSingleQueryManager implements IClusterLocalSingleQueryM
 
     @Override
     public void run() {
-      try {
-        close();
-      } catch (FileNodeManagerException e) {
-        LOGGER.error(e.getMessage());
-      }
+//      try {
+////        close();
+//      } catch (FileNodeManagerException e) {
+//        LOGGER.error(e.getMessage());
+//      }
     }
   }
 }

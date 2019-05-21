@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -131,12 +132,15 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   private void initSeriesReader(int readDataConsistencyLevel)
       throws RaftConnectionException, IOException {
     // Init all series with data group of select series,if filter series has the same data group, init them together.
-    for (Entry<String, SelectSeriesGroupEntity> entry : selectSeriesGroupEntityMap.entrySet()) {
+    Iterator<Map.Entry<String, SelectSeriesGroupEntity>> selectIterator = selectSeriesGroupEntityMap
+        .entrySet().iterator();
+    while (selectIterator.hasNext()) {
+      Entry<String, SelectSeriesGroupEntity> entry = selectIterator.next();
       String groupId = entry.getKey();
       SelectSeriesGroupEntity selectEntity = entry.getValue();
       QueryPlan queryPlan = selectEntity.getQueryPlan();
       if (!QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
-        LOGGER.debug("Init series reader for group id {} from remote node." , groupId);
+        LOGGER.debug("Init series reader for group id {} from remote node.", groupId);
         Map<PathType, QueryPlan> allQueryPlan = new EnumMap<>(PathType.class);
         allQueryPlan.put(PathType.SELECT_PATH, queryPlan);
         List<Filter> filterList = new ArrayList<>();
@@ -153,15 +157,18 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
             .createClusterSeriesReader(groupId, request, this);
         handleInitReaderResponse(groupId, allQueryPlan, response);
       } else {
-        LOGGER.debug("Init series reader for group id {} locally." , groupId);
+        LOGGER.debug("Init series reader for group id {} locally.", groupId);
         dataGroupUsage.add(groupId);
-        selectSeriesGroupEntityMap.remove(groupId);
+        selectIterator.remove();
         filterSeriesGroupEntityMap.remove(groupId);
       }
     }
 
     //Init series reader with data groups of filter series, which don't exist in data groups list of select series.
-    for (Entry<String, FilterSeriesGroupEntity> entry : filterSeriesGroupEntityMap.entrySet()) {
+    Iterator<Map.Entry<String, FilterSeriesGroupEntity>> filterIterator = filterSeriesGroupEntityMap
+        .entrySet().iterator();
+    while (filterIterator.hasNext()) {
+      Entry<String, FilterSeriesGroupEntity> entry = filterIterator.next();
       String groupId = entry.getKey();
       if (!selectSeriesGroupEntityMap.containsKey(groupId) && !QPExecutorUtils
           .canHandleQueryByGroupId(groupId)) {
@@ -177,7 +184,7 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
         handleInitReaderResponse(groupId, allQueryPlan, response);
       } else if (!selectSeriesGroupEntityMap.containsKey(groupId)) {
         dataGroupUsage.add(groupId);
-        filterSeriesGroupEntityMap.remove(groupId);
+        filterIterator.remove();
       }
     }
   }
@@ -268,7 +275,8 @@ public class ClusterRpcSingleQueryManager implements IClusterRpcSingleQueryManag
   /**
    * Handle response of fetching data, and add batch data to corresponding reader.
    */
-  private void handleFetchDataByTimestampResponseForSelectPaths(String groupId, BasicQueryDataResponse response) {
+  private void handleFetchDataByTimestampResponseForSelectPaths(String groupId,
+      BasicQueryDataResponse response) {
     List<BatchData> batchDataList = response.getSeriesBatchData();
     List<ClusterSelectSeriesReader> selectSeriesReaders = selectSeriesGroupEntityMap.get(groupId)
         .getSelectSeriesReaders();
