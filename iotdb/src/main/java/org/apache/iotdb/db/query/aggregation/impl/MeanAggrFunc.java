@@ -77,7 +77,7 @@ public class MeanAggrFunc extends AggregateFunction {
   private void calculateValueFromPageData(BatchData dataInThisPage, IPointReader unsequenceReader,
       boolean hasBound, long bound) throws IOException {
     while (dataInThisPage.hasNext() && unsequenceReader.hasNext()) {
-      Object sumVal = null;
+      Object sumVal;
       long time = Math.min(dataInThisPage.currentTime(), unsequenceReader.current().getTimestamp());
       if (hasBound && time >= bound) {
         break;

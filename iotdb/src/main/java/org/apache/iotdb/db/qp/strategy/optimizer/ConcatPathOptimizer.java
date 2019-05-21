@@ -326,6 +326,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       for (Path path : paths) {
         List<String> all;
         all = executor.getAllPaths(path.getFullPath());
+        LOG.debug("All paths of path<{}> is {}", path.getFullPath(), all);
         for (String subPath : all) {
           if (!pathMap.containsKey(subPath)) {
             pathMap.put(subPath, 1);
