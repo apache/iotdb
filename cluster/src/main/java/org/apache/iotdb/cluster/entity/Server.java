@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryJobNumAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryLeaderAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryMetricAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.DataGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.MetaGroupNonQueryAsyncProcessor;
@@ -167,6 +168,7 @@ public class Server {
     rpcServer.registerUserProcessor(new QueryMetricAsyncProcessor());
     rpcServer.registerUserProcessor(new QueryJobNumAsyncProcessor());
     rpcServer.registerUserProcessor(new QueryStatusAsyncProcessor());
+    rpcServer.registerUserProcessor(new QueryLeaderAsyncProcessor());
   }
 
   public void stop() throws ProcessorException, InterruptedException {

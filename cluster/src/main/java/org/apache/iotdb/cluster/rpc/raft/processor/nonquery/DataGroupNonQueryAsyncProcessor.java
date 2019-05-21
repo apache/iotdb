@@ -49,7 +49,7 @@ public class DataGroupNonQueryAsyncProcessor extends
     String groupId = request.getGroupID();
     DataPartitionRaftHolder dataPartitionRaftHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
     if (!dataPartitionRaftHolder.getFsm().isLeader()) {
-      PeerId leader = RaftUtils.getLeaderPeerID(groupId);
+      PeerId leader = RaftUtils.getLocalLeaderPeerID(groupId);
       LOGGER.debug("Request need to redirect leader: {}, groupId : {} ", leader, groupId);
 
       DataGroupNonQueryResponse response = DataGroupNonQueryResponse

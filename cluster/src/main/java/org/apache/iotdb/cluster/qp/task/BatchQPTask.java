@@ -126,7 +126,7 @@ public class BatchQPTask extends MultiQPTask {
         taskThread = QPTaskManager.getInstance()
             .submit(() -> executeLocalSubTask(subTask, groupId));
       } else {
-        PeerId leader = RaftUtils.getLeaderPeerID(groupId);
+        PeerId leader = RaftUtils.getLocalLeaderPeerID(groupId);
         taskThread = QPTaskManager.getInstance()
             .submit(() -> executeRpcSubTask(subTask, leader, groupId));
       }
