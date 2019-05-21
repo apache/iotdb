@@ -355,7 +355,6 @@ public class NonQueryExecutor extends AbstractQPExecutor {
             RaftUtils.updateRaftGroupLeader(groupId, nextNode);
           } catch (RaftConnectionException e1) {
             LOGGER.debug("Non-query task for group {} to node {} fail.", groupId, nextNode);
-            continue;
           }
         }
         LOGGER.debug("The final result for non-query task is {}", success);
