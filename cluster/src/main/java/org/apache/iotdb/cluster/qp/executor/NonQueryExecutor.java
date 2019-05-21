@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.BatchQPTask;
 import org.apache.iotdb.cluster.qp.task.QPTask;
+import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.nonquery.DataGroupNonQueryRequest;
@@ -327,7 +328,42 @@ public class NonQueryExecutor extends AbstractQPExecutor {
       return handleNonQueryRequestLocally(groupId, qpTask);
     } else {
       PeerId leader = RaftUtils.getLocalLeaderPeerID(groupId);
-      return asyncHandleNonQueryTask(qpTask, leader);
+      boolean res = false;
+      try {
+         res = asyncHandleNonQueryTask(qpTask, leader);
+      } catch (RaftConnectionException ex) {
+        boolean success = false;
+        PeerId nextNode = RaftUtils.getPeerIDInOrder(groupId);
+        PeerId firstNode = nextNode;
+        boolean first = true;
+        while (!success) {
+          try {
+            if (!first) {
+              nextNode = RaftUtils.getPeerIDInOrder(groupId);
+              if (firstNode.equals(nextNode)) {
+                break;
+              }
+            }
+            first = false;
+            LOGGER.debug("Previous task fail, then send non-query task for group {} to node {}.", groupId, nextNode);
+            qpTask.resetTask();
+            qpTask.setTaskState(TaskState.INITIAL);
+            currentTask.set(qpTask);
+            res = asyncHandleNonQueryTask(qpTask, nextNode);
+            LOGGER.debug("Non-query task for group {} to node {} succeed.", groupId, nextNode);
+            success = true;
+            RaftUtils.updateRaftGroupLeader(groupId, nextNode);
+          } catch (RaftConnectionException e1) {
+            LOGGER.debug("Non-query task for group {} to node {} fail.", groupId, nextNode);
+            continue;
+          }
+        }
+        LOGGER.debug("The final result for non-query task is {}", success);
+        if (!success) {
+          throw ex;
+        }
+      }
+      return res;
     }
   }
 
