@@ -20,7 +20,7 @@ package org.apache.iotdb.cluster.rpc.raft;
 
 import com.alipay.sofa.jraft.entity.PeerId;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.qp.task.QueryDataTask;
+import org.apache.iotdb.cluster.qp.task.DataQueryTask;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 
@@ -43,7 +43,7 @@ public interface NodeAsClient {
    *
    * @param peerId leader node of the target group
    */
-  QueryDataTask syncHandleRequest(BasicRequest request, PeerId peerId);
+  DataQueryTask syncHandleRequest(BasicRequest request, PeerId peerId);
 
   /**
    * Shut down client

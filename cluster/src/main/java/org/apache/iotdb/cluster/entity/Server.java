@@ -32,9 +32,6 @@ import org.apache.iotdb.cluster.entity.metadata.MetadataHolder;
 import org.apache.iotdb.cluster.entity.raft.DataPartitionRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
-import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryJobNumAsyncProcessor;
-import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryLeaderAsyncProcessor;
-import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryMetricAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.DataGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.nonquery.MetaGroupNonQueryAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querydata.CloseSeriesReaderSyncProcessor;
@@ -46,15 +43,18 @@ import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryMetadataIn
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryPathsAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QuerySeriesTypeAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetadata.QueryTimeSeriesAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryJobNumAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryLeaderAsyncProcessor;
+import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryMetricAsyncProcessor;
 import org.apache.iotdb.cluster.rpc.raft.processor.querymetric.QueryStatusAsyncProcessor;
+import org.apache.iotdb.cluster.service.ClusterMonitor;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
-import org.apache.iotdb.cluster.service.ClusterMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,20 +124,16 @@ public class Server {
     Router router = Router.getInstance();
     PhysicalNode[][] groups = router.getGroupsNodes(serverId.getIp(), serverId.getPort());
 
-    try {
-      for (int i = 0; i < groups.length; i++) {
-        PhysicalNode[] group = groups[i];
-        String groupId = router.getGroupID(group);
-        DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId,
-            RaftUtils.getPeerIdArrayFrom(group), serverId, rpcServer, false);
-        dataPartitionHolder.init();
-        dataPartitionHolder.start();
-        dataPartitionHolderMap.put(groupId, dataPartitionHolder);
-        LOGGER.info("{} group has started", groupId);
-        Router.getInstance().showPhysicalNodes(groupId);
-      }
-    }catch (Exception e){
-      e.printStackTrace();
+    for (int i = 0; i < groups.length; i++) {
+      PhysicalNode[] group = groups[i];
+      String groupId = router.getGroupID(group);
+      DataPartitionHolder dataPartitionHolder = new DataPartitionRaftHolder(groupId,
+          RaftUtils.getPeerIdArrayFrom(group), serverId, rpcServer, false);
+      dataPartitionHolder.init();
+      dataPartitionHolder.start();
+      dataPartitionHolderMap.put(groupId, dataPartitionHolder);
+      LOGGER.info("{} group has started", groupId);
+      Router.getInstance().showPhysicalNodes(groupId);
     }
 
     try {

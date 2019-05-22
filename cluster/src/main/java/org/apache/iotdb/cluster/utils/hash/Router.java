@@ -51,11 +51,6 @@ public class Router {
   private Map<PhysicalNode, PhysicalNode[][]> dataPartitionCache = new HashMap<>();
 
   /**
-   * Key is the first node of the group, value is group id.
-   */
-  private Map<PhysicalNode, String> nodeMapGroupIdCache = new HashMap<>();
-
-  /**
    * Key is group id, value is the first node of the group.
    */
   private Map<String, PhysicalNode> groupIdMapNodeCache = new HashMap<>();
@@ -68,6 +63,7 @@ public class Router {
   private HashFunction hashFunction = new MD5Hash();
 
   private final SortedMap<Integer, PhysicalNode> physicalRing = new TreeMap<>();
+
   private final SortedMap<Integer, VirtualNode> virtualRing = new TreeMap<>();
 
   private static class RouterHolder {
@@ -103,17 +99,9 @@ public class Router {
       if (len < replicator) {
         throw new ErrorConfigureExecption(String.format("Replicator number %d is greater "
             + "than cluster number %d", replicator, len));
-      } else if (len == replicator) {
-        PhysicalNode[][] val = new PhysicalNode[1][len];
-        nodeMapGroupIdCache.put(first, DATA_GROUP_STR + "0");
-        groupIdMapNodeCache.put(DATA_GROUP_STR + "0", first);
-        for (int j = 0; j < len; j++) {
-          val[0][j] = nodes[(i + j) % len];
-        }
-        dataPartitionCache.put(first, val);
-      }  else {
+      } else {
         PhysicalNode[][] val = new PhysicalNode[replicator][replicator];
-        nodeMapGroupIdCache.put(first, DATA_GROUP_STR + i);
+        first.setGroupId(DATA_GROUP_STR + i);
         groupIdMapNodeCache.put(DATA_GROUP_STR + i, first);
         for (int j = 0; j < replicator; j++) {
           for (int k = 0; k < replicator; k++) {
@@ -149,7 +137,7 @@ public class Router {
   }
 
   public String getGroupID(PhysicalNode[] nodes) {
-    return nodeMapGroupIdCache.get(nodes[0]);
+    return nodes[0].getGroupId();
   }
 
   public PhysicalNode[][] getGroupsNodes(String ip, int port) {
@@ -192,7 +180,6 @@ public class Router {
     virtualRing.clear();
     sgRouter.clear();
     dataPartitionCache.clear();
-    nodeMapGroupIdCache.clear();
     groupIdMapNodeCache.clear();
   }
 
@@ -208,11 +195,6 @@ public class Router {
     for (Entry<Integer, VirtualNode> entry : virtualRing.entrySet()) {
       LOGGER.info("{}-{}", entry.getKey(), entry.getValue().getKey());
     }
-  }
-
-  public boolean containPhysicalNodeBySG(String storageGroup, PhysicalNode node) {
-    PhysicalNode[] nodes = routeGroup(storageGroup);
-    return Arrays.asList(nodes).contains(node);
   }
 
   public boolean containPhysicalNodeByGroupId(String groupId, PhysicalNode node) {

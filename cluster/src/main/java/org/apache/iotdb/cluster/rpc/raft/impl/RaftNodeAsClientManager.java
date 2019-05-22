@@ -33,7 +33,7 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
-import org.apache.iotdb.cluster.qp.task.QueryDataTask;
+import org.apache.iotdb.cluster.qp.task.DataQueryTask;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
@@ -266,13 +266,13 @@ public class RaftNodeAsClientManager {
     }
 
     @Override
-    public QueryDataTask syncHandleRequest(BasicRequest request, PeerId peerId) {
+    public DataQueryTask syncHandleRequest(BasicRequest request, PeerId peerId) {
       try {
         BasicResponse response = (BasicResponse) boltClientService.getRpcClient()
             .invokeSync(peerId.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
-        return new QueryDataTask(response, TaskState.FINISH);
+        return new DataQueryTask(response, TaskState.FINISH);
       } catch (RemotingException | InterruptedException e) {
-        return new QueryDataTask(null, TaskState.EXCEPTION);
+        return new DataQueryTask(null, TaskState.EXCEPTION);
       } finally {
         releaseClient(RaftNodeAsClient.this);
       }

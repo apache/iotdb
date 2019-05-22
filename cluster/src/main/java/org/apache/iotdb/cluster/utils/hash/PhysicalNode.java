@@ -24,6 +24,7 @@ public class PhysicalNode {
 
   private String ip;
   private int port;
+  private String groupId;
 
   public PhysicalNode(String ip, int port) {
     this.ip = ip;
@@ -75,6 +76,14 @@ public class PhysicalNode {
 
   public int getPort() {
     return port;
+  }
+
+  public String getGroupId() {
+    return groupId;
+  }
+
+  public void setGroupId(String groupId) {
+    this.groupId = groupId;
   }
 
   @OnlyForTest

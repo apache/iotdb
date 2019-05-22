@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
-import org.apache.iotdb.cluster.qp.task.QueryDataTask;
+import org.apache.iotdb.cluster.qp.task.DataQueryTask;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
@@ -93,9 +93,9 @@ public class ClusterRpcReaderUtils {
               TASK_MAX_RETRY));
     }
     NodeAsClient nodeAsClient = RaftUtils.getRaftNodeAsClient();
-    QueryDataTask queryDataTask = nodeAsClient.syncHandleRequest(request, peerId);
-    if (queryDataTask.getState() == TaskState.FINISH) {
-      return queryDataTask.getBasicResponse();
+    DataQueryTask dataQueryTask = nodeAsClient.syncHandleRequest(request, peerId);
+    if (dataQueryTask.getState() == TaskState.FINISH) {
+      return dataQueryTask.getBasicResponse();
     } else {
       return handleQueryRequest(request, peerId, taskRetryNum + 1);
     }

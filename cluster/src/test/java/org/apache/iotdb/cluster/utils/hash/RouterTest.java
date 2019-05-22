@@ -111,7 +111,7 @@ public class RouterTest {
     assertPhysicalNodeEquals(expected1, router.routeGroup(sg1));
     // test cache
     assertPhysicalNodeEquals(expected1, router.routeGroup(sg1));
-    assertEquals(Router.DATA_GROUP_STR + "0", router.getGroupID(router.routeGroup(sg1)));
+    assertEquals(Router.DATA_GROUP_STR + "2", router.getGroupID(router.routeGroup(sg1)));
 
     String sg2 = "root.vehicle.d1";
     assertEquals(router.routeNode(sg2), new PhysicalNode("192.168.130.2", PORT));
