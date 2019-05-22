@@ -78,7 +78,7 @@ public abstract class QPTask {
    *
    * @param basicResponse response from receiver
    */
-  public abstract void run(BasicResponse basicResponse);
+  public abstract void receive(BasicResponse basicResponse);
 
   public boolean isSyncTask() {
     return isSyncTask;

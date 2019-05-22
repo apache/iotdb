@@ -21,11 +21,11 @@ package org.apache.iotdb.cluster.qp.task;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
-public class QueryTask {
+public class QueryDataTask {
   private BasicResponse basicResponse;
   private TaskState state;
 
-  public QueryTask(BasicResponse basicResponse,
+  public QueryDataTask(BasicResponse basicResponse,
       TaskState state) {
     this.basicResponse = basicResponse;
     this.state = state;

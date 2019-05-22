@@ -24,17 +24,11 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
-import org.apache.iotdb.cluster.qp.task.QueryTask;
-import org.apache.iotdb.cluster.query.PathType;
+import org.apache.iotdb.cluster.qp.task.QueryDataTask;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.querydata.CloseSeriesReaderRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataByTimestampRequest;
-import org.apache.iotdb.cluster.rpc.raft.request.querydata.QuerySeriesDataRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataByTimestampResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.querydata.QuerySeriesDataResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.Router;
 import org.slf4j.Logger;
@@ -99,9 +93,9 @@ public class ClusterRpcReaderUtils {
               TASK_MAX_RETRY));
     }
     NodeAsClient nodeAsClient = RaftUtils.getRaftNodeAsClient();
-    QueryTask queryTask = nodeAsClient.syncHandleRequest(request, peerId);
-    if (queryTask.getState() == TaskState.FINISH) {
-      return queryTask.getBasicResponse();
+    QueryDataTask queryDataTask = nodeAsClient.syncHandleRequest(request, peerId);
+    if (queryDataTask.getState() == TaskState.FINISH) {
+      return queryDataTask.getBasicResponse();
     } else {
       return handleQueryRequest(request, peerId, taskRetryNum + 1);
     }

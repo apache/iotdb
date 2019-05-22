@@ -91,7 +91,7 @@ public class BatchQPTask extends MultiQPTask {
    * @param basicResponse response from receiver
    */
   @Override
-  public void run(BasicResponse basicResponse) {
+  public void receive(BasicResponse basicResponse) {
     lock.lock();
     try {
       String groupId = basicResponse.getGroupId();
@@ -140,10 +140,10 @@ public class BatchQPTask extends MultiQPTask {
   private void executeLocalSubTask(QPTask subTask, String groupId) {
     try {
       executor.handleNonQueryRequestLocally(groupId, subTask);
-      this.run(subTask.getResponse());
+      this.receive(subTask.getResponse());
     } catch (InterruptedException e) {
       LOGGER.error("Handle sub task locally failed.");
-      this.run(DataGroupNonQueryResponse.createErrorResponse(groupId, e.getMessage()));
+      this.receive(DataGroupNonQueryResponse.createErrorResponse(groupId, e.getMessage()));
     }
   }
 
@@ -153,10 +153,10 @@ public class BatchQPTask extends MultiQPTask {
   private void executeRpcSubTask(SingleQPTask subTask, PeerId leader, String groupId) {
     try {
       executor.asyncHandleNonQueryTask(subTask, leader);
-      this.run(subTask.getResponse());
+      this.receive(subTask.getResponse());
     } catch (RaftConnectionException | InterruptedException e) {
       LOGGER.error("Async handle sub task failed.");
-      this.run(DataGroupNonQueryResponse.createErrorResponse(groupId, e.getMessage()));
+      this.receive(DataGroupNonQueryResponse.createErrorResponse(groupId, e.getMessage()));
     }
   }
 

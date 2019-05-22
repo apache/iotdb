@@ -33,7 +33,7 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
-import org.apache.iotdb.cluster.qp.task.QueryTask;
+import org.apache.iotdb.cluster.qp.task.QueryDataTask;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
@@ -55,7 +55,7 @@ public class RaftNodeAsClientManager {
   private static final int TASK_TIMEOUT_MS = CLUSTER_CONFIG.getQpTaskTimeout();
 
   /**
-   * Max valid number of @NodeAsClient usage, represent the number can run simultaneously
+   * Max valid number of @NodeAsClient usage, represent the number can receive simultaneously
    * at the same time
    */
   private static final int MAX_VALID_CLIENT_NUM = CLUSTER_CONFIG.getMaxNumOfInnerRpcClient();
@@ -240,7 +240,7 @@ public class RaftNodeAsClientManager {
                   public void onResponse(Object result) {
                     BasicResponse response = (BasicResponse) result;
                     releaseClient(RaftNodeAsClient.this);
-                    qpTask.run(response);
+                    qpTask.receive(response);
                   }
 
                   @Override
@@ -248,7 +248,7 @@ public class RaftNodeAsClientManager {
                     LOGGER.error("Bolt rpc client occurs errors when handling Request", e);
                     qpTask.setTaskState(TaskState.EXCEPTION);
                     releaseClient(RaftNodeAsClient.this);
-                    qpTask.run(null);
+                    qpTask.receive(null);
                   }
 
                   @Override
@@ -260,19 +260,19 @@ public class RaftNodeAsClientManager {
         LOGGER.error(e.getMessage());
         qpTask.setTaskState(TaskState.EXCEPTION);
         releaseClient(RaftNodeAsClient.this);
-        qpTask.run(null);
+        qpTask.receive(null);
         throw new RaftConnectionException(e);
       }
     }
 
     @Override
-    public QueryTask syncHandleRequest(BasicRequest request, PeerId peerId) {
+    public QueryDataTask syncHandleRequest(BasicRequest request, PeerId peerId) {
       try {
         BasicResponse response = (BasicResponse) boltClientService.getRpcClient()
             .invokeSync(peerId.getEndpoint().toString(), request, TASK_TIMEOUT_MS);
-        return new QueryTask(response, TaskState.FINISH);
+        return new QueryDataTask(response, TaskState.FINISH);
       } catch (RemotingException | InterruptedException e) {
-        return new QueryTask(null, TaskState.EXCEPTION);
+        return new QueryDataTask(null, TaskState.EXCEPTION);
       } finally {
         releaseClient(RaftNodeAsClient.this);
       }

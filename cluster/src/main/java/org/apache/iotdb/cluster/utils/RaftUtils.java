@@ -298,7 +298,7 @@ public class RaftUtils {
       if (!status.isOk()) {
         response.setErrorMsg(status.getErrorMsg());
       }
-      qpTask.run(response);
+      qpTask.receive(response);
     });
     task.setDone(closure);
     try {
@@ -399,7 +399,7 @@ public class RaftUtils {
                 status.setCode(-1);
                 status.setErrorMsg(status.getErrorMsg());
               }
-              nullReadTask.run(response);
+              nullReadTask.receive(response);
             }
           });
       nullReadTask.await();
@@ -435,7 +435,7 @@ public class RaftUtils {
                 status.setCode(-1);
                 status.setErrorMsg(status.getErrorMsg());
               }
-              nullReadTask.run(response);
+              nullReadTask.receive(response);
             }
           });
       nullReadTask.await();

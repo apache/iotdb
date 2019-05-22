@@ -41,7 +41,7 @@ public class SingleQPTask extends QPTask {
    * Process response. If it's necessary to redirect leader, redo the task.
    */
   @Override
-  public void run(BasicResponse response) {
+  public void receive(BasicResponse response) {
     if(taskState != TaskState.EXCEPTION) {
       this.response = response;
       if(response == null){

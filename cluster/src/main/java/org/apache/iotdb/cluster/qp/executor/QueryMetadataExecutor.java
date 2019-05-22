@@ -452,7 +452,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       QueryStorageGroupResponse response;
       response = QueryStorageGroupResponse
           .createSuccessResponse(metadataHolder.getFsm().getAllStorageGroups());
-      task.run(response);
+      task.receive(response);
     } else {
       ((RaftService) metadataHolder.getService()).getNode()
           .readIndex(reqContext, new ReadIndexClosure() {
@@ -466,7 +466,7 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
               } else {
                 response = QueryStorageGroupResponse.createErrorResponse(status.getErrorMsg());
               }
-              task.run(response);
+              task.receive(response);
             }
           });
     }
