@@ -51,9 +51,6 @@ public class ClusterSelectSeriesBatchReader extends
     this.reader = reader;
   }
 
-  public ClusterSelectSeriesBatchReader() {
-  }
-
   @Override
   public boolean hasNext() throws IOException {
     return reader.hasNext();

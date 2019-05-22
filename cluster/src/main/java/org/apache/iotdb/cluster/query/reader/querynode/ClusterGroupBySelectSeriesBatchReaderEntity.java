@@ -26,13 +26,15 @@ import java.util.List;
 import org.apache.iotdb.cluster.query.common.ClusterNullableBatchData;
 import org.apache.iotdb.cluster.query.utils.ClusterTimeValuePairUtils;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithOnlyTimeFilterDataSet;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
+/**
+ * Batch reader entity for select paths in group by query with only time filter.
+ */
 public class ClusterGroupBySelectSeriesBatchReaderEntity implements
     IClusterSeriesBatchReaderEntity {
 
@@ -73,7 +75,8 @@ public class ClusterGroupBySelectSeriesBatchReaderEntity implements
       for (int j = 0; j < paths.size(); j++) {
         ClusterNullableBatchData batchData = (ClusterNullableBatchData) batchDataList.get(j);
         Object value = fieldList.get(j).getObjectValue(dataTypes.get(j));
-        batchData.addTimeValuePair(fieldList.get(j).toString().equals("null") ? null : ClusterTimeValuePairUtils.getTimeValuePair(time, value,dataTypes.get(j)));
+        batchData.addTimeValuePair(fieldList.get(j).toString().equals("null") ? null
+            : ClusterTimeValuePairUtils.getTimeValuePair(time, value, dataTypes.get(j)));
       }
     }
     return batchDataList;

@@ -69,7 +69,7 @@ public class ClusterNullableBatchData extends BatchData {
     return timeValuePairList.size();
   }
 
-  public TimeValuePair getTimeValuePair() {
+  public TimeValuePair getCurrentTimeValuePair() {
     return index < length() ? timeValuePairList.get(index) : null;
   }
 

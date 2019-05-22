@@ -23,14 +23,14 @@ import java.util.List;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
- * Batch reader for filter series which is used in query node.
+ * Batch reader for series which is used in query node.
  */
 public interface IClusterSeriesBatchReaderEntity {
 
   boolean hasNext() throws IOException;
 
   /**
-   * Get next batch data of all filter series.
+   * Get next batch data of all series.
    */
   List<BatchData> nextBatchList() throws IOException;
 }

@@ -40,7 +40,7 @@ public class ClusterTimeValuePairUtils {
    */
   public static TimeValuePair getCurrentTimeValuePair(BatchData data) {
     if (data instanceof ClusterNullableBatchData) {
-      return ((ClusterNullableBatchData) data).getTimeValuePair();
+      return ((ClusterNullableBatchData) data).getCurrentTimeValuePair();
     } else {
       return TimeValuePairUtils.getCurrentTimeValuePair(data);
     }
