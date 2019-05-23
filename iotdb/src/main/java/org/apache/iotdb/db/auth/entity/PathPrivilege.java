@@ -101,7 +101,6 @@ public class PathPrivilege {
     for (Integer privilegeId : privileges) {
       builder.append(" ").append(PrivilegeType.values()[privilegeId]);
     }
-    builder.append("\n");
     return builder.toString();
   }
 }

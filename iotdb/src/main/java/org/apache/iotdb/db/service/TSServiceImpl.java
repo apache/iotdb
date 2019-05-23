@@ -601,19 +601,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         columns.add(USER);
         break;
       case LIST_ROLE_USERS:
-        columns.add(ROLE);
         columns.add(USER);
         break;
       case LIST_USER_ROLES:
-        columns.add(USER);
         columns.add(ROLE);
         break;
       case LIST_ROLE_PRIVILEGE:
-        columns.add(ROLE);
         columns.add(PRIVILEGE);
         break;
       case LIST_USER_PRIVILEGE:
-        columns.add(USER);
+        columns.add(ROLE);
         columns.add(PRIVILEGE);
         break;
       default:
@@ -753,7 +750,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     initContextMap();
     contextMapLocal.get().put(req.queryId, context);
 
-    queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
+    queryDataSet = processor.getExecutor().processQuery(physicalPlan,
         context);
 
     queryRet.get().put(statement, queryDataSet);
