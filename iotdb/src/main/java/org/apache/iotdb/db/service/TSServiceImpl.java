@@ -592,6 +592,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSExecuteStatementResp executeAuthQuery(PhysicalPlan plan, List<String> columns) {
     TSExecuteStatementResp resp = getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "");
+    resp.ignoreTimeStamp = true;
     AuthorPlan authorPlan = (AuthorPlan) plan;
     switch (authorPlan.getAuthorType()) {
       case LIST_ROLE:

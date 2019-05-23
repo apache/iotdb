@@ -252,9 +252,12 @@ public class IoTDBStatement implements Statement {
       operationHandle = execResp.getOperationHandle();
       Utils.verifySuccess(execResp.getStatus());
       if (execResp.getOperationHandle().hasResultSet) {
-        resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
+        IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this,
+            execResp.getColumns(), client,
             operationHandle, sql, execResp.getOperationType(),
             getColumnsType(execResp.getColumns()), queryId.getAndIncrement());
+        resSet.setIgnoreTimeStamp(execResp.ignoreTimeStamp);
+        this.resultSet = resSet;
         return true;
       }
       return false;
@@ -348,9 +351,11 @@ public class IoTDBStatement implements Statement {
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     operationHandle = execResp.getOperationHandle();
     Utils.verifySuccess(execResp.getStatus());
-    resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
+    IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
         operationHandle, sql, execResp.getOperationType(), getColumnsType(execResp.getColumns()),
         queryId.getAndIncrement());
+    resSet.setIgnoreTimeStamp(execResp.ignoreTimeStamp);
+    this.resultSet = resSet;
     return resultSet;
   }
 

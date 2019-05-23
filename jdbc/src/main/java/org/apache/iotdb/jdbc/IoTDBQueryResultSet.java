@@ -87,6 +87,7 @@ public class IoTDBQueryResultSet implements ResultSet {
   // 0 means it is not constrained in sql, or the offset position has been reached
   private int rowsOffset = 0;
   private long queryId;
+  private boolean ignoreTimeStamp = false;
 
   /*
    * Combine maxRows and the LIMIT constraints. maxRowsOrRowsLimit = 0 means that neither maxRows
@@ -1244,5 +1245,13 @@ public class IoTDBQueryResultSet implements ResultSet {
       }
     }
     return null;
+  }
+
+  public boolean isIgnoreTimeStamp() {
+    return ignoreTimeStamp;
+  }
+
+  public void setIgnoreTimeStamp(boolean ignoreTimeStamp) {
+    this.ignoreTimeStamp = ignoreTimeStamp;
   }
 }
