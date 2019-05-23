@@ -19,9 +19,9 @@
 package org.apache.iotdb.cluster.qp.executor;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.cluster.query.executor.ClusterQueryRouter;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -48,7 +48,6 @@ public class ClusterQueryProcessExecutor extends AbstractQPExecutor implements I
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterQueryProcessExecutor.class);
   private ThreadLocal<Integer> fetchSize = new ThreadLocal<>();
-  private ClusterQueryRouter clusterQueryRouter = new ClusterQueryRouter();
 
   private QueryMetadataExecutor queryMetadataExecutor;
 
@@ -61,49 +60,28 @@ public class ClusterQueryProcessExecutor extends AbstractQPExecutor implements I
   public QueryDataSet processQuery(QueryPlan queryPlan, QueryContext context)
       throws IOException, FileNodeManagerException, PathErrorException,
       QueryFilterOptimizationException, ProcessorException {
-
-    QueryExpression queryExpression = QueryExpression.create().setSelectSeries(queryPlan.getPaths())
-        .setExpression(queryPlan.getExpression());
-    clusterQueryRouter.setReadDataConsistencyLevel(getReadDataConsistencyLevel());
-    if (queryPlan instanceof GroupByPlan) {
-      GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
-      return groupBy(groupByPlan.getPaths(), groupByPlan.getAggregations(),
-          groupByPlan.getExpression(), groupByPlan.getUnit(), groupByPlan.getOrigin(),
-          groupByPlan.getIntervals(), context);
-    }
-
-    if (queryPlan instanceof AggregationPlan) {
-      return aggregate(queryPlan.getPaths(), queryPlan.getAggregations(),
-          queryPlan.getExpression(), context);
-    }
-
-    if (queryPlan instanceof FillQueryPlan) {
-      FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-      return fill(queryPlan.getPaths(), fillQueryPlan.getQueryTime(),
-          fillQueryPlan.getFillType(), context);
-    }
-    return clusterQueryRouter.query(queryExpression, context);
+    throw new UnsupportedEncodingException();
   }
 
   @Override
   public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
       QueryContext context)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException, QueryFilterOptimizationException {
-    return clusterQueryRouter.aggregate(paths, aggres, expression, context);
+    throw new UnsupportedEncodingException();
   }
 
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
       long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException, QueryFilterOptimizationException {
-    return clusterQueryRouter.groupBy(paths, aggres, expression, unit, origin, intervals, context);
+    throw new UnsupportedEncodingException();
   }
 
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException {
-    return clusterQueryRouter.fill(fillPaths, queryTime, fillTypes, context);
+    throw new UnsupportedEncodingException();
   }
 
   @Override

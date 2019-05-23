@@ -30,7 +30,7 @@ import org.junit.Test;
 
 public class QPTaskManagerTest {
 
-  private QPTaskManager qpTaskManager = QPTaskManager.getInstance();
+  private QPTaskThreadManager qpTaskManager = QPTaskThreadManager.getInstance();
 
   private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
 

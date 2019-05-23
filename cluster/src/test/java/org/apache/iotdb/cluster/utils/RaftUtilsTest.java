@@ -257,22 +257,6 @@ public class RaftUtilsTest {
   }
 
   @Test
-  public void testGetDataPartitionOfSG() {
-    PeerId metadtaLeader = PeerId.parsePeer(ipList[0]);
-    RaftUtils.updateRaftGroupLeader(ClusterConfig.METADATA_GROUP_ID, metadtaLeader);
-    PeerId[] metadataGroup = RaftUtils.getDataPartitionOfSG(null, server, router);
-    assertArrayEquals(peerIds.toArray(new PeerId[peerIds.size()]), metadataGroup);
-
-    String sg = storageGroups[0];
-    PhysicalNode[] physicalGroup = router.routeGroup(sg);
-    String groupId = router.getGroupID(physicalGroup);
-    PeerId[] expectGroup = RaftUtils.getPeerIdArrayFrom(physicalGroup);
-    RaftUtils.updateRaftGroupLeader(groupId, expectGroup[0]);
-    PeerId[] dataGroup = RaftUtils.getDataPartitionOfSG(sg, server, router);
-    assertArrayEquals(expectGroup, dataGroup);
-  }
-
-  @Test
   public void testGetDataPartitionOfNode() {
     PeerId node = peerIds.get(0);
     Map<String[], String[]> dataPartition = RaftUtils.getDataPartitionOfNode(node.getIp(), node.getPort(), server, router);
