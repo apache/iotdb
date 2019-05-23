@@ -657,7 +657,7 @@ public class IoTDBAuthorizationIT {
 
     try {
       ResultSet resultSet = adminStmt.executeQuery("LIST USER");
-      String ans = String.format("0,root,%n");
+      String ans = String.format("0,root,\n");
       validateResultSet(resultSet, ans);
 
       for (int i = 0; i < 10; i++) {
