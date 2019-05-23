@@ -31,18 +31,16 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.junit.Assert;
 
-public abstract class IoTDBMetadataFetchAbstract{
-  protected void test(String url, boolean isBatch) throws SQLException{
-    Connection connection = null;
-    try {
-      connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + url, "root", "root");
+public abstract class IoTDBMetadataFetchAbstract {
+
+  protected void test(String url, boolean isBatch) throws SQLException {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + url, "root", "root")) {
       insertSQL(connection, isBatch);
       testShowStorageGroup(connection);
       testDatabaseMetadata(connection);
       testShowTimeseries(connection);
       testShowTimeseriesPath(connection);
-    } finally {
-      connection.close();
     }
   }
 
@@ -100,7 +98,7 @@ public abstract class IoTDBMetadataFetchAbstract{
     checkCorrectness(sqls, standards, statement);
   }
 
-  protected void testShowTimeseriesPath(Connection connection) throws SQLException{
+  protected void testShowTimeseriesPath(Connection connection) throws SQLException {
     Statement statement = connection.createStatement();
     String[] sqls = new String[]{
         "show timeseries root.ln.wf01.wt01.status", // full seriesPath
@@ -110,23 +108,21 @@ public abstract class IoTDBMetadataFetchAbstract{
         "show timeseries root.ln.*.wt01.*", // seriesPath with stars
         "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
         "show timeseries root.ln,root.ln",
-        // SHOW TIMESERIES <PATH> only accept single seriesPath, thus
-        // returning ""
     };
     String[] standards = new String[]{
         "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n",
         "root.ln.wf04.wt04.status,root.ln.wf04,TEXT,PLAIN,\n"
-            +"root.ln.wf04.wt05.temperature,root.ln.wf04,FLOAT,GORILLA,\n"
-            +"root.ln.wf03.wt02.status,root.ln.wf03,INT64,PLAIN,\n"
-            +"root.ln.wf03.wt03.temperature,root.ln.wf03,FLOAT,TS_2DIFF,\n"
-            +"root.ln.wf02.wt03.status,root.ln.wf02,INT32,PLAIN,\n"
-            +"root.ln.wf02.wt04.temperature,root.ln.wf02,FLOAT,RLE,\n"
-            +"root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-            +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
-            +"root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
-            +"root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
+            + "root.ln.wf04.wt05.temperature,root.ln.wf04,FLOAT,GORILLA,\n"
+            + "root.ln.wf03.wt02.status,root.ln.wf03,INT64,PLAIN,\n"
+            + "root.ln.wf03.wt03.temperature,root.ln.wf03,FLOAT,TS_2DIFF,\n"
+            + "root.ln.wf02.wt03.status,root.ln.wf02,INT32,PLAIN,\n"
+            + "root.ln.wf02.wt04.temperature,root.ln.wf02,FLOAT,RLE,\n"
+            + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
+            + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
+            + "root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
+            + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
         "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
-            +"root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n",
+            + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n",
         "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
             + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n",
         "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
@@ -142,16 +138,16 @@ public abstract class IoTDBMetadataFetchAbstract{
     Statement statement = connection.createStatement();
     try {
       statement.execute("show timeseries");
-    } catch (SQLException e){
+    } catch (SQLException e) {
       return;
-    } catch (Exception e){
+    } catch (Exception e) {
       fail(e.getMessage());
     } finally {
       statement.close();
     }
   }
 
-  protected void testDatabaseMetadata(Connection connection) throws SQLException{
+  protected void testDatabaseMetadata(Connection connection) throws SQLException {
     DatabaseMetaData databaseMetaData = connection.getMetaData();
     showTimeseriesInJson(databaseMetaData);
     showStorageGroup(databaseMetaData);
@@ -160,7 +156,8 @@ public abstract class IoTDBMetadataFetchAbstract{
     showTimeseriesInfo(databaseMetaData);
   }
 
-  protected void checkCorrectness(String[] sqls, String[] standards, Statement statement) throws SQLException {
+  protected void checkCorrectness(String[] sqls, String[] standards, Statement statement)
+      throws SQLException {
     for (int i = 0; i < sqls.length; i++) {
       String sql = sqls[i];
       String standard = standards[i];
@@ -200,7 +197,8 @@ public abstract class IoTDBMetadataFetchAbstract{
             + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
             + "root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n"
             + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n";
-    ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
+    ResultSet resultSet = databaseMetaData
+        .getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
 
@@ -213,7 +211,8 @@ public abstract class IoTDBMetadataFetchAbstract{
             + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
             + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
             + "root.ln.wf01.wt02.humidity,root.ln.wf01,DOUBLE,RLE,\n";
-    resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root.ln.wf01", null, null);
+    resultSet = databaseMetaData
+        .getColumns(Constant.CATALOG_TIMESERIES, "root.ln.wf01", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
 
@@ -222,14 +221,16 @@ public abstract class IoTDBMetadataFetchAbstract{
             + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n"
             + "root.ln.wf01.wt01.temperature,root.ln.wf01,FLOAT,RLE,\n"
             + "root.ln.wf05.wt01.status,root.ln.wf05,DOUBLE,PLAIN,\n";
-    resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root.ln.*.wt01", null, null);
+    resultSet = databaseMetaData
+        .getColumns(Constant.CATALOG_TIMESERIES, "root.ln.*.wt01", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
 
     standard =
         "Timeseries,Storage Group,DataType,Encoding,\n"
             + "root.ln.wf01.wt01.status,root.ln.wf01,BOOLEAN,PLAIN,\n";
-    resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root.ln.wf01.wt01.status", null, null);
+    resultSet = databaseMetaData
+        .getColumns(Constant.CATALOG_TIMESERIES, "root.ln.wf01.wt01.status", null, null);
     checkCorrectness(resultSet, standard);
     resultSet.close();
   }
@@ -355,7 +356,9 @@ public abstract class IoTDBMetadataFetchAbstract{
             + "root.ln.wf02,\n"
             + "root.ln.wf01,\n"
             + "root.ln.wf05,\n";
-    ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
+
+    ResultSet resultSet = databaseMetaData
+        .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
     checkCorrectness(resultSet, standard);
   }
 
@@ -416,7 +419,7 @@ public abstract class IoTDBMetadataFetchAbstract{
     resultSet.close();
   }
 
-  protected void checkCorrectness(ResultSet resultSet, String standard) throws SQLException{
+  protected void checkCorrectness(ResultSet resultSet, String standard) throws SQLException {
     ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
     int colCount = resultSetMetaData.getColumnCount();
     StringBuilder resultStr = new StringBuilder();

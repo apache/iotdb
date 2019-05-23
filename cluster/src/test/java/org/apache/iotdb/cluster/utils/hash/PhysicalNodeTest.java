@@ -28,11 +28,11 @@ import org.junit.Test;
 public class PhysicalNodeTest {
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
   }
 
   @Test

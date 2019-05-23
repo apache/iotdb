@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Process single task.
+ * Process task(s) for only one raft group, which is used for operations except for querying data.
  */
 public class SingleQPTask extends QPTask {
 

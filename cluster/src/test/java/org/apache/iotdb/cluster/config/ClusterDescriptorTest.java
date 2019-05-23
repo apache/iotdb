@@ -96,7 +96,7 @@ public class ClusterDescriptorTest {
       put("qp_task_redo_count", testTaskRedoCountNew);
       put("qp_task_timeout_ms", testTaskTimeoutMSNew);
       put("num_of_virtual_nodes", testVNodesNew);
-      put("max_num_of_inner_rpc_client", testClientNumNew);
+      put("concurrent_inner_rpc_client_thread", testClientNumNew);
       put("max_queue_num_of_inner_rpc_client", testQueueLenNew);
       put("read_metadata_consistency_level", testMetadataConsistencyNew);
       put("read_data_consistency_level", testDataConsistencyNew);
@@ -143,8 +143,8 @@ public class ClusterDescriptorTest {
     assertEquals(testTaskRedoCountNew, config.getQpTaskRedoCount() + "");
     assertEquals(testTaskTimeoutMSNew, config.getQpTaskTimeout() + "");
     assertEquals(testVNodesNew, config.getNumOfVirtualNodes() + "");
-    assertEquals(testClientNumNew, config.getMaxNumOfInnerRpcClient() + "");
-    assertEquals(testQueueLenNew, config.getMaxQueueNumOfInnerRpcClient() + "");
+    assertEquals(testClientNumNew, config.getConcurrentInnerRpcClientThread() + "");
+    assertEquals(testQueueLenNew, config.getMaxQueueNumOfQPTask() + "");
     assertEquals(testMetadataConsistencyNew, config.getReadMetadataConsistencyLevel() + "");
     assertEquals(testDataConsistencyNew, config.getReadDataConsistencyLevel() + "");
     assertEquals(testConcurrentQPTaskThreadNew, config.getConcurrentQPSubTaskThread() + "");
@@ -198,8 +198,8 @@ public class ClusterDescriptorTest {
     testTaskRedoCountOld = config.getQpTaskRedoCount();
     testTaskTimeoutMSOld = config.getQpTaskTimeout();
     testVNodesOld = config.getNumOfVirtualNodes();
-    testClientNumOld = config.getMaxNumOfInnerRpcClient();
-    testQueueLenOld = config.getMaxQueueNumOfInnerRpcClient();
+    testClientNumOld = config.getConcurrentInnerRpcClientThread();
+    testQueueLenOld = config.getMaxQueueNumOfQPTask();
     testMetadataConsistencyOld = config.getReadMetadataConsistencyLevel();
     testDataConsistencyOld = config.getReadDataConsistencyLevel();
     testConcurrentQPTaskThreadOld = config.getConcurrentQPSubTaskThread();
@@ -221,8 +221,8 @@ public class ClusterDescriptorTest {
     config.setQpTaskRedoCount(testTaskRedoCountOld);
     config.setQpTaskTimeout(testTaskTimeoutMSOld);
     config.setNumOfVirtualNodes(testVNodesOld);
-    config.setMaxNumOfInnerRpcClient(testClientNumOld);
-    config.setMaxQueueNumOfInnerRpcClient(testQueueLenOld);
+    config.setConcurrentInnerRpcClientThread(testClientNumOld);
+    config.setMaxQueueNumOfQPTask(testQueueLenOld);
     config.setReadMetadataConsistencyLevel(testMetadataConsistencyOld);
     config.setReadDataConsistencyLevel(testDataConsistencyOld);
     config.setConcurrentQPSubTaskThread(testConcurrentQPTaskThreadOld);

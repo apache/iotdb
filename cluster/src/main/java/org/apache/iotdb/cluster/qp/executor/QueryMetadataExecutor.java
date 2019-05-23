@@ -26,13 +26,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
-import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.entity.raft.MetadataRaftHolder;
 import org.apache.iotdb.cluster.entity.raft.RaftService;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
+import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
+import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryMetadataInStringRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryMetadataRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querymetadata.QueryPathsRequest;
@@ -106,25 +106,25 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
         StringBuilder path = new StringBuilder();
         String[] storageGroupNodes = storageGroup.split(DOUB_SEPARATOR);
         String[] queryPathNodes = queryPath.split(DOUB_SEPARATOR);
-        for(int  i = 0 ; i < queryPathNodes.length ; i++){
-          if(i >= storageGroupNodes.length){
+        for (int i = 0; i < queryPathNodes.length; i++) {
+          if (i >= storageGroupNodes.length) {
             path.append(queryPathNodes[i]).append(SINGLE_SEPARATOR);
           } else {
             path.append(storageGroupNodes[i]).append(SINGLE_SEPARATOR);
           }
         }
-        paths.add(path.deleteCharAt(path.length()-1).toString());
+        paths.add(path.deleteCharAt(path.length() - 1).toString());
       }
     }
     return paths;
   }
-  
+
   /**
    * Handle query timeseries in one data group
    *
    * @param groupId data group id
    */
-  private void  handleTimseriesQuery(String groupId, List<String> pathList, List<List<String>> res)
+  private void handleTimseriesQuery(String groupId, List<String> pathList, List<List<String>> res)
       throws ProcessorException, InterruptedException {
     QueryTimeSeriesRequest request = new QueryTimeSeriesRequest(groupId,
         getReadMetadataConsistencyLevel(), pathList);
@@ -134,14 +134,18 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     PeerId holder;
     /** Check if the plan can be executed locally. **/
     if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
-      LOGGER.debug("Execute show timeseries {} statement locally for group {} by sending request to local node.", pathList, groupId);
+      LOGGER.debug(
+          "Execute show timeseries {} statement locally for group {} by sending request to local node.",
+          pathList, groupId);
       holder = this.server.getServerId();
     } else {
       holder = RaftUtils.getPeerIDInOrder(groupId);
     }
+    task.setTargetNode(holder);
     try {
-      LOGGER.debug("Send show timeseries {} task for group {} to node {}.", pathList, groupId, holder);
-      res.addAll(queryTimeSeries(task, holder));
+      LOGGER.debug("Send show timeseries {} task for group {} to node {}.", pathList, groupId,
+          holder);
+      res.addAll(queryTimeSeries(task));
     } catch (RaftConnectionException e) {
       boolean success = false;
       while (!success) {
@@ -151,15 +155,20 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
           if (holder.equals(nextNode)) {
             break;
           }
-          LOGGER.debug("Previous task fail, then send show timeseries {} task for group {} to node {}.", pathList, groupId, nextNode);
+          LOGGER.debug(
+              "Previous task fail, then send show timeseries {} task for group {} to node {}.",
+              pathList, groupId, nextNode);
           task.resetTask();
+          task.setTargetNode(holder);
           task.setTaskState(TaskState.INITIAL);
-          res.addAll(queryTimeSeries(task, nextNode));
-          LOGGER.debug("Show timeseries {} task for group {} to node {} succeed.", pathList, groupId, nextNode);
+          res.addAll(queryTimeSeries(task));
+          LOGGER
+              .debug("Show timeseries {} task for group {} to node {} succeed.", pathList, groupId,
+                  nextNode);
           success = true;
         } catch (RaftConnectionException e1) {
-          LOGGER.debug("Show timeseries {} task for group {} to node {} fail.", pathList, groupId, nextNode);
-          continue;
+          LOGGER.debug("Show timeseries {} task for group {} to node {} fail.", pathList, groupId,
+              nextNode);
         }
       }
       LOGGER.debug("The final result for show timeseries {} task is {}", pathList, success);
@@ -185,14 +194,17 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       PeerId holder;
       /** Check if the plan can be executed locally. **/
       if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
-        LOGGER.debug("Execute show metadata in string statement locally for group {} by sending request to local node.", groupId);
+        LOGGER.debug(
+            "Execute show metadata in string statement locally for group {} by sending request to local node.",
+            groupId);
         holder = this.server.getServerId();
       } else {
         holder = RaftUtils.getPeerIDInOrder(groupId);
       }
+      task.setTargetNode(holder);
       try {
         LOGGER.debug("Send show metadata in string task for group {} to node {}.", groupId, holder);
-        asyncSendNonQuerySingleTask(task, holder, 0);
+        asyncSendNonQuerySingleTask(task, 0);
       } catch (RaftConnectionException e) {
         boolean success = false;
         while (!success) {
@@ -202,15 +214,19 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
             if (holder.equals(nextNode)) {
               break;
             }
-            LOGGER.debug("Previous task fail, then send show metadata in string task for group {} to node {}.", groupId, nextNode);
+            LOGGER.debug(
+                "Previous task fail, then send show metadata in string task for group {} to node {}.",
+                groupId, nextNode);
             task.resetTask();
+            task.setTargetNode(nextNode);
             task.setTaskState(TaskState.INITIAL);
-            asyncSendNonQuerySingleTask(task, nextNode, 0);
-            LOGGER.debug("Show metadata in string task for group {} to node {} succeed.", groupId, nextNode);
+            asyncSendNonQuerySingleTask(task, 0);
+            LOGGER.debug("Show metadata in string task for group {} to node {} succeed.", groupId,
+                nextNode);
             success = true;
           } catch (RaftConnectionException e1) {
-            LOGGER.debug("Show metadata in string task for group {} to node {} fail.", groupId, nextNode);
-            continue;
+            LOGGER.debug("Show metadata in string task for group {} to node {} fail.", groupId,
+                nextNode);
           }
         }
         LOGGER.debug("The final result for show metadata in string task is {}", success);
@@ -228,9 +244,10 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
         if (response != null && response.getErrorMsg() != null) {
           errorMessage = response.getErrorMsg();
         }
-        throw new ProcessorException("Execute show metadata in string statement fail because " + errorMessage);
+        throw new ProcessorException(
+            "Execute show metadata in string statement fail because " + errorMessage);
       }
-      metadataList.add(((QueryMetadataInStringResponse)response).getMetadata());
+      metadataList.add(((QueryMetadataInStringResponse) response).getMetadata());
     }
     return combineMetadataInStringList(metadataList);
   }
@@ -251,14 +268,17 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       PeerId holder;
       /** Check if the plan can be executed locally. **/
       if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
-        LOGGER.debug("Execute query metadata statement locally for group {} by sending request to local node.", groupId);
+        LOGGER.debug(
+            "Execute query metadata statement locally for group {} by sending request to local node.",
+            groupId);
         holder = this.server.getServerId();
       } else {
         holder = RaftUtils.getPeerIDInOrder(groupId);
       }
+      task.setTargetNode(holder);
       try {
         LOGGER.debug("Send query metadata task for group {} to node {}.", groupId, holder);
-        asyncSendNonQuerySingleTask(task, holder, 0);
+        asyncSendNonQuerySingleTask(task, 0);
       } catch (RaftConnectionException e) {
         boolean success = false;
         while (!success) {
@@ -268,10 +288,13 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
             if (holder.equals(nextNode)) {
               break;
             }
-            LOGGER.debug("Previous task fail, then send query metadata task for group {} to node {}.", groupId, nextNode);
+            LOGGER
+                .debug("Previous task fail, then send query metadata task for group {} to node {}.",
+                    groupId, nextNode);
             task.resetTask();
+            task.setTargetNode(nextNode);
             task.setTaskState(TaskState.INITIAL);
-            asyncSendNonQuerySingleTask(task, nextNode, 0);
+            asyncSendNonQuerySingleTask(task, 0);
             LOGGER.debug("Query metadata task for group {} to node {} succeed.", groupId, nextNode);
             success = true;
           } catch (RaftConnectionException e1) {
@@ -294,9 +317,10 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
         if (response != null && response.getErrorMsg() != null) {
           errorMessage = response.getErrorMsg();
         }
-        throw new ProcessorException("Execute query metadata statement fail because " + errorMessage);
+        throw new ProcessorException(
+            "Execute query metadata statement fail because " + errorMessage);
       }
-      metadatas[i] = ((QueryMetadataResponse)response).getMetadata();
+      metadatas[i] = ((QueryMetadataResponse) response).getMetadata();
     }
     return Metadata.combineMetadatas(metadatas);
   }
@@ -317,14 +341,18 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
       PeerId holder;
       /** Check if the plan can be executed locally. **/
       if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
-        LOGGER.debug("Execute get series type for {} statement locally for group {} by sending request to local node.", path, groupId);
+        LOGGER.debug(
+            "Execute get series type for {} statement locally for group {} by sending request to local node.",
+            path, groupId);
         holder = this.server.getServerId();
       } else {
         holder = RaftUtils.getPeerIDInOrder(groupId);
       }
+      task.setTargetNode(holder);
       try {
-        LOGGER.debug("Send get series type for {} task for group {} to node {}.", path, groupId, holder);
-        dataType = querySeriesType(task, holder);
+        LOGGER.debug("Send get series type for {} task for group {} to node {}.", path, groupId,
+            holder);
+        dataType = querySeriesType(task);
       } catch (RaftConnectionException e) {
         boolean success = false;
         while (!success) {
@@ -334,14 +362,19 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
             if (holder.equals(nextNode)) {
               break;
             }
-            LOGGER.debug("Previous task fail, then send get series type for {} task for group {} to node {}.", path, groupId, nextNode);
+            LOGGER.debug(
+                "Previous task fail, then send get series type for {} task for group {} to node {}.",
+                path, groupId, nextNode);
             task.resetTask();
+            task.setTargetNode(nextNode);
             task.setTaskState(TaskState.INITIAL);
-            dataType = querySeriesType(task, nextNode);
-            LOGGER.debug("Get series type for {} task for group {} to node {} succeed.", path, groupId, nextNode);
+            dataType = querySeriesType(task);
+            LOGGER.debug("Get series type for {} task for group {} to node {} succeed.", path,
+                groupId, nextNode);
             success = true;
           } catch (RaftConnectionException e1) {
-            LOGGER.debug("Get series type for {} task for group {} to node {} fail.", path, groupId, nextNode);
+            LOGGER.debug("Get series type for {} task for group {} to node {} fail.", path, groupId,
+                nextNode);
             continue;
           }
         }
@@ -389,14 +422,18 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     PeerId holder;
     /** Check if the plan can be executed locally. **/
     if (QPExecutorUtils.canHandleQueryByGroupId(groupId)) {
-      LOGGER.debug("Execute get paths for {} statement locally for group {} by sending request to local node.", pathList, groupId);
+      LOGGER.debug(
+          "Execute get paths for {} statement locally for group {} by sending request to local node.",
+          pathList, groupId);
       holder = this.server.getServerId();
     } else {
       holder = RaftUtils.getPeerIDInOrder(groupId);
     }
+    task.setTargetNode(holder);
     try {
-      LOGGER.debug("Send get paths for {} task for group {} to node {}.", pathList, groupId, holder);
-      res.addAll(queryPaths(task, holder));
+      LOGGER
+          .debug("Send get paths for {} task for group {} to node {}.", pathList, groupId, holder);
+      res.addAll(queryPaths(task));
     } catch (RaftConnectionException e) {
       boolean success = false;
       while (!success) {
@@ -406,14 +443,19 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
           if (holder.equals(nextNode)) {
             break;
           }
-          LOGGER.debug("Previous task fail, then send get paths for {} task for group {} to node {}.", pathList, groupId, nextNode);
+          LOGGER
+              .debug("Previous task fail, then send get paths for {} task for group {} to node {}.",
+                  pathList, groupId, nextNode);
+          task.setTargetNode(nextNode);
           task.resetTask();
           task.setTaskState(TaskState.INITIAL);
-          res.addAll(queryPaths(task, nextNode));
-          LOGGER.debug("Get paths for {} task for group {} to node {} succeed.", pathList, groupId, nextNode);
+          res.addAll(queryPaths(task));
+          LOGGER.debug("Get paths for {} task for group {} to node {} succeed.", pathList, groupId,
+              nextNode);
           success = true;
         } catch (RaftConnectionException e1) {
-          LOGGER.debug("Get paths for {} task for group {} to node {} fail.", pathList, groupId, nextNode);
+          LOGGER.debug("Get paths for {} task for group {} to node {} fail.", pathList, groupId,
+              nextNode);
         }
       }
       LOGGER.debug("The final result for get paths for {} task is {}", pathList, success);
@@ -423,16 +465,16 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     }
   }
 
-  private List<List<String>> queryTimeSeries(SingleQPTask task, PeerId leader)
+  private List<List<String>> queryTimeSeries(SingleQPTask task)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
+    BasicResponse response = syncHandleNonQuerySingleTaskGetRes(task, 0);
     return response == null ? new ArrayList<>()
         : ((QueryTimeSeriesResponse) response).getTimeSeries();
   }
 
-  private TSDataType querySeriesType(SingleQPTask task, PeerId leader)
+  private TSDataType querySeriesType(SingleQPTask task)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
+    BasicResponse response = syncHandleNonQuerySingleTaskGetRes(task, 0);
     return response == null ? null
         : ((QuerySeriesTypeResponse) response).getDataType();
   }
@@ -474,9 +516,9 @@ public class QueryMetadataExecutor extends AbstractQPExecutor {
     return ((QueryStorageGroupResponse) task.getResponse()).getStorageGroups();
   }
 
-  private List<String> queryPaths(SingleQPTask task, PeerId leader)
+  private List<String> queryPaths(SingleQPTask task)
       throws InterruptedException, RaftConnectionException {
-    BasicResponse response = asyncHandleNonQuerySingleTaskGetRes(task, leader, 0);
+    BasicResponse response = syncHandleNonQuerySingleTaskGetRes(task, 0);
     return response == null ? new ArrayList<>()
         : ((QueryPathsResponse) response).getPaths();
   }

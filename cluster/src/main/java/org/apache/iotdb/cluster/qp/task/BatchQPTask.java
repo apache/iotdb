@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.iotdb.cluster.concurrent.pool.QPTaskManager;
+import org.apache.iotdb.cluster.concurrent.pool.QPTaskThreadManager;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.executor.NonQueryExecutor;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Execute batch statement task. It's thread-safe.
+ * Execute batch statement tasks. It's thread-safe.
  */
 public class BatchQPTask extends MultiQPTask {
 
@@ -46,25 +46,20 @@ public class BatchQPTask extends MultiQPTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(BatchQPTask.class);
 
   /**
-   * Record the index of physical plans in a data group. The index means the position in batchResult
+   * Record the index of physical plans in a data group. The index means the position in result
    * String: group id
    */
   private Map<String, List<Integer>> planIndexMap;
 
   /**
+   * Batch result array, mark the result type, which is in BatchResult
+   */
+  private int[] resultArray;
+
+  /**
    * Batch result
    */
-  private int[] batchResult;
-
-  /**
-   * Mark if the batch is all successful.
-   */
-  private boolean isAllSuccessful;
-
-  /**
-   * Batch error message.
-   */
-  private String batchErrorMessage;
+  private BatchResult batchResult;
 
   /**
    * Lock to update result
@@ -73,13 +68,11 @@ public class BatchQPTask extends MultiQPTask {
 
   private NonQueryExecutor executor;
 
-
-  public BatchQPTask(int taskNum, BatchResult batchResult, Map<String, SingleQPTask> taskMap,
+  public BatchQPTask(int taskNum, BatchResult result, Map<String, SingleQPTask> taskMap,
       Map<String, List<Integer>> planIndexMap) {
     super(false, taskNum, TaskType.BATCH);
-    this.batchResult = batchResult.getResult();
-    this.isAllSuccessful = batchResult.isAllSuccessful();
-    this.batchErrorMessage = batchResult.getBatchErrorMessage();
+    this.resultArray = result.getResultArray();
+    this.batchResult = result;
     this.taskMap = taskMap;
     this.planIndexMap = planIndexMap;
     this.taskThreadMap = new HashMap<>();
@@ -97,17 +90,23 @@ public class BatchQPTask extends MultiQPTask {
       String groupId = basicResponse.getGroupId();
       List<Boolean> results = basicResponse.getResults();
       List<Integer> indexList = planIndexMap.get(groupId);
+      List<String> errorMsgList = ((DataGroupNonQueryResponse) basicResponse).getErrorMsgList();
+      int errorMsgIndex = 0;
       for (int i = 0; i < indexList.size(); i++) {
         if (i >= results.size()) {
-          batchResult[indexList.get(i)] = Statement.EXECUTE_FAILED;
+          resultArray[indexList.get(i)] = Statement.EXECUTE_FAILED;
+          batchResult.addBatchErrorMessage(indexList.get(i), basicResponse.getErrorMsg());
         } else {
-          batchResult[indexList.get(i)] =
-              results.get(i) ? Statement.SUCCESS_NO_INFO : Statement.EXECUTE_FAILED;
+          if (results.get(i)) {
+            resultArray[indexList.get(i)] = Statement.SUCCESS_NO_INFO;
+          } else {
+            resultArray[indexList.get(i)] = Statement.EXECUTE_FAILED;
+            batchResult.addBatchErrorMessage(indexList.get(i), errorMsgList.get(errorMsgIndex++));
+          }
         }
       }
       if (!basicResponse.isSuccess()) {
-        isAllSuccessful = false;
-        batchErrorMessage = basicResponse.getErrorMsg();
+        batchResult.setAllSuccessful(false);
       }
     } finally {
       lock.unlock();
@@ -115,7 +114,7 @@ public class BatchQPTask extends MultiQPTask {
     taskCountDownLatch.countDown();
   }
 
-  public void execute(NonQueryExecutor executor) {
+  public void executeBy(NonQueryExecutor executor) {
     this.executor = executor;
 
     for (Entry<String, SingleQPTask> entry : taskMap.entrySet()) {
@@ -123,12 +122,13 @@ public class BatchQPTask extends MultiQPTask {
       SingleQPTask subTask = entry.getValue();
       Future<?> taskThread;
       if (QPExecutorUtils.canHandleNonQueryByGroupId(groupId)) {
-        taskThread = QPTaskManager.getInstance()
+        taskThread = QPTaskThreadManager.getInstance()
             .submit(() -> executeLocalSubTask(subTask, groupId));
       } else {
         PeerId leader = RaftUtils.getLocalLeaderPeerID(groupId);
-        taskThread = QPTaskManager.getInstance()
-            .submit(() -> executeRpcSubTask(subTask, leader, groupId));
+        subTask.setTargetNode(leader);
+        taskThread = QPTaskThreadManager.getInstance()
+            .submit(() -> executeRpcSubTask(subTask, groupId));
       }
       taskThreadMap.put(groupId, taskThread);
     }
@@ -150,29 +150,13 @@ public class BatchQPTask extends MultiQPTask {
   /**
    * Execute RPC sub task
    */
-  private void executeRpcSubTask(SingleQPTask subTask, PeerId leader, String groupId) {
+  private void executeRpcSubTask(SingleQPTask subTask, String groupId) {
     try {
-      executor.asyncHandleNonQueryTask(subTask, leader);
+      executor.syncHandleNonQueryTask(subTask);
       this.receive(subTask.getResponse());
     } catch (RaftConnectionException | InterruptedException e) {
       LOGGER.error("Async handle sub task failed.");
       this.receive(DataGroupNonQueryResponse.createErrorResponse(groupId, e.getMessage()));
     }
-  }
-
-  public boolean isAllSuccessful() {
-    return isAllSuccessful;
-  }
-
-  public void setAllSuccessful(boolean allSuccessful) {
-    isAllSuccessful = allSuccessful;
-  }
-
-  public String getBatchErrorMessage() {
-    return batchErrorMessage;
-  }
-
-  public void setBatchErrorMessage(String batchErrorMessage) {
-    this.batchErrorMessage = batchErrorMessage;
   }
 }

@@ -55,7 +55,6 @@ import org.apache.iotdb.cluster.qp.task.QPTask;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcQueryManager;
-import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicNonQueryRequest;
@@ -65,11 +64,11 @@ import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryLeaderRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryMetricRequest;
 import org.apache.iotdb.cluster.rpc.raft.request.querymetric.QueryStatusRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.nonquery.DataGroupNonQueryResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.nonquery.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryJobNumResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryLeaderResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryMetricResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.nonquery.DataGroupNonQueryResponse;
-import org.apache.iotdb.cluster.rpc.raft.response.nonquery.MetaGroupNonQueryResponse;
 import org.apache.iotdb.cluster.rpc.raft.response.querymetric.QueryStatusResponse;
 import org.apache.iotdb.cluster.utils.hash.PhysicalNode;
 import org.apache.iotdb.cluster.utils.hash.Router;
@@ -94,9 +93,9 @@ public class RaftUtils {
 
   /**
    * The cache will be update in two case: 1. When @onLeaderStart() method of state machine is
-   * called, the cache will be update. 2. When @getLocalLeaderPeerID() in this class is called and cache
-   * don't have the key, it's will get random peer and update. 3. When @redirected of BasicRequest
-   * is true, the task will be retry and the cache will update.
+   * called, the cache will be update. 2. When @getLocalLeaderPeerID() in this class is called and
+   * cache don't have the key, it's will get random peer and update. 3. When @redirected of
+   * BasicRequest is true, the task will be retry and the cache will update.
    */
   private static final ConcurrentHashMap<String, PeerId> groupLeaderCache = new ConcurrentHashMap<>();
 
@@ -163,12 +162,10 @@ public class RaftUtils {
   public static PeerId getLeaderPeerIDFromRemoteNode(PeerId peerId, String groupId) {
     QueryLeaderRequest request = new QueryLeaderRequest(groupId);
     SingleQPTask task = new SingleQPTask(false, request);
-
+    task.setTargetNode(peerId);
     LOGGER.debug("Execute get leader of group {} from node {}.", groupId, peerId);
     try {
-      NodeAsClient client = RaftNodeAsClientManager.getInstance().getRaftNodeAsClient();
-      /** Call async method **/
-      client.asyncHandleRequest(task.getRequest(), peerId, task);
+      CLIENT_MANAGER.produceQPTask(task);
 
       task.await();
       PeerId leader = null;
@@ -179,7 +176,8 @@ public class RaftUtils {
       LOGGER.debug("Get leader {} of group {} from node {}.", leader, groupId, peerId);
       return leader;
     } catch (RaftConnectionException | InterruptedException e) {
-      LOGGER.error("Fail to get leader of group {} from remote node {} because of {}.", groupId, peerId, e.getMessage());
+      LOGGER.error("Fail to get leader of group {} from remote node {} because of {}.", groupId,
+          peerId, e.getMessage());
       return null;
     }
   }
@@ -505,7 +503,8 @@ public class RaftUtils {
     }
 
     if (leader == null) {
-      LOGGER.debug("Fail to get leader of group {} from all remote nodes, get it locally.", groupId);
+      LOGGER
+          .debug("Fail to get leader of group {} from all remote nodes, get it locally.", groupId);
       leader = RaftUtils.getLocalLeaderPeerID(groupId);
       LOGGER.debug("Get leader {} of group {} locally.", leader, groupId);
     }
@@ -659,10 +658,9 @@ public class RaftUtils {
     LOGGER.debug("Execute get metric for {} statement for group {}.", metric, groupId);
     PeerId holder = RaftUtils.getLocalLeaderPeerID(groupId);
     LOGGER.debug("Get metric from node {}.", holder);
+    task.setTargetNode(holder);
     try {
-      NodeAsClient client = RaftNodeAsClientManager.getInstance().getRaftNodeAsClient();
-      /** Call async method **/
-      client.asyncHandleRequest(task.getRequest(), holder, task);
+      CLIENT_MANAGER.produceQPTask(task);
 
       task.await();
       Map<String, Long> value = null;
@@ -700,12 +698,10 @@ public class RaftUtils {
   private static Map<String, Integer> getQueryJobNumMapFromRemoteNode(PeerId peerId) {
     QueryJobNumRequest request = new QueryJobNumRequest("");
     SingleQPTask task = new SingleQPTask(false, request);
-
+    task.setTargetNode(peerId);
     LOGGER.debug("Execute get query job num map for node {}.", peerId);
     try {
-      NodeAsClient client = RaftNodeAsClientManager.getInstance().getRaftNodeAsClient();
-      /** Call async method **/
-      client.asyncHandleRequest(task.getRequest(), peerId, task);
+      CLIENT_MANAGER.produceQPTask(task);
 
       task.await();
       Map<String, Integer> value = null;
@@ -739,12 +735,10 @@ public class RaftUtils {
   private static boolean getStatusOfNode(PeerId peerId) {
     QueryStatusRequest request = new QueryStatusRequest("");
     SingleQPTask task = new SingleQPTask(false, request);
-
+    task.setTargetNode(peerId);
     LOGGER.debug("Execute get status for node {}.", peerId);
     try {
-      NodeAsClient client = RaftNodeAsClientManager.getInstance().getRaftNodeAsClient();
-      /** Call async method **/
-      client.asyncHandleRequest(task.getRequest(), peerId, task);
+      CLIENT_MANAGER.produceQPTask(task);
 
       task.await();
       boolean status = false;
@@ -757,19 +751,5 @@ public class RaftUtils {
       LOGGER.error("Fail to get status from remote node {} because of {}.", peerId, e);
       return false;
     }
-  }
-
-  /**
-   * try to get raft rpc client
-   */
-  public static NodeAsClient getRaftNodeAsClient() throws RaftConnectionException {
-    NodeAsClient client = CLIENT_MANAGER.getRaftNodeAsClient();
-    if (client == null) {
-      throw new RaftConnectionException(String
-          .format("Raft inner rpc clients have reached the max numbers %s",
-              CLUSTER_CONFIG.getMaxNumOfInnerRpcClient() + CLUSTER_CONFIG
-                  .getMaxQueueNumOfInnerRpcClient()));
-    }
-    return client;
   }
 }

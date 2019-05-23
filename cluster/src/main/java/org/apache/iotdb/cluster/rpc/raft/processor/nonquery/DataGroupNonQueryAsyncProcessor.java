@@ -45,7 +45,7 @@ public class DataGroupNonQueryAsyncProcessor extends
       DataGroupNonQueryRequest request) {
     LOGGER.debug("Handle data non query request");
 
-    /** Check if it's the leader **/
+    /* Check if it's the leader */
     String groupId = request.getGroupID();
     DataPartitionRaftHolder dataPartitionRaftHolder = RaftUtils.getDataPartitonRaftHolder(groupId);
     if (!dataPartitionRaftHolder.getFsm().isLeader()) {
@@ -58,7 +58,8 @@ public class DataGroupNonQueryAsyncProcessor extends
     } else {
       LOGGER.debug("Apply task to raft node");
 
-      /** Apply Task to Raft Node **/
+
+      /* Apply Task to Raft Node */
       BasicResponse response = DataGroupNonQueryResponse.createEmptyResponse(groupId);
       RaftService service = (RaftService) dataPartitionRaftHolder.getService();
       RaftUtils.executeRaftTaskForRpcProcessor(service, asyncContext, request, response);

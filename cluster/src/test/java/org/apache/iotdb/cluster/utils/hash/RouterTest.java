@@ -34,18 +34,17 @@ public class RouterTest {
   private String[] ipListOld;
   private int replicatorOld;
   private int numOfVirtualNodesOld;
-//  private HashFunction function = new MD5Hash();
   private final int PORT = 7777;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     ipListOld = config.getNodes();
     replicatorOld = config.getReplication();
     numOfVirtualNodesOld = config.getNumOfVirtualNodes();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
     config.setNodes(ipListOld);
     config.setReplication(replicatorOld);
     config.setNumOfVirtualNodes(numOfVirtualNodesOld);
@@ -64,6 +63,8 @@ public class RouterTest {
     config.setNumOfVirtualNodes(numOfVirtulaNodes);
     Router router = Router.getInstance();
     router.init();
+    router.showPhysicalRing();
+    router.showVirtualRing();
     String sg1 = "root.device.sensor";
     assertTrue(router.routeNode(sg1).equals(new PhysicalNode("192.168.130.4", PORT)));
     PhysicalNode[] expected1 = {
@@ -101,6 +102,8 @@ public class RouterTest {
 
     Router router = Router.getInstance();
     router.init();
+    router.showPhysicalRing();
+    router.showVirtualRing();
     String sg1 = "root.device.sensor";
     assertEquals(router.routeNode(sg1), new PhysicalNode("192.168.130.3", PORT));
     PhysicalNode[] expected1 = {
@@ -141,6 +144,7 @@ public class RouterTest {
 
     Router router = Router.getInstance();
     router.init();
+    router.showPhysicalRing();
     String[][][] ipIndex = {
         {
             {"192.168.130.1", "192.168.130.3", "192.168.130.4",},
@@ -186,6 +190,7 @@ public class RouterTest {
 
     Router router = Router.getInstance();
     router.init();
+    router.showPhysicalRing();
     String[][][] ipIndex = {
         {
             {"192.168.130.1", "192.168.130.3", "192.168.130.2",},

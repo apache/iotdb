@@ -103,7 +103,8 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   }
 
   @Override
-  protected TSDataType getSeriesType(String path) throws PathErrorException, InterruptedException, ProcessorException {
+  protected TSDataType getSeriesType(String path)
+      throws PathErrorException, InterruptedException, ProcessorException {
     return queryMetadataExecutor.processSeriesTypeQuery(path);
   }
 
@@ -124,17 +125,17 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       List<String> statements = req.getStatements();
       PhysicalPlan[] physicalPlans = new PhysicalPlan[statements.size()];
       int[] result = new int[statements.size()];
-      String batchErrorMessage = "";
+      StringBuilder batchErrorMessage = new StringBuilder();
       boolean isAllSuccessful = true;
 
-      /** find all valid physical plans **/
+      /* find all valid physical plans */
       for (int i = 0; i < statements.size(); i++) {
         try {
           PhysicalPlan plan = processor
               .parseSQLToPhysicalPlan(statements.get(i), zoneIds.get());
           plan.setProposer(username.get());
 
-          /** if meet a query, handle all requests before the query request. **/
+          /* if meet a query, handle all requests before the query request. */
           if (plan.isQuery()) {
             int[] resultTemp = new int[i];
             PhysicalPlan[] physicalPlansTemp = new PhysicalPlan[i];
@@ -144,8 +145,11 @@ public class TSServiceClusterImpl extends TSServiceImpl {
             physicalPlans = physicalPlansTemp;
             BatchResult batchResult = new BatchResult(isAllSuccessful, batchErrorMessage, result);
             nonQueryExecutor.processBatch(physicalPlans, batchResult);
+            batchErrorMessage.append(String
+                .format(ERROR_MESSAGE_FORMAT_IN_BATCH, i,
+                    "statement is query :" + statements.get(i)));
             return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-                "statement is query :" + statements.get(i), Arrays.stream(result).boxed().collect(
+                statements.get(i), Arrays.stream(result).boxed().collect(
                     Collectors.toList()));
           }
 
@@ -156,7 +160,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
                 plan.getOperatorType());
             result[i] = Statement.EXECUTE_FAILED;
             isAllSuccessful = false;
-            batchErrorMessage = errMessage;
+            batchErrorMessage.append(String.format(ERROR_MESSAGE_FORMAT_IN_BATCH, i, errMessage));
           } else {
             physicalPlans[i] = plan;
           }
@@ -166,19 +170,19 @@ public class TSServiceClusterImpl extends TSServiceImpl {
               e.getMessage());
           result[i] = Statement.EXECUTE_FAILED;
           isAllSuccessful = false;
-          batchErrorMessage = errMessage;
+          batchErrorMessage.append(String.format(ERROR_MESSAGE_FORMAT_IN_BATCH, i, errMessage));
         } catch (Exception e) {
           String errMessage = String.format("Fail to generate physcial plan" + "%s beacuse %s",
               statements.get(i), e.getMessage());
           result[i] = Statement.EXECUTE_FAILED;
           isAllSuccessful = false;
-          batchErrorMessage = errMessage;
+          batchErrorMessage.append(String.format(ERROR_MESSAGE_FORMAT_IN_BATCH, i, errMessage));
         }
       }
 
       BatchResult batchResult = new BatchResult(isAllSuccessful, batchErrorMessage, result);
       nonQueryExecutor.processBatch(physicalPlans, batchResult);
-      batchErrorMessage = batchResult.batchErrorMessage;
+      batchErrorMessage.append(batchResult.batchErrorMessage);
       isAllSuccessful = batchResult.isAllSuccessful;
 
       if (isAllSuccessful) {
@@ -186,7 +190,8 @@ public class TSServiceClusterImpl extends TSServiceImpl {
             "Execute batch statements successfully", Arrays.stream(result).boxed().collect(
                 Collectors.toList()));
       } else {
-        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, batchErrorMessage,
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+            batchErrorMessage.toString(),
             Arrays.stream(result).boxed().collect(
                 Collectors.toList()));
       }
@@ -202,13 +207,14 @@ public class TSServiceClusterImpl extends TSServiceImpl {
   public class BatchResult {
 
     private boolean isAllSuccessful;
-    private String batchErrorMessage;
-    private int[] result;
+    private StringBuilder batchErrorMessage;
+    private int[] resultArray;
 
-    private BatchResult(boolean isAllSuccessful, String batchErrorMessage, int[] result) {
+    private BatchResult(boolean isAllSuccessful, StringBuilder batchErrorMessage,
+        int[] resultArray) {
       this.isAllSuccessful = isAllSuccessful;
       this.batchErrorMessage = batchErrorMessage;
-      this.result = result;
+      this.resultArray = resultArray;
     }
 
     public boolean isAllSuccessful() {
@@ -219,20 +225,21 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       isAllSuccessful = allSuccessful;
     }
 
-    public String getBatchErrorMessage() {
+    public StringBuilder getBatchErrorMessage() {
       return batchErrorMessage;
     }
 
-    public void setBatchErrorMessage(String batchErrorMessage) {
-      this.batchErrorMessage = batchErrorMessage;
+    public void addBatchErrorMessage(int index, String batchErrorMessage) {
+      this.batchErrorMessage
+          .append(String.format(ERROR_MESSAGE_FORMAT_IN_BATCH, index, batchErrorMessage));
     }
 
-    public int[] getResult() {
-      return result;
+    public int[] getResultArray() {
+      return resultArray;
     }
 
-    public void setResult(int[] result) {
-      this.result = result;
+    public void setResultArray(int[] resultArray) {
+      this.resultArray = resultArray;
     }
   }
 
@@ -257,7 +264,7 @@ public class TSServiceClusterImpl extends TSServiceImpl {
       } else {
         return false;
       }
-    } catch (ConsistencyLevelException e){
+    } catch (ConsistencyLevelException e) {
       throw new Exception(e.getMessage());
     }
   }

@@ -339,8 +339,6 @@ public class AggregateEngineExecutor {
         timeArray[timeArrayLength++] = timestampGenerator.next();
       }
 
-
-
       // cal part of aggregate result
       for (int i = 0; i < readersOfSelectedSeries.size(); i++) {
         aggregateFunctions.get(i).calcAggregationUsingTimestamps(timeArray, timeArrayLength,

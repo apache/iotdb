@@ -109,6 +109,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
+  public static final String ERROR_MESSAGE_FORMAT_IN_BATCH = "%d execute error: %s%n";
+
   public TSServiceImpl() throws IOException {
     processor = new QueryProcessor(new OverflowQPExecutor());
   }
@@ -442,15 +444,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       List<String> statements = req.getStatements();
       List<Integer> result = new ArrayList<>();
       boolean isAllSuccessful = true;
-      String batchErrorMessage = "";
+      StringBuilder batchErrorMessage = new StringBuilder();
 
-      for (String statement : statements) {
+      for (int i = 0; i < statements.size(); i++) {
+        String statement = statements.get(i);
         try {
           PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
           physicalPlan.setProposer(username.get());
           if (physicalPlan.isQuery()) {
+            batchErrorMessage.append(String
+                .format(ERROR_MESSAGE_FORMAT_IN_BATCH, i, "statement is query :" + statement));
             return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-                "statement is query :" + statement, result);
+                batchErrorMessage.toString(), result);
           }
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan);
           if (resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)) {
@@ -458,7 +463,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           } else {
             result.add(Statement.EXECUTE_FAILED);
             isAllSuccessful = false;
-            batchErrorMessage = resp.getStatus().getErrorMessage();
+            batchErrorMessage.append(String
+                .format(ERROR_MESSAGE_FORMAT_IN_BATCH, i, resp.getStatus().getErrorMessage()));
           }
         } catch (Exception e) {
           String errMessage = String.format(
@@ -467,14 +473,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               statement, e.getMessage());
           result.add(Statement.EXECUTE_FAILED);
           isAllSuccessful = false;
-          batchErrorMessage = errMessage;
+          batchErrorMessage.append(String.format(ERROR_MESSAGE_FORMAT_IN_BATCH, i, errMessage));
         }
       }
       if (isAllSuccessful) {
         return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
             "Execute batch statements successfully", result);
       } else {
-        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, batchErrorMessage, result);
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+            batchErrorMessage.toString(), result);
       }
     } catch (Exception e) {
       LOGGER.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);

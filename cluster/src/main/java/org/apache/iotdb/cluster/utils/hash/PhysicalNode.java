@@ -23,7 +23,12 @@ import com.alipay.sofa.jraft.util.OnlyForTest;
 public class PhysicalNode {
 
   private String ip;
+
   private int port;
+
+  /**
+   * Group id of data group which first node is this PhysicalNode.
+   */
   private String groupId;
 
   public PhysicalNode(String ip, int port) {

@@ -23,10 +23,10 @@ import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.entity.Server;
 import org.apache.iotdb.cluster.exception.RaftConnectionException;
-import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.qp.task.DataQueryTask;
+import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.query.manager.coordinatornode.ClusterRpcSingleQueryManager;
-import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
+import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
@@ -92,10 +92,20 @@ public class ClusterRpcReaderUtils {
           String.format("Query request retries reach the upper bound %s",
               TASK_MAX_RETRY));
     }
-    NodeAsClient nodeAsClient = RaftUtils.getRaftNodeAsClient();
-    DataQueryTask dataQueryTask = nodeAsClient.syncHandleRequest(request, peerId);
-    if (dataQueryTask.getState() == TaskState.FINISH) {
-      return dataQueryTask.getBasicResponse();
+    DataQueryTask dataQueryTask = new DataQueryTask(true, request);
+    dataQueryTask.setTargetNode(peerId);
+    RaftNodeAsClientManager.getInstance().produceQPTask(dataQueryTask);
+    try {
+      dataQueryTask.await();
+    } catch (InterruptedException e) {
+      throw new RaftConnectionException(
+          String.format("Can not connect to remote node {%s} for query", peerId));
+    }
+    if (dataQueryTask.getTaskState() == TaskState.RAFT_CONNECTION_EXCEPTION) {
+      throw new RaftConnectionException(
+          String.format("Can not connect to remote node {%s} for query", peerId));
+    } else if (dataQueryTask.getTaskState() == TaskState.FINISH) {
+      return dataQueryTask.getResponse();
     } else {
       return handleQueryRequest(request, peerId, taskRetryNum + 1);
     }

@@ -18,32 +18,12 @@
  */
 package org.apache.iotdb.cluster.qp.task;
 
-import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
-import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.raft.request.BasicRequest;
 
-public class DataQueryTask {
-  private BasicResponse basicResponse;
-  private TaskState state;
+public class DataQueryTask extends SingleQPTask {
 
-  public DataQueryTask(BasicResponse basicResponse,
-      TaskState state) {
-    this.basicResponse = basicResponse;
-    this.state = state;
-  }
-
-  public BasicResponse getBasicResponse() {
-    return basicResponse;
-  }
-
-  public void setBasicResponse(BasicResponse basicResponse) {
-    this.basicResponse = basicResponse;
-  }
-
-  public TaskState getState() {
-    return state;
-  }
-
-  public void setState(TaskState state) {
-    this.state = state;
+  public DataQueryTask(boolean isSyncTask,
+      BasicRequest request) {
+    super(isSyncTask, request);
   }
 }

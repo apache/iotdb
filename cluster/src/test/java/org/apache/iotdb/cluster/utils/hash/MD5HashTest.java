@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.cluster.utils.hash;
 
-import static org.junit.Assert.*;
+
+import static org.junit.Assert.assertEquals;
 
 import java.util.concurrent.CountDownLatch;
-import org.apache.iotdb.cluster.utils.hash.MD5Hash;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,12 +34,12 @@ public class MD5HashTest {
   private CountDownLatch latch;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     latch = new CountDownLatch(2);
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
   }
 
   @Test

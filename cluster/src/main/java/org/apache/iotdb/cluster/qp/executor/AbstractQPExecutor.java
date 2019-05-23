@@ -28,7 +28,7 @@ import org.apache.iotdb.cluster.exception.RaftConnectionException;
 import org.apache.iotdb.cluster.qp.task.QPTask;
 import org.apache.iotdb.cluster.qp.task.QPTask.TaskState;
 import org.apache.iotdb.cluster.qp.task.SingleQPTask;
-import org.apache.iotdb.cluster.rpc.raft.NodeAsClient;
+import org.apache.iotdb.cluster.rpc.raft.impl.RaftNodeAsClientManager;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.cluster.utils.hash.Router;
@@ -87,32 +87,27 @@ public abstract class AbstractQPExecutor {
    * Async handle QPTask by QPTask and leader id
    *
    * @param task request QPTask
-   * @param leader leader of the target raft group
    * @param taskRetryNum Number of QPTask retries due to timeout and redirected.
    * @return basic response
    */
-  protected BasicResponse asyncHandleNonQuerySingleTaskGetRes(SingleQPTask task, PeerId leader,
-      int taskRetryNum)
+  protected BasicResponse syncHandleNonQuerySingleTaskGetRes(SingleQPTask task, int taskRetryNum)
       throws InterruptedException, RaftConnectionException {
-    asyncSendNonQuerySingleTask(task, leader, taskRetryNum);
+    asyncSendNonQuerySingleTask(task, taskRetryNum);
     return syncGetNonQueryRes(task, taskRetryNum);
   }
 
   /**
    * Asynchronous send rpc task via client
    *  @param task rpc task
-   * @param leader leader node of the group
    * @param taskRetryNum Retry time of the task
    */
-  protected void asyncSendNonQuerySingleTask(SingleQPTask task, PeerId leader, int taskRetryNum)
+  protected void asyncSendNonQuerySingleTask(SingleQPTask task, int taskRetryNum)
       throws RaftConnectionException {
     if (taskRetryNum >= TASK_MAX_RETRY) {
       throw new RaftConnectionException(String.format("QPTask retries reach the upper bound %s",
           TASK_MAX_RETRY));
     }
-    NodeAsClient client = RaftUtils.getRaftNodeAsClient();
-    /** Call async method **/
-    client.asyncHandleRequest(task.getRequest(), leader, task);
+    RaftNodeAsClientManager.getInstance().produceQPTask(task);
   }
 
   /**
@@ -127,7 +122,10 @@ public abstract class AbstractQPExecutor {
     task.await();
     PeerId leader;
     if (task.getTaskState() != TaskState.FINISH) {
-      if (task.getTaskState() == TaskState.REDIRECT) {
+      if (task.getTaskState() == TaskState.RAFT_CONNECTION_EXCEPTION) {
+        throw new RaftConnectionException(
+            String.format("Can not connect to remote node : %s", task.getTargetNode()));
+      } else if (task.getTaskState() == TaskState.REDIRECT) {
         /** redirect to the right leader **/
         leader = PeerId.parsePeer(task.getResponse().getLeaderStr());
         LOGGER.debug("Redirect leader: {}, group id = {}", leader, task.getRequest().getGroupID());
@@ -138,8 +136,9 @@ public abstract class AbstractQPExecutor {
         LOGGER.debug("Remove cached raft group leader of {}", groupId);
         leader = RaftUtils.getLocalLeaderPeerID(groupId);
       }
+      task.setTargetNode(leader);
       task.resetTask();
-      return asyncHandleNonQuerySingleTaskGetRes(task, leader, taskRetryNum + 1);
+      return syncHandleNonQuerySingleTaskGetRes(task, taskRetryNum + 1);
     }
     return task.getResponse();
   }

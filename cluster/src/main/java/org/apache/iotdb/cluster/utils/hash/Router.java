@@ -113,7 +113,7 @@ public class Router {
     }
   }
 
-  private void createHashRing(String[] hosts, int numOfVirtualNodes){
+  private void createHashRing(String[] hosts, int numOfVirtualNodes) {
     for (String host : hosts) {
       String[] values = host.split(":");
       PhysicalNode node = new PhysicalNode(values[0].trim(), Integer.parseInt(values[1].trim()));
@@ -151,14 +151,14 @@ public class Router {
     physicalRing.put(hashFunction.hash(node.getKey()), node);
     for (int i = 0; i < virtualNum; i++) {
       VirtualNode vNode = new VirtualNode(i, node);
-      virtualRing.put(hashFunction.hash(vNode.getKey()), vNode);
+      virtualRing.put(hashFunction.hash(vNode.toString()), vNode);
     }
   }
 
   /**
    * For a storage group, compute the nearest physical node on the hash ring
    */
-  public PhysicalNode routeNode(String objectKey) {
+  PhysicalNode routeNode(String objectKey) {
     int hashVal = hashFunction.hash(objectKey);
     SortedMap<Integer, VirtualNode> tailMap = virtualRing.tailMap(hashVal);
     Integer nodeHashVal = !tailMap.isEmpty() ? tailMap.firstKey() : virtualRing.firstKey();
@@ -193,7 +193,7 @@ public class Router {
   @OnlyForTest
   public void showVirtualRing() {
     for (Entry<Integer, VirtualNode> entry : virtualRing.entrySet()) {
-      LOGGER.info("{}-{}", entry.getKey(), entry.getValue().getKey());
+      LOGGER.info("{}-{}", entry.getKey(), entry.getValue());
     }
   }
 

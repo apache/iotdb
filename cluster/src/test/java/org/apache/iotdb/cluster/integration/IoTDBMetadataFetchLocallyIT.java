@@ -37,6 +37,7 @@ public class IoTDBMetadataFetchLocallyIT extends IoTDBMetadataFetchAbstract{
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
     config.createAllPath();

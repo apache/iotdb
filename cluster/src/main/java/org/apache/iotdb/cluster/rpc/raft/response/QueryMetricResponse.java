@@ -16,32 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.concurrent;
+package org.apache.iotdb.cluster.rpc.raft.response;
 
-public enum ThreadName {
+import java.util.Map;
 
-  /**
-   * Node as client thread
-   */
-  NODE_AS_CLIENT("Node-As-Client-Thread"),
+public class QueryMetricResponse extends BasicResponse {
 
-  /**
-   * QP Task thread
-   */
-  QP_TASK("QP-Task-Thread"),
+  private Map<String, Long> value;
 
-  /**
-   * Remote query timer
-   */
-  REMOTE_QUERY_TIMER("Remote-Query-Timer");
-
-  private String name;
-
-  ThreadName(String name) {
-    this.name = name;
+  private QueryMetricResponse(String groupId, boolean redirected, String leaderStr,
+      String errorMsg) {
+    super(groupId, redirected, leaderStr, errorMsg);
   }
 
-  public String getName() {
-    return name;
+  public static QueryMetricResponse createSuccessResponse(String groupId, Map<String, Long> value) {
+    QueryMetricResponse response = new QueryMetricResponse(groupId, false, null,
+        null);
+    response.value = value;
+    return response;
+  }
+
+  public static QueryMetricResponse createErrorResponse(String groupId, String errorMsg) {
+    return new QueryMetricResponse(groupId, false, null, errorMsg);
+  }
+
+  public Map<String, Long> getValue() {
+    return value;
   }
 }

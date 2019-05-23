@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.raft.closure.ResponseClosure;
 import org.apache.iotdb.cluster.rpc.raft.request.nonquery.DataGroupNonQueryRequest;
-import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
+import org.apache.iotdb.cluster.rpc.raft.response.nonquery.DataGroupNonQueryResponse;
 import org.apache.iotdb.cluster.utils.RaftUtils;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -92,7 +92,8 @@ public class DataStateMachine extends StateMachineAdapter {
    */
   private void applySingleTask(Closure closure, ByteBuffer data) {
     /** If closure is not null, the node is leader **/
-    BasicResponse response = (closure == null) ? null : ((ResponseClosure) closure).getResponse();
+    DataGroupNonQueryResponse response = (closure == null) ? null
+        : (DataGroupNonQueryResponse) ((ResponseClosure) closure).getResponse();
     DataGroupNonQueryRequest request;
     try {
       request = SerializerManager.getSerializer(SerializerManager.Hessian2)
@@ -122,6 +123,7 @@ public class DataStateMachine extends StateMachineAdapter {
           RaftUtils.handleNullReadToMetaGroup(status);
           if(!status.isOk()){
             addResult(response, false);
+            addErrorMsg(response, status.getErrorMsg());
             continue;
           }
         }
@@ -131,6 +133,7 @@ public class DataStateMachine extends StateMachineAdapter {
         LOGGER.error("Execute physical plan error", e);
         status = new Status(-1, e.getMessage());
         addResult(response, false);
+        addErrorMsg(response, status.getErrorMsg());
       }
     }
     if (closure != null) {
@@ -141,9 +144,18 @@ public class DataStateMachine extends StateMachineAdapter {
   /**
    * Add result to response
    */
-  private void addResult(BasicResponse response, boolean result){
+  private void addResult(DataGroupNonQueryResponse response, boolean result){
     if(response != null){
       response.addResult(result);
+    }
+  }
+
+  /**
+   * Add result to response
+   */
+  private void addErrorMsg(DataGroupNonQueryResponse response, String errorMsg){
+    if(response != null){
+      response.addErrorMsg(errorMsg);
     }
   }
 

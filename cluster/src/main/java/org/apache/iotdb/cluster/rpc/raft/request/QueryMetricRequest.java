@@ -16,32 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.concurrent;
+package org.apache.iotdb.cluster.rpc.raft.request;
 
-public enum ThreadName {
+import java.io.Serializable;
 
-  /**
-   * Node as client thread
-   */
-  NODE_AS_CLIENT("Node-As-Client-Thread"),
+public class QueryMetricRequest extends BasicQueryRequest implements Serializable {
 
-  /**
-   * QP Task thread
-   */
-  QP_TASK("QP-Task-Thread"),
+  private String metric;
 
-  /**
-   * Remote query timer
-   */
-  REMOTE_QUERY_TIMER("Remote-Query-Timer");
-
-  private String name;
-
-  ThreadName(String name) {
-    this.name = name;
+  public QueryMetricRequest(String groupID, int readConsistencyLevel, String metric) {
+    super(groupID, readConsistencyLevel);
+    this.metric = metric;
   }
 
-  public String getName() {
-    return name;
+  public String getMetric() {
+    return metric;
   }
 }

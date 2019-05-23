@@ -37,7 +37,7 @@ public class ClusterConstant {
    * queue until end. Each client request corresponds to a QP Task. A QP task may be divided into
    * several sub-tasks.The unit is milliseconds.
    */
-  public static final int CLOSE_QP_SUB_TASK_BLOCK_TIMEOUT = 1000;
+  public static final int CLOSE_THREAD_POOL_BLOCK_TIMEOUT = 1000;
 
   /**
    * Query timeout in query node. If time interval between last communications with coordinator node

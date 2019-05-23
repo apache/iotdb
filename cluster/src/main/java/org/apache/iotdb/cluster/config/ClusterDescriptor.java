@@ -56,8 +56,11 @@ public class ClusterDescriptor {
    * test. In most case, you should invoke this method.
    */
   public void loadProps() {
+    // modify iotdb config
     ioTDBConf.setRpcImplClassName(TSServiceClusterImpl.class.getName());
     ioTDBConf.setEnableWal(false);
+
+    // cluster config
     conf.setDefaultPath();
     InputStream inputStream;
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
@@ -137,13 +140,13 @@ public class ClusterDescriptor {
           .parseInt(properties.getProperty("num_of_virtual_nodes",
               Integer.toString(conf.getNumOfVirtualNodes()))));
 
-      conf.setMaxNumOfInnerRpcClient(Integer
-          .parseInt(properties.getProperty("max_num_of_inner_rpc_client",
-              Integer.toString(conf.getMaxNumOfInnerRpcClient()))));
+      conf.setConcurrentInnerRpcClientThread(Integer
+          .parseInt(properties.getProperty("concurrent_inner_rpc_client_thread",
+              Integer.toString(conf.getConcurrentInnerRpcClientThread()))));
 
-      conf.setMaxQueueNumOfInnerRpcClient(Integer
+      conf.setMaxQueueNumOfQPTask(Integer
           .parseInt(properties.getProperty("max_queue_num_of_inner_rpc_client",
-              Integer.toString(conf.getMaxQueueNumOfInnerRpcClient()))));
+              Integer.toString(conf.getMaxQueueNumOfQPTask()))));
 
       conf.setReadMetadataConsistencyLevel(Integer
           .parseInt(properties.getProperty("read_metadata_consistency_level",
@@ -166,6 +169,10 @@ public class ClusterDescriptor {
 
       if (conf.getConcurrentQPSubTaskThread() <= 0) {
         conf.setConcurrentQPSubTaskThread(Runtime.getRuntime().availableProcessors() * 10);
+      }
+
+      if (conf.getConcurrentInnerRpcClientThread() <= 0) {
+        conf.setConcurrentInnerRpcClientThread(Runtime.getRuntime().availableProcessors() * 10);
       }
 
       if (conf.getMaxCachedBatchDataListSize() <= 0) {

@@ -102,7 +102,7 @@ public class ClusterConfig {
    * then it sends requests to other nodes in the cluster. This parameter represents the maximum
    * timeout for these requests. The unit is milliseconds.
    **/
-  private int qpTaskTimeout = 1000;
+  private int qpTaskTimeout = 5000;
 
   /**
    * Number of virtual nodes
@@ -110,15 +110,15 @@ public class ClusterConfig {
   private int numOfVirtualNodes = 2;
 
   /**
-   * Maximum number of @NodeAsClient usage
+   * Maximum number of inner rpc client thread. When this value <= 0, use CPU core number * 5
    */
-  private int maxNumOfInnerRpcClient = 500;
+  private int concurrentInnerRpcClientThread = Runtime.getRuntime().availableProcessors() * 5;
 
   /**
-   * Maximum number of queue length to use @NodeAsClient, the request which exceed to this number
-   * will be rejected.
+   * Maximum number of queue length of qp task which is waiting to be executed. If the num of
+   * waiting qp tasks exceed to this number, new qp task will be rejected.
    */
-  private int maxQueueNumOfInnerRpcClient = 500;
+  private int maxQueueNumOfQPTask = 500;
 
   /**
    * ReadMetadataConsistencyLevel: 1 Strong consistency, 2 Weak consistency
@@ -135,11 +135,11 @@ public class ClusterConfig {
    * client request corresponds to a QP Task. A QP task may be divided into several sub-tasks. So
    * this value is the sum of all sub-tasks. When this value <= 0, use CPU core number * 10
    */
-  private int concurrentQPSubTaskThread = Runtime.getRuntime().availableProcessors() * 10;
+  private int concurrentQPSubTaskThread = Runtime.getRuntime().availableProcessors() * 5;
 
   /**
-   * Batch data size read from remote query node once while reading, default value is 10000.
-   * The smaller the parameter, the more communication times and the more time-consuming it is.
+   * Batch data size read from remote query node once while reading, default value is 10000. The
+   * smaller the parameter, the more communication times and the more time-consuming it is.
    */
   private int batchReadSize = 10000;
 
@@ -297,20 +297,20 @@ public class ClusterConfig {
     this.numOfVirtualNodes = numOfVirtualNodes;
   }
 
-  public int getMaxNumOfInnerRpcClient() {
-    return maxNumOfInnerRpcClient;
+  public int getConcurrentInnerRpcClientThread() {
+    return concurrentInnerRpcClientThread;
   }
 
-  public void setMaxNumOfInnerRpcClient(int maxNumOfInnerRpcClient) {
-    this.maxNumOfInnerRpcClient = maxNumOfInnerRpcClient;
+  public void setConcurrentInnerRpcClientThread(int concurrentInnerRpcClientThread) {
+    this.concurrentInnerRpcClientThread = concurrentInnerRpcClientThread;
   }
 
-  public int getMaxQueueNumOfInnerRpcClient() {
-    return maxQueueNumOfInnerRpcClient;
+  public int getMaxQueueNumOfQPTask() {
+    return maxQueueNumOfQPTask;
   }
 
-  public void setMaxQueueNumOfInnerRpcClient(int maxQueueNumOfInnerRpcClient) {
-    this.maxQueueNumOfInnerRpcClient = maxQueueNumOfInnerRpcClient;
+  public void setMaxQueueNumOfQPTask(int maxQueueNumOfQPTask) {
+    this.maxQueueNumOfQPTask = maxQueueNumOfQPTask;
   }
 
   public int getReadMetadataConsistencyLevel() {

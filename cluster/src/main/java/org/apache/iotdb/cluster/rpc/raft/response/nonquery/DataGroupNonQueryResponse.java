@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.cluster.rpc.raft.response.nonquery;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.cluster.rpc.raft.response.BasicResponse;
 
 /**
@@ -27,9 +29,12 @@ public class DataGroupNonQueryResponse extends BasicResponse {
 
   private static final long serialVersionUID = -8288044965888956717L;
 
+  private List<String> errorMsgList;
+
   private DataGroupNonQueryResponse(String groupId, boolean redirected, String leaderStr,
       String errorMsg) {
     super(groupId, redirected, leaderStr, errorMsg);
+    errorMsgList = new ArrayList<>();
   }
 
   public static DataGroupNonQueryResponse createRedirectedResponse(String groupId, String leaderStr) {
@@ -44,4 +49,11 @@ public class DataGroupNonQueryResponse extends BasicResponse {
     return new DataGroupNonQueryResponse(groupId, false, null, errorMsg);
   }
 
+  public List<String> getErrorMsgList() {
+    return errorMsgList;
+  }
+
+  public void addErrorMsg(String errorMsg) {
+    this.errorMsgList.add(errorMsg);
+  }
 }

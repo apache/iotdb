@@ -79,4 +79,9 @@ public interface IClusterLocalQueryManager {
    * Get all read usage count group by data group id, key is group id, value is usage count
    */
   Map<String, Integer> getAllReadUsage();
+
+  /**
+   * Close manager
+   */
+  void close() throws FileNodeManagerException;
 }

@@ -24,8 +24,12 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class ThreadPoolManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ThreadPoolManager.class);
 
   ExecutorService pool;
 
@@ -38,7 +42,7 @@ public abstract class ThreadPoolManager {
   /**
    * Init pool manager
    */
-  public void init(){
+  public void init() {
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(getThreadPoolSize(), getThreadName());
   }
 
@@ -53,14 +57,13 @@ public abstract class ThreadPoolManager {
   public void close(boolean block, long timeout) throws ProcessorException {
     if (pool != null) {
       try {
-        pool.shutdown();
+        pool.shutdownNow();
         if (block) {
           try {
             if (!pool.awaitTermination(timeout, TimeUnit.MILLISECONDS)) {
-              throw new ProcessorException(
-                  String
-                      .format("%s thread pool doesn't exit after %d ms", getManagerName(),
-                          timeout));
+              LOGGER
+                  .debug(String.format("%s thread pool doesn't exit after %d ms", getManagerName(),
+                      timeout));
             }
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

@@ -43,7 +43,7 @@ public class QueryMetadataAsyncProcessor extends
     String groupId = request.getGroupID();
 
     if (request.getReadConsistencyLevel() == ClusterConstant.WEAK_CONSISTENCY_LEVEL) {
-      QueryMetadataResponse response = null;
+      QueryMetadataResponse response;
       try {
         response = QueryMetadataResponse
             .createSuccessResponse(groupId, mManager.getMetadata());
