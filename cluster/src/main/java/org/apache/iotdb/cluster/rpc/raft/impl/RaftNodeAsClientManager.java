@@ -84,12 +84,18 @@ public class RaftNodeAsClientManager {
    */
   private volatile boolean isShuttingDown;
 
+  /**
+   * Mark whether manager init or not
+   */
+  private volatile boolean isInit;
+
   private RaftNodeAsClientManager() {
 
   }
 
   public void init() {
     isShuttingDown = false;
+    isInit = true;
     taskQueue.clear();
     for (int i = 0; i < CLUSTER_CONFIG.getConcurrentInnerRpcClientThread(); i++) {
       THREAD_POOL_MANAGER.execute(() -> {
@@ -109,8 +115,10 @@ public class RaftNodeAsClientManager {
    * Produce qp task to be executed.
    */
   public void produceQPTask(SingleQPTask qpTask) throws RaftConnectionException {
+    checkInit();
     resourceLock.lock();
     try {
+      checkInit();
       checkShuttingDown();
       if (taskQueue.size() >= MAX_QUEUE_TASK_NUM) {
         throw new RaftConnectionException(String
@@ -125,6 +133,11 @@ public class RaftNodeAsClientManager {
     }
   }
 
+  public void checkInit(){
+    if(!isInit){
+      init();
+    }
+  }
 
   /**
    * Consume qp task
