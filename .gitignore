@@ -1,0 +1,96 @@
+iotdb/data/*
+cluster/data/*
+iotdb/derby.log
+iotdb/iotdb/data/*
+iotdb/iotdb/derby.log
+iotdb/*.pid
+iotdb/iotdb/data/*
+iotdb/iotdb/gc.log*
+iotdb/iotdb/logs/*
+iotdb/iotdb/lib/*
+iotdb/overflow/
+iotdb/testoverflowfile
+
+tsfile/src/test/resources/perTestInputData
+# Eclipse IDE files
+**/.classpath
+**/.project
+**/.settings/
+# src/main/resources/
+# intellij IDE files
+**/*.iml
+**/.idea/
+**/*.log
+**/*.ipr
+**/*.iws
+# Apple OS X related
+**/.DS_Store
+derby-tsfile-db
+# intellj IDE files
+**/*.iml
+**/.idea/
+
+# Apple OS X related
+**/.DS_Store
+
+# build generated
+**/target/
+**/build/
+
+# intermediately generated locally
+**/logs/
+
+tsfile-timeseries/src/main/resources/logback.out.out.xml
+tsfile-timeseries/src/main/resources/logback.out.xml
+tsfile-service/derby-tsfile-db/
+tsfile-timeseries/src/test/resources/data
+src/main/resources/metadata/mlog.txt
+tsfile-jdbc/src/main/resources/output/queryRes.csv
+
+*.jar
+*.gz
+*.tar.gz
+*.tar
+/data/
+#src/test/resources/logback.xml
+
+
+### Maven ###
+grafana/target/
+!grafana/.mvn/wrapper/maven-wrapper.jar
+grafana/.mvn/
+
+grafana/logs/
+*.log
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+
+
+### NetBeans ###
+**/nbproject/private/
+**/build/
+**/nbbuild/
+**/dist/
+**/nbdist/
+**/.nb-gradle/
+grafana/data/
+
+
+**/.DS_Store
+
+
+grafana/data/test.csv
+**/lib/
+*.jar
+/target/
+*.tsfile
+tsfile/src/test/resources/*.ts
+
+### Apache release ###
+local-snapshots-dir/
