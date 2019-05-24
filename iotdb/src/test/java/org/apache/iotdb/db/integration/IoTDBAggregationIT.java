@@ -484,19 +484,6 @@ public class IoTDBAggregationIT {
       }
       Assert.assertEquals(2, cnt);
       statement.close();
-
-
-      statement = connection.createStatement();
-      try {
-        hasResultSet = statement.execute("select sum(s3),mean(s2)" +
-            "from root.vehicle.d0 where time >= 6000 and time <= 9000");
-        Assert.assertTrue(hasResultSet);
-      } catch (Exception e) {
-        Assert.assertEquals("Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
-        System.out.println(e.getMessage());
-        System.out.println();
-      }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
