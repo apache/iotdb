@@ -314,8 +314,8 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     try {
       FileNodeManager.getInstance().closeOneFileNode(writeLogNode.getFileNodeName());
     } catch (FileNodeManagerException e) {
-      throw new RecoverException(String.format("Log node %s cannot perform flush after replaying logs! Because %s",
-          writeLogNode.getIdentifier(), e.getMessage()), e);
+      throw new RecoverException(String.format("Log node %s cannot perform flush"
+              + " after replaying logs!", writeLogNode.getIdentifier()), e);
     }
     currStage = CLEAN_UP;
     setFlag(REPLAY_LOG);

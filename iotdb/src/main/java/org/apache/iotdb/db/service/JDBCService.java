@@ -132,8 +132,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
     } catch (IOException | InterruptedException | ClassNotFoundException |
         IllegalAccessException | InstantiationException e) {
       String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
+          .format("Failed to start %s", this.getID().getName());
       throw new StartupException(errorMessage, e);
     }
 
