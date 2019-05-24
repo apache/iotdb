@@ -306,8 +306,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             new BasicFunctionOperator(operator.getTokenIntType(), noStarPaths.get(i),
                 ((BasicFunctionOperator) operator).getValue()));
       } catch (LogicalOperatorException e) {
-        LOG.error("meet error while adding child operator to current node.", e);
-        throw new LogicalOptimizeException(e.getMessage());
+        throw new LogicalOptimizeException(e);
       }
     }
     return filterTwoFolkTree;
@@ -336,8 +335,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         retPaths.add(new Path(pathStr));
       }
     } catch (PathErrorException e) {
-      LOG.error("meet error while removing star.", e);
-      throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+      throw new LogicalOptimizeException("error when remove star: ", e);
     }
     return retPaths;
   }
@@ -356,8 +354,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           }
         }
       } catch (PathErrorException e) {
-        LOG.error("meet error while removing star.", e);
-        throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+        throw new LogicalOptimizeException("error when remove star: ", e);
       }
     }
     if (retPaths.isEmpty()) {

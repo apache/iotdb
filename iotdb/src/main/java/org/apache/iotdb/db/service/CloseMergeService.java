@@ -122,7 +122,7 @@ public class CloseMergeService implements IService {
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
       LOGGER.error(errorMessage);
-      throw new StartupException(errorMessage);
+      throw new StartupException(errorMessage, e);
     }
   }
 

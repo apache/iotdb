@@ -35,7 +35,7 @@ public class OverflowProcessorException extends ProcessorException {
   }
 
   public OverflowProcessorException(Throwable throwable) {
-    super(throwable.getMessage());
+    super(throwable);
   }
 
 }

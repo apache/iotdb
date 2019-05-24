@@ -61,8 +61,8 @@ public class IoTDB implements IoTDBMBean {
       checks.verify();
     } catch (StartupException e) {
       // TODO: what are some checks
-      LOGGER.error("{}: failed to start because some checks failed. {}",
-          IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
+      LOGGER.error("{}: failed to start because some checks failed. ",
+          IoTDBConstant.GLOBAL_DB_NAME, e);
       return;
     }
     try {
@@ -86,10 +86,7 @@ public class IoTDB implements IoTDBMBean {
     try {
       systemDataRecovery();
     } catch (RecoverException e) {
-      String errorMessage = String.format("Failed to recover system data because of %s",
-          e.getMessage());
-      LOGGER.error(errorMessage);
-      throw new StartupException(errorMessage);
+      throw new StartupException("Fail to recover data", e);
     }
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored

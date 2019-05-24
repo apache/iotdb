@@ -33,4 +33,8 @@ public class QueryProcessorException extends Exception {
   public QueryProcessorException(Throwable e) {
     super(e);
   }
+
+  public QueryProcessorException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

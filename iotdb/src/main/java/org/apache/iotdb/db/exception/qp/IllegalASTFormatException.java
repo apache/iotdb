@@ -29,4 +29,11 @@ public class IllegalASTFormatException extends QueryProcessorException {
     super(msg);
   }
 
+  public IllegalASTFormatException(Throwable e) {
+    super(e);
+  }
+
+  public IllegalASTFormatException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

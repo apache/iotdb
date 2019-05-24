@@ -113,7 +113,7 @@ public class ChunkBuffer {
         compressedSize = compressor
             .compress(data.array(), data.position(), data.remaining(), compressedBytes);
       } catch (IOException e) {
-        throw new PageException("Error when writing a page, " + e.getMessage());
+        throw new PageException(e);
       }
     }
 
@@ -133,7 +133,7 @@ public class ChunkBuffer {
     } catch (IOException e) {
       resetTimeStamp();
       throw new PageException(
-          "IO Exception in writeDataPageHeader,ignore this page,error message:" + e.getMessage());
+          "IO Exception in writeDataPageHeader,ignore this page", e);
     }
 
     // update data point num
@@ -153,8 +153,7 @@ public class ChunkBuffer {
       }
       LOG.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
     } catch (IOException e) {
-      throw new PageException(
-          "meet IO Exception in buffer append,but we cannot understand it:" + e.getMessage());
+      throw new PageException(e);
     }
     return headerSize + uncompressedSize;
   }

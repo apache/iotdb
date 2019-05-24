@@ -148,8 +148,7 @@ public class Monitor implements MonitorMBean, IService {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
-      LOGGER.error(errorMessage);
-      throw new StartupException(errorMessage);
+      throw new StartupException(errorMessage, e);
     }
   }
 

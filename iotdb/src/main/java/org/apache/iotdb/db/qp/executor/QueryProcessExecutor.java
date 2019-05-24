@@ -110,7 +110,7 @@ public abstract class QueryProcessExecutor implements IQueryProcessExecutor {
       }
       return result;
     } catch (PathErrorException e) {
-      throw new ProcessorException(e.getMessage());
+      throw new ProcessorException(e);
     }
   }
 
