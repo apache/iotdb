@@ -131,5 +131,4 @@ public abstract class AggregateFunction {
   public TSDataType getResultDataType() {
     return resultDataType;
   }
-
 }
