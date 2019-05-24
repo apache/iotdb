@@ -54,7 +54,8 @@ public class IoTDBAggregationIT {
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
       "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
       "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-      "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN"
+      "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+      "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
   };
 
   private static String[] dataSet2 = new String[]{
@@ -74,8 +75,8 @@ public class IoTDBAggregationIT {
           + "values(5, 5.5, false, 55)"
   };
 
-  private String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3)"
-      + " VALUES(%d,%d,%d,%f,%s)";
+  private String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)"
+      + " VALUES(%d,%d,%d,%f,%s,%s)";
 
   private static final String TIMESTAMP_STR = "Time";
   private final String d0s0 = "root.vehicle.d0.s0";
@@ -483,6 +484,86 @@ public class IoTDBAggregationIT {
       }
       Assert.assertEquals(2, cnt);
       statement.close();
+
+
+      statement = connection.createStatement();
+      try {
+        hasResultSet = statement.execute("select sum(s3),mean(s2)" +
+            "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+        Assert.assertTrue(hasResultSet);
+      } catch (Exception e) {
+        Assert.assertEquals("Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
+        System.out.println(e.getMessage());
+        System.out.println();
+      }
+      statement.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      if (connection != null) {
+        connection.close();
+      }
+    }
+  }
+
+  @Test
+  public void meanSumErrorTest() throws SQLException {
+    Connection connection = null;
+    try {
+      connection = DriverManager.
+          getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      boolean hasResultSet = statement.execute("select mean(s3)" +
+            "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+        Assert.assertTrue(hasResultSet);
+        ResultSet resultSet = statement.getResultSet();
+      try {
+        resultSet.next();
+        fail();
+      } catch (Exception e) {
+        Assert.assertEquals("Unsupported data type in aggregation MEAN : TEXT", e.getMessage());
+      }
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select sum(s3)" +
+          "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      try {
+        resultSet.next();
+        fail();
+      } catch (Exception e) {
+        Assert.assertEquals("Unsupported data type in aggregation SUM : TEXT", e.getMessage());
+      }
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select mean(s4)" +
+          "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      try {
+        resultSet.next();
+        fail();
+      } catch (Exception e) {
+        Assert.assertEquals("Unsupported data type in aggregation MEAN : BOOLEAN", e.getMessage());
+      }
+      statement.close();
+
+      statement = connection.createStatement();
+      hasResultSet = statement.execute("select sum(s4)" +
+          "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      try {
+        resultSet.next();
+        fail();
+      } catch (Exception e) {
+        Assert.assertEquals("Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
+      }
+      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -512,30 +593,30 @@ public class IoTDBAggregationIT {
       statement = connection.createStatement();
       // prepare BufferWrite file
       for (int i = 5000; i < 7000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'"));
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
       }
       statement.execute("flush");
       for (int i = 7500; i < 8500; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'"));
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
       }
       statement.execute("flush");
       // prepare Unseq-File
       for (int i = 500; i < 1500; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'"));
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
       }
       statement.execute("flush");
       for (int i = 3000; i < 6500; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'"));
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
       }
       statement.execute("merge");
 
       // prepare BufferWrite cache
       for (int i = 9000; i < 10000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'"));
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
       }
       // prepare Overflow cache
       for (int i = 2000; i < 2500; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'"));
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
       }
       statement.close();
 

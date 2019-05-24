@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SumAggrFunc extends MeanAggrFunc {
 
+  private static final String SUM_AGGR_NAME = "SUM";
+
   public SumAggrFunc(TSDataType seriesDataType) {
     super(seriesDataType);
   }
@@ -33,5 +35,13 @@ public class SumAggrFunc extends MeanAggrFunc {
     resultData.setDoubleRet(sum);
     resultData.setTimestamp(0);
     return resultData;
+  }
+
+  /**
+   * Return type name of aggregation
+   */
+  @Override
+  public String getAggreTypeName() {
+    return SUM_AGGR_NAME;
   }
 }
