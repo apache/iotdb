@@ -46,17 +46,14 @@ public class TSFRecordWriter extends RecordWriter<NullWritable, TSRow> {
     try {
       fileSchema = new FileSchema(schema);
     } catch (InvalidJsonSchemaException e) {
-      e.printStackTrace();
-      LOGGER.error("Construct the tsfile schema failed, the reason is {}", e.getMessage());
-      throw new InterruptedException(e.getMessage());
+      throw new InterruptedException(String.format("Construct the tsfile schema failed"), e);
     }
 
     HDFSOutputStream hdfsOutputStream = new HDFSOutputStream(path, new Configuration(), false);
     try {
       write = new TsFile(hdfsOutputStream, fileSchema);
     } catch (WriteProcessException e) {
-      e.printStackTrace();
-      throw new IOException(e.getMessage());
+      throw new IOException(e);
     }
   }
 
@@ -66,9 +63,7 @@ public class TSFRecordWriter extends RecordWriter<NullWritable, TSRow> {
     try {
       write.writeRecord(value.getRow());
     } catch (WriteProcessException e) {
-      e.printStackTrace();
-      LOGGER.error("Write tsfile record error, the error message is {}", e.getMessage());
-      throw new InterruptedException(e.getMessage());
+      throw new InterruptedException(String.format("Write tsfile record error"), e);
     }
   }
 

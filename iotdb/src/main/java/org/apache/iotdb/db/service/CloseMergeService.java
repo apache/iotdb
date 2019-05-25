@@ -119,10 +119,8 @@ public class CloseMergeService implements IService {
       startService();
     } catch (Exception e) {
       String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      LOGGER.error(errorMessage);
-      throw new StartupException(errorMessage);
+          .format("Failed to start %s", this.getID().getName());
+      throw new StartupException(errorMessage, e);
     }
   }
 

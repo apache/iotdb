@@ -74,7 +74,7 @@ public class PhysicalGenerator {
               author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
               author.getNodeName());
         } catch (AuthException e) {
-          throw new QueryProcessorException(e.getMessage());
+          throw new QueryProcessorException(e);
         }
       case LOADDATA:
         LoadDataOperator loadData = (LoadDataOperator) operator;

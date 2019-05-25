@@ -139,7 +139,7 @@ public class IoTDBStatement implements Statement {
         Utils.verifySuccess(closeResp.getStatus());
       }
     } catch (Exception e) {
-      throw new SQLException("Error occurs when canceling statement because " + e.getMessage(), e);
+      throw new SQLException("Error occurs when canceling statement.", e);
     }
     isCancelled = true;
   }
@@ -165,7 +165,7 @@ public class IoTDBStatement implements Statement {
         Utils.verifySuccess(closeResp.getStatus());
       }
     } catch (Exception e) {
-      throw new SQLException("Error occurs when closing statement because " + e.getMessage(), e);
+      throw new SQLException("Error occurs when closing statement.", e);
     }
   }
 
@@ -583,7 +583,7 @@ public class IoTDBStatement implements Statement {
       return resp.getDataType();
     } catch (TException | IoTDBSQLException e) {
       throw new SQLException(
-          String.format("Cannot get column %s data type because %s", columnName, e.getMessage()), e);
+          String.format("Cannot get column %s data type", columnName), e);
     }
   }
 

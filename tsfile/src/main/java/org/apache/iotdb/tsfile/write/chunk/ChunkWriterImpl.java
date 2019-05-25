@@ -244,13 +244,10 @@ public class ChunkWriterImpl implements IChunkWriter {
       // update statistics of this series
       this.chunkStatistics.mergeStatistics(this.pageStatistics);
     } catch (IOException e) {
-      LOG.error("meet error in dataPageWriter.getUncompressedBytes(),ignore this page, {}",
-          e.getMessage());
+      LOG.error("meet error in dataPageWriter.getUncompressedBytes(),ignore this page:", e);
     } catch (PageException e) {
       LOG.error(
-          "meet error in chunkBuffer.writePageHeaderAndDataIntoBuff, ignore this page, "
-              + "error message:{}",
-          e.getMessage());
+          "meet error in chunkBuffer.writePageHeaderAndDataIntoBuff, ignore this page:", e);
     } finally {
       // clear start time stamp for next initializing
       minTimestamp = -1;

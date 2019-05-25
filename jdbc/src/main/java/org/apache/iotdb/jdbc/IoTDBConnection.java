@@ -410,7 +410,7 @@ public class IoTDBConnection implements Connection {
     try {
       transport.getSocket().setKeepAlive(true);
     } catch (SocketException e) {
-      logger.error("Cannot set socket keep alive because: " + e.getMessage());
+      logger.error("Cannot set socket keep alive because: ", e);
     }
     if (!transport.isOpen()) {
       transport.open();
@@ -447,8 +447,8 @@ public class IoTDBConnection implements Connection {
       }
 
     } catch (TException e) {
-      throw new SQLException(String.format("Can not establish connection with %s. because %s",
-          params.getJdbcUriString(), e.getMessage()));
+      throw new SQLException(String.format("Can not establish connection with %s.",
+          params.getJdbcUriString()), e);
     }
     isClosed = false;
   }

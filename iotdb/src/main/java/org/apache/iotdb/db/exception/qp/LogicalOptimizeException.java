@@ -29,4 +29,11 @@ public class LogicalOptimizeException extends LogicalOperatorException {
     super(msg);
   }
 
+  public LogicalOptimizeException(Throwable e) {
+    super(e);
+  }
+
+  public LogicalOptimizeException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

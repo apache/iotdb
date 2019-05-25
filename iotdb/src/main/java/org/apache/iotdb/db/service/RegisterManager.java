@@ -55,7 +55,7 @@ public class RegisterManager {
       try {
         service.stop();
       } catch (Exception e) {
-        LOGGER.error("Failed to stop {} because {}", service.getID().getName(), e.getMessage());
+        LOGGER.error("Failed to stop {} because:", service.getID().getName(), e);
       }
     }
     iServices.clear();

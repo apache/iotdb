@@ -137,12 +137,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     nodeList.addAll(nodeMap.values());
     nodeList.sort(null);
     for (WriteLogNode node : nodeList) {
-      try {
-        node.recover();
-      } catch (RecoverException e) {
-        logger.error("{} failed to recover because {}", node.toString(), e.getMessage());
-        throw e;
-      }
+      node.recover();
     }
   }
 
@@ -228,7 +223,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
-      throw new StartupException(errorMessage);
+      throw new StartupException(errorMessage, e);
     }
   }
 

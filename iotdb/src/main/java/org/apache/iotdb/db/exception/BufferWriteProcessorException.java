@@ -35,7 +35,7 @@ public class BufferWriteProcessorException extends ProcessorException {
   }
 
   public BufferWriteProcessorException(Throwable throwable) {
-    super(throwable.getMessage());
+    super(throwable);
   }
 
 }

@@ -246,10 +246,8 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
         FileUtils.copyFile(recoverProcessorStoreFile, new File(processorStoreFilePath));
       }
     } catch (Exception e) {
-      logger.error("Log node {} cannot recover processor file, because{}",
-          writeLogNode.getLogDirectory(),
-          e.getMessage());
-      throw new RecoverException("Cannot recover processor file, recovery aborted.");
+      throw new RecoverException(String.format("Log node %s cannot recover processor file,"
+          + " recovery aborted.", writeLogNode.getLogDirectory()), e);
     }
 
     fileNodeRecoverPerformer.recover();
@@ -316,9 +314,8 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     try {
       FileNodeManager.getInstance().closeOneFileNode(writeLogNode.getFileNodeName());
     } catch (FileNodeManagerException e) {
-      logger.error("Log node {} cannot perform flush after replaying logs! Because {}",
-          writeLogNode.getIdentifier(), e.getMessage());
-      throw new RecoverException(e);
+      throw new RecoverException(String.format("Log node %s cannot perform flush"
+              + " after replaying logs!", writeLogNode.getIdentifier()), e);
     }
     currStage = CLEAN_UP;
     setFlag(REPLAY_LOG);

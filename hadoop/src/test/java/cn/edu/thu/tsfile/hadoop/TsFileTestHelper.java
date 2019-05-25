@@ -75,11 +75,9 @@ public class TsFileTestHelper {
       tsFile.writeLine("root.car.d2,8, s1, 8, s2, 80, s3, 200.8, s4, 0.8");
       tsFile.close();
     } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e.getMessage());
+      throw new RuntimeException(e);
     } catch (WriteProcessException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e.getMessage());
+      throw new RuntimeException(e);
     }
   }
 

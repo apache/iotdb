@@ -29,4 +29,11 @@ public class LogicalOperatorException extends QueryProcessorException {
     super(msg);
   }
 
+  public LogicalOperatorException(Throwable e) {
+    super(e);
+  }
+
+  public LogicalOperatorException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

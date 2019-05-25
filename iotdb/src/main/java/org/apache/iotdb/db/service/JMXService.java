@@ -138,8 +138,7 @@ public class JMXService implements IService {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
-      LOGGER.error(errorMessage);
-      throw new StartupException(errorMessage);
+      throw new StartupException(errorMessage, e);
     }
   }
 
@@ -151,7 +150,7 @@ public class JMXService implements IService {
         LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME,
             this.getID().getName());
       } catch (IOException e) {
-        LOGGER.error("Failed to stop {} because of {}", this.getID().getName(), e.getMessage());
+        LOGGER.error("Failed to stop {} because of: ", this.getID().getName(), e);
       }
     }
   }
