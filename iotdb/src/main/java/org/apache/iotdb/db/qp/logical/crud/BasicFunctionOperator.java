@@ -152,7 +152,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     try {
       ret = new BasicFunctionOperator(this.tokenIntType, path.clone(), value);
     } catch (LogicalOperatorException e) {
-      logger.error("error clone:{}", e.getMessage());
+      logger.error("error clone:", e);
       return null;
     }
     ret.tokenSymbol = tokenSymbol;

@@ -28,4 +28,12 @@ public class PageException extends WriteProcessException {
   public PageException(String msg) {
     super(msg);
   }
+
+  public PageException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public PageException(Throwable cause) {
+    super(cause);
+  }
 }

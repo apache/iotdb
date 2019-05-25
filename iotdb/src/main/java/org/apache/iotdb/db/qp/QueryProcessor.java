@@ -108,7 +108,7 @@ public class QueryProcessor {
     } catch (ParseException e) {
       // e.printStackTrace();
       throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
+          "parsing error,statement: " + sqlStr, e);
     }
     return ParseUtils.findRootNonNullToken(astTree);
   }

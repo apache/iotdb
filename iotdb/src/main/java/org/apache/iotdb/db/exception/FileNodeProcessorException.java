@@ -35,7 +35,7 @@ public class FileNodeProcessorException extends ProcessorException {
   }
 
   public FileNodeProcessorException(Throwable throwable) {
-    super(throwable.getMessage());
+    super(throwable);
   }
 
   public FileNodeProcessorException(String msg, Throwable e) {

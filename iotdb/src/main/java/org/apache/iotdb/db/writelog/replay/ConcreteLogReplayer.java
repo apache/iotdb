@@ -57,7 +57,7 @@ public class ConcreteLogReplayer implements LogReplayer {
       }
     } catch (Exception e) {
       throw new ProcessorException(
-          String.format("Cannot replay log %s, because %s", plan.toString(), e.getMessage()));
+          String.format("Cannot replay log %s", plan.toString()), e);
     }
   }
 
