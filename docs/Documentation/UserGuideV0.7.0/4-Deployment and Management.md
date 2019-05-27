@@ -107,43 +107,94 @@ iotdb/     <-- root path
 Use git to get IoTDB source code:
 
 ```
-Shell > git clone https://github.com/thulab/iotdb.git
+Shell > git clone https://github.com/apache/incubator-iotdb.git
 ```
+
+Or:
+
+```
+Shell > git clone git@github.com:apache/incubator-iotdb.git
+```
+
+Now suppose your directory is like this:
+
+```
+> pwd
+/workspace/incubator-iotdb
+
+> ls -l
+incubator-iotdb/     <-- root path
+|
++- iotdb/
+|
++- jdbc/
+|
++- iotdb-cli/
+|
+...
+|
++- pom.xml
+```
+
+Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb/
+Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli/
+
+Note:
+* if `IOTDB_HOME` is not explicitly assigned, 
+then by default `IOTDB_HOME` is the direct parent directory of `bin/start-server.sh` on Unix/OS X 
+(or that of `bin\start-server.bat` on Windows).
+
+* if `IOTDB_CLI_HOME` is not explicitly assigned, 
+then by default `IOTDB_CLI_HOME` is the direct parent directory of `bin/start-client.sh` on 
+Unix/OS X (or that of `bin\start-client.bat` on Windows).
 
 If you are not the first time that building IoTDB, remember deleting the following files:
 
 ```
-rm -rf iotdb/data/
-rm -rf iotdb/lib/
+> rm -rf $IOTDB_HOME/data/
+> rm -rf $IOTDB_HOME/lib/
 ```
 
-Then under the IoTDB path, you can build IoTDB using Maven:
+Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 
 ```
-mvn clean package -Dmaven.test.skip=true
+> pwd
+/workspace/incubator-iotdb
+
+> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
 ```
 
 If successful, you will see the the following text in the terminal:
 
 ```
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary:
+[INFO]
+[INFO] IoTDB Root ......................................... SUCCESS [  7.020 s]
+[INFO] TsFile ............................................. SUCCESS [ 10.486 s]
+[INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
+[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
+[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
 ```
+
 Otherwise, you may need to check the error statements and fix the problems.
 
-After build, the IoTDB project will be at the subfolder named iotdb. The folder will include the following contents:
-
+After building, the IoTDB project will be at the subfolder named iotdb. The folder will include the following contents:
 
 ```
-iotdb/     <-- root path
+$IOTDB_HOME/
 |
 +- bin/       <-- script files
 |
 +- conf/      <-- configuration files
 |
 +- lib/       <-- project dependencies
-|
-+- LICENSE    <-- LICENSE
 ```
+
+<!-- > NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself. -->
 
 ### Installation by Docker (Dockerfile)
 

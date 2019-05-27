@@ -23,8 +23,8 @@ echo ---------------------
 echo Starting IoTDB Client
 echo ---------------------
 
-if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+if [ -z "${IOTDB_CLI_HOME}" ]; then
+  export IOTDB_CLI_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
 
@@ -32,7 +32,7 @@ MAIN_CLASS=org.apache.iotdb.cli.client.Client
 
 
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in ${IOTDB_CLI_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
