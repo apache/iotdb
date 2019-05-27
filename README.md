@@ -99,6 +99,15 @@ Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb/
 
 Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli
 
+Note:
+* if `IOTDB_HOME` is not explicitly assigned, 
+then by default `IOTDB_HOME` is the direct parent directory of `bin/start-server.sh` on Unix/OS X 
+(or `bin\start-server.bat` on Windows).
+
+* if `IOTDB_CLI_HOME` is not explicitly assigned, 
+then by default `IOTDB_CLI_HOME` is the direct parent directory of `bin/start-client.sh` on 
+Unix/OS X (or `bin\start-client.bat` on Windows).
+
 If you are not the first time that building IoTDB, remember deleting the following files:
 
 ```
