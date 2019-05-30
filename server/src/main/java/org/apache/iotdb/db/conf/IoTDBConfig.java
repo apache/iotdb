@@ -229,6 +229,21 @@ public class IoTDBConfig {
    */
   private boolean chunkBufferPoolEnable = false;
 
+  /**
+   * Switch of watermark function
+   */
+  private boolean enableWatermark = true;
+
+  /**
+   * Secret key for watermark
+   */
+  private String watermarkSecretKey = "MLH8O7T*Y8HO*&";
+
+  /**
+   * Bit string of watermark
+   */
+  private String watermarkBitString = "11001010010101";
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -617,5 +632,29 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public boolean isEnableWatermark() {
+    return enableWatermark;
+  }
+
+  public void setEnableWatermark(boolean enableWatermark) {
+    this.enableWatermark = enableWatermark;
+  }
+
+  public String getWatermarkSecretKey() {
+    return watermarkSecretKey;
+  }
+
+  public void setWatermarkSecretKey(String watermarkSecretKey) {
+    this.watermarkSecretKey = watermarkSecretKey;
+  }
+
+  public String getWatermarkBitString() {
+    return watermarkBitString;
+  }
+
+  public void setWatermarkBitString(String watermarkBitString) {
+    this.watermarkBitString = watermarkBitString;
   }
 }

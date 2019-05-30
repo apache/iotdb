@@ -234,6 +234,17 @@ public class IoTDBDescriptor {
       conf.setPerformanceStatMemoryInKB(Integer
           .parseInt(properties.getProperty("performance_stat_memory_in_kb",
               Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
+
+      conf.setEnableWatermark(Boolean.parseBoolean(properties.getProperty(
+          "watermark_module_opened",
+          Boolean.toString(conf.isEnableWatermark()).trim())));
+      conf.setWatermarkSecretKey(properties.getProperty(
+          "watermark_secret_key",
+          conf.getWatermarkSecretKey()));
+      conf.setWatermarkBitString(properties.getProperty(
+          "watermark_bit_string",
+          conf.getWatermarkBitString()));
+
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {
