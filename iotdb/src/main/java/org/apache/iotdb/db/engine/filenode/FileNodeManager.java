@@ -36,6 +36,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.cost.stastic.Measurement;
+import org.apache.iotdb.db.cost.stastic.Operation;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
@@ -282,10 +284,16 @@ public class FileNodeManager implements IStatistic, IService {
     checkTimestamp(tsRecord);
     updateStat(isMonitor, tsRecord);
 
+    long t0 = System.nanoTime();
     FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
+    long t1 = System.nanoTime();
+    Measurement.INSTANCE.addOperationLatency(Operation.GET_FILENODE_PROCESSOR, t1-t0);
+
     int insertType;
 
     try {
+
+      long t2 = System.nanoTime();
       long lastUpdateTime = fileNodeProcessor.getFlushLastUpdateTime(deviceId);
       if (timestamp < lastUpdateTime) {
         insertOverflow(fileNodeProcessor, timestamp, tsRecord, isMonitor, deviceId);
@@ -294,6 +302,9 @@ public class FileNodeManager implements IStatistic, IService {
         insertBufferWrite(fileNodeProcessor, timestamp, isMonitor, tsRecord, deviceId);
         insertType = 2;
       }
+      long t3 = System.nanoTime();
+      Measurement.INSTANCE.addOperationLatency(Operation.INSERT_BUFFER_WRITE_OR_OVERFLOW, t3-t2);
+
     } catch (FileNodeProcessorException e) {
       LOGGER.error(String.format("Encounter an error when closing the buffer write processor %s.",
           fileNodeProcessor.getProcessorName()), e);
@@ -394,7 +405,10 @@ public class FileNodeManager implements IStatistic, IService {
     BufferWriteProcessor bufferWriteProcessor;
     String filenodeName = fileNodeProcessor.getProcessorName();
     try {
+      long t0 = System.nanoTime();
       bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor(filenodeName, timestamp);
+      long t1 = System.nanoTime();
+      Measurement.INSTANCE.addOperationLatency(Operation.GET_BUFFER_WRITE_PROFESSOR,t1-t0);
     } catch (FileNodeProcessorException e) {
       LOGGER.error("Get the bufferwrite processor failed, the filenode is {}, insert time is {}",
           filenodeName, timestamp);
@@ -417,9 +431,16 @@ public class FileNodeManager implements IStatistic, IService {
         throw new FileNodeManagerException(e);
       }
     }
+
     // write wal
+    long t2 = System.nanoTime();
     writeLog(tsRecord, isMonitor, bufferWriteProcessor.getLogNode());
+    long t3 = System.nanoTime();
+    Measurement.INSTANCE.addOperationLatency(Operation.WRITE_WAL,t3-t2);
+
+
     // Write data
+    long t4 = System.nanoTime();
     long prevStartTime = fileNodeProcessor.getIntervalFileNodeStartTime(deviceId);
     long prevUpdateTime = fileNodeProcessor.getLastUpdateTime(deviceId);
 
@@ -437,6 +458,8 @@ public class FileNodeManager implements IStatistic, IService {
       }
       throw new FileNodeManagerException(e);
     }
+    long t5 = System.nanoTime();
+    Measurement.INSTANCE.addOperationLatency(Operation.WRITE_MEM_TABLE,t5-t4);
 
     if (bufferWriteProcessor
         .getFileSize() > IoTDBDescriptor.getInstance()

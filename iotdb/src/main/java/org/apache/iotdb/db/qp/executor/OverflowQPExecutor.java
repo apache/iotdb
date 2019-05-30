@@ -31,6 +31,8 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.cost.stastic.Measurement;
+import org.apache.iotdb.db.cost.stastic.Operation;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -269,8 +271,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       String[] insertValues)
       throws ProcessorException {
     try {
+      long t0 = System.nanoTime();
       TSRecord tsRecord = new TSRecord(insertTime, deviceId);
-
       MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
 
       for (int i = 0; i < measurementList.length; i++) {
@@ -292,6 +294,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList[i], value);
         tsRecord.addTuple(dataPoint);
       }
+      long t1 = System.nanoTime();
+      Measurement.INSTANCE.addOperationLatency(Operation.CONSTRUCT_TSRECORD,t1-t0);
       return fileNodeManager.insert(tsRecord, false);
 
     } catch (PathErrorException | FileNodeManagerException e) {

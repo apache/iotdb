@@ -21,6 +21,8 @@ package org.apache.iotdb.db.qp;
 import java.time.ZoneId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.cost.stastic.Measurement;
+import org.apache.iotdb.db.cost.stastic.Operation;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
@@ -68,11 +70,18 @@ public class QueryProcessor {
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
       throws QueryProcessorException, ArgsErrorException, ProcessorException {
+    long t0 = System.nanoTime();
     AstNode astNode = parseSQLToAST(sqlStr);
+    long t1 = System.nanoTime();
+    Measurement.INSTANCE.addOperationLatency(Operation.GENERATE_AST_NODE, t1-t0);
+    long t2 = System.nanoTime();
     Operator operator = parseASTToOperator(astNode, zoneId);
     operator = logicalOptimize(operator, executor);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
-    return physicalGenerator.transformToPhysicalPlan(operator);
+    PhysicalPlan qp = physicalGenerator.transformToPhysicalPlan(operator);
+    long t3 = System.nanoTime();
+    Measurement.INSTANCE.addOperationLatency(Operation.GENERATE_PHYSICAL_PLAN, t3-t2);
+    return qp;
   }
 
   /**

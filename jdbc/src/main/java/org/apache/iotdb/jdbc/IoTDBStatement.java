@@ -48,7 +48,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class IoTDBStatement implements Statement {
 
   private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";

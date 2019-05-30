@@ -35,6 +35,8 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.cost.stastic.Measurement;
+import org.apache.iotdb.db.cost.stastic.Operation;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -434,6 +436,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req)
       throws TException {
+    long st = System.nanoTime();
     try {
       if (!checkLogin()) {
         LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -446,13 +449,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       for (String statement : statements) {
         try {
+          long t0 = System.nanoTime();
           PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
+          long t1 = System.nanoTime();
+          Measurement.INSTANCE.addOperationLatency(Operation.PARSE_SQL_TO_PHYSICAL_PLAN,t1-t0);
           physicalPlan.setProposer(username.get());
           if (physicalPlan.isQuery()) {
             return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
                 "statement is query :" + statement, result);
           }
+
+          long t2 = System.nanoTime();
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan);
+          long t3 = System.nanoTime();
+          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_PHYSICAL_PLAN,t3-t2);
+
           if (resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)) {
             result.add(Statement.SUCCESS_NO_INFO);
           } else {
@@ -471,6 +482,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           batchErrorMessage = errMessage;
         }
       }
+
       if (isAllSuccessful) {
         return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
             "Execute batch statements successfully", result);
@@ -480,6 +492,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       LOGGER.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
+    }
+    finally {
+      long et = System.nanoTime();
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH_SQL, et-st);
     }
   }
 
@@ -739,7 +755,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
     List<Path> paths = plan.getPaths();
-
+    long st = System.nanoTime();
     try {
       if (!checkAuthorization(paths, plan)) {
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
@@ -750,16 +766,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
           "Uninitialized authorizer " + e.getMessage());
     }
+    long et = System.nanoTime();
+    Measurement.INSTANCE.addOperationLatency(Operation.CHECK_AUTHORIZATION, et-st);
     // TODO
     // In current version, we only return OK/ERROR
     // Do we need to add extra information of executive condition
     boolean execRet;
     try {
+      long t0 = System.nanoTime();
       execRet = executeNonQuery(plan);
+      long t1 = System.nanoTime();
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_NON_QUERY,t1-t0);
     } catch (ProcessorException e) {
       LOGGER.debug("meet error while processing non-query. ", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
+
+    long t2 = System.nanoTime();
     TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
     String msg = execRet ? "Execute successfully" : "Execute statement error.";
     TSExecuteStatementResp resp = getTSExecuteStatementResp(statusCode, msg);
@@ -769,6 +792,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSOperationHandle operationHandle;
     operationHandle = new TSOperationHandle(operationId, false);
     resp.setOperationHandle(operationHandle);
+    long t3 = System.nanoTime();
+    Measurement.INSTANCE.addOperationLatency(Operation.CONSTRUCT_JDBC_RESULT,t3-t2);
     return resp;
   }
 
