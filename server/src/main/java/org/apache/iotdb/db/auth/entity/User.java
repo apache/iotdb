@@ -34,6 +34,8 @@ public class User {
   private List<PathPrivilege> privilegeList;
   private List<String> roleList;
 
+  private boolean useWaterMark = false;
+
   /**
    * The latest time when the user is referenced. Reserved to provide session control or LRU
    * mechanism in the future.
@@ -159,5 +161,13 @@ public class User {
   @Override
   public int hashCode() {
     return Objects.hash(name, password, privilegeList, roleList, lastActiveTime);
+  }
+
+  public boolean isUseWaterMark() {
+    return useWaterMark;
+  }
+
+  public void setUseWaterMark(boolean useWaterMark) {
+    this.useWaterMark = useWaterMark;
   }
 }
