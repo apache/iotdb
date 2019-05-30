@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
@@ -50,6 +52,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -282,6 +285,24 @@ public class PhysicalPlanTest {
         FilterFactory.or(TimeFilter.gt(20L), TimeFilter.lt(10L)));
     assertEquals(expect.toString(), queryFilter.toString());
 
+  }
+
+  @Test
+  public void testGrantDataAuth() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+    String sqlStr = "GRANT DATA_AUTHORITY to a,b";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
+    Assert.assertEquals(2, dataAuthPlan.getUsers().size());
+    Assert.assertEquals(OperatorType.GRANT_DATA_AUTH, dataAuthPlan.getOperatorType());
+  }
+
+  @Test
+  public void testRevokeDataAuth() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+    String sqlStr = "revoke DATA_AUTHORITY from a,b";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
+    Assert.assertEquals(2, dataAuthPlan.getUsers().size());
+    Assert.assertEquals(OperatorType.REVOKE_DATA_AUTH, dataAuthPlan.getOperatorType());
   }
 
 }

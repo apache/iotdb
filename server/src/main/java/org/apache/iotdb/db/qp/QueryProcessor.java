@@ -138,6 +138,8 @@ public class QueryProcessor {
       case INSERT:
       case INDEX:
       case INDEXQUERY:
+      case GRANT_DATA_AUTH:
+      case REVOKE_DATA_AUTH:
         return operator;
       case QUERY:
       case UPDATE:
