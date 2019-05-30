@@ -1484,6 +1484,37 @@ public class SQLParserTest {
     }
   }
 
+
+  @Test
+  public void grantDataAuth() throws ParseException, RecognitionException {
+    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT_DATA_AUTH", "a", "b"));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST("GRANT DATA_AUTHORITY to a,b");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void revokeDataAuth() throws ParseException, RecognitionException {
+    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE_DATA_AUTH", "a", "b"));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST("revoke data_authority from a,b");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
   public void recursivePrintSon(Node ns, ArrayList<String> rec) {
     rec.add(ns.toString());
     if (ns.getChildren() != null) {

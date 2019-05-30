@@ -78,6 +78,8 @@ TOK_SLIMIT;
 TOK_SOFFSET;
 TOK_LIMIT;
 
+TOK_GRANT_DATA_AUTH;
+TOK_REVOKE_DATA_AUTH;
 /*
   BELOW IS THE METADATA TOKEN
 */
@@ -499,6 +501,8 @@ authorStatement
     | revokeRole
     | grantRoleToUser
     | revokeRoleFromUser
+    | grantDataAuth
+    | revokeDataAuth
     ;
 
 loadStatement
@@ -526,6 +530,16 @@ createRole
 dropRole
     : KW_DROP KW_ROLE roleName=Identifier
     -> ^(TOK_DROP ^(TOK_ROLE $roleName))
+    ;
+
+grantDataAuth
+    : KW_GRANT KW_DATA_AHTH KW_TO Identifier (COMMA Identifier)*
+    -> ^(TOK_GRANT_DATA_AUTH Identifier+)
+    ;
+
+revokeDataAuth
+    : KW_REVOKE KW_DATA_AHTH KW_FROM Identifier (COMMA Identifier)*
+    -> ^(TOK_REVOKE_DATA_AUTH Identifier+)
     ;
 
 grantUser

@@ -46,6 +46,8 @@ KW_OR : 'OR' | '|' | '||';
 KW_NOT : 'NOT' | '!';
 
 
+KW_DATA_AHTH : 'DATA_AUTHORITY';
+
 KW_ORDER : 'ORDER';
 KW_GROUP : 'GROUP';
 KW_FILL : 'FILL';
