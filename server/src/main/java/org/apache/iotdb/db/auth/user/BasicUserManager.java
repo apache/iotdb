@@ -282,4 +282,21 @@ public abstract class BasicUserManager implements IUserManager {
     return rtlist;
   }
 
+  @Override
+  public boolean isUserUseWaterMark(String username) throws AuthException {
+    User user = getUser(username);
+    if (user == null) {
+      throw new AuthException(String.format("No such user %s", username));
+    }
+    return user.isUseWaterMark();
+  }
+
+  @Override
+  public void setUserUseWaterMark(String username, boolean useWaterMark) throws AuthException {
+    User user = getUser(username);
+    if (user == null) {
+      throw new AuthException(String.format("No such user %s", username));
+    }
+    user.setUseWaterMark(useWaterMark);
+  }
 }
