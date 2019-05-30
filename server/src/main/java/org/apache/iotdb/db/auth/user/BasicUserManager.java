@@ -297,6 +297,16 @@ public abstract class BasicUserManager implements IUserManager {
     if (user == null) {
       throw new AuthException(String.format("No such user %s", username));
     }
+    boolean oldFlag = user.isUseWaterMark();
+    if (oldFlag == useWaterMark) {
+      return;
+    }
     user.setUseWaterMark(useWaterMark);
+    try {
+      accessor.saveUser(user);
+    } catch (IOException e) {
+      user.setUseWaterMark(oldFlag);
+      throw new AuthException(e);
+    }
   }
 }
