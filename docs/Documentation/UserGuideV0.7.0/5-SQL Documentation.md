@@ -436,7 +436,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * FIRST
 
-The FIRST function returns the first point value of the choosen timeseries(oen or more).
+The FIRST function returns the first point value of the choosen timeseries(one or more).
 
 ```
 SELECT FIRST (Path) (COMMA FIRST (Path))* FROM <FromClause> [WHERE <WhereClause>]?
@@ -446,7 +446,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * MAX_TIME
 
-The MAX_TIME function returns the maximum timestamp of the the choosen timeseries(oen or more). The result is a signed 64-bit integer, greater than 0.
+The MAX_TIME function returns the maximum timestamp of the the choosen timeseries(one or more). The result is a signed 64-bit integer, greater than 0.
 
 ```
 SELECT MAX_TIME (Path) (COMMA MAX_TIME (Path))* FROM <FromClause> [WHERE <WhereClause>]?
@@ -456,7 +456,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * MAX_VALUE
 
-The MAX_VALUE function returns the maximum value(lexicographically ordered) of the the choosen timeseries (oen or more). 
+The MAX_VALUE function returns the maximum value(lexicographically ordered) of the the choosen timeseries (one or more). 
 
 ```
 SELECT MAX_VALUE (Path) (COMMA MAX_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
@@ -476,7 +476,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * MIN_TIME
 
-The MIN_TIME function returns the minimum timestamp of the the choosen timeseries(oen or more). The result is a signed 64-bit integer, greater than 0.
+The MIN_TIME function returns the minimum timestamp of the the choosen timeseries(one or more). The result is a signed 64-bit integer, greater than 0.
 
 ```
 SELECT MIN_TIME (Path) (COMMA MIN_TIME (Path))*FROM <FromClause> [WHERE <WhereClause>]?
@@ -508,7 +508,7 @@ Eg. SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE time < NOW()
 ```
 * SUM
 
-The SUM function returns the sum of the the choosen timeseries (oen or more) over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number. 
+The SUM function returns the sum of the the choosen timeseries (one or more) over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number. 
 
 ```
 SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
