@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.ROLE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.Statement;
@@ -563,80 +567,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       plan.setProposer(username.get());
 
-      List<Path> paths;
-      paths = plan.getPaths();
-
-      // check seriesPath exists
-      if (paths.isEmpty()) {
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Timeseries does not exist.");
-      }
-
-      // check file level set
-
-      try {
-        checkFileLevelSet(paths);
-      } catch (PathErrorException e) {
-        LOGGER.error("meet error while checking file level.", e);
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
-      }
-
-      // check permissions
-      if (!checkAuthorization(paths, plan)) {
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-            "No permissions for this query.");
-      }
-
-      TSExecuteStatementResp resp = getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "");
+      TSExecuteStatementResp resp;
       List<String> columns = new ArrayList<>();
-      // Restore column header of aggregate to func(column_name), only
-      // support single aggregate function for now
-      if (plan instanceof QueryPlan) {
-        switch (plan.getOperatorType()) {
-          case QUERY:
-          case FILL:
-            for (Path p : paths) {
-              columns.add(p.getFullPath());
-            }
-            break;
-          case AGGREGATION:
-          case GROUPBY:
-            List<String> aggregations = plan.getAggregations();
-            if (aggregations.size() != paths.size()) {
-              for (int i = 1; i < paths.size(); i++) {
-                aggregations.add(aggregations.get(0));
-              }
-            }
-            for (int i = 0; i < paths.size(); i++) {
-              columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
-            }
-            break;
-          default:
-            throw new TException("unsupported query type: " + plan.getOperatorType());
-        }
+      if (!(plan instanceof AuthorPlan)) {
+        resp = executeDataQuery(plan, columns);
       } else {
-        Operator.OperatorType type = plan.getOperatorType();
-        switch (type) {
-          case QUERY:
-          case FILL:
-            for (Path p : paths) {
-              columns.add(p.getFullPath());
-            }
-            break;
-          case AGGREGATION:
-          case GROUPBY:
-            List<String> aggregations = plan.getAggregations();
-            if (aggregations.size() != paths.size()) {
-              for (int i = 1; i < paths.size(); i++) {
-                aggregations.add(aggregations.get(0));
-              }
-            }
-            for (int i = 0; i < paths.size(); i++) {
-              columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
-            }
-            break;
-          default:
-            throw new TException("not support " + type + " in new read process");
-        }
+        resp = executeAuthQuery(plan, columns);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
@@ -653,6 +589,116 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
+  }
+
+  private TSExecuteStatementResp executeAuthQuery(PhysicalPlan plan, List<String> columns) {
+    TSExecuteStatementResp resp = getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "");
+    resp.ignoreTimeStamp = true;
+    AuthorPlan authorPlan = (AuthorPlan) plan;
+    switch (authorPlan.getAuthorType()) {
+      case LIST_ROLE:
+        columns.add(ROLE);
+        break;
+      case LIST_USER:
+        columns.add(USER);
+        break;
+      case LIST_ROLE_USERS:
+        columns.add(USER);
+        break;
+      case LIST_USER_ROLES:
+        columns.add(ROLE);
+        break;
+      case LIST_ROLE_PRIVILEGE:
+        columns.add(PRIVILEGE);
+        break;
+      case LIST_USER_PRIVILEGE:
+        columns.add(ROLE);
+        columns.add(PRIVILEGE);
+        break;
+      default:
+        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, String.format("%s is not an "
+            + "auth query", authorPlan.getAuthorType()));
+    }
+    return resp;
+  }
+
+  private TSExecuteStatementResp executeDataQuery(PhysicalPlan plan, List<String> columns)
+      throws AuthException, TException {
+    List<Path> paths;
+    paths = plan.getPaths();
+
+    // check seriesPath exists
+    if (paths.isEmpty()) {
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Timeseries does not exist.");
+    }
+
+    // check file level set
+
+    try {
+      checkFileLevelSet(paths);
+    } catch (PathErrorException e) {
+      LOGGER.error("meet error while checking file level.", e);
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+    }
+
+    // check permissions
+    if (!checkAuthorization(paths, plan)) {
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+          "No permissions for this query.");
+    }
+
+    TSExecuteStatementResp resp = getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "");
+    // Restore column header of aggregate to func(column_name), only
+    // support single aggregate function for now
+    if (plan instanceof QueryPlan) {
+      switch (plan.getOperatorType()) {
+        case QUERY:
+        case FILL:
+          for (Path p : paths) {
+            columns.add(p.getFullPath());
+          }
+          break;
+        case AGGREGATION:
+        case GROUPBY:
+          List<String> aggregations = plan.getAggregations();
+          if (aggregations.size() != paths.size()) {
+            for (int i = 1; i < paths.size(); i++) {
+              aggregations.add(aggregations.get(0));
+            }
+          }
+          for (int i = 0; i < paths.size(); i++) {
+            columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          }
+          break;
+        default:
+          throw new TException("unsupported query type: " + plan.getOperatorType());
+      }
+    } else {
+      Operator.OperatorType type = plan.getOperatorType();
+      switch (type) {
+        case QUERY:
+        case FILL:
+          for (Path p : paths) {
+            columns.add(p.getFullPath());
+          }
+          break;
+        case AGGREGATION:
+        case GROUPBY:
+          List<String> aggregations = plan.getAggregations();
+          if (aggregations.size() != paths.size()) {
+            for (int i = 1; i < paths.size(); i++) {
+              aggregations.add(aggregations.get(0));
+            }
+          }
+          for (int i = 0; i < paths.size(); i++) {
+            columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          }
+          break;
+        default:
+          throw new TException("not support " + type + " in new read process");
+      }
+    }
+    return resp;
   }
 
   protected void checkFileLevelSet(List<Path> paths) throws PathErrorException {
@@ -700,13 +746,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
     processor.getExecutor().setFetchSize(fetchSize);
 
+    QueryDataSet queryDataSet;
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignJobId());
 
     initContextMap();
     contextMapLocal.get().put(req.queryId, context);
 
-    QueryDataSet queryDataSet = processor.getExecutor().processQuery((QueryPlan) physicalPlan,
+    queryDataSet = processor.getExecutor().processQuery(physicalPlan,
         context);
+
     queryRet.get().put(statement, queryDataSet);
     return queryDataSet;
   }
@@ -898,5 +946,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
     return properties;
   }
+
 }
 

@@ -75,4 +75,8 @@ public abstract class PhysicalPlan implements Serializable {
   public void setProposer(String proposer) {
     this.proposer = proposer;
   }
+
+  public void setQuery(boolean query) {
+    isQuery = query;
+  }
 }

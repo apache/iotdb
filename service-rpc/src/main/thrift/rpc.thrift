@@ -73,6 +73,7 @@ struct TSExecuteStatementResp {
   // Column names in select statement of SQL
 	3: optional list<string> columns
 	4: optional string operationType
+	5: optional bool ignoreTimeStamp
 }
 
 enum TSProtocolVersion {
