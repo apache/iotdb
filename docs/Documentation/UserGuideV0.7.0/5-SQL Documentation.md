@@ -486,10 +486,9 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * MIN_VALUE
 
-The MIN_VALUE function returns the minimum value(lexicographically ordered) of the the choosen timeseries (oen or more). 
+The MIN_VALUE function returns the minimum value(lexicographically ordered) of the the choosen timeseries (one or more). 
 
 ```
-MIN_VALUE函数返回的是该列按字典序排序的最小值。
 SELECT MIN_VALUE (Path) (COMMA MIN_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT MIN_VALUE(status),MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
