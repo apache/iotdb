@@ -446,7 +446,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * MAX_TIME
 
-The MAX_TIME function returns the maximum timestamp of the the choosen timeseries(one or more). The result is a signed 64-bit integer, greater than 0.
+The MAX_TIME function returns the maximum timestamp of the choosen timeseries(one or more). The result is a signed 64-bit integer, greater than 0.
 
 ```
 SELECT MAX_TIME (Path) (COMMA MAX_TIME (Path))* FROM <FromClause> [WHERE <WhereClause>]?
@@ -456,7 +456,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * MAX_VALUE
 
-The MAX_VALUE function returns the maximum value(lexicographically ordered) of the the choosen timeseries (one or more). 
+The MAX_VALUE function returns the maximum value(lexicographically ordered) of the choosen timeseries (one or more). 
 
 ```
 SELECT MAX_VALUE (Path) (COMMA MAX_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
@@ -476,7 +476,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * MIN_TIME
 
-The MIN_TIME function returns the minimum timestamp of the the choosen timeseries(one or more). The result is a signed 64-bit integer, greater than 0.
+The MIN_TIME function returns the minimum timestamp of the choosen timeseries(one or more). The result is a signed 64-bit integer, greater than 0.
 
 ```
 SELECT MIN_TIME (Path) (COMMA MIN_TIME (Path))*FROM <FromClause> [WHERE <WhereClause>]?
@@ -486,7 +486,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * MIN_VALUE
 
-The MIN_VALUE function returns the minimum value(lexicographically ordered) of the the choosen timeseries (one or more). 
+The MIN_VALUE function returns the minimum value(lexicographically ordered) of the choosen timeseries (one or more). 
 
 ```
 SELECT MIN_VALUE (Path) (COMMA MIN_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
