@@ -100,7 +100,8 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
       TsFileMetaData metaData = reader.readFileMetadata();
       knownSchemas = metaData.getMeasurementSchema();
       chunkGroupMetaDataList = reader.readAllChunkGroupMetaData(metaData);
-      out.truncate(reader.getFirstTsDeviceMetadataPosition(metaData) - 1);
+      truncatedPosition = reader.getFirstTsDeviceMetadataPosition(metaData) - 1;
+      out.truncate(truncatedPosition);
     }
   }
 
