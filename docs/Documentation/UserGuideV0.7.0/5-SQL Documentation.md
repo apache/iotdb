@@ -508,7 +508,7 @@ Eg. SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE time < NOW()
 ```
 * SUM
 
-The SUM function returns the sum of the the choosen timeseries (one or more) over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number. 
+The SUM function returns the sum of the choosen timeseries (one or more) over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number. 
 
 ```
 SELECT SUM(Path) (COMMA SUM(Path))* FROM <FromClause> [WHERE <WhereClause>]?
