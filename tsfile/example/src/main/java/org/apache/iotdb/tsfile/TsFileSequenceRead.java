@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -104,13 +106,21 @@ public class TsFileSequenceRead {
     List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
         .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
     for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
+      System.out.println(String
+          .format("\t[DeviceMetadata List]File Offset: %d, Len %d",
+              index.getOffset(), index.getLen()));
+
       TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
       List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
+      int i = 0;
       for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
         System.out.println(String
-            .format("\t[Device]File Offset: %d, Device %s, Number of Chunk Groups %d",
-                index.getOffset(), chunkGroupMetaData.getDeviceID(),
-                chunkGroupMetaDataList.size()));
+            .format("\t[DeviceMetadata]Data Start Offset: %d,  Data End Offset: %d, "
+                    + "Device %s, Number %d/%d of Chunk Groups",
+                chunkGroupMetaData.getStartOffsetOfChunkGroup(),
+                chunkGroupMetaData.getEndOffsetOfChunkGroup(),
+                chunkGroupMetaData.getDeviceID(),
+                ++i, chunkGroupMetaDataList.size()));
 
         for (ChunkMetaData chunkMetadata : chunkGroupMetaData.getChunkMetaDataList()) {
           System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());

@@ -24,8 +24,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +54,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
   /**
    * @param file a given tsfile path you want to (continue to) write
    * @param append if true, then the file can support appending data even though the file is complete (i.e., tail magic string exists)
+   *  if false, whether the file can support appending data depends on whether the file is complete.
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public NativeRestorableIOWriter(File file, boolean append) throws IOException {
@@ -62,16 +65,16 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
       return;
     }
     if (file.exists()) {
+      //TODO try to use a cached reader rather than create a new reader.
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        if (reader.isComplete() && !append) {
-          canWrite = false;
-          out.close();
+        if (reader.isComplete()) {
+          handleCompleteFile(reader, append);
           return;
         }
         truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetaDataList, !append);
-        if (truncatedPosition == TsFileCheckStatus.COMPLETE_FILE && !append) {
-            this.canWrite = false;
-            out.close();
+        if (truncatedPosition == TsFileCheckStatus.COMPLETE_FILE ) {
+            //actually, there is no way to access this code...
+            handleCompleteFile(reader, append);
         } else if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
           throw new IOException(
@@ -86,8 +89,36 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
     }
   }
 
+  private void handleCompleteFile(TsFileSequenceReader reader, boolean supportAppend) throws IOException {
+    if (!supportAppend) {
+      canWrite = false;
+      out.close();
+    }else {
+      //remove the fileMeatadata
+      reader.loadMetadataSize();
+      //TODO try to use a cached reader rather than create a new reader.
+      TsFileMetaData metaData = reader.readFileMetadata();
+      knownSchemas = metaData.getMeasurementSchema();
+      chunkGroupMetaDataList = reader.readAllChunkGroupMetaData(metaData);
+      out.truncate(reader.getFirstTsDeviceMetadataPosition(metaData) - 1);
+    }
+  }
+
   @Override
   public Map<String, MeasurementSchema> getKnownSchema() {
     return knownSchemas;
+  }
+
+  @Override
+  public void endFile(FileSchema schema) throws IOException {
+    if (!canWrite) {
+      return;
+    }else {
+        super.endFile(schema);
+    }
+  }
+
+  public void endFile() throws IOException {
+    super.endFile(new FileSchema(knownSchemas));
   }
 }

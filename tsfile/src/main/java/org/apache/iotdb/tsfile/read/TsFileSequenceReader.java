@@ -138,7 +138,14 @@ public class TsFileSequenceReader implements AutoCloseable{
     this.fileMetadataSize = fileMetadataSize;
   }
 
-  protected void loadMetadataSize() throws IOException {
+  /**
+   * this method can be called only if the tsfile is complete.
+   *
+   * init fileMeataSize and Position according to the fileMetadata.
+   * <br>This method will move the file reader position  behind of the magic header.</>
+   * @throws IOException
+   */
+  public void loadMetadataSize() throws IOException {
     ByteBuffer metadataSize = ByteBuffer.allocate(Integer.BYTES);
     tsFileInput.read(metadataSize,
         tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES);
@@ -459,6 +466,29 @@ public class TsFileSequenceReader implements AutoCloseable{
         .readAsPossible(tsFileInput, target, position, length);
   }
 
+  public List<ChunkGroupMetaData> readAllChunkGroupMetaData(TsFileMetaData fileMetaData)
+      throws IOException {
+    List<ChunkGroupMetaData> result = new ArrayList<>();
+    for (TsDeviceMetadataIndex index : fileMetaData.getDeviceMap().values()) {
+      result.addAll(this.readTsDeviceMetaData(index).getChunkGroupMetaDataList());
+    }
+    return result;
+  }
+
+  /**
+   *
+   * @param fileMetaData
+   * @return the first tsdevicMetadata location in the file (not include the Marker)
+   */
+  public long getFirstTsDeviceMetadataPosition(TsFileMetaData fileMetaData) {
+    long position = this.getFileMetadataPos();
+    for(TsDeviceMetadataIndex index : fileMetaData.getDeviceMap().values()) {
+      if (index.getOffset() < position) {
+        position = index.getOffset();
+      }
+    }
+    return position;
+  }
   /**
    * Self Check the file and return the position before where the data is safe.
    *
@@ -509,9 +539,12 @@ public class TsFileSequenceReader implements AutoCloseable{
       return TsFileCheckStatus.ONLY_MAGIC_HEAD;
     } else if (readTailMagic().equals(magic)) {
       loadMetadataSize();
-      if (fastFinish) {
-        return TsFileCheckStatus.COMPLETE_FILE;
+      if (!fastFinish) {
+        TsFileMetaData metaData = readFileMetadata();
+        newSchema.putAll(metaData.getMeasurementSchema());
+        newMetaData.addAll(readAllChunkGroupMetaData(metaData));
       }
+      return TsFileCheckStatus.COMPLETE_FILE;
     }
 
     // not a complete file, we will recover it...
