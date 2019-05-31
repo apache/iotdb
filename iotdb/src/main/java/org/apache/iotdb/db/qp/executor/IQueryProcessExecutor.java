@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -51,7 +50,7 @@ public interface IQueryProcessExecutor {
    * @param queryPlan QueryPlan
    * @return QueryDataSet
    */
-  QueryDataSet processQuery(QueryPlan queryPlan, QueryContext context)
+  QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, FileNodeManagerException, PathErrorException,
       QueryFilterOptimizationException, ProcessorException;
 
