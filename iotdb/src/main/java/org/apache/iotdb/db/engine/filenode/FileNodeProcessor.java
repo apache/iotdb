@@ -1044,6 +1044,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Merge this storage group, merge the tsfile data with overflow data.
    */
   public void merge() throws FileNodeProcessorException {
+    writeLock();
     // close bufferwrite and overflow, prepare for merge
     LOGGER.info("The filenode processor {} begins to merge.", getProcessorName());
     prepareForMerge();
@@ -2045,7 +2046,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       try {
         ZoneId zoneId = IoTDBDescriptor.getInstance().getConfig().getZoneID();
         long mergeStartTime = System.currentTimeMillis();
-        writeLock();
         merge();
         long mergeEndTime = System.currentTimeMillis();
         long intervalTime = mergeEndTime - mergeStartTime;
