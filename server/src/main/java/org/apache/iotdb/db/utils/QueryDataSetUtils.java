@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.tools.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
@@ -44,18 +43,16 @@ public class QueryDataSetUtils {
    * @return -convert query dataset
    */
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
-      int fetchSize)
-      throws IOException {
+      int fetchSize) throws IOException {
     return convertQueryDataSetByFetchSize(queryDataSet, fetchSize, null);
   }
 
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
-      int fetchSize, IoTDBConfig conf)
-      throws IOException {
+      int fetchSize, IoTDBConfig conf) throws IOException {
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     tsQueryDataSet.setRecords(new ArrayList<>());
     WatermarkEncoder watermarkEncoder = null;
-    if (conf != null && conf.isEnableWatermark() && LocalFileAuthorizer.getInstance()) {
+    if (conf != null && conf.isEnableWatermark()) {
       watermarkEncoder = new WatermarkEncoder(conf.getWatermarkSecretKey(),
           conf.getWatermarkBitString());
     }
