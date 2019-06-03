@@ -28,6 +28,11 @@ import org.apache.iotdb.db.exception.SyncConnectionException;
 public interface SyncSender {
 
   /**
+   * Init
+   */
+  void init();
+
+  /**
    * Connect to server.
    */
   void establishConnection(String serverIp, int serverPort) throws SyncConnectionException;

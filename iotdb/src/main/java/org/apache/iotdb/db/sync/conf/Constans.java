@@ -44,4 +44,14 @@ public class Constans {
    */
   public static final int MAX_SYNC_FILE_TRY = 10;
 
+  private static final SyncSenderConfig CONFIG = SyncSenderDescriptor.getInstance().getConfig();
+
+  public static final long SYNC_PROCESS_DELAY = 0;
+
+  public static final long SYNC_MONITOR_DELAY = CONFIG.getSyncPeriodInSeconds();
+
+  public static final long SYNC_PROCESS_PERIOD = CONFIG.getSyncPeriodInSeconds();
+
+  public static final long SYNC_MONITOR_PERIOD = CONFIG.getSyncPeriodInSeconds();
+
 }

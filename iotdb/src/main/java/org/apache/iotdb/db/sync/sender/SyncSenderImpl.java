@@ -34,7 +34,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -78,10 +77,6 @@ public class SyncSenderImpl implements SyncSender {
 
   private static SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
 
-  private static final long SYNC_DELAY = 0;
-
-  private static final long SYNC_PERIOD = config.getSyncPeriodInSeconds();
-
   /**
    * Files that need to be synchronized
    */
@@ -91,11 +86,6 @@ public class SyncSenderImpl implements SyncSender {
    * All tsfiles in data directory
    **/
   private Map<String, Set<String>> currentLocalFiles;
-
-  /**
-   * Mark the start time of last sync
-   **/
-  private Date lastSyncTime = new Date();
 
   /**
    * If true, sync is in execution.
@@ -111,27 +101,9 @@ public class SyncSenderImpl implements SyncSender {
 
   private ScheduledExecutorService executorService;
 
-  /**
-   * Monitor sync status.
-   */
-  private final Runnable monitorSyncStatus = () -> {
-    Date oldTime = new Date();
-    while (!Thread.interrupted()) {
-      Date currentTime = new Date();
-      if (currentTime.getTime() / 1000 == oldTime.getTime() / 1000) {
-        continue;
-      }
-      if ((currentTime.getTime() - lastSyncTime.getTime())
-          % (config.getSyncPeriodInSeconds() * 1000) == 0) {
-        oldTime = currentTime;
-        if (syncStatus) {
-          LOGGER.info("Sync process is in execution!");
-        }
-      }
-    }
-  };
-
   private SyncSenderImpl() {
+    executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(2,
+        "sync-client-timer");
   }
 
   public static final SyncSenderImpl getInstance() {
@@ -148,24 +120,29 @@ public class SyncSenderImpl implements SyncSender {
     SyncSenderImpl fileSenderImpl = new SyncSenderImpl();
     fileSenderImpl.verifySingleton();
     fileSenderImpl.startMonitor();
-    fileSenderImpl.timedTask();
+    fileSenderImpl.startTimedTask();
+  }
+
+  @Override
+  public void init() {
+
   }
 
   /**
    * Start Monitor Thread, monitor sync status
    */
-  public void startMonitor() {
-    Thread syncMonitor = new Thread(monitorSyncStatus, ThreadName.SYNC_MONITOR.getName());
-    syncMonitor.setDaemon(true);
-    syncMonitor.start();
+  private void startMonitor() {
+    executorService.scheduleWithFixedDelay(() -> {
+      if (syncStatus) {
+        LOGGER.info("Sync process is in execution!");
+      }
+    }, Constans.SYNC_MONITOR_DELAY, Constans.SYNC_MONITOR_PERIOD, TimeUnit.SECONDS);
   }
 
   /**
    * Start sync task in a certain time.
    */
-  public void timedTask() {
-    executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
-        "sync-client");
+  private void startTimedTask() {
     executorService.scheduleWithFixedDelay(() -> {
       try {
         sync();
@@ -173,12 +150,13 @@ public class SyncSenderImpl implements SyncSender {
         LOGGER.error("Sync failed", e);
         stop();
       }
-    }, SYNC_DELAY, SYNC_PERIOD, TimeUnit.SECONDS);
+    }, Constans.SYNC_PROCESS_DELAY, Constans.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
   }
 
   @Override
   public void stop() {
     executorService.shutdownNow();
+    executorService = null;
   }
 
   /**
