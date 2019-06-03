@@ -102,8 +102,7 @@ public class SyncSenderImpl implements SyncSender {
   private ScheduledExecutorService executorService;
 
   private SyncSenderImpl() {
-    executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(2,
-        "sync-client-timer");
+    init();
   }
 
   public static final SyncSenderImpl getInstance() {
@@ -125,7 +124,10 @@ public class SyncSenderImpl implements SyncSender {
 
   @Override
   public void init() {
-
+    if (executorService == null) {
+      executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(2,
+          "sync-client-timer");
+    }
   }
 
   /**
