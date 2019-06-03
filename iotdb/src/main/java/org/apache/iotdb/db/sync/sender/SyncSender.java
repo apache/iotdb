@@ -62,4 +62,9 @@ public interface SyncSender {
    */
   void sync() throws SyncConnectionException, IOException;
 
+  /**
+   * Stop sync process
+   */
+  void stop();
+
 }

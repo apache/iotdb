@@ -26,7 +26,6 @@ import java.io.InputStream;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.utils.SyncUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,9 +87,9 @@ public class SyncSenderDescriptor {
       conf.setServerIp(properties.getProperty("server_ip", conf.getServerIp()));
       conf.setServerPort(Integer
           .parseInt(properties.getProperty("server_port", Integer.toString(conf.getServerPort()))));
-      conf.setUploadCycleInSeconds(Integer.parseInt(properties
-          .getProperty("upload_cycle_in_seconds",
-              Integer.toString(conf.getUploadCycleInSeconds()))));
+      conf.setSyncPeriodInSeconds(Integer.parseInt(properties
+          .getProperty("sync_period_in_seconds",
+              Integer.toString(conf.getSyncPeriodInSeconds()))));
       conf.setSchemaPath(properties.getProperty("iotdb_schema_directory", conf.getSchemaPath()));
       conf.setDataDirectory(
           properties.getProperty("iotdb_bufferWrite_directory", conf.getDataDirectory()));
