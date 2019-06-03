@@ -244,6 +244,9 @@ public class IoTDBDescriptor {
       conf.setWatermarkBitString(properties.getProperty(
           "watermark_bit_string",
           conf.getWatermarkBitString()));
+      conf.setWatermarkMethod(properties.getProperty(
+          "watermark_method",
+          conf.getWatermarkMethodValue()));
 
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
