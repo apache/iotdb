@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
+import java.io.File;
 import java.util.List;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +44,7 @@ public abstract class DirectoryStrategy {
    *
    * @param folders the folders from conf
    */
-  public void init(List<String> folders) {
+  public void init(List<String> folders) throws DiskSpaceInsufficientException {
     this.folders = folders;
   }
 
@@ -51,7 +53,7 @@ public abstract class DirectoryStrategy {
    *
    * @return the index of folder that will be allocated
    */
-  public abstract int nextFolderIndex();
+  public abstract int nextFolderIndex() throws DiskSpaceInsufficientException;
 
   /**
    * Return the actual string value of a folder by its index.
@@ -71,5 +73,15 @@ public abstract class DirectoryStrategy {
   // only used by test
   public void setFolderForTest(String path) {
     folders.set(0, path);
+  }
+
+  protected long getUsableSpace(String dir) {
+    long space = new File(dir).getFreeSpace();
+    LOGGER.debug("Folder {} has {} available bytes.", dir, space);
+    return space;
+  }
+
+  protected boolean hasSpace(String dir) {
+    return getUsableSpace(dir) > 0;
   }
 }

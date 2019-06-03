@@ -16,36 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf.directories.strategy;
+package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import java.util.List;
 
-public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
+public class DiskSpaceInsufficientException extends Exception {
 
-  @Override
-  public int nextFolderIndex() throws DiskSpaceInsufficientException {
-    return getMaxSpaceFolder();
+  private static final long serialVersionUID = 9001643829368311032L;
+
+  public DiskSpaceInsufficientException(String message) {
+    super(message);
   }
 
-  /**
-   * get max space folder.
-   */
-  public int getMaxSpaceFolder() throws DiskSpaceInsufficientException {
-    int maxIndex = -1;
-    long maxSpace = 0;
-
-    for (int i = 0; i < folders.size(); i++) {
-      long space = getUsableSpace(folders.get(i));
-      if (space > maxSpace) {
-        maxSpace = space;
-        maxIndex = i;
-      }
-    }
-
-    if (maxIndex == -1) {
-      throw new DiskSpaceInsufficientException(folders);
-    }
-
-    return maxIndex;
+  public DiskSpaceInsufficientException(List<String> folders) {
+    this(String.format("Can't get next folder from %s, because they are all full.", folders));
   }
 }

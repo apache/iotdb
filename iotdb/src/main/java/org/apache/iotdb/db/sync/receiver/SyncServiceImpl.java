@@ -46,6 +46,7 @@ import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -469,10 +470,15 @@ public class SyncServiceImpl implements SyncService.Iface {
         // create a new fileNode
         String header = syncDataPath;
         String relativePath = path.substring(header.length());
-        TsFileResource fileNode = new TsFileResource(startTimeMap, endTimeMap,
-            OverflowChangeType.NO_CHANGE, new File(
-            Directories.getInstance().getNextFolderIndexForTsFile() + File.separator + relativePath)
-        );
+        TsFileResource fileNode = null;
+        try {
+          fileNode = new TsFileResource(startTimeMap, endTimeMap,
+              OverflowChangeType.NO_CHANGE, new File(
+              Directories.getInstance().getNextFolderIndexForTsFile() + File.separator + relativePath)
+          );
+        } catch (DiskSpaceInsufficientException e) {
+          throw new FileNodeManagerException(e);
+        }
         // call interface of load external file
         try {
           if (!fileNodeManager.appendFileToFileNode(storageGroup, fileNode, path)) {

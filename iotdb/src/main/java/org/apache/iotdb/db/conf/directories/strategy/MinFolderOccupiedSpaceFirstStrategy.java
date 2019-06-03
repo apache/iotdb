@@ -22,10 +22,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 import java.util.stream.Stream;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
@@ -33,29 +31,32 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
   private static final long DATA_SIZE_SHIFT = 1024L * 1024;
 
   @Override
-  public int nextFolderIndex() {
+  public int nextFolderIndex() throws DiskSpaceInsufficientException {
     return getMinOccupiedSpaceFolder();
   }
 
-  private int getMinOccupiedSpaceFolder() {
-    List<Integer> candidates = new ArrayList<>();
-    candidates.add(0);
-    long min = getOccupiedSpace(folders.get(0));
-    for (int i = 1; i < folders.size(); i++) {
-      long current = getOccupiedSpace(folders.get(i));
-      if (min > current) {
-        candidates.clear();
-        candidates.add(i);
-        min = current;
-      } else if (min == current) {
-        candidates.add(i);
+  private int getMinOccupiedSpaceFolder() throws DiskSpaceInsufficientException {
+    int minIndex = -1;
+    long minSpace = Integer.MAX_VALUE;
+
+    for (int i = 0; i < folders.size(); i++) {
+      String folder = folders.get(i);
+      if (hasSpace(folder)) {
+        continue;
+      }
+
+      long space = getOccupiedSpace(folder);
+      if (space < minSpace) {
+        minSpace = space;
+        minIndex = i;
       }
     }
 
-    Random random = new Random(System.currentTimeMillis());
-    int index = random.nextInt(candidates.size());
+    if (minIndex == -1) {
+      throw new DiskSpaceInsufficientException(folders);
+    }
 
-    return candidates.get(index);
+    return minIndex;
   }
 
   private long getOccupiedSpace(String path) {

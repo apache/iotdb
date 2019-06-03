@@ -67,6 +67,7 @@ import org.apache.iotdb.db.engine.querycontext.UnsealedTsFile;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.ErrorDebugException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
@@ -527,7 +528,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       params.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
       params
           .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
-      String baseDir = directories.getNextFolderForTsfile();
+      String baseDir = null;
+      try {
+        baseDir = directories.getNextFolderForTsfile();
+      } catch (DiskSpaceInsufficientException e) {
+        throw new FileNodeProcessorException(e);
+      }
       LOGGER.info("Allocate folder {} for the new bufferwrite processor.", baseDir);
       // construct processor or restore
       try {
@@ -1532,6 +1538,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           mergeFileWriter.endChunkGroup(footer, 0);
         }
       }
+    } catch (DiskSpaceInsufficientException e) {
+      throw new FileNodeProcessorException(e);
     } finally {
       FileReaderManager.getInstance().decreaseFileReaderReference(backupIntervalFile.getFilePath(),
           true);
@@ -1557,7 +1565,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       SingleSeriesExpression seriesFilter, TSDataType dataType,
       Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
       OverflowSeriesDataSource overflowSeriesDataSource)
-      throws IOException {
+      throws IOException, DiskSpaceInsufficientException {
     int numOfChunk = 0;
     try {
       if (!seriesReader.hasNext()) {
