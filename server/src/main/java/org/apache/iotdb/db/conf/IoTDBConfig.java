@@ -689,7 +689,7 @@ public class IoTDBConfig {
     String pattern = key + "=(\\w*)";
     Pattern r = Pattern.compile(pattern);
     Matcher m = r.matcher(watermarkMethod);
-    if (m.find() && m.groupCount() > 1) {
+    if (m.find() && m.groupCount() > 0) {
       return m.group(1);
     }
     return null;
