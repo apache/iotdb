@@ -87,9 +87,9 @@ public class SyncSenderDescriptor {
       conf.setServerIp(properties.getProperty("server_ip", conf.getServerIp()));
       conf.setServerPort(Integer
           .parseInt(properties.getProperty("server_port", Integer.toString(conf.getServerPort()))));
-      conf.setSyncPeriodInSeconds(Integer.parseInt(properties
-          .getProperty("sync_period_in_seconds",
-              Integer.toString(conf.getSyncPeriodInSeconds()))));
+      conf.setSyncPeriodInSecond(Integer.parseInt(properties
+          .getProperty("sync_period_in_second",
+              Integer.toString(conf.getSyncPeriodInSecond()))));
       conf.setSchemaPath(properties.getProperty("iotdb_schema_directory", conf.getSchemaPath()));
       conf.setDataDirectory(
           properties.getProperty("iotdb_bufferWrite_directory", conf.getDataDirectory()));

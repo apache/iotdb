@@ -48,10 +48,10 @@ public class Constans {
 
   public static final long SYNC_PROCESS_DELAY = 0;
 
-  public static final long SYNC_MONITOR_DELAY = CONFIG.getSyncPeriodInSeconds();
+  public static final long SYNC_MONITOR_DELAY = CONFIG.getSyncPeriodInSecond();
 
-  public static final long SYNC_PROCESS_PERIOD = CONFIG.getSyncPeriodInSeconds();
+  public static final long SYNC_PROCESS_PERIOD = CONFIG.getSyncPeriodInSecond();
 
-  public static final long SYNC_MONITOR_PERIOD = CONFIG.getSyncPeriodInSeconds();
+  public static final long SYNC_MONITOR_PERIOD = CONFIG.getSyncPeriodInSecond();
 
 }

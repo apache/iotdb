@@ -44,7 +44,7 @@ public class SyncSenderConfig {
 
   private int serverPort = 5555;
 
-  private int syncPeriodInSeconds = 10;
+  private int syncPeriodInSecond = 10;
 
   /**
    * Init path
@@ -137,12 +137,12 @@ public class SyncSenderConfig {
     this.serverPort = serverPort;
   }
 
-  public int getSyncPeriodInSeconds() {
-    return syncPeriodInSeconds;
+  public int getSyncPeriodInSecond() {
+    return syncPeriodInSecond;
   }
 
-  public void setSyncPeriodInSeconds(int syncPeriodInSeconds) {
-    this.syncPeriodInSeconds = syncPeriodInSeconds;
+  public void setSyncPeriodInSecond(int syncPeriodInSecond) {
+    this.syncPeriodInSecond = syncPeriodInSecond;
   }
 
   public String getLockFilePath() {
