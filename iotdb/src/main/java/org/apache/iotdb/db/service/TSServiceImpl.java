@@ -451,18 +451,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         try {
           long t0 = System.nanoTime();
           PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-          long t1 = System.nanoTime();
-          Measurement.INSTANCE.addOperationLatency(Operation.PARSE_SQL_TO_PHYSICAL_PLAN,t1-t0);
+          Measurement.INSTANCE.addOperationLatency(Operation.PARSE_SQL_TO_PHYSICAL_PLAN, t0);
           physicalPlan.setProposer(username.get());
           if (physicalPlan.isQuery()) {
             return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
                 "statement is query :" + statement, result);
           }
 
-          long t2 = System.nanoTime();
+          long t1 = System.nanoTime();
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan);
-          long t3 = System.nanoTime();
-          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_PHYSICAL_PLAN,t3-t2);
+          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_PHYSICAL_PLAN, t1);
 
           if (resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)) {
             result.add(Statement.SUCCESS_NO_INFO);
@@ -494,8 +492,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
     }
     finally {
-      long et = System.nanoTime();
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH_SQL, et-st);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH_SQL, st);
     }
   }
 
@@ -755,7 +752,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
     List<Path> paths = plan.getPaths();
-    long st = System.nanoTime();
     try {
       if (!checkAuthorization(paths, plan)) {
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
@@ -766,17 +762,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
           "Uninitialized authorizer " + e.getMessage());
     }
-    long et = System.nanoTime();
-    Measurement.INSTANCE.addOperationLatency(Operation.CHECK_AUTHORIZATION, et-st);
     // TODO
     // In current version, we only return OK/ERROR
     // Do we need to add extra information of executive condition
     boolean execRet;
     try {
-      long t0 = System.nanoTime();
-      execRet = executeNonQuery(plan);
       long t1 = System.nanoTime();
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_NON_QUERY,t1-t0);
+      execRet = executeNonQuery(plan);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_NON_QUERY, t1);
     } catch (ProcessorException e) {
       LOGGER.debug("meet error while processing non-query. ", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -792,8 +785,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSOperationHandle operationHandle;
     operationHandle = new TSOperationHandle(operationId, false);
     resp.setOperationHandle(operationHandle);
-    long t3 = System.nanoTime();
-    Measurement.INSTANCE.addOperationLatency(Operation.CONSTRUCT_JDBC_RESULT,t3-t2);
+    Measurement.INSTANCE.addOperationLatency(Operation.CONSTRUCT_JDBC_RESULT, t2);
     return resp;
   }
 

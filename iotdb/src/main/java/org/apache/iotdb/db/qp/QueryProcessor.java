@@ -30,7 +30,6 @@ import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
@@ -72,15 +71,13 @@ public class QueryProcessor {
       throws QueryProcessorException, ArgsErrorException, ProcessorException {
     long t0 = System.nanoTime();
     AstNode astNode = parseSQLToAST(sqlStr);
+    Measurement.INSTANCE.addOperationLatency(Operation.GENERATE_AST_NODE, t0);
     long t1 = System.nanoTime();
-    Measurement.INSTANCE.addOperationLatency(Operation.GENERATE_AST_NODE, t1-t0);
-    long t2 = System.nanoTime();
     Operator operator = parseASTToOperator(astNode, zoneId);
     operator = logicalOptimize(operator, executor);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
     PhysicalPlan qp = physicalGenerator.transformToPhysicalPlan(operator);
-    long t3 = System.nanoTime();
-    Measurement.INSTANCE.addOperationLatency(Operation.GENERATE_PHYSICAL_PLAN, t3-t2);
+    Measurement.INSTANCE.addOperationLatency(Operation.GENERATE_PHYSICAL_PLAN, t1);
     return qp;
   }
 

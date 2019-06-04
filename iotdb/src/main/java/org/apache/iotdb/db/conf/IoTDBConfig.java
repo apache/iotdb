@@ -282,6 +282,16 @@ public class IoTDBConfig {
    */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
+  /**
+   * Is stat time cost of sub-module in write process enable.
+   */
+  private boolean enableWritePerformanceStat = false;
+
+  /**
+   * The display of stat time cost interval in ms.
+   */
+  private long performanceStatDisplayInterval = 60000;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -828,5 +838,21 @@ public class IoTDBConfig {
 
   public void setRpcImplClassName(String rpcImplClassName) {
     this.rpcImplClassName = rpcImplClassName;
+  }
+
+  public boolean isEnableWritePerformanceStat() {
+    return enableWritePerformanceStat;
+  }
+
+  public void setEnableWritePerformanceStat(boolean enableWritePerformanceStat) {
+    this.enableWritePerformanceStat = enableWritePerformanceStat;
+  }
+
+  public long getPerformanceStatDisplayInterval() {
+    return performanceStatDisplayInterval;
+  }
+
+  public void setPerformanceStatDisplayInterval(long performanceStatDisplayInterval) {
+    this.performanceStatDisplayInterval = performanceStatDisplayInterval;
   }
 }

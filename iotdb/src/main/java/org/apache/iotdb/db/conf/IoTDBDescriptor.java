@@ -251,6 +251,13 @@ public class IoTDBDescriptor {
             conf.getZoneID(), e);
       }
 
+      conf.setEnableWritePerformanceStat(Boolean
+          .parseBoolean(properties.getProperty("enable_write_performance_stat",
+              Boolean.toString(conf.isEnableWritePerformanceStat())).trim()));
+
+      conf.setPerformanceStatDisplayInterval(Long
+          .parseLong(properties.getProperty("performance_stat_display_interval",
+              Long.toString(conf.getPerformanceStatDisplayInterval())).trim()));
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

@@ -54,7 +54,6 @@ import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.LoadDataUtils;
@@ -294,8 +293,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList[i], value);
         tsRecord.addTuple(dataPoint);
       }
-      long t1 = System.nanoTime();
-      Measurement.INSTANCE.addOperationLatency(Operation.CONSTRUCT_TSRECORD,t1-t0);
+      Measurement.INSTANCE.addOperationLatency(Operation.CONSTRUCT_TSRECORD, t0);
       return fileNodeManager.insert(tsRecord, false);
 
     } catch (PathErrorException | FileNodeManagerException e) {
