@@ -41,6 +41,8 @@ public class Directories {
   private DirectoryStrategy strategy;
 
   private Directories() {
+    System.out.println("Init Directories.");
+
     tsfileFolders = new ArrayList<>(
         Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
     initFolders();

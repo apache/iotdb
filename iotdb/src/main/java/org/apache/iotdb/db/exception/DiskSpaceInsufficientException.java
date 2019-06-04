@@ -20,7 +20,7 @@ package org.apache.iotdb.db.exception;
 
 import java.util.List;
 
-public class DiskSpaceInsufficientException extends Exception {
+public class DiskSpaceInsufficientException extends FileNodeManagerException {
 
   private static final long serialVersionUID = 9001643829368311032L;
 
@@ -29,6 +29,6 @@ public class DiskSpaceInsufficientException extends Exception {
   }
 
   public DiskSpaceInsufficientException(List<String> folders) {
-    this(String.format("Can't get next folder from %s, because they are all full.", folders));
+    super(String.format("Can't get next folder from %s, because they are all full.", folders));
   }
 }
