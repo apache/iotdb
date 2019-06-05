@@ -34,7 +34,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -42,7 +41,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.conf.Constans;
@@ -66,9 +68,14 @@ import org.slf4j.LoggerFactory;
 public class SyncSenderImpl implements SyncSender {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderImpl.class);
+
   private TTransport transport;
+
   private SyncService.Client serviceClient;
+
   private List<String> schema = new ArrayList<>();
+
+  private static SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
 
   /**
    * Files that need to be synchronized
@@ -81,11 +88,6 @@ public class SyncSenderImpl implements SyncSender {
   private Map<String, Set<String>> currentLocalFiles;
 
   /**
-   * Mark the start time of last sync
-   **/
-  private Date lastSyncTime = new Date();
-
-  /**
    * If true, sync is in execution.
    **/
   private volatile boolean syncStatus = false;
@@ -96,29 +98,11 @@ public class SyncSenderImpl implements SyncSender {
   private Map<String, Set<String>> validFileSnapshot = new HashMap<>();
 
   private SyncFileManager syncFileManager = SyncFileManager.getInstance();
-  private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
 
-  /**
-   * Monitor sync status.
-   */
-  private final Runnable monitorSyncStatus = () -> {
-    Date oldTime = new Date();
-    while (!Thread.interrupted()) {
-      Date currentTime = new Date();
-      if (currentTime.getTime() / 1000 == oldTime.getTime() / 1000) {
-        continue;
-      }
-      if ((currentTime.getTime() - lastSyncTime.getTime())
-          % (config.getUploadCycleInSeconds() * 1000) == 0) {
-        oldTime = currentTime;
-        if (syncStatus) {
-          LOGGER.info("Sync process is in execution!");
-        }
-      }
-    }
-  };
+  private ScheduledExecutorService executorService;
 
   private SyncSenderImpl() {
+    init();
   }
 
   public static final SyncSenderImpl getInstance() {
@@ -130,43 +114,51 @@ public class SyncSenderImpl implements SyncSender {
    *
    * @param args not used
    */
-  public static void main(String[] args)
-      throws InterruptedException, IOException, SyncConnectionException {
+  public static void main(String[] args) throws IOException {
     Thread.currentThread().setName(ThreadName.SYNC_CLIENT.getName());
     SyncSenderImpl fileSenderImpl = new SyncSenderImpl();
     fileSenderImpl.verifySingleton();
     fileSenderImpl.startMonitor();
-    fileSenderImpl.timedTask();
+    fileSenderImpl.startTimedTask();
+  }
+
+  @Override
+  public void init() {
+    if (executorService == null) {
+      executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(2,
+          "sync-client-timer");
+    }
   }
 
   /**
    * Start Monitor Thread, monitor sync status
    */
-  public void startMonitor() {
-    Thread syncMonitor = new Thread(monitorSyncStatus, ThreadName.SYNC_MONITOR.getName());
-    syncMonitor.setDaemon(true);
-    syncMonitor.start();
+  private void startMonitor() {
+    executorService.scheduleWithFixedDelay(() -> {
+      if (syncStatus) {
+        LOGGER.info("Sync process is in execution!");
+      }
+    }, Constans.SYNC_MONITOR_DELAY, Constans.SYNC_MONITOR_PERIOD, TimeUnit.SECONDS);
   }
 
   /**
    * Start sync task in a certain time.
    */
-  public void timedTask() throws InterruptedException, SyncConnectionException, IOException {
-    sync();
-    lastSyncTime = new Date();
-    Date currentTime;
-    while (true) {
-      if (Thread.interrupted()) {
-        break;
-      }
-      Thread.sleep(2000);
-      currentTime = new Date();
-      if (currentTime.getTime() - lastSyncTime.getTime()
-          > config.getUploadCycleInSeconds() * 1000) {
-        lastSyncTime = currentTime;
+  private void startTimedTask() {
+    executorService.scheduleWithFixedDelay(() -> {
+      try {
         sync();
+      } catch (SyncConnectionException | IOException e) {
+        LOGGER.error("Sync failed", e);
+        stop();
       }
-    }
+    }, Constans.SYNC_PROCESS_DELAY, Constans.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
+  }
+
+  @Override
+  public void stop() {
+    executorService.shutdownNow();
+    executorService = null;
   }
 
   /**
@@ -178,7 +170,7 @@ public class SyncSenderImpl implements SyncSender {
     //1. Clear old snapshots if necessary
     for (String snapshotPath : config.getSnapshotPaths()) {
       if (new File(snapshotPath).exists() && new File(snapshotPath).list().length != 0) {
-        /** It means that the last task of sync does not succeed! Clear the files and start to sync again **/
+        // It means that the last task of sync does not succeed! Clear the files and start to sync again
         FileUtils.deleteDirectory(new File(snapshotPath));
       }
     }
@@ -206,13 +198,13 @@ public class SyncSenderImpl implements SyncSender {
 
     syncStatus = true;
 
-    try{
+    try {
       // 5. Sync schema
       syncSchema();
 
       // 6. Sync data
       syncAllData();
-    }catch (SyncConnectionException e){
+    } catch (SyncConnectionException e) {
       LOGGER.error("cannot finish sync process", e);
       syncStatus = false;
       return;
@@ -245,7 +237,7 @@ public class SyncSenderImpl implements SyncSender {
       }
       LOGGER.info("Sync process starts to transfer data of storage group {}", entry.getKey());
       try {
-        if(!serviceClient.init(entry.getKey())){
+        if (!serviceClient.init(entry.getKey())) {
           throw new SyncConnectionException("unable init receiver");
         }
       } catch (TException e) {
@@ -258,7 +250,8 @@ public class SyncSenderImpl implements SyncSender {
         syncFileManager.backupNowLocalFileInfo(config.getLastFileInfo());
         LOGGER.info("Sync process has finished storage group {}.", entry.getKey());
       } else {
-        LOGGER.error("Receiver cannot sync data, abandon this synchronization of storage group {}", entry.getKey());
+        LOGGER.error("Receiver cannot sync data, abandon this synchronization of storage group {}",
+            entry.getKey());
       }
     }
   }
@@ -380,7 +373,7 @@ public class SyncSenderImpl implements SyncSender {
         while (true) {
           retryCount++;
           // Sync all data to receiver
-          if(retryCount > Constans.MAX_SYNC_FILE_TRY){
+          if (retryCount > Constans.MAX_SYNC_FILE_TRY) {
             throw new SyncConnectionException(String
                 .format("can not sync file %s after %s tries.", snapshotFilePath,
                     Constans.MAX_SYNC_FILE_TRY));
@@ -395,8 +388,8 @@ public class SyncSenderImpl implements SyncSender {
               md.update(buffer, 0, dataLength);
               ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
               bos.reset();
-              if(!Boolean.parseBoolean(serviceClient
-                  .syncData(null, filePathSplit, buffToSend, SyncDataStatus.PROCESSING_STATUS))){
+              if (!Boolean.parseBoolean(serviceClient
+                  .syncData(null, filePathSplit, buffToSend, SyncDataStatus.PROCESSING_STATUS))) {
                 LOGGER.info("Receiver failed to receive data from {}, retry.", snapshotFilePath);
                 continue outer;
               }
@@ -445,7 +438,8 @@ public class SyncSenderImpl implements SyncSender {
           ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
           bos.reset();
           // PROCESSING_STATUS represents there is still schema buffer to send.
-          if(!Boolean.parseBoolean(serviceClient.syncSchema(null, buffToSend, SyncDataStatus.PROCESSING_STATUS))){
+          if (!Boolean.parseBoolean(
+              serviceClient.syncSchema(null, buffToSend, SyncDataStatus.PROCESSING_STATUS))) {
             LOGGER.error("Receiver failed to receive metadata, retry.");
             continue outer;
           }
