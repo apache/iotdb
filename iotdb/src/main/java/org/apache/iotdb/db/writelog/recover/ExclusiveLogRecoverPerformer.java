@@ -286,17 +286,19 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     return failedCnt;
   }
 
-  private void replayLog() throws RecoverException {
+  private void  replayLog() throws RecoverException {
     int failedEntryCnt = 0;
     // if old log file exists, replay it first.
-    File oldLogFile = new File(
-        writeLogNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME
-            + ExclusiveWriteLogNode.OLD_SUFFIX);
-    try {
-      failedEntryCnt += replayLogFile(oldLogFile);
-    } catch (IOException e) {
-      throw new RecoverException(e);
+    File logFolder = new File(writeLogNode.getLogDirectory());
+    for (File file : logFolder.listFiles( name -> name.getName().startsWith(ExclusiveWriteLogNode.WAL_FILE_NAME
+        + ExclusiveWriteLogNode.OLD_SUFFIX))) {
+      try {
+        failedEntryCnt += replayLogFile(file);
+      } catch (IOException e) {
+        throw new RecoverException(e);
+      }
     }
+
     // then replay new log
     File newLogFile = new File(
         writeLogNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
@@ -341,13 +343,15 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
         failedFiles.add(recoverProcessorStoreFilePath);
     }
     // clean log file
-    File oldLogFile = new File(
-        writeLogNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME
-            + ExclusiveWriteLogNode.OLD_SUFFIX);
-    if (oldLogFile.exists() && !oldLogFile.delete()) {
+    File logFolder = new File(writeLogNode.getLogDirectory());
+    for (File file : logFolder.listFiles( name -> name.getName().startsWith(ExclusiveWriteLogNode.WAL_FILE_NAME
+        + ExclusiveWriteLogNode.OLD_SUFFIX))) {
+      if (file.exists() && !file.delete()) {
         logger.error("Log node {} cannot delete old log file", writeLogNode.getLogDirectory());
-        failedFiles.add(oldLogFile.getPath());
+        failedFiles.add(file.getPath());
+      }
     }
+
     File newLogFile = new File(
         writeLogNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
     if (newLogFile.exists() && !newLogFile.delete()) {

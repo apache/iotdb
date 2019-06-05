@@ -29,10 +29,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
@@ -69,7 +71,8 @@ public class BufferWriteProcessor extends Processor {
   private IMemTable workMemTable;
   private IMemTable flushMemTable;
   private Action bufferwriteFlushAction;
-  private Action bufferwriteCloseAction;
+  //private Action bufferwriteCloseAction;
+  private Consumer<BufferWriteProcessor> bufferwriteCloseConsumer;
   private Action filenodeFlushAction;
 
   //lastFlushTime time unit: nanosecond
@@ -86,6 +89,10 @@ public class BufferWriteProcessor extends Processor {
   private boolean isClosed = true;
   private boolean isFlush = false;
 
+
+
+  private TsFileResource currentTsFileResource;
+
   /**
    * constructor of BufferWriteProcessor.
    *
@@ -97,16 +104,17 @@ public class BufferWriteProcessor extends Processor {
    * @throws BufferWriteProcessorException BufferWriteProcessorException
    */
   public BufferWriteProcessor(String baseDir, String processorName, String fileName,
-      Map<String, Action> parameters, VersionController versionController,
+      Map<String, Action> parameters, Consumer<BufferWriteProcessor> bufferwriteCloseConsumer,
+      VersionController versionController,
       FileSchema fileSchema) throws BufferWriteProcessorException {
     super(processorName);
     this.fileSchema = fileSchema;
     this.baseDir = baseDir;
 
     bufferwriteFlushAction = parameters.get(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
-    bufferwriteCloseAction = parameters.get(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
+    //bufferwriteCloseAction = parameters.get(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
     filenodeFlushAction = parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
-
+    this.bufferwriteCloseConsumer = bufferwriteCloseConsumer;
     reopen(fileName);
     try {
       getLogNode();
@@ -292,9 +300,10 @@ public class BufferWriteProcessor extends Processor {
    * @param displayMessage message that will appear in system log.
    * @param version the operation version that will tagged on the to be flushed memtable
    * (i.e., ChunkGroup)
+   * @param walTaskId used for declaring what the wal file name suffix is.
    * @return true if successfully.
    */
-  private boolean flushTask(String displayMessage, long version) {
+  private boolean flushTask(String displayMessage, long version, long walTaskId) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
     LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(),
@@ -310,7 +319,7 @@ public class BufferWriteProcessor extends Processor {
 
       filenodeFlushAction.act();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush(null);
+        logNode.notifyEndFlush(null, walTaskId);
       }
       result = true;
     } catch (Exception e) {
@@ -358,7 +367,12 @@ public class BufferWriteProcessor extends Processor {
     // check value count
     // waiting for the end of last flush operation.
     try {
+      long startTime = System.currentTimeMillis();
       flushFuture.get();
+      long timeCost = System.currentTimeMillis() - startTime;
+      if (timeCost > 10) {
+        LOGGER.info("wait for the previous flushing task for {} ms.", timeCost);
+      }
     } catch (InterruptedException | ExecutionException e) {
       throw new IOException(e);
     }
@@ -370,8 +384,11 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.error("Failed to flush bufferwrite row group when calling the action function.");
         throw new IOException(e);
       }
+      final long walTaskId;
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyStartFlush();
+        walTaskId = logNode.notifyStartFlush();
+      } else {
+        walTaskId = 0;
       }
       valueCount = 0;
       switchWorkToFlush();
@@ -380,7 +397,7 @@ public class BufferWriteProcessor extends Processor {
       memSize.set(0);
       // switch
       flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
-          version));
+          version, walTaskId));
     } else {
       flushFuture = new ImmediateFuture<>(true);
     }
@@ -398,16 +415,36 @@ public class BufferWriteProcessor extends Processor {
       return;
     }
     try {
-      long closeStartTime = System.currentTimeMillis();
-      // flush data and wait for finishing flush
-      flush().get();
+
+      // flush data (if there are flushing task, flush() will be blocked)
+      Future<Boolean> flush = flush();
+      //and wait for finishing flush async
+      flushFuture = FlushManager.getInstance().submit(() -> closeTask(flush));
+      //now, we omit the future of the closeTask.
+    } catch (IOException e) {
+      LOGGER.error("Close the bufferwrite processor error, the bufferwrite is {}.",
+          getProcessorName(), e);
+      throw new BufferWriteProcessorException(e);
+    } catch (Exception e) {
+      LOGGER
+          .error("Failed to close the bufferwrite processor when calling the action function.", e);
+      throw new BufferWriteProcessorException(e);
+    }
+  }
+
+  private boolean closeTask(Future<Boolean> flush) {
+    long closeStartTime = System.currentTimeMillis();
+    try {
+      flush.get();
       // end file
       writer.endFile(fileSchema);
       writer = null;
+      isClosed = true;
+      //A BUG may appears here: workMemTable has been cleared,
+      // but the corresponding TsFile is not maintained in Processor.
       workMemTable.clear();
-
       // update the IntervalFile for interval list
-      bufferwriteCloseAction.act();
+      bufferwriteCloseConsumer.accept(this);
       // flush the changed information for filenode
       filenodeFlushAction.act();
       // delete the restore for this bufferwrite processor
@@ -421,16 +458,12 @@ public class BufferWriteProcessor extends Processor {
             DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
             closeEndTime - closeStartTime);
       }
-      isClosed = true;
-    } catch (IOException e) {
-      LOGGER.error("Close the bufferwrite processor error, the bufferwrite is {}.",
-          getProcessorName(), e);
-      throw new BufferWriteProcessorException(e);
-    } catch (Exception e) {
-      LOGGER
-          .error("Failed to close the bufferwrite processor when calling the action function.", e);
-      throw new BufferWriteProcessorException(e);
+
+    }catch (IOException | InterruptedException | ExecutionException|ActionException e) {
+      LOGGER.error("Close bufferwrite processor {} failed.", getProcessorName(), e);
+      return false;
     }
+    return true;
   }
 
   @Override
@@ -557,5 +590,12 @@ public class BufferWriteProcessor extends Processor {
 
   public boolean isClosed() {
     return isClosed;
+  }
+
+  public TsFileResource getCurrentTsFileResource() {
+    return currentTsFileResource;
+  }
+  public void setCurrentTsFileResource(TsFileResource resource) {
+    this.currentTsFileResource = resource;
   }
 }

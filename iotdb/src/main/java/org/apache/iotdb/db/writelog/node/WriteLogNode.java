@@ -58,14 +58,17 @@ public interface WriteLogNode {
 
   /**
    * When a FileNode attempts to start a flush, this method must be called to rename log file.
+   * @return the task id ( being used in the renamed log file)
    */
-  void notifyStartFlush() throws IOException;
+  long notifyStartFlush() throws IOException;
 
   /**
    * When the flush of a FlieNode ends, this method must be called to check if log file needs
    * cleaning.
+   * @param logPositions (deprecated)
+   * @param  taskId the task id that notifyStartFlush() returns.
    */
-  void notifyEndFlush(List<LogPosition> logPositions);
+  void notifyEndFlush(List<LogPosition> logPositions, long taskId);
 
   /**
    * return identifier of the log node.

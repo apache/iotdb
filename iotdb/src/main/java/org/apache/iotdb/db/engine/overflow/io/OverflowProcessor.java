@@ -483,7 +483,7 @@ public class OverflowProcessor extends Processor {
     return isFlush;
   }
 
-  private boolean flushTask(String displayMessage) {
+  private boolean flushTask(String displayMessage, long walTaskId) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
     try {
@@ -496,7 +496,7 @@ public class OverflowProcessor extends Processor {
       filenodeFlushAction.act();
       // write-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush(null);
+        logNode.notifyEndFlush(null, walTaskId);
       }
       result = true;
     } catch (IOException e) {
@@ -556,22 +556,23 @@ public class OverflowProcessor extends Processor {
         LOGGER.error("Flush the overflow rowGroup to file faied, when overflowFlushAction act");
         throw new IOException(e);
       }
-
+      long taskId = 0;
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
-          logNode.notifyStartFlush();
+          taskId = logNode.notifyStartFlush();
         } catch (IOException e) {
           LOGGER.error("Overflow processor {} encountered an error when notifying log node, {}",
               getProcessorName(), e);
         }
       }
+      final long walTaskId = taskId;
       BasicMemController.getInstance().releaseUsage(this, memSize.get());
       memSize.set(0);
       valueCount = 0;
       // switch from work to flush
       switchWorkToFlush();
       flushFuture = FlushManager.getInstance().submit( () ->
-          flushTask("asynchronously"));
+          flushTask("asynchronously", walTaskId));
     } else {
       flushFuture = new ImmediateFuture(true);
     }

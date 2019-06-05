@@ -28,10 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -95,6 +99,9 @@ public class FileNodeManager implements IStatistic, IService {
   // There is no need to add concurrently
   private HashMap<String, AtomicLong> statParamsHashMap;
 
+  ScheduledExecutorService closedProcessorCleaner = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
+      "Closed FileNodeProcessors Cleaner");
+
   private FileNodeManager(String baseDir) {
     processorMap = new ConcurrentHashMap<>();
     statParamsHashMap = new HashMap<>();
@@ -119,6 +126,28 @@ public class FileNodeManager implements IStatistic, IService {
       registerStatMetadata();
       statMonitor.registerStatistics(MonitorConstants.STAT_STORAGE_DELTA_NAME, this);
     }
+
+    closedProcessorCleaner.scheduleWithFixedDelay(()->{
+      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
+        Iterator<BufferWriteProcessor> iterator =
+            fileNodeProcessor.getClosingBufferWriteProcessor().iterator();
+        while (iterator.hasNext()) {
+          BufferWriteProcessor processor = iterator.next();
+          try {
+            if (processor.getFlushFuture().get(10, TimeUnit.MILLISECONDS)) {
+              //if finished, we can remove it.
+              iterator.remove();
+            }
+          } catch (InterruptedException | ExecutionException e) {
+            LOGGER.error("Close bufferwrite processor {} failed.", processor.getProcessorName(), e);
+          } catch (TimeoutException e) {
+            //do nothing.
+          }
+        }
+        fileNodeProcessor.getClosingBufferWriteProcessor().reset();
+      }
+    }, 0, 3000, TimeUnit.MILLISECONDS);
+
   }
 
   public static FileNodeManager getInstance() {
@@ -413,7 +442,8 @@ public class FileNodeManager implements IStatistic, IService {
       String bufferwriteBaseDir = bufferWriteProcessor.getBaseDir();
       String bufferwriteRelativePath = bufferWriteProcessor.getFileRelativePath();
       try {
-        fileNodeProcessor.addIntervalFileNode(new File(new File(bufferwriteBaseDir), bufferwriteRelativePath));
+        bufferWriteProcessor.setCurrentTsFileResource(new TsFileResource(new File(new File(bufferwriteBaseDir), bufferwriteRelativePath), false));
+        fileNodeProcessor.addIntervalFileNode(bufferWriteProcessor.getCurrentTsFileResource());
       } catch (Exception e) {
         if (!isMonitor) {
           updateStatHashMapWhenFail(tsRecord);
@@ -1176,6 +1206,7 @@ public class FileNodeManager implements IStatistic, IService {
     } catch (FileNodeManagerException e) {
       LOGGER.error("Failed to close file node manager because .", e);
     }
+    closedProcessorCleaner.shutdownNow();
   }
 
   @Override
@@ -1226,3 +1257,6 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
 }
+
+
+

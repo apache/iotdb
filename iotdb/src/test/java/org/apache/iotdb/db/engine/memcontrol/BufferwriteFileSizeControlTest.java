@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
@@ -63,6 +64,7 @@ public class BufferwriteFileSizeControlTest {
     public void act() throws ActionException {
     }
   };
+  Consumer<BufferWriteProcessor> bfcloseConsumer = bfProcessor -> {};
 
   Action fnflushaction = new Action() {
 
@@ -131,13 +133,14 @@ public class BufferwriteFileSizeControlTest {
 
     Map<String, Action> parameters = new HashMap<>();
     parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bfflushaction);
-    parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bfcloseaction);
+    //parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bfcloseaction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
 
     try {
       processor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(), nsp,
           filename,
-          parameters, SysTimeVersionController.INSTANCE, FileSchemaUtils.constructFileSchema(nsp));
+          parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
+          FileSchemaUtils.constructFileSchema(nsp));
     } catch (BufferWriteProcessorException e) {
       e.printStackTrace();
       fail(e.getMessage());

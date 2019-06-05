@@ -81,12 +81,6 @@ public class BufferWriteBenchmark {
         System.out.println(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
       }
     });
-    parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, new Action() {
-      @Override
-      public void act() throws ActionException {
-        System.out.println(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
-      }
-    });
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, new Action() {
       @Override
       public void act() throws ActionException {
@@ -96,7 +90,9 @@ public class BufferWriteBenchmark {
 
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor("BufferBenchmark",
         "bench", "benchFile",
-        parameters, SysTimeVersionController.INSTANCE, fileSchema);
+        parameters,
+        x -> System.out.println(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION),
+        SysTimeVersionController.INSTANCE, fileSchema);
 
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < numOfPoint; i++) {

@@ -61,13 +61,6 @@ public class BufferWriteProcessorNewTest {
     }
   };
 
-  Action bfcloseaction = new Action() {
-
-    @Override
-    public void act() throws ActionException {
-    }
-  };
-
   Action fnflushaction = new Action() {
 
     @Override
@@ -86,7 +79,6 @@ public class BufferWriteProcessorNewTest {
   @Before
   public void setUp() throws Exception {
     parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bfflushaction);
-    parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bfcloseaction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
@@ -103,7 +95,7 @@ public class BufferWriteProcessorNewTest {
       throws BufferWriteProcessorException, WriteProcessException, IOException, InterruptedException {
     bufferwrite = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(),
         processorName, filename,
-        parameters, SysTimeVersionController.INSTANCE,
+        parameters, x->{},  SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(processorName));
     assertEquals(processorName + File.separator + filename, bufferwrite.getFileRelativePath());
     assertTrue(bufferwrite.isNewProcessor());
@@ -157,7 +149,7 @@ public class BufferWriteProcessorNewTest {
 
     // test recovery
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
-        Directories.getInstance().getFolderForTest(), processorName, filename, parameters,
+        Directories.getInstance().getFolderForTest(), processorName, filename, parameters, x->{},
         SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(processorName));
     pair = bufferWriteProcessor.queryBufferWriteData(processorName, measurementId, dataType, props);

@@ -23,16 +23,20 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.PathUtils;
@@ -75,6 +79,8 @@ public class BufferWriteProcessorTest {
     }
   };
 
+  Consumer<BufferWriteProcessor> bfcloseConsumer = x -> {};
+
   Action fnflushaction = new Action() {
 
     @Override
@@ -97,7 +103,6 @@ public class BufferWriteProcessorTest {
   @Before
   public void setUp() throws Exception {
     parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bfflushaction);
-    parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bfcloseaction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
     // origin value
     groupSizeInByte = TsFileConf.groupSizeInByte;
@@ -121,7 +126,7 @@ public class BufferWriteProcessorTest {
   public void testWriteAndAbnormalRecover()
       throws WriteProcessException, InterruptedException, IOException, ProcessorException {
     bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
-        parameters, SysTimeVersionController.INSTANCE,
+        parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     for (int i = 1; i < 100; i++) {
       bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
@@ -143,10 +148,15 @@ public class BufferWriteProcessorTest {
     File file = new File("temp");
     restoreFile.renameTo(file);
     bufferwrite.close();
+    try {
+      bufferwrite.getFlushFuture().get();
+    } catch (ExecutionException e) {
+      fail(e.getMessage());
+    }
     file.renameTo(restoreFile);
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
         directories.getFolderForTest(), deviceId,
-        insertPath, parameters, SysTimeVersionController.INSTANCE,
+        insertPath, parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     assertTrue(insertFile.exists());
     assertEquals(insertFileLength, insertFile.length());
@@ -158,6 +168,11 @@ public class BufferWriteProcessorTest {
     assertEquals(measurementId, chunkMetaData.getMeasurementUid());
     assertEquals(dataType, chunkMetaData.getTsDataType());
     bufferWriteProcessor.close();
+    try {
+      bufferWriteProcessor.getFlushFuture().get();
+    } catch (ExecutionException e) {
+      fail(e.getMessage());
+    }
     assertFalse(restoreFile.exists());
   }
 
@@ -165,7 +180,7 @@ public class BufferWriteProcessorTest {
   public void testWriteAndNormalRecover()
       throws WriteProcessException, ProcessorException, InterruptedException {
     bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
-        parameters, SysTimeVersionController.INSTANCE,
+        parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     for (int i = 1; i < 100; i++) {
       bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
@@ -179,7 +194,7 @@ public class BufferWriteProcessorTest {
     assertTrue(restoreFile.exists());
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
         directories.getFolderForTest(), deviceId,
-        insertPath, parameters, SysTimeVersionController.INSTANCE,
+        insertPath, parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
         .queryBufferWriteData(deviceId, measurementId, dataType, Collections.emptyMap());
@@ -190,6 +205,11 @@ public class BufferWriteProcessorTest {
     assertEquals(dataType, chunkMetaData.getTsDataType());
     bufferWriteProcessor.close();
     bufferwrite.close();
+    try {
+      bufferwrite.getFlushFuture().get();
+    } catch (ExecutionException e) {
+      fail(e.getMessage());
+    }
     assertFalse(restoreFile.exists());
   }
 
@@ -197,7 +217,7 @@ public class BufferWriteProcessorTest {
   public void testWriteAndQuery()
       throws WriteProcessException, InterruptedException, ProcessorException {
     bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
-        parameters, SysTimeVersionController.INSTANCE,
+        parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     assertFalse(bufferwrite.isFlush());
     assertTrue(bufferwrite.canBeClosed());

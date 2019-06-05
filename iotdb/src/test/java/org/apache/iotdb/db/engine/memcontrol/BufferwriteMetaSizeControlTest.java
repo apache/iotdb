@@ -64,6 +64,7 @@ public class BufferwriteMetaSizeControlTest {
     }
   };
 
+
   Action fnflushaction = new Action() {
 
     @Override
@@ -131,13 +132,12 @@ public class BufferwriteMetaSizeControlTest {
 
     Map<String, Action> parameters = new HashMap<>();
     parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bfflushaction);
-    parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bfcloseaction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
 
     try {
       processor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(), nsp,
           filename,
-          parameters, SysTimeVersionController.INSTANCE, FileSchemaUtils.constructFileSchema(nsp));
+          parameters, x->{}, SysTimeVersionController.INSTANCE, FileSchemaUtils.constructFileSchema(nsp));
     } catch (BufferWriteProcessorException e) {
       e.printStackTrace();
       fail(e.getMessage());

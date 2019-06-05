@@ -22,21 +22,23 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.LogPosition;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.db.writelog.recover.ExclusiveLogRecoverPerformer;
 import org.apache.iotdb.db.writelog.recover.RecoverPerformer;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +69,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private ReadWriteLock forceLock = new ReentrantReadWriteLock();
 
+  private AtomicLong taskId;
   /**
    * constructor of ExclusiveWriteLogNode.
    *
@@ -79,10 +82,24 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.identifier = identifier;
     this.logDirectory = config.getWalFolder() + File.separator + this.identifier;
     new File(logDirectory).mkdirs();
+    //read current wals to get the largest task id.
+    long task = 1;
+    Pattern pattern = Pattern.compile(OLD_SUFFIX+"(\\d+)");
+    for (File file : new File(logDirectory).listFiles()) {
+      Matcher matcher = pattern.matcher(file.getName());
+      if (matcher.find()) {
+        long id = Long.parseLong(matcher.group(1));
+        if (id > task) {
+          task = id;
+        }
+      }
+    }
+    taskId = new AtomicLong(task);
 
     recoverPerformer = new ExclusiveLogRecoverPerformer(restoreFilePath, processorStoreFilePath,
         this);
     currentFileWriter = new LogWriter(logDirectory + File.separator + WAL_FILE_NAME);
+
   }
 
   public void setRecoverPerformer(RecoverPerformer recoverPerformer) {
@@ -144,27 +161,30 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
    * Warning : caller must have lock.
    */
   @Override
-  public void notifyStartFlush() {
+  public long notifyStartFlush() {
     close();
     File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME);
-    File newLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX);
     if (!oldLogFile.exists()) {
-      return;
+      return 0;
     }
+
+    long id = taskId.incrementAndGet();
+    File newLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX + id);
     if (!oldLogFile.renameTo(newLogFile)) {
       logger.error("Log node {} renaming log file failed!", identifier);
     } else {
       logger.info("Log node {} renamed log file, file size is {}", identifier,
           MemUtils.bytesCntToStr(newLogFile.length()));
     }
+    return id;
   }
 
   /*
    * Warning : caller must have lock.
    */
   @Override
-  public void notifyEndFlush(List<LogPosition> logPositions) {
-    discard();
+  public void notifyEndFlush(List<LogPosition> logPositions, long taskId) {
+    discard(taskId);
   }
 
   @Override
@@ -250,8 +270,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
-  private void discard() {
-    File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX);
+  private void discard(long id) {
+    File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX + id);
     if (!oldLogFile.exists()) {
       logger.info("No old log to be deleted");
     } else {
