@@ -24,12 +24,19 @@ package org.apache.iotdb.db.exception;
  *
  * @author kangrong
  */
-public class MetadataArgsErrorException extends ArgsErrorException {
+public class MetadataErrorException extends Exception {
 
   private static final long serialVersionUID = 3415275599091623570L;
 
-  public MetadataArgsErrorException(String msg) {
+  public MetadataErrorException(String msg) {
     super(msg);
   }
 
+  public MetadataErrorException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public MetadataErrorException(Throwable cause) {
+    super(cause);
+  }
 }

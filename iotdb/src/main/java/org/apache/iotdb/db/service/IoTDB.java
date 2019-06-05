@@ -27,11 +27,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.sync.receiver.SyncServiceManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -145,7 +147,7 @@ public class IoTDB implements IoTDBMBean {
     List<String> filenodeNames = null;
     try {
       filenodeNames = MManager.getInstance().getAllFileNames();
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException e) {
       throw new RecoverException(e);
     }
     for (String filenodeName : filenodeNames) {

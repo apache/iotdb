@@ -23,10 +23,9 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -89,14 +88,14 @@ public class MManagerAdvancedTest {
       assertEquals(6, paths.size());
       paths = mmanager.getPaths("root.vehicle.d2");
       assertEquals(0, paths.size());
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException | PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
   @Test
-  public void testCache() throws PathErrorException, IOException, MetadataArgsErrorException {
+  public void testCache() throws PathErrorException, IOException, MetadataErrorException {
     mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
     mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
@@ -125,7 +124,7 @@ public class MManagerAdvancedTest {
 
   @Test
   public void testGetNextLevelPath()
-      throws PathErrorException, IOException, MetadataArgsErrorException {
+      throws PathErrorException, IOException, MetadataErrorException {
     mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
     mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");

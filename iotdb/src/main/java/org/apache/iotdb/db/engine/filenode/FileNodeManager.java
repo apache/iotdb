@@ -45,6 +45,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -243,7 +244,7 @@ public class FileNodeManager implements IStatistic, IService {
     List<String> filenodeNames = null;
     try {
       filenodeNames = MManager.getInstance().getAllFileNames();
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException e) {
       LOGGER.error("Restoring all FileNodes failed.", e);
       return;
     }
@@ -772,7 +773,7 @@ public class FileNodeManager implements IStatistic, IService {
     List<String> allFileNodeNames;
     try {
       allFileNodeNames = MManager.getInstance().getAllFileNames();
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException e) {
       LOGGER.error("Get all storage group seriesPath error,", e);
       throw new FileNodeManagerException(e);
     }

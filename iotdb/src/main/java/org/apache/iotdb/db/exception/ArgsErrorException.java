@@ -26,4 +26,11 @@ public class ArgsErrorException extends Exception {
     super(msg);
   }
 
+  public ArgsErrorException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public ArgsErrorException(Throwable cause) {
+    super(cause);
+  }
 }

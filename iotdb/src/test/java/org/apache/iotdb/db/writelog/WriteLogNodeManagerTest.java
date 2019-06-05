@@ -22,10 +22,9 @@ import static junit.framework.TestCase.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -98,7 +97,7 @@ public class WriteLogNodeManagerTest {
   }
 
   @Test
-  public void testRecoverAll() throws IOException, RecoverException, MetadataArgsErrorException {
+  public void testRecoverAll() throws IOException, RecoverException, MetadataErrorException {
     // this test create 5 log nodes and recover them
     File tempRestore = File.createTempFile("managerTest", "restore");
     File tempProcessorStore = File.createTempFile("managerTest", "processorStore");

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import org.antlr.runtime.RecognitionException;
 import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -108,7 +109,8 @@ public class TestConcatOptimizer {
 
   @Test
   public void testConcat1()
-      throws QueryProcessorException, RecognitionException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, RecognitionException, ArgsErrorException, ProcessorException,
+      MetadataErrorException {
     String inputSQL = "select s1 from root.laptop.d1";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
@@ -116,7 +118,8 @@ public class TestConcatOptimizer {
 
   @Test
   public void testConcat2()
-      throws QueryProcessorException, RecognitionException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, RecognitionException, ArgsErrorException,
+      ProcessorException, MetadataErrorException {
     String inputSQL = "select s1 from root.laptop.*";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
@@ -126,7 +129,8 @@ public class TestConcatOptimizer {
 
   @Test
   public void testConcat3()
-      throws QueryProcessorException, RecognitionException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, RecognitionException, ArgsErrorException,
+      ProcessorException, MetadataErrorException {
     String inputSQL = "select s1 from root.laptop.d1 where s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     SingleSeriesExpression seriesExpression = new SingleSeriesExpression(

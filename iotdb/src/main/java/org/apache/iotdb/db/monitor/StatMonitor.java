@@ -33,7 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
@@ -88,7 +89,7 @@ public class StatMonitor implements IService {
         if (!mmanager.pathExist(prefix)) {
           mmanager.setStorageLevelToMTree(prefix);
         }
-      } catch (PathErrorException | IOException e) {
+      } catch (MetadataErrorException e) {
         LOGGER.error("MManager cannot set storage level to MTree.", e);
       }
     }
@@ -164,12 +165,12 @@ public class StatMonitor implements IService {
         }
 
         if (!mManager.pathExist(entry.getKey())) {
-          mManager.addPathToMTree(entry.getKey(), TSDataType.valueOf(entry.getValue()),
+          mManager.addPathToMTree(new Path(entry.getKey()), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
               Collections.emptyMap());
         }
       }
-    } catch (IOException | PathErrorException e) {
+    } catch (MetadataErrorException e) {
       LOGGER.error("Initialize the metadata error.", e);
     }
   }
