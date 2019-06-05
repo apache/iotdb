@@ -72,7 +72,8 @@ public class MManagerBasicTest {
       manager.setStorageLevelToMTree("root.laptop");
     } catch (MetadataErrorException e) {
       Assert.assertEquals(
-          "The seriesPath of root.laptop already exist, it can't be set to the storage group",
+          "org.apache.iotdb.db.exception.PathErrorException: The seriesPath of"
+              + " root.laptop already exist, it can't be set to the storage group",
           e.getMessage());
     }
 
@@ -298,7 +299,7 @@ public class MManagerBasicTest {
       manager.setStorageLevelToMTree("root.laptop.d2");
       manager.addPathToMTree(new Path("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.addPathToMTree(new Path("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+      manager.addPathToMTree(new Path("root.laptop.d2.s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
       List<String> list = new ArrayList<>();
