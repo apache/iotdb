@@ -22,23 +22,33 @@ import java.io.File;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.utils.FileUtils;
-import org.apache.iotdb.db.utils.SyncUtils;
 
 public class SyncSenderConfig {
 
   private String[] bufferwriteDirectory = IoTDBDescriptor.getInstance().getConfig()
       .getBufferWriteDirs();
-  private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getDataDir();
-  private String lockFilePath;
-  private String uuidPath;
-  private String lastFileInfo;
-  private String[] snapshotPaths;
-  private String schemaPath;
-  private String serverIp = "127.0.0.1";
-  private int serverPort = 5555;
-  private int uploadCycleInSeconds = 10;
 
+  private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getDataDir();
+
+  private String lockFilePath;
+
+  private String uuidPath;
+
+  private String lastFileInfo;
+
+  private String[] snapshotPaths;
+
+  private String schemaPath;
+
+  private String serverIp = "127.0.0.1";
+
+  private int serverPort = 5555;
+
+  private int syncPeriodInSecond = 10;
+
+  /**
+   * Init path
+   */
   public void init() {
     String metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
     metadataDirPath = FilePathUtils.regularizePath(metadataDirPath);
@@ -127,12 +137,12 @@ public class SyncSenderConfig {
     this.serverPort = serverPort;
   }
 
-  public int getUploadCycleInSeconds() {
-    return uploadCycleInSeconds;
+  public int getSyncPeriodInSecond() {
+    return syncPeriodInSecond;
   }
 
-  public void setUploadCycleInSeconds(int uploadCycleInSeconds) {
-    this.uploadCycleInSeconds = uploadCycleInSeconds;
+  public void setSyncPeriodInSecond(int syncPeriodInSecond) {
+    this.syncPeriodInSecond = syncPeriodInSecond;
   }
 
   public String getLockFilePath() {
