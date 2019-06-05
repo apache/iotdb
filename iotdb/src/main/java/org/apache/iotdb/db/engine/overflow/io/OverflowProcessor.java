@@ -117,13 +117,7 @@ public class OverflowProcessor extends Processor {
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
 
     reopen();
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      logNode = MultiFileLogNodeManager.getInstance().getNode(
-          processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX,
-          getOverflowRestoreFile(),
-          FileNodeManager.getInstance().getRestoreFilePath(processorName));
-    }
+    getLogNode();
   }
 
   public void reopen() throws IOException {
@@ -690,7 +684,15 @@ public class OverflowProcessor extends Processor {
     }
   }
 
-  public WriteLogNode getLogNode() {
+  public WriteLogNode getLogNode() throws IOException {
+    if (logNode == null) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        logNode = MultiFileLogNodeManager.getInstance().getNode(
+            processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX,
+            getOverflowRestoreFile(),
+            FileNodeManager.getInstance().getRestoreFilePath(processorName));
+      }
+    }
     return logNode;
   }
 
