@@ -29,7 +29,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
@@ -109,15 +108,10 @@ public class BufferWriteProcessor extends Processor {
     filenodeFlushAction = parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
 
     reopen(fileName);
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      try {
-        logNode = MultiFileLogNodeManager.getInstance().getNode(
-            processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX,
-            getBufferwriteRestoreFilePath(),
-            FileNodeManager.getInstance().getRestoreFilePath(processorName));
-      } catch (IOException e) {
-        throw new BufferWriteProcessorException(e);
-      }
+    try {
+      getLogNode();
+    } catch (IOException e) {
+      throw new BufferWriteProcessorException(e);
     }
     this.versionController = versionController;
 
@@ -495,7 +489,15 @@ public class BufferWriteProcessor extends Processor {
     writer.setNewResource(isNewProcessor);
   }
 
-  public WriteLogNode getLogNode() {
+  public WriteLogNode getLogNode() throws IOException {
+    if (logNode == null) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        logNode = MultiFileLogNodeManager.getInstance().getNode(
+            processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX,
+            getBufferwriteRestoreFilePath(),
+            FileNodeManager.getInstance().getRestoreFilePath(processorName));
+      }
+    }
     return logNode;
   }
 
