@@ -190,7 +190,7 @@ public abstract class AbstractClient {
       printTimestamp = !res.getMetaData().getColumnTypeName(0).equalsIgnoreCase(NEED_NOT_TO_PRINT_TIMESTAMP);
     }
     if (res instanceof IoTDBQueryResultSet) {
-      printTimestamp = printTimestamp && ((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
+      printTimestamp = printTimestamp && !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
     }
 
     // Output values
