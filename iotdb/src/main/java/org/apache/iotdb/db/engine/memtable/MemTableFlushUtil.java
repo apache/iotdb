@@ -88,23 +88,38 @@ public class MemTableFlushUtil {
    */
   public static void flushMemTable(FileSchema fileSchema, TsFileIOWriter tsFileIoWriter,
       IMemTable imemTable, long version) throws IOException {
+    long tmpTime;
+    long sortTime = 0;
+    long memSerializeTime = 0;
+    long ioTime = 0;
     for (String deviceId : imemTable.getMemTableMap().keySet()) {
       long startPos = tsFileIoWriter.getPos();
       tsFileIoWriter.startFlushChunkGroup(deviceId);
       int seriesNumber = imemTable.getMemTableMap().get(deviceId).size();
       for (String measurementId : imemTable.getMemTableMap().get(deviceId).keySet()) {
+        long startTime = System.nanoTime();
         // TODO if we can not use TSFileIO writer, then we have to redesign the class of TSFileIO.
         IWritableMemChunk series = imemTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
+        List<TimeValuePair> sortedTimeValuePairs = series.getSortedTimeValuePairList();
+        tmpTime = System.nanoTime();
+        sortTime += tmpTime - startTime;
         ChunkBuffer chunkBuffer = new ChunkBuffer(desc);
         IChunkWriter seriesWriter = new ChunkWriterImpl(desc, chunkBuffer, PAGE_SIZE_THRESHOLD);
-        List<TimeValuePair> sortedTimeValuePairs = series.getSortedTimeValuePairList();
         writeOneSeries(sortedTimeValuePairs, seriesWriter, desc.getType());
+        startTime = System.nanoTime();
+        memSerializeTime += startTime - tmpTime;
         seriesWriter.writeToFileWriter(tsFileIoWriter);
+        ioTime += System.nanoTime() - startTime;
       }
+      tmpTime = System.nanoTime();
       long memSize = tsFileIoWriter.getPos() - startPos;
       ChunkGroupFooter footer = new ChunkGroupFooter(deviceId, memSize, seriesNumber);
       tsFileIoWriter.endChunkGroup(footer, version);
+      ioTime += System.nanoTime() - tmpTime;
     }
+    LOGGER.info(
+        "flushing a memtable into disk: data sort time cost {} ms, serialize data into mem cost {} ms, io cost {} ms.",
+        sortTime / 1000_000, memSerializeTime / 1000_000, ioTime / 1000_000);
   }
 }
