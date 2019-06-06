@@ -128,6 +128,13 @@ public class FileNodeManager implements IStatistic, IService {
     }
 
     closedProcessorCleaner.scheduleWithFixedDelay(()->{
+      int size = 0;
+      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
+        size += fileNodeProcessor.getClosingBufferWriteProcessor().size();
+      }
+      if (size > 5) {
+        LOGGER.info("Current closing processor number is {}", size);
+      }
       for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
         Iterator<BufferWriteProcessor> iterator =
             fileNodeProcessor.getClosingBufferWriteProcessor().iterator();

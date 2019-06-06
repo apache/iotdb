@@ -54,4 +54,8 @@ public class CopyOnWriteLinkedList<T> {
     }
     return readCopy;
   }
+
+  public int size() {
+    return data.size();
+  }
 }
