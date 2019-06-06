@@ -283,14 +283,19 @@ public class IoTDBConfig {
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
   /**
-   * Is stat time cost of sub-module in write process enable.
+   * Is stat performance of sub-module enable.
    */
-  private boolean enableWritePerformanceStat = false;
+  private boolean enablePerformanceStat = false;
 
   /**
-   * The display of stat time cost interval in ms.
+   * The display of stat performance interval in ms.
    */
   private long performanceStatDisplayInterval = 60000;
+
+  /**
+   * The memory used for stat performance.
+   */
+  private int performance_stat_memory_in_kb = 20;
 
   public IoTDBConfig() {
     // empty constructor
@@ -840,12 +845,12 @@ public class IoTDBConfig {
     this.rpcImplClassName = rpcImplClassName;
   }
 
-  public boolean isEnableWritePerformanceStat() {
-    return enableWritePerformanceStat;
+  public boolean isEnablePerformanceStat() {
+    return enablePerformanceStat;
   }
 
-  public void setEnableWritePerformanceStat(boolean enableWritePerformanceStat) {
-    this.enableWritePerformanceStat = enableWritePerformanceStat;
+  public void setEnablePerformanceStat(boolean enablePerformanceStat) {
+    this.enablePerformanceStat = enablePerformanceStat;
   }
 
   public long getPerformanceStatDisplayInterval() {
@@ -854,5 +859,13 @@ public class IoTDBConfig {
 
   public void setPerformanceStatDisplayInterval(long performanceStatDisplayInterval) {
     this.performanceStatDisplayInterval = performanceStatDisplayInterval;
+  }
+
+  public int getPerformance_stat_memory_in_kb() {
+    return performance_stat_memory_in_kb;
+  }
+
+  public void setPerformance_stat_memory_in_kb(int performance_stat_memory_in_kb) {
+    this.performance_stat_memory_in_kb = performance_stat_memory_in_kb;
   }
 }

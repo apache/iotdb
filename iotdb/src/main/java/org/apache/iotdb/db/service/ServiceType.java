@@ -30,7 +30,8 @@ public enum ServiceType {
   JVM_MEM_CONTROL_SERVICE("Memory Controller", ""),
   AUTHORIZATION_SERVICE("Authorization ServerService", ""),
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
-  SYNC_SERVICE("SYNC ServerService", "");
+  SYNC_SERVICE("SYNC ServerService", ""),
+  PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE");
 
   private String name;
   private String jmxName;
