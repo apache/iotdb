@@ -271,7 +271,9 @@ public class BufferWriteProcessor extends Processor {
   }
 
   private void switchWorkToFlush() {
+    LOGGER.info("BufferWrite Processor {} try to get flushQueryLock for switchWorkToFlush", getProcessorName());
     flushQueryLock.lock();
+    LOGGER.info("BufferWrite Processor {} get flushQueryLock for switchWorkToFlush successfully", getProcessorName());
     try {
       IMemTable temp = flushMemTable == null ? new PrimitiveMemTable() : flushMemTable;
       flushMemTable = workMemTable;
@@ -279,17 +281,21 @@ public class BufferWriteProcessor extends Processor {
       isFlush = true;
     } finally {
       flushQueryLock.unlock();
+      LOGGER.info("BufferWrite Processor {} release the flushQueryLock for switchWorkToFlush successfully", getProcessorName());
     }
   }
 
   private void switchFlushToWork() {
+    LOGGER.info("BufferWrite Processor {} try to get flushQueryLock for switchFlushToWork", getProcessorName());
     flushQueryLock.lock();
+    LOGGER.info("BufferWrite Processor {} get flushQueryLock for switchFlushToWork", getProcessorName());
     try {
       flushMemTable.clear();
       writer.appendMetadata();
       isFlush = false;
     } finally {
       flushQueryLock.unlock();
+      LOGGER.info("BufferWrite Processor {} release the flushQueryLock for switchFlushToWork successfully", getProcessorName());
     }
   }
 
@@ -372,7 +378,7 @@ public class BufferWriteProcessor extends Processor {
       flushFuture.get();
       long timeCost = System.currentTimeMillis() - startTime;
       if (timeCost > 10) {
-        LOGGER.info("wait for the previous flushing task for {} ms.", timeCost);
+        LOGGER.info("BufferWrite Processor {} wait for the previous flushing task for {} ms.", getProcessorName(), timeCost);
       }
     } catch (InterruptedException | ExecutionException e) {
       throw new IOException(e);
@@ -388,6 +394,7 @@ public class BufferWriteProcessor extends Processor {
       final long walTaskId;
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         walTaskId = logNode.notifyStartFlush();
+        LOGGER.info("BufferWrite Processor {} has notified WAL for flushing.", getProcessorName());
       } else {
         walTaskId = 0;
       }
