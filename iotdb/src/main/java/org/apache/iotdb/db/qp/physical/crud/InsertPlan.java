@@ -70,7 +70,7 @@ public class InsertPlan extends PhysicalPlan {
     List<Path> ret = new ArrayList<>();
 
     for (String m : measurements) {
-      ret.add(new Path(deviceId + "." + m));
+      ret.add(new Path(deviceId, m));
     }
     return ret;
   }
