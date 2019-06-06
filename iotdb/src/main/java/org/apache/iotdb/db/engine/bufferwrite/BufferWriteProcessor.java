@@ -75,7 +75,7 @@ public class BufferWriteProcessor extends Processor {
   private Consumer<BufferWriteProcessor> bufferwriteCloseConsumer;
   private Action filenodeFlushAction;
 
-  //lastFlushTime time unit: nanosecond
+  //lastFlushTime time unit: millisecond
   private long lastFlushTime = -1;
   private long valueCount = 0;
 
@@ -358,12 +358,12 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.info(
             "The bufferwrite processor {}: last flush time is {}, this flush time is {}, "
                 + "flush time interval is {}s", getProcessorName(),
-            DatetimeUtils.convertMillsecondToZonedDateTime(lastFlushTime / 1000),
+            DatetimeUtils.convertMillsecondToZonedDateTime(lastFlushTime),
             DatetimeUtils.convertMillsecondToZonedDateTime(thisFlushTime),
-            (thisFlushTime - lastFlushTime / 1000) / 1000);
+            (thisFlushTime - lastFlushTime) / 1000);
       }
     }
-    lastFlushTime = System.nanoTime();
+    lastFlushTime = System.currentTimeMillis();
     // check value count
     // waiting for the end of last flush operation.
     try {
@@ -536,7 +536,7 @@ public class BufferWriteProcessor extends Processor {
 
   /**
    * used for test. We can know when the flush() is called.
-   * @return the last flush() time. Time unit: nanosecond.
+   * @return the last flush() time. Time unit: millisecond.
    */
   public long getLastFlushTime() {
     return lastFlushTime;
