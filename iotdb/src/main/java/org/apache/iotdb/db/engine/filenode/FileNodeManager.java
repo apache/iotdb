@@ -885,6 +885,7 @@ public class FileNodeManager implements IStatistic, IService {
       FileUtils.deleteDirectory(new File(fileNodePath));
 
       cleanBufferWrite(processorName);
+      cleanOverflow(processorName);
 
       MultiFileLogNodeManager.getInstance()
           .deleteNode(processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX);
@@ -896,6 +897,29 @@ public class FileNodeManager implements IStatistic, IService {
     } finally {
       fileNodeManagerStatus = FileNodeManagerStatus.NONE;
     }
+  }
+
+  private void cleanOverflow(String processorName) throws IOException {
+    String overflowDirPath = TsFileDBConf.getOverflowDataDir();
+    String overflowPath = standardizeDir(overflowDirPath) + processorName;
+    File overflowDir = new File(overflowPath);
+    // free and close the streams under this overflow directory
+    if (!overflowDir.exists()) {
+      return;
+    }
+    File[] overflowSubDirs = overflowDir.listFiles();
+    if (overflowSubDirs == null) {
+      return;
+    }
+    for (File overflowSubDir : overflowSubDirs) {
+      File[] overflowFiles = overflowSubDir.listFiles();
+      if (overflowFiles != null) {
+        for (File overflowFile : overflowFiles) {
+          FileReaderManager.getInstance().closeFileAndRemoveReader(overflowFile.getPath());
+        }
+      }
+    }
+    FileUtils.deleteDirectory(overflowDir);
   }
 
   private void cleanBufferWrite(String processorName) throws IOException {
