@@ -136,4 +136,12 @@ public class FlushManager {
     }
     private static FlushManager instance = new FlushManager();
   }
+
+  public int getWaitingTasksNumber() {
+    return ((ThreadPoolExecutor) pool).getQueue().size();
+  }
+
+  public int getCorePoolSize() {
+    return ((ThreadPoolExecutor) pool).getCorePoolSize();
+  }
 }

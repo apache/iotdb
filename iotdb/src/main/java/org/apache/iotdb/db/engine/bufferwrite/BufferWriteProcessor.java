@@ -356,7 +356,8 @@ public class BufferWriteProcessor extends Processor {
       if (LOGGER.isInfoEnabled()) {
         long thisFlushTime = System.currentTimeMillis();
         LOGGER.info(
-            "The bufferwrite processor {}: last flush time is {}, this flush time is {}, "
+            "The bufferwrite processor {} will submit a flush task."
+                + "The last flush time is {}, this flush time is {}, "
                 + "flush time interval is {}s", getProcessorName(),
             DatetimeUtils.convertMillsecondToZonedDateTime(lastFlushTime),
             DatetimeUtils.convertMillsecondToZonedDateTime(thisFlushTime),
@@ -396,6 +397,12 @@ public class BufferWriteProcessor extends Processor {
       BasicMemController.getInstance().releaseUsage(this, memSize.get());
       memSize.set(0);
       // switch
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info(
+            "Begin to submit flush task for bufferwrite processor {}, current Flush Queue is {}, core pool size is {}.",
+            getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
+            FlushManager.getInstance().getCorePoolSize());
+      }
       flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
           version, walTaskId));
     } else {
