@@ -65,13 +65,18 @@ public class Path implements Serializable {
     init(splits);
   }
 
+  /**
+   * construct a Path directly using device and measurement, no need to reformat the path
+   * @param device root.deviceType.d1
+   * @param measurement s1 , does not contain SystemConstant.PATH_SEPARATOR
+   */
   public Path(String device, String measurement) {
     if (device == null || measurement == null) {
       throw new IllegalArgumentException(illegalPathArgument);
     }
-    String[] splits = (device + SystemConstant.PATH_SEPARATOR + measurement)
-        .split(SystemConstant.PATH_SEPARATER_NO_REGEX);
-    init(splits);
+    this.device = device;
+    this.measurement = measurement;
+    this.fullPath = device + SystemConstant.PATH_SEPARATOR + measurement;
   }
 
   public static Path mergePath(Path prefix, Path suffix) {
