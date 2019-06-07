@@ -136,6 +136,7 @@ public class BufferWriteProcessor extends Processor {
     }
 
     try {
+      LOGGER.info("wait for flush to reopen a BufferWrite Processor {}", processorName);
       this.flushFuture.get();
       this.closeFuture.get();
     } catch (InterruptedException | ExecutionException e) {
@@ -446,7 +447,7 @@ public class BufferWriteProcessor extends Processor {
       //Future<Boolean> flush = flush();
       //and wait for finishing flush async
       LOGGER.info("Submit a BufferWrite ({}) close task.", getProcessorName());
-      closeFuture = FlushManager.getInstance().submit(() -> closeTask());
+      closeFuture = new BWCloseFuture(FlushManager.getInstance().submit(() -> closeTask()));
       //now, we omit the future of the closeTask.
     } catch (Exception e) {
       LOGGER
