@@ -38,6 +38,7 @@ import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
+import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.pool.FlushManager;
@@ -317,8 +318,8 @@ public class BufferWriteProcessor extends Processor {
     try {
       if (flushMemTable != null && !flushMemTable.isEmpty()) {
         // flush data
-        MemTableFlushUtil.flushMemTable(fileSchema, writer, flushMemTable,
-            version);
+        MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, getProcessorName());
+        tableFlushTask.flushMemTable(fileSchema, flushMemTable, version);
         // write restore information
         writer.flush();
       }
