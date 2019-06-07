@@ -137,22 +137,7 @@ public class FileNodeManager implements IStatistic, IService {
         LOGGER.info("Current closing processor number is {}", size);
       }
       for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
-        Iterator<BufferWriteProcessor> iterator =
-            fileNodeProcessor.getClosingBufferWriteProcessor().iterator();
-        while (iterator.hasNext()) {
-          BufferWriteProcessor processor = iterator.next();
-          try {
-            if (processor.getCloseFuture().get(10, TimeUnit.MILLISECONDS)) {
-              //if finished, we can remove it.
-              iterator.remove();
-            }
-          } catch (InterruptedException | ExecutionException e) {
-            LOGGER.error("Close bufferwrite processor {} failed.", processor.getProcessorName(), e);
-          } catch (TimeoutException e) {
-            //do nothing.
-          }
-        }
-        fileNodeProcessor.getClosingBufferWriteProcessor().reset();
+        fileNodeProcessor.checkAllClosingProcessors();
       }
     }, 0, 3000, TimeUnit.MILLISECONDS);
 
@@ -1222,6 +1207,23 @@ public class FileNodeManager implements IStatistic, IService {
       closeAll();
     } catch (FileNodeManagerException e) {
       LOGGER.error("Failed to close file node manager because .", e);
+    }
+
+    boolean notFinished = true;
+    while (notFinished) {
+      int size = 0;
+      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
+        size += fileNodeProcessor.getClosingBufferWriteProcessor().size();
+      }
+      if (size == 0) {
+        notFinished = false;
+      } else {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+          LOGGER.error("File node Manager Stop process is interrupted", e);
+        }
+      }
     }
     closedProcessorCleaner.shutdownNow();
   }
