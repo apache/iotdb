@@ -374,7 +374,7 @@ public class BufferWriteProcessor extends Processor {
 
   // keyword synchronized is added in this method, so that only one flush task can be submitted now.
   private Future<Boolean> flush(boolean isCloseTaskCalled) throws IOException {
-    if (isClosed) {
+    if (!isCloseTaskCalled && isClosed) {
       throw new IOException("BufferWriteProcessor closed");
     }
     // statistic information for flush
@@ -452,12 +452,12 @@ public class BufferWriteProcessor extends Processor {
   }
 
   @Override
-  public void close() throws BufferWriteProcessorException {
+  public synchronized void close() throws BufferWriteProcessorException {
     if (isClosed) {
       return;
     }
     try {
-
+      isClosed = true;
       // flush data (if there are flushing task, flush() will be blocked)
       //Future<Boolean> flush = flush();
       //and wait for finishing flush async
@@ -479,6 +479,10 @@ public class BufferWriteProcessor extends Processor {
       LOGGER.info("Bufferwrite {} Close Task: finishing the flush.", getProcessorName());
       // end file
       writer.endFile(fileSchema);
+      //FIXME suppose the flush-thread-pool is 2.
+      // then if a flush task and a close task are running in the same time
+      // and the close task is faster, then writer == null, and the flush task will throw nullpointer
+      // expcetion. Add "synchronized" keyword on both flush and close may solve the issue.
       writer = null;
       isClosed = true;
       //A BUG may appears here: workMemTable has been cleared,
