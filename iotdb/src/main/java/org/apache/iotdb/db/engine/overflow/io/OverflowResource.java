@@ -32,6 +32,7 @@ import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -210,7 +211,7 @@ public class OverflowResource {
     // insert data
     long startPos = insertIO.getPos();
     long startTime = System.currentTimeMillis();
-    flush(fileSchema, memTable);
+    flush2(fileSchema, memTable, processorName);
     long timeInterval = System.currentTimeMillis() - startTime;
     timeInterval = timeInterval == 0 ? 1 : timeInterval;
     long insertSize = insertIO.getPos() - startPos;
@@ -225,12 +226,14 @@ public class OverflowResource {
     writePositionInfo(insertIO.getPos(), 0);
   }
 
-  public void flush(FileSchema fileSchema, IMemTable memTable) throws IOException {
+  public void flush2(FileSchema fileSchema, IMemTable memTable, String processorName) throws IOException {
     if (memTable != null && !memTable.isEmpty()) {
       insertIO.toTail();
       long lastPosition = insertIO.getPos();
-      MemTableFlushUtil.flushMemTable(fileSchema, insertIO, memTable,
-          versionController.nextVersion());
+//      MemTableFlushUtil.flushMemTable(fileSchema, insertIO, memTable,
+//          versionController.nextVersion());
+      MemTableFlushTask task = new MemTableFlushTask(insertIO, processorName);
+      task.flushMemTable(fileSchema, memTable, versionController.nextVersion());
       List<ChunkGroupMetaData> rowGroupMetaDatas = insertIO.getChunkGroupMetaDatas();
       appendInsertMetadatas.addAll(rowGroupMetaDatas);
       if (!rowGroupMetaDatas.isEmpty()) {
