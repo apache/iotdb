@@ -431,15 +431,16 @@ public class BufferWriteProcessor extends Processor {
             FlushManager.getInstance().getCorePoolSize());
         flushTask("synchronously", version, walTaskId);
         flushFuture = new ImmediateFuture<>(true);
+      } else {
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Begin to submit flush task for bufferwrite processor {}, current Flush Queue is {}, core pool size is {}.",
+              getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
+              FlushManager.getInstance().getCorePoolSize());
+        }
+        flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
+            version, walTaskId));
       }
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info(
-            "Begin to submit flush task for bufferwrite processor {}, current Flush Queue is {}, core pool size is {}.",
-            getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
-            FlushManager.getInstance().getCorePoolSize());
-      }
-      flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
-          version, walTaskId));
     } else {
       flushFuture = new ImmediateFuture<>(true);
     }
