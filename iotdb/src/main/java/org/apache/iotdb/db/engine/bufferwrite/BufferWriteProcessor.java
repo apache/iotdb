@@ -25,8 +25,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -66,6 +69,7 @@ public class BufferWriteProcessor extends Processor {
   private RestorableTsFileIOWriter writer;
   private FileSchema fileSchema;
   private volatile Future<Boolean> flushFuture = new ImmediateFuture<>(true);
+  private volatile Future<Boolean> closeFuture = new BWCloseFuture(new ImmediateFuture<>(true));
   private ReentrantLock flushQueryLock = new ReentrantLock();
   private AtomicLong memSize = new AtomicLong();
   private long memThreshold = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
@@ -129,6 +133,13 @@ public class BufferWriteProcessor extends Processor {
   public void reopen(String fileName) throws BufferWriteProcessorException {
     if (!isClosed) {
       return;
+    }
+
+    try {
+      this.flushFuture.get();
+      this.closeFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      LOGGER.error("reopen error in Bufferwrite Processor {}", processorName, e);
     }
     new File(baseDir, processorName).mkdirs();
     this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
@@ -434,7 +445,8 @@ public class BufferWriteProcessor extends Processor {
       // flush data (if there are flushing task, flush() will be blocked)
       //Future<Boolean> flush = flush();
       //and wait for finishing flush async
-      flushFuture = FlushManager.getInstance().submit(() -> closeTask());
+      LOGGER.info("Submit a BufferWrite ({}) close task.", getProcessorName());
+      closeFuture = FlushManager.getInstance().submit(() -> closeTask());
       //now, we omit the future of the closeTask.
     } catch (Exception e) {
       LOGGER
@@ -446,8 +458,9 @@ public class BufferWriteProcessor extends Processor {
   private boolean closeTask() {
     long closeStartTime = System.currentTimeMillis();
     try {
+      LOGGER.info("Bufferwrite {} Close Task: begin to wait for the flush.", getProcessorName());
       flush().get();
-//      flush.get();
+      LOGGER.info("Bufferwrite {} Close Task: finishing the flush.", getProcessorName());
       // end file
       writer.endFile(fileSchema);
       writer = null;
@@ -609,5 +622,43 @@ public class BufferWriteProcessor extends Processor {
   }
   public void setCurrentTsFileResource(TsFileResource resource) {
     this.currentTsFileResource = resource;
+  }
+
+  public Future<Boolean> getCloseFuture() {
+    return closeFuture;
+  }
+
+
+  class BWCloseFuture implements Future<Boolean> {
+    Future<Boolean> future;
+    public BWCloseFuture(Future<Boolean> closeFuture) {
+      this.future = closeFuture;
+    }
+
+    @Override
+    public boolean cancel(boolean mayInterruptIfRunning) {
+      return future.cancel(mayInterruptIfRunning);
+    }
+
+    @Override
+    public boolean isCancelled() {
+      return future.isCancelled();
+    }
+
+    @Override
+    public boolean isDone() {
+      return future.isDone();
+    }
+
+    @Override
+    public Boolean get() throws InterruptedException, ExecutionException {
+      return flushFuture.get() && future.get();
+    }
+
+    @Override
+    public Boolean get(long timeout, TimeUnit unit)
+        throws InterruptedException, ExecutionException, TimeoutException {
+      return flushFuture.get(timeout, unit) && future.get(timeout, unit);
+    }
   }
 }

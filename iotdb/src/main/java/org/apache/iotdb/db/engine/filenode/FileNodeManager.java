@@ -142,7 +142,7 @@ public class FileNodeManager implements IStatistic, IService {
         while (iterator.hasNext()) {
           BufferWriteProcessor processor = iterator.next();
           try {
-            if (processor.getFlushFuture().get(10, TimeUnit.MILLISECONDS)) {
+            if (processor.getCloseFuture().get(10, TimeUnit.MILLISECONDS)) {
               //if finished, we can remove it.
               iterator.remove();
             }

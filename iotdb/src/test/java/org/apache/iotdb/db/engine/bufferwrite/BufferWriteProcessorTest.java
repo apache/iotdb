@@ -149,7 +149,7 @@ public class BufferWriteProcessorTest {
     restoreFile.renameTo(file);
     bufferwrite.close();
     try {
-      bufferwrite.getFlushFuture().get();
+      bufferwrite.getCloseFuture().get();
     } catch (ExecutionException e) {
       fail(e.getMessage());
     }
@@ -169,7 +169,7 @@ public class BufferWriteProcessorTest {
     assertEquals(dataType, chunkMetaData.getTsDataType());
     bufferWriteProcessor.close();
     try {
-      bufferWriteProcessor.getFlushFuture().get();
+      bufferWriteProcessor.getCloseFuture().get();
     } catch (ExecutionException e) {
       fail(e.getMessage());
     }
@@ -206,7 +206,7 @@ public class BufferWriteProcessorTest {
     bufferWriteProcessor.close();
     bufferwrite.close();
     try {
-      bufferwrite.getFlushFuture().get();
+      bufferwrite.getCloseFuture().get();
     } catch (ExecutionException e) {
       fail(e.getMessage());
     }

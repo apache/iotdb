@@ -1793,7 +1793,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         waitForBufferWriteClose();
       }
       bufferWriteProcessor.close();
-      Future<Boolean> result = bufferWriteProcessor.getFlushFuture();
+      Future<Boolean> result = bufferWriteProcessor.getCloseFuture();
       closingBufferWriteProcessor.add(bufferWriteProcessor);
       bufferWriteProcessor = null;
       return result;
@@ -1845,6 +1845,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   @Override
   public void close() throws FileNodeProcessorException {
+    LOGGER.info("Will close FileNode Processor {}.", getProcessorName());
     Future<Boolean> result = closeBufferWrite();
     try {
       result.get();
