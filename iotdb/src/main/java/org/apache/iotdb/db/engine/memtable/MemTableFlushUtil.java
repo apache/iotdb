@@ -97,29 +97,29 @@ public class MemTableFlushUtil {
       tsFileIoWriter.startFlushChunkGroup(deviceId);
       int seriesNumber = imemTable.getMemTableMap().get(deviceId).size();
       for (String measurementId : imemTable.getMemTableMap().get(deviceId).keySet()) {
-        long startTime = System.nanoTime();
+        long startTime = System.currentTimeMillis();
         // TODO if we can not use TSFileIO writer, then we have to redesign the class of TSFileIO.
         IWritableMemChunk series = imemTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
         List<TimeValuePair> sortedTimeValuePairs = series.getSortedTimeValuePairList();
-        tmpTime = System.nanoTime();
+        tmpTime = System.currentTimeMillis();
         sortTime += tmpTime - startTime;
         ChunkBuffer chunkBuffer = new ChunkBuffer(desc);
         IChunkWriter seriesWriter = new ChunkWriterImpl(desc, chunkBuffer, PAGE_SIZE_THRESHOLD);
         writeOneSeries(sortedTimeValuePairs, seriesWriter, desc.getType());
-        startTime = System.nanoTime();
+        startTime = System.currentTimeMillis();
         memSerializeTime += startTime - tmpTime;
         seriesWriter.writeToFileWriter(tsFileIoWriter);
-        ioTime += System.nanoTime() - startTime;
+        ioTime += System.currentTimeMillis() - startTime;
       }
-      tmpTime = System.nanoTime();
+      tmpTime = System.currentTimeMillis();
       long memSize = tsFileIoWriter.getPos() - startPos;
       ChunkGroupFooter footer = new ChunkGroupFooter(deviceId, memSize, seriesNumber);
       tsFileIoWriter.endChunkGroup(footer, version);
-      ioTime += System.nanoTime() - tmpTime;
+      ioTime += System.currentTimeMillis() - tmpTime;
     }
     LOGGER.info(
         "flushing a memtable into disk: data sort time cost {} ms, serialize data into mem cost {} ms, io cost {} ms.",
-        sortTime / 1000_000, memSerializeTime / 1000_000, ioTime / 1000_000);
+        sortTime , memSerializeTime , ioTime );
   }
 }

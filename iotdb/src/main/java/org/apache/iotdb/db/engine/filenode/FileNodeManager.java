@@ -43,6 +43,7 @@ import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
+import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
 import org.apache.iotdb.db.engine.overflow.io.OverflowProcessor;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -309,13 +310,21 @@ public class FileNodeManager implements IStatistic, IService {
    * @param tsRecord input Data
    * @param isMonitor if true, the insertion is done by StatMonitor and the statistic Info will not
    * be recorded. if false, the statParamsHashMap will be updated.
-   * @return an int value represents the insert type
+   * @return an int value represents the insert type, 0: failed; 1: overflow; 2: bufferwrite
    */
   public int insert(TSRecord tsRecord, boolean isMonitor) throws FileNodeManagerException {
     long timestamp = tsRecord.time;
 
     String deviceId = tsRecord.deviceId;
     checkTimestamp(tsRecord);
+//    //if memory is dangerous, directly reject
+//    long memUsage = MemUtils.getRecordSize(tsRecord);
+//    BasicMemController.UsageLevel level = BasicMemController.getInstance()
+//        .acquireUsage(this, memUsage);
+//    if (level == UsageLevel.DANGEROUS) {
+//      return 0;
+//    }
+
     updateStat(isMonitor, tsRecord);
 
     FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
@@ -458,6 +467,7 @@ public class FileNodeManager implements IStatistic, IService {
         throw new FileNodeManagerException(e);
       }
     }
+
     // write wal
     try {
       writeLog(tsRecord, isMonitor, bufferWriteProcessor.getLogNode());

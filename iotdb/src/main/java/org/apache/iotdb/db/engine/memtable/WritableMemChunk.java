@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import org.apache.iotdb.db.utils.PrimitiveArrayList;
 import org.apache.iotdb.db.utils.PrimitiveArrayListFactory;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -135,7 +134,6 @@ public class WritableMemChunk implements IWritableMemChunk {
     map.forEach((k, v) -> ret.add(new TimeValuePairInMemTable(k, v)));
     ret.sort(TimeValuePair::compareTo);
     return ret;
-
   }
 
   @Override
