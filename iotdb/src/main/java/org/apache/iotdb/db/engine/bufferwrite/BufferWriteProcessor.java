@@ -138,7 +138,9 @@ public class BufferWriteProcessor extends Processor {
     try {
       LOGGER.info("wait for flush to reopen a BufferWrite Processor {}", processorName);
       this.flushFuture.get();
+      LOGGER.info("wait for close to reopen a BufferWrite Processor {}", processorName);
       this.closeFuture.get();
+      LOGGER.info("now begin to reopen the bufferwrite processor {}", processorName);
     } catch (InterruptedException | ExecutionException e) {
       LOGGER.error("reopen error in Bufferwrite Processor {}", processorName, e);
     }
@@ -367,6 +369,11 @@ public class BufferWriteProcessor extends Processor {
   // keyword synchronized is added in this method, so that only one flush task can be submitted now.
   @Override
   public synchronized Future<Boolean> flush() throws IOException {
+    return flush(false);
+  }
+
+  // keyword synchronized is added in this method, so that only one flush task can be submitted now.
+  private Future<Boolean> flush(boolean isCloseTaskCalled) throws IOException {
     if (isClosed) {
       throw new IOException("BufferWriteProcessor closed");
     }
@@ -417,6 +424,14 @@ public class BufferWriteProcessor extends Processor {
       BasicMemController.getInstance().releaseUsage(this, memSize.get());
       memSize.set(0);
       // switch
+      if (isCloseTaskCalled) {
+        LOGGER.info(
+            "flush memtable for bufferwrite processor {} synchronously for close task.",
+            getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
+            FlushManager.getInstance().getCorePoolSize());
+        flushTask("synchronously", version, walTaskId);
+        flushFuture = new ImmediateFuture<>(true);
+      }
       if (LOGGER.isInfoEnabled()) {
         LOGGER.info(
             "Begin to submit flush task for bufferwrite processor {}, current Flush Queue is {}, core pool size is {}.",
@@ -460,7 +475,7 @@ public class BufferWriteProcessor extends Processor {
     long closeStartTime = System.currentTimeMillis();
     try {
       LOGGER.info("Bufferwrite {} Close Task: begin to wait for the flush.", getProcessorName());
-      flush().get();
+      flush(true);
       LOGGER.info("Bufferwrite {} Close Task: finishing the flush.", getProcessorName());
       // end file
       writer.endFile(fileSchema);
@@ -485,7 +500,7 @@ public class BufferWriteProcessor extends Processor {
             closeEndTime - closeStartTime);
       }
 
-    }catch (IOException | InterruptedException | ExecutionException|ActionException e) {
+    }catch (IOException | ActionException e) {
       LOGGER.error("Close bufferwrite processor {} failed.", getProcessorName(), e);
       return false;
     }
