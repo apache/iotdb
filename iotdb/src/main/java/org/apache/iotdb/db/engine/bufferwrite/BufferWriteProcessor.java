@@ -432,14 +432,10 @@ public class BufferWriteProcessor extends Processor {
     try {
 
       // flush data (if there are flushing task, flush() will be blocked)
-      Future<Boolean> flush = flush();
+      //Future<Boolean> flush = flush();
       //and wait for finishing flush async
-      flushFuture = FlushManager.getInstance().submit(() -> closeTask(flush));
+      flushFuture = FlushManager.getInstance().submit(() -> closeTask());
       //now, we omit the future of the closeTask.
-    } catch (IOException e) {
-      LOGGER.error("Close the bufferwrite processor error, the bufferwrite is {}.",
-          getProcessorName(), e);
-      throw new BufferWriteProcessorException(e);
     } catch (Exception e) {
       LOGGER
           .error("Failed to close the bufferwrite processor when calling the action function.", e);
@@ -447,10 +443,11 @@ public class BufferWriteProcessor extends Processor {
     }
   }
 
-  private boolean closeTask(Future<Boolean> flush) {
+  private boolean closeTask() {
     long closeStartTime = System.currentTimeMillis();
     try {
-      flush.get();
+      flush().get();
+//      flush.get();
       // end file
       writer.endFile(fileSchema);
       writer = null;
