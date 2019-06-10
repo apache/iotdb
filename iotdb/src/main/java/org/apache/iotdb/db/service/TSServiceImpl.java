@@ -436,7 +436,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req)
       throws TException {
-    long st = System.nanoTime();
+    long t1 = System.currentTimeMillis();
     try {
       if (!checkLogin()) {
         LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -449,19 +449,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       for (String statement : statements) {
         try {
-          long t0 = System.nanoTime();
+          long t2 = System.currentTimeMillis();
           PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-          Measurement.INSTANCE.addOperationLatency(Operation.PARSE_SQL_TO_PHYSICAL_PLAN, t0);
           physicalPlan.setProposer(username.get());
           if (physicalPlan.isQuery()) {
             return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
                 "statement is query :" + statement, result);
           }
-
-          long t1 = System.nanoTime();
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan);
-          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_PHYSICAL_PLAN, t1);
-
           if (resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)) {
             result.add(Statement.SUCCESS_NO_INFO);
           } else {
@@ -469,6 +464,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             isAllSuccessful = false;
             batchErrorMessage = resp.getStatus().getErrorMessage();
           }
+          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
         } catch (Exception e) {
           String errMessage = String.format(
               "Fail to generate physcial plan and execute for statement "
@@ -492,7 +488,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
     }
     finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH_SQL, st);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH, t1);
     }
   }
 
@@ -565,7 +561,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) throws TException {
-
+    long t1 = System.currentTimeMillis();
     try {
       if (!checkLogin()) {
         LOGGER.info("{}: Not login.", IoTDBConstant.GLOBAL_DB_NAME);
@@ -665,6 +661,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+    }
+    finally {
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, t1);
     }
   }
 
@@ -767,15 +766,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // Do we need to add extra information of executive condition
     boolean execRet;
     try {
-      long t1 = System.nanoTime();
       execRet = executeNonQuery(plan);
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_NON_QUERY, t1);
     } catch (ProcessorException e) {
       LOGGER.debug("meet error while processing non-query. ", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
 
-    long t2 = System.nanoTime();
     TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
     String msg = execRet ? "Execute successfully" : "Execute statement error.";
     TSExecuteStatementResp resp = getTSExecuteStatementResp(statusCode, msg);
@@ -785,7 +781,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSOperationHandle operationHandle;
     operationHandle = new TSOperationHandle(operationId, false);
     resp.setOperationHandle(operationHandle);
-    Measurement.INSTANCE.addOperationLatency(Operation.CONSTRUCT_JDBC_RESULT, t2);
     return resp;
   }
 

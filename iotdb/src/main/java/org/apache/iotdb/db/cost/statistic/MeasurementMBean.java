@@ -38,8 +38,6 @@ public interface MeasurementMBean {
 
   boolean isEnableStat();
 
-  void setEnableStat(boolean enableStat);
-
   long getDisplayIntervalInMs();
 
   void setDisplayIntervalInMs(long displayIntervalInMs);

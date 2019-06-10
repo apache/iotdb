@@ -111,7 +111,6 @@ public class Measurement implements MeasurementMBean, IService {
   private long displayIntervalInMs;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Measurement.class);
-  private final int MS_TO_NANO = 1000_000;
   private final String mbeanName = String
       .format("%s:%s=%s", "org.apache.iotdb.db.cost.statistic", IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
@@ -172,7 +171,7 @@ public class Measurement implements MeasurementMBean, IService {
   }
 
   @Override
-  public void startOneTimeStatistics(){
+  public void startOneTimeStatistics() {
     stateChangeLock.lock();
     try {
       if (isEnableStat) {
@@ -181,10 +180,10 @@ public class Measurement implements MeasurementMBean, IService {
       isEnableStat = true;
       futureList.clear();
       futureList.add(service.schedule(new QueueConsumerThread(), 10, TimeUnit.MILLISECONDS));
-      Future future = service.schedule(()->{
+      Future future = service.schedule(() -> {
         showMeasurements();
-          stopStatistic();
-          }, displayIntervalInMs, TimeUnit.MILLISECONDS);
+        stopStatistic();
+      }, displayIntervalInMs, TimeUnit.MILLISECONDS);
       futureList.add(future);
     } catch (Exception e) {
       LOGGER.error("Find error when start performance statistic thread, because {}", e);
@@ -197,7 +196,7 @@ public class Measurement implements MeasurementMBean, IService {
   public void stopStatistic() {
     stateChangeLock.lock();
     try {
-      if(isEnableStat == false){
+      if (isEnableStat == false) {
         return;
       }
       isEnableStat = false;
@@ -212,7 +211,6 @@ public class Measurement implements MeasurementMBean, IService {
     } finally {
       stateChangeLock.unlock();
     }
-
   }
 
   /**
@@ -269,11 +267,6 @@ public class Measurement implements MeasurementMBean, IService {
     return isEnableStat;
   }
 
-  @Override
-  public void setEnableStat(boolean enableStat) {
-    isEnableStat = enableStat;
-  }
-
   public long getDisplayIntervalInMs() {
     return displayIntervalInMs;
   }
@@ -300,8 +293,7 @@ public class Measurement implements MeasurementMBean, IService {
     LOGGER.info(head);
     for (Operation operation : Operation.values()) {
       long cnt = operationCnt[operation.ordinal()];
-      long totalInMs = 0;
-      totalInMs = operationLatencies[operation.ordinal()] / 1000000;
+      long totalInMs = operationLatencies[operation.ordinal()];
       String avg = String.format("%.4f", (totalInMs / (cnt + 1e-9)));
       String item = String
           .format("%-45s%-25s%-25s%-25s", operation.name, cnt + "", totalInMs + "", avg);
@@ -344,7 +336,7 @@ public class Measurement implements MeasurementMBean, IService {
       consumer();
     }
 
-    private void consumer(){
+    private void consumer() {
       int cnt = 0;
       boolean allEmpty = false;
       while (true) {
@@ -374,9 +366,9 @@ public class Measurement implements MeasurementMBean, IService {
       }
     }
   }
+
   private int calIndex(long x) {
-    x /= MS_TO_NANO;
-    for (int i = 0; i < MS_TO_NANO; i++) {
+    for (int i = 0; i < BUCKET_SIZE; i++) {
       if (BUCKET_IN_MS[i] >= x) {
         return i;
       }
