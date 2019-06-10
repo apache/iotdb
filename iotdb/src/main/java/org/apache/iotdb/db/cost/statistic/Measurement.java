@@ -144,7 +144,7 @@ public class Measurement implements MeasurementMBean, IService {
 
   public void addOperationLatency(Operation op, long startTime) {
     if (isEnableStat && operationLatenciesQueue[op.ordinal()].size() < QUEUE_SIZE) {
-      operationLatenciesQueue[op.ordinal()].add((System.nanoTime() - startTime));
+      operationLatenciesQueue[op.ordinal()].add((System.currentTimeMillis() - startTime));
     }
   }
 
