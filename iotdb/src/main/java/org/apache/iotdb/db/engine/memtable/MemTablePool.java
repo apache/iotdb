@@ -8,7 +8,8 @@ public class MemTablePool {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTablePool.class);
 
   private Stack<IMemTable> emptyMemTables;
-  private int capacity = 10;
+  // >= number of storage group * 2
+  private int capacity = 23;
   private int size = 0;
 
   private static final MemTablePool INSTANCE = new MemTablePool();
