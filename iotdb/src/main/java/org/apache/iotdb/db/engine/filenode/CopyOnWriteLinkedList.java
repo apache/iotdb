@@ -31,17 +31,21 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @param <T>
  */
 public class CopyOnWriteLinkedList<T> {
+
   LinkedList<T> data = new LinkedList<>();
   List<T> readCopy;
 
-  public synchronized  void add(T d) {
+  public synchronized void add(T d) {
     data.add(d);
-    readCopy = new ArrayList<>(data);
+  }
+
+  public synchronized void remove(T d) {
+    data.remove(d);
   }
 
   public synchronized Iterator<T> iterator() {
-      readCopy = new ArrayList<>(data);
-      return data.iterator();
+    readCopy = new ArrayList<>(data);
+    return readCopy.iterator();
   }
 
   public synchronized void reset() {

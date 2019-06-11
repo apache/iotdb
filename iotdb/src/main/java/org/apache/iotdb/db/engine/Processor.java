@@ -82,11 +82,11 @@ public abstract class Processor {
    * Release the write lock
    */
   public void writeUnlock() {
-    lock.writeLock().unlock();
     start = System.currentTimeMillis() - start;
     if (start > 1000) {
       LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
     }
+    lock.writeLock().unlock();
   }
 
   /**
@@ -115,14 +115,14 @@ public abstract class Processor {
    *            true release write lock, false release read unlock
    */
   public void unlock(boolean isWriteUnlock) {
+    start = System.currentTimeMillis() - start;
+    if (start > 1000) {
+      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
+    }
     if (isWriteUnlock) {
       writeUnlock();
     } else {
       readUnlock();
-    }
-    start = System.currentTimeMillis() - start;
-    if (start > 1000) {
-      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
     }
   }
 

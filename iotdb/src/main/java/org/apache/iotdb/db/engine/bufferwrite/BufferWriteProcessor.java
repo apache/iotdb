@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,14 +45,12 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
-import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
-import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -101,7 +98,9 @@ public class BufferWriteProcessor extends Processor {
   private WriteLogNode logNode;
   private VersionController versionController;
 
-  private boolean isClosed = true;
+  private boolean isClosing = true;
+
+  private boolean isClosed = false;
   private boolean isFlush = false;
 
 
@@ -141,7 +140,7 @@ public class BufferWriteProcessor extends Processor {
   }
 
   public void reopen(String fileName) throws BufferWriteProcessorException {
-    if (!isClosed) {
+    if (!isClosing) {
       return;
     }
 
@@ -167,12 +166,12 @@ public class BufferWriteProcessor extends Processor {
     } else {
       workMemTable.clear();
     }
-    isClosed = false;
+    isClosing = false;
     isFlush = false;
   }
 
   public void checkOpen() throws BufferWriteProcessorException {
-    if (isClosed) {
+    if (isClosing) {
       throw new BufferWriteProcessorException("BufferWriteProcessor already closed");
     }
   }
@@ -385,7 +384,7 @@ public class BufferWriteProcessor extends Processor {
 
   // keyword synchronized is added in this method, so that only one flush task can be submitted now.
   private Future<Boolean> flush(boolean isCloseTaskCalled) throws IOException {
-    if (!isCloseTaskCalled && isClosed) {
+    if (!isCloseTaskCalled && isClosing) {
       throw new IOException("BufferWriteProcessor closed");
     }
     // statistic information for flush
@@ -459,11 +458,11 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public synchronized void close() throws BufferWriteProcessorException {
-    if (isClosed) {
+    if (isClosing) {
       return;
     }
     try {
-      isClosed = true;
+      isClosing = true;
       // flush data (if there are flushing task, flush() will be blocked)
       //Future<Boolean> flush = flush();
       //and wait for finishing flush async
@@ -488,12 +487,8 @@ public class BufferWriteProcessor extends Processor {
       //FIXME suppose the flush-thread-pool is 2.
       // then if a flush task and a close task are running in the same time
       // and the close task is faster, then writer == null, and the flush task will throw nullpointer
-      // expcetion. Add "synchronized" keyword on both flush and close may solve the issue.
+      // exception. Add "synchronized" keyword on both flush and close may solve the issue.
       writer = null;
-      isClosed = true;
-      //A BUG may appears here: workMemTable has been cleared,
-      // but the corresponding TsFile is not maintained in Processor.
-      workMemTable.clear();
       // update the IntervalFile for interval list
       bufferwriteCloseConsumer.accept(this);
       // flush the changed information for filenode
@@ -513,6 +508,8 @@ public class BufferWriteProcessor extends Processor {
     }catch (IOException | ActionException e) {
       LOGGER.error("Close bufferwrite processor {} failed.", getProcessorName(), e);
       return false;
+    } finally {
+      isClosed = true;
     }
     return true;
   }
@@ -640,6 +637,10 @@ public class BufferWriteProcessor extends Processor {
 
   public String getInsertFilePath() {
     return insertFilePath;
+  }
+
+  public boolean isClosing() {
+    return isClosing;
   }
 
   public boolean isClosed() {
