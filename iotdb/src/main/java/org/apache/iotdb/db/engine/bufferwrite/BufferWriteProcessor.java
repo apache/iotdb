@@ -222,6 +222,7 @@ public class BufferWriteProcessor extends Processor {
     }
 
     String memory;
+    long start2 = System.currentTimeMillis();
     switch (level) {
       case SAFE:
         for (DataPoint dataPoint : tsRecord.dataPointList) {
@@ -230,6 +231,10 @@ public class BufferWriteProcessor extends Processor {
               dataPoint.getValue().toString());
         }
         valueCount++;
+        start2 = System.currentTimeMillis() - start2;
+        if (start2 > 1000) {
+          LOGGER.info("BufferWriteProcessor.write step2 cost: {}", start2);
+        }
         checkMemThreshold4Flush(memUsage);
         return true;
       case WARNING:

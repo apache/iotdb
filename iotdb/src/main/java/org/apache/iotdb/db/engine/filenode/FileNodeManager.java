@@ -471,23 +471,46 @@ public class FileNodeManager implements IStatistic, IService {
     }
 
     long start2 = System.currentTimeMillis();
+    long start2_1 = start2;
     // write wal
     try {
       writeLog(tsRecord, isMonitor, bufferWriteProcessor.getLogNode());
     } catch (IOException e) {
       throw new FileNodeManagerException(e);
     }
+    start2_1 = System.currentTimeMillis() - start2_1;
+    if (start2_1 > 1000) {
+      LOGGER.info("FileNodeManager.insertBufferWrite step2-1 cost: {}", start2_1);
+    }
+
+    long start2_2 = System.currentTimeMillis();
     // Write data
     long prevStartTime = fileNodeProcessor.getIntervalFileNodeStartTime(deviceId);
     long prevUpdateTime = fileNodeProcessor.getLastUpdateTime(deviceId);
 
     fileNodeProcessor.setIntervalFileNodeStartTime(deviceId);
     fileNodeProcessor.setLastUpdateTime(deviceId, timestamp);
+
+    start2_2 = System.currentTimeMillis() - start2_2;
+    if (start2_2 > 1000) {
+      LOGGER.info("FileNodeManager.insertBufferWrite step2-2 cost: {}", start2_2);
+    }
     try {
+      long start2_3 = System.currentTimeMillis();
       if (!bufferWriteProcessor.write(tsRecord)) {
+        start2_3 = System.currentTimeMillis() - start2_3;
+        if (start2_3 > 1000) {
+          LOGGER.info("FileNodeManager.insertBufferWrite step2-3 cost: {}", start2_3);
+        }
+
+        long start2_4 = System.currentTimeMillis();
         // undo time update
         fileNodeProcessor.setIntervalFileNodeStartTime(deviceId, prevStartTime);
         fileNodeProcessor.setLastUpdateTime(deviceId, prevUpdateTime);
+        start2_4 = System.currentTimeMillis() - start2_4;
+        if (start2_4 > 1000) {
+          LOGGER.info("FileNodeManager.insertBufferWrite step2-4 cost: {}", start2_4);
+        }
       }
     } catch (BufferWriteProcessorException e) {
       if (!isMonitor) {
