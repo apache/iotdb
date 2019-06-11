@@ -63,15 +63,15 @@ public class StorageGroupRecoverPerformer implements RecoverPerformer {
         continue;
       }
       // only TsFiles with a restore file should be recovered
-      File[] bufferFiles = bufferDir.listFiles((fileName) ->
+      File[] restoreFiles = bufferDir.listFiles((fileName) ->
           fileName.getName().contains(FileNodeProcessor.RESTORE_FILE_SUFFIX));
-      if (bufferFiles != null) {
-        for (File bufferFile : bufferFiles) {
+      if (restoreFiles != null) {
+        for (File restoreFile : restoreFiles) {
+          File tsFile = new File(restoreFile.getParent(), restoreFile.getName()
+              .replace(FileNodeProcessor.RESTORE_FILE_SUFFIX, ""));
           File[] walFiles = null;
           if (logDirectory.exists()) {
-            walFiles = logDirectory.listFiles((filename) -> {
-              return filename.getName().contains(bufferFile.getName());
-            });
+            walFiles = logDirectory.listFiles((filename) -> filename.getName().contains(restoreFile.getName()));
           }
         }
       }
