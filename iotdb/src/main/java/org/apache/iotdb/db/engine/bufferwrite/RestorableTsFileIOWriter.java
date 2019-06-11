@@ -323,4 +323,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return out;
   }
 
+  public static int getTsPositionByteSize() {
+    return TS_POSITION_BYTE_SIZE;
+  }
 }

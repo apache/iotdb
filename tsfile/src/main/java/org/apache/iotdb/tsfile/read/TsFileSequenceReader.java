@@ -360,6 +360,10 @@ public class TsFileSequenceReader implements AutoCloseable{
     return tsFileInput.position();
   }
 
+  public void position(long offset) throws IOException {
+    tsFileInput.position(offset);
+  }
+
   public void skipPageData(PageHeader header) throws IOException {
     tsFileInput.position(tsFileInput.position() + header.getCompressedSize());
   }
