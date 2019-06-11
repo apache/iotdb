@@ -38,7 +38,7 @@ public abstract class Processor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Processor.class);
   private final ReadWriteLock lock;
-  private long start;
+//  private long start;
   protected String processorName;
 
   /**
@@ -56,10 +56,10 @@ public abstract class Processor {
    */
   public void readUnlock() {
     lock.readLock().unlock();
-    start = System.currentTimeMillis() - start;
-    if (start > 1000) {
-      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
-    }
+//    start = System.currentTimeMillis() - start;
+//    if (start > 1000) {
+//      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
+//    }
   }
 
   /**
@@ -67,7 +67,7 @@ public abstract class Processor {
    */
   public void readLock() {
     lock.readLock().lock();
-    start = System.currentTimeMillis();
+//    start = System.currentTimeMillis();
   }
 
   /**
@@ -75,17 +75,17 @@ public abstract class Processor {
    */
   public void writeLock() {
     lock.writeLock().lock();
-    start = System.currentTimeMillis();
+//    start = System.currentTimeMillis();
   }
 
   /**
    * Release the write lock
    */
   public void writeUnlock() {
-    start = System.currentTimeMillis() - start;
-    if (start > 1000) {
-      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
-    }
+//    start = System.currentTimeMillis() - start;
+//    if (start > 1000) {
+//      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
+//    }
     lock.writeLock().unlock();
   }
 
@@ -99,7 +99,7 @@ public abstract class Processor {
     } else {
       lock.readLock().lock();
     }
-    start = System.currentTimeMillis();
+//    start = System.currentTimeMillis();
   }
 
   public boolean tryLock(boolean isWriteLock) {
@@ -115,10 +115,10 @@ public abstract class Processor {
    *            true release write lock, false release read unlock
    */
   public void unlock(boolean isWriteUnlock) {
-    start = System.currentTimeMillis() - start;
-    if (start > 1000) {
-      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
-    }
+//    start = System.currentTimeMillis() - start;
+//    if (start > 1000) {
+//      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
+//    }
     if (isWriteUnlock) {
       writeUnlock();
     } else {
@@ -142,9 +142,9 @@ public abstract class Processor {
    */
   public boolean tryWriteLock() {
     boolean result = lock.writeLock().tryLock();
-    if (result) {
-      start = System.currentTimeMillis();
-    }
+//    if (result) {
+//      start = System.currentTimeMillis();
+//    }
     return result;
   }
 
@@ -155,9 +155,9 @@ public abstract class Processor {
    */
   public boolean tryReadLock() {
     boolean result = lock.readLock().tryLock();
-    if (result) {
-      start = System.currentTimeMillis();
-    }
+//    if (result) {
+//      start = System.currentTimeMillis();
+//    }
     return result;
   }
 

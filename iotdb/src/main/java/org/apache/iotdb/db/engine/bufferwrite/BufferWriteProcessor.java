@@ -179,6 +179,8 @@ public class BufferWriteProcessor extends Processor {
 
 
   /**
+   * Only for Test
+   *
    * write one data point to the buffer write.
    *
    * @param deviceId device name
@@ -208,10 +210,16 @@ public class BufferWriteProcessor extends Processor {
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
   public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
+    long start1 = System.currentTimeMillis();
     checkOpen();
     long memUsage = MemUtils.getRecordSize(tsRecord);
     BasicMemController.UsageLevel level = BasicMemController.getInstance()
         .acquireUsage(this, memUsage);
+
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("BufferWriteProcessor.write step1 cost: {}", start1);
+    }
 
     String memory;
     switch (level) {
@@ -248,6 +256,7 @@ public class BufferWriteProcessor extends Processor {
   }
 
   private void checkMemThreshold4Flush(long addedMemory) throws BufferWriteProcessorException {
+    long start1 = System.currentTimeMillis();
     long newMem = memSize.addAndGet(addedMemory);
     if (newMem > memThreshold) {
       String usageMem = MemUtils.bytesCntToStr(newMem);
@@ -261,6 +270,10 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.error("Flush bufferwrite error.", e);
         throw new BufferWriteProcessorException(e);
       }
+    }
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("BufferWriteProcessor.checkMemThreshold4Flush step-1, cost: {}", start1);
     }
   }
 
@@ -312,12 +325,17 @@ public class BufferWriteProcessor extends Processor {
   }
 
   private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter tsFileIOWriter) {
+    long start = System.currentTimeMillis();
     this.writeLock();
     tsFileIOWriter.mergeChunkGroupMetaData();
     try {
       flushingMemTables.remove(memTable);
     } finally {
       this.writeUnlock();
+    }
+    start = System.currentTimeMillis() - start;
+    if (start > 1000) {
+      LOGGER.info("removeFlushedMemTable is too slow!!!  cost: {}ms", start);
     }
   }
 
@@ -422,7 +440,14 @@ public class BufferWriteProcessor extends Processor {
 
       flushingMemTables.add(workMemTable);
       IMemTable tmpMemTableToFlush = workMemTable;
+
+      long start = System.currentTimeMillis();
       workMemTable = MemTablePool.getInstance().getEmptyMemTable();
+
+      start = System.currentTimeMillis() - start;
+      if (start > 1000) {
+        LOGGER.info("get empty memtable cost: {}", start);
+      }
 
       flushId++;
       long version = versionController.nextVersion();
