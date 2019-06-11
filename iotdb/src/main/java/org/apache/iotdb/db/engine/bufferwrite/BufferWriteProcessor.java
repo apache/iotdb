@@ -277,8 +277,10 @@ public class BufferWriteProcessor extends Processor {
     flushQueryLock.lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
-      if (flushMemTable != null) {
-        memSeriesLazyMerger.addMemSeries(flushMemTable.query(deviceId, measurementId, dataType, props));
+      if (flushingMemTables != null) {
+        for (int i = flushingMemTables.size() - 1; i >= 0; i--) {
+          memSeriesLazyMerger.addMemSeries(flushingMemTables.get(i).query(deviceId, measurementId, dataType, props));
+        }
       }
       memSeriesLazyMerger.addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
       // memSeriesLazyMerger has handled the props,
