@@ -167,7 +167,7 @@ public class RestorableTsFileIOWriterTest {
     memTable.write("d2", "s2", TSDataType.INT32, 2, "1");
     memTable.write("d2", "s2", TSDataType.INT32, 4, "1");
     //MemTableFlushUtil.flushMemTable(schema, writer, memTable, 0);
-    MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, "test");
+    MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, "test", 0L, (a,b) -> {});
     tableFlushTask.flushMemTable(schema, memTable, 0);
     writer.flush();
     writer.appendMetadata();
@@ -222,7 +222,7 @@ public class RestorableTsFileIOWriterTest {
         MemTableTestUtils.dataType0);
 
     //MemTableFlushUtil.flushMemTable(MemTableTestUtils.getFileSchema(), writer, memTable, 0);
-    MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, "test");
+    MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, "test", 0L, (a,b) -> {});
     tableFlushTask.flushMemTable(MemTableTestUtils.getFileSchema(), memTable, 0);
 
     writer.flush();

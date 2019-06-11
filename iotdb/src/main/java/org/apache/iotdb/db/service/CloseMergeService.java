@@ -143,7 +143,7 @@ public class CloseMergeService implements IService {
     @Override
     public void run() {
       service.scheduleWithFixedDelay(mergeService, MERGE_DELAY, MERGE_PERIOD, TimeUnit.SECONDS);
-      service.scheduleWithFixedDelay(closeService, CLOSE_DELAY, CLOSE_PERIOD, TimeUnit.SECONDS);
+//      service.scheduleWithFixedDelay(closeService, CLOSE_DELAY, CLOSE_PERIOD, TimeUnit.SECONDS);
       while (!service.isShutdown()) {
         synchronized (service) {
           try {

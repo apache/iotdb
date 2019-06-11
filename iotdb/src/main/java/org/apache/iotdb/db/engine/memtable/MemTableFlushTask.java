@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.engine.memtable;
@@ -49,63 +45,38 @@ public class MemTableFlushTask {
   private ConcurrentLinkedQueue memoryTaskQueue = new ConcurrentLinkedQueue();
   private boolean stop = false;
   private String processName;
+  private long flushId;
 
-  //the position of the tsfile when a flush task begins.
-  long startPos;
+  private MemTableFlushCallBack flushCallBack;
+  private IMemTable memTable;
 
-  //TODO more better way is: for each TsFile, assign it a Executors.singleThreadPool,
-  // rather than per each memtable.
-  private Thread ioFlushThread = new Thread(() -> {
-    long ioTime = 0;
-    while (!stop) {
-      Object seriesWriterOrEndChunkGroupTask = ioTaskQueue.poll();
-      if (seriesWriterOrEndChunkGroupTask == null ) {
-        try {
-          Thread.sleep(10);
-        } catch (InterruptedException e) {
-          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processName, e);
-        }
-      } else {
-        long starTime = System.currentTimeMillis();
-        try {
-          if (seriesWriterOrEndChunkGroupTask instanceof IChunkWriter) {
-            ((IChunkWriter) seriesWriterOrEndChunkGroupTask).writeToFileWriter(tsFileIoWriter);
-          } else if (seriesWriterOrEndChunkGroupTask instanceof String) {
-            tsFileIoWriter.startFlushChunkGroup((String)seriesWriterOrEndChunkGroupTask);
-          } else {
-            ChunkGroupIoTask task = (ChunkGroupIoTask) seriesWriterOrEndChunkGroupTask;
-            long memSize = tsFileIoWriter.getPos() - startPos;
-            ChunkGroupFooter footer = new ChunkGroupFooter(task.deviceId, memSize, task.seriesNumber);
-            tsFileIoWriter.endChunkGroup(footer, task.version);
-            startPos = tsFileIoWriter.getPos();
-            task.finished = true;
-          }
-        } catch (IOException e) {
-          LOGGER.error("BufferWrite Processor {}, io error.", processName, e);
-          throw new RuntimeException(e);
-        }
-        ioTime += System.currentTimeMillis() - starTime;
-      }
-    }
-    LOGGER.info("BufferWrite Processor {}, flushing a memtable into disk:  io cost {} ms.", processName, ioTime );
-  });
+  public MemTableFlushTask(TsFileIOWriter writer, String processName, long flushId,
+      MemTableFlushCallBack callBack) {
+    this.tsFileIoWriter = writer;
+    this.processName = processName;
+    this.flushId = flushId;
+    this.flushCallBack = callBack;
+    ioFlushThread.start();
+    memoryFlushThread.start();
+  }
+
 
   private Thread memoryFlushThread = new Thread(() -> {
     long memSerializeTime = 0;
     while (!stop) {
       Object task = memoryTaskQueue.poll();
-      if (task == null ) {
+      if (task == null) {
         try {
           Thread.sleep(10);
         } catch (InterruptedException e) {
           LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processName, e);
         }
       } else {
-        if (task instanceof  String) {
+        if (task instanceof String) {
           ioTaskQueue.add(task);
         } else if (task instanceof ChunkGroupIoTask) {
           ioTaskQueue.add(task);
-        }else {
+        } else {
           long starTime = System.currentTimeMillis();
           Pair<List<TimeValuePair>, MeasurementSchema> memorySerializeTask = (Pair<List<TimeValuePair>, MeasurementSchema>) task;
           ChunkBuffer chunkBuffer = new ChunkBuffer(memorySerializeTask.right);
@@ -123,48 +94,91 @@ public class MemTableFlushTask {
         }
       }
     }
-    LOGGER.info("BufferWrite Processor {},flushing a memtable into disk: serialize data into mem cost {} ms.", processName, memSerializeTime );
+    LOGGER.info(
+        "BufferWrite Processor {},flushing a memtable into disk: serialize data into mem cost {} ms.",
+        processName, memSerializeTime);
   });
 
-  public MemTableFlushTask(TsFileIOWriter writer, String processName) {
-    this.tsFileIoWriter = writer;
-    this.processName = processName;
-    ioFlushThread.start();
-    memoryFlushThread.start();
-  }
 
-  private  void writeOneSeries(List<TimeValuePair> tvPairs, IChunkWriter seriesWriterImpl,
+  //TODO more better way is: for each TsFile, assign it a Executors.singleThreadPool,
+  // rather than per each memtable.
+  private Thread ioFlushThread = new Thread(() -> {
+    long ioTime = 0;
+    while (tsFileIoWriter.getFlushID().get() != flushId) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        LOGGER.error("Processor {}, last flush io task is not finished.", processName, e);
+      }
+    }
+    while (!stop) {
+      Object seriesWriterOrEndChunkGroupTask = ioTaskQueue.poll();
+      if (seriesWriterOrEndChunkGroupTask == null) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processName, e);
+        }
+      } else {
+        long starTime = System.currentTimeMillis();
+        try {
+          if (seriesWriterOrEndChunkGroupTask instanceof IChunkWriter) {
+            ((IChunkWriter) seriesWriterOrEndChunkGroupTask).writeToFileWriter(tsFileIoWriter);
+          } else if (seriesWriterOrEndChunkGroupTask instanceof String) {
+            tsFileIoWriter.startFlushChunkGroup((String) seriesWriterOrEndChunkGroupTask);
+          } else {
+            ChunkGroupIoTask task = (ChunkGroupIoTask) seriesWriterOrEndChunkGroupTask;
+            tsFileIoWriter.endChunkGroup(task.version);
+            task.finished = true;
+          }
+        } catch (IOException e) {
+          LOGGER.error("BufferWrite Processor {}, io error.", processName, e);
+          throw new RuntimeException(e);
+        }
+        ioTime += System.currentTimeMillis() - starTime;
+      }
+    }
+    flushCallBack.afterFlush(memTable, tsFileIoWriter);
+    MemTablePool.getInstance().release(memTable);
+    tsFileIoWriter.getFlushID().getAndIncrement();
+    LOGGER.info("BufferWrite Processor {}, flushing a memtable into disk:  io cost {} ms.",
+        processName, ioTime);
+  });
+
+
+  private void writeOneSeries(List<TimeValuePair> tvPairs, IChunkWriter seriesWriterImpl,
       TSDataType dataType)
       throws IOException {
     for (TimeValuePair timeValuePair : tvPairs) {
       switch (dataType) {
         case BOOLEAN:
-            seriesWriterImpl
-                    .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
+          seriesWriterImpl
+              .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
           break;
         case INT32:
-            seriesWriterImpl.write(timeValuePair.getTimestamp(),
-                    timeValuePair.getValue().getInt());
+          seriesWriterImpl.write(timeValuePair.getTimestamp(),
+              timeValuePair.getValue().getInt());
           break;
         case INT64:
-            seriesWriterImpl.write(timeValuePair.getTimestamp(),
-                    timeValuePair.getValue().getLong());
+          seriesWriterImpl.write(timeValuePair.getTimestamp(),
+              timeValuePair.getValue().getLong());
           break;
         case FLOAT:
-            seriesWriterImpl.write(timeValuePair.getTimestamp(),
-                    timeValuePair.getValue().getFloat());
+          seriesWriterImpl.write(timeValuePair.getTimestamp(),
+              timeValuePair.getValue().getFloat());
           break;
         case DOUBLE:
-            seriesWriterImpl
-                    .write(timeValuePair.getTimestamp(),
-                            timeValuePair.getValue().getDouble());
+          seriesWriterImpl
+              .write(timeValuePair.getTimestamp(),
+                  timeValuePair.getValue().getDouble());
           break;
         case TEXT:
-            seriesWriterImpl
-                    .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
+          seriesWriterImpl
+              .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
           break;
         default:
-          LOGGER.error("BufferWrite Processor {}, don't support data type: {}", processName, dataType);
+          LOGGER.error("BufferWrite Processor {}, don't support data type: {}", processName,
+              dataType);
           break;
       }
     }
@@ -173,11 +187,10 @@ public class MemTableFlushTask {
   /**
    * the function for flushing memtable.
    */
-  public  void flushMemTable(FileSchema fileSchema,
-      IMemTable imemTable, long version) throws IOException {
+  public void flushMemTable(FileSchema fileSchema, IMemTable imemTable, long version) {
     long sortTime = 0;
-    startPos = tsFileIoWriter.getPos();
     ChunkGroupIoTask theLastTask = EMPTY_TASK;
+    this.memTable = imemTable;
     for (String deviceId : imemTable.getMemTableMap().keySet()) {
       memoryTaskQueue.add(deviceId);
       int seriesNumber = imemTable.getMemTableMap().get(deviceId).size();
@@ -194,12 +207,14 @@ public class MemTableFlushTask {
       memoryTaskQueue.add(theLastTask);
     }
     LOGGER.info(
-        "BufferWrite Processor {}, flushing a memtable into disk: data sort time cost {} ms.", processName, sortTime );
+        "BufferWrite Processor {}, flushing a memtable into disk: data sort time cost {} ms.",
+        processName, sortTime);
     while (!theLastTask.finished) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
-        LOGGER.error("BufferWrite Processor {}, flush memtable table thread is interrupted.", processName, e);
+        LOGGER.error("BufferWrite Processor {}, flush memtable table thread is interrupted.",
+            processName, e);
         throw new RuntimeException(e);
       }
     }
@@ -208,6 +223,7 @@ public class MemTableFlushTask {
 
 
   static class ChunkGroupIoTask {
+
     int seriesNumber;
     String deviceId;
     long version;
@@ -216,6 +232,7 @@ public class MemTableFlushTask {
     public ChunkGroupIoTask(int seriesNumber, String deviceId, long version) {
       this(seriesNumber, deviceId, version, false);
     }
+
     public ChunkGroupIoTask(int seriesNumber, String deviceId, long version, boolean finished) {
       this.seriesNumber = seriesNumber;
       this.deviceId = deviceId;
@@ -223,6 +240,7 @@ public class MemTableFlushTask {
       this.finished = finished;
     }
   }
+
   private static ChunkGroupIoTask EMPTY_TASK = new ChunkGroupIoTask(0, "", 0, true);
 
 }

@@ -33,17 +33,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -51,7 +47,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -181,7 +176,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    */
   private Map<String, Action> parameters;
   private FileSchema fileSchema;
-  private Action flushFileNodeProcessorAction = () -> {
+  private Action fileNodeFlushAction = () -> {
     synchronized (fileNodeProcessorStore) {
       try {
         writeStoreToDisk(fileNodeProcessorStore);
@@ -403,7 +398,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   void addIntervalFileNode(TsFileResource tsFileResource) throws ActionException {
     newFileNodes.add(tsFileResource);
     fileNodeProcessorStore.setNewFileNodes(newFileNodes);
-    flushFileNodeProcessorAction.act();
+    fileNodeFlushAction.act();
   }
 
   /**
@@ -496,7 +491,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
           //parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
           parameters
-              .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
+              .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
           String baseDir = directories
               .getTsFileFolder(newFileNodes.get(newFileNodes.size() - 1).getBaseDirIndex());
           if (LOGGER.isInfoEnabled()) {
@@ -524,7 +519,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     LOGGER.info("The filenode processor {} will recovery the overflow processor.",
         getProcessorName());
     parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
-    parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
+    parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
     try {
       overflowProcessor = new OverflowProcessor(getProcessorName(), parameters, fileSchema,
           versionController);
@@ -571,7 +566,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       params.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
       //params.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
       params
-          .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
+          .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
       String baseDir = directories.getNextFolderForTsfile();
       LOGGER.info("Allocate folder {} for the new bufferwrite processor.", baseDir);
       // construct processor or restore
@@ -605,7 +600,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       // construct processor or restore
       params.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
       params
-          .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
+          .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
       overflowProcessor = new OverflowProcessor(processorName, params, fileSchema,
           versionController);
     } else if (overflowProcessor.isClosed()) {
@@ -922,7 +917,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       bufferwriteFlushAction.act();
       fileNodeProcessorStore.setNewFileNodes(newFileNodes);
       // reconstruct the inverted index of the newFileNodes
-      flushFileNodeProcessorAction.act();
+      fileNodeFlushAction.act();
       addAllFileIntoIndex(newFileNodes);
     } catch (Exception e) {
       LOGGER.error("Failed to append the tsfile {} to filenode processor {}.", appendFile,
@@ -1575,9 +1570,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         }
         if (mergeIsChunkGroupHasData) {
           // end the new rowGroupMetadata
-          long size = mergeFileWriter.getPos() - mergeStartPos;
-          footer = new ChunkGroupFooter(deviceId, size, numOfChunk);
-          mergeFileWriter.endChunkGroup(footer, 0);
+          mergeFileWriter.endChunkGroup(0);
         }
       }
     } finally {
@@ -2089,7 +2082,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         Objects.equals(newMultiPassCount, that.newMultiPassCount) &&
         Objects.equals(parameters, that.parameters) &&
         Objects.equals(fileSchema, that.fileSchema) &&
-        Objects.equals(flushFileNodeProcessorAction, that.flushFileNodeProcessorAction) &&
+        Objects.equals(fileNodeFlushAction, that.fileNodeFlushAction) &&
         Objects.equals(bufferwriteFlushAction, that.bufferwriteFlushAction) &&
         Objects.equals(overflowFlushAction, that.overflowFlushAction);
   }
@@ -2102,7 +2095,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         numOfMergeFile, fileNodeProcessorStore, fileNodeRestoreFilePath,
         lastMergeTime, bufferWriteProcessor, overflowProcessor, oldMultiPassTokenSet,
         newMultiPassTokenSet, oldMultiPassCount, newMultiPassCount, shouldRecovery, parameters,
-        fileSchema, flushFileNodeProcessorAction, bufferwriteFlushAction,
+        fileSchema, fileNodeFlushAction, bufferwriteFlushAction,
         overflowFlushAction, multiPassLockToken);
   }
 

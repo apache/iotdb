@@ -22,6 +22,8 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -41,6 +43,14 @@ public interface IMemTable {
       long insertTime, Object value);
 
   int size();
+
+  default void insert(TSRecord tsRecord) {
+    for (DataPoint dataPoint : tsRecord.dataPointList) {
+      write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
+          tsRecord.time,
+          dataPoint.getValue().toString());
+    }
+  }
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       Map<String, String> props);
@@ -69,4 +79,6 @@ public interface IMemTable {
    * @return a MemTable with the same data as this one.
    */
   IMemTable copy();
+
+  boolean containSeries(String deviceId, String measurementId);
 }

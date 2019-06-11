@@ -174,4 +174,10 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     return null;
   }
+
+  @Override
+  public boolean containSeries(String deviceId, String measurementId) {
+    Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
+    return deviceMap != null && deviceMap.containsKey(measurementId);
+  }
 }

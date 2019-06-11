@@ -100,8 +100,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       // cut off tsfile
       this.out = new DefaultTsFileOutput(new FileOutputStream(insertFile, true));
       out.truncate(position);
-      this.chunkGroupMetaDataList = existedMetadatas;
-      lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
+      this.flushedChunkGroupMetaDataList = existedMetadatas;
+      lastFlushedChunkGroupIndex = flushedChunkGroupMetaDataList.size();
       append = new ArrayList<>();
       // recovery the metadata
       recoverMetadata(existedMetadatas);
@@ -122,8 +122,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         LOGGER.info("remove unsealed tsfile restore file failed: ", e);
       }
       this.out = new DefaultTsFileOutput(new FileOutputStream(insertFile));
-      this.chunkGroupMetaDataList = new ArrayList<>();
-      lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
+      this.flushedChunkGroupMetaDataList = new ArrayList<>();
+      lastFlushedChunkGroupIndex = flushedChunkGroupMetaDataList.size();
       append = new ArrayList<>();
       startFile();
       isNewResource = true;
@@ -298,11 +298,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @return a list of chunkgroup metadata
    */
   private List<ChunkGroupMetaData> getAppendedRowGroupMetadata() {
-    if (lastFlushedChunkGroupIndex < chunkGroupMetaDataList.size()) {
+    if (lastFlushedChunkGroupIndex < flushedChunkGroupMetaDataList.size()) {
       append.clear();
-      append.addAll(chunkGroupMetaDataList
-          .subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
-      lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
+      append.addAll(flushedChunkGroupMetaDataList
+          .subList(lastFlushedChunkGroupIndex, flushedChunkGroupMetaDataList.size()));
+      lastFlushedChunkGroupIndex = flushedChunkGroupMetaDataList.size();
     }
     return append;
   }
