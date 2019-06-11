@@ -22,8 +22,10 @@ public class MemTablePool {
     synchronized (emptyMemTables) {
       if (emptyMemTables.isEmpty() && size < capacity) {
         size++;
+        LOGGER.info("generated a new memtable, system memtable size: {}, stack size: {}", size, emptyMemTables.size());
         return new PrimitiveMemTable();
       } else if (!emptyMemTables.isEmpty()){
+        LOGGER.info("system memtable size: {}, stack size: {}, then get a memtable from stack", size, emptyMemTables.size());
         return emptyMemTables.pop();
       }
     }
