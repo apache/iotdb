@@ -128,18 +128,18 @@ public class FileNodeManager implements IStatistic, IService {
       statMonitor.registerStatistics(MonitorConstants.STAT_STORAGE_DELTA_NAME, this);
     }
 
-    closedProcessorCleaner.scheduleWithFixedDelay(()->{
-      int size = 0;
-      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
-        size += fileNodeProcessor.getClosingBufferWriteProcessor().size();
-      }
-      if (size > 5) {
-        LOGGER.info("Current closing processor number is {}", size);
-      }
-      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
-        fileNodeProcessor.checkAllClosingProcessors();
-      }
-    }, 0, 3000, TimeUnit.MILLISECONDS);
+//    closedProcessorCleaner.scheduleWithFixedDelay(()->{
+//      int size = 0;
+//      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
+//        size += fileNodeProcessor.getClosingBufferWriteProcessor().size();
+//      }
+//      if (size > 5) {
+//        LOGGER.info("Current closing processor number is {}", size);
+//      }
+//      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
+//        fileNodeProcessor.checkAllClosingProcessors();
+//      }
+//    }, 0, 3000, TimeUnit.MILLISECONDS);
 
   }
 

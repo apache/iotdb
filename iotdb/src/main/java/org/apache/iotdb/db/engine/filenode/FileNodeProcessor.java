@@ -2124,38 +2124,38 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  /**
-   * wait for all closing processors finishing their tasks
-   */
-  public void waitforAllClosed() throws FileNodeProcessorException {
-    close();
-    while (getClosingBufferWriteProcessor().size() != 0) {
-      checkAllClosingProcessors();
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        LOGGER.error("Filenode Processor {} is interrupted when waiting for all closed.", processorName, e);
-      }
-    }
-  }
+//  /**
+//   * wait for all closing processors finishing their tasks
+//   */
+//  public void waitforAllClosed() throws FileNodeProcessorException {
+//    close();
+//    while (getClosingBufferWriteProcessor().size() != 0) {
+//      checkAllClosingProcessors();
+//      try {
+//        Thread.sleep(10);
+//      } catch (InterruptedException e) {
+//        LOGGER.error("Filenode Processor {} is interrupted when waiting for all closed.", processorName, e);
+//      }
+//    }
+//  }
 
 
-  void checkAllClosingProcessors() {
-    Iterator<BufferWriteProcessor> iterator =
-        this.getClosingBufferWriteProcessor().iterator();
-    while (iterator.hasNext()) {
-      BufferWriteProcessor processor = iterator.next();
-      try {
-        if (processor.getCloseFuture().get(10, TimeUnit.MILLISECONDS)) {
-          //if finished, we can remove it.
-          iterator.remove();
-        }
-      } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("Close bufferwrite processor {} failed.", processor.getProcessorName(), e);
-      } catch (TimeoutException e) {
-        //do nothing.
-      }
-    }
-    this.getClosingBufferWriteProcessor().reset();
-  }
+//  void checkAllClosingProcessors() {
+//    Iterator<BufferWriteProcessor> iterator =
+//        this.getClosingBufferWriteProcessor().iterator();
+//    while (iterator.hasNext()) {
+//      BufferWriteProcessor processor = iterator.next();
+//      try {
+//        if (processor.getCloseFuture().get(10, TimeUnit.MILLISECONDS)) {
+//          //if finished, we can remove it.
+//          iterator.remove();
+//        }
+//      } catch (InterruptedException | ExecutionException e) {
+//        LOGGER.error("Close bufferwrite processor {} failed.", processor.getProcessorName(), e);
+//      } catch (TimeoutException e) {
+//        //do nothing.
+//      }
+//    }
+//    this.getClosingBufferWriteProcessor().reset();
+//  }
 }

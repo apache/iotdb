@@ -25,6 +25,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.filenode.FileNodeProcessor;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Processor is used for implementing different processor with different operation.<br>
@@ -34,7 +36,9 @@ import org.apache.iotdb.db.exception.ProcessorException;
  */
 public abstract class Processor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(Processor.class);
   private final ReadWriteLock lock;
+  private long start;
   protected String processorName;
 
   /**
@@ -52,6 +56,10 @@ public abstract class Processor {
    */
   public void readUnlock() {
     lock.readLock().unlock();
+    start = System.currentTimeMillis() - start;
+    if (start > 1000) {
+      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
+    }
   }
 
   /**
@@ -59,6 +67,7 @@ public abstract class Processor {
    */
   public void readLock() {
     lock.readLock().lock();
+    start = System.currentTimeMillis();
   }
 
   /**
@@ -66,6 +75,7 @@ public abstract class Processor {
    */
   public void writeLock() {
     lock.writeLock().lock();
+    start = System.currentTimeMillis();
   }
 
   /**
@@ -73,6 +83,10 @@ public abstract class Processor {
    */
   public void writeUnlock() {
     lock.writeLock().unlock();
+    start = System.currentTimeMillis() - start;
+    if (start > 1000) {
+      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
+    }
   }
 
   /**
@@ -85,6 +99,7 @@ public abstract class Processor {
     } else {
       lock.readLock().lock();
     }
+    start = System.currentTimeMillis();
   }
 
   public boolean tryLock(boolean isWriteLock) {
@@ -105,6 +120,10 @@ public abstract class Processor {
     } else {
       readUnlock();
     }
+    start = System.currentTimeMillis() - start;
+    if (start > 1000) {
+      LOGGER.info("Processor {} hold lock for {}ms", processorName, start, new RuntimeException());
+    }
   }
 
   /**
@@ -122,7 +141,11 @@ public abstract class Processor {
    * @return
    */
   public boolean tryWriteLock() {
-    return lock.writeLock().tryLock();
+    boolean result = lock.writeLock().tryLock();
+    if (result) {
+      start = System.currentTimeMillis();
+    }
+    return result;
   }
 
   /**
@@ -131,7 +154,11 @@ public abstract class Processor {
    * @return
    */
   public boolean tryReadLock() {
-    return lock.readLock().tryLock();
+    boolean result = lock.readLock().tryLock();
+    if (result) {
+      start = System.currentTimeMillis();
+    }
+    return result;
   }
 
   @Override

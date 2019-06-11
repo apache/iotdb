@@ -43,7 +43,7 @@ public class OverflowIO extends TsFileIOWriter {
   }
 
   public void clearRowGroupMetadatas() {
-    super.chunkGroupMetaDataList.clear();
+    super.flushedChunkGroupMetaDataList.clear();
   }
 
   @Override
