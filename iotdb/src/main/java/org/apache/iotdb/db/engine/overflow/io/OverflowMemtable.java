@@ -36,74 +36,70 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 /**
  * This class is used to store and query all overflow data in memory.<br>
  */
-public class OverflowMemtable {
+public class OverflowMemtable extends PrimitiveMemTable {
 
-  /**
-   * store update and delete data
-   */
-  private Map<String, Map<String, LongStatistics>> indexTrees;
-
-  /**
-   * store insert data
-   */
-  private IMemTable memTable;
-
-  public OverflowMemtable() {
-    indexTrees = new HashMap<>();
-    memTable = new PrimitiveMemTable();
-  }
-
-  public void insert(TSRecord tsRecord) {
-    for (DataPoint dataPoint : tsRecord.dataPointList) {
-      memTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
-              tsRecord.time,
-              dataPoint.getValue().toString());
-    }
-  }
-
-  /**
-   * @deprecated update time series data
-   */
-  @Deprecated
-  public void update(String deviceId, String measurementId, long startTime, long endTime,
-                     TSDataType dataType,
-                     byte[] value) {
-    if (!indexTrees.containsKey(deviceId)) {
-      indexTrees.put(deviceId, new HashMap<>());
-    }
-    if (!indexTrees.get(deviceId).containsKey(measurementId)) {
-      indexTrees.get(deviceId).put(measurementId, new LongStatistics());
-    }
-    indexTrees.get(deviceId).get(measurementId).updateStats(startTime, endTime);
-  }
+//  /**
+//   * store update and delete data
+//   */
+//  private Map<String, Map<String, LongStatistics>> indexTrees;
+//
+//  /**
+//   * store insert data
+//   */
+//  private IMemTable memTable;
+//
+//  public OverflowMemtable() {
+//    indexTrees = new HashMap<>();
+//    memTable = new PrimitiveMemTable();
+//  }
+//
+//  public void insert(TSRecord tsRecord) {
+//    for (DataPoint dataPoint : tsRecord.dataPointList) {
+//      memTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
+//              tsRecord.time,
+//              dataPoint.getValue().toString());
+//    }
+//  }
+//
+//  /**
+//   * @deprecated update time series data
+//   */
+//  @Deprecated
+//  public void update(String deviceId, String measurementId, long startTime, long endTime,
+//                     TSDataType dataType,
+//                     byte[] value) {
+//    if (!indexTrees.containsKey(deviceId)) {
+//      indexTrees.put(deviceId, new HashMap<>());
+//    }
+//    if (!indexTrees.get(deviceId).containsKey(measurementId)) {
+//      indexTrees.get(deviceId).put(measurementId, new LongStatistics());
+//    }
+//    indexTrees.get(deviceId).get(measurementId).updateStats(startTime, endTime);
+//  }
 
   public void delete(String deviceId, String measurementId, long timestamp, boolean isFlushing) {
-    if (isFlushing) {
-      memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
-    } else {
-      memTable.delete(deviceId, measurementId, timestamp);
-    }
+    super.delete(deviceId, measurementId, timestamp);
   }
 
   public ReadOnlyMemChunk queryOverflowInsertInMemory(String deviceId, String measurementId,
       TSDataType dataType, Map<String, String> props) {
-    return memTable.query(deviceId, measurementId, dataType, props);
+    return super.query(deviceId, measurementId, dataType, props);
   }
 
   public boolean isEmptyOfOverflowSeriesMap() {
-    return indexTrees.isEmpty();
+    return super.isEmpty();
   }
 
-  public Map<String, Map<String, LongStatistics>> getOverflowSeriesMap() {
-    return indexTrees;
-  }
+//  public Map<String, Map<String, LongStatistics>> getOverflowSeriesMap() {
+//    return super;
+//  }
 
   public boolean isEmptyOfMemTable() {
-    return memTable.isEmpty();
+    return this.isEmpty();
   }
 
   public IMemTable getMemTabale() {
-    return memTable;
+    return this;
   }
 
   public long getSize() {
@@ -112,7 +108,7 @@ public class OverflowMemtable {
   }
 
   public void clear() {
-    indexTrees.clear();
-    memTable.clear();
+//    indexTrees.clear();
+    this.clear();
   }
 }
