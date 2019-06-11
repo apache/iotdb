@@ -74,11 +74,6 @@ public class TsFileWriter implements AutoCloseable{
    **/
   private long recordCountForNextMemCheck = 100;
   private long chunkGroupSizeThreshold;
-  /**
-   * In an individual TsFile, version number is not meaningful, added
-   * only for tests.
-   */
-  private long version = 0;
 
   /**
    * init this TsFileWriter.
@@ -295,8 +290,7 @@ public class TsFileWriter implements AutoCloseable{
               "Flushed data size is inconsistent with computation! Estimated: %d, Actuall: %d",
               chunkGroupFooter.getDataSize(), fileWriter.getPos() - pos));
         }
-
-        fileWriter.endChunkGroup(chunkGroupFooter, version++);
+        fileWriter.endChunkGroup(0);
       }
       long actualTotalChunkGroupSize = fileWriter.getPos() - totalMemStart;
       LOG.info("total chunk group size:{}", actualTotalChunkGroupSize);
@@ -317,6 +311,7 @@ public class TsFileWriter implements AutoCloseable{
    *
    * @throws IOException exception in IO
    */
+  @Override
   public void close() throws IOException {
     LOG.info("start close file");
     flushAllChunkGroups();

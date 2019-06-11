@@ -110,9 +110,7 @@ public class MemTableFlushUtil {
         ioTime += System.currentTimeMillis() - startTime;
       }
       tmpTime = System.currentTimeMillis();
-      long memSize = tsFileIoWriter.getPos() - startPos;
-      ChunkGroupFooter footer = new ChunkGroupFooter(deviceId, memSize, seriesNumber);
-      tsFileIoWriter.endChunkGroup(footer, version);
+      tsFileIoWriter.endChunkGroup(version);
       ioTime += System.currentTimeMillis() - tmpTime;
     }
     LOGGER.info(

@@ -44,4 +44,9 @@ public class PrimitiveMemTable extends AbstractMemTable {
 
     return new PrimitiveMemTable(newMap);
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    return this == obj;
+  }
 }

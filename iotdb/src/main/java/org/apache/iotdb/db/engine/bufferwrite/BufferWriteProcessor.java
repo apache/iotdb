@@ -21,11 +21,12 @@ package org.apache.iotdb.db.engine.bufferwrite;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +43,7 @@ import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
-import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
+import org.apache.iotdb.db.engine.memtable.MemTablePool;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -53,13 +54,14 @@ import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,9 +74,14 @@ public class BufferWriteProcessor extends Processor {
   private volatile Future<Boolean> closeFuture = new BWCloseFuture(new ImmediateFuture<>(true));
   private ReentrantLock flushQueryLock = new ReentrantLock();
   private AtomicLong memSize = new AtomicLong();
-  private long memThreshold = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
+  private long memThreshold = TSFileConfig.groupSizeInByte;
   private IMemTable workMemTable;
   private IMemTable flushMemTable;
+
+  // each flush task has a flushId, IO task should scheduled by this id
+  private long flushId = -1;
+  private List<IMemTable> flushingMemTables = new ArrayList<>();
+
   private Action bufferwriteFlushAction;
   //private Action bufferwriteCloseAction;
   private Consumer<BufferWriteProcessor> bufferwriteCloseConsumer;
@@ -153,7 +160,7 @@ public class BufferWriteProcessor extends Processor {
       throw new BufferWriteProcessorException(e);
     }
     if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
+      workMemTable = MemTablePool.getInstance().getEmptyMemTable();
     } else {
       workMemTable.clear();
     }
@@ -290,7 +297,7 @@ public class BufferWriteProcessor extends Processor {
     flushQueryLock.lock();
     LOGGER.info("BufferWrite Processor {} get flushQueryLock for switchWorkToFlush successfully", getProcessorName());
     try {
-      IMemTable temp = flushMemTable == null ? new PrimitiveMemTable() : flushMemTable;
+      IMemTable temp = flushMemTable == null ? MemTablePool.getInstance().getEmptyMemTable() : flushMemTable;
       flushMemTable = workMemTable;
       workMemTable = temp;
       isFlush = true;
@@ -314,26 +321,40 @@ public class BufferWriteProcessor extends Processor {
     }
   }
 
+  private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter tsFileIOWriter) {
+    this.writeLock();
+    tsFileIOWriter.mergeChunkGroupMetaData();
+    try {
+      flushingMemTables.remove(memTable);
+    } finally {
+      this.writeUnlock();
+    }
+  }
+
 
   /**
    * the caller mast guarantee no other concurrent caller entering this function.
    *
    * @param displayMessage message that will appear in system log.
+   * @param tmpMemTableToFlush
    * @param version the operation version that will tagged on the to be flushed memtable
    * (i.e., ChunkGroup)
    * @param walTaskId used for declaring what the wal file name suffix is.
    * @return true if successfully.
    */
-  private boolean flushTask(String displayMessage, long version, long walTaskId) {
+  private boolean flushTask(String displayMessage,
+      IMemTable tmpMemTableToFlush, long version,
+      long walTaskId) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
     LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(),
         displayMessage);
     try {
-      if (flushMemTable != null && !flushMemTable.isEmpty()) {
+      if (tmpMemTableToFlush != null && !tmpMemTableToFlush.isEmpty()) {
         // flush data
-        MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, getProcessorName());
-        tableFlushTask.flushMemTable(fileSchema, flushMemTable, version);
+        MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, getProcessorName(), flushId,
+            this::removeFlushedMemTable);
+        tableFlushTask.flushMemTable(fileSchema, tmpMemTableToFlush, version);
         // write restore information
         writer.flush();
       }
@@ -419,7 +440,14 @@ public class BufferWriteProcessor extends Processor {
         walTaskId = 0;
       }
       valueCount = 0;
-      switchWorkToFlush();
+
+      synchronized (flushingMemTables) {
+        flushingMemTables.add(workMemTable);
+      }
+      IMemTable tmpMemTableToFlush = workMemTable;
+      workMemTable = MemTablePool.getInstance().getEmptyMemTable();
+
+      flushId++;
       long version = versionController.nextVersion();
       BasicMemController.getInstance().releaseUsage(this, memSize.get());
       memSize.set(0);
@@ -429,7 +457,7 @@ public class BufferWriteProcessor extends Processor {
             "flush memtable for bufferwrite processor {} synchronously for close task.",
             getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
             FlushManager.getInstance().getCorePoolSize());
-        flushTask("synchronously", version, walTaskId);
+        flushTask("synchronously", tmpMemTableToFlush, version, walTaskId);
         flushFuture = new ImmediateFuture<>(true);
       } else {
         if (LOGGER.isInfoEnabled()) {
@@ -439,7 +467,7 @@ public class BufferWriteProcessor extends Processor {
               FlushManager.getInstance().getCorePoolSize());
         }
         flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
-            version, walTaskId));
+            tmpMemTableToFlush, version, walTaskId));
       }
     } else {
       flushFuture = new ImmediateFuture<>(true);
