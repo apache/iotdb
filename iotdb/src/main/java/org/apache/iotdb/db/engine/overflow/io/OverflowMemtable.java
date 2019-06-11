@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.engine.overflow.io;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
@@ -76,8 +79,7 @@ public class OverflowMemtable {
 
   public void delete(String deviceId, String measurementId, long timestamp, boolean isFlushing) {
     if (isFlushing) {
-      memTable = memTable.copy();
-      memTable.delete(deviceId, measurementId, timestamp);
+      memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
     } else {
       memTable.delete(deviceId, measurementId, timestamp);
     }

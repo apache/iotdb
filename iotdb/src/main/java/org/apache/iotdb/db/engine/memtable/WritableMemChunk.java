@@ -34,6 +34,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   private TSDataType dataType;
   private PrimitiveArrayList list;
+  private long timeOffset = 0;
 
   public WritableMemChunk(TSDataType dataType) {
     this.dataType = dataType;
@@ -128,7 +129,9 @@ public class WritableMemChunk implements IWritableMemChunk {
     int length = list.size();
     Map<Long, TsPrimitiveType> map = new HashMap<>(length, 1.0f);
     for (int i = 0; i < length; i++) {
-      map.put(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i)));
+      if (list.getTimestamp(i) >= timeOffset) {
+        map.put(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i)));
+      }
     }
     List<TimeValuePair> ret = new ArrayList<>(map.size());
     map.forEach((k, v) -> ret.add(new TimeValuePairInMemTable(k, v)));
@@ -149,6 +152,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public TSDataType getType() {
     return dataType;
+  }
+
+  @Override
+  public void setTimeOffset(long offset) {
+    timeOffset = offset;
   }
 
 }

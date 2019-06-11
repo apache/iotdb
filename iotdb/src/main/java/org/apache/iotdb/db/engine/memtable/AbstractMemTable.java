@@ -18,15 +18,22 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractMemTable implements IMemTable {
+
+  private List<Modification> modifications = new ArrayList<>();
 
   private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
 
@@ -104,14 +111,33 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       Map<String, String> props) {
-    return new ReadOnlyMemChunk(dataType, getSeriesData(deviceId, measurement, dataType), props);
+
+    return new ReadOnlyMemChunk(dataType, getSeriesData(deviceId,
+        measurement, dataType), props);
+  }
+
+  private long findUndeletedTime(String deviceId, String measurement) {
+    String path = deviceId + PATH_SEPARATOR + measurement;
+    long undeletedTime = 0;
+    for (Modification modification : modifications) {
+      if (modification instanceof  Deletion) {
+        Deletion deletion = (Deletion) modification;
+        if (deletion.getPath().equals(path) && deletion.getTimestamp() > undeletedTime) {
+          undeletedTime = deletion.getTimestamp();
+        }
+      }
+    }
+    return undeletedTime + 1;
   }
 
   private TimeValuePairSorter getSeriesData(String deviceId, String measurement, TSDataType dataType) {
     if (!checkPath(deviceId, measurement)) {
       return new WritableMemChunk(dataType);
     }
-    return memTableMap.get(deviceId).get(measurement);
+    long undeletedTime = findUndeletedTime(deviceId, measurement);
+    IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
+    memChunk.setTimeOffset(undeletedTime);
+    return memChunk;
   }
 
   @Override
@@ -119,8 +145,6 @@ public abstract class AbstractMemTable implements IMemTable {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
     if (deviceMap != null) {
       IWritableMemChunk chunk = deviceMap.get(measurementId);
-      //TODO: if the memtable is thread safe, then we do not need to copy data again,
-      // otherwise current implementation is error.
       IWritableMemChunk newChunk = filterChunk(chunk, timestamp);
       if (newChunk != null) {
         deviceMap.put(measurementId, newChunk);
@@ -128,6 +152,11 @@ public abstract class AbstractMemTable implements IMemTable {
       }
     }
     return false;
+  }
+
+  @Override
+  public boolean delete(Deletion deletion) {
+    return this.modifications.add(deletion);
   }
 
   /**

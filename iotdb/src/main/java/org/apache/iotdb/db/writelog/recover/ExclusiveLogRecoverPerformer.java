@@ -70,7 +70,7 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     this.restoreFilePath = restoreFilePath;
     this.processorStoreFilePath = processorStoreFilePath;
     this.writeLogNode = logNode;
-    this.fileNodeRecoverPerformer = new FileNodeRecoverPerformer(writeLogNode.getIdentifier());
+    this.fileNodeRecoverPerformer = new StorageGroupRecoverPerformer(writeLogNode.getIdentifier());
     this.isOverflow = logNode.getFileNodeName().contains(IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
   }
 

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.Map;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -64,7 +65,7 @@ public interface IMemTable {
 
   /**
    * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
-   * deviceId.measurementId.
+   * deviceId.measurementId. Only called for non-flushing MemTable.
    *
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
@@ -72,6 +73,15 @@ public interface IMemTable {
    * @return true if there is data that been deleted. otherwise false.
    */
   boolean delete(String deviceId, String measurementId, long timestamp);
+
+  /**
+   * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
+   * deviceId.measurementId. Only called for flushing MemTable.
+   *
+   * @param deletion and object representing this deletion
+   * @return true if there is data that been deleted. otherwise false.
+   */
+  boolean delete(Deletion deletion);
 
   /**
    * Make a copy of this MemTable.

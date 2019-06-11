@@ -115,7 +115,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   private static final String WARN_NO_SUCH_OVERFLOWED_FILE = "Can not find any tsfile which"
       + " will be overflowed in the filenode processor {}, ";
-  private static final String RESTORE_FILE_SUFFIX = ".restore";
+  public static final String RESTORE_FILE_SUFFIX = ".restore";
   private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessor.class);
   private static final IoTDBConfig TsFileDBConf = IoTDBDescriptor.getInstance().getConfig();
   private static final MManager mManager = MManager.getInstance();

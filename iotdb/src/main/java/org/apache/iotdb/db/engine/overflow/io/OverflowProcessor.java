@@ -496,7 +496,7 @@ public class OverflowProcessor extends Processor {
       filenodeFlushAction.act();
       // write-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush(null, walTaskId);
+        logNode.notifyEndFlush(null, walTaskId, workResource.getInsertFile().getName());
       }
       result = true;
     } catch (IOException e) {
@@ -559,7 +559,7 @@ public class OverflowProcessor extends Processor {
       long taskId = 0;
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
-          taskId = logNode.notifyStartFlush();
+          taskId = logNode.notifyStartFlush(workResource.getInsertFile().getName());
         } catch (IOException e) {
           LOGGER.error("Overflow processor {} encountered an error when notifying log node, {}",
               getProcessorName(), e);

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.bufferwrite;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -45,11 +47,13 @@ import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -76,7 +80,6 @@ public class BufferWriteProcessor extends Processor {
   private AtomicLong memSize = new AtomicLong();
   private long memThreshold = TSFileConfig.groupSizeInByte;
   private IMemTable workMemTable;
-  private IMemTable flushMemTable;
 
   // each flush task has a flushId, IO task should scheduled by this id
   private long flushId = -1;
@@ -277,7 +280,7 @@ public class BufferWriteProcessor extends Processor {
     flushQueryLock.lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
-      if (flushMemTable != null) {
+      if (!flushingMemTables.isEmpty()) {
         memSeriesLazyMerger.addMemSeries(flushMemTable.query(deviceId, measurementId, dataType, props));
       }
       memSeriesLazyMerger.addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
@@ -292,27 +295,12 @@ public class BufferWriteProcessor extends Processor {
     }
   }
 
-  private void switchWorkToFlush() {
-    LOGGER.info("BufferWrite Processor {} try to get flushQueryLock for switchWorkToFlush", getProcessorName());
-    flushQueryLock.lock();
-    LOGGER.info("BufferWrite Processor {} get flushQueryLock for switchWorkToFlush successfully", getProcessorName());
-    try {
-      IMemTable temp = flushMemTable == null ? MemTablePool.getInstance().getEmptyMemTable() : flushMemTable;
-      flushMemTable = workMemTable;
-      workMemTable = temp;
-      isFlush = true;
-    } finally {
-      flushQueryLock.unlock();
-      LOGGER.info("BufferWrite Processor {} release the flushQueryLock for switchWorkToFlush successfully", getProcessorName());
-    }
-  }
 
   private void switchFlushToWork() {
     LOGGER.info("BufferWrite Processor {} try to get flushQueryLock for switchFlushToWork", getProcessorName());
     flushQueryLock.lock();
     LOGGER.info("BufferWrite Processor {} get flushQueryLock for switchFlushToWork", getProcessorName());
     try {
-      flushMemTable.clear();
       writer.appendMetadata();
       isFlush = false;
     } finally {
@@ -361,7 +349,7 @@ public class BufferWriteProcessor extends Processor {
 
       filenodeFlushAction.act();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush(null, walTaskId);
+        logNode.notifyEndFlush(null, walTaskId, new File(writer.getInsertFilePath()).getName());
       }
       result = true;
     } catch (Exception e) {
@@ -413,17 +401,6 @@ public class BufferWriteProcessor extends Processor {
     }
     lastFlushTime = System.currentTimeMillis();
     // check value count
-    // waiting for the end of last flush operation.
-    try {
-      long startTime = System.currentTimeMillis();
-      flushFuture.get();
-      long timeCost = System.currentTimeMillis() - startTime;
-      if (timeCost > 10) {
-        LOGGER.info("BufferWrite Processor {} wait for the previous flushing task for {} ms.", getProcessorName(), timeCost);
-      }
-    } catch (InterruptedException | ExecutionException e) {
-      throw new IOException(e);
-    }
     if (valueCount > 0) {
       // update the lastUpdatetime, prepare for flush
       try {
@@ -434,16 +411,14 @@ public class BufferWriteProcessor extends Processor {
       }
       final long walTaskId;
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        walTaskId = logNode.notifyStartFlush();
+        walTaskId = logNode.notifyStartFlush(new File(writer.getInsertFilePath()).getName());
         LOGGER.info("BufferWrite Processor {} has notified WAL for flushing.", getProcessorName());
       } else {
         walTaskId = 0;
       }
       valueCount = 0;
 
-      synchronized (flushingMemTables) {
-        flushingMemTables.add(workMemTable);
-      }
+      flushingMemTables.add(workMemTable);
       IMemTable tmpMemTableToFlush = workMemTable;
       workMemTable = MemTablePool.getInstance().getEmptyMemTable();
 
@@ -638,8 +613,11 @@ public class BufferWriteProcessor extends Processor {
     workMemTable.delete(deviceId, measurementId, timestamp);
     if (isFlush()) {
       // flushing MemTable cannot be directly modified since another thread is reading it
-      flushMemTable = flushMemTable.copy();
-      flushMemTable.delete(deviceId, measurementId, timestamp);
+      for (IMemTable memTable : flushingMemTables) {
+        if (memTable.containSeries(deviceId, measurementId)) {
+          memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
+        }
+      }
     }
   }
 

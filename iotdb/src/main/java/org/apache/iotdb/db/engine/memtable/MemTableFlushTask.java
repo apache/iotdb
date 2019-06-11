@@ -138,8 +138,8 @@ public class MemTableFlushTask {
         ioTime += System.currentTimeMillis() - starTime;
       }
     }
-    flushCallBack.afterFlush(memTable, tsFileIoWriter);
     MemTablePool.getInstance().release(memTable);
+    flushCallBack.afterFlush(memTable, tsFileIoWriter);
     tsFileIoWriter.getFlushID().getAndIncrement();
     LOGGER.info("BufferWrite Processor {}, flushing a memtable into disk:  io cost {} ms.",
         processName, ioTime);
