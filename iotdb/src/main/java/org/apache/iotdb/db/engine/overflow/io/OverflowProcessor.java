@@ -588,6 +588,7 @@ public class OverflowProcessor extends Processor {
       overflowFlushMemTables.add(workSupport);
       IMemTable tmpMemTableToFlush = workSupport;
       workSupport = MemTablePool.getInstance().getEmptyMemTable();
+      flushId++;
       flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
           tmpMemTableToFlush, walTaskId, flushId, this::removeFlushedMemTable));
 
