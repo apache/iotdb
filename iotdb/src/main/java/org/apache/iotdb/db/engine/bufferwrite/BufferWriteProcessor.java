@@ -98,7 +98,7 @@ public class BufferWriteProcessor extends Processor {
   private WriteLogNode logNode;
   private VersionController versionController;
 
-  private boolean isClosing = false;
+  private boolean isClosing = true;
   private boolean isClosed = false;
 
   private TsFileResource currentTsFileResource;
