@@ -96,7 +96,7 @@ public class RecoverTest {
 
       logNode.write(bwInsertPlan);
       logNode.write(updatePlan);
-      logNode.notifyStartFlush("test");
+      logNode.notifyStartFlush();
       logNode.write(deletePlan);
       logNode.forceSync();
 

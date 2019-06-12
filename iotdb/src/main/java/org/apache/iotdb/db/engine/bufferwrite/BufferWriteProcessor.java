@@ -329,6 +329,11 @@ public class BufferWriteProcessor extends Processor {
     }
   }
 
+  /**
+   * return the memtable to MemTablePool and make
+   * @param memTable
+   * @param tsFileIOWriter
+   */
   private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter tsFileIOWriter) {
     long start = System.currentTimeMillis();
     this.writeLock();
@@ -374,7 +379,7 @@ public class BufferWriteProcessor extends Processor {
 
       filenodeFlushAction.act();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush(null, walTaskId, new File(writer.getInsertFilePath()).getName());
+        logNode.notifyEndFlush(null, walTaskId);
       }
       result = true;
     } catch (Exception e) {
@@ -436,7 +441,7 @@ public class BufferWriteProcessor extends Processor {
       }
       final long walTaskId;
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        walTaskId = logNode.notifyStartFlush(new File(writer.getInsertFilePath()).getName());
+        walTaskId = logNode.notifyStartFlush();
         LOGGER.info("BufferWrite Processor {} has notified WAL for flushing.", getProcessorName());
       } else {
         walTaskId = 0;

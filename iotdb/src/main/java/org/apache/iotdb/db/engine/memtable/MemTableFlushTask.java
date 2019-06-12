@@ -16,13 +16,9 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
@@ -44,20 +40,21 @@ public class MemTableFlushTask {
   private ConcurrentLinkedQueue ioTaskQueue = new ConcurrentLinkedQueue();
   private ConcurrentLinkedQueue memoryTaskQueue = new ConcurrentLinkedQueue();
   private boolean stop = false;
-  private String processName;
+  private String processorName;
   private long flushId;
 
   private MemTableFlushCallBack flushCallBack;
   private IMemTable memTable;
 
-  public MemTableFlushTask(TsFileIOWriter writer, String processName, long flushId,
+  public MemTableFlushTask(TsFileIOWriter writer, String processorName, long flushId,
       MemTableFlushCallBack callBack) {
     this.tsFileIoWriter = writer;
-    this.processName = processName;
+    this.processorName = processorName;
     this.flushId = flushId;
     this.flushCallBack = callBack;
     ioFlushThread.start();
     memoryFlushThread.start();
+    LOGGER.info("Processor {} flush task created, flushId: {}", processorName, flushId);
   }
 
 
@@ -69,7 +66,7 @@ public class MemTableFlushTask {
         try {
           Thread.sleep(10);
         } catch (InterruptedException e) {
-          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processName, e);
+          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processorName, e);
         }
       } else {
         if (task instanceof String) {
@@ -87,7 +84,7 @@ public class MemTableFlushTask {
                 memorySerializeTask.right.getType());
             ioTaskQueue.add(seriesWriter);
           } catch (IOException e) {
-            LOGGER.error("BufferWrite Processor {}, io error.", processName, e);
+            LOGGER.error("BufferWrite Processor {}, io error.", processorName, e);
             throw new RuntimeException(e);
           }
           memSerializeTime += System.currentTimeMillis() - starTime;
@@ -96,7 +93,7 @@ public class MemTableFlushTask {
     }
     LOGGER.info(
         "BufferWrite Processor {},flushing a memtable into disk: serialize data into mem cost {} ms.",
-        processName, memSerializeTime);
+        processorName, memSerializeTime);
   });
 
 
@@ -104,11 +101,18 @@ public class MemTableFlushTask {
   // rather than per each memtable.
   private Thread ioFlushThread = new Thread(() -> {
     long ioTime = 0;
-    while (tsFileIoWriter.getFlushID().get() != flushId) {
+    long currentTsFileFlushId;
+    boolean printed = false;
+    while ((currentTsFileFlushId = tsFileIoWriter.getFlushID().get()) != flushId) {
       try {
+        if (!printed) {
+          LOGGER.info("tsFileIoWriter flushID: {}, flush task flushID: {}", currentTsFileFlushId,
+              flushId);
+          printed = true;
+        }
         Thread.sleep(10);
       } catch (InterruptedException e) {
-        LOGGER.error("Processor {}, last flush io task is not finished.", processName, e);
+        LOGGER.error("Processor {}, last flush io task is not finished.", processorName, e);
       }
     }
     while (!stop) {
@@ -117,7 +121,7 @@ public class MemTableFlushTask {
         try {
           Thread.sleep(10);
         } catch (InterruptedException e) {
-          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processName, e);
+          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processorName, e);
         }
       } else {
         long starTime = System.currentTimeMillis();
@@ -132,17 +136,18 @@ public class MemTableFlushTask {
             task.finished = true;
           }
         } catch (IOException e) {
-          LOGGER.error("BufferWrite Processor {}, io error.", processName, e);
+          LOGGER.error("BufferWrite Processor {}, io error.", processorName, e);
           throw new RuntimeException(e);
         }
         ioTime += System.currentTimeMillis() - starTime;
       }
     }
     MemTablePool.getInstance().release(memTable);
+    LOGGER.info("Processor {} return back a memtable to MemTablePool", processorName);
     flushCallBack.afterFlush(memTable, tsFileIoWriter);
-    tsFileIoWriter.getFlushID().getAndIncrement();
-    LOGGER.info("BufferWrite Processor {}, flushing a memtable into disk:  io cost {} ms.",
-        processName, ioTime);
+    long newId = tsFileIoWriter.getFlushID().incrementAndGet();
+    LOGGER.info("BufferWrite Processor {}, flushing a memtable into disk:  io cost {}ms, new flushID in tsFileIoWriter: {}.",
+        processorName, ioTime, newId);
   });
 
 
@@ -177,7 +182,7 @@ public class MemTableFlushTask {
               .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
           break;
         default:
-          LOGGER.error("BufferWrite Processor {}, don't support data type: {}", processName,
+          LOGGER.error("BufferWrite Processor {}, don't support data type: {}", processorName,
               dataType);
           break;
       }
@@ -208,13 +213,13 @@ public class MemTableFlushTask {
     }
     LOGGER.info(
         "BufferWrite Processor {}, flushing a memtable into disk: data sort time cost {} ms.",
-        processName, sortTime);
+        processorName, sortTime);
     while (!theLastTask.finished) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
         LOGGER.error("BufferWrite Processor {}, flush memtable table thread is interrupted.",
-            processName, e);
+            processorName, e);
         throw new RuntimeException(e);
       }
     }

@@ -161,15 +161,15 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
    * Warning : caller must have lock.
    */
   @Override
-  public long notifyStartFlush(String tsFileName) {
+  public long notifyStartFlush() {
     close();
-    File oldLogFile = new File(logDirectory + File.separator + tsFileName + WAL_FILE_NAME);
+    File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME);
     if (!oldLogFile.exists()) {
       return 0;
     }
 
     long id = taskId.incrementAndGet();
-    File newLogFile = new File(logDirectory + File.separator + tsFileName + WAL_FILE_NAME +
+    File newLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME +
         OLD_SUFFIX + id);
     if (!oldLogFile.renameTo(newLogFile)) {
       logger.error("Log node {} renaming log file failed!", identifier);
@@ -184,8 +184,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
    * Warning : caller must have lock.
    */
   @Override
-  public void notifyEndFlush(List<LogPosition> logPositions, long taskId, String tsFileName) {
-    discard(taskId, tsFileName);
+  public void notifyEndFlush(List<LogPosition> logPositions, long taskId) {
+    discard(taskId);
   }
 
   @Override
@@ -271,8 +271,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
-  private void discard(long id, String tsFileName) {
-    File oldLogFile = new File(logDirectory + File.separator + tsFileName + WAL_FILE_NAME
+  private void discard(long id) {
+    File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME
         + OLD_SUFFIX + id);
     if (!oldLogFile.exists()) {
       logger.info("No old log to be deleted");

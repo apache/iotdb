@@ -9,7 +9,7 @@ public class MemTablePool {
 
   private Stack<IMemTable> emptyMemTables;
   // >= number of storage group * 2
-  private int capacity = 23;
+  private int capacity = 20;
   private int size = 0;
 
   private static final MemTablePool INSTANCE = new MemTablePool();
