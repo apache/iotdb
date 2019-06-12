@@ -40,6 +40,10 @@ public class LogWriter implements ILogWriter {
     logFile = new File(logFilePath);
   }
 
+  public LogWriter(File logFile) {
+    this.logFile = logFile;
+  }
+
   @Override
   public void write(List<byte[]> logCache) throws IOException {
     if (outputStream == null) {

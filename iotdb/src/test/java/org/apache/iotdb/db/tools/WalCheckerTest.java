@@ -25,10 +25,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.exception.SysCheckException;
@@ -82,7 +80,7 @@ public class WalCheckerTest {
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
           binaryPlans.add(PhysicalPlanLogTransfer
-              .operatorToLog(new InsertPlan(deviceId, j, measurements, values)));
+              .planToLog(new InsertPlan(deviceId, j, measurements, values)));
         }
         logWriter.write(binaryPlans);
         logWriter.force();
@@ -115,7 +113,7 @@ public class WalCheckerTest {
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
           binaryPlans.add(PhysicalPlanLogTransfer
-              .operatorToLog(new InsertPlan(deviceId, j, measurements, values)));
+              .planToLog(new InsertPlan(deviceId, j, measurements, values)));
         }
         if (i > 2) {
           binaryPlans.add("not a wal".getBytes());

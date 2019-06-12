@@ -78,9 +78,7 @@ public class RecoverTest {
       MManager.getInstance().setStorageLevelToMTree("root.testLogNode");
     } catch (PathErrorException ignored) {
     }
-    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
-        tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
 
     try {
       InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
@@ -96,7 +94,7 @@ public class RecoverTest {
 
       logNode.write(bwInsertPlan);
       logNode.write(updatePlan);
-      logNode.notifyStartFlush("test");
+      logNode.notifyStartFlush();
       logNode.write(deletePlan);
       logNode.forceSync();
 
@@ -150,9 +148,7 @@ public class RecoverTest {
       MManager.getInstance().setStorageLevelToMTree("root.testLogNode");
     } catch (PathErrorException ignored) {
     }
-    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
-        tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
 
     try {
       // set flag
@@ -228,9 +224,7 @@ public class RecoverTest {
       MManager.getInstance().setStorageLevelToMTree("root.testLogNode");
     } catch (PathErrorException ignored) {
     }
-    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
-        tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
 
     try {
       // set flag

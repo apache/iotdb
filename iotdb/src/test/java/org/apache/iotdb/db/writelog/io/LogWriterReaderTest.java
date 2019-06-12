@@ -23,7 +23,6 @@ import static org.junit.Assert.assertArrayEquals;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -56,7 +55,7 @@ public class LogWriterReaderTest {
     plans.add(updatePlan);
     plans.add(deletePlan);
     for (PhysicalPlan plan : plans) {
-      logs.add(PhysicalPlanLogTransfer.operatorToLog(plan));
+      logs.add(PhysicalPlanLogTransfer.planToLog(plan));
 
     }
   }
@@ -70,7 +69,7 @@ public class LogWriterReaderTest {
       RAFLogReader reader = new RAFLogReader(new File(filePath));
       List<byte[]> res = new ArrayList<>();
       while (reader.hasNext()) {
-        res.add(PhysicalPlanLogTransfer.operatorToLog(reader.next()));
+        res.add(PhysicalPlanLogTransfer.planToLog(reader.next()));
       }
       for (int i = 0; i < logs.size(); i++) {
         assertArrayEquals(logs.get(i), res.get(i));
