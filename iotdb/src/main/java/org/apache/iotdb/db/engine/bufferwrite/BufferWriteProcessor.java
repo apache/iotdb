@@ -431,7 +431,12 @@ public class BufferWriteProcessor extends Processor {
       IMemTable tmpMemTableToFlush = workMemTable;
 
       long start = System.currentTimeMillis();
-      workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
+
+      if (isCloseTaskCalled) {
+        workMemTable = null;
+      } else {
+        workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
+      }
 
       start = System.currentTimeMillis() - start;
       if (start > 1000) {

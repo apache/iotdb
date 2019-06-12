@@ -64,6 +64,7 @@ public class MemTablePool {
     synchronized (emptyMemTables) {
       memTable.clear();
       emptyMemTables.push(memTable);
+      LOGGER.info("a memtable returned, stack size {}", emptyMemTables.size());
     }
   }
 
