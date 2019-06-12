@@ -580,7 +580,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
             .format("The filenode processor %s failed to get the bufferwrite processor.",
                 processorName), e);
       }
-    } else if (bufferWriteProcessor.isClosed()) {
+    } else if (bufferWriteProcessor.isClosing()) {
       try {
         bufferWriteProcessor.reopen(insertTime + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR
             + System.currentTimeMillis());
@@ -1765,7 +1765,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   public FileNodeFlushFuture flush() throws IOException {
     Future<Boolean> bufferWriteFlushFuture = null;
     Future<Boolean> overflowFlushFuture = null;
-    if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosed()) {
+    if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosing()) {
       bufferWriteFlushFuture = bufferWriteProcessor.flush();
     }
     if (overflowProcessor != null && !overflowProcessor.isClosed()) {
@@ -1778,7 +1778,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Close the bufferwrite processor.
    */
   public Future<Boolean> closeBufferWrite() throws FileNodeProcessorException {
-    if (bufferWriteProcessor == null || bufferWriteProcessor.isClosed()) {
+    if (bufferWriteProcessor == null || bufferWriteProcessor.isClosing()) {
       return new ImmediateFuture<>(true);
     }
     try {
@@ -1960,7 +1960,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       // delete data in memory
       OverflowProcessor ofProcessor = getOverflowProcessor(getProcessorName());
       ofProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
-      if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosed()) {
+      if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosing()) {
         bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
       }
     } catch (Exception e) {
@@ -2015,7 +2015,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
       throw e;
     }
-    if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosed()) {
+    if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosing()) {
       try {
         bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
       } catch (BufferWriteProcessorException e) {
@@ -2044,6 +2044,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   public CopyOnWriteLinkedList<BufferWriteProcessor> getClosingBufferWriteProcessor() {
+    for (BufferWriteProcessor processor: closingBufferWriteProcessor.read()) {
+      if (processor.isClosed()) {
+        closingBufferWriteProcessor.remove(processor);
+      }
+    }
+    closingBufferWriteProcessor.reset();
     return closingBufferWriteProcessor;
   }
 
@@ -2124,38 +2130,38 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  /**
-   * wait for all closing processors finishing their tasks
-   */
-  public void waitforAllClosed() throws FileNodeProcessorException {
-    close();
-    while (getClosingBufferWriteProcessor().size() != 0) {
-      checkAllClosingProcessors();
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        LOGGER.error("Filenode Processor {} is interrupted when waiting for all closed.", processorName, e);
-      }
-    }
-  }
+//  /**
+//   * wait for all closing processors finishing their tasks
+//   */
+//  public void waitforAllClosed() throws FileNodeProcessorException {
+//    close();
+//    while (getClosingBufferWriteProcessor().size() != 0) {
+//      checkAllClosingProcessors();
+//      try {
+//        Thread.sleep(10);
+//      } catch (InterruptedException e) {
+//        LOGGER.error("Filenode Processor {} is interrupted when waiting for all closed.", processorName, e);
+//      }
+//    }
+//  }
 
 
-  void checkAllClosingProcessors() {
-    Iterator<BufferWriteProcessor> iterator =
-        this.getClosingBufferWriteProcessor().iterator();
-    while (iterator.hasNext()) {
-      BufferWriteProcessor processor = iterator.next();
-      try {
-        if (processor.getCloseFuture().get(10, TimeUnit.MILLISECONDS)) {
-          //if finished, we can remove it.
-          iterator.remove();
-        }
-      } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("Close bufferwrite processor {} failed.", processor.getProcessorName(), e);
-      } catch (TimeoutException e) {
-        //do nothing.
-      }
-    }
-    this.getClosingBufferWriteProcessor().reset();
-  }
+//  void checkAllClosingProcessors() {
+//    Iterator<BufferWriteProcessor> iterator =
+//        this.getClosingBufferWriteProcessor().iterator();
+//    while (iterator.hasNext()) {
+//      BufferWriteProcessor processor = iterator.next();
+//      try {
+//        if (processor.getCloseFuture().get(10, TimeUnit.MILLISECONDS)) {
+//          //if finished, we can remove it.
+//          iterator.remove();
+//        }
+//      } catch (InterruptedException | ExecutionException e) {
+//        LOGGER.error("Close bufferwrite processor {} failed.", processor.getProcessorName(), e);
+//      } catch (TimeoutException e) {
+//        //do nothing.
+//      }
+//    }
+//    this.getClosingBufferWriteProcessor().reset();
+//  }
 }

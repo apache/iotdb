@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,19 +45,18 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
-import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
-import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -78,7 +76,7 @@ public class BufferWriteProcessor extends Processor {
   private volatile Future<Boolean> closeFuture = new BWCloseFuture(new ImmediateFuture<>(true));
   private ReentrantLock flushQueryLock = new ReentrantLock();
   private AtomicLong memSize = new AtomicLong();
-  private long memThreshold = TSFileConfig.groupSizeInByte;
+  private long memThreshold = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
   private IMemTable workMemTable;
 
   // each flush task has a flushId, IO task should scheduled by this id
@@ -101,7 +99,9 @@ public class BufferWriteProcessor extends Processor {
   private WriteLogNode logNode;
   private VersionController versionController;
 
-  private boolean isClosed = true;
+  private boolean isClosing = true;
+
+  private boolean isClosed = false;
   private boolean isFlush = false;
 
 
@@ -141,7 +141,7 @@ public class BufferWriteProcessor extends Processor {
   }
 
   public void reopen(String fileName) throws BufferWriteProcessorException {
-    if (!isClosed) {
+    if (!isClosing) {
       return;
     }
 
@@ -167,18 +167,20 @@ public class BufferWriteProcessor extends Processor {
     } else {
       workMemTable.clear();
     }
-    isClosed = false;
+    isClosing = false;
     isFlush = false;
   }
 
   public void checkOpen() throws BufferWriteProcessorException {
-    if (isClosed) {
+    if (isClosing) {
       throw new BufferWriteProcessorException("BufferWriteProcessor already closed");
     }
   }
 
 
   /**
+   * Only for Test
+   *
    * write one data point to the buffer write.
    *
    * @param deviceId device name
@@ -208,12 +210,19 @@ public class BufferWriteProcessor extends Processor {
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
   public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
+    long start1 = System.currentTimeMillis();
     checkOpen();
     long memUsage = MemUtils.getRecordSize(tsRecord);
     BasicMemController.UsageLevel level = BasicMemController.getInstance()
         .acquireUsage(this, memUsage);
 
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("BufferWriteProcessor.write step1 cost: {}", start1);
+    }
+
     String memory;
+    long start2 = System.currentTimeMillis();
     switch (level) {
       case SAFE:
         for (DataPoint dataPoint : tsRecord.dataPointList) {
@@ -222,6 +231,10 @@ public class BufferWriteProcessor extends Processor {
               dataPoint.getValue().toString());
         }
         valueCount++;
+        start2 = System.currentTimeMillis() - start2;
+        if (start2 > 1000) {
+          LOGGER.info("BufferWriteProcessor.write step2 cost: {}", start2);
+        }
         checkMemThreshold4Flush(memUsage);
         return true;
       case WARNING:
@@ -248,6 +261,7 @@ public class BufferWriteProcessor extends Processor {
   }
 
   private void checkMemThreshold4Flush(long addedMemory) throws BufferWriteProcessorException {
+    long start1 = System.currentTimeMillis();
     long newMem = memSize.addAndGet(addedMemory);
     if (newMem > memThreshold) {
       String usageMem = MemUtils.bytesCntToStr(newMem);
@@ -261,6 +275,10 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.error("Flush bufferwrite error.", e);
         throw new BufferWriteProcessorException(e);
       }
+    }
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("BufferWriteProcessor.checkMemThreshold4Flush step-1, cost: {}", start1);
     }
   }
 
@@ -312,12 +330,17 @@ public class BufferWriteProcessor extends Processor {
   }
 
   private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter tsFileIOWriter) {
+    long start = System.currentTimeMillis();
     this.writeLock();
     tsFileIOWriter.mergeChunkGroupMetaData();
     try {
       flushingMemTables.remove(memTable);
     } finally {
       this.writeUnlock();
+    }
+    start = System.currentTimeMillis() - start;
+    if (start > 1000) {
+      LOGGER.info("removeFlushedMemTable is too slow!!!  cost: {}ms", start);
     }
   }
 
@@ -334,7 +357,7 @@ public class BufferWriteProcessor extends Processor {
    */
   private boolean flushTask(String displayMessage,
       IMemTable tmpMemTableToFlush, long version,
-      long walTaskId) {
+      long walTaskId, long flushId) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
     LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(),
@@ -385,7 +408,7 @@ public class BufferWriteProcessor extends Processor {
 
   // keyword synchronized is added in this method, so that only one flush task can be submitted now.
   private Future<Boolean> flush(boolean isCloseTaskCalled) throws IOException {
-    if (!isCloseTaskCalled && isClosed) {
+    if (!isCloseTaskCalled && isClosing) {
       throw new IOException("BufferWriteProcessor closed");
     }
     // statistic information for flush
@@ -422,7 +445,14 @@ public class BufferWriteProcessor extends Processor {
 
       flushingMemTables.add(workMemTable);
       IMemTable tmpMemTableToFlush = workMemTable;
+
+      long start = System.currentTimeMillis();
       workMemTable = MemTablePool.getInstance().getEmptyMemTable();
+
+      start = System.currentTimeMillis() - start;
+      if (start > 1000) {
+        LOGGER.info("get empty memtable cost: {}", start);
+      }
 
       flushId++;
       long version = versionController.nextVersion();
@@ -434,7 +464,7 @@ public class BufferWriteProcessor extends Processor {
             "flush memtable for bufferwrite processor {} synchronously for close task.",
             getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
             FlushManager.getInstance().getCorePoolSize());
-        flushTask("synchronously", tmpMemTableToFlush, version, walTaskId);
+        flushTask("synchronously", tmpMemTableToFlush, version, walTaskId, flushId);
         flushFuture = new ImmediateFuture<>(true);
       } else {
         if (LOGGER.isInfoEnabled()) {
@@ -444,7 +474,7 @@ public class BufferWriteProcessor extends Processor {
               FlushManager.getInstance().getCorePoolSize());
         }
         flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
-            tmpMemTableToFlush, version, walTaskId));
+            tmpMemTableToFlush, version, walTaskId, flushId));
       }
     } else {
       flushFuture = new ImmediateFuture<>(true);
@@ -459,11 +489,11 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public synchronized void close() throws BufferWriteProcessorException {
-    if (isClosed) {
+    if (isClosing) {
       return;
     }
     try {
-      isClosed = true;
+      isClosing = true;
       // flush data (if there are flushing task, flush() will be blocked)
       //Future<Boolean> flush = flush();
       //and wait for finishing flush async
@@ -488,12 +518,8 @@ public class BufferWriteProcessor extends Processor {
       //FIXME suppose the flush-thread-pool is 2.
       // then if a flush task and a close task are running in the same time
       // and the close task is faster, then writer == null, and the flush task will throw nullpointer
-      // expcetion. Add "synchronized" keyword on both flush and close may solve the issue.
+      // exception. Add "synchronized" keyword on both flush and close may solve the issue.
       writer = null;
-      isClosed = true;
-      //A BUG may appears here: workMemTable has been cleared,
-      // but the corresponding TsFile is not maintained in Processor.
-      workMemTable.clear();
       // update the IntervalFile for interval list
       bufferwriteCloseConsumer.accept(this);
       // flush the changed information for filenode
@@ -513,6 +539,8 @@ public class BufferWriteProcessor extends Processor {
     }catch (IOException | ActionException e) {
       LOGGER.error("Close bufferwrite processor {} failed.", getProcessorName(), e);
       return false;
+    } finally {
+      isClosed = true;
     }
     return true;
   }
@@ -640,6 +668,10 @@ public class BufferWriteProcessor extends Processor {
 
   public String getInsertFilePath() {
     return insertFilePath;
+  }
+
+  public boolean isClosing() {
+    return isClosing;
   }
 
   public boolean isClosed() {

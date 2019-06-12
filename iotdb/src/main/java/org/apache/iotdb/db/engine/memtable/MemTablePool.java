@@ -8,7 +8,8 @@ public class MemTablePool {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTablePool.class);
 
   private Stack<IMemTable> emptyMemTables;
-  private int capacity = 10;
+  // >= number of storage group * 2
+  private int capacity = 23;
   private int size = 0;
 
   private static final MemTablePool INSTANCE = new MemTablePool();
@@ -21,8 +22,10 @@ public class MemTablePool {
     synchronized (emptyMemTables) {
       if (emptyMemTables.isEmpty() && size < capacity) {
         size++;
+        LOGGER.info("generated a new memtable, system memtable size: {}, stack size: {}", size, emptyMemTables.size());
         return new PrimitiveMemTable();
       } else if (!emptyMemTables.isEmpty()){
+        LOGGER.info("system memtable size: {}, stack size: {}, then get a memtable from stack", size, emptyMemTables.size());
         return emptyMemTables.pop();
       }
     }

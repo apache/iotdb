@@ -235,12 +235,10 @@ public class OverflowResource {
       long lastPosition = insertIO.getPos();
 //      MemTableFlushUtil.flushMemTable(fileSchema, insertIO, memTable,
 //          versionController.nextVersion());
-
 //      MemTableFlushTask task = new MemTableFlushTask(insertIO, processorName);
       MemTableFlushTask tableFlushTask = new MemTableFlushTask(insertIO, processorName, flushId,
           removeFlushedMemTable);
       tableFlushTask.flushMemTable(fileSchema, memTable, versionController.nextVersion());
-
 
       List<ChunkGroupMetaData> rowGroupMetaDatas = insertIO.getChunkGroupMetaDatas();
       appendInsertMetadatas.addAll(rowGroupMetaDatas);
