@@ -405,12 +405,6 @@ public class BufferWriteProcessor extends Processor {
 
       long start = System.currentTimeMillis();
 
-      if (isCloseTaskCalled) {
-        workMemTable = null;
-      } else {
-        workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
-      }
-
       start = System.currentTimeMillis() - start;
       if (start > 1000) {
         LOGGER.info("BufferWriteProcessor.flush getEmptyMemtable cost: {}", start);
@@ -437,6 +431,12 @@ public class BufferWriteProcessor extends Processor {
         }
         flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
             tmpMemTableToFlush, version, walTaskId, flushId));
+      }
+
+      if (isCloseTaskCalled) {
+        workMemTable = null;
+      } else {
+        workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
       }
     } else {
       flushFuture = new ImmediateFuture<>(true);
