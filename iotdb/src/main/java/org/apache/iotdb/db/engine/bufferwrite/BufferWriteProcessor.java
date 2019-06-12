@@ -436,6 +436,9 @@ public class BufferWriteProcessor extends Processor {
         workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
       }
     } else {
+      if (isCloseTaskCalled) {
+        MemTablePool.getInstance().release(workMemTable);
+      }
       flushFuture = new ImmediateFuture<>(true);
     }
     return flushFuture;

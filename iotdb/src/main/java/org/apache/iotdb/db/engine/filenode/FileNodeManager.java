@@ -509,6 +509,8 @@ public class FileNodeManager implements IStatistic, IService {
     }
     try {
       long start2_3 = System.currentTimeMillis();
+
+      // write tsrecord and check flush
       if (!bufferWriteProcessor.write(tsRecord)) {
         start2_3 = System.currentTimeMillis() - start2_3;
         if (start2_3 > 1000) {
@@ -536,6 +538,8 @@ public class FileNodeManager implements IStatistic, IService {
     }
 
     long start3 = System.currentTimeMillis();
+
+    // check if the file should be closed
     if (bufferWriteProcessor
         .getFileSize() > IoTDBDescriptor.getInstance()
         .getConfig().getBufferwriteFileSizeThreshold()) {
