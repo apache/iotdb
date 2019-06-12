@@ -72,44 +72,44 @@ public class BufferWriteBenchmark {
     FileUtils.deleteDirectory(new File("BufferBenchmark"));
   }
 
-  public static void main(String[] args) throws BufferWriteProcessorException, IOException {
-    before();
-    Map<String, Action> parameters = new HashMap<>();
-    parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, new Action() {
-      @Override
-      public void act() throws ActionException {
-        System.out.println(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
-      }
-    });
-    parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, new Action() {
-      @Override
-      public void act() throws ActionException {
-        System.out.println(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
-      }
-    });
-
-    BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor("BufferBenchmark",
-        "bench", "benchFile",
-        parameters,
-        x -> System.out.println(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION),
-        SysTimeVersionController.INSTANCE, fileSchema);
-
-    long startTime = System.currentTimeMillis();
-    for (int i = 0; i < numOfPoint; i++) {
-      for (int j = 0; j < numOfDevice; j++) {
-        TSRecord tsRecord = getRecord(deviceIds[j]);
-        bufferWriteProcessor.write(tsRecord);
-      }
-    }
-    long endTime = System.currentTimeMillis();
-    bufferWriteProcessor.close();
-    System.out.println(String.format(
-        "Num of time series: %d, " + "Num of points for each time series: %d, "
-            + "The total time: %d ms. ",
-        numOfMeasurement * numOfDevice, numOfPoint, endTime - startTime));
-
-    after();
-  }
+//  public static void main(String[] args) throws BufferWriteProcessorException, IOException {
+//    before();
+//    Map<String, Action> parameters = new HashMap<>();
+//    parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, new Action() {
+//      @Override
+//      public void act() throws ActionException {
+//        System.out.println(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
+//      }
+//    });
+//    parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, new Action() {
+//      @Override
+//      public void act() throws ActionException {
+//        System.out.println(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
+//      }
+//    });
+//
+//    BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor("BufferBenchmark",
+//        "bench", "benchFile",
+//        parameters,
+//        x -> System.out.println(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION),
+//        SysTimeVersionController.INSTANCE, fileSchema);
+//
+//    long startTime = System.currentTimeMillis();
+//    for (int i = 0; i < numOfPoint; i++) {
+//      for (int j = 0; j < numOfDevice; j++) {
+//        TSRecord tsRecord = getRecord(deviceIds[j]);
+//        bufferWriteProcessor.write(tsRecord);
+//      }
+//    }
+//    long endTime = System.currentTimeMillis();
+//    bufferWriteProcessor.close();
+//    System.out.println(String.format(
+//        "Num of time series: %d, " + "Num of points for each time series: %d, "
+//            + "The total time: %d ms. ",
+//        numOfMeasurement * numOfDevice, numOfPoint, endTime - startTime));
+//
+//    after();
+//  }
 
   private static TSRecord getRecord(String deviceId) {
     long time = System.nanoTime();

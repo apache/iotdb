@@ -124,7 +124,6 @@ public class BufferWriteProcessorNewTest {
       assertEquals(num, timeValuePair.getTimestamp());
       assertEquals(num, timeValuePair.getValue().getInt());
     }
-    assertFalse(bufferwrite.isFlush());
     long lastFlushTime = bufferwrite.getLastFlushTime();
     // flush asynchronously
     bufferwrite.flush();

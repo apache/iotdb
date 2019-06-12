@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 /**
  * This class is used to store and query all overflow data in memory.<br>
  */
-public class OverflowMemtable {
+public class OverflowMemtable extends PrimitiveMemTable {
 
   /**
    * store update and delete data
@@ -78,32 +78,28 @@ public class OverflowMemtable {
   }
 
   public void delete(String deviceId, String measurementId, long timestamp, boolean isFlushing) {
-    if (isFlushing) {
-      memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
-    } else {
-      memTable.delete(deviceId, measurementId, timestamp);
-    }
+    super.delete(deviceId, measurementId, timestamp);
   }
 
   public ReadOnlyMemChunk queryOverflowInsertInMemory(String deviceId, String measurementId,
       TSDataType dataType, Map<String, String> props) {
-    return memTable.query(deviceId, measurementId, dataType, props);
+    return super.query(deviceId, measurementId, dataType, props);
   }
 
   public boolean isEmptyOfOverflowSeriesMap() {
-    return indexTrees.isEmpty();
+    return super.isEmpty();
   }
 
-  public Map<String, Map<String, LongStatistics>> getOverflowSeriesMap() {
-    return indexTrees;
-  }
+//  public Map<String, Map<String, LongStatistics>> getOverflowSeriesMap() {
+//    return super;
+//  }
 
   public boolean isEmptyOfMemTable() {
-    return memTable.isEmpty();
+    return super.isEmpty();
   }
 
   public IMemTable getMemTabale() {
-    return memTable;
+    return this;
   }
 
   public long getSize() {
@@ -112,7 +108,7 @@ public class OverflowMemtable {
   }
 
   public void clear() {
-    indexTrees.clear();
-    memTable.clear();
+//    indexTrees.clear();
+    super.clear();
   }
 }

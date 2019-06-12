@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.overflow.io;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
 import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
@@ -41,7 +43,12 @@ import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
+import org.apache.iotdb.db.engine.memtable.MemTableFlushCallBack;
+import org.apache.iotdb.db.engine.memtable.MemTablePool;
+import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
@@ -49,6 +56,7 @@ import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -65,6 +73,7 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,9 +84,10 @@ public class OverflowProcessor extends Processor {
   private OverflowResource workResource;
   private OverflowResource mergeResource;
 
-  private OverflowMemtable workSupport;
-  private OverflowMemtable flushSupport;
-
+  private List<IMemTable> overflowFlushMemTables = new ArrayList<>();
+  private IMemTable workSupport;
+//  private OverflowMemtable flushSupport;
+  private long flushId = -1;
   private volatile Future<Boolean> flushFuture = new ImmediateFuture<>(true);
   private volatile boolean isMerge;
   private int valueCount;
@@ -115,7 +125,6 @@ public class OverflowProcessor extends Processor {
     overflowFlushAction = parameters.get(FileNodeConstants.OVERFLOW_FLUSH_ACTION);
     filenodeFlushAction = parameters
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
-
     reopen();
     getLogNode();
   }
@@ -133,13 +142,14 @@ public class OverflowProcessor extends Processor {
 
     // memory
     if (workSupport == null) {
-      workSupport = new OverflowMemtable();
+      workSupport = new PrimitiveMemTable();
     } else {
       workSupport.clear();
     }
     isClosed = false;
     isFlush = false;
   }
+
   public void checkOpen() throws OverflowProcessorException {
     if (isClosed) {
       throw new OverflowProcessorException("OverflowProcessor already closed");
@@ -229,7 +239,6 @@ public class OverflowProcessor extends Processor {
     }
 
 
-
   }
 
   /**
@@ -238,8 +247,9 @@ public class OverflowProcessor extends Processor {
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
       TSDataType type, byte[] value) {
-    workSupport.update(deviceId, measurementId, startTime, endTime, type, value);
-    valueCount++;
+//    workSupport.update(deviceId, measurementId, startTime, endTime, type, value);
+//    valueCount++;
+    throw new UnsupportedOperationException("update has been deprecated");
   }
 
   /**
@@ -248,9 +258,10 @@ public class OverflowProcessor extends Processor {
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
       TSDataType type, String value) {
-    workSupport.update(deviceId, measurementId, startTime, endTime, type,
-        convertStringToBytes(type, value));
-    valueCount++;
+//    workSupport.update(deviceId, measurementId, startTime, endTime, type,
+//        convertStringToBytes(type, value));
+//    valueCount++;
+    throw new UnsupportedOperationException("update has been deprecated");
   }
 
   private byte[] convertStringToBytes(TSDataType type, String o) {
@@ -291,10 +302,14 @@ public class OverflowProcessor extends Processor {
       throw new IOException(e);
     }
     workResource.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
-    workSupport.delete(deviceId, measurementId, timestamp, false);
+    workSupport.delete(deviceId, measurementId, timestamp);
     if (isFlush()) {
       mergeResource.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
-      flushSupport.delete(deviceId, measurementId, timestamp, true);
+      for (IMemTable memTable : overflowFlushMemTables) {
+        if (memTable.containSeries(deviceId, measurementId)) {
+          memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
+        }
+      }
     }
   }
 
@@ -356,14 +371,11 @@ public class OverflowProcessor extends Processor {
     MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
     queryFlushLock.lock();
     try {
-      if (flushSupport != null && isFlush()) {
-        memSeriesLazyMerger
-            .addMemSeries(
-                flushSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType, props));
+      if (!overflowFlushMemTables.isEmpty() && isFlush()) {
+        for (IMemTable memTable : overflowFlushMemTables) {
+          memSeriesLazyMerger.addMemSeries(memTable.query(deviceId, measurementId, dataType, props));
+        }
       }
-      memSeriesLazyMerger
-          .addMemSeries(workSupport.queryOverflowInsertInMemory(deviceId, measurementId,
-              dataType, props));
       // memSeriesLazyMerger has handled the props,
       // so we do not need to handle it again in the following readOnlyMemChunk
       return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger, Collections.emptyMap());
@@ -431,22 +443,13 @@ public class OverflowProcessor extends Processor {
         mergeResource.getInsertMetadatas(deviceId, measurementId, dataType, context));
   }
 
-  private void switchWorkToFlush() {
-    queryFlushLock.lock();
-    try {
-      OverflowMemtable temp = flushSupport == null ? new OverflowMemtable() : flushSupport;
-      flushSupport = workSupport;
-      workSupport = temp;
-      isFlush = true;
-    } finally {
-      queryFlushLock.unlock();
-    }
-  }
 
   private void switchFlushToWork() {
+    LOGGER.info("Overflow Processor {} try to get flushQueryLock for switchFlushToWork", getProcessorName());
     queryFlushLock.lock();
+    LOGGER.info("Overflow Processor {} get flushQueryLock for switchFlushToWork", getProcessorName());
     try {
-      flushSupport.clear();
+//      flushSupport.clear();
       workResource.appendMetadatas();
       isFlush = false;
     } finally {
@@ -483,16 +486,26 @@ public class OverflowProcessor extends Processor {
     return isFlush;
   }
 
-  private boolean flushTask(String displayMessage, long walTaskId) {
+  private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter overflowIOWriter) {
+    this.writeLock();
+    overflowIOWriter.mergeChunkGroupMetaData();
+    try {
+      overflowFlushMemTables.remove(memTable);
+    } finally {
+      this.writeUnlock();
+    }
+  }
+
+  private boolean flushTask(String displayMessage, IMemTable currentMemTableToFlush, long walTaskId,
+      long flushId, MemTableFlushCallBack removeFlushedMemTable) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
     try {
       LOGGER.info("The overflow processor {} starts flushing {}.", getProcessorName(),
-                  displayMessage);
+          displayMessage);
       // flush data
       workResource
-          .flush(fileSchema, flushSupport.getMemTabale(),
-              getProcessorName());
+          .flush(fileSchema, currentMemTableToFlush, getProcessorName(), flushId, removeFlushedMemTable);
       filenodeFlushAction.act();
       // write-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -508,8 +521,8 @@ public class OverflowProcessor extends Processor {
           Thread.currentThread().getName(), e);
       result = false;
     } finally {
-        // switch from flush to work.
-        switchFlushToWork();
+      // switch from flush to work.
+      switchFlushToWork();
     }
     // log flush time
     if (LOGGER.isInfoEnabled()) {
@@ -543,11 +556,11 @@ public class OverflowProcessor extends Processor {
           (thisFLushTime - lastFlushTime) / 1000);
     }
     lastFlushTime = System.currentTimeMillis();
-    try {
-      flushFuture.get();
-    } catch (InterruptedException | ExecutionException e) {
-      throw new IOException(e);
-    }
+//    try {
+//      flushFuture.get();
+//    } catch (InterruptedException | ExecutionException e) {
+//      throw new IOException(e);
+//    }
     if (valueCount > 0) {
       try {
         // backup newIntervalFile list and emptyIntervalFileNode
@@ -569,12 +582,22 @@ public class OverflowProcessor extends Processor {
       BasicMemController.getInstance().releaseUsage(this, memSize.get());
       memSize.set(0);
       valueCount = 0;
+
+//      long version = versionController.nextVersion();
+      //add mmd
+      overflowFlushMemTables.add(workSupport);
+      IMemTable tmpMemTableToFlush = workSupport;
+      workSupport = MemTablePool.getInstance().getEmptyMemTable(this);
+      flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
+          tmpMemTableToFlush, walTaskId, flushId, this::removeFlushedMemTable));
+
       // switch from work to flush
-      switchWorkToFlush();
-      flushFuture = FlushManager.getInstance().submit( () ->
-          flushTask("asynchronously", walTaskId));
+//      switchWorkToFlush();
+//      flushFuture = FlushManager.getInstance().submit(() ->
+//          flushTask("asynchronously", walTaskId));
     } else {
-      flushFuture = new ImmediateFuture(true);
+//      flushFuture = new ImmediateFuture(true);
+      LOGGER.info("Nothing data points to be flushed");
     }
     return flushFuture;
 
@@ -711,6 +734,7 @@ public class OverflowProcessor extends Processor {
 
   /**
    * used for test. We can block to wait for finishing flushing.
+   *
    * @return the future of the flush() task.
    */
   public Future<Boolean> getFlushFuture() {
@@ -719,6 +743,7 @@ public class OverflowProcessor extends Processor {
 
   /**
    * used for test. We can know when the flush() is called.
+   *
    * @return the last flush() time.
    */
   public long getLastFlushTime() {
@@ -733,4 +758,52 @@ public class OverflowProcessor extends Processor {
   public boolean isClosed() {
     return isClosed;
   }
+
+
+//  private void switchWorkToFlush() {
+//    queryFlushLock.lock();
+//    try {
+//      Pair<> workSupport;
+//      workSupport = new OverflowMemtable();
+//      if(isFlushing){
+//        // isFlushing = true, indicating an AsyncFlushThread has been running, only add Current overflowInfo
+//        // into List.
+//
+//
+//      }else {
+//        isFlushing = true;
+////        flushFuture = FlushManager.getInstance().submit(() ->
+//            flushTask("asynchronously", walTaskId));
+//      }
+//    } finally {
+//      queryFlushLock.unlock();
+//    }
+//  }
+
+//  private List<Pair<OverflowMemtable, OverflowResource>> flushTaskList;
+//
+//  private class AsyncFlushThread implements Runnable {
+//
+//    @Override
+//    public void run() {
+//      Pair<OverflowMemtable, OverflowResource> flushInfo;
+//      while (true) {
+//        queryFlushLock.lock();
+//        try {
+//          if (flushTaskList.isEmpty()) {
+//            // flushTaskList is empty, thus all flush tasks have done and switch
+//            OverflowMemtable temp = flushSupport == null ? new OverflowMemtable() : flushSupport;
+//            flushSupport = workSupport;
+//            workSupport = temp;
+//            isFlushing = true;
+//            break;
+//          }
+//          flushInfo = flushTaskList.remove(0);
+//        } finally {
+//          queryFlushLock.unlock();
+//        }
+//        flush(flushInfo);
+//      }
+//    }
+//  }
 }

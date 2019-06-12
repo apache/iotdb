@@ -32,6 +32,7 @@ import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.MemTableFlushCallBack;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -206,12 +207,13 @@ public class OverflowResource {
     return chunkMetaDatas;
   }
 
-  public void flush(FileSchema fileSchema, IMemTable memTable, String processorName)
+  public void flush(FileSchema fileSchema, IMemTable memTable, String processorName,
+      long flushId, MemTableFlushCallBack removeFlushedMemTable)
       throws IOException {
     // insert data
     long startPos = insertIO.getPos();
     long startTime = System.currentTimeMillis();
-    flush2(fileSchema, memTable, processorName);
+    flush2(fileSchema, memTable, processorName, flushId, removeFlushedMemTable);
     long timeInterval = System.currentTimeMillis() - startTime;
     timeInterval = timeInterval == 0 ? 1 : timeInterval;
     long insertSize = insertIO.getPos() - startPos;
@@ -226,14 +228,18 @@ public class OverflowResource {
     writePositionInfo(insertIO.getPos(), 0);
   }
 
-  public void flush2(FileSchema fileSchema, IMemTable memTable, String processorName) throws IOException {
+  public void flush2(FileSchema fileSchema, IMemTable memTable, String processorName,
+      long flushId, MemTableFlushCallBack removeFlushedMemTable) throws IOException {
     if (memTable != null && !memTable.isEmpty()) {
       insertIO.toTail();
       long lastPosition = insertIO.getPos();
 //      MemTableFlushUtil.flushMemTable(fileSchema, insertIO, memTable,
 //          versionController.nextVersion());
-      MemTableFlushTask task = new MemTableFlushTask(insertIO, processorName);
-      task.flushMemTable(fileSchema, memTable, versionController.nextVersion());
+//      MemTableFlushTask task = new MemTableFlushTask(insertIO, processorName);
+      MemTableFlushTask tableFlushTask = new MemTableFlushTask(insertIO, processorName, flushId,
+          removeFlushedMemTable);
+      tableFlushTask.flushMemTable(fileSchema, memTable, versionController.nextVersion());
+
       List<ChunkGroupMetaData> rowGroupMetaDatas = insertIO.getChunkGroupMetaDatas();
       appendInsertMetadatas.addAll(rowGroupMetaDatas);
       if (!rowGroupMetaDatas.isEmpty()) {

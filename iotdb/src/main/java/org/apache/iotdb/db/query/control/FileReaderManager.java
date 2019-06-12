@@ -117,7 +117,7 @@ public class FileReaderManager implements IService {
 
   /**
    * Get the reader of the file(tsfile or unseq tsfile) indicated by filePath. If the reader already
-   * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosed .
+   * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosing .
    * Otherwise a new reader will be created and cached.
    *
    * @param filePath the path of the file, of which the reader is desired.

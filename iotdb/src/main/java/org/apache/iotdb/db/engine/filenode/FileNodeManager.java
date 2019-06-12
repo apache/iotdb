@@ -136,10 +136,10 @@ public class FileNodeManager implements IStatistic, IService {
       if (size > 5) {
         LOGGER.info("Current closing processor number is {}", size);
       }
-      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
-        fileNodeProcessor.checkAllClosingProcessors();
-      }
-    }, 0, 3000, TimeUnit.MILLISECONDS);
+//      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
+//        fileNodeProcessor.checkAllClosingProcessors();
+//      }
+    }, 0, 30000, TimeUnit.MILLISECONDS);
 
   }
 
@@ -318,7 +318,16 @@ public class FileNodeManager implements IStatistic, IService {
     try {
       long lastUpdateTime = fileNodeProcessor.getFlushLastUpdateTime(deviceId);
       if (timestamp < lastUpdateTime) {
+
+        long startOverflow = System.currentTimeMillis();
+
         insertOverflow(fileNodeProcessor, timestamp, tsRecord, isMonitor, deviceId);
+
+        startOverflow = System.currentTimeMillis() - startOverflow;
+        if (startOverflow > 1000) {
+          LOGGER.info("has overflow data, insert cost: {}", startOverflow);
+        }
+
         insertType = 1;
       } else {
         insertBufferWrite(fileNodeProcessor, timestamp, isMonitor, tsRecord, deviceId);
@@ -424,11 +433,14 @@ public class FileNodeManager implements IStatistic, IService {
   private void insertBufferWrite(FileNodeProcessor fileNodeProcessor, long timestamp,
       boolean isMonitor, TSRecord tsRecord, String deviceId)
       throws FileNodeManagerException, FileNodeProcessorException {
+
+    long start1 = System.currentTimeMillis();
     // get bufferwrite processor
     BufferWriteProcessor bufferWriteProcessor;
     String filenodeName = fileNodeProcessor.getProcessorName();
     try {
       bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor(filenodeName, timestamp);
+
     } catch (FileNodeProcessorException e) {
       LOGGER.error("Get the bufferwrite processor failed, the filenode is {}, insert time is {}",
           filenodeName, timestamp);
@@ -436,7 +448,14 @@ public class FileNodeManager implements IStatistic, IService {
         updateStatHashMapWhenFail(tsRecord);
       }
       throw new FileNodeManagerException(e);
+    } finally {
+      long start1_1 = System.currentTimeMillis() - start1;
+      if (start1_1 > 1000) {
+        LOGGER.info("FileNodeManager.insertBufferWrite step-1-1, cost: {}", start1_1);
+      }
     }
+
+    long start1_2 = System.currentTimeMillis();
     // Add a new interval file to newfilelist
     if (bufferWriteProcessor.isNewProcessor()) {
       bufferWriteProcessor.setNewProcessor(false);
@@ -452,24 +471,60 @@ public class FileNodeManager implements IStatistic, IService {
         throw new FileNodeManagerException(e);
       }
     }
+    start1_2 = System.currentTimeMillis() - start1_2;
+    if (start1_2 > 1000) {
+      LOGGER.info("FileNodeManager.insertBufferWrite step-1-2, cost: {}", start1_2);
+    }
 
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("FileNodeManager.insertBufferWrite step-1, cost: {}", start1);
+    }
+
+    long start2 = System.currentTimeMillis();
+
+    long start2_1 = start2;
     // write wal
     try {
       writeLog(tsRecord, isMonitor, bufferWriteProcessor.getLogNode());
     } catch (IOException e) {
       throw new FileNodeManagerException(e);
     }
+    start2_1 = System.currentTimeMillis() - start2_1;
+    if (start2_1 > 1000) {
+      LOGGER.info("FileNodeManager.insertBufferWrite step2-1 cost: {}", start2_1);
+    }
+
+    long start2_2 = System.currentTimeMillis();
     // Write data
     long prevStartTime = fileNodeProcessor.getIntervalFileNodeStartTime(deviceId);
     long prevUpdateTime = fileNodeProcessor.getLastUpdateTime(deviceId);
 
     fileNodeProcessor.setIntervalFileNodeStartTime(deviceId);
     fileNodeProcessor.setLastUpdateTime(deviceId, timestamp);
+
+    start2_2 = System.currentTimeMillis() - start2_2;
+    if (start2_2 > 1000) {
+      LOGGER.info("FileNodeManager.insertBufferWrite step2-2 cost: {}", start2_2);
+    }
     try {
+      long start2_3 = System.currentTimeMillis();
+
+      // write tsrecord and check flush
       if (!bufferWriteProcessor.write(tsRecord)) {
+        start2_3 = System.currentTimeMillis() - start2_3;
+        if (start2_3 > 1000) {
+          LOGGER.info("FileNodeManager.insertBufferWrite step2-3 cost: {}", start2_3);
+        }
+
+        long start2_4 = System.currentTimeMillis();
         // undo time update
         fileNodeProcessor.setIntervalFileNodeStartTime(deviceId, prevStartTime);
         fileNodeProcessor.setLastUpdateTime(deviceId, prevUpdateTime);
+        start2_4 = System.currentTimeMillis() - start2_4;
+        if (start2_4 > 1000) {
+          LOGGER.info("FileNodeManager.insertBufferWrite step2-4 cost: {}", start2_4);
+        }
       }
     } catch (BufferWriteProcessorException e) {
       if (!isMonitor) {
@@ -477,7 +532,14 @@ public class FileNodeManager implements IStatistic, IService {
       }
       throw new FileNodeManagerException(e);
     }
+    start2 = System.currentTimeMillis() - start2;
+    if (start2 > 1000) {
+      LOGGER.info("FileNodeManager.insertBufferWrite step-2, cost: {}", start2);
+    }
 
+    long start3 = System.currentTimeMillis();
+
+    // check if the file should be closed
     if (bufferWriteProcessor
         .getFileSize() > IoTDBDescriptor.getInstance()
         .getConfig().getBufferwriteFileSizeThreshold()) {
@@ -491,6 +553,10 @@ public class FileNodeManager implements IStatistic, IService {
       }
 
       fileNodeProcessor.closeBufferWrite();
+      start3 = System.currentTimeMillis() - start3;
+      if (start3 > 1000) {
+        LOGGER.info("FileNodeManager.insertBufferWrite step-3, close buffer write cost: {}", start3);
+      }
     }
   }
 
@@ -1184,6 +1250,7 @@ public class FileNodeManager implements IStatistic, IService {
       if (processor.memoryUsage() <= TSFileConfig.groupSizeInByte / 2) {
         continue;
       }
+      long start = System.currentTimeMillis();
       processor.writeLock();
       try {
         boolean isMerge = processor.flush().isHasOverflowFlushTask();
@@ -1193,6 +1260,8 @@ public class FileNodeManager implements IStatistic, IService {
       } finally {
         processor.writeUnlock();
       }
+      start = System.currentTimeMillis() - start;
+      LOGGER.info("flush Top cost: {}", start);
     }
   }
 
