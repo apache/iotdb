@@ -161,19 +161,19 @@ public class IoTDBConfig {
   private long periodTimeForMerge = 7200;
 
   /**
-   * When set true, start timed flush and merge service. Else, stop timed flush and merge service.
+   * When set true, start timed flushMetadata and merge service. Else, stop timed flushMetadata and merge service.
    * The default value is true. TODO: 'timed' better explains this than 'timing'.
    */
   private boolean enableTimingCloseAndMerge = true;
 
   /**
-   * How many threads can concurrently flush. When <= 0, use CPU core number.
+   * How many threads can concurrently flushMetadata. When <= 0, use CPU core number.
    */
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
   private ZoneId zoneID = ZoneId.systemDefault();
   /**
-   * BufferWriteProcessor and OverflowProcessor will immediately flush if this threshold is
+   * BufferWriteProcessor and OverflowProcessor will immediately flushMetadata if this threshold is
    * reached.
    */
   private long memThresholdWarning = (long) (0.5 * Runtime.getRuntime().maxMemory());
@@ -183,7 +183,7 @@ public class IoTDBConfig {
   private long memThresholdDangerous = (long) (0.6 * Runtime.getRuntime().maxMemory());
   /**
    * MemMonitorThread will check every such interval(in ms). If memThresholdWarning is reached,
-   * MemMonitorThread will inform FileNodeManager to flush.
+   * MemMonitorThread will inform FileNodeManager to flushMetadata.
    */
   private long memMonitorInterval = 1000;
   /**
@@ -218,7 +218,7 @@ public class IoTDBConfig {
    */
   private boolean enableSmallFlush = false;
   /**
-   * The interval of small flush in ms.
+   * The interval of small flushMetadata in ms.
    */
   private long smallFlushInterval = 60L * 1000;
   /**

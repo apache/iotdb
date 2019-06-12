@@ -52,14 +52,14 @@ public class OverflowProcessorTest {
   private Action overflowflushaction = new Action() {
     @Override
     public void act() throws ActionException {
-      System.out.println("overflow flush action");
+      System.out.println("overflow flushMetadata action");
     }
   };
 
   private Action filenodeflushaction = new Action() {
     @Override
     public void act() throws ActionException {
-      System.out.println("filenode flush action");
+      System.out.println("filenode flushMetadata action");
     }
   };
 
@@ -114,7 +114,7 @@ public class OverflowProcessorTest {
       assertEquals(i, pair.getTimestamp());
       assertEquals(i, pair.getValue().getInt());
     }
-    // flush synchronously
+    // flushMetadata synchronously
     processor.close();
     processor.reopen();
     overflowSeriesDataSource = processor
@@ -169,7 +169,7 @@ public class OverflowProcessorTest {
     processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema(),
         SysTimeVersionController.INSTANCE);
     processor.flush();
-    // waiting for the end of flush.
+    // waiting for the end of flushMetadata.
     try {
       TimeUnit.SECONDS.sleep(1);
     } catch (InterruptedException e) {

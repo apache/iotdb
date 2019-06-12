@@ -67,8 +67,7 @@ public class TsFileIOWriter {
 
   protected TsFileOutput out;
   private AtomicLong flushID = new AtomicLong(0);
-  protected List<ChunkGroupMetaData> flushedChunkGroupMetaDataList = new ArrayList<>();
-  protected List<ChunkGroupMetaData> flushingChunkGroupMetaDataList = new ArrayList<>();
+  protected List<ChunkGroupMetaData> chunkGroupMetaDataList = new ArrayList<>();
   private ChunkGroupMetaData currentChunkGroupMetaData;
   private ChunkMetaData currentChunkMetaData;
   protected boolean canWrite = true;
@@ -107,14 +106,14 @@ public class TsFileIOWriter {
    * data in the TsFileOutput matches the given metadata list
    *
    * @param out the target output
-   * @param flushedChunkGroupMetaDataList existing chunkgroups' metadata
+   * @param ChunkGroupMetaDataList existing chunkgroups' metadata
    * @throws IOException if I/O error occurs
    */
-  public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> flushedChunkGroupMetaDataList)
+  public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> ChunkGroupMetaDataList)
       throws IOException {
     this.out = out;
-    this.flushedChunkGroupMetaDataList = flushedChunkGroupMetaDataList;
-    if (flushedChunkGroupMetaDataList.isEmpty()) {
+    this.chunkGroupMetaDataList = ChunkGroupMetaDataList;
+    if (ChunkGroupMetaDataList.isEmpty()) {
       startFile();
     }
   }
@@ -139,15 +138,6 @@ public class TsFileIOWriter {
   }
 
   /**
-   * move ChunkGroupMetadata from flushingChunkGroupMetaDataList to flushedChunkGroupMetaDataList
-   * only flushedChunkGroupMetaDataList is visible for query
-   */
-  public void mergeChunkGroupMetaData() {
-    flushedChunkGroupMetaDataList.addAll(flushingChunkGroupMetaDataList);
-    flushingChunkGroupMetaDataList.clear();
-  }
-
-  /**
    * start a {@linkplain ChunkGroupMetaData ChunkGroupMetaData}.
    *
    * @param deviceId device id
@@ -167,7 +157,7 @@ public class TsFileIOWriter {
     chunkGroupFooter.serializeTo(out.wrapAsStream());
     currentChunkGroupMetaData.setEndOffsetOfChunkGroup(out.getPosition());
     currentChunkGroupMetaData.setVersion(version);
-    flushingChunkGroupMetaDataList.add(currentChunkGroupMetaData);
+    chunkGroupMetaDataList.add(currentChunkGroupMetaData);
     LOG.debug("end chunk group:{}", currentChunkGroupMetaData);
     currentChunkGroupMetaData = null;
   }
@@ -238,8 +228,6 @@ public class TsFileIOWriter {
    */
   public void endFile(FileSchema schema) throws IOException {
 
-    mergeChunkGroupMetaData();
-
     // serialize the SEPARATOR of MetaData and ChunkGroups
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
@@ -248,7 +236,7 @@ public class TsFileIOWriter {
     LOG.debug("get time series list:{}", schemaDescriptors);
 
     Map<String, TsDeviceMetadataIndex> tsDeviceMetadataIndexMap = flushTsDeviceMetaDataAndGetIndex(
-        this.flushedChunkGroupMetaDataList);
+        this.chunkGroupMetaDataList);
 
     TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors,
         TSFileConfig.CURRENT_VERSION);
@@ -273,7 +261,7 @@ public class TsFileIOWriter {
   }
 
   /**
-   * 1. group flushedChunkGroupMetaDataList to TsDeviceMetadata 2. flush TsDeviceMetadata 3. get
+   * 1. group chunkGroupMetaDataList to TsDeviceMetadata 2. flush TsDeviceMetadata 3. get
    * TsDeviceMetadataIndex
    *
    * @param chunkGroupMetaDataList all chunk group metadata in memory
@@ -340,12 +328,12 @@ public class TsFileIOWriter {
   }
 
   /**
-   * get flushedChunkGroupMetaDataList.
+   * get chunkGroupMetaDataList.
    *
    * @return - List of chunkGroupMetaData
    */
   public List<ChunkGroupMetaData> getChunkGroupMetaDatas() {
-    return flushedChunkGroupMetaDataList;
+    return chunkGroupMetaDataList;
   }
 
   public boolean canWrite() {

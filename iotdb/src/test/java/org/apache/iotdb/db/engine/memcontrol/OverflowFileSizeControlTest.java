@@ -129,7 +129,7 @@ public class OverflowFileSizeControlTest {
           System.out.println(i + "," + MemUtils.bytesCntToStr(ofprocessor.getFileSize()));
         }
       }
-      // wait to flush
+      // wait to flushMetadata
       Thread.sleep(1000);
       ofprocessor.close();
       assertTrue(ofprocessor.getFileSize() < dbConfig.getOverflowFileSizeThreshold());

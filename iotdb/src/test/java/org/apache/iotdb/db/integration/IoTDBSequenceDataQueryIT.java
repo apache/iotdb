@@ -132,7 +132,7 @@ public class IoTDBSequenceDataQueryIT {
         }
       }
 
-      statement.execute("flush");
+      statement.execute("flushMetadata");
 
       // insert data (time from 1200-1499)
       for (long time = 1200; time < 1500; time++) {

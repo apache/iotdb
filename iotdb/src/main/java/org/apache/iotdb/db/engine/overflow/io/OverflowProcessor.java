@@ -488,7 +488,7 @@ public class OverflowProcessor extends Processor {
 
   private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter overflowIOWriter) {
     this.writeLock();
-    overflowIOWriter.mergeChunkGroupMetaData();
+    //TODO check this implementation in BufferWriteProcessor
     try {
       overflowFlushMemTables.remove(memTable);
     } finally {

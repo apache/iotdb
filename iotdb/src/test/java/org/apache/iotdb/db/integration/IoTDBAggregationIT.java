@@ -582,16 +582,16 @@ public class IoTDBAggregationIT {
       for (int i = 5000; i < 7000; i++) {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
       }
-      statement.execute("flush");
+      statement.execute("flushMetadata");
       for (int i = 7500; i < 8500; i++) {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
       }
-      statement.execute("flush");
+      statement.execute("flushMetadata");
       // prepare Unseq-File
       for (int i = 500; i < 1500; i++) {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
       }
-      statement.execute("flush");
+      statement.execute("flushMetadata");
       for (int i = 3000; i < 6500; i++) {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
       }

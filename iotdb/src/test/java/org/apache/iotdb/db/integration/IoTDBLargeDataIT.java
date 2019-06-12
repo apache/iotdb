@@ -135,7 +135,7 @@ public class IoTDBLargeDataIT {
         statement.execute(sql);
       }
 
-      statement.execute("flush");
+      statement.execute("flushMetadata");
       // statement.execute("merge");
 
       Thread.sleep(5000);
@@ -154,7 +154,7 @@ public class IoTDBLargeDataIT {
         statement.execute(sql);
       }
 
-      statement.execute("flush");
+      statement.execute("flushMetadata");
 
       // bufferwrite data, memory data
       for (int time = 200000; time < 201000; time++) {

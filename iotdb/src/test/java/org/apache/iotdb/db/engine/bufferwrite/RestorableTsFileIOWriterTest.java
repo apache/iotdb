@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
-import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
 import org.apache.iotdb.db.engine.memtable.MemTableTestUtils;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -169,8 +168,8 @@ public class RestorableTsFileIOWriterTest {
     //MemTableFlushUtil.flushMemTable(schema, writer, memTable, 0);
     MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, "test", 0L, (a,b) -> {});
     tableFlushTask.flushMemTable(schema, memTable, 0);
-    writer.flush();
-    writer.appendMetadata();
+    writer.writeRestoreInfo();
+    writer.makeMetadataVisible();
     writer.getOutput().close();
 
     // recover
@@ -225,19 +224,19 @@ public class RestorableTsFileIOWriterTest {
     MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, "test", 0L, (a,b) -> {});
     tableFlushTask.flushMemTable(MemTableTestUtils.getFileSchema(), memTable, 0);
 
-    writer.flush();
+    writer.writeRestoreInfo();
 
     assertEquals(0,
         writer.getMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());
-    writer.appendMetadata();
+    writer.makeMetadataVisible();
     assertEquals(1,
         writer.getMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());
     MemTableTestUtils.produceData(memTable, 200, 300, MemTableTestUtils.deviceId0,
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
-    writer.appendMetadata();
+    writer.makeMetadataVisible();
     assertEquals(1,
         writer.getMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());

@@ -63,7 +63,7 @@ public class IoTDBVersionIT {
       statement.execute("CREATE TIMESERIES root.versionTest2.s0"
           + " WITH DATATYPE=INT32,ENCODING=PLAIN");
 
-      // write and flush enough times to make the version file persist
+      // write and flushMetadata enough times to make the version file persist
       for (int i = 0; i < 3 * SimpleFileVersionController.getSaveInterval(); i ++) {
         for (int j = 1; j <= 100; j ++) {
           statement.execute(String

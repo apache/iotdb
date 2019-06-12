@@ -653,7 +653,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   /**
-   * get flush last update time.
+   * get flushMetadata last update time.
    */
   public long getFlushLastUpdateTime(String deviceId) {
     if (!flushLastUpdateTimeMap.containsKey(deviceId)) {
@@ -847,12 +847,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                 + "but the bufferwrite processor is null.",
             newFileNodes.get(newFileNodes.size() - 1).getFile().getAbsolutePath(), getProcessorName()));
       }
-      try {
-        bufferwritedata = bufferWriteProcessor
-            .queryBufferWriteData(deviceId, measurementId, dataType, mSchema.getProps());
-      } catch (BufferWriteProcessorException e) {
-        throw new FileNodeProcessorException(e);
-      }
+      bufferwritedata = bufferWriteProcessor
+          .queryBufferWriteData(deviceId, measurementId, dataType, mSchema.getProps());
 
       try {
         List<Modification> pathModifications = context.getPathModifications(
@@ -1105,7 +1101,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       fileNodeProcessorStore.setFileNodeProcessorStatus(isMerging);
       fileNodeProcessorStore.setNewFileNodes(newFileNodes);
       fileNodeProcessorStore.setEmptyTsFileResource(emptyTsFileResource);
-      // flush this filenode information
+      // flushMetadata this filenode information
       try {
         writeStoreToDisk(fileNodeProcessorStore);
       } catch (FileNodeProcessorException e) {
@@ -1634,7 +1630,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         writeOneSeries(path.getDevice(), seriesWriterImpl, dataType,
             seriesReader,
             startTimeMap, endTimeMap, timeValuePair);
-        // flush the series data
+        // flushMetadata the series data
         seriesWriterImpl.writeToFileWriter(mergeFileWriter);
       }
     } finally {

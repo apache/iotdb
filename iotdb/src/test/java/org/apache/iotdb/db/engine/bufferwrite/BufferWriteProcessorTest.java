@@ -130,7 +130,7 @@ public class BufferWriteProcessorTest {
     for (int i = 1; i < 100; i++) {
       bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
     }
-    // waiting for the end of flush
+    // waiting for the end of flushMetadata
     TimeUnit.SECONDS.sleep(2);
     File dataFile = PathUtils.getBufferWriteDir(deviceId);
     // check file
@@ -184,7 +184,7 @@ public class BufferWriteProcessorTest {
     for (int i = 1; i < 100; i++) {
       bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
     }
-    // waiting for the end of flush
+    // waiting for the end of flushMetadata
     TimeUnit.SECONDS.sleep(2);
     File dataFile = PathUtils.getBufferWriteDir(deviceId);
     // check file
@@ -229,15 +229,15 @@ public class BufferWriteProcessorTest {
     }
     assertEquals(lastFlushTime, bufferwrite.getLastFlushTime());
     bufferwrite.write(deviceId, measurementId, 86, dataType, String.valueOf(86));
-    //assert a flush() is called.
+    //assert a flushMetadata() is called.
     assertNotEquals(bufferwrite.getLastFlushTime(), lastFlushTime);
-    // sleep to the end of flush
+    // sleep to the end of flushMetadata
     try {
       bufferwrite.getFlushFuture().get(10, TimeUnit.SECONDS);
     } catch (Exception e) {
-      //because UT uses a mock flush operation, 10 seconds should be enough.
+      //because UT uses a mock flushMetadata operation, 10 seconds should be enough.
       LOGGER.error(e.getMessage(), e);
-      Assert.fail("mock flush spends more than 10 seconds... "
+      Assert.fail("mock flushMetadata spends more than 10 seconds... "
           + "Please modify the value or change a better test environment");
     }
     assertEquals(0, bufferwrite.memoryUsage());
