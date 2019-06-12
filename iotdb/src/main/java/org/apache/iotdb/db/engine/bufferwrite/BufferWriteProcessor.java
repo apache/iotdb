@@ -365,9 +365,6 @@ public class BufferWriteProcessor extends Processor {
 
   // keyword synchronized is added in this method, so that only one flush task can be submitted now.
   private Future<Boolean> flush(boolean isCloseTaskCalled) throws IOException {
-    if (!isCloseTaskCalled) {
-      throw new IOException("BufferWriteProcessor closed");
-    }
     // statistic information for flush
     if (lastFlushTime > 0) {
       if (LOGGER.isInfoEnabled()) {
