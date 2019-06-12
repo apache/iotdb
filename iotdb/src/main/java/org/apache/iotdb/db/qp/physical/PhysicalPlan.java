@@ -31,6 +31,11 @@ public abstract class PhysicalPlan implements Serializable {
   private static final long serialVersionUID = -6274856391535568352L;
   private boolean isQuery;
   private Operator.OperatorType operatorType;
+  /**
+   * plans in a Storage Group are executed serially, this id is to guarantee in recovery stage plans
+   * in WAL can be redone in the same order
+   */
+  private long planId;
 
   /**
    * The name of the user who proposed this operation.
@@ -78,5 +83,13 @@ public abstract class PhysicalPlan implements Serializable {
 
   public void setQuery(boolean query) {
     isQuery = query;
+  }
+
+  public long getPlanId() {
+    return planId;
+  }
+
+  public void setPlanId(long planId) {
+    this.planId = planId;
   }
 }

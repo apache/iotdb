@@ -115,8 +115,7 @@ public class IoTDBLogFileSizeTest {
               cnt);
           statement.execute(sql);
           WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
-              "root.logFileTest.bufferwrite" + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX, null,
-              null);
+              "root.logFileTest.bufferwrite" + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX);
           File bufferWriteWALFile = new File(
               logNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
           if (bufferWriteWALFile.exists() && bufferWriteWALFile.length() > maxLength[0]) {
@@ -177,8 +176,7 @@ public class IoTDBLogFileSizeTest {
                   ++cnt, cnt);
           statement.execute(sql);
           WriteLogNode logNode = MultiFileLogNodeManager.getInstance()
-              .getNode("root.logFileTest.overflow" + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX, null,
-                  null);
+              .getNode("root.logFileTest.overflow" + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
           File WALFile = new File(
               logNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
           if (WALFile.exists() && WALFile.length() > maxLength[0]) {

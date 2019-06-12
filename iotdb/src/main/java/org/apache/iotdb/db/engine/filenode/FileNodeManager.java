@@ -435,12 +435,12 @@ public class FileNodeManager implements IStatistic, IService {
       throws FileNodeManagerException, FileNodeProcessorException {
 
     long start1 = System.currentTimeMillis();
-
     // get bufferwrite processor
     BufferWriteProcessor bufferWriteProcessor;
     String filenodeName = fileNodeProcessor.getProcessorName();
     try {
       bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor(filenodeName, timestamp);
+
     } catch (FileNodeProcessorException e) {
       LOGGER.error("Get the bufferwrite processor failed, the filenode is {}, insert time is {}",
           filenodeName, timestamp);
@@ -448,7 +448,14 @@ public class FileNodeManager implements IStatistic, IService {
         updateStatHashMapWhenFail(tsRecord);
       }
       throw new FileNodeManagerException(e);
+    } finally {
+      long start1_1 = System.currentTimeMillis() - start1;
+      if (start1_1 > 1000) {
+        LOGGER.info("FileNodeManager.insertBufferWrite step-1-1, cost: {}", start1_1);
+      }
     }
+
+    long start1_2 = System.currentTimeMillis();
     // Add a new interval file to newfilelist
     if (bufferWriteProcessor.isNewProcessor()) {
       bufferWriteProcessor.setNewProcessor(false);
@@ -464,6 +471,10 @@ public class FileNodeManager implements IStatistic, IService {
         throw new FileNodeManagerException(e);
       }
     }
+    start1_2 = System.currentTimeMillis() - start1_2;
+    if (start1_2 > 1000) {
+      LOGGER.info("FileNodeManager.insertBufferWrite step-1-2, cost: {}", start1_2);
+    }
 
     start1 = System.currentTimeMillis() - start1;
     if (start1 > 1000) {
@@ -471,6 +482,7 @@ public class FileNodeManager implements IStatistic, IService {
     }
 
     long start2 = System.currentTimeMillis();
+
     long start2_1 = start2;
     // write wal
     try {
@@ -497,6 +509,8 @@ public class FileNodeManager implements IStatistic, IService {
     }
     try {
       long start2_3 = System.currentTimeMillis();
+
+      // write tsrecord and check flush
       if (!bufferWriteProcessor.write(tsRecord)) {
         start2_3 = System.currentTimeMillis() - start2_3;
         if (start2_3 > 1000) {
@@ -524,6 +538,8 @@ public class FileNodeManager implements IStatistic, IService {
     }
 
     long start3 = System.currentTimeMillis();
+
+    // check if the file should be closed
     if (bufferWriteProcessor
         .getFileSize() > IoTDBDescriptor.getInstance()
         .getConfig().getBufferwriteFileSizeThreshold()) {

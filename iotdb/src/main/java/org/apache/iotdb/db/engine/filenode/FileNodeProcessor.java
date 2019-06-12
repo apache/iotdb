@@ -176,6 +176,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    */
   private Map<String, Action> parameters;
   private FileSchema fileSchema;
+
   private Action fileNodeFlushAction = () -> {
     synchronized (fileNodeProcessorStore) {
       try {
@@ -185,6 +186,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
     }
   };
+
   private Action bufferwriteFlushAction = () -> {
     // update the lastUpdateTime Notice: Thread safe
     synchronized (fileNodeProcessorStore) {
@@ -579,13 +581,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         throw new FileNodeProcessorException(String
             .format("The filenode processor %s failed to get the bufferwrite processor.",
                 processorName), e);
-      }
-    } else if (bufferWriteProcessor.isClosing()) {
-      try {
-        bufferWriteProcessor.reopen(insertTime + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR
-            + System.currentTimeMillis());
-      } catch (BufferWriteProcessorException e) {
-        throw new FileNodeProcessorException("Cannot reopen BufferWriteProcessor", e);
       }
     }
     return bufferWriteProcessor;
@@ -1765,7 +1760,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   public FileNodeFlushFuture flush() throws IOException {
     Future<Boolean> bufferWriteFlushFuture = null;
     Future<Boolean> overflowFlushFuture = null;
-    if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosing()) {
+    if (bufferWriteProcessor != null) {
       bufferWriteFlushFuture = bufferWriteProcessor.flush();
     }
     if (overflowProcessor != null && !overflowProcessor.isClosed()) {
@@ -1778,7 +1773,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Close the bufferwrite processor.
    */
   public Future<Boolean> closeBufferWrite() throws FileNodeProcessorException {
-    if (bufferWriteProcessor == null || bufferWriteProcessor.isClosing()) {
+    if (bufferWriteProcessor == null) {
       return new ImmediateFuture<>(true);
     }
     try {
@@ -1960,7 +1955,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       // delete data in memory
       OverflowProcessor ofProcessor = getOverflowProcessor(getProcessorName());
       ofProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
-      if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosing()) {
+      if (bufferWriteProcessor != null) {
         bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
       }
     } catch (Exception e) {
@@ -2015,7 +2010,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
       throw e;
     }
-    if (bufferWriteProcessor != null && !bufferWriteProcessor.isClosing()) {
+    if (bufferWriteProcessor != null) {
       try {
         bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
       } catch (BufferWriteProcessorException e) {

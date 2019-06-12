@@ -55,7 +55,6 @@ import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -99,12 +98,7 @@ public class BufferWriteProcessor extends Processor {
   private WriteLogNode logNode;
   private VersionController versionController;
 
-  private boolean isClosing = true;
-
   private boolean isClosed = false;
-  private boolean isFlush = false;
-
-
 
   private TsFileResource currentTsFileResource;
 
@@ -130,7 +124,7 @@ public class BufferWriteProcessor extends Processor {
     //bufferwriteCloseAction = parameters.get(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
     filenodeFlushAction = parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
     this.bufferwriteCloseConsumer = bufferwriteCloseConsumer;
-    reopen(fileName);
+    open(fileName);
     try {
       getLogNode();
     } catch (IOException e) {
@@ -140,20 +134,8 @@ public class BufferWriteProcessor extends Processor {
 
   }
 
-  public void reopen(String fileName) throws BufferWriteProcessorException {
-    if (!isClosing) {
-      return;
-    }
+  private void open(String fileName) throws BufferWriteProcessorException {
 
-    try {
-      LOGGER.info("wait for flush to reopen a BufferWrite Processor {}", processorName);
-      this.flushFuture.get();
-      LOGGER.info("wait for close to reopen a BufferWrite Processor {}", processorName);
-      this.closeFuture.get();
-      LOGGER.info("now begin to reopen the bufferwrite processor {}", processorName);
-    } catch (InterruptedException | ExecutionException e) {
-      LOGGER.error("reopen error in Bufferwrite Processor {}", processorName, e);
-    }
     new File(baseDir, processorName).mkdirs();
     this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
     bufferWriteRelativePath = processorName + File.separatorChar + fileName;
@@ -162,18 +144,11 @@ public class BufferWriteProcessor extends Processor {
     } catch (IOException e) {
       throw new BufferWriteProcessorException(e);
     }
-    if (workMemTable == null) {
-      workMemTable = MemTablePool.getInstance().getEmptyMemTable();
-    } else {
-      workMemTable.clear();
-    }
-    isClosing = false;
-    isFlush = false;
-  }
-
-  public void checkOpen() throws BufferWriteProcessorException {
-    if (isClosing) {
-      throw new BufferWriteProcessorException("BufferWriteProcessor already closed");
+    long start1 = System.currentTimeMillis();
+    workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("BufferWriteProcessor.open getEmptyMemtable cost: {}", start1);
     }
   }
 
@@ -194,7 +169,6 @@ public class BufferWriteProcessor extends Processor {
   public boolean write(String deviceId, String measurementId, long timestamp, TSDataType dataType,
       String value)
       throws BufferWriteProcessorException {
-    checkOpen();
     TSRecord record = new TSRecord(timestamp, deviceId);
     DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, value);
     record.addTuple(dataPoint);
@@ -211,7 +185,6 @@ public class BufferWriteProcessor extends Processor {
    */
   public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
     long start1 = System.currentTimeMillis();
-    checkOpen();
     long memUsage = MemUtils.getRecordSize(tsRecord);
     BasicMemController.UsageLevel level = BasicMemController.getInstance()
         .acquireUsage(this, memUsage);
@@ -294,7 +267,6 @@ public class BufferWriteProcessor extends Processor {
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryBufferWriteData(String deviceId,
       String measurementId, TSDataType dataType, Map<String, String> props)
       throws BufferWriteProcessorException {
-    checkOpen();
     flushQueryLock.lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -316,19 +288,11 @@ public class BufferWriteProcessor extends Processor {
   }
 
 
-  private void switchFlushToWork() {
-    LOGGER.info("BufferWrite Processor {} try to get flushQueryLock for switchFlushToWork", getProcessorName());
-    flushQueryLock.lock();
-    LOGGER.info("BufferWrite Processor {} get flushQueryLock for switchFlushToWork", getProcessorName());
-    try {
-      writer.appendMetadata();
-      isFlush = false;
-    } finally {
-      flushQueryLock.unlock();
-      LOGGER.info("BufferWrite Processor {} release the flushQueryLock for switchFlushToWork successfully", getProcessorName());
-    }
-  }
-
+  /**
+   * return the memtable to MemTablePool and make
+   * @param memTable
+   * @param tsFileIOWriter
+   */
   private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter tsFileIOWriter) {
     long start = System.currentTimeMillis();
     this.writeLock();
@@ -368,25 +332,18 @@ public class BufferWriteProcessor extends Processor {
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, getProcessorName(), flushId,
             this::removeFlushedMemTable);
         tableFlushTask.flushMemTable(fileSchema, tmpMemTableToFlush, version);
-        // write restore information
-        writer.flush();
       }
 
       filenodeFlushAction.act();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush(null, walTaskId, new File(writer.getInsertFilePath()).getName());
+        logNode.notifyEndFlush(walTaskId);
       }
       result = true;
     } catch (Exception e) {
-      LOGGER.error(
-          "The bufferwrite processor {} failed to flush {}, when calling the filenodeFlushAction.",
-          getProcessorName(), displayMessage, e);
+      LOGGER.error("The bufferwrite processor {} failed to flush {}.", getProcessorName(), displayMessage, e);
       result = false;
-    } finally {
-      switchFlushToWork();
-      LOGGER.info("The bufferwrite processor {} ends flushing {}.", getProcessorName(),
-            displayMessage);
     }
+
     if (LOGGER.isInfoEnabled()) {
       long flushEndTime = System.currentTimeMillis();
       LOGGER.info(
@@ -408,9 +365,6 @@ public class BufferWriteProcessor extends Processor {
 
   // keyword synchronized is added in this method, so that only one flush task can be submitted now.
   private Future<Boolean> flush(boolean isCloseTaskCalled) throws IOException {
-    if (!isCloseTaskCalled && isClosing) {
-      throw new IOException("BufferWriteProcessor closed");
-    }
     // statistic information for flush
     if (lastFlushTime > 0) {
       if (LOGGER.isInfoEnabled()) {
@@ -436,7 +390,7 @@ public class BufferWriteProcessor extends Processor {
       }
       final long walTaskId;
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        walTaskId = logNode.notifyStartFlush(new File(writer.getInsertFilePath()).getName());
+        walTaskId = logNode.notifyStartFlush();
         LOGGER.info("BufferWrite Processor {} has notified WAL for flushing.", getProcessorName());
       } else {
         walTaskId = 0;
@@ -447,11 +401,10 @@ public class BufferWriteProcessor extends Processor {
       IMemTable tmpMemTableToFlush = workMemTable;
 
       long start = System.currentTimeMillis();
-      workMemTable = MemTablePool.getInstance().getEmptyMemTable();
 
       start = System.currentTimeMillis() - start;
       if (start > 1000) {
-        LOGGER.info("get empty memtable cost: {}", start);
+        LOGGER.info("BufferWriteProcessor.flush getEmptyMemtable cost: {}", start);
       }
 
       flushId++;
@@ -476,7 +429,16 @@ public class BufferWriteProcessor extends Processor {
         flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
             tmpMemTableToFlush, version, walTaskId, flushId));
       }
+
+      if (isCloseTaskCalled) {
+        workMemTable = null;
+      } else {
+        workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
+      }
     } else {
+      if (isCloseTaskCalled) {
+        MemTablePool.getInstance().release(workMemTable);
+      }
       flushFuture = new ImmediateFuture<>(true);
     }
     return flushFuture;
@@ -489,11 +451,7 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public synchronized void close() throws BufferWriteProcessorException {
-    if (isClosing) {
-      return;
-    }
     try {
-      isClosing = true;
       // flush data (if there are flushing task, flush() will be blocked)
       //Future<Boolean> flush = flush();
       //and wait for finishing flush async
@@ -551,15 +509,6 @@ public class BufferWriteProcessor extends Processor {
   }
 
   /**
-   * check if is flushing.
-   *
-   * @return True if flushing
-   */
-  public boolean isFlush() {
-    return isFlush;
-  }
-
-  /**
    * get metadata size.
    *
    * @return The sum of all timeseries's metadata size within this file.
@@ -605,9 +554,7 @@ public class BufferWriteProcessor extends Processor {
     if (logNode == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
-            processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX,
-            getBufferwriteRestoreFilePath(),
-            FileNodeManager.getInstance().getRestoreFilePath(processorName));
+            processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX);
       }
     }
     return logNode;
@@ -639,14 +586,11 @@ public class BufferWriteProcessor extends Processor {
    */
   public void delete(String deviceId, String measurementId, long timestamp)
       throws BufferWriteProcessorException {
-    checkOpen();
     workMemTable.delete(deviceId, measurementId, timestamp);
-    if (isFlush()) {
       // flushing MemTable cannot be directly modified since another thread is reading it
-      for (IMemTable memTable : flushingMemTables) {
-        if (memTable.containSeries(deviceId, measurementId)) {
-          memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
-        }
+    for (IMemTable memTable : flushingMemTables) {
+      if (memTable.containSeries(deviceId, measurementId)) {
+        memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
       }
     }
   }
@@ -668,10 +612,6 @@ public class BufferWriteProcessor extends Processor {
 
   public String getInsertFilePath() {
     return insertFilePath;
-  }
-
-  public boolean isClosing() {
-    return isClosing;
   }
 
   public boolean isClosed() {

@@ -28,7 +28,7 @@ public class PhysicalPlanLogTransfer {
   private PhysicalPlanLogTransfer() {
   }
 
-  public static byte[] operatorToLog(PhysicalPlan plan) throws IOException {
+  public static byte[] planToLog(PhysicalPlan plan) throws IOException {
     Codec<PhysicalPlan> codec;
     switch (plan.getOperatorType()) {
       case INSERT:

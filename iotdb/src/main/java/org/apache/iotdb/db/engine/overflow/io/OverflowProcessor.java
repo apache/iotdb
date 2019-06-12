@@ -587,7 +587,7 @@ public class OverflowProcessor extends Processor {
       //add mmd
       overflowFlushMemTables.add(workSupport);
       IMemTable tmpMemTableToFlush = workSupport;
-      workSupport = MemTablePool.getInstance().getEmptyMemTable();
+      workSupport = MemTablePool.getInstance().getEmptyMemTable(this);
       flushId++;
       flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
           tmpMemTableToFlush, walTaskId, flushId, this::removeFlushedMemTable));
@@ -713,9 +713,7 @@ public class OverflowProcessor extends Processor {
     if (logNode == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
-            processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX,
-            getOverflowRestoreFile(),
-            FileNodeManager.getInstance().getRestoreFilePath(processorName));
+            processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
       }
     }
     return logNode;
@@ -768,13 +766,13 @@ public class OverflowProcessor extends Processor {
 //    try {
 //      Pair<> workSupport;
 //      workSupport = new OverflowMemtable();
-//      if(isFlush){
-//        // isFlush = true, indicating an AsyncFlushThread has been running, only add Current overflowInfo
+//      if(isFlushing){
+//        // isFlushing = true, indicating an AsyncFlushThread has been running, only add Current overflowInfo
 //        // into List.
 //
 //
 //      }else {
-//        isFlush = true;
+//        isFlushing = true;
 ////        flushFuture = FlushManager.getInstance().submit(() ->
 //            flushTask("asynchronously", walTaskId));
 //      }
@@ -798,7 +796,7 @@ public class OverflowProcessor extends Processor {
 //            OverflowMemtable temp = flushSupport == null ? new OverflowMemtable() : flushSupport;
 //            flushSupport = workSupport;
 //            workSupport = temp;
-//            isFlush = true;
+//            isFlushing = true;
 //            break;
 //          }
 //          flushInfo = flushTaskList.remove(0);
