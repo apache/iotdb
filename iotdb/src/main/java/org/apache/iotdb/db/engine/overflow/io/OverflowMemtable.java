@@ -38,44 +38,44 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
  */
 public class OverflowMemtable extends PrimitiveMemTable {
 
-//  /**
-//   * store update and delete data
-//   */
-//  private Map<String, Map<String, LongStatistics>> indexTrees;
-//
-//  /**
-//   * store insert data
-//   */
-//  private IMemTable memTable;
-//
-//  public OverflowMemtable() {
-//    indexTrees = new HashMap<>();
-//    memTable = new PrimitiveMemTable();
-//  }
-//
-//  public void insert(TSRecord tsRecord) {
-//    for (DataPoint dataPoint : tsRecord.dataPointList) {
-//      memTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
-//              tsRecord.time,
-//              dataPoint.getValue().toString());
-//    }
-//  }
-//
-//  /**
-//   * @deprecated update time series data
-//   */
-//  @Deprecated
-//  public void update(String deviceId, String measurementId, long startTime, long endTime,
-//                     TSDataType dataType,
-//                     byte[] value) {
-//    if (!indexTrees.containsKey(deviceId)) {
-//      indexTrees.put(deviceId, new HashMap<>());
-//    }
-//    if (!indexTrees.get(deviceId).containsKey(measurementId)) {
-//      indexTrees.get(deviceId).put(measurementId, new LongStatistics());
-//    }
-//    indexTrees.get(deviceId).get(measurementId).updateStats(startTime, endTime);
-//  }
+  /**
+   * store update and delete data
+   */
+  private Map<String, Map<String, LongStatistics>> indexTrees;
+
+  /**
+   * store insert data
+   */
+  private IMemTable memTable;
+
+  public OverflowMemtable() {
+    indexTrees = new HashMap<>();
+    memTable = new PrimitiveMemTable();
+  }
+
+  public void insert(TSRecord tsRecord) {
+    for (DataPoint dataPoint : tsRecord.dataPointList) {
+      memTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
+              tsRecord.time,
+              dataPoint.getValue().toString());
+    }
+  }
+
+  /**
+   * @deprecated update time series data
+   */
+  @Deprecated
+  public void update(String deviceId, String measurementId, long startTime, long endTime,
+                     TSDataType dataType,
+                     byte[] value) {
+    if (!indexTrees.containsKey(deviceId)) {
+      indexTrees.put(deviceId, new HashMap<>());
+    }
+    if (!indexTrees.get(deviceId).containsKey(measurementId)) {
+      indexTrees.get(deviceId).put(measurementId, new LongStatistics());
+    }
+    indexTrees.get(deviceId).get(measurementId).updateStats(startTime, endTime);
+  }
 
   public void delete(String deviceId, String measurementId, long timestamp, boolean isFlushing) {
     super.delete(deviceId, measurementId, timestamp);
@@ -95,7 +95,7 @@ public class OverflowMemtable extends PrimitiveMemTable {
 //  }
 
   public boolean isEmptyOfMemTable() {
-    return this.isEmpty();
+    return super.isEmpty();
   }
 
   public IMemTable getMemTabale() {
@@ -109,6 +109,6 @@ public class OverflowMemtable extends PrimitiveMemTable {
 
   public void clear() {
 //    indexTrees.clear();
-    this.clear();
+    super.clear();
   }
 }
