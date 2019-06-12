@@ -28,7 +28,6 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.Buffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -219,7 +218,6 @@ public class BufferWriteProcessorTest {
     bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
         parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
-    assertFalse(bufferwrite.isFlush());
     assertTrue(bufferwrite.canBeClosed());
     assertEquals(0, bufferwrite.memoryUsage());
     assertEquals(TsFileIOWriter.magicStringBytes.length, bufferwrite.getFileSize());
@@ -242,7 +240,6 @@ public class BufferWriteProcessorTest {
       Assert.fail("mock flush spends more than 10 seconds... "
           + "Please modify the value or change a better test environment");
     }
-    assertFalse(bufferwrite.isFlush());
     assertEquals(0, bufferwrite.memoryUsage());
     // query result
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferwrite

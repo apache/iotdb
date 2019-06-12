@@ -54,7 +54,7 @@ public class MemTablePool {
       long waitedTime = System.currentTimeMillis() - waitStartTime;
       if (waitedTime / 2000 > lastPrintIdx) {
         lastPrintIdx = waitedTime / 2000;
-        LOGGER.info("{} has waited for a memtable for {}ms", waitedTime);
+        LOGGER.info("{} has waited for a memtable for {}ms", applier, waitedTime);
       }
     }
   }

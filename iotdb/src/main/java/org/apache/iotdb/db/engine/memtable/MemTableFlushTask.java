@@ -61,6 +61,8 @@ public class MemTableFlushTask {
 
   private Thread memoryFlushThread = new Thread(() -> {
     long memSerializeTime = 0;
+    LOGGER.info(
+        "BufferWrite Processor {},start serialize data into mem.", processorName);
     while (!stop) {
       Object task = memoryTaskQueue.poll();
       if (task == null) {
@@ -102,14 +104,18 @@ public class MemTableFlushTask {
   // rather than per each memtable.
   private Thread ioFlushThread = new Thread(() -> {
     long ioTime = 0;
+    long lastWaitIdx = 0;
     long currentTsFileFlushId;
-    boolean printed = false;
+    LOGGER.info("BufferWrite Processor {}, start io cost.", processorName);
+    long waitStartTime = System.currentTimeMillis();
     while ((currentTsFileFlushId = tsFileIoWriter.getFlushID().get()) != flushId) {
       try {
-        if (!printed) {
-          LOGGER.info("tsFileIoWriter flushID: {}, flush task flushID: {}", currentTsFileFlushId,
-              flushId);
-          printed = true;
+        long waitedTime = System.currentTimeMillis() - waitStartTime;
+        long currWaitIdx = waitedTime / 2000;
+        if (currWaitIdx > lastWaitIdx) {
+          lastWaitIdx  = currWaitIdx;
+          LOGGER.info("tsFileIoWriter flushID: {}, flush task flushID: {} has waited {}ms", currentTsFileFlushId,
+              flushId, waitedTime);
         }
         Thread.sleep(10);
       } catch (InterruptedException e) {
@@ -143,16 +149,21 @@ public class MemTableFlushTask {
         ioTime += System.currentTimeMillis() - starTime;
       }
     }
+
     MemTablePool.getInstance().release(memTable);
     LOGGER.info("Processor {} return back a memtable to MemTablePool", processorName);
     flushCallBack.afterFlush(memTable, tsFileIoWriter);
     if (tsFileIoWriter instanceof RestorableTsFileIOWriter) {
       try {
-        ((RestorableTsFileIOWriter) tsFileIoWriter).flush();
+        RestorableTsFileIOWriter restorableTsFileIOWriter = (RestorableTsFileIOWriter) tsFileIoWriter;
+        restorableTsFileIOWriter.flush();
+        restorableTsFileIOWriter.appendMetadata();
       } catch (IOException e) {
         LOGGER.error("write restore file meet error", e);
       }
     }
+
+    // enable next flush task to IO
     long newId = tsFileIoWriter.getFlushID().incrementAndGet();
     LOGGER.info("BufferWrite Processor {}, flushing a memtable into disk:  io cost {}ms, new flushID in tsFileIoWriter: {}.",
         processorName, ioTime, newId);

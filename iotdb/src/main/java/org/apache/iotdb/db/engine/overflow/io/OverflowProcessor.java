@@ -767,13 +767,13 @@ public class OverflowProcessor extends Processor {
 //    try {
 //      Pair<> workSupport;
 //      workSupport = new OverflowMemtable();
-//      if(isFlush){
-//        // isFlush = true, indicating an AsyncFlushThread has been running, only add Current overflowInfo
+//      if(isFlushing){
+//        // isFlushing = true, indicating an AsyncFlushThread has been running, only add Current overflowInfo
 //        // into List.
 //
 //
 //      }else {
-//        isFlush = true;
+//        isFlushing = true;
 ////        flushFuture = FlushManager.getInstance().submit(() ->
 //            flushTask("asynchronously", walTaskId));
 //      }
@@ -797,7 +797,7 @@ public class OverflowProcessor extends Processor {
 //            OverflowMemtable temp = flushSupport == null ? new OverflowMemtable() : flushSupport;
 //            flushSupport = workSupport;
 //            workSupport = temp;
-//            isFlush = true;
+//            isFlushing = true;
 //            break;
 //          }
 //          flushInfo = flushTaskList.remove(0);

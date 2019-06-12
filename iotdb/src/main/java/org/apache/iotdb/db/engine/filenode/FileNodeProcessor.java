@@ -176,6 +176,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    */
   private Map<String, Action> parameters;
   private FileSchema fileSchema;
+
   private Action fileNodeFlushAction = () -> {
     synchronized (fileNodeProcessorStore) {
       try {
@@ -185,6 +186,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
     }
   };
+
   private Action bufferwriteFlushAction = () -> {
     // update the lastUpdateTime Notice: Thread safe
     synchronized (fileNodeProcessorStore) {

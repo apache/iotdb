@@ -55,7 +55,6 @@ import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -99,12 +98,8 @@ public class BufferWriteProcessor extends Processor {
   private WriteLogNode logNode;
   private VersionController versionController;
 
-  private boolean isClosing = true;
-
+  private boolean isClosing = false;
   private boolean isClosed = false;
-  private boolean isFlush = false;
-
-
 
   private TsFileResource currentTsFileResource;
 
@@ -173,7 +168,6 @@ public class BufferWriteProcessor extends Processor {
       workMemTable.clear();
     }
     isClosing = false;
-    isFlush = false;
   }
 
   public void checkOpen() throws BufferWriteProcessorException {
@@ -321,19 +315,6 @@ public class BufferWriteProcessor extends Processor {
   }
 
 
-  private void switchFlushToWork() {
-    LOGGER.info("BufferWrite Processor {} try to get flushQueryLock for switchFlushToWork", getProcessorName());
-    flushQueryLock.lock();
-    LOGGER.info("BufferWrite Processor {} get flushQueryLock for switchFlushToWork", getProcessorName());
-    try {
-      writer.appendMetadata();
-      isFlush = false;
-    } finally {
-      flushQueryLock.unlock();
-      LOGGER.info("BufferWrite Processor {} release the flushQueryLock for switchFlushToWork successfully", getProcessorName());
-    }
-  }
-
   /**
    * return the memtable to MemTablePool and make
    * @param memTable
@@ -386,15 +367,10 @@ public class BufferWriteProcessor extends Processor {
       }
       result = true;
     } catch (Exception e) {
-      LOGGER.error(
-          "The bufferwrite processor {} failed to flush {}, when calling the filenodeFlushAction.",
-          getProcessorName(), displayMessage, e);
+      LOGGER.error("The bufferwrite processor {} failed to flush {}.", getProcessorName(), displayMessage, e);
       result = false;
-    } finally {
-      switchFlushToWork();
-      LOGGER.info("The bufferwrite processor {} ends flushing {}.", getProcessorName(),
-            displayMessage);
     }
+
     if (LOGGER.isInfoEnabled()) {
       long flushEndTime = System.currentTimeMillis();
       LOGGER.info(
@@ -559,15 +535,6 @@ public class BufferWriteProcessor extends Processor {
   }
 
   /**
-   * check if is flushing.
-   *
-   * @return True if flushing
-   */
-  public boolean isFlush() {
-    return isFlush;
-  }
-
-  /**
    * get metadata size.
    *
    * @return The sum of all timeseries's metadata size within this file.
@@ -649,12 +616,10 @@ public class BufferWriteProcessor extends Processor {
       throws BufferWriteProcessorException {
     checkOpen();
     workMemTable.delete(deviceId, measurementId, timestamp);
-    if (isFlush()) {
       // flushing MemTable cannot be directly modified since another thread is reading it
-      for (IMemTable memTable : flushingMemTables) {
-        if (memTable.containSeries(deviceId, measurementId)) {
-          memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
-        }
+    for (IMemTable memTable : flushingMemTables) {
+      if (memTable.containSeries(deviceId, measurementId)) {
+        memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
       }
     }
   }
