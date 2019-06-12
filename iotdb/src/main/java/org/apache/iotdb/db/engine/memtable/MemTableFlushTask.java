@@ -17,6 +17,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.apache.iotdb.db.engine.bufferwrite.RestorableTsFileIOWriter;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -145,6 +146,13 @@ public class MemTableFlushTask {
     MemTablePool.getInstance().release(memTable);
     LOGGER.info("Processor {} return back a memtable to MemTablePool", processorName);
     flushCallBack.afterFlush(memTable, tsFileIoWriter);
+    if (tsFileIoWriter instanceof RestorableTsFileIOWriter) {
+      try {
+        ((RestorableTsFileIOWriter) tsFileIoWriter).flush();
+      } catch (IOException e) {
+        LOGGER.error("write restore file meet error", e);
+      }
+    }
     long newId = tsFileIoWriter.getFlushID().incrementAndGet();
     LOGGER.info("BufferWrite Processor {}, flushing a memtable into disk:  io cost {}ms, new flushID in tsFileIoWriter: {}.",
         processorName, ioTime, newId);

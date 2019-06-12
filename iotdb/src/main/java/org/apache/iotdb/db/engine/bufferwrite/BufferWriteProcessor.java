@@ -163,7 +163,12 @@ public class BufferWriteProcessor extends Processor {
       throw new BufferWriteProcessorException(e);
     }
     if (workMemTable == null) {
-      workMemTable = MemTablePool.getInstance().getEmptyMemTable();
+      long start1 = System.currentTimeMillis();
+      workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
+      start1 = System.currentTimeMillis() - start1;
+      if (start1 > 1000) {
+        LOGGER.info("BufferWriteProcessor.reopen getEmptyMemtable cost: {}", start1);
+      }
     } else {
       workMemTable.clear();
     }
@@ -373,8 +378,6 @@ public class BufferWriteProcessor extends Processor {
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, getProcessorName(), flushId,
             this::removeFlushedMemTable);
         tableFlushTask.flushMemTable(fileSchema, tmpMemTableToFlush, version);
-        // write restore information
-        writer.flush();
       }
 
       filenodeFlushAction.act();
@@ -452,11 +455,11 @@ public class BufferWriteProcessor extends Processor {
       IMemTable tmpMemTableToFlush = workMemTable;
 
       long start = System.currentTimeMillis();
-      workMemTable = MemTablePool.getInstance().getEmptyMemTable();
+      workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
 
       start = System.currentTimeMillis() - start;
       if (start > 1000) {
-        LOGGER.info("get empty memtable cost: {}", start);
+        LOGGER.info("BufferWriteProcessor.flush getEmptyMemtable cost: {}", start);
       }
 
       flushId++;
