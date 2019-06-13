@@ -71,8 +71,7 @@ public class WriteLogNodeTest {
     tempProcessorStore.createNewFile();
     CRC32 crc32 = new CRC32();
 
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
@@ -145,8 +144,7 @@ public class WriteLogNodeTest {
     tempRestore.createNewFile();
     tempProcessorStore.createNewFile();
 
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
@@ -170,7 +168,7 @@ public class WriteLogNodeTest {
     assertTrue(oldWalFile.exists());
     assertTrue(oldWalFile.length() > 0);
 
-    logNode.notifyEndFlush(null, taskId);
+    logNode.notifyEndFlush(taskId);
     assertTrue(!oldWalFile.exists());
     assertEquals(0, walFile.length());
 
@@ -191,8 +189,7 @@ public class WriteLogNodeTest {
     tempRestore.createNewFile();
     tempProcessorStore.createNewFile();
 
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
@@ -227,8 +224,7 @@ public class WriteLogNodeTest {
     tempRestore.createNewFile();
     tempProcessorStore.createNewFile();
 
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
@@ -264,9 +260,7 @@ public class WriteLogNodeTest {
     tempRestore.createNewFile();
     tempProcessorStore.createNewFile();
 
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize",
-        tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice.oversize", 100,
         new String[]{"s1", "s2", "s3", "s4"},

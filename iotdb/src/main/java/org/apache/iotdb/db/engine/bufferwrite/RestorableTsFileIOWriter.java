@@ -151,6 +151,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   }
 
   public void writeRestoreInfo() throws IOException {
+    long start = System.currentTimeMillis();
     long lastPosition = this.getPos();
     // TODO: no need to create a TsRowGroupBlockMetadata, flushMetadata RowGroupMetadata one by one is ok
     TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
@@ -172,6 +173,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       byte[] lastPositionBytes = BytesUtils.longToBytes(lastPosition);
       out.write(lastPositionBytes);
     }
+    LOGGER.info("writeRestoreInfo() cost {} ms", System.currentTimeMillis() - start);
   }
 
   /**

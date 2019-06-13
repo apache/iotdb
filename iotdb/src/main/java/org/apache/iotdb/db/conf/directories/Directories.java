@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
+import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,5 +106,9 @@ public class Directories {
 
   private static class DirectoriesHolder {
     private static final Directories INSTANCE = new Directories();
+  }
+
+  public String getWALFolder() {
+    return IoTDBDescriptor.getInstance().getConfig().getWalFolder();
   }
 }

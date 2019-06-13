@@ -72,7 +72,7 @@ public class WriteLogNodeManagerTest {
 
     WriteLogNodeManager manager = MultiFileLogNodeManager.getInstance();
     WriteLogNode logNode = manager
-        .getNode("root.managerTest", tempRestore.getPath(), tempProcessorStore.getPath());
+        .getNode("root.managerTest");
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
@@ -119,7 +119,7 @@ public class WriteLogNodeManagerTest {
       } catch (PathErrorException ignored) {
       }
       WriteLogNode logNode = manager
-          .getNode(deviceName, tempRestore.getPath(), tempProcessorStore.getPath());
+          .getNode(deviceName);
 
       InsertPlan bwInsertPlan = new InsertPlan(1, deviceName, 100,
           new String[]{"s1", "s2", "s3", "s4"},

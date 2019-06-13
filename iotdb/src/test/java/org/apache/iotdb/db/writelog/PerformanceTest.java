@@ -20,7 +20,6 @@ package org.apache.iotdb.db.writelog;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -86,9 +85,7 @@ public class PerformanceTest {
         tempRestore.createNewFile();
         tempProcessorStore.createNewFile();
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
-            tempRestore.getPath(),
-            tempProcessorStore.getPath());
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
 
         long time = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
@@ -149,9 +146,7 @@ public class PerformanceTest {
             TSEncoding.PLAIN.name());
     MManager.getInstance().addPathToMTree("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
         TSEncoding.PLAIN.name());
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice",
-        tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     for (int i = 0; i < 1000000; i++) {
       InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
@@ -199,9 +194,9 @@ public class PerformanceTest {
 
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
     for (int i = 0; i < 1000000; i++) {
-      bytes1 = PhysicalPlanLogTransfer.operatorToLog(bwInsertPlan);
-      bytes2 = PhysicalPlanLogTransfer.operatorToLog(updatePlan);
-      bytes3 = PhysicalPlanLogTransfer.operatorToLog(deletePlan);
+      bytes1 = PhysicalPlanLogTransfer.planToLog(bwInsertPlan);
+      bytes2 = PhysicalPlanLogTransfer.planToLog(updatePlan);
+      bytes3 = PhysicalPlanLogTransfer.planToLog(deletePlan);
     }
     System.out.println("3000000 logs encoding use " + (System.currentTimeMillis() - time) + "ms");
 
@@ -223,7 +218,7 @@ public class PerformanceTest {
         new String[]{"1.0", "15", "str", "false"});
     long time = System.currentTimeMillis();
     for (int i = 0; i < 1000000; i++) {
-      byte[] bytes = PhysicalPlanLogTransfer.operatorToLog(bwInsertPlan);
+      byte[] bytes = PhysicalPlanLogTransfer.planToLog(bwInsertPlan);
     }
     System.out.println("1000000 logs encoding use " + (System.currentTimeMillis() - time) + "ms");
 

@@ -335,7 +335,7 @@ public class BufferWriteProcessor extends Processor {
 
       filenodeFlushAction.act();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush(null, walTaskId);
+        logNode.notifyEndFlush(walTaskId);
       }
       result = true;
     } catch (Exception e) {
@@ -551,9 +551,7 @@ public class BufferWriteProcessor extends Processor {
     if (logNode == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
-            processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX,
-            getBufferwriteRestoreFilePath(),
-            FileNodeManager.getInstance().getRestoreFilePath(processorName));
+            processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX);
       }
     }
     return logNode;

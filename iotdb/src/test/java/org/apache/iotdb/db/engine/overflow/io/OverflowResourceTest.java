@@ -25,10 +25,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,12 +57,16 @@ public class OverflowResourceTest {
     EnvironmentUtils.cleanDir(folderPath);
   }
 
+  private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter overflowIOWriter) {
+//    overflowIOWriter.mergeChunkGroupMetaData();
+  }
+
   @Test
   public void testOverflowInsert() throws IOException {
     OverflowTestUtils.produceInsertData(memtable);
     QueryContext context = new QueryContext();
     work.flush(OverflowTestUtils.getFileSchema(), memtable.getMemTabale(),
-        "processorName", 0, (k,v)->{});
+        "processorName", 0, this::removeFlushedMemTable);
     List<ChunkMetaData> chunkMetaDatas = work.getInsertMetadatas(OverflowTestUtils.deviceId1,
         OverflowTestUtils.measurementId1, OverflowTestUtils.dataType2, context);
     assertEquals(0, chunkMetaDatas.size());

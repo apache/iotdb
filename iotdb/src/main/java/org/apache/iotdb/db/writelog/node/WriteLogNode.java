@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.writelog.node;
 
 import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.LogPosition;
@@ -32,9 +31,8 @@ public interface WriteLogNode {
    * synced to disk.
    *
    * @param plan -plan
-   * @return The position to be written of the log.
    */
-  LogPosition write(PhysicalPlan plan) throws IOException;
+  void write(PhysicalPlan plan) throws IOException;
 
   /**
    * First judge the stage of recovery by status of files, and then recover from that stage.
@@ -51,11 +49,6 @@ public interface WriteLogNode {
    */
   void forceSync() throws IOException;
 
-  /*
-   * Force OS to sync all written data to disk.
-   */
-  void force() throws IOException;
-
   /**
    * When a FileNode attempts to start a flushMetadata, this method must be called to rename log file.
    * @return the task id ( being used in the renamed log file)
@@ -65,10 +58,9 @@ public interface WriteLogNode {
   /**
    * When the flushMetadata of a FlieNode ends, this method must be called to check if log file needs
    * cleaning.
-   * @param logPositions (deprecated)
-   * @param  taskId the task id that notifyStartFlush() returns.
+   * @param fileId
    */
-  void notifyEndFlush(List<LogPosition> logPositions, long taskId);
+  void notifyEndFlush(long fileId);
 
   /**
    * return identifier of the log node.

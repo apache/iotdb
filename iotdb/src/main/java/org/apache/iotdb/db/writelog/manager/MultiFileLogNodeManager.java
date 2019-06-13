@@ -46,31 +46,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   private Thread forceThread;
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final Runnable syncTask = ()->{
-      while (true) {
-        if (Thread.interrupted()) {
-          logger.info("WAL sync thread exits.");
-          break;
-        }
-        logger.debug("Timed sync starts, {} nodes to be flushed", nodeMap.size());
-        for (WriteLogNode node : nodeMap.values()) {
-          try {
-            node.forceSync();
-          } catch (IOException e) {
-            logger.error("Cannot sync {}", node, e);
-          }
-        }
-        logger.debug("Timed sync finished");
-        try {
-          Thread.sleep(config.getFlushWalPeriodInMs());
-        } catch (InterruptedException e) {
-          logger.info("WAL sync thread exits.");
-          Thread.currentThread().interrupt();
-          break;
-        }
-    }
-  };
-
   private final Runnable forceTask = () -> {
       while (true) {
         if (Thread.interrupted()) {
@@ -80,7 +55,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         logger.debug("Timed force starts, {} nodes to be flushed", nodeMap.size());
         for (WriteLogNode node : nodeMap.values()) {
           try {
-            node.force();
+            node.forceSync();
           } catch (IOException e) {
             logger.error("Cannot force {}, because {}", node.toString(), e.toString());
           }
@@ -106,12 +81,11 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
 
   @Override
-  public WriteLogNode getNode(String identifier, String restoreFilePath,
-      String processorStoreFilePath)
+  public WriteLogNode getNode(String identifier)
       throws IOException {
     WriteLogNode node = nodeMap.get(identifier);
-    if (node == null && restoreFilePath != null && processorStoreFilePath != null) {
-      node = new ExclusiveWriteLogNode(identifier, restoreFilePath, processorStoreFilePath);
+    if (node == null) {
+      node = new ExclusiveWriteLogNode(identifier);
       WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
       if (oldNode != null) {
         return oldNode;
@@ -208,8 +182,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         return;
       }
       if (!isActivated(syncThread)) {
-        InstanceHolder.instance.syncThread = new Thread(InstanceHolder.instance.syncTask,
-            ThreadName.WAL_DAEMON.getName());
         InstanceHolder.instance.syncThread.start();
         if (config.getForceWalPeriodInMs() > 0 && !isActivated(forceThread)) {
           InstanceHolder.instance.forceThread = new Thread(InstanceHolder.instance.forceTask,
