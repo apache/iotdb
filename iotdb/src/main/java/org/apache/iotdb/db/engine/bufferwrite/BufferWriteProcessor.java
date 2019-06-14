@@ -35,10 +35,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -50,6 +48,7 @@ import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
@@ -57,6 +56,7 @@ import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -119,29 +119,49 @@ public class BufferWriteProcessor extends Processor {
       Map<String, Action> parameters, Consumer<BufferWriteProcessor> bufferwriteCloseConsumer,
       VersionController versionController,
       FileSchema fileSchema) throws BufferWriteProcessorException {
+    this(baseDir, processorName, fileName, parameters, bufferwriteCloseConsumer, versionController
+        , fileSchema, null);
+  }
+
+  public BufferWriteProcessor(String baseDir, String processorName, String fileName,
+      Map<String, Action> parameters, Consumer<BufferWriteProcessor> bufferwriteCloseConsumer,
+      VersionController versionController,
+      FileSchema fileSchema, TsFileResource tsFileResource) throws BufferWriteProcessorException {
     super(processorName);
     this.fileSchema = fileSchema;
     this.baseDir = baseDir;
+    this.currentTsFileResource = tsFileResource;
 
     bufferwriteFlushAction = parameters.get(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
     //bufferwriteCloseAction = parameters.get(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
     filenodeFlushAction = parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
     this.bufferwriteCloseConsumer = bufferwriteCloseConsumer;
-    open(fileName);
+
+    new File(baseDir, processorName).mkdirs();
+    this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
+    bufferWriteRelativePath = processorName + File.separatorChar + fileName;
+
+    TsFileRecoverPerformer recoverPerformer =
+        new TsFileRecoverPerformer(insertFilePath, logNodePrefix(),
+            fileSchema, versionController, currentTsFileResource, currentTsFileResource.getModFile());
+    try {
+      if (recoverPerformer.recover()) {
+        // recovered file is closed and receive no new data
+        return;
+      }
+    } catch (ProcessorException e) {
+      throw new BufferWriteProcessorException(e);
+    }
+    open();
     try {
       getLogNode();
     } catch (IOException e) {
       throw new BufferWriteProcessorException(e);
     }
     this.versionController = versionController;
-
   }
 
-  private void open(String fileName) throws BufferWriteProcessorException {
-
-    new File(baseDir, processorName).mkdirs();
-    this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
-    bufferWriteRelativePath = processorName + File.separatorChar + fileName;
+  private void open() throws BufferWriteProcessorException {
     try {
       writer = new RestorableTsFileIOWriter(processorName, insertFilePath);
     } catch (IOException e) {
@@ -154,7 +174,6 @@ public class BufferWriteProcessor extends Processor {
       LOGGER.info("BufferWriteProcessor.open getEmptyMemtable cost: {}", start1);
     }
   }
-
 
   /**
    * Only for Test
@@ -330,12 +349,10 @@ public class BufferWriteProcessor extends Processor {
    * @param tmpMemTableToFlush
    * @param version the operation version that will tagged on the to be flushed memtable
    * (i.e., ChunkGroup)
-   * @param walTaskId used for declaring what the wal file name suffix is.
    * @return true if successfully.
    */
   private boolean flushTask(String displayMessage,
-      IMemTable tmpMemTableToFlush, long version,
-      long walTaskId, long flushId) {
+      IMemTable tmpMemTableToFlush, long version, long flushId) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
     LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(),
@@ -350,7 +367,7 @@ public class BufferWriteProcessor extends Processor {
 
       filenodeFlushAction.act();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush(walTaskId);
+        logNode.notifyEndFlush();
       }
       result = true;
     } catch (Exception e) {
@@ -402,12 +419,9 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.error("Failed to flushMetadata bufferwrite row group when calling the action function.");
         throw new IOException(e);
       }
-      final long walTaskId;
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        walTaskId = logNode.notifyStartFlush();
+        logNode.notifyStartFlush();
         LOGGER.info("BufferWrite Processor {} has notified WAL for flushing.", getProcessorName());
-      } else {
-        walTaskId = 0;
       }
       valueCount = 0;
 
@@ -431,7 +445,7 @@ public class BufferWriteProcessor extends Processor {
             "flushMetadata memtable for bufferwrite processor {} synchronously for close task.",
             getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
             FlushManager.getInstance().getCorePoolSize());
-        flushTask("synchronously", tmpMemTableToFlush, version, walTaskId, flushId);
+        flushTask("synchronously", tmpMemTableToFlush, version, flushId);
         flushFuture = new ImmediateFuture<>(true);
       } else {
         if (LOGGER.isInfoEnabled()) {
@@ -441,7 +455,7 @@ public class BufferWriteProcessor extends Processor {
               FlushManager.getInstance().getCorePoolSize());
         }
         flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
-            tmpMemTableToFlush, version, walTaskId, flushId));
+            tmpMemTableToFlush, version, flushId));
       }
 
       if (isCloseTaskCalled) {
@@ -566,10 +580,14 @@ public class BufferWriteProcessor extends Processor {
     if (logNode == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
-            processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX);
+            logNodePrefix() + new File(insertFilePath).getName());
       }
     }
     return logNode;
+  }
+
+  public String logNodePrefix() {
+    return processorName + "-BufferWrite-";
   }
 
   /**

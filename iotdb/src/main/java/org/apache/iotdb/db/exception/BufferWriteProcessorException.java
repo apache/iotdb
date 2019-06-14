@@ -38,4 +38,7 @@ public class BufferWriteProcessorException extends ProcessorException {
     super(throwable);
   }
 
+  public BufferWriteProcessorException(String msg, Throwable e) {
+    super(msg, e);
+  }
 }

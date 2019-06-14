@@ -45,11 +45,6 @@ public interface WriteLogNodeManager {
   void deleteNode(String identifier) throws IOException;
 
   /**
-   * Make all node of this manager start recovery.
-   */
-  void recover() throws RecoverException;
-
-  /**
    * Close all nodes.
    */
   void close();

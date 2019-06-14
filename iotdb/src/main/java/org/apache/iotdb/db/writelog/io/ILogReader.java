@@ -26,8 +26,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public interface ILogReader {
 
-  void open(File file) throws FileNotFoundException;
-
   void close();
 
   boolean hasNext() throws IOException;

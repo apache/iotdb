@@ -24,12 +24,12 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
-import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
+import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
 import org.apache.iotdb.db.writelog.io.LogWriter;
-import org.apache.iotdb.db.writelog.recover.RecoverPerformer;
+import org.apache.iotdb.db.writelog.io.MultiFileLogReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<ExclusiveWriteLogNode> {
 
   public static final String WAL_FILE_NAME = "wal";
-  public static final String OLD_SUFFIX = "-old";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
   /**
    * This should be the same as the corresponding StorageGroup's name.
@@ -51,8 +50,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private ILogWriter currentFileWriter;
 
-  private RecoverPerformer recoverPerformer;
-
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private List<byte[]> logCache = new ArrayList<>(config.getFlushWalThreshold());
@@ -62,6 +59,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private ReadWriteLock forceLock = new ReentrantReadWriteLock();
 
   private long fileId;
+  private long lastFlushedId = -1;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -73,11 +71,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.logDirectory =
         Directories.getInstance().getWALFolder() + File.separator + this.identifier;
     new File(logDirectory).mkdirs();
-
-  }
-
-  public void setRecoverPerformer(RecoverPerformer recoverPerformer) {
-    this.recoverPerformer = recoverPerformer;
   }
 
   /*
@@ -101,11 +94,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } finally {
       unlockForWrite();
     }
-  }
-
-  @Override
-  public void recover() throws RecoverException {
-    recoverPerformer.recover();
   }
 
   @Override
@@ -140,7 +128,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
 
   @Override
-  public long notifyStartFlush() {
+  public void notifyStartFlush() {
     lockForWrite();
     try {
       long start = System.currentTimeMillis();
@@ -150,18 +138,17 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       if( elapse > 1000){
         logger.info("WAL notifyStartFlush cost {} ms", elapse);
       }
-      return fileId;
     } finally {
       unlockForWrite();
     }
   }
 
   @Override
-  public void notifyEndFlush(long fileId) {
+  public void notifyEndFlush() {
     lockForWrite();
     try {
       long start = System.currentTimeMillis();
-      File logFile = new File(logDirectory, WAL_FILE_NAME + fileId);
+      File logFile = new File(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
       discard(logFile);
       long elapse = System.currentTimeMillis() - start;
       if( elapse > 1000){
@@ -199,6 +186,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } finally {
       unlockForOther();
     }
+  }
+
+  @Override
+  public ILogReader getLogReader() {
+    File[] logFiles = new File(logDirectory).listFiles();
+    return new MultiFileLogReader(logFiles);
   }
 
   private void lockForWrite() {
@@ -294,6 +287,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void nextFileWriter() {
     fileId++;
     File newFile = new File(logDirectory, WAL_FILE_NAME + fileId);
+    newFile.getParentFile().mkdirs();
     currentFileWriter = new LogWriter(newFile);
   }
 
@@ -301,10 +295,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   @Override
   public String toString() {
     return "Log node " + identifier;
-  }
-
-  public String getFileNodeName() {
-    return identifier.split("-")[0];
   }
 
   @Override

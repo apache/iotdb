@@ -167,10 +167,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Represent the number of new queries that have not ended.
    */
   private AtomicInteger newMultiPassCount = new AtomicInteger(0);
-  /**
-   * system recovery
-   */
-  private boolean shouldRecovery = false;
+
   /**
    * statistic monitor parameters
    */
@@ -312,31 +309,21 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       throw new FileNodeProcessorException(e);
     }
     // TODO deep clone the lastupdate time
-    lastUpdateTimeMap = fileNodeProcessorStore.getLastUpdateTimeMap();
     emptyTsFileResource = fileNodeProcessorStore.getEmptyTsFileResource();
     newFileNodes = fileNodeProcessorStore.getNewFileNodes();
     isMerging = fileNodeProcessorStore.getFileNodeProcessorStatus();
     numOfMergeFile = fileNodeProcessorStore.getNumOfMergeFile();
     invertedIndexOfFiles = new HashMap<>();
-    // deep clone
-    flushLastUpdateTimeMap = new HashMap<>();
-    for (Entry<String, Long> entry : lastUpdateTimeMap.entrySet()) {
-      flushLastUpdateTimeMap.put(entry.getKey(), entry.getValue() + 1);
-    }
+
     // construct the fileschema
     try {
       this.fileSchema = constructFileSchema(processorName);
     } catch (WriteProcessException e) {
       throw new FileNodeProcessorException(e);
     }
-    // status is not NONE, or the last intervalFile is not closed
-    if (isMerging != FileNodeProcessorStatus.NONE
-        || (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed())) {
-      shouldRecovery = true;
-    } else {
-      // add file into the index of file
-      addAllFileIntoIndex(newFileNodes);
-    }
+
+    recover();
+
     // RegistStatService
     if (TsFileDBConf.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
@@ -449,10 +436,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  public boolean shouldRecovery() {
-    return shouldRecovery;
-  }
-
   public boolean isOverflowed() {
     return isOverflowed;
   }
@@ -474,64 +457,48 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   /**
    * execute filenode recovery.
    */
-  public void fileNodeRecovery() throws FileNodeProcessorException {
-    // restore bufferwrite
-    if (!newFileNodes.isEmpty()) {
-      int i = newFileNodes.size() -1;
-      //for (int i = newFileNodes.size() -1; i >= 0; i--) {
-        if (!newFileNodes.get(i).isClosed()) {
-          //
-          // add the current file
-          //
-          //currentTsFileResource = newFileNodes.get(newFileNodes.size() - 1);
-
-          // this bufferwrite file is not close by normal operation
-          String damagedFilePath = newFileNodes.get(i).getFile().getAbsolutePath();
-          String[] fileNames = damagedFilePath.split("\\" + File.separator);
-          // all information to recovery the damaged file.
-          // contains file seriesPath, action parameters and processorName
-          parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
-          //parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
-          parameters
-              .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
-          String baseDir = directories
-              .getTsFileFolder(newFileNodes.get(newFileNodes.size() - 1).getBaseDirIndex());
-          if (LOGGER.isInfoEnabled()) {
-            LOGGER.info(
-                "The filenode processor {} will recovery the bufferwrite processor, "
-                    + "the bufferwrite file is {}",
-                getProcessorName(), fileNames[fileNames.length - 1]);
-          }
-
-          try {
-            bufferWriteProcessor = new BufferWriteProcessor(baseDir, getProcessorName(),
-                fileNames[fileNames.length - 1], parameters, bufferwriteCloseConsumer,
-                versionController, fileSchema);
-          } catch (BufferWriteProcessorException e) {
-            LOGGER.error(
-                "The filenode processor {} failed to recovery the bufferwrite processor, "
-                    + "the last bufferwrite file is {}.",
-                getProcessorName(), fileNames[fileNames.length - 1]);
-            throw new FileNodeProcessorException(e);
-          }
-        }
-      //}
-    }
-    // restore the overflow processor
-    LOGGER.info("The filenode processor {} will recovery the overflow processor.",
-        getProcessorName());
+  public void recover() throws FileNodeProcessorException {
+    // restore sequential files
+    parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
+    //parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
+    parameters
+        .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
     parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
+
+    recoverUpdateTimeMap();
+    
+    for (int i = 0; i < newFileNodes.size(); i++) {
+      TsFileResource tsFile = newFileNodes.get(i);
+      String baseDir = directories
+          .getTsFileFolder(tsFile.getBaseDirIndex());
+      try {
+        // recover in initialization
+        new BufferWriteProcessor(baseDir,
+            getProcessorName(),
+            tsFile.getFile().getName(), parameters, bufferwriteCloseConsumer,
+            versionController, fileSchema, tsFile);
+      } catch (BufferWriteProcessorException e) {
+        LOGGER.error(
+            "The filenode processor {} failed to recover the bufferwrite processor, "
+                + "the last bufferwrite file is {}.",
+            getProcessorName(), tsFile.getFile().getName());
+        throw new FileNodeProcessorException(e);
+      }
+    }
+
+    // restore the overflow processor
+    LOGGER.info("The filenode processor {} will recover the overflow processor.",
+        getProcessorName());
+
     try {
       overflowProcessor = new OverflowProcessor(getProcessorName(), parameters, fileSchema,
           versionController);
-    } catch (IOException e) {
+    } catch (ProcessorException e) {
       LOGGER.error("The filenode processor {} failed to recovery the overflow processor.",
           getProcessorName());
       throw new FileNodeProcessorException(e);
     }
-
-    shouldRecovery = false;
 
     if (isMerging == FileNodeProcessorStatus.MERGING_WRITE) {
       // re-merge all file
@@ -540,21 +507,33 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           getProcessorName(), isMerging);
       merge();
     } else if (isMerging == FileNodeProcessorStatus.WAITING) {
-      // unlock
       LOGGER.info("The filenode processor {} is recovering, the filenode status is {}.",
           getProcessorName(), isMerging);
-      //writeUnlock();
       switchWaitingToWorking();
-    } else {
-      //writeUnlock();
     }
     // add file into index of file
     addAllFileIntoIndex(newFileNodes);
+
+    recoverUpdateTimeMap();
+  }
+
+  private void recoverUpdateTimeMap() {
+    lastUpdateTimeMap = new HashMap<>();
+    flushLastUpdateTimeMap = new HashMap<>();
+    for (TsFileResource tsFileResource : newFileNodes) {
+      Map<String, Long> endTimeMap =  tsFileResource.getEndTimeMap();
+      endTimeMap.forEach((key, value) -> {
+        Long lastTime = lastUpdateTimeMap.get(key);
+        if (lastTime == null || lastTime < value) {
+          lastUpdateTimeMap.put(key, value);
+          flushLastUpdateTimeMap.put(key, value);
+        }
+      });
+    }
   }
 
   //when calling this method, the bufferWriteProcessor must not be null
   private BufferWriteProcessor getBufferWriteProcessor() {
-
     return bufferWriteProcessor;
   }
 
@@ -589,7 +568,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   /**
    * get overflow processor by processor name.
    */
-  public OverflowProcessor getOverflowProcessor(String processorName) throws IOException {
+  public OverflowProcessor getOverflowProcessor(String processorName) throws ProcessorException {
     if (overflowProcessor == null) {
       Map<String, Action> params = new HashMap<>();
       // construct processor or restore
@@ -1055,7 +1034,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       LOGGER.info("The filenode processor {} prepares for merge, closes the overflow processor",
           getProcessorName());
       getOverflowProcessor().close();
-    } catch (FileNodeProcessorException | OverflowProcessorException | IOException | InterruptedException | ExecutionException e) {
+    } catch (ProcessorException | InterruptedException | ExecutionException e) {
       LOGGER.error("The filenode processor {} prepares for merge error.", getProcessorName());
       writeUnlock();
       throw new ErrorDebugException(e);
@@ -1129,7 +1108,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         overflowProcessor.reopen();
       }
       overflowProcessor.switchWorkToMerge();
-    } catch (IOException e) {
+    } catch (ProcessorException | IOException e) {
       LOGGER.error("The filenode processor {} can't switch overflow processor from work to merge.",
           getProcessorName(), e);
       writeUnlock();
@@ -2019,7 +1998,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Similar to delete(), but only deletes data in Overflow. Only used by WAL recovery.
    */
   public void deleteOverflow(String deviceId, String measurementId, long timestamp)
-      throws IOException {
+      throws ProcessorException {
     long version = versionController.nextVersion();
 
     OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
@@ -2028,9 +2007,13 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       overflowProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
     } catch (IOException e) {
       for (ModificationFile modificationFile : updatedModFiles) {
-        modificationFile.abort();
+        try {
+          modificationFile.abort();
+        } catch (IOException e1) {
+          throw new ProcessorException(e);
+        }
       }
-      throw e;
+      throw new ProcessorException(e);
     }
   }
 
@@ -2059,7 +2042,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     return isOverflowed == that.isOverflowed &&
         numOfMergeFile == that.numOfMergeFile &&
         lastMergeTime == that.lastMergeTime &&
-        shouldRecovery == that.shouldRecovery &&
         multiPassLockToken == that.multiPassLockToken &&
         Objects.equals(statStorageDeltaName, that.statStorageDeltaName) &&
         Objects.equals(statParamsHashMap, that.statParamsHashMap) &&
@@ -2086,14 +2068,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), statStorageDeltaName, statParamsHashMap, isOverflowed,
-        lastUpdateTimeMap, flushLastUpdateTimeMap, invertedIndexOfFiles,
-        emptyTsFileResource, newFileNodes, isMerging,
-        numOfMergeFile, fileNodeProcessorStore, fileNodeRestoreFilePath,
-        lastMergeTime, bufferWriteProcessor, overflowProcessor, oldMultiPassTokenSet,
-        newMultiPassTokenSet, oldMultiPassCount, newMultiPassCount, shouldRecovery, parameters,
-        fileSchema, fileNodeFlushAction, bufferwriteFlushAction,
-        overflowFlushAction, multiPassLockToken);
+    return processorName.hashCode();
   }
 
   public class MergeRunnale implements Runnable {

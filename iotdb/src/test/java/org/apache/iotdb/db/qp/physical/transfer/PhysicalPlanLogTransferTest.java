@@ -108,19 +108,19 @@ public class PhysicalPlanLogTransferTest {
     /** Insert Plan test **/
     byte[] insertPlanBytesTest = PhysicalPlanLogTransfer.planToLog(insertPlan);
     InsertPlan insertPlanTest = (InsertPlan) PhysicalPlanLogTransfer
-        .logToOperator(insertPlanBytesTest);
+        .logToPlan(insertPlanBytesTest);
     assertEquals(insertPlanTest, insertPlan);
 
     /** Delete Plan test **/
     byte[] deletePlanBytesTest = PhysicalPlanLogTransfer.planToLog(deletePlan);
     DeletePlan deletePlanTest = (DeletePlan) PhysicalPlanLogTransfer
-        .logToOperator(deletePlanBytesTest);
+        .logToPlan(deletePlanBytesTest);
     assertEquals(deletePlanTest, deletePlan);
 
     /** Update Plan test **/
     byte[] updatePlanBytesTest = PhysicalPlanLogTransfer.planToLog(updatePlan);
     UpdatePlan updatePlanTest = (UpdatePlan) PhysicalPlanLogTransfer
-        .logToOperator(updatePlanBytesTest);
+        .logToPlan(updatePlanBytesTest);
     assertEquals(updatePlanTest, updatePlan);
 
     /** Metadata Plan test **/
@@ -128,7 +128,7 @@ public class PhysicalPlanLogTransferTest {
     MetadataPlan metadataPlan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadataStatement);
     byte[] metadataPlanBytesTest = PhysicalPlanLogTransfer.planToLog(metadataPlan);
     MetadataPlan metadataPlanTest = (MetadataPlan) PhysicalPlanLogTransfer
-        .logToOperator(metadataPlanBytesTest);
+        .logToPlan(metadataPlanBytesTest);
     assertEquals(metadataPlanTest, metadataPlan);
 
     /** Author Plan test **/
@@ -136,13 +136,13 @@ public class PhysicalPlanLogTransferTest {
     AuthorPlan authorPlan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
     byte[] authorPlanBytesTest = PhysicalPlanLogTransfer.planToLog(authorPlan);
     AuthorPlan authorPlanTest = (AuthorPlan) PhysicalPlanLogTransfer
-        .logToOperator(authorPlanBytesTest);
+        .logToPlan(authorPlanBytesTest);
     assertEquals(authorPlanTest, authorPlan);
 
     /** LoadData Plan test **/
     byte[] loadDataPlanBytesTest = PhysicalPlanLogTransfer.planToLog(loadDataPlan);
     LoadDataPlan loadDataPlanTest = (LoadDataPlan) PhysicalPlanLogTransfer
-        .logToOperator(loadDataPlanBytesTest);
+        .logToPlan(loadDataPlanBytesTest);
     assertEquals(loadDataPlan, loadDataPlanTest);
 
     /** Property Plan test **/
@@ -150,7 +150,7 @@ public class PhysicalPlanLogTransferTest {
     PropertyPlan propertyPlan = (PropertyPlan) processor.parseSQLToPhysicalPlan(sql);
     byte[] propertyPlanBytesTest = PhysicalPlanLogTransfer.planToLog(propertyPlan);
     PropertyPlan propertyPlanTest = (PropertyPlan) PhysicalPlanLogTransfer
-        .logToOperator(propertyPlanBytesTest);
+        .logToPlan(propertyPlanBytesTest);
     assertEquals(propertyPlanTest, propertyPlan);
 
   }

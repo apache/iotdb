@@ -64,7 +64,7 @@ public class NativeRestorableIOWriterTest {
   public void testOnlyHeadMagic() throws Exception {
     File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
-    writer.getIOWriter().forceClose();
+    writer.getIOWriter().close();
 
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
@@ -87,7 +87,7 @@ public class NativeRestorableIOWriterTest {
     TsFileWriter writer = new TsFileWriter(file);
     //we have to flush using inner API.
     writer.getIOWriter().out.write(new byte[] {MetaMarker.CHUNK_HEADER});
-    writer.getIOWriter().forceClose();
+    writer.getIOWriter().close();
     assertEquals(TsFileIOWriter.magicStringBytes.length + 1, file.length());
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
@@ -117,7 +117,7 @@ public class NativeRestorableIOWriterTest {
         .startFlushChunk(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.PLAIN),
             CompressionType.SNAPPY, TSDataType.FLOAT,
             TSEncoding.PLAIN, new FloatStatistics(), 100, 50, 100, 10);
-    writer.getIOWriter().forceClose();
+    writer.getIOWriter().close();
 
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
@@ -140,7 +140,7 @@ public class NativeRestorableIOWriterTest {
     long pos = writer.getIOWriter().getPos();
     //let's delete one byte.
     writer.getIOWriter().out.truncate(pos - 1);
-    writer.getIOWriter().forceClose();
+    writer.getIOWriter().close();
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
@@ -160,7 +160,7 @@ public class NativeRestorableIOWriterTest {
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushForTest();
-    writer.getIOWriter().forceClose();
+    writer.getIOWriter().close();
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
@@ -180,7 +180,7 @@ public class NativeRestorableIOWriterTest {
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushForTest();
     writer.getIOWriter().writeChunkMaskForTest();
-    writer.getIOWriter().forceClose();
+    writer.getIOWriter().close();
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
@@ -209,7 +209,7 @@ public class NativeRestorableIOWriterTest {
     writer.write(new TSRecord(2, "d2").addTuple(new FloatDataPoint("s1", 6))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushForTest();
-    writer.getIOWriter().forceClose();
+    writer.getIOWriter().close();
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
@@ -237,7 +237,7 @@ public class NativeRestorableIOWriterTest {
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushForTest();
     writer.getIOWriter().writeSeparatorMaskForTest();
-    writer.getIOWriter().forceClose();
+    writer.getIOWriter().close();
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
@@ -269,7 +269,7 @@ public class NativeRestorableIOWriterTest {
     writer.flushForTest();
     writer.getIOWriter().writeSeparatorMaskForTest();
     writer.getIOWriter().writeSeparatorMaskForTest();
-    writer.getIOWriter().forceClose();
+    writer.getIOWriter().close();
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
@@ -296,7 +296,7 @@ public class NativeRestorableIOWriterTest {
 
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     assertFalse(rWriter.canWrite());
-    rWriter.forceClose();
+    rWriter.close();
 
     rWriter = new NativeRestorableIOWriter(file, true);
     assertTrue(rWriter.canWrite());

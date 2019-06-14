@@ -162,7 +162,6 @@ public class PerformanceTest {
     try {
       logNode.forceSync();
       long time = System.currentTimeMillis();
-      logNode.recover();
       System.out.println(
           3000000 + " logs use " + (System.currentTimeMillis() - time) + "ms when recovering ");
     } finally {
@@ -202,9 +201,9 @@ public class PerformanceTest {
 
     time = System.currentTimeMillis();
     for (int i = 0; i < 1000000; i++) {
-      bwInsertPlan = (InsertPlan) PhysicalPlanLogTransfer.logToOperator(bytes1);
-      updatePlan = (UpdatePlan) PhysicalPlanLogTransfer.logToOperator(bytes2);
-      deletePlan = (DeletePlan) PhysicalPlanLogTransfer.logToOperator(bytes3);
+      bwInsertPlan = (InsertPlan) PhysicalPlanLogTransfer.logToPlan(bytes1);
+      updatePlan = (UpdatePlan) PhysicalPlanLogTransfer.logToPlan(bytes2);
+      deletePlan = (DeletePlan) PhysicalPlanLogTransfer.logToPlan(bytes3);
     }
     System.out.println("3000000 logs decoding use " + (System.currentTimeMillis() - time) + "ms");
   }
