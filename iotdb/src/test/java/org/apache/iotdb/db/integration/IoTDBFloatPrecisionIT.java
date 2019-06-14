@@ -146,7 +146,7 @@ public class IoTDBFloatPrecisionIT {
       statement.close();
 
       statement = connection.createStatement();
-      statement.execute("flush");
+      statement.execute("flushMetadata");
       resultSet = statement.executeQuery("select * from root");
       cnt = 0;
       while (resultSet.next()) {

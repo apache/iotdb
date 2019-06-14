@@ -45,7 +45,7 @@ public class ForceFLushAllPolicy implements Policy {
       workerThread.start();
     } else {
       if (workerThread.isAlive()) {
-        logger.info("Last flush is ongoing...");
+        logger.info("Last flushMetadata is ongoing...");
       } else {
         workerThread = createWorkerThread();
         workerThread.start();

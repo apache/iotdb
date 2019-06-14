@@ -316,7 +316,7 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     try {
       FileNodeManager.getInstance().closeOneFileNode(writeLogNode.getFileNodeName());
     } catch (FileNodeManagerException e) {
-      throw new RecoverException(String.format("Log node %s cannot perform flush"
+      throw new RecoverException(String.format("Log node %s cannot perform flushMetadata"
               + " after replaying logs!", writeLogNode.getIdentifier()), e);
     }
     currStage = CLEAN_UP;

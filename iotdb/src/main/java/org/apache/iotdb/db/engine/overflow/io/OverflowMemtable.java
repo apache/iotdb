@@ -18,18 +18,13 @@
  */
 package org.apache.iotdb.db.engine.overflow.io;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
@@ -53,6 +48,7 @@ public class OverflowMemtable extends PrimitiveMemTable {
     memTable = new PrimitiveMemTable();
   }
 
+  @Override
   public void insert(TSRecord tsRecord) {
     for (DataPoint dataPoint : tsRecord.dataPointList) {
       memTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
@@ -99,7 +95,7 @@ public class OverflowMemtable extends PrimitiveMemTable {
   }
 
   public IMemTable getMemTabale() {
-    return this;
+    return memTable;
   }
 
   public long getSize() {
@@ -107,6 +103,7 @@ public class OverflowMemtable extends PrimitiveMemTable {
     return 0;
   }
 
+  @Override
   public void clear() {
 //    indexTrees.clear();
     super.clear();

@@ -85,7 +85,7 @@ public class SingleClientSyncTest {
       "insert into root.test.d0(timestamp,s0) values(30,1006)",
       "insert into root.test.d0(timestamp,s0,s1) values(34,1007,'1008')",
       "insert into root.test.d0(timestamp,s1) values(36,'1090')",
-      "insert into root.test.d1.g0(timestamp,s0) values(10,1100)", "merge", "flush",};
+      "insert into root.test.d1.g0(timestamp,s0) values(10,1100)", "merge", "flushMetadata",};
   private static final String[] sqls2 = new String[]{
       "insert into root.vehicle.d0(timestamp,s0) values(6,120)",
       "insert into root.vehicle.d0(timestamp,s0,s1) values(38,121,'122')",
@@ -103,16 +103,16 @@ public class SingleClientSyncTest {
       "insert into root.test.d0(timestamp,s0) values(150,426)",
       "insert into root.test.d0(timestamp,s0,s1) values(80,427,'528')",
       "insert into root.test.d0(timestamp,s1) values(2,'1209')",
-      "insert into root.test.d1.g0(timestamp,s0) values(4,330)", "merge", "flush",};
+      "insert into root.test.d1.g0(timestamp,s0) values(4,330)", "merge", "flushMetadata",};
   private static final String[] sqls3 = new String[]{"SET STORAGE GROUP TO root.iotdb",
-      "SET STORAGE GROUP TO root.flush",
+      "SET STORAGE GROUP TO root.flushMetadata",
       "CREATE TIMESERIES root.iotdb.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
       "CREATE TIMESERIES root.iotdb.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
       "CREATE TIMESERIES root.iotdb.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
       "CREATE TIMESERIES root.iotdb.d1.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.flush.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-      "CREATE TIMESERIES root.flush.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.flush.d1.g0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+      "CREATE TIMESERIES root.flushMetadata.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+      "CREATE TIMESERIES root.flushMetadata.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+      "CREATE TIMESERIES root.flushMetadata.d1.g0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
       "insert into root.iotdb.d0(timestamp,s0) values(3,100)",
       "insert into root.iotdb.d0(timestamp,s0,s1) values(22,101,'102')",
       "insert into root.iotdb.d0(timestamp,s1) values(24,'103')",
@@ -125,12 +125,12 @@ public class SingleClientSyncTest {
       "insert into root.iotdb.d1(timestamp,s2) values(1,404.0)",
       "insert into root.iotdb.d1(timestamp,s2,s3) values(250,10.0,true)",
       "insert into root.iotdb.d1(timestamp,s3) values(207,false)",
-      "insert into root.flush.d0(timestamp,s0) values(20,106)",
-      "insert into root.flush.d0(timestamp,s0,s1) values(14,107,'108')",
-      "insert into root.flush.d1.g0(timestamp,s0) values(1,110)",
-      "insert into root.flush.d0(timestamp,s0) values(200,1006)",
-      "insert into root.flush.d0(timestamp,s0,s1) values(1004,1007,'1080')",
-      "insert into root.flush.d1.g0(timestamp,s0) values(1000,910)",
+      "insert into root.flushMetadata.d0(timestamp,s0) values(20,106)",
+      "insert into root.flushMetadata.d0(timestamp,s0,s1) values(14,107,'108')",
+      "insert into root.flushMetadata.d1.g0(timestamp,s0) values(1,110)",
+      "insert into root.flushMetadata.d0(timestamp,s0) values(200,1006)",
+      "insert into root.flushMetadata.d0(timestamp,s0,s1) values(1004,1007,'1080')",
+      "insert into root.flushMetadata.d1.g0(timestamp,s0) values(1000,910)",
       "insert into root.vehicle.d0(timestamp,s0) values(209,130)",
       "insert into root.vehicle.d0(timestamp,s0,s1) values(206,131,'132')",
       "insert into root.vehicle.d0(timestamp,s1) values(70,'33')",
@@ -144,7 +144,7 @@ public class SingleClientSyncTest {
       "insert into root.test.d0(timestamp,s0) values(1900,1316)",
       "insert into root.test.d0(timestamp,s0,s1) values(700,1307,'1038')",
       "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
-      "insert into root.test.d1.g0(timestamp,s0) values(400,1050)", "merge", "flush",};
+      "insert into root.test.d1.g0(timestamp,s0) values(400,1050)", "merge", "flushMetadata",};
   private boolean testFlag = Constant.testFlag;
   private static final String SYNC_CLIENT = Constans.SYNC_CLIENT;
   private static final Logger logger = LoggerFactory.getLogger(SingleClientSyncTest.class);
@@ -490,14 +490,14 @@ public class SingleClientSyncTest {
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
-          hasResultSet = statement.execute("select * from root.flush");
+          hasResultSet = statement.execute("select * from root.flushMetadata");
           if (hasResultSet) {
             ResultSet res = statement.getResultSet();
             while (res.next()) {
-              dataSender.add(res.getString("Time") + res.getString("root.flush.d0.s0")
-                  + res.getString("root.flush.d0.s1") + res.getString("root.flush.d1.g0.s0"));
-              logger.debug(res.getString("Time") + " | " + res.getString("root.flush.d0.s0")
-                  + res.getString("root.flush.d0.s1") + res.getString("root.flush.d1.g0.s0"));
+              dataSender.add(res.getString("Time") + res.getString("root.flushMetadata.d0.s0")
+                  + res.getString("root.flushMetadata.d0.s1") + res.getString("root.flushMetadata.d1.g0.s0"));
+              logger.debug(res.getString("Time") + " | " + res.getString("root.flushMetadata.d0.s0")
+                  + res.getString("root.flushMetadata.d0.s1") + res.getString("root.flushMetadata.d1.g0.s0"));
             }
           }
           hasResultSet = statement.execute("select * from root.iotdb");
@@ -551,14 +551,14 @@ public class SingleClientSyncTest {
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
-          hasResultSet = statement.execute("select * from root.flush");
+          hasResultSet = statement.execute("select * from root.flushMetadata");
           if (hasResultSet) {
             ResultSet res = statement.getResultSet();
             while (res.next()) {
-              dataReceiver.add(res.getString("Time") + res.getString("root.flush.d0.s0")
-                  + res.getString("root.flush.d0.s1") + res.getString("root.flush.d1.g0.s0"));
-              logger.debug(res.getString("Time") + " | " + res.getString("root.flush.d0.s0")
-                  + res.getString("root.flush.d0.s1") + res.getString("root.flush.d1.g0.s0"));
+              dataReceiver.add(res.getString("Time") + res.getString("root.flushMetadata.d0.s0")
+                  + res.getString("root.flushMetadata.d0.s1") + res.getString("root.flushMetadata.d1.g0.s0"));
+              logger.debug(res.getString("Time") + " | " + res.getString("root.flushMetadata.d0.s0")
+                  + res.getString("root.flushMetadata.d0.s1") + res.getString("root.flushMetadata.d1.g0.s0"));
             }
           }
           hasResultSet = statement.execute("select * from root.iotdb");

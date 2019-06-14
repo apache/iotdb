@@ -68,7 +68,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
           out.close();
           return;
         }
-        truncatedPosition = reader.selfCheck(knownSchemas, flushedChunkGroupMetaDataList, !append);
+        truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetaDataList, !append);
         if (truncatedPosition == TsFileCheckStatus.COMPLETE_FILE && !append) {
             this.canWrite = false;
             out.close();

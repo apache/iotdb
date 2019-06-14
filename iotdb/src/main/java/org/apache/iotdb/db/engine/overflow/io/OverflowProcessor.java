@@ -488,7 +488,7 @@ public class OverflowProcessor extends Processor {
 
   private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter overflowIOWriter) {
     this.writeLock();
-    overflowIOWriter.mergeChunkGroupMetaData();
+    //TODO check this implementation in BufferWriteProcessor
     try {
       overflowFlushMemTables.remove(memTable);
     } finally {
@@ -509,7 +509,8 @@ public class OverflowProcessor extends Processor {
       filenodeFlushAction.act();
       // write-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush(walTaskId);
+        //TODO
+//        logNode.notifyEndFlush(null, walTaskId, workResource.getInsertFile().getName());
       }
       result = true;
     } catch (IOException e) {
@@ -570,14 +571,15 @@ public class OverflowProcessor extends Processor {
         throw new IOException(e);
       }
       long taskId = 0;
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        try {
-          taskId = logNode.notifyStartFlush();
-        } catch (IOException e) {
-          LOGGER.error("Overflow processor {} encountered an error when notifying log node, {}",
-              getProcessorName(), e);
-        }
-      }
+//      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+//        try {
+          //TODO
+//          taskId = logNode.notifyStartFlush(workResource.getInsertFile().getName());
+//        } catch (IOException e) {
+//          LOGGER.error("Overflow processor {} encountered an error when notifying log node, {}",
+//              getProcessorName(), e);
+//        }
+//      }
       final long walTaskId = taskId;
       BasicMemController.getInstance().releaseUsage(this, memSize.get());
       memSize.set(0);
@@ -588,6 +590,7 @@ public class OverflowProcessor extends Processor {
       overflowFlushMemTables.add(workSupport);
       IMemTable tmpMemTableToFlush = workSupport;
       workSupport = MemTablePool.getInstance().getEmptyMemTable(this);
+      flushId++;
       flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
           tmpMemTableToFlush, walTaskId, flushId, this::removeFlushedMemTable));
 

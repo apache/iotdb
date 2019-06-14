@@ -121,7 +121,7 @@ public class IoTDBMemControlTest {
     assertEquals(BasicMemController.UsageLevel.WARNING,
         BasicMemController.getInstance().getCurrLevel());
 
-    // test MemControlTread auto flush
+    // test MemControlTread auto flushMetadata
     Thread.sleep(15000);
     assertEquals(BasicMemController.UsageLevel.SAFE,
         BasicMemController.getInstance().getCurrLevel());

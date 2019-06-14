@@ -100,14 +100,14 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       // cut off tsfile
       this.out = new DefaultTsFileOutput(new FileOutputStream(insertFile, true));
       out.truncate(position);
-      this.flushedChunkGroupMetaDataList = existedMetadatas;
-      lastFlushedChunkGroupIndex = flushedChunkGroupMetaDataList.size();
+      this.chunkGroupMetaDataList = existedMetadatas;
+      lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
       append = new ArrayList<>();
       // recovery the metadata
       recoverMetadata(existedMetadatas);
       LOGGER.info(
           "Recover the bufferwrite processor {}, the tsfile seriesPath is {}, "
-              + "the position of last flush is {}, the size of rowGroupMetadata is {}",
+              + "the position of last flushMetadata is {}, the size of rowGroupMetadata is {}",
           processorName, insertFilePath, position, existedMetadatas.size());
       isNewResource = false;
     } else {
@@ -122,8 +122,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         LOGGER.info("remove unsealed tsfile restore file failed: ", e);
       }
       this.out = new DefaultTsFileOutput(new FileOutputStream(insertFile));
-      this.flushedChunkGroupMetaDataList = new ArrayList<>();
-      lastFlushedChunkGroupIndex = flushedChunkGroupMetaDataList.size();
+      this.chunkGroupMetaDataList = new ArrayList<>();
+      lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
       append = new ArrayList<>();
       startFile();
       isNewResource = true;
@@ -150,9 +150,10 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
   }
 
-  private void writeRestoreInfo() throws IOException {
+  public void writeRestoreInfo() throws IOException {
+    long start = System.currentTimeMillis();
     long lastPosition = this.getPos();
-    // TODO: no need to create a TsRowGroupBlockMetadata, flush RowGroupMetadata one by one is ok
+    // TODO: no need to create a TsRowGroupBlockMetadata, flushMetadata RowGroupMetadata one by one is ok
     TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
     this.getAppendedRowGroupMetadata();
     tsDeviceMetadata.setChunkGroupMetadataList(this.append);
@@ -172,6 +173,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       byte[] lastPositionBytes = BytesUtils.longToBytes(lastPosition);
       out.write(lastPositionBytes);
     }
+    LOGGER.info("writeRestoreInfo() cost {} ms", System.currentTimeMillis() - start);
   }
 
   /**
@@ -250,19 +252,15 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     this.isNewResource = isNewResource;
   }
 
-  public void flush() throws IOException {
-    writeRestoreInfo();
-  }
-
   /**
    * add all appendChunkGroupMetadatas into memory. After calling this method, other classes can
    * read these metadata.
    */
-  public void appendMetadata() {
+  public void makeMetadataVisible() {
     if (!append.isEmpty()) {
       for (ChunkGroupMetaData rowGroupMetaData : append) {
         for (ChunkMetaData chunkMetaData : rowGroupMetaData.getChunkMetaDataList()) {
-          addInsertMetadata(rowGroupMetaData.getDeviceID(), chunkMetaData.getMeasurementUid(),
+          addChunkMetadata(rowGroupMetaData.getDeviceID(), chunkMetaData.getMeasurementUid(),
               chunkMetaData);
         }
       }
@@ -270,7 +268,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
   }
 
-  private void addInsertMetadata(String deviceId, String measurementId,
+  private void addChunkMetadata(String deviceId, String measurementId,
       ChunkMetaData chunkMetaData) {
     if (!metadatas.containsKey(deviceId)) {
       metadatas.put(deviceId, new HashMap<>());
@@ -298,11 +296,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @return a list of chunkgroup metadata
    */
   private List<ChunkGroupMetaData> getAppendedRowGroupMetadata() {
-    if (lastFlushedChunkGroupIndex < flushedChunkGroupMetaDataList.size()) {
+    if (lastFlushedChunkGroupIndex < chunkGroupMetaDataList.size()) {
       append.clear();
-      append.addAll(flushedChunkGroupMetaDataList
-          .subList(lastFlushedChunkGroupIndex, flushedChunkGroupMetaDataList.size()));
-      lastFlushedChunkGroupIndex = flushedChunkGroupMetaDataList.size();
+      append.addAll(chunkGroupMetaDataList
+          .subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
+      lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
     }
     return append;
   }

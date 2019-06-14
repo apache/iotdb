@@ -75,10 +75,11 @@ public class BufferWriteProcessor extends Processor {
   private volatile Future<Boolean> closeFuture = new BWCloseFuture(new ImmediateFuture<>(true));
   private ReentrantLock flushQueryLock = new ReentrantLock();
   private AtomicLong memSize = new AtomicLong();
+  // do not use TsFileConfig.groupSizeInByte, it will ignore the config file
   private long memThreshold = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
   private IMemTable workMemTable;
 
-  // each flush task has a flushId, IO task should scheduled by this id
+  // each flushMetadata task has a flushId, IO task should scheduled by this id
   private long flushId = -1;
   private List<IMemTable> flushingMemTables = new ArrayList<>();
 
@@ -265,8 +266,7 @@ public class BufferWriteProcessor extends Processor {
    * @return corresponding chunk data and chunk metadata in memory
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryBufferWriteData(String deviceId,
-      String measurementId, TSDataType dataType, Map<String, String> props)
-      throws BufferWriteProcessorException {
+      String measurementId, TSDataType dataType, Map<String, String> props) {
     flushQueryLock.lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -291,12 +291,11 @@ public class BufferWriteProcessor extends Processor {
   /**
    * return the memtable to MemTablePool and make
    * @param memTable
-   * @param tsFileIOWriter
    */
   private void removeFlushedMemTable(IMemTable memTable, TsFileIOWriter tsFileIOWriter) {
     long start = System.currentTimeMillis();
     this.writeLock();
-    tsFileIOWriter.mergeChunkGroupMetaData();
+    ((RestorableTsFileIOWriter) tsFileIOWriter).makeMetadataVisible();
     try {
       flushingMemTables.remove(memTable);
     } finally {
@@ -328,7 +327,7 @@ public class BufferWriteProcessor extends Processor {
         displayMessage);
     try {
       if (tmpMemTableToFlush != null && !tmpMemTableToFlush.isEmpty()) {
-        // flush data
+        // flushMetadata data
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(writer, getProcessorName(), flushId,
             this::removeFlushedMemTable);
         tableFlushTask.flushMemTable(fileSchema, tmpMemTableToFlush, version);
@@ -340,15 +339,15 @@ public class BufferWriteProcessor extends Processor {
       }
       result = true;
     } catch (Exception e) {
-      LOGGER.error("The bufferwrite processor {} failed to flush {}.", getProcessorName(), displayMessage, e);
+      LOGGER.error("The bufferwrite processor {} failed to flushMetadata {}.", getProcessorName(), displayMessage, e);
       result = false;
     }
 
     if (LOGGER.isInfoEnabled()) {
       long flushEndTime = System.currentTimeMillis();
       LOGGER.info(
-          "The bufferwrite processor {} flush {}, start time is {}, flush end time is {}, "
-              + "flush time consumption is {}ms",
+          "The bufferwrite processor {} flushMetadata {}, start time is {}, flushMetadata end time is {}, "
+              + "flushMetadata time consumption is {}ms",
           getProcessorName(), displayMessage,
           DatetimeUtils.convertMillsecondToZonedDateTime(flushStartTime),
           DatetimeUtils.convertMillsecondToZonedDateTime(flushEndTime),
@@ -357,22 +356,22 @@ public class BufferWriteProcessor extends Processor {
     return result;
   }
 
-  // keyword synchronized is added in this method, so that only one flush task can be submitted now.
+  // keyword synchronized is added in this method, so that only one flushMetadata task can be submitted now.
   @Override
   public synchronized Future<Boolean> flush() throws IOException {
     return flush(false);
   }
 
-  // keyword synchronized is added in this method, so that only one flush task can be submitted now.
+  // keyword synchronized is added in this method, so that only one flushMetadata task can be submitted now.
   private Future<Boolean> flush(boolean isCloseTaskCalled) throws IOException {
-    // statistic information for flush
+    // statistic information for flushMetadata
     if (lastFlushTime > 0) {
       if (LOGGER.isInfoEnabled()) {
         long thisFlushTime = System.currentTimeMillis();
         LOGGER.info(
-            "The bufferwrite processor {} will submit a flush task."
-                + "The last flush time is {}, this flush time is {}, "
-                + "flush time interval is {}s", getProcessorName(),
+            "The bufferwrite processor {} will submit a flushMetadata task."
+                + "The last flushMetadata time is {}, this flushMetadata time is {}, "
+                + "flushMetadata time interval is {}s", getProcessorName(),
             DatetimeUtils.convertMillsecondToZonedDateTime(lastFlushTime),
             DatetimeUtils.convertMillsecondToZonedDateTime(thisFlushTime),
             (thisFlushTime - lastFlushTime) / 1000);
@@ -381,11 +380,11 @@ public class BufferWriteProcessor extends Processor {
     lastFlushTime = System.currentTimeMillis();
     // check value count
     if (valueCount > 0) {
-      // update the lastUpdatetime, prepare for flush
+      // update the lastUpdatetime, prepare for flushMetadata
       try {
         bufferwriteFlushAction.act();
       } catch (Exception e) {
-        LOGGER.error("Failed to flush bufferwrite row group when calling the action function.");
+        LOGGER.error("Failed to flushMetadata bufferwrite row group when calling the action function.");
         throw new IOException(e);
       }
       final long walTaskId;
@@ -404,7 +403,7 @@ public class BufferWriteProcessor extends Processor {
 
       start = System.currentTimeMillis() - start;
       if (start > 1000) {
-        LOGGER.info("BufferWriteProcessor.flush getEmptyMemtable cost: {}", start);
+        LOGGER.info("BufferWriteProcessor.flushMetadata getEmptyMemtable cost: {}", start);
       }
 
       flushId++;
@@ -414,7 +413,7 @@ public class BufferWriteProcessor extends Processor {
       // switch
       if (isCloseTaskCalled) {
         LOGGER.info(
-            "flush memtable for bufferwrite processor {} synchronously for close task.",
+            "flushMetadata memtable for bufferwrite processor {} synchronously for close task.",
             getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
             FlushManager.getInstance().getCorePoolSize());
         flushTask("synchronously", tmpMemTableToFlush, version, walTaskId, flushId);
@@ -422,7 +421,7 @@ public class BufferWriteProcessor extends Processor {
       } else {
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
-              "Begin to submit flush task for bufferwrite processor {}, current Flush Queue is {}, core pool size is {}.",
+              "Begin to submit flushMetadata task for bufferwrite processor {}, current Flush Queue is {}, core pool size is {}.",
               getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
               FlushManager.getInstance().getCorePoolSize());
         }
@@ -452,9 +451,7 @@ public class BufferWriteProcessor extends Processor {
   @Override
   public synchronized void close() throws BufferWriteProcessorException {
     try {
-      // flush data (if there are flushing task, flush() will be blocked)
-      //Future<Boolean> flush = flush();
-      //and wait for finishing flush async
+      // flushMetadata data (if there are flushing task, flushMetadata() will be blocked) and wait for finishing flushMetadata async
       LOGGER.info("Submit a BufferWrite ({}) close task.", getProcessorName());
       closeFuture = new BWCloseFuture(FlushManager.getInstance().submit(() -> closeTask()));
       //now, we omit the future of the closeTask.
@@ -468,19 +465,19 @@ public class BufferWriteProcessor extends Processor {
   private boolean closeTask() {
     long closeStartTime = System.currentTimeMillis();
     try {
-      LOGGER.info("Bufferwrite {} Close Task: begin to wait for the flush.", getProcessorName());
+      LOGGER.info("Bufferwrite {} Close Task: begin to wait for the flushMetadata.", getProcessorName());
       flush(true);
-      LOGGER.info("Bufferwrite {} Close Task: finishing the flush.", getProcessorName());
+      LOGGER.info("Bufferwrite {} Close Task: finishing the flushMetadata.", getProcessorName());
       // end file
       writer.endFile(fileSchema);
-      //FIXME suppose the flush-thread-pool is 2.
-      // then if a flush task and a close task are running in the same time
-      // and the close task is faster, then writer == null, and the flush task will throw nullpointer
-      // exception. Add "synchronized" keyword on both flush and close may solve the issue.
+      //FIXME suppose the flushMetadata-thread-pool is 2.
+      // then if a flushMetadata task and a close task are running in the same time
+      // and the close task is faster, then writer == null, and the flushMetadata task will throw nullpointer
+      // exception. Add "synchronized" keyword on both flushMetadata and close may solve the issue.
       writer = null;
       // update the IntervalFile for interval list
       bufferwriteCloseConsumer.accept(this);
-      // flush the changed information for filenode
+      // flushMetadata the changed information for filenode
       filenodeFlushAction.act();
       // delete the restore for this bufferwrite processor
       if (LOGGER.isInfoEnabled()) {
@@ -561,8 +558,8 @@ public class BufferWriteProcessor extends Processor {
   }
 
   /**
-   * used for test. We can know when the flush() is called.
-   * @return the last flush() time. Time unit: millisecond.
+   * used for test. We can know when the flushMetadata() is called.
+   * @return the last flushMetadata() time. Time unit: millisecond.
    */
   public long getLastFlushTime() {
     return lastFlushTime;
@@ -570,7 +567,7 @@ public class BufferWriteProcessor extends Processor {
 
   /**
    * used for test. We can block to wait for finishing flushing.
-   * @return the future of the flush() task.
+   * @return the future of the flushMetadata() task.
    */
   public Future<Boolean> getFlushFuture() {
     return flushFuture;

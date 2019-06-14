@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.writelog.node;
@@ -21,9 +17,7 @@ package org.apache.iotdb.db.writelog.node;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -33,7 +27,6 @@ import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
-import org.apache.iotdb.db.writelog.LogPosition;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.db.writelog.recover.RecoverPerformer;
@@ -69,6 +62,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private ReadWriteLock forceLock = new ReentrantReadWriteLock();
 
   private long fileId;
+
   /**
    * constructor of ExclusiveWriteLogNode.
    *
@@ -93,11 +87,16 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void write(PhysicalPlan plan) throws IOException {
     lockForWrite();
     try {
+      long start = System.currentTimeMillis();
       byte[] logBytes = PhysicalPlanLogTransfer.planToLog(plan);
       logCache.add(logBytes);
 
       if (logCache.size() >= config.getFlushWalThreshold()) {
         sync();
+      }
+      long elapse = System.currentTimeMillis() - start;
+      if( elapse > 1000){
+        logger.info("WAL write cost {} ms", elapse);
       }
     } finally {
       unlockForWrite();
@@ -115,15 +114,19 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     forceWal();
     lockForOther();
     lockForForceOther();
+    long start = System.currentTimeMillis();
     try {
       if (this.currentFileWriter != null) {
         this.currentFileWriter.close();
         this.currentFileWriter = null;
       }
-
       logger.debug("Log node {} closed successfully", identifier);
     } catch (IOException e) {
       logger.error("Cannot close log node {} because:", identifier, e);
+    }
+    long elapse = System.currentTimeMillis() - start;
+    if (elapse > 1000) {
+      logger.info("WAL close cost {} ms", elapse);
     }
     unlockForForceOther();
     unlockForOther();
@@ -140,8 +143,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public long notifyStartFlush() {
     lockForWrite();
     try {
+      long start = System.currentTimeMillis();
       close();
       nextFileWriter();
+      long elapse = System.currentTimeMillis() - start;
+      if( elapse > 1000){
+        logger.info("WAL notifyStartFlush cost {} ms", elapse);
+      }
       return fileId;
     } finally {
       unlockForWrite();
@@ -152,8 +160,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void notifyEndFlush(long fileId) {
     lockForWrite();
     try {
+      long start = System.currentTimeMillis();
       File logFile = new File(logDirectory, WAL_FILE_NAME + fileId);
       discard(logFile);
+      long elapse = System.currentTimeMillis() - start;
+      if( elapse > 1000){
+        logger.info("WAL notifyEndFlush cost {} ms", elapse);
+      }
     } finally {
       unlockForWrite();
     }
@@ -173,11 +186,16 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void delete() throws IOException {
     lockForOther();
     try {
+      long start = System.currentTimeMillis();
       logCache.clear();
       if (currentFileWriter != null) {
         currentFileWriter.close();
       }
       FileUtils.deleteDirectory(new File(logDirectory));
+      long elapse = System.currentTimeMillis() - start;
+      if (elapse > 1000) {
+        logger.info("WAL delete cost {} ms", elapse);
+      }
     } finally {
       unlockForOther();
     }
@@ -211,6 +229,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void sync() {
     lockForOther();
     try {
+      long start = System.currentTimeMillis();
       logger.debug("Log node {} starts sync, {} logs to be synced", identifier, logCache.size());
       if (logCache.isEmpty()) {
         return;
@@ -222,6 +241,10 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
       logCache.clear();
       logger.debug("Log node {} ends sync.", identifier);
+      long elapse = System.currentTimeMillis() - start;
+      if (elapse > 1000) {
+        logger.info("WAL sync cost {} ms", elapse);
+      }
     } finally {
       unlockForOther();
     }
@@ -230,6 +253,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void forceWal() {
     lockForForceOther();
     try {
+      long start = System.currentTimeMillis();
       logger.debug("Log node {} starts force, {} logs to be forced", identifier, logCache.size());
       try {
         if (currentFileWriter != null) {
@@ -239,6 +263,10 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         logger.error("Log node {} force failed.", identifier, e);
       }
       logger.debug("Log node {} ends force.", identifier);
+      long elapse = System.currentTimeMillis() - start;
+      if (elapse > 1000) {
+        logger.info("WAL forceWal cost {} ms", elapse);
+      }
     } finally {
       unlockForForceOther();
     }
@@ -264,7 +292,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void nextFileWriter() {
-    fileId ++;
+    fileId++;
     File newFile = new File(logDirectory, WAL_FILE_NAME + fileId);
     currentFileWriter = new LogWriter(newFile);
   }

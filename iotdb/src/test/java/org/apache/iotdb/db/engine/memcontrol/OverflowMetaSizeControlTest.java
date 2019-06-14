@@ -130,7 +130,7 @@ public class OverflowMetaSizeControlTest {
           System.out.println(i + "," + MemUtils.bytesCntToStr(ofprocessor.getMetaSize()));
         }
       }
-      // wait to flush
+      // wait to flushMetadata
       Thread.sleep(1000);
       assertTrue(ofprocessor.getMetaSize() < dbConfig.getOverflowMetaSizeThreshold());
       ofprocessor.close();

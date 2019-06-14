@@ -154,7 +154,7 @@ public class BufferwriteFileSizeControlTest {
         System.out.println(i + "," + MemUtils.bytesCntToStr(processor.getFileSize()));
       }
     }
-    // wait to flush end
+    // wait to flushMetadata end
     try {
       Thread.sleep(3000);
     } catch (InterruptedException e) {

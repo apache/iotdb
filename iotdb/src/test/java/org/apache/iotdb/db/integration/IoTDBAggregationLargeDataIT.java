@@ -853,7 +853,7 @@ public class IoTDBAggregationLargeDataIT {
         d0s2sum += time % 22;
       }
 
-      statement.execute("flush");
+      statement.execute("flushMetadata");
       System.out.println("cnt = " + cnt);
 
       // insert large amount of data
