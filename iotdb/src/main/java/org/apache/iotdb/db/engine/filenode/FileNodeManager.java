@@ -374,7 +374,11 @@ public class FileNodeManager implements IStatistic, IService {
       throw new FileNodeManagerException(e);
     }
     // write wal
-    writeLog(tsRecord, isMonitor, overflowProcessor.getLogNode());
+    try {
+      writeLog(tsRecord, isMonitor, overflowProcessor.getLogNode());
+    } catch (IOException e) {
+      throw new FileNodeManagerException(e);
+    }
     // write overflow data
     try {
       overflowProcessor.insert(tsRecord);
@@ -421,9 +425,11 @@ public class FileNodeManager implements IStatistic, IService {
     }
 
     // write wal
-    writeLog(tsRecord, isMonitor, bufferWriteProcessor.getLogNode());
-
-
+    try {
+      writeLog(tsRecord, isMonitor, bufferWriteProcessor.getLogNode());
+    } catch (IOException e) {
+      throw new FileNodeManagerException(e);
+    }
     // Write data
     long prevStartTime = fileNodeProcessor.getIntervalFileNodeStartTime(deviceId);
     long prevUpdateTime = fileNodeProcessor.getLastUpdateTime(deviceId);

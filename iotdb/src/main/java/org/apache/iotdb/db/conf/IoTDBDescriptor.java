@@ -87,13 +87,13 @@ public class IoTDBDescriptor {
           .parseBoolean(properties.getProperty("enable_stat_monitor",
                   Boolean.toString(conf.isEnableStatMonitor()))));
       conf.setBackLoopPeriodSec(Integer
-          .parseInt(properties.getProperty("back_loop_period_sec",
+          .parseInt(properties.getProperty("back_loop_period_in_second",
                   Integer.toString(conf.getBackLoopPeriodSec()))));
       int statMonitorDetectFreqSec = Integer.parseInt(
-          properties.getProperty("stat_monitor_detect_freq_sec",
+          properties.getProperty("stat_monitor_detect_freq_in_second",
                   Integer.toString(conf.getStatMonitorDetectFreqSec())));
       int statMonitorRetainIntervalSec = Integer.parseInt(
-          properties.getProperty("stat_monitor_retain_interval_sec",
+          properties.getProperty("stat_monitor_retain_interval_in_second",
                   Integer.toString(conf.getStatMonitorRetainIntervalSec())));
       // the conf value must > default value, or may cause system unstable
       if (conf.getStatMonitorDetectFreqSec() < statMonitorDetectFreqSec) {
@@ -157,7 +157,7 @@ public class IoTDBDescriptor {
           properties.getProperty("period_time_for_merge_in_second",
               Long.toString(conf.getPeriodTimeForMerge())).trim()));
       conf.setEnableTimingCloseAndMerge(Boolean.parseBoolean(properties
-          .getProperty("enable_timing_close_and_Merge",
+          .getProperty("enable_timing_close_and_merge",
                   Boolean.toString(conf.isEnableTimingCloseAndMerge())).trim()));
 
       conf.setMemThresholdWarning((long) (Runtime.getRuntime().maxMemory() * Double.parseDouble(
@@ -168,7 +168,7 @@ public class IoTDBDescriptor {
                   Long.toString(conf.getMemThresholdDangerous())).trim())));
 
       conf.setMemMonitorInterval(Long
-          .parseLong(properties.getProperty("mem_monitor_interval",
+          .parseLong(properties.getProperty("mem_monitor_interval_in_ms",
                   Long.toString(conf.getMemMonitorInterval())).trim()));
 
       conf.setMemControllerType(Integer

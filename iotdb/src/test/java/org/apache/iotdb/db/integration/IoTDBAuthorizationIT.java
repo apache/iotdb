@@ -23,6 +23,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.service.IoTDB;
@@ -654,37 +656,43 @@ public class IoTDBAuthorizationIT {
     Statement adminStmt = adminCon.createStatement();
 
     try {
-      adminStmt.execute("LIST USER");
-    } catch (SQLException e) {
-      assertEquals("Users are : [ \n" + "root\n" + "]", e.getMessage());
-    }
+      ResultSet resultSet = adminStmt.executeQuery("LIST USER");
+      String ans = String.format("0,root,\n");
+      validateResultSet(resultSet, ans);
 
-    for (int i = 0; i < 10; i++) {
-      adminStmt.execute("CREATE USER user" + i + " password" + i);
-    }
-    try {
-      adminStmt.execute("LIST USER");
-    } catch (SQLException e) {
-      assertEquals(
-          "Users are : [ \n" + "root\n" + "user0\n" + "user1\n" + "user2\n" + "user3\n" + "user4\n"
-              + "user5\n" + "user6\n" + "user7\n" + "user8\n" + "user9\n" + "]", e.getMessage());
-    }
-
-    for (int i = 0; i < 10; i++) {
-      if (i % 2 == 0) {
-        adminStmt.execute("DROP USER user" + i);
+      for (int i = 0; i < 10; i++) {
+        adminStmt.execute("CREATE USER user" + i + " password" + i);
       }
-    }
-    try {
-      adminStmt.execute("LIST USER");
-    } catch (SQLException e) {
-      assertEquals(
-          "Users are : [ \n" + "root\n" + "user1\n" + "user3\n" + "user5\n" + "user7\n" + "user9\n"
-              + "]",
-          e.getMessage());
-    }
+      resultSet = adminStmt.executeQuery("LIST USER");
+      ans = "0,root,\n"
+          + "1,user0,\n"
+          + "2,user1,\n"
+          + "3,user2,\n"
+          + "4,user3,\n"
+          + "5,user4,\n"
+          + "6,user5,\n"
+          + "7,user6,\n"
+          + "8,user7,\n"
+          + "9,user8,\n"
+          + "10,user9,\n";
+      validateResultSet(resultSet, ans);
 
-    adminCon.close();
+      for (int i = 0; i < 10; i++) {
+        if (i % 2 == 0) {
+          adminStmt.execute("DROP USER user" + i);
+        }
+      }
+      resultSet = adminStmt.executeQuery("LIST USER");
+      ans = "0,root,\n"
+          + "1,user1,\n"
+          + "2,user3,\n"
+          + "3,user5,\n"
+          + "4,user7,\n"
+          + "5,user9,\n";
+      validateResultSet(resultSet, ans);
+    } finally {
+      adminCon.close();
+    }
   }
 
   @Test
@@ -695,36 +703,43 @@ public class IoTDBAuthorizationIT {
     Statement adminStmt = adminCon.createStatement();
 
     try {
-      adminStmt.execute("LIST ROLE");
-    } catch (SQLException e) {
-      assertEquals("Roles are : [ \n" + "]", e.getMessage());
-    }
+      ResultSet resultSet = adminStmt.executeQuery("LIST ROLE");
+      String ans = "";
+      validateResultSet(resultSet, ans);
 
-    for (int i = 0; i < 10; i++) {
-      adminStmt.execute("CREATE ROLE role" + i);
-    }
-    try {
-      adminStmt.execute("LIST ROLE");
-    } catch (SQLException e) {
-      assertEquals(
-          "Roles are : [ \n" + "role0\n" + "role1\n" + "role2\n" + "role3\n" + "role4\n" + "role5\n"
-              + "role6\n" + "role7\n" + "role8\n" + "role9\n" + "]", e.getMessage());
-    }
-
-    for (int i = 0; i < 10; i++) {
-      if (i % 2 == 0) {
-        adminStmt.execute("DROP ROLE role" + i);
+      for (int i = 0; i < 10; i++) {
+        adminStmt.execute("CREATE ROLE role" + i);
       }
-    }
-    try {
-      adminStmt.execute("LIST ROLE");
-    } catch (SQLException e) {
-      assertEquals(
-          "Roles are : [ \n" + "role1\n" + "role3\n" + "role5\n" + "role7\n" + "role9\n" + "]",
-          e.getMessage());
-    }
 
-    adminCon.close();
+      resultSet = adminStmt.executeQuery("LIST ROLE");
+      ans = "0,role0,\n"
+          + "1,role1,\n"
+          + "2,role2,\n"
+          + "3,role3,\n"
+          + "4,role4,\n"
+          + "5,role5,\n"
+          + "6,role6,\n"
+          + "7,role7,\n"
+          + "8,role8,\n"
+          + "9,role9,\n";
+      validateResultSet(resultSet, ans);
+
+      for (int i = 0; i < 10; i++) {
+        if (i % 2 == 0) {
+          adminStmt.execute("DROP ROLE role" + i);
+        }
+      }
+      resultSet = adminStmt.executeQuery("LIST ROLE");
+      ans = "0,role1,\n"
+          + "1,role3,\n"
+          + "2,role5,\n"
+          + "3,role7,\n"
+          + "4,role9,\n";
+      validateResultSet(resultSet, ans);
+
+    } finally {
+      adminCon.close();
+    }
   }
 
   @Test
@@ -734,56 +749,44 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE USER user1 password1");
-    adminStmt.execute("GRANT USER user1 PRIVILEGES 'READ_TIMESERIES' ON root.a.b");
-    adminStmt.execute("CREATE ROLE role1");
-    adminStmt.execute(
-        "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
-    adminStmt.execute(
-        "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.d.b.c");
-    adminStmt.execute("GRANT role1 TO user1");
-
     try {
-      adminStmt.execute("LIST USER PRIVILEGES  user1");
-    } catch (SQLException e) {
-      assertEquals(
-          "Privileges are : [ \n" + "From itself : {\n" + "root.a.b : READ_TIMESERIES\n" + "}\n"
-              + "From role role1 : {\n"
-              + "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES\n"
-              + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES\n" + "}\n" + "]",
-          e.getMessage());
-    }
+      adminStmt.execute("CREATE USER user1 password1");
+      adminStmt.execute("GRANT USER user1 PRIVILEGES 'READ_TIMESERIES' ON root.a.b");
+      adminStmt.execute("CREATE ROLE role1");
+      adminStmt.execute(
+          "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
+      adminStmt.execute(
+          "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.d.b.c");
+      adminStmt.execute("GRANT role1 TO user1");
 
-    try {
-      adminStmt.execute("LIST PRIVILEGES USER user1 ON root.a.b.c");
-    } catch (SQLException e) {
-      assertEquals(
-          "Privileges are : [ \n" + "From itself : {\n" + "root.a.b : READ_TIMESERIES\n" + "}\n"
-              + "From role role1 : {\n"
-              + "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES\n" + "}\n" + "]",
-          e.getMessage());
-    }
+      ResultSet resultSet = adminStmt.executeQuery("LIST USER PRIVILEGES  user1");
+      String ans = "0,,root.a.b : READ_TIMESERIES"
+          + ",\n"
+          + "1,role1,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
+          + ",\n"
+          + "2,role1,root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
+          + ",\n";
+      validateResultSet(resultSet, ans);
 
-    adminStmt.execute("REVOKE role1 from user1");
-    try {
-      adminStmt.execute("LIST USER PRIVILEGES  user1");
-    } catch (SQLException e) {
-      assertEquals(
-          "Privileges are : [ \n" + "From itself : {\n" + "root.a.b : READ_TIMESERIES\n" + "}\n"
-              + "]",
-          e.getMessage());
-    }
+      resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b.c");
+      ans = "0,,root.a.b : READ_TIMESERIES"
+          + ",\n"
+          + "1,role1,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES"
+          + ",\n";
+      validateResultSet(resultSet, ans);
 
-    try {
-      adminStmt.execute("LIST PRIVILEGES USER user1 ON root.a.b.c");
-    } catch (SQLException e) {
-      assertEquals(
-          "Privileges are : [ \n" + "From itself : {\n" + "root.a.b : READ_TIMESERIES\n" + "}\n"
-              + "]",
-          e.getMessage());
-    }
+      adminStmt.execute("REVOKE role1 from user1");
 
-    adminCon.close();
+      resultSet = adminStmt.executeQuery("LIST USER PRIVILEGES  user1");
+      ans = "0,,root.a.b : READ_TIMESERIES,\n";
+      validateResultSet(resultSet, ans);
+
+      resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b.c");
+      ans = "0,,root.a.b : READ_TIMESERIES,\n";
+      validateResultSet(resultSet, ans);
+    } finally {
+      adminCon.close();
+    }
   }
 
   @Test
@@ -793,50 +796,36 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE ROLE role1");
-    adminStmt.execute(
-        "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
-    adminStmt.execute(
-        "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.d.b.c");
-
     try {
-      adminStmt.execute("LIST ROLE PRIVILEGES role1");
-    } catch (SQLException e) {
-      assertEquals(
-          "Privileges are : [ \n"
-              + "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES\n"
-              + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES\n" + "]",
-          e.getMessage());
+      adminStmt.execute("CREATE ROLE role1");
+      adminStmt.execute(
+          "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
+      adminStmt.execute(
+          "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.d.b.c");
+
+      ResultSet resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
+      String ans = "0,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n"
+          + "1,root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
+      validateResultSet(resultSet, ans);
+
+      resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
+      ans = "0,root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
+      validateResultSet(resultSet, ans);
+
+      adminStmt.execute(
+          "REVOKE ROLE role1 PRIVILEGES 'INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
+
+      resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
+      ans = "0,root.a.b.c : READ_TIMESERIES,\n"
+          + "1,root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
+      validateResultSet(resultSet, ans);
+
+      resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
+      ans = "0,root.a.b.c : READ_TIMESERIES,\n";
+      validateResultSet(resultSet, ans);
+    } finally {
+      adminCon.close();
     }
-
-    try {
-      adminStmt.execute("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
-    } catch (SQLException e) {
-      assertEquals("Privileges are : [ \n"
-          + "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES\n"
-          + "]", e.getMessage());
-    }
-
-    adminStmt.execute(
-        "REVOKE ROLE role1 PRIVILEGES 'INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
-
-    try {
-      adminStmt.execute("LIST ROLE PRIVILEGES role1");
-    } catch (SQLException e) {
-      assertEquals(
-          "Privileges are : [ \n" + "root.a.b.c : READ_TIMESERIES\n"
-              + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES\n" + "]",
-          e.getMessage());
-    }
-
-    try {
-      adminStmt.execute("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
-    } catch (SQLException e) {
-      assertEquals("Privileges are : [ \n" + "root.a.b.c : READ_TIMESERIES\n" + "]",
-          e.getMessage());
-    }
-
-    adminCon.close();
   }
 
   @Test
@@ -846,39 +835,40 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE USER chenduxiu orange");
-
-    adminStmt.execute("CREATE ROLE xijing");
-    adminStmt.execute("CREATE ROLE dalao");
-    adminStmt.execute("CREATE ROLE shenshi");
-    adminStmt.execute("CREATE ROLE zhazha");
-    adminStmt.execute("CREATE ROLE hakase");
-
-    adminStmt.execute("GRANT xijing TO chenduxiu");
-    adminStmt.execute("GRANT dalao TO chenduxiu");
-    adminStmt.execute("GRANT shenshi TO chenduxiu");
-    adminStmt.execute("GRANT zhazha TO chenduxiu");
-    adminStmt.execute("GRANT hakase TO chenduxiu");
-
     try {
-      adminStmt.execute("LIST ALL ROLE OF USER chenduxiu");
-    } catch (SQLException e) {
-      assertEquals(
-          "Roles are : [ \n" + "xijing\n" + "dalao\n" + "shenshi\n" + "zhazha\n" + "hakase\n" + "]",
-          e.getMessage());
+      adminStmt.execute("CREATE USER chenduxiu orange");
+
+      adminStmt.execute("CREATE ROLE xijing");
+      adminStmt.execute("CREATE ROLE dalao");
+      adminStmt.execute("CREATE ROLE shenshi");
+      adminStmt.execute("CREATE ROLE zhazha");
+      adminStmt.execute("CREATE ROLE hakase");
+
+      adminStmt.execute("GRANT xijing TO chenduxiu");
+      adminStmt.execute("GRANT dalao TO chenduxiu");
+      adminStmt.execute("GRANT shenshi TO chenduxiu");
+      adminStmt.execute("GRANT zhazha TO chenduxiu");
+      adminStmt.execute("GRANT hakase TO chenduxiu");
+
+      ResultSet resultSet = adminStmt.executeQuery("LIST ALL ROLE OF USER chenduxiu");
+      String ans = "0,xijing,\n"
+          + "1,dalao,\n"
+          + "2,shenshi,\n"
+          + "3,zhazha,\n"
+          + "4,hakase,\n";
+      validateResultSet(resultSet, ans);
+
+      adminStmt.execute("REVOKE dalao FROM chenduxiu");
+      adminStmt.execute("REVOKE hakase FROM chenduxiu");
+
+      resultSet = adminStmt.executeQuery("LIST ALL ROLE OF USER chenduxiu");
+      ans = "0,xijing,\n"
+          + "1,shenshi,\n"
+          + "2,zhazha,\n";
+      validateResultSet(resultSet, ans);
+    } finally {
+      adminCon.close();
     }
-
-    adminStmt.execute("REVOKE dalao FROM chenduxiu");
-    adminStmt.execute("REVOKE hakase FROM chenduxiu");
-
-    try {
-      adminStmt.execute("LIST ALL ROLE OF USER chenduxiu");
-    } catch (SQLException e) {
-      assertEquals("Roles are : [ \n" + "xijing\n" + "shenshi\n" + "zhazha\n" + "]",
-          e.getMessage());
-    }
-
-    adminCon.close();
   }
 
   @Test
@@ -888,46 +878,68 @@ public class IoTDBAuthorizationIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
 
-    adminStmt.execute("CREATE ROLE dalao");
-    adminStmt.execute("CREATE ROLE zhazha");
-
-    String[] members = {"HighFly", "SunComparison", "Persistence", "GoodWoods", "HealthHonor",
-        "GoldLuck",
-        "DoubleLight", "Eastwards", "ScentEffusion", "Smart", "East", "DailySecurity", "Moon",
-        "RayBud",
-        "RiverSky"};
-
-    for (int i = 0; i < members.length - 1; i++) {
-      adminStmt.execute("CREATE USER " + members[i] + " 666666");
-      adminStmt.execute("GRANT dalao TO  " + members[i]);
-    }
-    adminStmt.execute("CREATE USER RiverSky 2333333");
-    adminStmt.execute("GRANT zhazha TO RiverSky");
-
     try {
-      adminStmt.execute("LIST ALL USER OF ROLE dalao");
-    } catch (SQLException e) {
-      assertEquals(
-          "Users are : [ \n" + "DailySecurity\n" + "DoubleLight\n" + "East\n" + "Eastwards\n"
-              + "GoldLuck\n" + "GoodWoods\n" + "HealthHonor\n" + "HighFly\n" + "Moon\n"
-              + "Persistence\n"
-              + "RayBud\n" + "ScentEffusion\n" + "Smart\n" + "SunComparison\n" + "]",
-          e.getMessage());
-    }
+      adminStmt.execute("CREATE ROLE dalao");
+      adminStmt.execute("CREATE ROLE zhazha");
 
+      String[] members = {"HighFly", "SunComparison", "Persistence", "GoodWoods", "HealthHonor",
+          "GoldLuck",
+          "DoubleLight", "Eastwards", "ScentEffusion", "Smart", "East", "DailySecurity", "Moon",
+          "RayBud",
+          "RiverSky"};
+
+      for (int i = 0; i < members.length - 1; i++) {
+        adminStmt.execute("CREATE USER " + members[i] + " 666666");
+        adminStmt.execute("GRANT dalao TO  " + members[i]);
+      }
+      adminStmt.execute("CREATE USER RiverSky 2333333");
+      adminStmt.execute("GRANT zhazha TO RiverSky");
+
+      ResultSet resultSet = adminStmt.executeQuery("LIST ALL USER OF ROLE dalao");
+      String ans = "0,DailySecurity,\n"
+          + "1,DoubleLight,\n"
+          + "2,East,\n"
+          + "3,Eastwards,\n"
+          + "4,GoldLuck,\n"
+          + "5,GoodWoods,\n"
+          + "6,HealthHonor,\n"
+          + "7,HighFly,\n"
+          + "8,Moon,\n"
+          + "9,Persistence,\n"
+          + "10,RayBud,\n"
+          + "11,ScentEffusion,\n"
+          + "12,Smart,\n"
+          + "13,SunComparison,\n";
+      validateResultSet(resultSet, ans);
+
+      resultSet = adminStmt.executeQuery("LIST ALL USER OF ROLE zhazha");
+      ans = "0,RiverSky,\n";
+      validateResultSet(resultSet, ans);
+
+      adminStmt.execute("REVOKE zhazha from RiverSky");
+      resultSet = adminStmt.executeQuery("LIST ALL USER OF ROLE zhazha");
+      ans = "";
+      validateResultSet(resultSet, ans);
+
+    } finally {
+      adminCon.close();
+    }
+  }
+
+  private void validateResultSet(ResultSet set, String ans) throws SQLException {
     try {
-      adminStmt.execute("LIST ALL USER OF ROLE zhazha");
-    } catch (SQLException e) {
-      assertEquals("Users are : [ \n" + "RiverSky\n" + "]", e.getMessage());
+      StringBuilder builder = new StringBuilder();
+      ResultSetMetaData metaData = set.getMetaData();
+      int colNum = metaData.getColumnCount();
+      while (set.next()) {
+        for (int i = 1; i <= colNum; i++) {
+          builder.append(set.getString(i)).append(",");
+        }
+        builder.append("\n");
+      }
+      assertEquals(ans, builder.toString());
+    } finally {
+      set.close();
     }
-
-    adminStmt.execute("REVOKE zhazha from RiverSky");
-    try {
-      adminStmt.execute("LIST ALL USER OF ROLE zhazha");
-    } catch (SQLException e) {
-      assertEquals("Users are : [ \n" + "]", e.getMessage());
-    }
-
-    adminCon.close();
   }
 }
