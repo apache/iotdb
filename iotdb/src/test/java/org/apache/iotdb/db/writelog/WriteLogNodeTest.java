@@ -158,16 +158,16 @@ public class WriteLogNodeTest {
     logNode.forceSync();
 
     File walFile = new File(
-        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal");
+        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal0");
     assertTrue(walFile.exists());
 
-    long taskId = logNode.notifyStartFlush();
+    logNode.notifyStartFlush();
     File oldWalFile = new File(
-        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal-old"+taskId);
+        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     assertTrue(oldWalFile.exists());
     assertTrue(oldWalFile.length() > 0);
 
-    logNode.notifyEndFlush(taskId);
+    logNode.notifyEndFlush();
     assertTrue(!oldWalFile.exists());
     assertEquals(0, walFile.length());
 

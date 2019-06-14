@@ -43,7 +43,7 @@ public class MultiFileLogReader implements ILogReader {
 
   @Override
   public boolean hasNext() throws IOException {
-    if (files == null) {
+    if (files == null || files.length == 0) {
       return false;
     }
     if (currentReader == null) {

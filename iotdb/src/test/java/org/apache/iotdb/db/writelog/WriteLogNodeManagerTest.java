@@ -96,44 +96,4 @@ public class WriteLogNodeManagerTest {
     tempProcessorStore.delete();
     tempRestore.getParentFile().delete();
   }
-
-  @Test
-  public void testRecoverAll() throws IOException, RecoverException, MetadataArgsErrorException {
-    // this test create 5 log nodes and recover them
-    File tempRestore = File.createTempFile("managerTest", "restore");
-    File tempProcessorStore = File.createTempFile("managerTest", "processorStore");
-
-    WriteLogNodeManager manager = MultiFileLogNodeManager.getInstance();
-    for (int i = 0; i < 5; i++) {
-      String deviceName = "root.managerTest" + i;
-      try {
-        MManager.getInstance().setStorageLevelToMTree(deviceName);
-        MManager.getInstance().addPathToMTree(deviceName + ".s1", TSDataType.DOUBLE.name(),
-            TSEncoding.PLAIN.name());
-        MManager.getInstance().addPathToMTree(deviceName + ".s2", TSDataType.INT32.name(),
-            TSEncoding.PLAIN.name());
-        MManager.getInstance().addPathToMTree(deviceName + ".s3", TSDataType.TEXT.name(),
-            TSEncoding.PLAIN.name());
-        MManager.getInstance().addPathToMTree(deviceName + ".s4", TSDataType.BOOLEAN.name(),
-            TSEncoding.PLAIN.name());
-      } catch (PathErrorException ignored) {
-      }
-      WriteLogNode logNode = manager
-          .getNode(deviceName);
-
-      InsertPlan bwInsertPlan = new InsertPlan(1, deviceName, 100,
-          new String[]{"s1", "s2", "s3", "s4"},
-          new String[]{"1.0", "15", "str", "false"});
-      UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path(deviceName + ".s1"));
-      DeletePlan deletePlan = new DeletePlan(50, new Path(deviceName + ".s1"));
-
-      logNode.write(bwInsertPlan);
-      logNode.write(updatePlan);
-      logNode.write(deletePlan);
-
-      logNode.forceSync();
-      logNode.close();
-    }
-    manager.recover();
-  }
 }

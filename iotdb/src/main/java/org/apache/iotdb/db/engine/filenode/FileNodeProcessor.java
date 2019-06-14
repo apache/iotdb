@@ -467,7 +467,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
 
     recoverUpdateTimeMap();
-    
+
     for (int i = 0; i < newFileNodes.size(); i++) {
       TsFileResource tsFile = newFileNodes.get(i);
       String baseDir = directories
@@ -486,6 +486,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         throw new FileNodeProcessorException(e);
       }
     }
+    recoverUpdateTimeMap();
 
     // restore the overflow processor
     LOGGER.info("The filenode processor {} will recover the overflow processor.",
@@ -513,8 +514,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
     // add file into index of file
     addAllFileIntoIndex(newFileNodes);
-
-    recoverUpdateTimeMap();
   }
 
   private void recoverUpdateTimeMap() {

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -78,7 +79,7 @@ public class OverflowProcessorTest {
 
   @Test
   public void testInsertUpdate()
-      throws IOException, OverflowProcessorException, InterruptedException {
+      throws IOException, ProcessorException, InterruptedException {
     processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema(),
         SysTimeVersionController.INSTANCE);
     assertEquals(true, new File(PathUtils.getOverflowWriteDir(processorName),
@@ -147,7 +148,7 @@ public class OverflowProcessorTest {
   }
 
   @Test
-  public void testWriteMemoryAndQuery() throws IOException, OverflowProcessorException {
+  public void testWriteMemoryAndQuery() throws IOException, ProcessorException {
     processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema(),
         SysTimeVersionController.INSTANCE);
     OverflowTestUtils.produceInsertData(processor);
@@ -165,7 +166,7 @@ public class OverflowProcessorTest {
   }
 
   @Test
-  public void testFlushAndQuery() throws IOException, OverflowProcessorException {
+  public void testFlushAndQuery() throws IOException, ProcessorException {
     processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema(),
         SysTimeVersionController.INSTANCE);
     processor.flush();
@@ -185,7 +186,7 @@ public class OverflowProcessorTest {
   }
 
   @Test
-  public void testRecovery() throws OverflowProcessorException, IOException {
+  public void testRecovery() throws ProcessorException, IOException {
     processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema(),
         SysTimeVersionController.INSTANCE);
     processor.close();

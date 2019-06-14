@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -78,7 +79,7 @@ public class OverflowProcessorBenchmark {
     FileUtils.deleteDirectory(new File(TsFileDBConf.getOverflowDataDir()));
   }
 
-  public static void main(String[] args) throws IOException, OverflowProcessorException {
+  public static void main(String[] args) throws IOException, ProcessorException {
     Map<String, Action> parameters = new HashMap<>();
     parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, new Action() {
       @Override

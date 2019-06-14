@@ -46,7 +46,7 @@ public class OverflowResourceTest {
 
   @Before
   public void setUp() throws Exception {
-    work = new OverflowResource(folderPath, dataPath, SysTimeVersionController.INSTANCE);
+    work = new OverflowResource(folderPath, dataPath, SysTimeVersionController.INSTANCE,"processorName");
     insertFile = new File(new File(folderPath, dataPath), insertFileName);
   }
 
@@ -86,7 +86,7 @@ public class OverflowResourceTest {
     fileOutputStream.write(new byte[20]);
     fileOutputStream.close();
     assertEquals(originlength + 20, insertFile.length());
-    work = new OverflowResource(folderPath, dataPath, SysTimeVersionController.INSTANCE);
+    work = new OverflowResource(folderPath, dataPath, SysTimeVersionController.INSTANCE, "processorName");
     chunkMetaDatas = work
         .getInsertMetadatas(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
             OverflowTestUtils.dataType1, context);

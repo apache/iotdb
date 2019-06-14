@@ -18,16 +18,16 @@
  */
 package org.apache.iotdb.db.writelog;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.RecoverException;
@@ -38,10 +38,13 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
-import org.apache.iotdb.db.writelog.recover.ExclusiveLogRecoverPerformer;
-import org.apache.iotdb.db.writelog.recover.RecoverPerformer;
-import org.apache.iotdb.db.writelog.replay.LogReplayer;
+import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,22 +69,27 @@ public class RecoverTest {
   }
 
   @Test
-  public void testFullRecover() throws IOException, RecoverException {
+  public void testFullRecover() throws IOException, RecoverException, ProcessorException {
     // this test write a log file and try to recover from these logs as if no previous attempts exist.
-    File tempRestore = new File("testtemp", "restore");
-    File tempProcessorStore = new File("testtemp", "processorStore");
-    tempRestore.getParentFile().mkdirs();
-    tempRestore.createNewFile();
-    tempProcessorStore.createNewFile();
+    File insertFile = new File("testTemp");
+    FileSchema schema = new FileSchema();
+    String deviceId = "root.testLogNode";
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.PLAIN));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.PLAIN));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
 
+    TsFileIOWriter writer = new TsFileIOWriter(insertFile);
+    writer.endFile(schema);
+    TsFileResource tsFileResource = new TsFileResource(insertFile, true);
     try {
-      MManager.getInstance().setStorageLevelToMTree("root.testLogNode");
+      MManager.getInstance().setStorageLevelToMTree(deviceId);
     } catch (PathErrorException ignored) {
     }
-    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
+    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode(deviceId);
 
     try {
-      InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
+      InsertPlan bwInsertPlan = new InsertPlan(1, deviceId, 100,
           new String[]{"s1", "s2", "s3", "s4"},
           new String[]{"1.0", "15", "str", "false"});
       UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
@@ -98,22 +106,11 @@ public class RecoverTest {
       logNode.write(deletePlan);
       logNode.forceSync();
 
-      ExclusiveLogRecoverPerformer performer = new ExclusiveLogRecoverPerformer(
-          tempRestore.getPath(),
-          tempProcessorStore.getPath(), logNode);
+      TsFileRecoverPerformer performer = new TsFileRecoverPerformer(
+          insertFile.getPath(), deviceId, schema, SysTimeVersionController.INSTANCE, tsFileResource,
+          tsFileResource.getModFile());
       // used to check if logs are replayed in order
-      DummyLogReplayer dummyLogReplayer = new DummyLogReplayer();
-      dummyLogReplayer.plansToCheck = plansToCheck;
-      performer.setReplayer(dummyLogReplayer);
-      // used to check that FileNode does recover
-      DummyFileNodeRecoverPerformer fileNodeRecoverPerformer = new DummyFileNodeRecoverPerformer();
-      performer.setFileNodeRecoverPerformer(fileNodeRecoverPerformer);
-      logNode.setRecoverPerformer(performer);
-
-      logNode.recover();
-      assertTrue(fileNodeRecoverPerformer.called);
-      // ensure all logs are replayed
-      assertEquals(plansToCheck.size(), dummyLogReplayer.currPos);
+      performer.recover();
 
       // the log diretory should be empty now
       File logDir = new File(logNode.getLogDirectory());
@@ -121,182 +118,7 @@ public class RecoverTest {
       assertTrue(files == null || files.length == 0);
     } finally {
       logNode.delete();
-      tempRestore.delete();
-      tempProcessorStore.delete();
-      tempRestore.getParentFile().delete();
-    }
-  }
-
-  @Test
-  public void testRecoverFromRecoverFiles() throws IOException, RecoverException {
-    // this test write a log file and try to recover from these logs as if a previous attempt is interrupted when
-    // recovering files or replaying logs.
-    // skip file backup by setting backup flag and creating backup files.
-    File tempRestore = new File("testtemp", "restore");
-    File tempProcessorStore = new File("testtemp", "processorStore");
-    File tempRestoreRecovery = new File("testtemp",
-        "restore" + ExclusiveLogRecoverPerformer.RECOVER_SUFFIX);
-    File tempProcessorStoreRecovery = new File("testtemp",
-        "processorStore" + ExclusiveLogRecoverPerformer.RECOVER_SUFFIX);
-    tempRestore.getParentFile().mkdirs();
-    tempRestore.createNewFile();
-    tempProcessorStore.createNewFile();
-    tempRestoreRecovery.createNewFile();
-    tempProcessorStoreRecovery.createNewFile();
-
-    try {
-      MManager.getInstance().setStorageLevelToMTree("root.testLogNode");
-    } catch (PathErrorException ignored) {
-    }
-    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
-
-    try {
-      // set flag
-      File flagFile = new File(logNode.getLogDirectory() + File.separator
-          + ExclusiveLogRecoverPerformer.RECOVER_FLAG_NAME + "-" + RecoverStage.BACK_UP.name());
-      flagFile.createNewFile();
-
-      InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
-          new String[]{"s1", "s2", "s3", "s4"},
-          new String[]{"1.0", "15", "str", "false"});
-      UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-      DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
-
-      List<PhysicalPlan> plansToCheck = new ArrayList<>();
-      plansToCheck.add(bwInsertPlan);
-      plansToCheck.add(updatePlan);
-      plansToCheck.add(deletePlan);
-
-      logNode.write(bwInsertPlan);
-      logNode.write(updatePlan);
-      logNode.write(deletePlan);
-      logNode.forceSync();
-
-      ExclusiveLogRecoverPerformer performer = new ExclusiveLogRecoverPerformer(
-          tempRestore.getPath(),
-          tempProcessorStore.getPath(), logNode);
-      // used to check if logs are replayed in order
-      DummyLogReplayer dummyLogReplayer = new DummyLogReplayer();
-      dummyLogReplayer.plansToCheck = plansToCheck;
-      performer.setReplayer(dummyLogReplayer);
-      // used to check that FileNode does recover
-      DummyFileNodeRecoverPerformer fileNodeRecoverPerformer = new DummyFileNodeRecoverPerformer();
-      performer.setFileNodeRecoverPerformer(fileNodeRecoverPerformer);
-      logNode.setRecoverPerformer(performer);
-
-      logNode.recover();
-      assertTrue(fileNodeRecoverPerformer.called);
-      // ensure all logs are replayed
-      assertEquals(plansToCheck.size(), dummyLogReplayer.currPos);
-
-      // the log diretory should be empty now
-      File logDir = new File(logNode.getLogDirectory());
-      File[] files = logDir.listFiles();
-      assertTrue(files == null || files.length == 0);
-    } finally {
-      logNode.delete();
-      tempRestore.delete();
-      tempProcessorStore.delete();
-      assertTrue(!tempRestoreRecovery.exists());
-      assertTrue(!tempProcessorStoreRecovery.exists());
-      tempRestore.getParentFile().delete();
-    }
-  }
-
-  @Test
-  public void testRecoverFromCleanup() throws IOException, RecoverException {
-    // this test write a log file and try to recover from these logs as if a previous attempt is interrupted when
-    // cleanup files.
-    // skip previous stage by setting backup flag and creating backup files.
-    File tempRestore = new File("testtemp", "restore");
-    File tempProcessorStore = new File("testtemp", "processorStore");
-    File tempRestoreRecovery = new File("testtemp",
-        "restore" + ExclusiveLogRecoverPerformer.RECOVER_SUFFIX);
-    File tempProcessorStoreRecovery = new File("testtemp",
-        "processorStore" + ExclusiveLogRecoverPerformer.RECOVER_SUFFIX);
-    tempRestore.getParentFile().mkdirs();
-    tempRestore.createNewFile();
-    tempProcessorStore.createNewFile();
-    tempRestoreRecovery.createNewFile();
-    tempProcessorStoreRecovery.createNewFile();
-
-    try {
-      MManager.getInstance().setStorageLevelToMTree("root.testLogNode");
-    } catch (PathErrorException ignored) {
-    }
-    ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
-
-    try {
-      // set flag
-      File flagFile = new File(logNode.getLogDirectory() + File.separator
-          + ExclusiveLogRecoverPerformer.RECOVER_FLAG_NAME + "-" + RecoverStage.REPLAY_LOG.name());
-      flagFile.createNewFile();
-
-      InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
-          new String[]{"s1", "s2", "s3", "s4"},
-          new String[]{"1.0", "15", "str", "false"});
-      UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-      DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
-
-      List<PhysicalPlan> plansToCheck = new ArrayList<>();
-      plansToCheck.add(bwInsertPlan);
-      plansToCheck.add(updatePlan);
-      plansToCheck.add(deletePlan);
-
-      logNode.write(bwInsertPlan);
-      logNode.write(updatePlan);
-      logNode.write(deletePlan);
-      logNode.forceSync();
-
-      ExclusiveLogRecoverPerformer performer = new ExclusiveLogRecoverPerformer(
-          tempRestore.getPath(),
-          tempProcessorStore.getPath(), logNode);
-      // used to check that no log is replayed
-      DummyLogReplayer dummyLogReplayer = new DummyLogReplayer();
-      performer.setReplayer(dummyLogReplayer);
-      // used to check that FileNode does recover
-      DummyFileNodeRecoverPerformer fileNodeRecoverPerformer = new DummyFileNodeRecoverPerformer();
-      performer.setFileNodeRecoverPerformer(fileNodeRecoverPerformer);
-      logNode.setRecoverPerformer(performer);
-
-      logNode.recover();
-      assertTrue(!fileNodeRecoverPerformer.called);
-
-      // the log diretory should be empty now
-      File logDir = new File(logNode.getLogDirectory());
-      File[] files = logDir.listFiles();
-      assertTrue(files == null || files.length == 0);
-    } finally {
-      logNode.delete();
-      tempRestore.delete();
-      tempProcessorStore.delete();
-      assertTrue(!tempRestoreRecovery.exists());
-      assertTrue(!tempProcessorStoreRecovery.exists());
-      tempRestore.getParentFile().delete();
-    }
-  }
-
-  class DummyFileNodeRecoverPerformer implements RecoverPerformer {
-
-    public boolean called = false;
-
-    @Override
-    public void recover() {
-      called = true;
-    }
-  }
-
-  class DummyLogReplayer implements LogReplayer {
-
-    public List<PhysicalPlan> plansToCheck;
-    public int currPos = 0;
-
-    @Override
-    public void replay(PhysicalPlan plan, boolean isOverflow) throws ProcessorException {
-      if (currPos >= plansToCheck.size()) {
-        throw new ProcessorException("More plans recovered than expected");
-      }
-      assertEquals(plansToCheck.get(currPos++), plan);
+      insertFile.delete();
     }
   }
 }

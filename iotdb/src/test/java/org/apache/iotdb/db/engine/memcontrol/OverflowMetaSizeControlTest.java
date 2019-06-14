@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.engine.overflow.io.OverflowProcessor;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileSchemaUtils;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -114,7 +115,8 @@ public class OverflowMetaSizeControlTest {
   }
 
   @Test
-  public void testInsert() throws InterruptedException, IOException, WriteProcessException {
+  public void testInsert()
+      throws InterruptedException, IOException, WriteProcessException, ProcessorException {
     if (skip) {
       return;
     }
