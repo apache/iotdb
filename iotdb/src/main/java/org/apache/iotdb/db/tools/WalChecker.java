@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.SysCheckException;
-import org.apache.iotdb.db.writelog.io.RAFLogReader;
+import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +75,7 @@ public class WalChecker {
         continue;
       }
 
-      if (walFile.length() > 0 && walFile.length() < RAFLogReader.LEAST_LOG_SIZE) {
+      if (walFile.length() > 0 && walFile.length() < SingleFileLogReader.LEAST_LOG_SIZE) {
         // contains only one damaged log
         LOGGER.error("{} fails the check because it is non-empty but does not contain enough bytes "
             + "even for one log.", walFile.getAbsoluteFile());
@@ -83,9 +83,9 @@ public class WalChecker {
         continue;
       }
 
-      RAFLogReader logReader = null;
+      SingleFileLogReader logReader = null;
       try {
-        logReader = new RAFLogReader(walFile);
+        logReader = new SingleFileLogReader(walFile);
         while (logReader.hasNext()) {
           logReader.next();
         }

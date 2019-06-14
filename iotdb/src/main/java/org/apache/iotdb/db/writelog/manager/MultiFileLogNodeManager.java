@@ -101,19 +101,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     }
   }
 
-  /*
-   * Warning : caller must guarantee thread safety.
-   */
-  @Override
-  public void recover() throws RecoverException {
-    List<WriteLogNode> nodeList = new ArrayList<>(nodeMap.size());
-    nodeList.addAll(nodeMap.values());
-    nodeList.sort(null);
-    for (WriteLogNode node : nodeList) {
-      node.recover();
-    }
-  }
-
   @Override
   public void close() {
     if (!isActivated(forceThread)) {

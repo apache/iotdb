@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.writelog.io;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -29,22 +31,22 @@ import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RAFLogReader implements ILogReader {
+public class SingleFileLogReader implements ILogReader {
 
-  private static final Logger logger = LoggerFactory.getLogger(RAFLogReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(SingleFileLogReader.class);
   public static final int LEAST_LOG_SIZE = 12; // size + checksum
-  private RandomAccessFile logRaf;
+  private DataInputStream logStream;
   private String filepath;
   private int bufferSize = 4 * 1024 * 1024;
   private byte[] buffer = new byte[bufferSize];
   private CRC32 checkSummer = new CRC32();
   private PhysicalPlan planBuffer = null;
 
-  public RAFLogReader() {
-    // allowed to construct RAFLogReader without input.
+  public SingleFileLogReader() {
+    // allowed to construct SingleFileLogReader without input.
   }
 
-  public RAFLogReader(File logFile) throws FileNotFoundException {
+  public SingleFileLogReader(File logFile) throws FileNotFoundException {
     open(logFile);
   }
 
@@ -54,23 +56,23 @@ public class RAFLogReader implements ILogReader {
       return true;
     }
 
-    if (logRaf.getFilePointer() + LEAST_LOG_SIZE > logRaf.length()) {
+    if (logStream.available() < LEAST_LOG_SIZE) {
       return false;
     }
 
-    int logSize = logRaf.readInt();
+    int logSize = logStream.readInt();
     if (logSize > bufferSize) {
       bufferSize = logSize;
       buffer = new byte[bufferSize];
     }
-    final long checkSum = logRaf.readLong();
-    logRaf.read(buffer, 0, logSize);
+    final long checkSum = logStream.readLong();
+    logStream.read(buffer, 0, logSize);
     checkSummer.reset();
     checkSummer.update(buffer, 0, logSize);
     if (checkSummer.getValue() != checkSum) {
       throw new IOException("The check sum is incorrect!");
     }
-    planBuffer = PhysicalPlanLogTransfer.logToOperator(buffer);
+    planBuffer = PhysicalPlanLogTransfer.logToPlan(buffer);
     return true;
   }
 
@@ -87,18 +89,17 @@ public class RAFLogReader implements ILogReader {
 
   @Override
   public void close() {
-    if (logRaf != null) {
+    if (logStream != null) {
       try {
-        logRaf.close();
+        logStream.close();
       } catch (IOException e) {
         logger.error("Cannot close log file {}", filepath, e);
       }
     }
   }
 
-  @Override
   public void open(File logFile) throws FileNotFoundException {
-    logRaf = new RandomAccessFile(logFile, "r");
+    logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
     this.filepath = logFile.getPath();
   }
 }

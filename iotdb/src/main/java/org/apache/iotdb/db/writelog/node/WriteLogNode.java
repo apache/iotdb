@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.LogPosition;
+import org.apache.iotdb.db.writelog.io.ILogReader;
 
 public interface WriteLogNode {
 
@@ -35,11 +36,6 @@ public interface WriteLogNode {
   void write(PhysicalPlan plan) throws IOException;
 
   /**
-   * First judge the stage of recovery by status of files, and then recover from that stage.
-   */
-  void recover() throws RecoverException;
-
-  /**
    * Sync and close streams.
    */
   void close() throws IOException;
@@ -51,16 +47,14 @@ public interface WriteLogNode {
 
   /**
    * When a FileNode attempts to start a flushMetadata, this method must be called to rename log file.
-   * @return the task id ( being used in the renamed log file)
    */
-  long notifyStartFlush() throws IOException;
+  void notifyStartFlush() throws IOException;
 
   /**
    * When the flushMetadata of a FlieNode ends, this method must be called to check if log file needs
    * cleaning.
-   * @param fileId
    */
-  void notifyEndFlush(long fileId);
+  void notifyEndFlush();
 
   /**
    * return identifier of the log node.
@@ -81,4 +75,6 @@ public interface WriteLogNode {
    * MORE WRITE is coming.
    */
   void delete() throws IOException;
+
+  ILogReader getLogReader();
 }

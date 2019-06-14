@@ -24,7 +24,6 @@ import static junit.framework.TestCase.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.Arrays;
 import java.util.zip.CRC32;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -98,7 +97,7 @@ public class WriteLogNodeTest {
     crc32.reset();
     crc32.update(buffer, 0, logSize);
     assertEquals(checksum, crc32.getValue());
-    InsertPlan bwInsertPlan2 = (InsertPlan) PhysicalPlanLogTransfer.logToOperator(buffer);
+    InsertPlan bwInsertPlan2 = (InsertPlan) PhysicalPlanLogTransfer.logToPlan(buffer);
     Assert.assertArrayEquals(bwInsertPlan.getMeasurements(), bwInsertPlan2.getMeasurements());
     assertEquals(bwInsertPlan.getTime(), bwInsertPlan2.getTime());
     Assert.assertArrayEquals(bwInsertPlan.getValues(), bwInsertPlan2.getValues());
@@ -111,7 +110,7 @@ public class WriteLogNodeTest {
     crc32.reset();
     crc32.update(buffer, 0, logSize);
     assertEquals(checksum, crc32.getValue());
-    UpdatePlan updatePlan2 = (UpdatePlan) PhysicalPlanLogTransfer.logToOperator(buffer);
+    UpdatePlan updatePlan2 = (UpdatePlan) PhysicalPlanLogTransfer.logToPlan(buffer);
     assertEquals(updatePlan.getPath(), updatePlan2.getPath());
     assertEquals(updatePlan.getIntervals(), updatePlan2.getIntervals());
     assertEquals(updatePlan.getValue(), updatePlan2.getValue());
@@ -123,7 +122,7 @@ public class WriteLogNodeTest {
     crc32.reset();
     crc32.update(buffer, 0, logSize);
     assertEquals(checksum, crc32.getValue());
-    DeletePlan deletePlan2 = (DeletePlan) PhysicalPlanLogTransfer.logToOperator(buffer);
+    DeletePlan deletePlan2 = (DeletePlan) PhysicalPlanLogTransfer.logToPlan(buffer);
     assertEquals(deletePlan.getDeleteTime(), deletePlan2.getDeleteTime());
     assertEquals(deletePlan.getPaths(), deletePlan2.getPaths());
 

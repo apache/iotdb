@@ -82,12 +82,11 @@ public class IoTDB implements IoTDBMBean {
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
 
+    boolean enableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
     FileNodeManager.getInstance().recovery();
-    try {
-      systemDataRecovery();
-    } catch (RecoverException e) {
-      throw new StartupException("Fail to recover data", e);
-    }
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(enableWAL);
+
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored
     // Warn: registMonitor() method should be called after systemDataRecovery()
@@ -130,38 +129,6 @@ public class IoTDB implements IoTDBMBean {
 
   private void initErrorInformation() {
     ExceptionBuilder.getInstance().loadInfo();
-  }
-
-  /**
-   * Recover data using system log.
-   *
-   * @throws RecoverException if FileNode(Manager)Exception is encountered during the recovery.
-   * @throws IOException if IOException is encountered during the recovery.
-   */
-  private void systemDataRecovery() throws RecoverException {
-    LOGGER.info("{}: start checking write log...", IoTDBConstant.GLOBAL_DB_NAME);
-
-    WriteLogNodeManager writeLogManager = MultiFileLogNodeManager.getInstance();
-    List<String> filenodeNames = null;
-    try {
-      filenodeNames = MManager.getInstance().getAllFileNames();
-    } catch (PathErrorException e) {
-      throw new RecoverException(e);
-    }
-    for (String filenodeName : filenodeNames) {
-      if (writeLogManager.hasWAL(filenodeName)) {
-        try {
-          FileNodeManager.getInstance().recoverFileNode(filenodeName);
-        } catch (FileNodeManagerException e) {
-          throw new RecoverException(e);
-        }
-      }
-    }
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    boolean enableWal = config.isEnableWal();
-    config.setEnableWal(false);
-    writeLogManager.recover();
-    config.setEnableWal(enableWal);
   }
 
   private static class IoTDBHolder {

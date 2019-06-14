@@ -81,7 +81,7 @@ public class PhysicalPlanLogTransfer {
     }
   }
 
-  public static PhysicalPlan logToOperator(byte[] opInBytes) throws IOException {
+  public static PhysicalPlan logToPlan(byte[] opInBytes) throws IOException {
     // the first byte determines the opCode
     int opCode = opInBytes[0];
     Codec<PhysicalPlan> codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(opCode).codec;

@@ -56,6 +56,7 @@ public class OverflowIO extends TsFileIOWriter {
   }
 
   public void close() throws IOException {
+    super.close();
     overflowReadWriter.close();
   }
 

@@ -387,4 +387,12 @@ public class TsFileResource {
   public String getFilePath() {
     return this.getFile().getAbsolutePath();
   }
+
+  public void updateTime(String deviceId, long time) {
+    startTimeMap.putIfAbsent(deviceId, time);
+    Long endTime = endTimeMap.get(deviceId);
+    if (endTime == null || endTime < time) {
+      endTimeMap.put(deviceId, time);
+    }
+  }
 }
