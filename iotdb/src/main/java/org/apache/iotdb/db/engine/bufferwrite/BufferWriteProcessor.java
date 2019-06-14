@@ -49,6 +49,8 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
+import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -204,6 +206,7 @@ public class BufferWriteProcessor extends Processor {
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
   public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
+    MemTableWriteTimeCost.getInstance().init();
     long start1 = System.currentTimeMillis();
     long memUsage = MemUtils.getRecordSize(tsRecord);
     BasicMemController.UsageLevel level = BasicMemController.getInstance()
@@ -226,7 +229,11 @@ public class BufferWriteProcessor extends Processor {
         valueCount++;
         start2 = System.currentTimeMillis() - start2;
         if (start2 > 1000) {
-          LOGGER.info("BufferWriteProcessor.write step2 cost: {}", start2);
+          LOGGER.info("BufferWriteProcessor.write step2 of SAFE cost: {}", start2);
+          Map<MemTableWriteTimeCostType, long[]> map = MemTableWriteTimeCost.getInstance().getTimeCostMaps().get(Thread.currentThread().getName());
+          for(MemTableWriteTimeCostType type: MemTableWriteTimeCostType.values()){
+            LOGGER.info("In BufferWriteProcessor.write step2 of SAFE, {} cost {} ms, execute {} times", type, map.get(type)[1], map.get(type)[0]);
+          }
         }
         checkMemThreshold4Flush(memUsage);
         return true;
@@ -239,6 +246,14 @@ public class BufferWriteProcessor extends Processor {
               dataPoint.getValue().toString());
         }
         valueCount++;
+        start2 = System.currentTimeMillis() - start2;
+        if (start2 > 1000) {
+          LOGGER.info("BufferWriteProcessor.write step2 of WARNING cost: {}", start2);
+          Map<MemTableWriteTimeCostType, long[]> map = MemTableWriteTimeCost.getInstance().getTimeCostMaps().get(Thread.currentThread().getName());
+          for(MemTableWriteTimeCostType type: MemTableWriteTimeCostType.values()){
+            LOGGER.info("In BufferWriteProcessor.write step2 of WARNING, {} cost {} ms, execute {} times", type, map.get(type)[1], map.get(type)[0]);
+          }
+        }
         try {
           flush();
         } catch (IOException e) {
