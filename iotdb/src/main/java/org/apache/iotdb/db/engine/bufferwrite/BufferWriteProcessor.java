@@ -143,12 +143,10 @@ public class BufferWriteProcessor extends Processor {
 
     TsFileRecoverPerformer recoverPerformer =
         new TsFileRecoverPerformer(insertFilePath, logNodePrefix(),
-            fileSchema, versionController, currentTsFileResource, currentTsFileResource.getModFile());
+            fileSchema, versionController, currentTsFileResource,
+            currentTsFileResource != null ? currentTsFileResource.getModFile() : null);
     try {
-      if (recoverPerformer.recover()) {
-        // recovered file is closed and receive no new data
-        return;
-      }
+      recoverPerformer.recover();
     } catch (ProcessorException e) {
       throw new BufferWriteProcessorException(e);
     }
@@ -309,7 +307,9 @@ public class BufferWriteProcessor extends Processor {
           memSeriesLazyMerger.addMemSeries(flushingMemTables.get(i).query(deviceId, measurementId, dataType, props));
         }
       }
-      memSeriesLazyMerger.addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
+      if (workMemTable != null) {
+        memSeriesLazyMerger.addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
+      }
       // memSeriesLazyMerger has handled the props,
       // so we do not need to handle it again in the following readOnlyMemChunk
       ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(dataType, memSeriesLazyMerger,

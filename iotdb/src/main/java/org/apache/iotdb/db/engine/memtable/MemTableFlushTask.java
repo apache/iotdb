@@ -152,7 +152,6 @@ public class MemTableFlushTask {
 
     MemTablePool.getInstance().release(memTable);
     LOGGER.info("Processor {} return back a memtable to MemTablePool", processorName);
-    flushCallBack.afterFlush(memTable, tsFileIoWriter);
     if (tsFileIoWriter instanceof RestorableTsFileIOWriter) {
       try {
         ((RestorableTsFileIOWriter) tsFileIoWriter).writeRestoreInfo();
@@ -160,6 +159,8 @@ public class MemTableFlushTask {
         LOGGER.error("write restore file meet error", e);
       }
     }
+    flushCallBack.afterFlush(memTable, tsFileIoWriter);
+
 
     // enable next flushMetadata task to IO
     long newId = tsFileIoWriter.getFlushID().incrementAndGet();
@@ -241,6 +242,9 @@ public class MemTableFlushTask {
       }
     }
     stop = true;
+    while (ioFlushThread.isAlive()) {
+      // wait until the after works are done
+    }
   }
 
 
