@@ -395,7 +395,7 @@ public class FileNodeManager implements IStatistic, IService {
     String filenodeName = fileNodeProcessor.getProcessorName();
     try {
       overflowProcessor = fileNodeProcessor.getOverflowProcessor(filenodeName);
-    } catch (IOException e) {
+    } catch (ProcessorException e) {
       LOGGER.error("Get the overflow processor failed, the filenode is {}, insert time is {}",
           filenodeName, timestamp);
       if (!isMonitor) {
@@ -577,7 +577,7 @@ public class FileNodeManager implements IStatistic, IService {
       OverflowProcessor overflowProcessor;
       try {
         overflowProcessor = fileNodeProcessor.getOverflowProcessor(filenodeName);
-      } catch (IOException e) {
+      } catch (ProcessorException e) {
         LOGGER.error(
             "Get the overflow processor failed, the filenode is {}, "
                 + "insert time range is from {} to {}",
@@ -632,7 +632,7 @@ public class FileNodeManager implements IStatistic, IService {
             // TODO this may make the time range of the next TsFile a little wider
             bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor(filenodeName,
                 lastUpdateTime + 1);
-          } catch (IOException | FileNodeProcessorException e) {
+          } catch (ProcessorException e) {
             LOGGER.error("Getting the processor failed, the filenode is {}, delete time is {}.",
                 filenodeName, timestamp);
             throw new FileNodeManagerException(e);
@@ -723,7 +723,7 @@ public class FileNodeManager implements IStatistic, IService {
     FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
     try {
       fileNodeProcessor.deleteOverflow(deviceId, measurementId, timestamp);
-    } catch (IOException e) {
+    } catch (ProcessorException e) {
       throw new FileNodeManagerException(e);
     } finally {
       fileNodeProcessor.writeUnlock();
@@ -766,7 +766,7 @@ public class FileNodeManager implements IStatistic, IService {
       if (!fileNodeProcessor.hasOverflowProcessor()) {
         try {
           fileNodeProcessor.getOverflowProcessor(fileNodeProcessor.getProcessorName());
-        } catch (IOException e) {
+        } catch (ProcessorException e) {
           LOGGER.error("Get the overflow processor failed, the filenode is {}, query is {},{}",
               fileNodeProcessor.getProcessorName(), deviceId, measurementId);
           throw new FileNodeManagerException(e);

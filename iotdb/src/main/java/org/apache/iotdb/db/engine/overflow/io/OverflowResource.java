@@ -31,18 +31,21 @@ import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushCallBack;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
-import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
+import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
@@ -73,13 +76,17 @@ public class OverflowResource {
   private List<ChunkGroupMetaData> appendInsertMetadatas;
   private VersionController versionController;
   private ModificationFile modificationFile;
+  private WriteLogNode logNode;
+  private String processorName;
 
-  public OverflowResource(String parentPath, String dataPath, VersionController versionController)
+  public OverflowResource(String parentPath, String dataPath, VersionController versionController
+      , String processorName)
       throws IOException {
     this.insertMetadatas = new HashMap<>();
     this.appendInsertMetadatas = new ArrayList<>();
     this.parentPath = parentPath;
     this.dataPath = dataPath;
+    this.processorName = processorName;
     File dataFile = new File(parentPath, dataPath);
     if (!dataFile.exists()) {
       dataFile.mkdirs();
@@ -87,6 +94,8 @@ public class OverflowResource {
     insertFile = new File(dataFile, INSERT_FILE_NAME);
     insertFilePath = insertFile.getPath();
     positionFilePath = new File(dataFile, POSITION_FILE_NAME).getPath();
+    this.versionController = versionController;
+    modificationFile = new ModificationFile(insertFilePath + ModificationFile.FILE_SUFFIX);
 
     Pair<Long, Long> position = readPositionInfo();
     try {
@@ -96,18 +105,15 @@ public class OverflowResource {
       readWriter.wrapAsFileChannel().truncate(position.left);
       // reposition
       // seek to zero
-      readWriter.wrapAsFileChannel().position(0);
+      readWriter.close();
       // seek to tail
       // the tail is at least the len of magic string
+      readWriter = new OverflowIO.OverflowReadWriter(insertFilePath);
       insertIO = new OverflowIO(readWriter);
       readMetadata();
     } catch (FileNotFoundException e){
       LOGGER.debug("Failed to construct the OverflowIO.", e);
-    } catch (IOException e) {
-      throw e;
     }
-    this.versionController = versionController;
-    modificationFile = new ModificationFile(insertFilePath + ModificationFile.FILE_SUFFIX);
   }
 
   private Pair<Long, Long> readPositionInfo() throws IOException {
@@ -334,5 +340,23 @@ public class OverflowResource {
     modificationFile.write(new Deletion(deviceId + IoTDBConstant.PATH_SEPARATOR
         + measurementId, version, timestamp));
     updatedModFiles.add(modificationFile);
+  }
+
+  public WriteLogNode getLogNode() throws IOException {
+    if (logNode == null) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        logNode = MultiFileLogNodeManager.getInstance().getNode(
+            logNodePrefix() + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
+      }
+    }
+    return logNode;
+  }
+
+  public String logNodePrefix() {
+    return processorName + "-Overflow-";
+  }
+
+  public ModificationFile getModificationFile() {
+    return modificationFile;
   }
 }

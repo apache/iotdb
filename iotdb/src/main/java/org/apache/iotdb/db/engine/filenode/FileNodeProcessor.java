@@ -42,6 +42,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -465,6 +466,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
 
+    recoverUpdateTimeMap();
+    
     for (int i = 0; i < newFileNodes.size(); i++) {
       TsFileResource tsFile = newFileNodes.get(i);
       String baseDir = directories
@@ -491,7 +494,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     try {
       overflowProcessor = new OverflowProcessor(getProcessorName(), parameters, fileSchema,
           versionController);
-    } catch (IOException e) {
+    } catch (ProcessorException e) {
       LOGGER.error("The filenode processor {} failed to recovery the overflow processor.",
           getProcessorName());
       throw new FileNodeProcessorException(e);
@@ -565,7 +568,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   /**
    * get overflow processor by processor name.
    */
-  public OverflowProcessor getOverflowProcessor(String processorName) throws IOException {
+  public OverflowProcessor getOverflowProcessor(String processorName) throws ProcessorException {
     if (overflowProcessor == null) {
       Map<String, Action> params = new HashMap<>();
       // construct processor or restore
@@ -1031,7 +1034,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       LOGGER.info("The filenode processor {} prepares for merge, closes the overflow processor",
           getProcessorName());
       getOverflowProcessor().close();
-    } catch (FileNodeProcessorException | OverflowProcessorException | IOException | InterruptedException | ExecutionException e) {
+    } catch (ProcessorException | InterruptedException | ExecutionException e) {
       LOGGER.error("The filenode processor {} prepares for merge error.", getProcessorName());
       writeUnlock();
       throw new ErrorDebugException(e);
@@ -1105,7 +1108,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         overflowProcessor.reopen();
       }
       overflowProcessor.switchWorkToMerge();
-    } catch (IOException e) {
+    } catch (ProcessorException | IOException e) {
       LOGGER.error("The filenode processor {} can't switch overflow processor from work to merge.",
           getProcessorName(), e);
       writeUnlock();
@@ -1995,7 +1998,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Similar to delete(), but only deletes data in Overflow. Only used by WAL recovery.
    */
   public void deleteOverflow(String deviceId, String measurementId, long timestamp)
-      throws IOException {
+      throws ProcessorException {
     long version = versionController.nextVersion();
 
     OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
@@ -2004,9 +2007,13 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       overflowProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
     } catch (IOException e) {
       for (ModificationFile modificationFile : updatedModFiles) {
-        modificationFile.abort();
+        try {
+          modificationFile.abort();
+        } catch (IOException e1) {
+          throw new ProcessorException(e);
+        }
       }
-      throw e;
+      throw new ProcessorException(e);
     }
   }
 

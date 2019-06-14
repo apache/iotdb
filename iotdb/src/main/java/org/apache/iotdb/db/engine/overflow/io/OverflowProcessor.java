@@ -35,12 +35,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -56,15 +54,15 @@ import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.db.writelog.recover.LogReplayer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -103,7 +101,6 @@ public class OverflowProcessor extends Processor {
   private long memThreshold = TSFileConfig.groupSizeInByte;
   private AtomicLong memSize = new AtomicLong();
 
-  private WriteLogNode logNode;
   private VersionController versionController;
 
   private boolean isClosed = true;
@@ -111,7 +108,7 @@ public class OverflowProcessor extends Processor {
 
   public OverflowProcessor(String processorName, Map<String, Action> parameters,
       FileSchema fileSchema, VersionController versionController)
-      throws IOException {
+      throws ProcessorException {
     super(processorName);
     this.fileSchema = fileSchema;
     this.versionController = versionController;
@@ -126,10 +123,14 @@ public class OverflowProcessor extends Processor {
     filenodeFlushAction = parameters
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
     reopen();
-    getLogNode();
+    try {
+      getLogNode();
+    } catch (IOException e) {
+      throw new ProcessorException(e);
+    }
   }
 
-  public void reopen() throws IOException {
+  public void reopen() throws ProcessorException {
     if (!isClosed) {
       return;
     }
@@ -138,7 +139,7 @@ public class OverflowProcessor extends Processor {
     if (!processorDataDir.exists()) {
       processorDataDir.mkdirs();
     }
-    recovery(processorDataDir);
+    recover(processorDataDir);
 
     // memory
     if (workSupport == null) {
@@ -157,29 +158,49 @@ public class OverflowProcessor extends Processor {
   }
 
 
-  private void recovery(File parentFile) throws IOException {
+  private void recover(File parentFile) throws ProcessorException {
     String[] subFilePaths = clearFile(parentFile.list());
-    if (subFilePaths.length == 0) {
-      workResource = new OverflowResource(parentPath,
-          String.valueOf(dataPathCount.getAndIncrement()), versionController);
-    } else if (subFilePaths.length == 1) {
-      long count = Long.parseLong(subFilePaths[0]);
-      dataPathCount.addAndGet(count + 1);
-      workResource = new OverflowResource(parentPath, String.valueOf(count), versionController);
-      LOGGER.info("The overflow processor {} recover from work status.", getProcessorName());
-    } else {
-      long count1 = Long.parseLong(subFilePaths[0]);
-      long count2 = Long.parseLong(subFilePaths[1]);
-      if (count1 > count2) {
-        long temp = count1;
-        count1 = count2;
-        count2 = temp;
+
+    try {
+      if (subFilePaths.length == 0) {
+        workResource = new OverflowResource(parentPath,
+            String.valueOf(dataPathCount.getAndIncrement()), versionController, processorName);
+      } else if (subFilePaths.length == 1) {
+        long count = Long.parseLong(subFilePaths[0]);
+        dataPathCount.addAndGet(count + 1);
+        workResource = new OverflowResource(parentPath, String.valueOf(count), versionController,
+            processorName);
+        LOGGER.info("The overflow processor {} recover from work status.", getProcessorName());
+      } else {
+        long count1 = Long.parseLong(subFilePaths[0]);
+        long count2 = Long.parseLong(subFilePaths[1]);
+        if (count1 > count2) {
+          long temp = count1;
+          count1 = count2;
+          count2 = temp;
+        }
+        dataPathCount.addAndGet(count2 + 1);
+        // work dir > merge dir
+        workResource = new OverflowResource(parentPath, String.valueOf(count2), versionController,
+            processorName);
+        mergeResource = new OverflowResource(parentPath, String.valueOf(count1), versionController,
+            processorName);
+        LOGGER.info("The overflow processor {} recover from merge status.", getProcessorName());
       }
-      dataPathCount.addAndGet(count2 + 1);
-      // work dir > merge dir
-      workResource = new OverflowResource(parentPath, String.valueOf(count2), versionController);
-      mergeResource = new OverflowResource(parentPath, String.valueOf(count1), versionController);
-      LOGGER.info("The overflow processor {} recover from merge status.", getProcessorName());
+    } catch (IOException e) {
+      throw new ProcessorException(e);
+    }
+
+    IMemTable memTable = new PrimitiveMemTable();
+    LogReplayer replayer = new LogReplayer(processorName, workResource.getInsertFilePath(),
+        workResource.getModificationFile(), versionController, null, fileSchema,
+        memTable);
+    replayer.replayLogs();
+    flushTask("recover flush", memTable, 0, (a,b) -> {});
+    try {
+      getLogNode().delete();
+    } catch (IOException e) {
+      throw new ProcessorException(e);
     }
   }
 
@@ -461,7 +482,7 @@ public class OverflowProcessor extends Processor {
     if (mergeResource == null) {
       mergeResource = workResource;
       workResource = new OverflowResource(parentPath,
-          String.valueOf(dataPathCount.getAndIncrement()), versionController);
+          String.valueOf(dataPathCount.getAndIncrement()), versionController, processorName);
     }
     isMerge = true;
     LOGGER.info("The overflow processor {} switch from WORK to MERGE", getProcessorName());
@@ -496,7 +517,7 @@ public class OverflowProcessor extends Processor {
     }
   }
 
-  private boolean flushTask(String displayMessage, IMemTable currentMemTableToFlush, long walTaskId,
+  private boolean flushTask(String displayMessage, IMemTable currentMemTableToFlush,
       long flushId, MemTableFlushCallBack removeFlushedMemTable) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
@@ -509,8 +530,7 @@ public class OverflowProcessor extends Processor {
       filenodeFlushAction.act();
       // write-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        //TODO
-//        logNode.notifyEndFlush(null, walTaskId, workResource.getInsertFile().getName());
+        getLogNode().notifyEndFlush();
       }
       result = true;
     } catch (IOException e) {
@@ -570,17 +590,14 @@ public class OverflowProcessor extends Processor {
         LOGGER.error("Flush the overflow rowGroup to file faied, when overflowFlushAction act");
         throw new IOException(e);
       }
-      long taskId = 0;
-//      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-//        try {
-          //TODO
-//          taskId = logNode.notifyStartFlush(workResource.getInsertFile().getName());
-//        } catch (IOException e) {
-//          LOGGER.error("Overflow processor {} encountered an error when notifying log node, {}",
-//              getProcessorName(), e);
-//        }
-//      }
-      final long walTaskId = taskId;
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        try {
+          getLogNode().notifyStartFlush();
+        } catch (IOException e) {
+          LOGGER.error("Overflow processor {} encountered an error when notifying log node, {}",
+              getProcessorName(), e);
+        }
+      }
       BasicMemController.getInstance().releaseUsage(this, memSize.get());
       memSize.set(0);
       valueCount = 0;
@@ -592,7 +609,7 @@ public class OverflowProcessor extends Processor {
       workSupport = MemTablePool.getInstance().getEmptyMemTable(this);
       flushId++;
       flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
-          tmpMemTableToFlush, walTaskId, flushId, this::removeFlushedMemTable));
+          tmpMemTableToFlush, flushId, this::removeFlushedMemTable));
 
       // switch from work to flush
 //      switchWorkToFlush();
@@ -712,13 +729,7 @@ public class OverflowProcessor extends Processor {
   }
 
   public WriteLogNode getLogNode() throws IOException {
-    if (logNode == null) {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode = MultiFileLogNodeManager.getInstance().getNode(
-            processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
-      }
-    }
-    return logNode;
+    return workResource.getLogNode();
   }
 
   public OverflowResource getWorkResource() {

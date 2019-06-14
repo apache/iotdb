@@ -287,6 +287,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void nextFileWriter() {
     fileId++;
     File newFile = new File(logDirectory, WAL_FILE_NAME + fileId);
+    newFile.getParentFile().mkdirs();
     currentFileWriter = new LogWriter(newFile);
   }
 

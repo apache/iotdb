@@ -21,9 +21,7 @@ package org.apache.iotdb.db.engine.bufferwrite;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,30 +43,25 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
-import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,9 +139,16 @@ public class BufferWriteProcessor extends Processor {
     this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
     bufferWriteRelativePath = processorName + File.separatorChar + fileName;
 
-    if (recover()) {
-      // recovered file is closed and receivea no new data
-      return;
+    TsFileRecoverPerformer recoverPerformer =
+        new TsFileRecoverPerformer(insertFilePath, logNodePrefix(),
+            fileSchema, versionController, currentTsFileResource, currentTsFileResource.getModFile());
+    try {
+      if (recoverPerformer.recover()) {
+        // recovered file is closed and receive no new data
+        return;
+      }
+    } catch (ProcessorException e) {
+      throw new BufferWriteProcessorException(e);
     }
     open();
     try {
@@ -170,122 +170,6 @@ public class BufferWriteProcessor extends Processor {
     start1 = System.currentTimeMillis() - start1;
     if (start1 > 1000) {
       LOGGER.info("BufferWriteProcessor.open getEmptyMemtable cost: {}", start1);
-    }
-  }
-
-  private boolean recover() throws BufferWriteProcessorException {
-    File insertFile = new File(insertFilePath);
-    if (!insertFile.exists()) {
-      return false;
-    }
-    NativeRestorableIOWriter restorableTsFileIOWriter = recoverFile(insertFile);
-
-    IMemTable recoverMemTable = new PrimitiveMemTable();
-    replayLogs(recoverMemTable);
-
-    MemTableFlushTask tableFlushTask = new MemTableFlushTask(restorableTsFileIOWriter,
-        getProcessorName(), flushId, (a,b) -> {});
-    tableFlushTask.flushMemTable(fileSchema, recoverMemTable, versionController.nextVersion());
-
-    try {
-      restorableTsFileIOWriter.endFile(fileSchema);
-    } catch (IOException e) {
-      throw new BufferWriteProcessorException("Cannot close file when recovering", e);
-    }
-    return true;
-  }
-
-  private void replayLogs(IMemTable recoverMemTable) throws BufferWriteProcessorException {
-    try {
-      logNode = MultiFileLogNodeManager.getInstance().getNode(
-          processorName + new File(insertFilePath).getName());
-    } catch (IOException e) {
-      throw new BufferWriteProcessorException(e);
-    }
-    ILogReader logReader = logNode.getLogReader();
-    try {
-      while (logReader.hasNext()) {
-        PhysicalPlan plan = logReader.next();
-        if (plan instanceof InsertPlan) {
-          replayInsert((InsertPlan) plan, recoverMemTable);
-        } else if (plan instanceof DeletePlan) {
-          replayDelete((DeletePlan) plan, recoverMemTable);
-        }
-      }
-    } catch (IOException e) {
-      throw new BufferWriteProcessorException("Cannot replay logs", e);
-    }
-  }
-
-  private void replayDelete(DeletePlan deletePlan, IMemTable recoverMemTable) throws IOException {
-    List<Path> paths = deletePlan.getPaths();
-    for (Path path : paths) {
-      recoverMemTable.delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteTime());
-      currentTsFileResource.getModFile().write(new Deletion(path.getFullPath(),
-          versionController.nextVersion(),deletePlan.getDeleteTime()));
-    }
-  }
-
-  private void replayInsert(InsertPlan insertPlan, IMemTable recoverMemTable) {
-    TSRecord tsRecord = new TSRecord(insertPlan.getTime(), insertPlan.getDeviceId());
-    currentTsFileResource.updateTime(insertPlan.getDeviceId(), insertPlan.getTime());
-    String[] measurementList = insertPlan.getMeasurements();
-    String[] insertValues = insertPlan.getValues();
-
-    for (int i = 0; i < measurementList.length; i++) {
-      TSDataType dataType = fileSchema.getMeasurementDataType(measurementList[i]);
-      String value = insertValues[i];
-      DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList[i], value);
-      tsRecord.addTuple(dataPoint);
-    }
-    recoverMemTable.insert(tsRecord);
-  }
-
-
-  private NativeRestorableIOWriter recoverFile(File insertFile) throws BufferWriteProcessorException {
-    long truncatePos = getTruncatePosition(insertFile);
-    NativeRestorableIOWriter restorableIOWriter;
-    if (truncatePos != -1 && insertFile.length() != truncatePos) {
-      try (FileChannel channel = new FileOutputStream(insertFile).getChannel()) {
-        channel.truncate(truncatePos);
-        restorableIOWriter = new NativeRestorableIOWriter(insertFile, true);
-      } catch (IOException e) {
-        throw new BufferWriteProcessorException(e);
-      }
-    } else {
-      try {
-        restorableIOWriter = new NativeRestorableIOWriter(insertFile, true);
-        saveTruncatePosition(insertFile);
-      } catch (IOException e) {
-        throw new BufferWriteProcessorException(e);
-      }
-    }
-    return restorableIOWriter;
-  }
-
-  private long getTruncatePosition(File insertFile) {
-    File parentDir = insertFile.getParentFile();
-    File[] truncatePoses = parentDir.listFiles((dir, name) -> name.contains(insertFile.getName() +
-        "@"));
-    long maxPos = -1;
-    if (truncatePoses != null) {
-      for (File truncatePos : truncatePoses) {
-        long pos = Long.parseLong(truncatePos.getName().split("@")[1]);
-        if (pos > maxPos) {
-          maxPos = pos;
-        }
-      }
-    }
-    return maxPos;
-  }
-
-  private void saveTruncatePosition(File insertFile)
-      throws IOException {
-    File truncatePosFile = new File(insertFile.getParent(),
-        insertFile.getName() + "@" + insertFile.length());
-    try (FileOutputStream outputStream = new FileOutputStream(truncatePosFile)) {
-      outputStream.write(0);
-      outputStream.flush();
     }
   }
 
@@ -681,10 +565,14 @@ public class BufferWriteProcessor extends Processor {
     if (logNode == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
-            processorName + new File(insertFilePath).getName());
+            logNodePrefix() + new File(insertFilePath).getName());
       }
     }
     return logNode;
+  }
+
+  public String logNodePrefix() {
+    return processorName + "-BufferWrite-";
   }
 
   /**
