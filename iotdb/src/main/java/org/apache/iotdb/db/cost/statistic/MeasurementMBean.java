@@ -36,6 +36,11 @@ public interface MeasurementMBean {
    */
   void stopStatistic();
 
+  /**
+   * clear current stat result, reset statistical state.
+   */
+  void clearStatisticalState();
+
   boolean isEnableStat();
 
   long getDisplayIntervalInMs();

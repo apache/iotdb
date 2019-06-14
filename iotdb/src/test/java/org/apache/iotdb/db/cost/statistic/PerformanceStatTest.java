@@ -18,40 +18,50 @@
  */
 package org.apache.iotdb.db.cost.statistic;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public class PerformanceStatTest {
 
   @Test
   public void test() {
-    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH, System.currentTimeMillis());
-    Measurement.INSTANCE
-        .addOperationLatency(Operation.EXECUTE_BATCH, System.currentTimeMillis() - 8000000);
+    Measurement measurement = Measurement.INSTANCE;
+    Operation operation = Operation.EXECUTE_BATCH;
+    measurement.addOperationLatency(operation, System.currentTimeMillis());
+    measurement.addOperationLatency(operation,
+        System.currentTimeMillis() - 8000000);
 
+    long batchOpCnt = measurement.getOperationCnt()[operation.ordinal()];
+    Assert.assertEquals(0L, batchOpCnt);
     try {
-      Measurement.INSTANCE.start();
-      Measurement.INSTANCE.startContinuousStatistics();
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH, System.currentTimeMillis());
-      Measurement.INSTANCE
-          .addOperationLatency(Operation.EXECUTE_BATCH, System.currentTimeMillis() - 8000000);
+      measurement.start();
+      measurement.startContinuousStatistics();
+      measurement.addOperationLatency(operation, System.currentTimeMillis());
+      measurement
+          .addOperationLatency(operation, System.currentTimeMillis() - 8000000);
       Thread.currentThread().sleep(2000);
-      Measurement.INSTANCE.stopStatistic();
-      Measurement.INSTANCE.stopStatistic();
-      Measurement.INSTANCE.stopStatistic();
+      batchOpCnt = measurement.getOperationCnt()[operation.ordinal()];
+      Assert.assertEquals(2L, batchOpCnt);
+      measurement.stopStatistic();
+      measurement.stopStatistic();
+      measurement.stopStatistic();
       System.out.println("After stopStatistic!");
       Thread.currentThread().sleep(1000);
-      Measurement.INSTANCE.startContinuousStatistics();
+      measurement.clearStatisticalState();
+      batchOpCnt = measurement.getOperationCnt()[operation.ordinal()];
+      Assert.assertEquals(0L, batchOpCnt);
+      measurement.startContinuousStatistics();
       System.out.println("ReStart!");
       Thread.currentThread().sleep(2000);
-      Measurement.INSTANCE.startContinuousStatistics();
+      measurement.startContinuousStatistics();
       System.out.println("ReStart2!");
       Thread.currentThread().sleep(2000);
-      Measurement.INSTANCE.stopStatistic();
+      measurement.stopStatistic();
       System.out.println("After stopStatistic2!");
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      Measurement.INSTANCE.stop();
+      measurement.stop();
     }
   }
 }
