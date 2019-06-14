@@ -27,9 +27,10 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
+import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -76,8 +77,12 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
       String insertValue) {
+    long start = System.currentTimeMillis();
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
+    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.WRITE_1, start);
+    start = System.currentTimeMillis();
     memSeries.write(insertTime, insertValue);
+    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.WRITE_2, start);
   }
 
   @Override
