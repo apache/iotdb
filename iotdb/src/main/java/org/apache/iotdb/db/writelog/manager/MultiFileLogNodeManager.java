@@ -42,7 +42,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
   private Map<String, WriteLogNode> nodeMap;
 
-  private Thread syncThread;
   private Thread forceThread;
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -117,18 +116,11 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   @Override
   public void close() {
-    if (!isActivated(syncThread) && !isActivated(forceThread)) {
+    if (!isActivated(forceThread)) {
       logger.error("MultiFileLogNodeManager has not yet started");
       return;
     }
     logger.info("LogNodeManager starts closing..");
-    if (isActivated(syncThread)) {
-      syncThread.interrupt();
-      logger.info("Waiting for sync thread to stop");
-      while (syncThread.isAlive()) {
-        // wait for syncThread
-      }
-    }
     if (isActivated(forceThread)) {
       forceThread.interrupt();
       logger.info("Waiting for force thread to stop");
@@ -181,9 +173,8 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       if (!config.isEnableWal()) {
         return;
       }
-      if (!isActivated(syncThread)) {
-        InstanceHolder.instance.syncThread.start();
-        if (config.getForceWalPeriodInMs() > 0 && !isActivated(forceThread)) {
+      if (!isActivated(forceThread)) {
+        if (config.getForceWalPeriodInMs() > 0) {
           InstanceHolder.instance.forceThread = new Thread(InstanceHolder.instance.forceTask,
               ThreadName.WAL_FORCE_DAEMON.getName());
           InstanceHolder.instance.forceThread.start();
