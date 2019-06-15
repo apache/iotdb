@@ -77,7 +77,7 @@ public abstract class DirectoryStrategy {
 
   protected long getUsableSpace(String dir) {
     long space = new File(dir).getFreeSpace();
-    LOGGER.debug("Folder {} has {} available bytes.", dir, space);
+    LOGGER.trace("Folder {} has {} available bytes.", dir, space);
     return space;
   }
 
