@@ -912,12 +912,7 @@ public class FileNodeManager implements IStatistic, IService {
       return;
     }
     for (File overflowSubDir : overflowSubDirs) {
-      File[] overflowFiles = overflowSubDir.listFiles();
-      if (overflowFiles != null) {
-        for (File overflowFile : overflowFiles) {
-          FileReaderManager.getInstance().closeFileAndRemoveReader(overflowFile.getPath());
-        }
-      }
+      closeAndRemoveReader(overflowSubDir);
     }
     FileUtils.deleteDirectory(overflowDir);
   }
@@ -931,13 +926,17 @@ public class FileNodeManager implements IStatistic, IService {
       if (!bufferDir.exists()) {
         continue;
       }
-      File[] bufferFiles = bufferDir.listFiles();
-      if (bufferFiles != null) {
-        for (File bufferFile : bufferFiles) {
-          FileReaderManager.getInstance().closeFileAndRemoveReader(bufferFile.getPath());
-        }
-      }
+      closeAndRemoveReader(bufferDir);
       FileUtils.deleteDirectory(new File(bufferwritePath));
+    }
+  }
+
+  private void closeAndRemoveReader(File folder) throws IOException {
+    File[] files = folder.listFiles();
+    if (files != null) {
+      for (File file : files) {
+        FileReaderManager.getInstance().closeFileAndRemoveReader(file.getPath());
+      }
     }
   }
 

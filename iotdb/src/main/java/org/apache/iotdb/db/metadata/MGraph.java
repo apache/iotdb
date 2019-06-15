@@ -89,7 +89,7 @@ public class MGraph implements Serializable {
   /**
    * Add a seriesPath to {@code PTree}.
    */
-  public void addPathToPTree(String path) throws PathErrorException, MetadataErrorException {
+  public void addPathToPTree(String path) throws PathErrorException {
     String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null.");

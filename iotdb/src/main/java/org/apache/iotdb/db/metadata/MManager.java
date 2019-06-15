@@ -48,9 +48,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -420,16 +420,16 @@ public class MManager {
       Set<String> closeFileNodes = new HashSet<>();
       Set<String> deleteFielNodes = new HashSet<>();
       for (String p : fullPath) {
-        String nameSpacePath;
+        String filenode;
         try {
-          nameSpacePath = getFileNameByPath(p);
+          filenode = getFileNameByPath(p);
         } catch (PathErrorException e) {
           throw new MetadataErrorException(e);
         }
-        closeFileNodes.add(nameSpacePath);
+        closeFileNodes.add(filenode);
         // the two map is stored in the storage group node
-        Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneFileNode(nameSpacePath);
-        Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(nameSpacePath);
+        Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneFileNode(filenode);
+        Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(filenode);
         // Thread safety: just one thread can access/modify the schemaMap
         synchronized (schemaMap) {
           // TODO: don't delete the storage group seriesPath recursively
@@ -460,6 +460,9 @@ public class MManager {
 
   /**
    * function for deleting a given path from mTree.
+   *
+   * @return the related storage group name if there is no path in the storage group anymore;
+   * otherwise null
    */
   private String deletePathFromMTreeInternal(String path) throws PathErrorException, IOException {
     lock.writeLock().lock();
@@ -538,7 +541,7 @@ public class MManager {
    * function for adding a given path to pTree.
    */
   public void addPathToPTree(String path)
-      throws PathErrorException, IOException, MetadataErrorException {
+      throws PathErrorException, IOException {
 
     lock.writeLock().lock();
     try {
