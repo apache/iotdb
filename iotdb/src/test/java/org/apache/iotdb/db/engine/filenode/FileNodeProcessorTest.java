@@ -64,7 +64,7 @@ public class FileNodeProcessorTest {
   @Before
   public void setUp() throws FileNodeProcessorException, StartupException {
     // init metadata
-//    EnvironmentUtils.envSetUp();
+    EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     fileNodeManager = FileNodeManager.getInstance();
     processor = new FileNodeProcessor(IoTDBDescriptor.getInstance().getConfig().getFileNodeDir(), processName);
