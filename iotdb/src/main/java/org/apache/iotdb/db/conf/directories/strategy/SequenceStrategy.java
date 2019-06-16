@@ -52,7 +52,7 @@ public class SequenceStrategy extends DirectoryStrategy {
   }
 
   private int tryGetNextIndex(int start) throws DiskSpaceInsufficientException {
-    int index = start;
+    int index = (start + 1) % folders.size();
     while (!hasSpace(folders.get(index))) {
       index = (index + 1) % folders.size();
       if (index == start) {

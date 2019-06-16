@@ -41,7 +41,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
     for (int i = 0; i < folders.size(); i++) {
       String folder = folders.get(i);
-      if (hasSpace(folder)) {
+      if (!hasSpace(folder)) {
         continue;
       }
 
