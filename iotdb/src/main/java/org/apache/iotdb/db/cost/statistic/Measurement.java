@@ -20,7 +20,9 @@ package org.apache.iotdb.db.cost.statistic;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -60,7 +62,7 @@ public class Measurement implements MeasurementMBean, IService {
   /**
    * size of each queue, this is calculated by memory.
    */
-  private final int QUEUE_SIZE;
+  private final int queueSize;
 
   /**
    * latencies sum of each operation.
@@ -107,6 +109,7 @@ public class Measurement implements MeasurementMBean, IService {
 
   private boolean isEnableStat;
   private long displayIntervalInMs;
+  private Map<String, Boolean> operationSwitch;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Measurement.class);
   private final String mbeanName = String
@@ -119,14 +122,16 @@ public class Measurement implements MeasurementMBean, IService {
     displayIntervalInMs = tdbConfig.getPerformanceStatDisplayInterval();
     int memoryInKb = tdbConfig.getPerformance_stat_memory_in_kb();
 
-    QUEUE_SIZE = memoryInKb * 1000 / Operation.values().length / 8;
+    queueSize = memoryInKb * 1000 / Operation.values().length / 8;
     operationLatenciesQueue = new ConcurrentCircularArray[Operation.values().length];
     operationLatencies = new long[Operation.values().length];
     operationCnt = new long[Operation.values().length];
+    operationSwitch = new HashMap<>(Operation.values().length);
     for (Operation op : Operation.values()) {
-      operationLatenciesQueue[op.ordinal()] = new ConcurrentCircularArray(QUEUE_SIZE);
+      operationLatenciesQueue[op.ordinal()] = new ConcurrentCircularArray(queueSize);
       operationCnt[op.ordinal()] = 0;
       operationLatencies[op.ordinal()] = 0;
+      operationSwitch.put(op.getName(), true);
     }
     operationHistogram = new long[Operation.values().length][BUCKET_SIZE];
     for (Operation operation : Operation.values()) {
@@ -141,7 +146,7 @@ public class Measurement implements MeasurementMBean, IService {
   }
 
   public boolean addOperationLatency(Operation op, long startTime) {
-    if (isEnableStat) {
+    if (isEnableStat && operationSwitch.get(op.getName())) {
       return operationLatenciesQueue[op.ordinal()].put((System.currentTimeMillis() - startTime));
     }
     return false;
@@ -224,6 +229,16 @@ public class Measurement implements MeasurementMBean, IService {
     }
   }
 
+  @Override
+  public boolean changeOperationSwitch(String operationName, Boolean operationState) {
+    if (operationSwitch.containsKey(operationName)) {
+      operationSwitch.put(operationName, operationState);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   /**
    * start service.
    */
@@ -278,12 +293,19 @@ public class Measurement implements MeasurementMBean, IService {
     return isEnableStat;
   }
 
+  @Override
   public long getDisplayIntervalInMs() {
     return displayIntervalInMs;
   }
 
+  @Override
   public void setDisplayIntervalInMs(long displayIntervalInMs) {
     this.displayIntervalInMs = displayIntervalInMs;
+  }
+
+  @Override
+  public Map<String, Boolean> getOperationSwitch() {
+    return operationSwitch;
   }
 
   private static class AsyncMeasurementHolder {
@@ -303,6 +325,9 @@ public class Measurement implements MeasurementMBean, IService {
         .format("%-45s%-25s%-25s%-25s", "OPERATION", "COUNT", "TOTAL_TIME", "AVG_TIME");
     LOGGER.info(head);
     for (Operation operation : Operation.values()) {
+      if (!operationSwitch.get(operation.getName())) {
+        continue;
+      }
       long cnt = operationCnt[operation.ordinal()];
       long totalInMs = operationLatencies[operation.ordinal()];
       String avg = String.format("%.4f", (totalInMs / (cnt + 1e-9)));
@@ -320,6 +345,9 @@ public class Measurement implements MeasurementMBean, IService {
       LOGGER.info(histogramHead.toString());
     }
     for (Operation operation : Operation.values()) {
+      if (!operationSwitch.get(operation.getName())) {
+        continue;
+      }
       StringBuilder item = new StringBuilder(String.format("%-45s", operation.getName()));
       long cnt = operationCnt[operation.ordinal()];
       for (int i = 0; i < BUCKET_SIZE; i++) {
@@ -356,22 +384,24 @@ public class Measurement implements MeasurementMBean, IService {
       while (isEnableStat) {
         allEmpty = true;
         for (Operation op : Operation.values()) {
+          if (!operationSwitch.get(op.getName())) {
+            continue;
+          }
           int idx = op.ordinal();
           ConcurrentCircularArray queue = operationLatenciesQueue[idx];
           if (queue.hasData()) {
-            Long time = queue.take();
-            if (time != null) {
-              operationLatencies[idx] += time;
-              operationCnt[idx]++;
-              operationHistogram[idx][calIndex(time)]++;
-              allEmpty = false;
-            }
+            long time = queue.take();
+            operationLatencies[idx] += time;
+            operationCnt[idx]++;
+            operationHistogram[idx][calIndex(time)]++;
+            allEmpty = false;
           }
         }
         if (allEmpty) {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             break;
           }
         }

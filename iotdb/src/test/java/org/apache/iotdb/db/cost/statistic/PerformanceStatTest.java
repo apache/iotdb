@@ -20,8 +20,12 @@ package org.apache.iotdb.db.cost.statistic;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PerformanceStatTest {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PerformanceStatTest.class);
 
   @Test
   public void test() {
@@ -39,27 +43,27 @@ public class PerformanceStatTest {
       measurement.addOperationLatency(operation, System.currentTimeMillis());
       measurement
           .addOperationLatency(operation, System.currentTimeMillis() - 8000000);
-      Thread.currentThread().sleep(2000);
+      Thread.currentThread().sleep(1000);
       batchOpCnt = measurement.getOperationCnt()[operation.ordinal()];
       Assert.assertEquals(2L, batchOpCnt);
       measurement.stopStatistic();
       measurement.stopStatistic();
       measurement.stopStatistic();
-      System.out.println("After stopStatistic!");
+      LOGGER.info("After stopStatistic!");
       Thread.currentThread().sleep(1000);
       measurement.clearStatisticalState();
       batchOpCnt = measurement.getOperationCnt()[operation.ordinal()];
       Assert.assertEquals(0L, batchOpCnt);
       measurement.startContinuousStatistics();
-      System.out.println("ReStart!");
-      Thread.currentThread().sleep(2000);
+      LOGGER.info("ReStart!");
+      Thread.currentThread().sleep(1000);
       measurement.startContinuousStatistics();
-      System.out.println("ReStart2!");
-      Thread.currentThread().sleep(2000);
+      LOGGER.info("ReStart2!");
+      Thread.currentThread().sleep(1000);
       measurement.stopStatistic();
-      System.out.println("After stopStatistic2!");
+      LOGGER.info("After stopStatistic2!");
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.error("find error in stat performance, the message is {}", e.getMessage());
     } finally {
       measurement.stop();
     }

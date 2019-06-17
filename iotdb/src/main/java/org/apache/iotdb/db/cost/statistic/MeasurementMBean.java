@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.cost.statistic;
 
+import java.util.Map;
+
 public interface MeasurementMBean {
 
   /**
@@ -41,9 +43,20 @@ public interface MeasurementMBean {
    */
   void clearStatisticalState();
 
+  /**
+   * set whether to monitor operation status.
+   *
+   * @param operationName the name of operation, defined in attribute operationSwitch.
+   * @param operationState state of operation.
+   * @return true if successful, false if fail.
+   */
+  boolean changeOperationSwitch(String operationName, Boolean operationState);
+
   boolean isEnableStat();
 
   long getDisplayIntervalInMs();
 
   void setDisplayIntervalInMs(long displayIntervalInMs);
+
+  Map<String, Boolean> getOperationSwitch();
 }
