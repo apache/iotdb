@@ -106,7 +106,7 @@ public class OverflowProcessorTest {
         .query(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
             OverflowTestUtils.dataType1, Collections.emptyMap(), context);
     assertEquals(OverflowTestUtils.dataType1, overflowSeriesDataSource.getDataType());
-    Assert.assertEquals(false, overflowSeriesDataSource.getReadableMemChunk().isEmpty());
+    assertEquals(false, overflowSeriesDataSource.getReadableMemChunk().isEmpty());
     assertEquals(1, overflowSeriesDataSource.getOverflowInsertFileList().size());
     Iterator<TimeValuePair> iterator = overflowSeriesDataSource.getReadableMemChunk().getIterator();
     for (int i = 1; i <= 3; i++) {

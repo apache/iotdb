@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.overflow.io;
 
 import java.io.IOException;
+import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -48,6 +49,7 @@ public class OverflowTestUtils {
   }
 
   public static void produceInsertData(OverflowMemtable support) {
+    MemTableWriteTimeCost.getInstance().init();
     support.insert(getData(deviceId1, measurementId1, dataType1, String.valueOf(1), 1));
     support.insert(getData(deviceId1, measurementId1, dataType1, String.valueOf(3), 3));
     support.insert(getData(deviceId1, measurementId1, dataType1, String.valueOf(2), 2));

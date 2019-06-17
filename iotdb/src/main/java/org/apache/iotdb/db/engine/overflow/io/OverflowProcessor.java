@@ -57,6 +57,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -227,6 +228,7 @@ public class OverflowProcessor extends Processor {
    * insert one time-series record
    */
   public void insert(TSRecord tsRecord) throws IOException {
+    MemTableWriteTimeCost.getInstance().init();
     try {
       checkOpen();
     } catch (OverflowProcessorException e) {
@@ -397,10 +399,13 @@ public class OverflowProcessor extends Processor {
     queryFlushLock.lock();
     try {
       if (!overflowFlushMemTables.isEmpty() && isFlush()) {
-        for (IMemTable memTable : overflowFlushMemTables) {
-          memSeriesLazyMerger.addMemSeries(memTable.query(deviceId, measurementId, dataType, props));
+        for (int i = overflowFlushMemTables.size() - 1; i >= 0; i--) {
+          memSeriesLazyMerger.addMemSeries(
+              overflowFlushMemTables.get(i).query(deviceId, measurementId, dataType, props));
         }
       }
+      memSeriesLazyMerger
+          .addMemSeries(workSupport.query(deviceId, measurementId, dataType, props));
       // memSeriesLazyMerger has handled the props,
       // so we do not need to handle it again in the following readOnlyMemChunk
       return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger, Collections.emptyMap());
