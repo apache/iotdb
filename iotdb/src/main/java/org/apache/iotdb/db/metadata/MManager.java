@@ -412,6 +412,15 @@ public class MManager {
     return deletePathsFromMTree(Collections.singletonList(deletePath));
   }
 
+  /**
+   * delete given paths from metadata and data.
+   * @param deletePathList list of paths to be deleted
+   * @return the first set contains StorageGroups that are affected by this deletion but
+   * still have remaining timeseries, so these StorageGroups should be closed to make sure the data
+   * deletion is persisted; the second set contains StorageGroups that contain no more timeseries
+   * after this deletion and files of such StorageGroups should be deleted to reclaim disk space.
+   * @throws MetadataErrorException
+   */
   public Pair<Set<String>, Set<String>> deletePathsFromMTree(List<Path> deletePathList)
       throws MetadataErrorException {
     if (deletePathList != null && !deletePathList.isEmpty()) {
