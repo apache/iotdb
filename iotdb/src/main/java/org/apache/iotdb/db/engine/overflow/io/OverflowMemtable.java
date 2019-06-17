@@ -91,7 +91,7 @@ public class OverflowMemtable extends PrimitiveMemTable {
 //  }
 
   public boolean isEmptyOfMemTable() {
-    return super.isEmpty();
+    return memTable.isEmpty();
   }
 
   public IMemTable getMemTabale() {
