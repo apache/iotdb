@@ -29,14 +29,19 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
 public abstract class AbstractMemTable implements IMemTable {
 
   private List<Modification> modifications = new ArrayList<>();
 
   private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
+
+  private long memSize = 0;
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -74,6 +79,17 @@ public abstract class AbstractMemTable implements IMemTable {
 
   protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
 
+
+  public void insert(TSRecord tsRecord) {
+    for (DataPoint dataPoint : tsRecord.dataPointList) {
+      write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
+          tsRecord.time,
+          dataPoint.getValue().toString());
+    }
+    long recordSizeInByte = MemUtils.getRecordSize(tsRecord);
+    memSize += recordSizeInByte;
+  }
+
   @Override
   public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
       String insertValue) {
@@ -90,17 +106,23 @@ public abstract class AbstractMemTable implements IMemTable {
       Object value) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
     memSeries.write(insertTime, value);
+    // update memory size of current memtable
   }
 
   @Override
-  public int size() {
-    int sum = 0;
+  public long size() {
+    long sum = 0;
     for (Map<String, IWritableMemChunk> seriesMap : memTableMap.values()) {
       for (IWritableMemChunk writableMemChunk : seriesMap.values()) {
         sum += writableMemChunk.count();
       }
     }
     return sum;
+  }
+
+  @Override
+  public long memSize() {
+    return memSize;
   }
 
   @Override

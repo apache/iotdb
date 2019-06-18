@@ -41,7 +41,7 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
 
   void reset();
 
-  int count();
+  long count();
 
   TSDataType getType();
 

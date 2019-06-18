@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenodev2;
+package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
