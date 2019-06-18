@@ -42,7 +42,7 @@ import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.overflow.io.OverflowProcessor;
-import org.apache.iotdb.db.engine.pool.FlushManager;
+import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -1200,7 +1200,7 @@ public class FileNodeManager implements IStatistic, IService {
       // if the flushMetadata thread pool is not full ( or half full), start a new
       // flushMetadata task
       case SAFE:
-        if (FlushManager.getInstance().getActiveCnt() < 0.5 * FlushManager.getInstance()
+        if (FlushPoolManager.getInstance().getActiveCnt() < 0.5 * FlushPoolManager.getInstance()
             .getThreadCnt()) {
           try {
             flushTop(0.01f);

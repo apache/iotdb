@@ -29,18 +29,18 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ProcessorException;
 
-public class MergeManager {
+public class MergePoolManager {
 
   private ExecutorService pool;
   private int threadCnt;
 
-  private MergeManager() {
+  private MergePoolManager() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     this.threadCnt = config.getMergeConcurrentThreads();
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.MERGE_SERVICE.getName());
   }
 
-  public static MergeManager getInstance() {
+  public static MergePoolManager getInstance() {
     return InstanceHolder.instance;
   }
 
@@ -121,6 +121,6 @@ public class MergeManager {
     private InstanceHolder(){
       //allowed to do nothing
     }
-    private static MergeManager instance = new MergeManager();
+    private static MergePoolManager instance = new MergePoolManager();
   }
 }

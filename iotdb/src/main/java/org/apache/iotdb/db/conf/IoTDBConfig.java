@@ -171,6 +171,11 @@ public class IoTDBConfig {
    */
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
+  /**
+   * Maximum number of active mem tables.
+   */
+  private int maxActiveMemTableSize = 100;
+
   private ZoneId zoneID = ZoneId.systemDefault();
   /**
    * BufferWriteProcessor and OverflowProcessor will immediately flushMetadata if this threshold is
@@ -828,5 +833,13 @@ public class IoTDBConfig {
 
   public void setRpcImplClassName(String rpcImplClassName) {
     this.rpcImplClassName = rpcImplClassName;
+  }
+
+  public int getMaxActiveMemTableSize() {
+    return maxActiveMemTableSize;
+  }
+
+  public void setMaxActiveMemTableSize(int maxActiveMemTableSize) {
+    this.maxActiveMemTableSize = maxActiveMemTableSize;
   }
 }

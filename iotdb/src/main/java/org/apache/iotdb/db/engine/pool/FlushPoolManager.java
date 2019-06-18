@@ -30,20 +30,20 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ProcessorException;
 
-public class FlushManager {
+public class FlushPoolManager {
 
   private static final int EXIT_WAIT_TIME = 60 * 1000;
 
   private ExecutorService pool;
   private int threadCnt;
 
-  private FlushManager() {
+  private FlushPoolManager() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     this.threadCnt = config.getConcurrentFlushThread();
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
   }
 
-  public static FlushManager getInstance() {
+  public static FlushPoolManager getInstance() {
     return InstanceHolder.instance;
   }
 
@@ -59,7 +59,7 @@ public class FlushManager {
     pool = Executors.newFixedThreadPool(config.getConcurrentFlushThread());
   }
 
-  public FlushManager(ExecutorService pool) {
+  public FlushPoolManager(ExecutorService pool) {
     this.pool = pool;
   }
 
@@ -134,7 +134,7 @@ public class FlushManager {
     private InstanceHolder(){
       //allowed to do nothing
     }
-    private static FlushManager instance = new FlushManager();
+    private static FlushPoolManager instance = new FlushPoolManager();
   }
 
   public int getWaitingTasksNumber() {

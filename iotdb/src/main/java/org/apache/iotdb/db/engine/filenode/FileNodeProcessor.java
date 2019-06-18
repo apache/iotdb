@@ -60,7 +60,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.overflow.io.OverflowProcessor;
-import org.apache.iotdb.db.engine.pool.MergeManager;
+import org.apache.iotdb.db.engine.pool.MergePoolManager;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
@@ -996,7 +996,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       Runnable mergeThread;
       mergeThread = new MergeRunnale();
       LOGGER.info("Submit the merge task, the merge filenode is {}", getProcessorName());
-      return MergeManager.getInstance().submit(mergeThread);
+      return MergePoolManager.getInstance().submit(mergeThread);
     } else {
       if (!isOverflowed) {
         LOGGER.info(

@@ -49,7 +49,7 @@ import org.apache.iotdb.db.engine.memtable.MemTablePool;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.pool.FlushManager;
+import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
@@ -617,12 +617,12 @@ public class OverflowProcessor extends Processor {
       IMemTable tmpMemTableToFlush = workSupport;
       workSupport = MemTablePool.getInstance().getEmptyMemTable(this);
       flushId++;
-      flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
+      flushFuture = FlushPoolManager.getInstance().submit(() -> flushTask("asynchronously",
           tmpMemTableToFlush, flushId, this::removeFlushedMemTable));
 
       // switch from work to flush
 //      switchWorkToFlush();
-//      flushFuture = FlushManager.getInstance().submit(() ->
+//      flushFuture = FlushPoolManager.getInstance().submit(() ->
 //          flushTask("asynchronously", walTaskId));
     } else {
 //      flushFuture = new ImmediateFuture(true);
@@ -795,7 +795,7 @@ public class OverflowProcessor extends Processor {
 //
 //      }else {
 //        isFlushing = true;
-////        flushFuture = FlushManager.getInstance().submit(() ->
+////        flushFuture = FlushPoolManager.getInstance().submit(() ->
 //            flushTask("asynchronously", walTaskId));
 //      }
 //    } finally {

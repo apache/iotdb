@@ -44,7 +44,7 @@ import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.pool.FlushManager;
+import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
@@ -443,18 +443,18 @@ public class BufferWriteProcessor extends Processor {
       if (isCloseTaskCalled) {
         LOGGER.info(
             "flushMetadata memtable for bufferwrite processor {} synchronously for close task.",
-            getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
-            FlushManager.getInstance().getCorePoolSize());
+            getProcessorName(), FlushPoolManager.getInstance().getWaitingTasksNumber(),
+            FlushPoolManager.getInstance().getCorePoolSize());
         flushTask("synchronously", tmpMemTableToFlush, version, flushId);
         flushFuture = new ImmediateFuture<>(true);
       } else {
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
               "Begin to submit flushMetadata task for bufferwrite processor {}, current Flush Queue is {}, core pool size is {}.",
-              getProcessorName(), FlushManager.getInstance().getWaitingTasksNumber(),
-              FlushManager.getInstance().getCorePoolSize());
+              getProcessorName(), FlushPoolManager.getInstance().getWaitingTasksNumber(),
+              FlushPoolManager.getInstance().getCorePoolSize());
         }
-        flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
+        flushFuture = FlushPoolManager.getInstance().submit(() -> flushTask("asynchronously",
             tmpMemTableToFlush, version, flushId));
       }
 
@@ -482,7 +482,7 @@ public class BufferWriteProcessor extends Processor {
     try {
       // flushMetadata data (if there are flushing task, flushMetadata() will be blocked) and wait for finishing flushMetadata async
       LOGGER.info("Submit a BufferWrite ({}) close task.", getProcessorName());
-      closeFuture = new BWCloseFuture(FlushManager.getInstance().submit(() -> closeTask()));
+      closeFuture = new BWCloseFuture(FlushPoolManager.getInstance().submit(() -> closeTask()));
       //now, we omit the future of the closeTask.
     } catch (Exception e) {
       LOGGER
