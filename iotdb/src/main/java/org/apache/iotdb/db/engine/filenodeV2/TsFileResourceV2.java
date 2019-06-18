@@ -19,22 +19,117 @@
 package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResourceV2 {
 
   private File file;
-//  private Map<String, Long> startTimeMap;
-//  private Map<String, Long> endTimeMap;
+  private Map<String, Long> startTimeMap;
 
-  private boolean sealed;
+  private Map<String, Long> endTimeMap;
+
   private transient ModificationFile modFile;
+
+  public TsFileResourceV2(File file) {
+    this.file = file;
+    this.startTimeMap = new HashMap<>();
+    this.endTimeMap = new HashMap<>();
+  }
+
+  public TsFileResourceV2(File file, Map<String, Long> startTimeMap, Map<String, Long> endTimeMap) {
+    this.file = file;
+    this.startTimeMap = startTimeMap;
+    this.endTimeMap = endTimeMap;
+  }
+
+  public File getFile() {
+    return file;
+  }
 
   public long getFileSize() {
     return file.length();
   }
+
+  public Map<String, Long> getStartTimeMap() {
+    return startTimeMap;
+  }
+
+  public void setEndTimeMap(Map<String, Long> endTimeMap) {
+    this.endTimeMap = endTimeMap;
+  }
+
+
+  public void serialize(OutputStream outputStream) throws IOException {
+//    ReadWriteIOUtils.write(this.overflowChangeType.serialize(), outputStream);
+//    ReadWriteIOUtils.write(this.baseDirIndex, outputStream);
+    ReadWriteIOUtils.writeIsNull(this.file, outputStream);
+    if (this.file != null) {
+      ReadWriteIOUtils.write(file.getAbsolutePath(), outputStream);
+    }
+    ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
+    for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
+    ReadWriteIOUtils.write(this.endTimeMap.size(), outputStream);
+    for (Entry<String, Long> entry : this.endTimeMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
+//    ReadWriteIOUtils.write(mergeChanged.size(), outputStream);
+//    for (String mergeChangedElement : this.mergeChanged) {
+//      ReadWriteIOUtils.write(mergeChangedElement, outputStream);
+//    }
+  }
+
+  public static TsFileResourceV2 deSerialize(InputStream inputStream) throws IOException {
+    OverflowChangeType overflowChangeType = OverflowChangeType
+        .deserialize(ReadWriteIOUtils.readShort(inputStream));
+    int baseDirIndex = ReadWriteIOUtils.readInt(inputStream);
+    boolean hasRelativePath = ReadWriteIOUtils.readIsNull(inputStream);
+
+    File file = null;
+    if (hasRelativePath) {
+      String relativePath = ReadWriteIOUtils.readString(inputStream);
+      file = new File(Directories.getInstance().getTsFileFolder(baseDirIndex), relativePath);
+    }
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    Map<String, Long> startTimes = new HashMap<>();
+    for (int i = 0; i < size; i++) {
+      String path = ReadWriteIOUtils.readString(inputStream);
+      long time = ReadWriteIOUtils.readLong(inputStream);
+      startTimes.put(path, time);
+    }
+    size = ReadWriteIOUtils.readInt(inputStream);
+    Map<String, Long> endTimes = new HashMap<>();
+    for (int i = 0; i < size; i++) {
+      String path = ReadWriteIOUtils.readString(inputStream);
+      long time = ReadWriteIOUtils.readLong(inputStream);
+      endTimes.put(path, time);
+    }
+//    size = ReadWriteIOUtils.readInt(inputStream);
+//    Set<String> mergeChanaged = new HashSet<>();
+//    for (int i = 0; i < size; i++) {
+//      String path = ReadWriteIOUtils.readString(inputStream);
+//      mergeChanaged.add(path);
+//    }
+    TsFileResourceV2 tsFileResource = new TsFileResourceV2(file, startTimes, endTimes);
+//    tsFileResource.mergeChanged = mergeChanaged;
+    return tsFileResource;
+  }
+
 
 }

@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
  * the tsfile loses the tsfile metadata in the end, a corresponding. restore file exists. (2) no
  * .restore file, and then the class has to traverse all the data for fixing the file.
  */
+@Deprecated
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RestorableTsFileIOWriter.class);

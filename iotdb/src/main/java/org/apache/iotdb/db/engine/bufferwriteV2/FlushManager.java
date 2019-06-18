@@ -31,13 +31,13 @@ public class FlushManager {
     BufferWriteProcessorV2 bwp = bwpQueue.poll();
     bwp.flushOneMemTable();
     bwp.setManagedByFlushManager(false);
-    addBWP(bwp);
+    registerBWP(bwp);
   };
 
   /**
-   * Add BufferWriteProcessor to flush manager
+   * Add BufferWriteProcessor to asyncFlush manager
    */
-  private boolean addBWP(BufferWriteProcessorV2 bwp) {
+  public boolean registerBWP(BufferWriteProcessorV2 bwp) {
     synchronized (bwp) {
       if (!bwp.isManagedByFlushManager() && bwp.getFlushingMemTableSize() > 0) {
         bwpQueue.add(bwp);

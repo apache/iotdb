@@ -199,7 +199,7 @@ public class OverflowProcessor extends Processor {
         workResource.getModificationFile(), versionController, null, fileSchema,
         memTable);
     replayer.replayLogs();
-    flushTask("recover flush", memTable, 0, (a,b) -> {});
+    flushTask("recover asyncFlush", memTable, 0, (a,b) -> {});
     try {
       WriteLogNode node = MultiFileLogNodeManager.getInstance().getNode(
           workResource.logNodePrefix() + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
@@ -242,7 +242,7 @@ public class OverflowProcessor extends Processor {
         // write data
         workSupport.insert(tsRecord);
         valueCount++;
-        // check flush
+        // check asyncFlush
         memUage = memSize.addAndGet(memUage);
         if (memUage > memThreshold) {
           if (LOGGER.isWarnEnabled()) {
@@ -257,7 +257,7 @@ public class OverflowProcessor extends Processor {
         // write data
         workSupport.insert(tsRecord);
         valueCount++;
-        // flush
+        // asyncFlush
         memSize.addAndGet(memUage);
         flush();
         break;
@@ -387,7 +387,7 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-   * query insert data in memory table. while flushing, merge the work memory table with flush
+   * query insert data in memory table. while flushing, merge the work memory table with asyncFlush
    * memory table.
    *
    * @return insert data in SeriesChunkInMemTable
@@ -533,7 +533,7 @@ public class OverflowProcessor extends Processor {
     try {
       LOGGER.info("The overflow processor {} starts flushing {}.", getProcessorName(),
           displayMessage);
-      // flush data
+      // asyncFlush data
       workResource
           .flush(fileSchema, currentMemTableToFlush, getProcessorName(), flushId, removeFlushedMemTable);
       filenodeFlushAction.act();
@@ -551,16 +551,16 @@ public class OverflowProcessor extends Processor {
           Thread.currentThread().getName(), e);
       result = false;
     } finally {
-      // switch from flush to work.
+      // switch from asyncFlush to work.
       switchFlushToWork();
     }
-    // log flush time
+    // log asyncFlush time
     if (LOGGER.isInfoEnabled()) {
       LOGGER
           .info("The overflow processor {} ends flushing {}.", getProcessorName(), displayMessage);
       long flushEndTime = System.currentTimeMillis();
       LOGGER.info(
-          "The overflow processor {} flush {}, start time is {}, flush end time is {}," +
+          "The overflow processor {} asyncFlush {}, start time is {}, asyncFlush end time is {}," +
               " time consumption is {}ms",
           getProcessorName(), displayMessage,
           DatetimeUtils.convertMillsecondToZonedDateTime(flushStartTime),
@@ -572,7 +572,7 @@ public class OverflowProcessor extends Processor {
 
   @Override
   public synchronized Future<Boolean> flush() throws IOException {
-    // statistic information for flush
+    // statistic information for asyncFlush
     if (lastFlushTime > 0 && LOGGER.isInfoEnabled()) {
       long thisFLushTime = System.currentTimeMillis();
       ZonedDateTime lastDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(lastFlushTime),
@@ -580,8 +580,8 @@ public class OverflowProcessor extends Processor {
       ZonedDateTime thisDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisFLushTime),
           IoTDBDescriptor.getInstance().getConfig().getZoneID());
       LOGGER.info(
-          "The overflow processor {} last flush time is {}, this flush time is {},"
-              + " flush time interval is {}s",
+          "The overflow processor {} last asyncFlush time is {}, this asyncFlush time is {},"
+              + " asyncFlush time interval is {}s",
           getProcessorName(), lastDateTime, thisDateTime,
           (thisFLushTime - lastFlushTime) / 1000);
     }
@@ -620,7 +620,7 @@ public class OverflowProcessor extends Processor {
       flushFuture = FlushPoolManager.getInstance().submit(() -> flushTask("asynchronously",
           tmpMemTableToFlush, flushId, this::removeFlushedMemTable));
 
-      // switch from work to flush
+      // switch from work to asyncFlush
 //      switchWorkToFlush();
 //      flushFuture = FlushPoolManager.getInstance().submit(() ->
 //          flushTask("asynchronously", walTaskId));
@@ -639,7 +639,7 @@ public class OverflowProcessor extends Processor {
     }
     LOGGER.info("The overflow processor {} starts close operation.", getProcessorName());
     long closeStartTime = System.currentTimeMillis();
-    // flush data
+    // asyncFlush data
     try {
       flush().get();
     } catch (InterruptedException | ExecutionException e) {
@@ -758,16 +758,16 @@ public class OverflowProcessor extends Processor {
   /**
    * used for test. We can block to wait for finishing flushing.
    *
-   * @return the future of the flush() task.
+   * @return the future of the asyncFlush() task.
    */
   public Future<Boolean> getFlushFuture() {
     return flushFuture;
   }
 
   /**
-   * used for test. We can know when the flush() is called.
+   * used for test. We can know when the asyncFlush() is called.
    *
-   * @return the last flush() time.
+   * @return the last asyncFlush() time.
    */
   public long getLastFlushTime() {
     return lastFlushTime;
@@ -814,7 +814,7 @@ public class OverflowProcessor extends Processor {
 //        queryFlushLock.lock();
 //        try {
 //          if (flushTaskList.isEmpty()) {
-//            // flushTaskList is empty, thus all flush tasks have done and switch
+//            // flushTaskList is empty, thus all asyncFlush tasks have done and switch
 //            OverflowMemtable temp = flushSupport == null ? new OverflowMemtable() : flushSupport;
 //            flushSupport = workSupport;
 //            workSupport = temp;
@@ -825,7 +825,7 @@ public class OverflowProcessor extends Processor {
 //        } finally {
 //          queryFlushLock.unlock();
 //        }
-//        flush(flushInfo);
+//        asyncFlush(flushInfo);
 //      }
 //    }
 //  }

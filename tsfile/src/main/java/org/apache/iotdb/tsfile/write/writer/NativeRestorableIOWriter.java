@@ -21,9 +21,14 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -40,6 +45,14 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
 
   private long truncatedPosition = -1;
   private Map<String, MeasurementSchema> knownSchemas = new HashMap<>();
+
+  private int lastFlushedChunkGroupIndex = 0;
+
+  /**
+   * all chunk group metadata which have been serialized on disk.
+   */
+  private Map<String, Map<String, List<ChunkMetaData>>> metadatas;
+
 
   long getTruncatedPosition() {
     return truncatedPosition;
@@ -80,7 +93,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
           out.truncate(TSFileConfig.MAGIC_STRING.length());
         } else {
           //remove broken data
-          out.truncate(truncatedPosition);
+          out.truncate(truncatedPosition + 1);
         }
       }
     }
@@ -90,4 +103,75 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
   public Map<String, MeasurementSchema> getKnownSchema() {
     return knownSchemas;
   }
+
+
+  /**
+   * For query.
+   *
+   * get chunks' metadata from memory.
+   *
+   * @param deviceId the device id
+   * @param measurementId the sensor id
+   * @param dataType the value type
+   * @return chunks' metadata
+   */
+  public List<ChunkMetaData> getMetadatas(String deviceId, String measurementId, TSDataType dataType) {
+    List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
+    if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
+      for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
+        // filter: if a device'sensor is defined as float type, and data has been persistent.
+        // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
+        // all the stale data.
+        if (dataType.equals(chunkMetaData.getTsDataType())) {
+          chunkMetaDatas.add(chunkMetaData);
+        }
+      }
+    }
+    return chunkMetaDatas;
+  }
+
+
+  /**
+   * add all appendChunkGroupMetadatas into memory. After calling this method, other classes can
+   * read these metadata.
+   */
+  public void makeMetadataVisible() {
+
+    List<ChunkGroupMetaData> newlyFlushedMetadatas = getAppendedRowGroupMetadata();
+
+    if (!newlyFlushedMetadatas.isEmpty()) {
+      for (ChunkGroupMetaData rowGroupMetaData : newlyFlushedMetadatas) {
+        String deviceId = rowGroupMetaData.getDeviceID();
+        for (ChunkMetaData chunkMetaData : rowGroupMetaData.getChunkMetaDataList()) {
+          String measurementId = chunkMetaData.getMeasurementUid();
+          if (!metadatas.containsKey(deviceId)) {
+            metadatas.put(deviceId, new HashMap<>());
+          }
+          if (!metadatas.get(deviceId).containsKey(measurementId)) {
+            metadatas.get(deviceId).put(measurementId, new ArrayList<>());
+          }
+          metadatas.get(deviceId).get(measurementId).add(chunkMetaData);
+
+        }
+      }
+    }
+  }
+
+
+  /**
+   * get all the chunkGroups' metadata which are appended after the last calling of this method, or
+   * after the class instance is initialized if this is the first time to call the method.
+   *
+   * @return a list of chunkgroup metadata
+   */
+  private List<ChunkGroupMetaData> getAppendedRowGroupMetadata() {
+    List<ChunkGroupMetaData> append = new ArrayList<>();
+    if (lastFlushedChunkGroupIndex < chunkGroupMetaDataList.size()) {
+      append.addAll(chunkGroupMetaDataList.subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
+      lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
+    }
+    return append;
+  }
+
+
 }

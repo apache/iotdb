@@ -66,7 +66,6 @@ public class TsFileIOWriter {
   }
 
   protected TsFileOutput out;
-  private AtomicLong flushID = new AtomicLong(0);
   protected List<ChunkGroupMetaData> chunkGroupMetaDataList = new ArrayList<>();
   private ChunkGroupMetaData currentChunkGroupMetaData;
   private ChunkMetaData currentChunkMetaData;
@@ -134,7 +133,7 @@ public class TsFileIOWriter {
   }
 
   public AtomicLong getFlushID() {
-    return flushID;
+    return new AtomicLong();
   }
 
   /**
