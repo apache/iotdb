@@ -145,7 +145,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public int count() {
+  public long count() {
     return list.size();
   }
 

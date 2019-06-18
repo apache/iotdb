@@ -130,7 +130,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private Map<String, Long> flushLastUpdateTimeMap;
   private Map<String, List<TsFileResource>> invertedIndexOfFiles;
   private TsFileResource emptyTsFileResource;
-//  private TsFileResource currentTsFileResource;
+//  private TsFileResourceV2 currentTsFileResource;
   private List<TsFileResource> newFileNodes;
   private FileNodeProcessorStatus isMerging;
 
@@ -243,7 +243,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   private Action overflowFlushAction = () -> {
 
-    // update the new TsFileResource List and emptyIntervalFile.
+    // update the new TsFileResourceV2 List and emptyIntervalFile.
     // Notice: thread safe
     synchronized (fileNodeProcessorStore) {
       fileNodeProcessorStore.setOverflowed(isOverflowed);

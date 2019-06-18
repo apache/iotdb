@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -43,15 +44,17 @@ public interface IMemTable {
   void write(String deviceId, String measurement, TSDataType dataType,
       long insertTime, Object value);
 
-  int size();
+  /**
+   * @return the number of points
+   */
+  long size();
 
-  default void insert(TSRecord tsRecord) {
-    for (DataPoint dataPoint : tsRecord.dataPointList) {
-      write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
-          tsRecord.time,
-          dataPoint.getValue().toString());
-    }
-  }
+  /**
+   * @return memory usage
+   */
+  long memSize();
+
+  void insert(TSRecord tsRecord);
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       Map<String, String> props);
