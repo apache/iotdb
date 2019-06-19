@@ -35,7 +35,7 @@ import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -69,7 +69,7 @@ public class DeletionFileNodeTest {
   }
 
   @Before
-  public void setup() throws MetadataArgsErrorException,
+  public void setup() throws MetadataErrorException,
       PathErrorException, IOException, FileNodeManagerException, StartupException {
     EnvironmentUtils.envSetUp();
 

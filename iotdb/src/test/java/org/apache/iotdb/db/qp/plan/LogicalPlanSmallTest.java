@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.plan;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
@@ -53,7 +54,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
-  public void testSlimit1() throws QueryProcessorException, ArgsErrorException {
+  public void testSlimit1()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10";
     AstNode astTree;
     try {
@@ -70,7 +72,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test(expected = LogicalOperatorException.class)
-  public void testSlimit2() throws QueryProcessorException, ArgsErrorException {
+  public void testSlimit2()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1111111111111111111111";
     AstNode astTree;
     try {
@@ -86,7 +89,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test(expected = LogicalOperatorException.class)
-  public void testSlimit3() throws QueryProcessorException, ArgsErrorException {
+  public void testSlimit3()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 0";
     AstNode astTree;
     try {
@@ -102,7 +106,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
-  public void testSoffset() throws QueryProcessorException, ArgsErrorException {
+  public void testSoffset()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
     AstNode astTree;
     try {
@@ -120,7 +125,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test(expected = LogicalOptimizeException.class)
-  public void testSlimitLogicalOptimize() throws QueryProcessorException, ArgsErrorException {
+  public void testSlimitLogicalOptimize()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
     AstNode astTree;
     try {
@@ -157,7 +163,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test(expected = LogicalOperatorException.class)
-  public void testLimit1() throws QueryProcessorException, ArgsErrorException {
+  public void testLimit1()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 111111111111111111111111";
     AstNode astTree;
     try {
@@ -173,7 +180,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test(expected = LogicalOperatorException.class)
-  public void testLimit2() throws QueryProcessorException, ArgsErrorException {
+  public void testLimit2()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 0";
     AstNode astTree;
     try {

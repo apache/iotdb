@@ -22,6 +22,7 @@ import java.time.ZoneId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
@@ -61,13 +62,15 @@ public class QueryProcessor {
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-      throws QueryProcessorException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, ArgsErrorException, ProcessorException,
+      MetadataErrorException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, ArgsErrorException, ProcessorException,
+      MetadataErrorException {
     AstNode astNode = parseSQLToAST(sqlStr);
     Operator operator = parseASTToOperator(astNode, zoneId);
     operator = logicalOptimize(operator, executor);
@@ -86,7 +89,7 @@ public class QueryProcessor {
    * @throws ArgsErrorException
    */
   private RootOperator parseASTToOperator(AstNode astNode, ZoneId zoneId)
-      throws QueryProcessorException, ArgsErrorException {
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     LogicalGenerator generator = new LogicalGenerator(zoneId);
     return generator.getLogicalPlan(astNode);
   }

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
@@ -334,7 +335,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       for (String pathStr : pathMap.keySet()) {
         retPaths.add(new Path(pathStr));
       }
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException e) {
       throw new LogicalOptimizeException("error when remove star: ", e);
     }
     return retPaths;
@@ -353,7 +354,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             newAggregations.add(afterConcatAggregations.get(i));
           }
         }
-      } catch (PathErrorException e) {
+      } catch (MetadataErrorException e) {
         throw new LogicalOptimizeException("error when remove star: ", e);
       }
     }

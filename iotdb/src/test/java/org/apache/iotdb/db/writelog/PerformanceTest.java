@@ -20,11 +20,10 @@ package org.apache.iotdb.db.writelog;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -123,7 +122,7 @@ public class PerformanceTest {
   @Test
   public void recoverTest()
       throws IOException, RecoverException, FileNodeManagerException, PathErrorException,
-      MetadataArgsErrorException {
+      MetadataErrorException {
     // this test write 1000000 * 3 logs , recover from them and report elapsed time
     if (skip) {
       return;
@@ -136,7 +135,7 @@ public class PerformanceTest {
 
     try {
       MManager.getInstance().setStorageLevelToMTree("root.logTestDevice");
-    } catch (PathErrorException ignored) {
+    } catch (MetadataErrorException ignored) {
     }
     MManager.getInstance().addPathToMTree("root.logTestDevice.s1",
         TSDataType.DOUBLE.name(),
