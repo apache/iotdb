@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +79,7 @@ public class Directories {
     tsfileFolders.set(0, path);
   }
 
-  public String getNextFolderForTsfile() {
+  public String getNextFolderForTsfile() throws DiskSpaceInsufficientException {
     return getTsFileFolder(getNextFolderIndexForTsFile());
   }
 
@@ -87,7 +88,7 @@ public class Directories {
    *
    * @return next folder index
    */
-  public int getNextFolderIndexForTsFile() {
+  public int getNextFolderIndexForTsFile() throws DiskSpaceInsufficientException {
     return strategy.nextFolderIndex();
   }
 

@@ -179,7 +179,7 @@ public class SingleClientSyncTest {
     fileSenderImpl.setConfig(config);
   }
 
-  public void setUp() throws StartupException {
+  public void setUp() throws StartupException, IOException {
     if (testFlag) {
       EnvironmentUtils.closeStatMonitor();
       EnvironmentUtils.closeMemControl();

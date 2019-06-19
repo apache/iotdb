@@ -150,7 +150,9 @@ public class EnvironmentUtils {
     config.setEnableMemMonitor(false);
   }
 
-  public static void envSetUp() throws StartupException {
+  public static void envSetUp() throws StartupException, IOException {
+    // create all directory
+    createAllDir();
     // disable the memory control
     config.setEnableMemMonitor(false);
     // disable the system monitor
@@ -175,5 +177,33 @@ public class EnvironmentUtils {
     } catch (StartupException e) {
       LOGGER.error("", e);
     }
+  }
+
+  private static void createAllDir() throws IOException {
+    // create bufferwrite
+    for (String path : directories.getAllTsFileFolders()) {
+      createDir(path);
+    }
+    // create overflow
+    createDir(config.getOverflowDataDir());
+    // create filenode
+    createDir(config.getFileNodeDir());
+    // create metadata
+    createDir(config.getMetadataDir());
+    // create wal
+    createDir(config.getWalFolder());
+    // create derby
+    createDir(config.getDerbyHome());
+    // create index
+    createDir(config.getIndexFileDir());
+    // create data
+    createDir("data");
+    // delte derby log
+    // cleanDir("derby.log");
+  }
+
+  public static void createDir(String dir) throws IOException {
+    File file = new File(dir);
+    file.mkdirs();
   }
 }
