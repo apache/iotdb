@@ -38,6 +38,7 @@ import org.apache.iotdb.db.engine.AbstractUnsealedDataFileProcessorV2;
 import org.apache.iotdb.db.engine.bufferwriteV2.BufferWriteProcessorV2;
 import org.apache.iotdb.db.engine.filenode.CopyOnWriteLinkedList;
 import org.apache.iotdb.db.engine.filenode.FileNodeProcessorStatus;
+import org.apache.iotdb.db.engine.overflowV2.OverflowProcessorV2;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
@@ -73,8 +74,8 @@ public class FileNodeProcessorV2 {
 
   // for overflow
   private List<TsFileResourceV2> unsequenceFileList;
-  private BufferWriteProcessorV2 workOverflowProcessor = null;
-  private CopyOnWriteLinkedList<BufferWriteProcessorV2> closingOverflowProcessor = new CopyOnWriteLinkedList<>();
+  private OverflowProcessorV2 workOverflowProcessor = null;
+  private CopyOnWriteLinkedList<OverflowProcessorV2> closingOverflowProcessor = new CopyOnWriteLinkedList<>();
 
   /**
    * device -> global latest timestamp of each device
@@ -176,20 +177,21 @@ public class FileNodeProcessorV2 {
     }
   }
 
-  private void writeUnsealedDataFile(AbstractUnsealedDataFileProcessorV2 udfProcessor, TSRecord tsRecord, boolean sequence) {
+  private void writeUnsealedDataFile(AbstractUnsealedDataFileProcessorV2 udfProcessor, TSRecord tsRecord, boolean sequence)
+      throws IOException {
     boolean result;
     // create a new BufferWriteProcessor
     if (udfProcessor == null) {
       if (sequence) {
         String baseDir = directories.getNextFolderForTsfile();
         String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
-        workBufferWriteProcessor = new BufferWriteProcessorV2(storageGroup, new File(filePath),
+        udfProcessor = new BufferWriteProcessorV2(storageGroup, new File(filePath),
             fileSchema, versionController, this::closeBufferWriteProcessorCallBack);
         sequenceFileList.add(udfProcessor.getTsFileResource());
       } else {
         String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
         String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
-        workBufferWriteProcessor = new BufferWriteProcessorV2(storageGroup, new File(filePath),
+        udfProcessor = new OverflowProcessorV2(storageGroup, new File(filePath),
             fileSchema, versionController, this::closeBufferWriteProcessorCallBack);
         unsequenceFileList.add(udfProcessor.getTsFileResource());
       }
@@ -221,11 +223,9 @@ public class FileNodeProcessorV2 {
       latestFlushTimeMap.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
 
       if (tsRecord.time > latestFlushTimeMap.get(tsRecord.deviceId)) {
-
-
-
+        writeUnsealedDataFile(workBufferWriteProcessor, tsRecord, true);
       } else {
-        // TODO write to overflow
+        writeUnsealedDataFile(workOverflowProcessor, tsRecord, false);
       }
     } catch (Exception e) {
 
@@ -250,7 +250,7 @@ public class FileNodeProcessorV2 {
       if (sequence) {
         closingBufferWriteProcessor.add((BufferWriteProcessorV2) udfProcessor);
       } else {
-        closingOverflowProcessor.add((BufferWriteProcessorV2) udfProcessor);
+        closingOverflowProcessor.add((OverflowProcessorV2) udfProcessor);
       }
       udfProcessor.close();
       shouldClose = true;
