@@ -67,7 +67,7 @@ public class FileNodeProcessorV2 {
   private FileSchema fileSchema;
 
   // for bufferwrite
-  //includes sealed and unsealed tsfiles
+  // includes sealed and unsealed tsfiles
   private List<TsFileResourceV2> sequenceFileList;
   private UnsealedTsFileProcessorV2 workBufferWriteProcessor = null;
   private CopyOnWriteLinkedList<UnsealedTsFileProcessorV2> closingBufferWriteProcessor = new CopyOnWriteLinkedList<>();
@@ -75,7 +75,6 @@ public class FileNodeProcessorV2 {
   // for overflow
   private List<TsFileResourceV2> unSequenceFileList;
   private UnsealedTsFileProcessorV2 workOverflowProcessor = null;
-
   private CopyOnWriteLinkedList<UnsealedTsFileProcessorV2> closingOverflowProcessor = new CopyOnWriteLinkedList<>();
 
   /**
