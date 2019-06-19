@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.bufferwriteV2;
 
+import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 
@@ -29,7 +30,11 @@ public class FlushManager {
 
   private Runnable flushThread = () -> {
     BufferWriteProcessorV2 bwProcessor = bwProcessorQueue.poll();
-    bwProcessor.flushOneMemTable();
+    try {
+      bwProcessor.flushOneMemTable();
+    } catch (IOException e) {
+      // TODO do sth
+    }
     bwProcessor.setManagedByFlushManager(false);
     registerBWProcessor(bwProcessor);
   };

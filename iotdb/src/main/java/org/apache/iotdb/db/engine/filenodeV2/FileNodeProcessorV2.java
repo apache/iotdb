@@ -170,7 +170,6 @@ public class FileNodeProcessorV2 {
 
 
   public boolean insert(TSRecord tsRecord) {
-
     lock.writeLock().lock();
     boolean result = true;
 
@@ -181,7 +180,7 @@ public class FileNodeProcessorV2 {
         String baseDir = directories.getNextFolderForTsfile();
         String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
         workBufferWriteProcessor = new BufferWriteProcessorV2(storageGroup, new File(filePath),
-            fileSchema, versionController, this::closeBufferWriteProcessor);
+            fileSchema, versionController, this::closeBufferWriteProcessorCallBack);
         newFileNodes.add(workBufferWriteProcessor.getTsFileResource());
         // TODO check if the disk is full
       }
@@ -202,19 +201,7 @@ public class FileNodeProcessorV2 {
 
         // check memtable size and may asyncFlush the workMemtable
         if (workBufferWriteProcessor.shouldFlush()) {
-          workBufferWriteProcessor.asyncFlush();
-
-          // update the largest timestamp in the last flushing memtable
-          for (Entry<String, Long> entry : latestTimeMap.entrySet()) {
-            latestFlushTimeMap.put(entry.getKey(), entry.getValue());
-          }
-        }
-
-        // check file size and may close the BufferWrite
-        if (workBufferWriteProcessor.shouldClose()) {
-          closingBufferWriteProcessor.add(workBufferWriteProcessor);
-          workBufferWriteProcessor.setClosing();
-          workBufferWriteProcessor = null;
+          flushAndCheckClose();
         }
 
       } else {
@@ -229,11 +216,39 @@ public class FileNodeProcessorV2 {
     return result;
   }
 
+  /**
+   * ensure there must be a flush thread submitted after close() is called,
+   * therefore the close task will be executed by a flush thread.
+   * -- said by qiaojialin
+   *
+   * only called by insert(), thread-safety should be ensured by caller
+   */
+  private void flushAndCheckClose() {
+    boolean shouldClose = false;
+    // check file size and may close the BufferWrite
+    if (workBufferWriteProcessor.shouldClose()) {
+      closingBufferWriteProcessor.add(workBufferWriteProcessor);
+      workBufferWriteProcessor.close();
+      shouldClose = true;
+    }
+
+    workBufferWriteProcessor.asyncFlush();
+
+    if (shouldClose) {
+      workBufferWriteProcessor = null;
+    }
+
+    // update the largest timestamp in the last flushing memtable
+    for (Entry<String, Long> entry : latestTimeMap.entrySet()) {
+      latestFlushTimeMap.put(entry.getKey(), entry.getValue());
+    }
+  }
+
 
   /**
    * return the memtable to MemTablePool and make metadata in writer visible
    */
-  private void closeBufferWriteProcessor(Object bufferWriteProcessor) {
+  private void closeBufferWriteProcessorCallBack(Object bufferWriteProcessor) {
     closingBufferWriteProcessor.remove((BufferWriteProcessorV2) bufferWriteProcessor);
     synchronized (fileNodeProcessorStore) {
       fileNodeProcessorStore.setLastUpdateTimeMap(latestTimeMap);
@@ -257,5 +272,16 @@ public class FileNodeProcessorV2 {
     }
   }
 
-
+  public void forceClose() {
+    lock.writeLock().lock();
+    try {
+      if (workBufferWriteProcessor != null) {
+        closingBufferWriteProcessor.add(workBufferWriteProcessor);
+        workBufferWriteProcessor.forceClose();
+        workBufferWriteProcessor = null;
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
 }

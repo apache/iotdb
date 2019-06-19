@@ -38,6 +38,7 @@ public class TsFileResourceV2 {
   private Map<String, Long> startTimeMap;
 
   // device -> end time
+  // null if it's an unsealed tsfile
   private Map<String, Long> endTimeMap;
 
   private transient ModificationFile modFile;

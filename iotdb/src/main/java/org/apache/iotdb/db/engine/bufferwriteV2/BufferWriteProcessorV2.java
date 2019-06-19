@@ -52,12 +52,12 @@ public class BufferWriteProcessorV2 {
 
   private volatile boolean managedByFlushManager;
 
-  private ReadWriteLock lock = new ReentrantReadWriteLock();
+  private ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
 
   /**
    * true: to be closed
    */
-  private volatile boolean closing;
+  private volatile boolean shouldClose;
 
   private IMemTable workMemTable;
 
@@ -114,12 +114,12 @@ public class BufferWriteProcessorV2 {
    * @param memTable
    */
   private void removeFlushedMemTable(Object memTable) {
-    lock.writeLock().lock();
-    writer.makeMetadataVisible();
+    flushQueryLock.writeLock().lock();
     try {
+      writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
     } finally {
-      lock.writeLock().unlock();
+      flushQueryLock.writeLock().unlock();
     }
   }
 
@@ -137,23 +137,26 @@ public class BufferWriteProcessorV2 {
     workMemTable = null;
   }
 
-  public void flushOneMemTable() {
+  public void flushOneMemTable() throws IOException {
     IMemTable memTableToFlush = flushingMemTables.pollFirst();
-    MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName, this::removeFlushedMemTable);
-    flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
+    // null memtable only appears when calling forceClose()
+    if (memTableToFlush != null) {
+      MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName, this::removeFlushedMemTable);
+      flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
+    }
 
-    if (closing && flushingMemTables.isEmpty()) {
-
+    if (shouldClose && flushingMemTables.isEmpty()) {
+      endFile();
     }
   }
 
-  public void close() throws IOException {
+  private void endFile() throws IOException {
     long closeStartTime = System.currentTimeMillis();
     writer.endFile(fileSchema);
     //FIXME suppose the flushMetadata-thread-pool is 2.
-    // then if a flushMetadata task and a close task are running in the same time
-    // and the close task is faster, then writer == null, and the flushMetadata task will throw nullpointer
-    // exception. Add "synchronized" keyword on both flushMetadata and close may solve the issue.
+    // then if a flushMetadata task and a endFile task are running in the same time
+    // and the endFile task is faster, then writer == null, and the flushMetadata task will throw nullpointer
+    // exception. Add "synchronized" keyword on both flushMetadata and endFile may solve the issue.
     writer = null;
 
     // remove this processor from Closing list in FileNodeProcessor
@@ -174,14 +177,21 @@ public class BufferWriteProcessorV2 {
     }
   }
 
+  public void forceClose() {
+    flushingMemTables.add(workMemTable);
+    workMemTable = null;
+    shouldClose = true;
+    FlushManager.getInstance().registerBWProcessor(this);
+  }
+
   public boolean shouldClose() {
     long fileSize = tsFileResource.getFileSize();
     long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold();
     return fileSize > fileSizeThreshold;
   }
 
-  public void setClosing() {
-    closing = true;
+  public void close() {
+    shouldClose = true;
   }
 
   public boolean isManagedByFlushManager() {
