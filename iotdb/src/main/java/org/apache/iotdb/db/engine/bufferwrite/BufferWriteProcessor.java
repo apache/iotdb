@@ -33,7 +33,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
@@ -75,7 +78,7 @@ public class BufferWriteProcessor extends Processor {
   private FileSchema fileSchema;
   private volatile Future<Boolean> flushFuture = new ImmediateFuture<>(true);
   private volatile Future<Boolean> closeFuture = new BWCloseFuture(new ImmediateFuture<>(true));
-  private ReentrantLock flushQueryLock = new ReentrantLock();
+//  private ReentrantLock flushQueryLock = new ReentrantLock();
   private AtomicLong memSize = new AtomicLong();
   // do not use TsFileConfig.groupSizeInByte, it will ignore the config file
   private long memThreshold = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
@@ -104,6 +107,8 @@ public class BufferWriteProcessor extends Processor {
   private boolean isClosed = false;
 
   private TsFileResource currentTsFileResource;
+
+  private Lock flushQueryLock = new ReentrantLock();
 
   /**
    * constructor of BufferWriteProcessor.

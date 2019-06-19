@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.bufferwriteV2.BufferWriteProcessorV2;
 import org.apache.iotdb.db.engine.bufferwriteV2.FlushManager;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.memtable.Callback;
@@ -18,6 +17,7 @@ import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTaskV2;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.querycontext.UnsealedTsFileV2;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -30,9 +30,9 @@ import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class AbstractUnsealedDataFileProcessorV2 {
+public class UnsealedTsFileProcessorV2 {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessorV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(UnsealedTsFileProcessorV2.class);
 
   protected NativeRestorableIOWriter writer;
 
@@ -60,18 +60,19 @@ public abstract class AbstractUnsealedDataFileProcessorV2 {
   // synch this object in query() and asyncFlush()
   protected final LinkedList<IMemTable> flushingMemTables = new LinkedList<>();
 
-  public AbstractUnsealedDataFileProcessorV2(String storageGroupName, File file, FileSchema fileSchema, VersionController versionController, Callback closeBufferWriteProcessor) throws IOException {
+  public UnsealedTsFileProcessorV2(String storageGroupName, File file, FileSchema fileSchema,
+      VersionController versionController, Callback closeBufferWriteProcessor) throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
-    this.tsFileResource = new TsFileResourceV2(file);
+    this.tsFileResource = new UnsealedTsFileV2(file);
     this.versionController = versionController;
     this.writer = new NativeRestorableIOWriter(file);
     this.closeBufferWriteProcessor = closeBufferWriteProcessor;
   }
 
   /**
-   * write a TsRecord into the workMemtable.
-   * If the memory usage is beyond the memTableThreshold, put it into flushing list.
+   * write a TsRecord into the workMemtable. If the memory usage is beyond the memTableThreshold,
+   * put it into flushing list.
    *
    * @param tsRecord data to be written
    * @return succeed or fail
@@ -103,7 +104,6 @@ public abstract class AbstractUnsealedDataFileProcessorV2 {
 
   /**
    * return the memtable to MemTablePool and make metadata in writer visible
-   * @param memTable
    */
   private void removeFlushedMemTable(Object memTable) {
     flushQueryLock.writeLock().lock();
@@ -133,7 +133,8 @@ public abstract class AbstractUnsealedDataFileProcessorV2 {
     IMemTable memTableToFlush = flushingMemTables.pollFirst();
     // null memtable only appears when calling forceClose()
     if (memTableToFlush != null) {
-      MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName, this::removeFlushedMemTable);
+      MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
+          this::removeFlushedMemTable);
       flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
     }
 
@@ -178,7 +179,8 @@ public abstract class AbstractUnsealedDataFileProcessorV2 {
 
   public boolean shouldClose() {
     long fileSize = tsFileResource.getFileSize();
-    long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold();
+    long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
+        .getBufferwriteFileSizeThreshold();
     return fileSize > fileSizeThreshold;
   }
 
@@ -199,14 +201,35 @@ public abstract class AbstractUnsealedDataFileProcessorV2 {
   }
 
   /**
-   * get the chunk(s) in the memtable ( one from work memtable and the other ones in flushing status and then
-   * compact them into one TimeValuePairSorter). Then get its (or their) ChunkMetadata(s).
+   * get the chunk(s) in the memtable ( one from work memtable and the other ones in flushing status
+   * and then compact them into one TimeValuePairSorter). Then get its (or their) ChunkMetadata(s).
    *
    * @param deviceId device id
    * @param measurementId sensor id
    * @param dataType data type
    * @return corresponding chunk data and chunk metadata in memory
    */
-  public abstract Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryUnsealedFile(String deviceId,
-      String measurementId, TSDataType dataType, Map<String, String> props);
+  public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryUnsealedFile(String deviceId,
+      String measurementId, TSDataType dataType, Map<String, String> props) {
+    flushQueryLock.readLock().lock();
+    try {
+      MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
+      for (IMemTable flushingMemTable : flushingMemTables) {
+        memSeriesLazyMerger
+            .addMemSeries(flushingMemTable.query(deviceId, measurementId, dataType, props));
+      }
+      if (workMemTable != null) {
+        memSeriesLazyMerger
+            .addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
+      }
+      // memSeriesLazyMerger has handled the props,
+      // so we do not need to handle it again in the following readOnlyMemChunk
+      ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(dataType, memSeriesLazyMerger,
+          Collections.emptyMap());
+      return new Pair<>(timeValuePairSorter,
+          writer.getMetadatas(deviceId, measurementId, dataType));
+    } finally {
+      flushQueryLock.readLock().unlock();
+    }
+  }
 }

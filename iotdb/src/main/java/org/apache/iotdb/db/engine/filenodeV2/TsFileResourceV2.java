@@ -26,11 +26,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.engine.UnsealedTsFileProcessorV2;
 import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.querycontext.SealedTsFileV2;
+import org.apache.iotdb.db.engine.querycontext.UnsealedTsFileV2;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class TsFileResourceV2 {
+public abstract class TsFileResourceV2 {
 
   private File file;
 
@@ -40,6 +43,8 @@ public class TsFileResourceV2 {
   // device -> end time
   // null if it's an unsealed tsfile
   private Map<String, Long> endTimeMap;
+
+  private UnsealedTsFileProcessorV2 unsealedFileProcessor;
 
   private transient ModificationFile modFile;
 
@@ -129,10 +134,26 @@ public class TsFileResourceV2 {
 //      String path = ReadWriteIOUtils.readString(inputStream);
 //      mergeChanaged.add(path);
 //    }
-    TsFileResourceV2 tsFileResource = new TsFileResourceV2(file, startTimes, endTimes);
 //    tsFileResource.mergeChanged = mergeChanaged;
-    return tsFileResource;
+
+    return endTimes.isEmpty() ? new UnsealedTsFileV2(file, startTimes, endTimes)
+        : new SealedTsFileV2(file, startTimes, endTimes);
+  }
+
+  public abstract TSFILE_TYPE getTsFileType();
+
+  public enum TSFILE_TYPE {
+    UNSEALED, SEALED
   }
 
 
+  public boolean isClosed() {
+
+    return !endTimeMap.isEmpty();
+
+  }
+
+  public UnsealedTsFileProcessorV2 getUnsealedFileProcessor() {
+    return unsealedFileProcessor;
+  }
 }
