@@ -23,26 +23,26 @@ import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 
 public class FlushManager {
 
-  private ConcurrentLinkedQueue<BufferWriteProcessorV2> bwpQueue = new ConcurrentLinkedQueue<>();
+  private ConcurrentLinkedQueue<BufferWriteProcessorV2> bwProcessorQueue = new ConcurrentLinkedQueue<>();
 
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 
-  private Runnable flushAction = () -> {
-    BufferWriteProcessorV2 bwp = bwpQueue.poll();
-    bwp.flushOneMemTable();
-    bwp.setManagedByFlushManager(false);
-    registerBWP(bwp);
+  private Runnable flushThread = () -> {
+    BufferWriteProcessorV2 bwProcessor = bwProcessorQueue.poll();
+    bwProcessor.flushOneMemTable();
+    bwProcessor.setManagedByFlushManager(false);
+    registerBWProcessor(bwProcessor);
   };
 
   /**
    * Add BufferWriteProcessor to asyncFlush manager
    */
-  public boolean registerBWP(BufferWriteProcessorV2 bwp) {
-    synchronized (bwp) {
-      if (!bwp.isManagedByFlushManager() && bwp.getFlushingMemTableSize() > 0) {
-        bwpQueue.add(bwp);
-        bwp.setManagedByFlushManager(true);
-        flushPool.submit(flushAction);
+  public boolean registerBWProcessor(BufferWriteProcessorV2 bwProcessor) {
+    synchronized (bwProcessor) {
+      if (!bwProcessor.isManagedByFlushManager() && bwProcessor.getFlushingMemTableSize() > 0) {
+        bwProcessorQueue.add(bwProcessor);
+        bwProcessor.setManagedByFlushManager(true);
+        flushPool.submit(flushThread);
         return true;
       }
       return false;

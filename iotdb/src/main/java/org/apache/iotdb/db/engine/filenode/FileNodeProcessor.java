@@ -1058,6 +1058,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   public void merge() throws FileNodeProcessorException {
     // close bufferwrite and overflow, prepare for merge
     LOGGER.info("The filenode processor {} begins to merge.", getProcessorName());
+    writeLock();
     prepareForMerge();
     // change status from overflowed to no overflowed
     isOverflowed = false;
@@ -2077,7 +2078,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       try {
         ZoneId zoneId = IoTDBDescriptor.getInstance().getConfig().getZoneID();
         long mergeStartTime = System.currentTimeMillis();
-        writeLock();
         merge();
         long mergeEndTime = System.currentTimeMillis();
         long intervalTime = mergeEndTime - mergeStartTime;

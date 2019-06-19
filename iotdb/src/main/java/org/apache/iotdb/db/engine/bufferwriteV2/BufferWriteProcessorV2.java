@@ -133,7 +133,7 @@ public class BufferWriteProcessorV2 {
    */
   public void asyncFlush() {
     flushingMemTables.addLast(workMemTable);
-    FlushManager.getInstance().registerBWP(this);
+    FlushManager.getInstance().registerBWProcessor(this);
     workMemTable = null;
   }
 

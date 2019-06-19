@@ -23,22 +23,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
-import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResourceV2 {
 
   private File file;
+
+  // device -> start time
   private Map<String, Long> startTimeMap;
 
+  // device -> end time
   private Map<String, Long> endTimeMap;
 
   private transient ModificationFile modFile;
