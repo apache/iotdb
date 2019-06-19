@@ -26,9 +26,14 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 
 public class UnsealedTsFileV2 extends TsFileResourceV2 {
 
+  /**
+   * Chunk metadata list of unsealed tsfile
+   */
   private List<ChunkMetaData> timeSeriesChunkMetaDatas;
 
-  // seq mem-table
+  /**
+   * Mem chunk data
+   */
   private ReadOnlyMemChunk readableChunk;
 
   public UnsealedTsFileV2(File file) {
@@ -56,7 +61,7 @@ public class UnsealedTsFileV2 extends TsFileResourceV2 {
     return timeSeriesChunkMetaDatas;
   }
 
-  public void setTimeSeriesChunkMetaDatas(List<ChunkMetaData> timeSeriesChunkMetaDatas) {
-    this.timeSeriesChunkMetaDatas = timeSeriesChunkMetaDatas;
+  public ReadOnlyMemChunk getReadableChunk() {
+    return readableChunk;
   }
 }

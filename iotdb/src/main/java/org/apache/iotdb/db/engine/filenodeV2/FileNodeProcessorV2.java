@@ -185,7 +185,7 @@ public class FileNodeProcessorV2 {
       File restoreFile = new File(fileNodeRestoreFilePath);
       if (!restoreFile.exists() || restoreFile.length() == 0) {
         return new FileNodeProcessorStoreV2(false, new HashMap<>(),
-            new ArrayList<>(), FileNodeProcessorStatus.NONE, 0);
+            new ArrayList<>(), new ArrayList<>(), FileNodeProcessorStatus.NONE, 0);
       }
       try (FileInputStream inputStream = new FileInputStream(fileNodeRestoreFilePath)) {
         return FileNodeProcessorStoreV2.deSerialize(inputStream);
@@ -247,14 +247,14 @@ public class FileNodeProcessorV2 {
         String baseDir = directories.getNextFolderForTsfile();
         String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
         unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
-            fileSchema, versionController, this::closeBufferWriteProcessorCallBack);
+            fileSchema, versionController, this::closeUnsealedTsFileProcessorCallBack);
         sequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
       } else {
         // TODO check if the disk is full
         String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
         String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
         unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
-            fileSchema, versionController, this::closeBufferWriteProcessorCallBack);
+            fileSchema, versionController, this::closeUnsealedTsFileProcessorCallBack);
         unSequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
       }
     }
@@ -278,21 +278,24 @@ public class FileNodeProcessorV2 {
 
   public QueryDataSourceV2 query(String deviceId, String measurementId) {
 
-    List<TsFileResourceV2> sequnceResources = getFileReSourceListForQuery(sequenceFileList, deviceId, measurementId);
-    List<TsFileResourceV2> unsequnceResources = getFileReSourceListForQuery(unSequenceFileList, deviceId, measurementId);
+    List<TsFileResourceV2> sequnceResources = getFileReSourceListForQuery(sequenceFileList,
+        deviceId, measurementId);
+    List<TsFileResourceV2> unsequnceResources = getFileReSourceListForQuery(unSequenceFileList,
+        deviceId, measurementId);
 
-    return new QueryDataSourceV2(new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId), sequnceResources),
+    return new QueryDataSourceV2(
+        new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId), sequnceResources),
         new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId), unsequnceResources));
 
   }
 
 
   /**
-   *
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
-  private List<TsFileResourceV2> getFileReSourceListForQuery(List<TsFileResourceV2> tsFileResources, String deviceId, String measurementId) {
+  private List<TsFileResourceV2> getFileReSourceListForQuery(List<TsFileResourceV2> tsFileResources,
+      String deviceId, String measurementId) {
 
     MeasurementSchema mSchema = fileSchema.getMeasurementSchema(measurementId);
     TSDataType dataType = mSchema.getType();
@@ -315,7 +318,6 @@ public class FileNodeProcessorV2 {
     }
     return tsfileResourcesForQuery;
   }
-
 
 
   /**
@@ -358,7 +360,7 @@ public class FileNodeProcessorV2 {
   /**
    * return the memtable to MemTablePool and make metadata in writer visible
    */
-  private void closeBufferWriteProcessorCallBack(Object bufferWriteProcessor) {
+  private void closeUnsealedTsFileProcessorCallBack(Object bufferWriteProcessor) {
     closingBufferWriteProcessor.remove((UnsealedTsFileProcessorV2) bufferWriteProcessor);
     synchronized (fileNodeProcessorStore) {
       fileNodeProcessorStore.setLatestTimeMap(latestTimeMap);

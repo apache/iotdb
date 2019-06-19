@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.engine;
 
 import java.io.File;
@@ -38,36 +56,39 @@ public class UnsealedTsFileProcessorV2 {
 
   protected FileSchema fileSchema;
 
-  protected final String storageGroupName;
+  private final String storageGroupName;
 
   protected TsFileResourceV2 tsFileResource;
 
-  protected volatile boolean managedByFlushManager;
+  private volatile boolean managedByFlushManager;
 
-  protected ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
+  private ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
 
   /**
-   * true: to be closed
+   * true: should be closed
    */
-  protected volatile boolean shouldClose;
+  private volatile boolean shouldClose;
 
-  protected IMemTable workMemTable;
+  private IMemTable workMemTable;
 
   protected VersionController versionController;
 
-  protected Callback closeBufferWriteProcessor;
+  private Callback closeUnsealedTsFileProcessor;
 
-  // synch this object in query() and asyncFlush()
-  protected final LinkedList<IMemTable> flushingMemTables = new LinkedList<>();
+  /**
+   * sync this object in query() and asyncFlush()
+   */
+  private final LinkedList<IMemTable> flushingMemTables = new LinkedList<>();
 
   public UnsealedTsFileProcessorV2(String storageGroupName, File file, FileSchema fileSchema,
-      VersionController versionController, Callback closeBufferWriteProcessor) throws IOException {
+      VersionController versionController, Callback closeUnsealedTsFileProcessor)
+      throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
     this.tsFileResource = new UnsealedTsFileV2(file);
     this.versionController = versionController;
     this.writer = new NativeRestorableIOWriter(file);
-    this.closeBufferWriteProcessor = closeBufferWriteProcessor;
+    this.closeUnsealedTsFileProcessor = closeUnsealedTsFileProcessor;
   }
 
   /**
@@ -90,8 +111,6 @@ public class UnsealedTsFileProcessorV2 {
     }
 
     // TODO write WAL
-
-
 
     // update start time of this memtable
     tsFileResource.updateStartTime(tsRecord.deviceId, tsRecord.time);
@@ -158,7 +177,7 @@ public class UnsealedTsFileProcessorV2 {
     writer = null;
 
     // remove this processor from Closing list in FileNodeProcessor
-    closeBufferWriteProcessor.call(this);
+    closeUnsealedTsFileProcessor.call(this);
 
     // delete the restore for this bufferwrite processor
     if (LOGGER.isInfoEnabled()) {

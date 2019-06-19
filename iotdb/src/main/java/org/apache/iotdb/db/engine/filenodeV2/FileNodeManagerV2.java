@@ -43,8 +43,8 @@ public class FileNodeManagerV2 implements IService {
   private static final Directories directories = Directories.getInstance();
 
   /**
-   * a folder (system/info/ by default) that persist FileNodeProcessorStore classes. Ends with File.separator
-   * Each FileNodeManager will have a subfolder.
+   * a folder (system/info/ by default) that persist FileNodeProcessorStore classes. Ends with
+   * File.separator Each FileNodeManager will have a subfolder.
    */
   private final String baseDir;
 
@@ -142,7 +142,8 @@ public class FileNodeManagerV2 implements IService {
     try {
       fileNodeProcessor = getProcessor(tsRecord.deviceId);
     } catch (Exception e) {
-      LOGGER.warn("get FileNodeProcessor of device {} failed, because {}", tsRecord.deviceId, e.getMessage(), e);
+      LOGGER.warn("get FileNodeProcessor of device {} failed, because {}", tsRecord.deviceId,
+          e.getMessage(), e);
       return false;
     }
 

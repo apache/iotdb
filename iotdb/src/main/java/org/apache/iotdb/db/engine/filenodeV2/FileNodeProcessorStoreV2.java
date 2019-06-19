@@ -36,8 +36,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  * lastUpdateTime is changed and stored by BufferWrite flushMetadata or BufferWrite close.
  * emptyTsFileResource and sequenceFileList are changed and stored by Overflow flushMetadata and
  * Overflow close. fileNodeProcessorState is changed and stored by the change of FileNodeProcessor's
- * status such as "work->merge merge->wait wait->work". numOfMergeFile is changed
- * and stored when FileNodeProcessor's status changes from work to merge.
+ * status such as "work->merge merge->wait wait->work". numOfMergeFile is changed and stored when
+ * FileNodeProcessor's status changes from work to merge.
  */
 public class FileNodeProcessorStoreV2 implements Serializable {
 
@@ -55,16 +55,19 @@ public class FileNodeProcessorStoreV2 implements Serializable {
    *
    * @param isOverflowed whether this FileNode contains unmerged Overflow operations.
    * @param latestTimeMap the timestamp of last data point of each device in this FileNode.
-   * @param sequenceFileList TsFiles in the FileNode.
+   * @param sequenceFileList sequnce tsfiles in the FileNode.
+   * @param unSequenceFileList unsequnce tsfiles in the FileNode
    * @param fileNodeProcessorStatus the status of the FileNode.
    * @param numOfMergeFile the number of files already merged in one merge operation.
    */
   public FileNodeProcessorStoreV2(boolean isOverflowed, Map<String, Long> latestTimeMap,
-      List<TsFileResourceV2> sequenceFileList, FileNodeProcessorStatus fileNodeProcessorStatus,
+      List<TsFileResourceV2> sequenceFileList, List<TsFileResourceV2> unSequenceFileList,
+      FileNodeProcessorStatus fileNodeProcessorStatus,
       int numOfMergeFile) {
     this.isOverflowed = isOverflowed;
     this.latestTimeMap = latestTimeMap;
     this.sequenceFileList = sequenceFileList;
+    this.unSequenceFileList = unSequenceFileList;
     this.fileNodeProcessorStatus = fileNodeProcessorStatus;
     this.numOfMergeFile = numOfMergeFile;
   }
@@ -80,6 +83,10 @@ public class FileNodeProcessorStoreV2 implements Serializable {
     }
     ReadWriteIOUtils.write(this.sequenceFileList.size(), byteArrayOutputStream);
     for (TsFileResourceV2 tsFileResource : this.sequenceFileList) {
+      tsFileResource.serialize(byteArrayOutputStream);
+    }
+    ReadWriteIOUtils.write(this.unSequenceFileList.size(), byteArrayOutputStream);
+    for (TsFileResourceV2 tsFileResource : this.unSequenceFileList) {
       tsFileResource.serialize(byteArrayOutputStream);
     }
     ReadWriteIOUtils.write(this.numOfMergeFile, byteArrayOutputStream);
@@ -98,16 +105,21 @@ public class FileNodeProcessorStoreV2 implements Serializable {
       lastUpdateTimeMap.put(path, time);
     }
     size = ReadWriteIOUtils.readInt(inputStream);
-    List<TsFileResourceV2> newFileNodes = new ArrayList<>();
+    List<TsFileResourceV2> sequenceFileList = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      newFileNodes.add(TsFileResourceV2.deSerialize(inputStream));
+      sequenceFileList.add(TsFileResourceV2.deSerialize(inputStream));
+    }
+    size = ReadWriteIOUtils.readInt(inputStream);
+    List<TsFileResourceV2> unsequenceFileList = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      unsequenceFileList.add(TsFileResourceV2.deSerialize(inputStream));
     }
     int numOfMergeFile = ReadWriteIOUtils.readInt(inputStream);
     FileNodeProcessorStatus fileNodeProcessorStatus = FileNodeProcessorStatus
         .deserialize(ReadWriteIOUtils.readShort(inputStream));
 
     return new FileNodeProcessorStoreV2(isOverflowed, lastUpdateTimeMap,
-        newFileNodes, fileNodeProcessorStatus, numOfMergeFile);
+        sequenceFileList, unsequenceFileList, fileNodeProcessorStatus, numOfMergeFile);
   }
 
   public boolean isOverflowed() {
@@ -152,5 +164,10 @@ public class FileNodeProcessorStoreV2 implements Serializable {
 
   public void setNumOfMergeFile(int numOfMergeFile) {
     this.numOfMergeFile = numOfMergeFile;
+  }
+
+  public void setUnSequenceFileList(
+      List<TsFileResourceV2> unSequenceFileList) {
+    this.unSequenceFileList = unSequenceFileList;
   }
 }

@@ -25,12 +25,12 @@ import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 
 public class FlushManager {
 
-  private ConcurrentLinkedQueue<UnsealedTsFileProcessorV2> udfProcessorQueue = new ConcurrentLinkedQueue<>();
+  private ConcurrentLinkedQueue<UnsealedTsFileProcessorV2> unsealedTsFileProcessorQueue = new ConcurrentLinkedQueue<>();
 
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 
   private Runnable flushThread = () -> {
-    UnsealedTsFileProcessorV2 udfProcessor = udfProcessorQueue.poll();
+    UnsealedTsFileProcessorV2 udfProcessor = unsealedTsFileProcessorQueue.poll();
     try {
       udfProcessor.flushOneMemTable();
     } catch (IOException e) {
@@ -43,11 +43,11 @@ public class FlushManager {
   /**
    * Add BufferWriteProcessor to asyncFlush manager
    */
-  public boolean registerBWProcessor(UnsealedTsFileProcessorV2 udfProcessor) {
-    synchronized (udfProcessor) {
-      if (!udfProcessor.isManagedByFlushManager() && udfProcessor.getFlushingMemTableSize() > 0) {
-        udfProcessorQueue.add(udfProcessor);
-        udfProcessor.setManagedByFlushManager(true);
+  public boolean registerBWProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
+    synchronized (unsealedTsFileProcessor) {
+      if (!unsealedTsFileProcessor.isManagedByFlushManager() && unsealedTsFileProcessor.getFlushingMemTableSize() > 0) {
+        unsealedTsFileProcessorQueue.add(unsealedTsFileProcessor);
+        unsealedTsFileProcessor.setManagedByFlushManager(true);
         flushPool.submit(flushThread);
         return true;
       }
