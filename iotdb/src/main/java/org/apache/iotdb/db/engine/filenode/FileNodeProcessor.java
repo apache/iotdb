@@ -67,6 +67,7 @@ import org.apache.iotdb.db.engine.querycontext.UnsealedTsFile;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.ErrorDebugException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
@@ -444,7 +445,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   /**
    * execute filenode recovery.
    */
-  public void fileNodeRecovery() throws FileNodeProcessorException {
+  public void fileNodeRecovery() throws FileNodeProcessorException, DiskSpaceInsufficientException {
     // restore bufferwrite
     if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
       //
@@ -520,7 +521,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * get buffer write processor by processor name and insert time.
    */
   public BufferWriteProcessor getBufferWriteProcessor(String processorName, long insertTime)
-      throws FileNodeProcessorException {
+      throws FileNodeProcessorException, DiskSpaceInsufficientException {
     if (bufferWriteProcessor == null) {
       Map<String, Action> params = new HashMap<>();
       params.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
@@ -1043,7 +1044,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   /**
    * Merge this storage group, merge the tsfile data with overflow data.
    */
-  public void merge() throws FileNodeProcessorException {
+  public void merge() throws FileNodeProcessorException, DiskSpaceInsufficientException {
     // close bufferwrite and overflow, prepare for merge
     LOGGER.info("The filenode processor {} begins to merge.", getProcessorName());
     prepareForMerge();
@@ -1467,7 +1468,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   private String queryAndWriteDataForMerge(TsFileResource backupIntervalFile)
-      throws IOException, FileNodeProcessorException, PathErrorException {
+      throws IOException, FileNodeProcessorException, PathErrorException, DiskSpaceInsufficientException {
     Map<String, Long> startTimeMap = new HashMap<>();
     Map<String, Long> endTimeMap = new HashMap<>();
 
@@ -1557,7 +1558,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       SingleSeriesExpression seriesFilter, TSDataType dataType,
       Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
       OverflowSeriesDataSource overflowSeriesDataSource)
-      throws IOException {
+      throws IOException, DiskSpaceInsufficientException {
     int numOfChunk = 0;
     try {
       if (!seriesReader.hasNext()) {
@@ -2055,7 +2056,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
             getProcessorName(), ofInstant(Instant.ofEpochMilli(mergeStartTime),
                 zoneId), ofInstant(Instant.ofEpochMilli(mergeEndTime),
                 zoneId), intervalTime);
-      } catch (FileNodeProcessorException e) {
+      } catch (FileNodeProcessorException | DiskSpaceInsufficientException e) {
         LOGGER.error("The filenode processor {} encountered an error when merging.",
             getProcessorName(), e);
         throw new ErrorDebugException(e);
