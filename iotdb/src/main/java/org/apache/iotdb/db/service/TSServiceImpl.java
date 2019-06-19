@@ -42,6 +42,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
@@ -345,7 +346,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case "ALL_COLUMNS":
         try {
           resp.setColumnsList(getPaths(req.getColumnPath()));
-        } catch (PathErrorException | InterruptedException | ProcessorException e) {
+        } catch (InterruptedException | ProcessorException | MetadataErrorException e) {
           status = getErrorStatus(String
               .format("Failed to fetch %s's all columns because: %s", req.getColumnPath(), e));
           resp.setStatus(status);
@@ -394,7 +395,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   protected List<String> getPaths(String path)
-      throws PathErrorException, InterruptedException, ProcessorException {
+      throws MetadataErrorException, InterruptedException, ProcessorException {
     return MManager.getInstance().getPaths(path);
   }
 
@@ -831,7 +832,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       physicalPlan.setProposer(username.get());
-    } catch (QueryProcessorException | ArgsErrorException e) {
+    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
       LOGGER.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }

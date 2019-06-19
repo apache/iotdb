@@ -45,6 +45,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -243,7 +244,7 @@ public class FileNodeManager implements IStatistic, IService {
     List<String> filenodeNames = null;
     try {
       filenodeNames = MManager.getInstance().getAllFileNames();
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException e) {
       LOGGER.error("Restoring all FileNodes failed.", e);
       return;
     }
@@ -780,7 +781,7 @@ public class FileNodeManager implements IStatistic, IService {
     List<String> allFileNodeNames;
     try {
       allFileNodeNames = MManager.getInstance().getAllFileNames();
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException e) {
       LOGGER.error("Get all storage group seriesPath error,", e);
       throw new FileNodeManagerException(e);
     }
@@ -884,6 +885,7 @@ public class FileNodeManager implements IStatistic, IService {
       FileUtils.deleteDirectory(new File(fileNodePath));
 
       cleanBufferWrite(processorName);
+      cleanOverflow(processorName);
 
       MultiFileLogNodeManager.getInstance()
           .deleteNode(processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX);
@@ -897,6 +899,24 @@ public class FileNodeManager implements IStatistic, IService {
     }
   }
 
+  private void cleanOverflow(String processorName) throws IOException {
+    String overflowDirPath = TsFileDBConf.getOverflowDataDir();
+    String overflowPath = standardizeDir(overflowDirPath) + processorName;
+    File overflowDir = new File(overflowPath);
+    // free and close the streams under this overflow directory
+    if (!overflowDir.exists()) {
+      return;
+    }
+    File[] overflowSubDirs = overflowDir.listFiles();
+    if (overflowSubDirs == null) {
+      return;
+    }
+    for (File overflowSubDir : overflowSubDirs) {
+      closeAndRemoveReader(overflowSubDir);
+    }
+    FileUtils.deleteDirectory(overflowDir);
+  }
+
   private void cleanBufferWrite(String processorName) throws IOException {
     List<String> bufferwritePathList = directories.getAllTsFileFolders();
     for (String bufferwritePath : bufferwritePathList) {
@@ -906,13 +926,17 @@ public class FileNodeManager implements IStatistic, IService {
       if (!bufferDir.exists()) {
         continue;
       }
-      File[] bufferFiles = bufferDir.listFiles();
-      if (bufferFiles != null) {
-        for (File bufferFile : bufferFiles) {
-          FileReaderManager.getInstance().closeFileAndRemoveReader(bufferFile.getPath());
-        }
-      }
+      closeAndRemoveReader(bufferDir);
       FileUtils.deleteDirectory(new File(bufferwritePath));
+    }
+  }
+
+  private void closeAndRemoveReader(File folder) throws IOException {
+    File[] files = folder.listFiles();
+    if (files != null) {
+      for (File file : files) {
+        FileReaderManager.getInstance().closeFileAndRemoveReader(file.getPath());
+      }
     }
   }
 

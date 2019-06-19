@@ -24,7 +24,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,11 +37,11 @@ import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
-import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -58,7 +57,6 @@ import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AuthDataSet;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.LoadDataUtils;
@@ -75,7 +73,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -311,7 +308,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public List<String> getAllPaths(String originPath) throws PathErrorException {
+  public List<String> getAllPaths(String originPath) throws MetadataErrorException {
     return MManager.getInstance().getPaths(originPath);
   }
 
@@ -421,126 +418,21 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     try {
       switch (namespaceType) {
         case ADD_PATH:
-          if (mManager.pathExist(path.getFullPath())) {
-            throw new ProcessorException(
-                String.format("Timeseries %s already exist", path.getFullPath()));
-          }
-          if (!mManager.checkFileNameByPath(path.getFullPath())) {
-            throw new ProcessorException("Storage group should be created first");
-          }
-          // optimize the speed of adding timeseries
-          String fileNodePath = mManager.getFileNameByPath(path.getFullPath());
-          // the two map is stored in the storage group node
-          Map<String, MeasurementSchema> schemaMap = mManager
-              .getSchemaMapForOneFileNode(fileNodePath);
-          Map<String, Integer> numSchemaMap = mManager.getNumSchemaMapForOneFileNode(fileNodePath);
-          String lastNode = path.getMeasurement();
-          boolean isNewMeasurement = true;
-          // Thread safety: just one thread can access/modify the schemaMap
-          synchronized (schemaMap) {
-            if (schemaMap.containsKey(lastNode)) {
-              isNewMeasurement = false;
-              MeasurementSchema columnSchema = schemaMap.get(lastNode);
-              if (!columnSchema.getType().equals(dataType)
-                  || !columnSchema.getEncodingType().equals(encoding)) {
-                throw new ProcessorException(String.format(
-                    "The resultDataType or encoding of the last node %s is conflicting "
-                        + "in the storage group %s", lastNode, fileNodePath));
-              }
-              mManager.addPathToMTree(path.getFullPath(), dataType, encoding, compressor, props);
-              numSchemaMap.put(lastNode, numSchemaMap.get(lastNode) + 1);
-            } else {
-              mManager.addPathToMTree(path.getFullPath(), dataType, encoding, compressor, props);
-              MeasurementSchema columnSchema = mManager.getSchemaForOnePath(path.toString());
-              schemaMap.put(lastNode, columnSchema);
-              numSchemaMap.put(lastNode, 1);
-            }
-            try {
-              if (isNewMeasurement) {
-                // add time series to schema
-                fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, props);
-                //TODO fileNodeManager.addTimeSeries(
-                //TODO path, resultDataType, encoding, compressor, encodingArgs);
-              }
-              // fileNodeManager.closeOneFileNode(namespacePath);
-            } catch (FileNodeManagerException e) {
-              throw new ProcessorException(e);
-            }
+          boolean isNewMeasurement = mManager.addPathToMTree(path, dataType, encoding, compressor
+              , props);
+          if (isNewMeasurement) {
+            fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, props);
           }
           break;
         case DELETE_PATH:
-          if (deletePathList != null && !deletePathList.isEmpty()) {
-            Set<String> pathSet = new HashSet<>();
-            // Attention: Monitor storage group seriesPath is not allowed to be deleted
-            for (Path p : deletePathList) {
-              List<String> subPaths = mManager.getPaths(p.getFullPath());
-              if (subPaths.isEmpty()) {
-                throw new ProcessorException(String
-                    .format("There are no timeseries in the prefix of %s seriesPath",
-                        p.getFullPath()));
-              }
-              List<String> newSubPaths = new ArrayList<>();
-              for (String eachSubPath : subPaths) {
-                String filenodeName = mManager.getFileNameByPath(eachSubPath);
-
-                if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(filenodeName)) {
-                  continue;
-                }
-                newSubPaths.add(eachSubPath);
-              }
-              pathSet.addAll(newSubPaths);
-            }
-            for (String p : pathSet) {
-              if (!mManager.pathExist(p)) {
-                throw new ProcessorException(String.format(
-                    "Timeseries %s does not exist and cannot be delete its metadata and data", p));
-              }
-            }
-            List<String> fullPath = new ArrayList<>(pathSet);
-            try {
-              deleteDataOfTimeSeries(fullPath);
-            } catch (ProcessorException e) {
-              throw new ProcessorException(e);
-            }
-            Set<String> closeFileNodes = new HashSet<>();
-            Set<String> deleteFielNodes = new HashSet<>();
-            for (String p : fullPath) {
-              String nameSpacePath = null;
-              try {
-                nameSpacePath = mManager.getFileNameByPath(p);
-              } catch (PathErrorException e) {
-                throw new ProcessorException(e);
-              }
-              closeFileNodes.add(nameSpacePath);
-              // the two map is stored in the storage group node
-              schemaMap = mManager.getSchemaMapForOneFileNode(nameSpacePath);
-              numSchemaMap = mManager.getNumSchemaMapForOneFileNode(nameSpacePath);
-              // Thread safety: just one thread can access/modify the schemaMap
-              synchronized (schemaMap) {
-                // TODO: don't delete the storage group seriesPath
-                // recursively
-                path = new Path(p);
-                String measurementId = path.getMeasurement();
-                if (numSchemaMap.get(measurementId) == 1) {
-                  numSchemaMap.remove(measurementId);
-                  schemaMap.remove(measurementId);
-                } else {
-                  numSchemaMap.put(measurementId, numSchemaMap.get(measurementId) - 1);
-                }
-                String deleteNameSpacePath = mManager.deletePathFromMTree(p);
-                if (deleteNameSpacePath != null) {
-                  deleteFielNodes.add(deleteNameSpacePath);
-                }
-              }
-            }
-            closeFileNodes.removeAll(deleteFielNodes);
-            for (String deleteFileNode : deleteFielNodes) {
-              // close processor
-              fileNodeManager.deleteOneFileNode(deleteFileNode);
-            }
-            for (String closeFileNode : closeFileNodes) {
-              fileNodeManager.closeOneFileNode(closeFileNode);
-            }
+          deleteDataOfTimeSeries(deletePathList);
+          Pair<Set<String>, Set<String>> closeDeletedStorageGroupPair =
+              mManager.deletePathsFromMTree(deletePathList);
+          for (String closeStorageGroup : closeDeletedStorageGroupPair.left) {
+            fileNodeManager.closeOneFileNode(closeStorageGroup);
+          }
+          for (String deleteStorageGroup : closeDeletedStorageGroupPair.right) {
+            fileNodeManager.deleteOneFileNode(deleteStorageGroup);
           }
           break;
         case SET_FILE_LEVEL:
@@ -549,8 +441,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);
       }
-    } catch (PathErrorException | IOException | FileNodeManagerException e) {
-      throw new ProcessorException(e.getMessage());
+    } catch (FileNodeManagerException | MetadataErrorException e) {
+      throw new ProcessorException(e);
     }
     return true;
   }
@@ -560,10 +452,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
    *
    * @param pathList deleted paths
    */
-  private void deleteDataOfTimeSeries(List<String> pathList) throws ProcessorException {
-    for (String p : pathList) {
+  private void deleteDataOfTimeSeries(List<Path> pathList) throws ProcessorException {
+    for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
-      deletePlan.addPath(new Path(p));
+      deletePlan.addPath(p);
       deletePlan.setDeleteTime(Long.MAX_VALUE);
       processNonQuery(deletePlan);
     }
@@ -594,7 +486,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         default:
           throw new ProcessorException("unknown namespace type:" + propertyType);
       }
-    } catch (PathErrorException | IOException | ArgsErrorException e) {
+    } catch (PathErrorException | IOException | MetadataErrorException e) {
       throw new ProcessorException("meet error in " + propertyType + " . " + e.getMessage());
     }
     return true;

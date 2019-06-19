@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import org.antlr.runtime.Token;
 import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
@@ -80,7 +80,7 @@ public class LogicalGenerator {
   }
 
   public RootOperator getLogicalPlan(AstNode astNode)
-      throws QueryProcessorException, ArgsErrorException {
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     analyze(astNode);
     return initializedOperator;
   }
@@ -91,7 +91,8 @@ public class LogicalGenerator {
    * @throws QueryProcessorException exception in query process
    * @throws ArgsErrorException args error
    */
-  private void analyze(AstNode astNode) throws QueryProcessorException, ArgsErrorException {
+  private void analyze(AstNode astNode)
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     Token token = astNode.getToken();
     if (token == null) {
       throw new QueryProcessorException("given token is null");
@@ -368,7 +369,7 @@ public class LogicalGenerator {
     initializedOperator = propertyOperator;
   }
 
-  private void analyzeMetadataCreate(AstNode astNode) throws MetadataArgsErrorException {
+  private void analyzeMetadataCreate(AstNode astNode) throws MetadataErrorException {
     Path series = parsePath(astNode.getChild(0).getChild(0));
     AstNode paramNode = astNode.getChild(1);
     String dataType = paramNode.getChild(0).getChild(0).getText();
@@ -1066,7 +1067,7 @@ public class LogicalGenerator {
   }
 
   private void checkMetadataArgs(String dataType, String encoding, String compressor)
-      throws MetadataArgsErrorException {
+      throws MetadataErrorException {
 //    final String rle = "RLE";
 //    final String plain = "PLAIN";
 //    final String ts2Diff = "TS_2DIFF";
@@ -1075,29 +1076,29 @@ public class LogicalGenerator {
     TSDataType tsDataType;
     TSEncoding tsEncoding;
     if (dataType == null) {
-      throw new MetadataArgsErrorException("data type cannot be null");
+      throw new MetadataErrorException("data type cannot be null");
     }
 
     try {
       tsDataType = TSDataType.valueOf(dataType);
     } catch (Exception e) {
-      throw new MetadataArgsErrorException(String.format("data type %s not support", dataType));
+      throw new MetadataErrorException(String.format("data type %s not support", dataType));
     }
 
     if (encoding == null) {
-      throw new MetadataArgsErrorException("encoding type cannot be null");
+      throw new MetadataErrorException("encoding type cannot be null");
     }
 
     try {
       tsEncoding = TSEncoding.valueOf(encoding);
     } catch (Exception e) {
-      throw new MetadataArgsErrorException(String.format("encoding %s is not support", encoding));
+      throw new MetadataErrorException(String.format("encoding %s is not support", encoding));
     }
 
     try {
       CompressionType.valueOf(compressor);
     } catch (Exception e) {
-      throw new MetadataArgsErrorException(String.format("compressor %s is not support", compressor));
+      throw new MetadataErrorException(String.format("compressor %s is not support", compressor));
     }
     boolean throwExp = false;
     switch (tsDataType) {
@@ -1129,7 +1130,7 @@ public class LogicalGenerator {
         throwExp = true;
     }
     if (throwExp) {
-      throw new MetadataArgsErrorException(
+      throw new MetadataErrorException(
           String.format("encoding %s does not support %s", encoding, dataType));
     }
   }

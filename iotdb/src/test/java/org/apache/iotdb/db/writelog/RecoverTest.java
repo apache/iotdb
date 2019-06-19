@@ -28,10 +28,12 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -76,7 +78,7 @@ public class RecoverTest {
 
     try {
       MManager.getInstance().setStorageLevelToMTree("root.testLogNode");
-    } catch (PathErrorException ignored) {
+    } catch (MetadataErrorException ignored) {
     }
     ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
         tempRestore.getPath(),
@@ -148,7 +150,7 @@ public class RecoverTest {
 
     try {
       MManager.getInstance().setStorageLevelToMTree("root.testLogNode");
-    } catch (PathErrorException ignored) {
+    } catch (MetadataErrorException ignored) {
     }
     ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
         tempRestore.getPath(),
@@ -226,7 +228,7 @@ public class RecoverTest {
 
     try {
       MManager.getInstance().setStorageLevelToMTree("root.testLogNode");
-    } catch (PathErrorException ignored) {
+    } catch (MetadataErrorException ignored) {
     }
     ExclusiveWriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
         tempRestore.getPath(),

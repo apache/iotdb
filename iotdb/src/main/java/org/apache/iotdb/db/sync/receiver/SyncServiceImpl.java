@@ -47,7 +47,7 @@ import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -274,7 +274,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    * @param cmd metadata operation
    */
   private void operation(String cmd)
-      throws PathErrorException, IOException, MetadataArgsErrorException {
+      throws PathErrorException, IOException, MetadataErrorException {
     String[] args = cmd.trim().split(",");
     switch (args[0]) {
       case MetadataOperationType.ADD_PATH_TO_MTREE:
@@ -285,13 +285,13 @@ public class SyncServiceImpl implements SyncService.Iface {
           kv = args[k].split("=");
           props.put(kv[0], kv[1]);
         }
-        metadataManger.addPathToMTree(args[1], TSDataType.deserialize(Short.valueOf(args[2])),
+        metadataManger.addPathToMTree(new Path(args[1]), TSDataType.deserialize(Short.valueOf(args[2])),
             TSEncoding.deserialize(Short.valueOf(args[3])),
             CompressionType.deserialize(Short.valueOf(args[4])),
             props);
         break;
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
-        metadataManger.deletePathFromMTree(args[1]);
+        metadataManger.deletePathsFromMTree(Collections.singletonList(new Path(args[1])));
         break;
       case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
         metadataManger.setStorageLevelToMTree(args[1]);

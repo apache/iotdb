@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -137,7 +138,7 @@ public interface IQueryProcessExecutor {
   /**
    * Get all paths of a full path
    */
-  List<String> getAllPaths(String originPath) throws PathErrorException;
+  List<String> getAllPaths(String originPath) throws MetadataErrorException;
 
   int getFetchSize();
 

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import java.io.IOException;
 import java.util.Random;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.junit.Before;
@@ -110,7 +110,7 @@ public class MManagerEfficiencyTest {
   }
 
   public void testRandom()
-      throws MetadataArgsErrorException, PathErrorException, IOException, CacheException {
+      throws MetadataErrorException, PathErrorException, IOException, CacheException {
     long count = 0;
     paths = shuffle(paths);
     String tp;
@@ -129,7 +129,7 @@ public class MManagerEfficiencyTest {
     }
   }
 
-  private void insert() throws MetadataArgsErrorException, PathErrorException, IOException {
+  private void insert() throws MetadataErrorException, PathErrorException, IOException {
     for (String group : storageGroup) {
       for (String device : devices) {
         for (String sensor : sensors) {
