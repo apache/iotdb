@@ -91,6 +91,11 @@ public class UnsealedTsFileProcessorV2 {
 
     // TODO write WAL
 
+
+
+    // update start time of this memtable
+    tsFileResource.updateStartTime(tsRecord.deviceId, tsRecord.time);
+
     // write tsRecord to work memtable
     workMemTable.insert(tsRecord);
 

@@ -60,6 +60,14 @@ public abstract class TsFileResourceV2 {
     this.endTimeMap = endTimeMap;
   }
 
+  public void updateStartTime(String device, long time) {
+    startTimeMap.putIfAbsent(device, time);
+    long startTime = startTimeMap.get(device);
+    if (time < startTimeMap.get(device)) {
+      startTimeMap.put(device, startTime);
+    }
+  }
+
   public File getFile() {
     return file;
   }
