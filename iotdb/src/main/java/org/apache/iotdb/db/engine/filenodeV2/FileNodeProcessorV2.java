@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UTFDataFormatException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,6 +34,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.engine.AbstractUnsealedDataFileProcessorV2;
 import org.apache.iotdb.db.engine.bufferwriteV2.BufferWriteProcessorV2;
 import org.apache.iotdb.db.engine.filenode.CopyOnWriteLinkedList;
 import org.apache.iotdb.db.engine.filenode.FileNodeProcessorStatus;
@@ -40,6 +42,7 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.slf4j.Logger;
@@ -62,9 +65,16 @@ public class FileNodeProcessorV2 {
    */
   private Map<String, List<TsFileResourceV2>> invertedIndexOfFiles = new HashMap<>();
 
-  private List<TsFileResourceV2> newFileNodes;
-
+  // for bufferwrite
+  //includes sealed and unsealed tsfiles
+  private List<TsFileResourceV2> sequenceFileList;
   private BufferWriteProcessorV2 workBufferWriteProcessor = null;
+  private CopyOnWriteLinkedList<BufferWriteProcessorV2> closingBufferWriteProcessor = new CopyOnWriteLinkedList<>();
+
+  // for overflow
+  private List<TsFileResourceV2> unsequenceFileList;
+  private BufferWriteProcessorV2 workOverflowProcessor = null;
+  private CopyOnWriteLinkedList<BufferWriteProcessorV2> closingOverflowProcessor = new CopyOnWriteLinkedList<>();
 
   /**
    * device -> global latest timestamp of each device
@@ -77,8 +87,6 @@ public class FileNodeProcessorV2 {
   private Map<String, Long> latestFlushTimeMap = new HashMap<>();
 
   private String storageGroup;
-
-  private CopyOnWriteLinkedList<BufferWriteProcessorV2> closingBufferWriteProcessor = new CopyOnWriteLinkedList<>();
 
   private final ReadWriteLock lock;
 
@@ -121,7 +129,7 @@ public class FileNodeProcessorV2 {
       throw new FileNodeProcessorException(e);
     }
     // TODO deep clone the lastupdate time, change the getNewFileNodes to V2
-//    newFileNodes = fileNodeProcessorStore.getNewFileNodes();
+//    sequenceFileList = fileNodeProcessorStore.getNewFileNodes();
     invertedIndexOfFiles = new HashMap<>();
 
     /**
@@ -168,6 +176,39 @@ public class FileNodeProcessorV2 {
     }
   }
 
+  private void writeUnsealedDataFile(AbstractUnsealedDataFileProcessorV2 udfProcessor, TSRecord tsRecord, boolean sequence) {
+    boolean result;
+    // create a new BufferWriteProcessor
+    if (udfProcessor == null) {
+      if (sequence) {
+        String baseDir = directories.getNextFolderForTsfile();
+        String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
+        workBufferWriteProcessor = new BufferWriteProcessorV2(storageGroup, new File(filePath),
+            fileSchema, versionController, this::closeBufferWriteProcessorCallBack);
+        sequenceFileList.add(udfProcessor.getTsFileResource());
+      } else {
+        String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
+        String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
+        workBufferWriteProcessor = new BufferWriteProcessorV2(storageGroup, new File(filePath),
+            fileSchema, versionController, this::closeBufferWriteProcessorCallBack);
+        unsequenceFileList.add(udfProcessor.getTsFileResource());
+      }
+      // TODO check if the disk is full
+    }
+
+    // write BufferWrite
+    result = udfProcessor.write(tsRecord);
+
+    // try to update the latest time of the device of this tsRecord
+    if (result && latestTimeMap.get(tsRecord.deviceId) < tsRecord.time) {
+      latestTimeMap.put(tsRecord.deviceId, tsRecord.time);
+    }
+
+    // check memtable size and may asyncFlush the workMemtable
+    if (udfProcessor.shouldFlush()) {
+      flushAndCheckClose(udfProcessor, sequence);
+    }
+  }
 
   public boolean insert(TSRecord tsRecord) {
     lock.writeLock().lock();
@@ -175,34 +216,13 @@ public class FileNodeProcessorV2 {
 
     try {
 
-      // create a new BufferWriteProcessor
-      if (workBufferWriteProcessor == null) {
-        String baseDir = directories.getNextFolderForTsfile();
-        String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
-        workBufferWriteProcessor = new BufferWriteProcessorV2(storageGroup, new File(filePath),
-            fileSchema, versionController, this::closeBufferWriteProcessorCallBack);
-        newFileNodes.add(workBufferWriteProcessor.getTsFileResource());
-        // TODO check if the disk is full
-      }
-
       // init map
       latestTimeMap.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
       latestFlushTimeMap.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
 
       if (tsRecord.time > latestFlushTimeMap.get(tsRecord.deviceId)) {
 
-        // write BufferWrite
-        result = workBufferWriteProcessor.write(tsRecord);
 
-        // try to update the latest time of the device of this tsRecord
-        if (result && latestTimeMap.get(tsRecord.deviceId) < tsRecord.time) {
-          latestTimeMap.put(tsRecord.deviceId, tsRecord.time);
-        }
-
-        // check memtable size and may asyncFlush the workMemtable
-        if (workBufferWriteProcessor.shouldFlush()) {
-          flushAndCheckClose();
-        }
 
       } else {
         // TODO write to overflow
@@ -223,19 +243,27 @@ public class FileNodeProcessorV2 {
    *
    * only called by insert(), thread-safety should be ensured by caller
    */
-  private void flushAndCheckClose() {
+  private void flushAndCheckClose(AbstractUnsealedDataFileProcessorV2 udfProcessor, boolean sequence) {
     boolean shouldClose = false;
     // check file size and may close the BufferWrite
-    if (workBufferWriteProcessor.shouldClose()) {
-      closingBufferWriteProcessor.add(workBufferWriteProcessor);
-      workBufferWriteProcessor.close();
+    if (udfProcessor.shouldClose()) {
+      if (sequence) {
+        closingBufferWriteProcessor.add((BufferWriteProcessorV2) udfProcessor);
+      } else {
+        closingOverflowProcessor.add((BufferWriteProcessorV2) udfProcessor);
+      }
+      udfProcessor.close();
       shouldClose = true;
     }
 
-    workBufferWriteProcessor.asyncFlush();
+    udfProcessor.asyncFlush();
 
     if (shouldClose) {
-      workBufferWriteProcessor = null;
+      if (sequence) {
+        workBufferWriteProcessor = null;
+      } else {
+        workOverflowProcessor = null;
+      }
     }
 
     // update the largest timestamp in the last flushing memtable
@@ -253,7 +281,7 @@ public class FileNodeProcessorV2 {
     synchronized (fileNodeProcessorStore) {
       fileNodeProcessorStore.setLastUpdateTimeMap(latestTimeMap);
 
-      if (!newFileNodes.isEmpty()) {
+      if (!sequenceFileList.isEmpty()) {
         // end time with one start time
         Map<String, Long> endTimeMap = new HashMap<>();
         TsFileResourceV2 resource = workBufferWriteProcessor.getTsFileResource();
@@ -263,7 +291,7 @@ public class FileNodeProcessorV2 {
         }
         resource.setEndTimeMap(endTimeMap);
       }
-      fileNodeProcessorStore.setNewFileNodes(newFileNodes);
+      fileNodeProcessorStore.setNewFileNodes(sequenceFileList);
       try {
         writeStoreToDisk(fileNodeProcessorStore);
       } catch (FileNodeProcessorException e) {

@@ -20,33 +20,34 @@ package org.apache.iotdb.db.engine.bufferwriteV2;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.apache.iotdb.db.engine.AbstractUnsealedDataFileProcessorV2;
 import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 
 public class FlushManager {
 
-  private ConcurrentLinkedQueue<BufferWriteProcessorV2> bwProcessorQueue = new ConcurrentLinkedQueue<>();
+  private ConcurrentLinkedQueue<AbstractUnsealedDataFileProcessorV2> udfProcessorQueue = new ConcurrentLinkedQueue<>();
 
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 
   private Runnable flushThread = () -> {
-    BufferWriteProcessorV2 bwProcessor = bwProcessorQueue.poll();
+    AbstractUnsealedDataFileProcessorV2 udfProcessor = udfProcessorQueue.poll();
     try {
-      bwProcessor.flushOneMemTable();
+      udfProcessor.flushOneMemTable();
     } catch (IOException e) {
       // TODO do sth
     }
-    bwProcessor.setManagedByFlushManager(false);
-    registerBWProcessor(bwProcessor);
+    udfProcessor.setManagedByFlushManager(false);
+    registerBWProcessor(udfProcessor);
   };
 
   /**
    * Add BufferWriteProcessor to asyncFlush manager
    */
-  public boolean registerBWProcessor(BufferWriteProcessorV2 bwProcessor) {
-    synchronized (bwProcessor) {
-      if (!bwProcessor.isManagedByFlushManager() && bwProcessor.getFlushingMemTableSize() > 0) {
-        bwProcessorQueue.add(bwProcessor);
-        bwProcessor.setManagedByFlushManager(true);
+  public boolean registerBWProcessor(AbstractUnsealedDataFileProcessorV2 udfProcessor) {
+    synchronized (udfProcessor) {
+      if (!udfProcessor.isManagedByFlushManager() && udfProcessor.getFlushingMemTableSize() > 0) {
+        udfProcessorQueue.add(udfProcessor);
+        udfProcessor.setManagedByFlushManager(true);
         flushPool.submit(flushThread);
         return true;
       }
