@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.UTFDataFormatException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,9 +42,12 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,10 +63,10 @@ public class FileNodeProcessorV2 {
 
   private FileSchema fileSchema;
 
-  /**
-   * device -> tsfile list
-   */
-  private Map<String, List<TsFileResourceV2>> invertedIndexOfFiles = new HashMap<>();
+//  /**
+//   * device -> tsfile list
+//   */
+//  private Map<String, List<TsFileResourceV2>> invertedIndexOfFiles = new HashMap<>();
 
   // for bufferwrite
   //includes sealed and unsealed tsfiles
@@ -73,14 +75,15 @@ public class FileNodeProcessorV2 {
   private CopyOnWriteLinkedList<BufferWriteProcessorV2> closingBufferWriteProcessor = new CopyOnWriteLinkedList<>();
 
   // for overflow
-  private List<TsFileResourceV2> unsequenceFileList;
+  private List<TsFileResourceV2> unSequenceFileList;
   private OverflowProcessorV2 workOverflowProcessor = null;
-  private CopyOnWriteLinkedList<BufferWriteProcessorV2> closingOverflowProcessor = new CopyOnWriteLinkedList<>();
+
+  private CopyOnWriteLinkedList<OverflowProcessorV2> closingOverflowProcessor = new CopyOnWriteLinkedList<>();
 
   /**
    * device -> global latest timestamp of each device
    */
-  private Map<String, Long> latestTimeMap = new HashMap<>();
+  private Map<String, Long> latestTimeMap;
 
   /**
    * device -> largest timestamp of the latest memtable to be submitted to asyncFlush
@@ -97,7 +100,6 @@ public class FileNodeProcessorV2 {
   private FileNodeProcessorStoreV2 fileNodeProcessorStore;
   private final Object fileNodeRestoreLock = new Object();
 
-
   public FileNodeProcessorV2(String baseDir, String storageGroup) throws FileNodeProcessorException {
     this.storageGroup = storageGroup;
     lock = new ReentrantReadWriteLock();
@@ -105,8 +107,7 @@ public class FileNodeProcessorV2 {
     File storageGroupDir = new File(baseDir + storageGroup);
     if (!storageGroupDir.exists()) {
       storageGroupDir.mkdir();
-      LOGGER.info(
-          "The directory of the storage group {} doesn't exist. Create a new " +
+      LOGGER.info("The directory of the storage group {} doesn't exist. Create a new " +
               "directory {}", storageGroup, storageGroupDir.getAbsolutePath());
     }
 
@@ -119,18 +120,21 @@ public class FileNodeProcessorV2 {
       LOGGER.info("The restore directory of the filenode processor {} doesn't exist. Create new " +
               "directory {}", storageGroup, restoreFolder.getAbsolutePath());
     }
-    fileNodeRestoreFilePath = new File(restoreFolder, storageGroup + RESTORE_FILE_SUFFIX)
-        .getPath();
+
+    fileNodeRestoreFilePath = new File(restoreFolder, storageGroup + RESTORE_FILE_SUFFIX).getPath();
+
     try {
-      fileNodeProcessorStore = readStoreFromDisk();
+      fileNodeProcessorStore = readStoreFromDiskOrCreate();
     } catch (FileNodeProcessorException e) {
-      LOGGER.error("The fileNode processor {} encountered an error when recoverying restore " +
+      LOGGER.error("The fileNode processor {} encountered an error when recovering restore " +
               "information.", storageGroup);
       throw new FileNodeProcessorException(e);
     }
-    // TODO deep clone the lastupdate time, change the getNewFileNodes to V2
-//    sequenceFileList = fileNodeProcessorStore.getNewFileNodes();
-    invertedIndexOfFiles = new HashMap<>();
+
+    // TODO deep clone the lastupdate time, change the getSequenceFileList to V2
+    sequenceFileList = fileNodeProcessorStore.getSequenceFileList();
+    unSequenceFileList = fileNodeProcessorStore.getUnSequenceFileList();
+    latestTimeMap = fileNodeProcessorStore.getLatestTimeMap();
 
     /**
      * version controller
@@ -141,10 +145,42 @@ public class FileNodeProcessorV2 {
       throw new FileNodeProcessorException(e);
     }
 
+    // construct the file schema
+    this.fileSchema = constructFileSchema(storageGroup);
+  }
+
+  private FileSchema constructFileSchema(String storageGroupName) {
+    List<MeasurementSchema> columnSchemaList;
+    columnSchemaList = mManager.getSchemaForFileName(storageGroupName);
+
+    FileSchema schema = new FileSchema();
+    for (MeasurementSchema measurementSchema : columnSchemaList) {
+      schema.registerMeasurement(measurementSchema);
+    }
+    return schema;
+
   }
 
 
-  private FileNodeProcessorStoreV2 readStoreFromDisk() throws FileNodeProcessorException {
+  /**
+   * add time series.
+   */
+  public void addTimeSeries(String measurementId, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props) {
+    lock.writeLock().lock();
+    try {
+      fileSchema.registerMeasurement(new MeasurementSchema(measurementId, dataType, encoding,
+          compressor, props));
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+
+  /**
+   * read file node store from disk or create a new one
+   */
+  private FileNodeProcessorStoreV2 readStoreFromDiskOrCreate() throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreLock) {
       File restoreFile = new File(fileNodeRestoreFilePath);
@@ -176,6 +212,7 @@ public class FileNodeProcessorV2 {
     }
   }
 
+
   public boolean insert(TSRecord tsRecord) {
     lock.writeLock().lock();
     boolean result = true;
@@ -187,9 +224,9 @@ public class FileNodeProcessorV2 {
 
       // write to sequence or unsequence file
       if (tsRecord.time > latestFlushTimeMap.get(tsRecord.deviceId)) {
-        writeUnsealedDataFile(workBufferWriteProcessor, tsRecord, true);
+        result = writeUnsealedDataFile(workBufferWriteProcessor, tsRecord, true);
       } else {
-        writeUnsealedDataFile(workOverflowProcessor, tsRecord, false);
+        result = writeUnsealedDataFile(workOverflowProcessor, tsRecord, false);
       }
     } catch (Exception e) {
       LOGGER.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
@@ -202,7 +239,7 @@ public class FileNodeProcessorV2 {
   }
 
 
-  private void writeUnsealedDataFile(AbstractUnsealedDataFileProcessorV2 udfProcessor,
+  private boolean writeUnsealedDataFile(AbstractUnsealedDataFileProcessorV2 udfProcessor,
       TSRecord tsRecord, boolean sequence) throws IOException {
     boolean result;
     // create a new BufferWriteProcessor
@@ -219,7 +256,7 @@ public class FileNodeProcessorV2 {
         String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
         udfProcessor = new OverflowProcessorV2(storageGroup, new File(filePath),
             fileSchema, versionController, this::closeBufferWriteProcessorCallBack);
-        unsequenceFileList.add(udfProcessor.getTsFileResource());
+        unSequenceFileList.add(udfProcessor.getTsFileResource());
       }
     }
 
@@ -235,6 +272,8 @@ public class FileNodeProcessorV2 {
     if (udfProcessor.shouldFlush()) {
       flushAndCheckClose(udfProcessor, sequence);
     }
+
+    return result;
   }
 
 
@@ -252,7 +291,7 @@ public class FileNodeProcessorV2 {
       if (sequence) {
         closingBufferWriteProcessor.add((BufferWriteProcessorV2) udfProcessor);
       } else {
-        closingOverflowProcessor.add((BufferWriteProcessorV2) udfProcessor);
+        closingOverflowProcessor.add((OverflowProcessorV2) udfProcessor);
       }
       udfProcessor.close();
       shouldClose = true;
@@ -281,7 +320,7 @@ public class FileNodeProcessorV2 {
   private void closeBufferWriteProcessorCallBack(Object bufferWriteProcessor) {
     closingBufferWriteProcessor.remove((BufferWriteProcessorV2) bufferWriteProcessor);
     synchronized (fileNodeProcessorStore) {
-      fileNodeProcessorStore.setLastUpdateTimeMap(latestTimeMap);
+      fileNodeProcessorStore.setLatestTimeMap(latestTimeMap);
 
       if (!sequenceFileList.isEmpty()) {
         // end time with one start time
@@ -293,7 +332,7 @@ public class FileNodeProcessorV2 {
         }
         resource.setEndTimeMap(endTimeMap);
       }
-      fileNodeProcessorStore.setNewFileNodes(sequenceFileList);
+      fileNodeProcessorStore.setSequenceFileList(sequenceFileList);
       try {
         writeStoreToDisk(fileNodeProcessorStore);
       } catch (FileNodeProcessorException e) {

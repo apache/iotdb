@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 
 public class BufferWriteProcessorV2 extends AbstractUnsealedDataFileProcessorV2 {
 

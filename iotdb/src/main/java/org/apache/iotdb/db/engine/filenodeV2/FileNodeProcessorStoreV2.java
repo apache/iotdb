@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 /**
  * FileNodeProcessorStore is used to store information about FileNodeProcessor's status.
  * lastUpdateTime is changed and stored by BufferWrite flushMetadata or BufferWrite close.
- * emptyTsFileResource and newFileNodes are changed and stored by Overflow flushMetadata and
+ * emptyTsFileResource and sequenceFileList are changed and stored by Overflow flushMetadata and
  * Overflow close. fileNodeProcessorState is changed and stored by the change of FileNodeProcessor's
  * status such as "work->merge merge->wait wait->work". numOfMergeFile is changed
  * and stored when FileNodeProcessor's status changes from work to merge.
@@ -44,8 +44,9 @@ public class FileNodeProcessorStoreV2 implements Serializable {
   private static final long serialVersionUID = -54525372941897565L;
 
   private boolean isOverflowed;
-  private Map<String, Long> lastUpdateTimeMap;
-  private List<TsFileResourceV2> newFileNodes;
+  private Map<String, Long> latestTimeMap;
+  private List<TsFileResourceV2> sequenceFileList;
+  private List<TsFileResourceV2> unSequenceFileList;
   private int numOfMergeFile;
   private FileNodeProcessorStatus fileNodeProcessorStatus;
 
@@ -53,18 +54,17 @@ public class FileNodeProcessorStoreV2 implements Serializable {
    * Constructor of FileNodeProcessorStore.
    *
    * @param isOverflowed whether this FileNode contains unmerged Overflow operations.
-   * @param lastUpdateTimeMap the timestamp of last data point of each device in this FileNode.
-   * @param newFileNodes TsFiles in the FileNode.
+   * @param latestTimeMap the timestamp of last data point of each device in this FileNode.
+   * @param sequenceFileList TsFiles in the FileNode.
    * @param fileNodeProcessorStatus the status of the FileNode.
    * @param numOfMergeFile the number of files already merged in one merge operation.
    */
-  public FileNodeProcessorStoreV2(boolean isOverflowed, Map<String, Long> lastUpdateTimeMap,
-      List<TsFileResourceV2> newFileNodes,
-      FileNodeProcessorStatus fileNodeProcessorStatus,
+  public FileNodeProcessorStoreV2(boolean isOverflowed, Map<String, Long> latestTimeMap,
+      List<TsFileResourceV2> sequenceFileList, FileNodeProcessorStatus fileNodeProcessorStatus,
       int numOfMergeFile) {
     this.isOverflowed = isOverflowed;
-    this.lastUpdateTimeMap = lastUpdateTimeMap;
-    this.newFileNodes = newFileNodes;
+    this.latestTimeMap = latestTimeMap;
+    this.sequenceFileList = sequenceFileList;
     this.fileNodeProcessorStatus = fileNodeProcessorStatus;
     this.numOfMergeFile = numOfMergeFile;
   }
@@ -72,14 +72,14 @@ public class FileNodeProcessorStoreV2 implements Serializable {
   public void serialize(OutputStream outputStream) throws IOException {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     ReadWriteIOUtils.write(this.isOverflowed, byteArrayOutputStream);
-    // lastUpdateTimeMap
-    ReadWriteIOUtils.write(lastUpdateTimeMap.size(), byteArrayOutputStream);
-    for (Entry<String, Long> entry : lastUpdateTimeMap.entrySet()) {
+    // latestTimeMap
+    ReadWriteIOUtils.write(latestTimeMap.size(), byteArrayOutputStream);
+    for (Entry<String, Long> entry : latestTimeMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), byteArrayOutputStream);
       ReadWriteIOUtils.write(entry.getValue(), byteArrayOutputStream);
     }
-    ReadWriteIOUtils.write(this.newFileNodes.size(), byteArrayOutputStream);
-    for (TsFileResourceV2 tsFileResource : this.newFileNodes) {
+    ReadWriteIOUtils.write(this.sequenceFileList.size(), byteArrayOutputStream);
+    for (TsFileResourceV2 tsFileResource : this.sequenceFileList) {
       tsFileResource.serialize(byteArrayOutputStream);
     }
     ReadWriteIOUtils.write(this.numOfMergeFile, byteArrayOutputStream);
@@ -126,20 +126,24 @@ public class FileNodeProcessorStoreV2 implements Serializable {
     this.fileNodeProcessorStatus = fileNodeProcessorStatus;
   }
 
-  public Map<String, Long> getLastUpdateTimeMap() {
-    return new HashMap<>(lastUpdateTimeMap);
+  public Map<String, Long> getLatestTimeMap() {
+    return new HashMap<>(latestTimeMap);
   }
 
-  public void setLastUpdateTimeMap(Map<String, Long> lastUpdateTimeMap) {
-    this.lastUpdateTimeMap = lastUpdateTimeMap;
+  public void setLatestTimeMap(Map<String, Long> latestTimeMap) {
+    this.latestTimeMap = latestTimeMap;
   }
 
-  public List<TsFileResourceV2> getNewFileNodes() {
-    return newFileNodes;
+  public List<TsFileResourceV2> getSequenceFileList() {
+    return sequenceFileList;
   }
 
-  public void setNewFileNodes(List<TsFileResourceV2> newFileNodes) {
-    this.newFileNodes = newFileNodes;
+  public void setSequenceFileList(List<TsFileResourceV2> sequenceFileList) {
+    this.sequenceFileList = sequenceFileList;
+  }
+
+  public List<TsFileResourceV2> getUnSequenceFileList() {
+    return unSequenceFileList;
   }
 
   public int getNumOfMergeFile() {

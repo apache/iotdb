@@ -71,6 +71,9 @@ public class TsFileResourceV2 {
     this.endTimeMap = endTimeMap;
   }
 
+  public Map<String, Long> getEndTimeMap() {
+    return endTimeMap;
+  }
 
   public void serialize(OutputStream outputStream) throws IOException {
 //    ReadWriteIOUtils.write(this.overflowChangeType.serialize(), outputStream);

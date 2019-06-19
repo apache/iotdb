@@ -202,9 +202,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 //    @Override
 //    public void act() {
 //      synchronized (fileNodeProcessorStore) {
-//        fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
+//        fileNodeProcessorStore.setLatestTimeMap(lastUpdateTimeMap);
 //        addLastTimeToIntervalFile();
-//        fileNodeProcessorStore.setNewFileNodes(newFileNodes);
+//        fileNodeProcessorStore.setSequenceFileList(newFileNodes);
 //      }
 //    }
 //
