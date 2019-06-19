@@ -33,7 +33,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.UnsealedTsFileProcessorV2;
-import org.apache.iotdb.db.engine.filenode.CopyOnWriteLinkedList;
+import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
 import org.apache.iotdb.db.engine.filenode.FileNodeProcessorStatus;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
@@ -66,73 +66,76 @@ public class FileNodeProcessorV2 {
 
   private FileSchema fileSchema;
 
-  // for bufferwrite
-  // includes sealed and unsealed tsfiles
+  // includes sealed and unsealed sequnce tsfiles
   private List<TsFileResourceV2> sequenceFileList;
-  private UnsealedTsFileProcessorV2 workBufferWriteProcessor = null;
-  private CopyOnWriteLinkedList<UnsealedTsFileProcessorV2> closingBufferWriteProcessor = new CopyOnWriteLinkedList<>();
+  private UnsealedTsFileProcessorV2 workUnsealedSequenceTsFileProcessor = null;
+  private CopyOnReadLinkedList<UnsealedTsFileProcessorV2> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
-  // for overflow
+  // includes sealed and unsealed unsequnce tsfiles
   private List<TsFileResourceV2> unSequenceFileList;
-  private UnsealedTsFileProcessorV2 workOverflowProcessor = null;
-  private CopyOnWriteLinkedList<UnsealedTsFileProcessorV2> closingOverflowProcessor = new CopyOnWriteLinkedList<>();
+  private UnsealedTsFileProcessorV2 workUnsealedUnSequenceTsFileProcessor = null;
+  private CopyOnReadLinkedList<UnsealedTsFileProcessorV2> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
   /**
    * device -> global latest timestamp of each device
    */
-  private Map<String, Long> latestTimeMap;
+  private Map<String, Long> latestTimeForEachDevice;
 
   /**
    * device -> largest timestamp of the latest memtable to be submitted to asyncFlush
    */
-  private Map<String, Long> latestFlushTimeMap = new HashMap<>();
+  private Map<String, Long> latestFlushedTimeForEachDevice = new HashMap<>();
 
-  private String storageGroup;
+  private String storageGroupName;
 
   private final ReadWriteLock lock;
 
   private VersionController versionController;
 
-  private String fileNodeRestoreFilePath;
+  // TODO delete the file path
+  private String absoluteFileNodeRestoreFilePath;
+
   private FileNodeProcessorStoreV2 fileNodeProcessorStore;
+
+  // TODO delete this lock
   private final Object fileNodeRestoreLock = new Object();
 
-  public FileNodeProcessorV2(String baseDir, String storageGroup)
+  public FileNodeProcessorV2(String absoluteBaseDir, String storageGroupName)
       throws FileNodeProcessorException {
-    this.storageGroup = storageGroup;
+    this.storageGroupName = storageGroupName;
     lock = new ReentrantReadWriteLock();
 
-    File storageGroupDir = new File(baseDir + storageGroup);
+    File storageGroupDir = new File(absoluteBaseDir, storageGroupName);
     if (!storageGroupDir.exists()) {
       storageGroupDir.mkdir();
       LOGGER.info("The directory of the storage group {} doesn't exist. Create a new " +
-          "directory {}", storageGroup, storageGroupDir.getAbsolutePath());
+          "directory {}", storageGroupName, storageGroupDir.getAbsolutePath());
     }
 
     /**
      * restore
      */
-    File restoreFolder = new File(baseDir + storageGroup);
+    File restoreFolder = new File(absoluteBaseDir + storageGroupName);
     if (!restoreFolder.exists()) {
       restoreFolder.mkdirs();
       LOGGER.info("The restore directory of the filenode processor {} doesn't exist. Create new " +
-          "directory {}", storageGroup, restoreFolder.getAbsolutePath());
+          "directory {}", storageGroupName, restoreFolder.getAbsolutePath());
     }
 
-    fileNodeRestoreFilePath = new File(restoreFolder, storageGroup + RESTORE_FILE_SUFFIX).getPath();
+    absoluteFileNodeRestoreFilePath = new File(restoreFolder, storageGroupName + RESTORE_FILE_SUFFIX).getAbsolutePath();
 
     try {
       fileNodeProcessorStore = readStoreFromDiskOrCreate();
     } catch (FileNodeProcessorException e) {
       LOGGER.error("The fileNode processor {} encountered an error when recovering restore " +
-          "information.", storageGroup);
+          "information.", storageGroupName);
       throw new FileNodeProcessorException(e);
     }
 
     // TODO deep clone the lastupdate time, change the getSequenceFileList to V2
     sequenceFileList = fileNodeProcessorStore.getSequenceFileList();
     unSequenceFileList = fileNodeProcessorStore.getUnSequenceFileList();
-    latestTimeMap = fileNodeProcessorStore.getLatestTimeMap();
+    latestTimeForEachDevice = fileNodeProcessorStore.getLatestTimeMap();
 
     /**
      * version controller
@@ -144,7 +147,7 @@ public class FileNodeProcessorV2 {
     }
 
     // construct the file schema
-    this.fileSchema = constructFileSchema(storageGroup);
+    this.fileSchema = constructFileSchema(storageGroupName);
   }
 
   private FileSchema constructFileSchema(String storageGroupName) {
@@ -181,16 +184,17 @@ public class FileNodeProcessorV2 {
   private FileNodeProcessorStoreV2 readStoreFromDiskOrCreate() throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreLock) {
-      File restoreFile = new File(fileNodeRestoreFilePath);
+      File restoreFile = new File(absoluteFileNodeRestoreFilePath);
       if (!restoreFile.exists() || restoreFile.length() == 0) {
         return new FileNodeProcessorStoreV2(false, new HashMap<>(),
             new ArrayList<>(), new ArrayList<>(), FileNodeProcessorStatus.NONE, 0);
       }
-      try (FileInputStream inputStream = new FileInputStream(fileNodeRestoreFilePath)) {
+      try (FileInputStream inputStream = new FileInputStream(absoluteFileNodeRestoreFilePath)) {
         return FileNodeProcessorStoreV2.deSerialize(inputStream);
       } catch (IOException e) {
         LOGGER
-            .error("Failed to deserialize the FileNodeRestoreFile {}, {}", fileNodeRestoreFilePath,
+            .error("Failed to deserialize the FileNodeRestoreFile {}, {}",
+                absoluteFileNodeRestoreFilePath,
                 e);
         throw new FileNodeProcessorException(e);
       }
@@ -201,16 +205,15 @@ public class FileNodeProcessorV2 {
       throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreLock) {
-      try (FileOutputStream fileOutputStream = new FileOutputStream(fileNodeRestoreFilePath)) {
+      try (FileOutputStream fileOutputStream = new FileOutputStream(absoluteFileNodeRestoreFilePath)) {
         fileNodeProcessorStore.serialize(fileOutputStream);
         LOGGER.debug("The filenode processor {} writes restore information to the restore file",
-            storageGroup);
+            storageGroupName);
       } catch (IOException e) {
         throw new FileNodeProcessorException(e);
       }
     }
   }
-
 
   public boolean insert(TSRecord tsRecord) {
     lock.writeLock().lock();
@@ -218,14 +221,14 @@ public class FileNodeProcessorV2 {
 
     try {
       // init map
-      latestTimeMap.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
-      latestFlushTimeMap.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
+      latestTimeForEachDevice.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
+      latestFlushedTimeForEachDevice.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
 
       // write to sequence or unsequence file
-      if (tsRecord.time > latestFlushTimeMap.get(tsRecord.deviceId)) {
-        result = writeUnsealedDataFile(workBufferWriteProcessor, tsRecord, true);
+      if (tsRecord.time > latestFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
+        result = writeUnsealedDataFile(workUnsealedSequenceTsFileProcessor, tsRecord, true);
       } else {
-        result = writeUnsealedDataFile(workOverflowProcessor, tsRecord, false);
+        result = writeUnsealedDataFile(workUnsealedUnSequenceTsFileProcessor, tsRecord, false);
       }
     } catch (Exception e) {
       LOGGER.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
@@ -244,15 +247,15 @@ public class FileNodeProcessorV2 {
     if (unsealedTsFileProcessor == null) {
       if (sequence) {
         String baseDir = directories.getNextFolderForTsfile();
-        String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
-        unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
+        String filePath = Paths.get(baseDir, storageGroupName, tsRecord.time + "").toString();
+        unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
             fileSchema, versionController, this::closeUnsealedTsFileProcessorCallBack);
         sequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
       } else {
         // TODO check if the disk is full
         String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
-        String filePath = Paths.get(baseDir, storageGroup, tsRecord.time + "").toString();
-        unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
+        String filePath = Paths.get(baseDir, storageGroupName, tsRecord.time + "").toString();
+        unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
             fileSchema, versionController, this::closeUnsealedTsFileProcessorCallBack);
         unSequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
       }
@@ -262,19 +265,20 @@ public class FileNodeProcessorV2 {
     result = unsealedTsFileProcessor.write(tsRecord);
 
     // try to update the latest time of the device of this tsRecord
-    if (result && latestTimeMap.get(tsRecord.deviceId) < tsRecord.time) {
-      latestTimeMap.put(tsRecord.deviceId, tsRecord.time);
+    if (result && latestTimeForEachDevice.get(tsRecord.deviceId) < tsRecord.time) {
+      latestTimeForEachDevice.put(tsRecord.deviceId, tsRecord.time);
     }
 
     // check memtable size and may asyncFlush the workMemtable
     if (unsealedTsFileProcessor.shouldFlush()) {
-      flushAndCheckClose(unsealedTsFileProcessor, sequence);
+      flushAndCheckShouldClose(unsealedTsFileProcessor, sequence);
     }
 
     return result;
   }
 
 
+  // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSourceV2 query(String deviceId, String measurementId) {
 
     List<TsFileResourceV2> sequnceResources = getFileReSourceListForQuery(sequenceFileList,
@@ -320,58 +324,51 @@ public class FileNodeProcessorV2 {
 
 
   /**
-   * ensure there must be a flush thread submitted after close() is called, therefore the close task
+   * ensure there must be a flush thread submitted after setCloseMark() is called, therefore the setCloseMark task
    * will be executed by a flush thread. -- said by qiaojialin
    *
    * only called by insert(), thread-safety should be ensured by caller
    */
-  private void flushAndCheckClose(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
+  private void flushAndCheckShouldClose(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
       boolean sequence) {
-    boolean shouldClose = false;
-    // check file size and may close the BufferWrite
+    // check file size and may setCloseMark the BufferWrite
     if (unsealedTsFileProcessor.shouldClose()) {
       if (sequence) {
-        closingBufferWriteProcessor.add(unsealedTsFileProcessor);
+        closingSequenceTsFileProcessor.add(unsealedTsFileProcessor);
+        workUnsealedSequenceTsFileProcessor = null;
       } else {
-        closingOverflowProcessor.add(unsealedTsFileProcessor);
+        closingUnSequenceTsFileProcessor.add(unsealedTsFileProcessor);
+        workUnsealedUnSequenceTsFileProcessor = null;
       }
-      unsealedTsFileProcessor.close();
-      shouldClose = true;
+      unsealedTsFileProcessor.setCloseMark();
     }
 
     unsealedTsFileProcessor.asyncFlush();
 
-    if (shouldClose) {
-      if (sequence) {
-        workBufferWriteProcessor = null;
-      } else {
-        workOverflowProcessor = null;
-      }
-    }
-
     // update the largest timestamp in the last flushing memtable
-    for (Entry<String, Long> entry : latestTimeMap.entrySet()) {
-      latestFlushTimeMap.put(entry.getKey(), entry.getValue());
+    for (Entry<String, Long> entry : latestTimeForEachDevice.entrySet()) {
+      latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
     }
   }
 
 
   /**
-   * return the memtable to MemTablePool and make metadata in writer visible
+   * put the memtable back to the MemTablePool and make the metadata in writer visible
    */
-  private void closeUnsealedTsFileProcessorCallBack(Object bufferWriteProcessor) {
-    closingBufferWriteProcessor.remove((UnsealedTsFileProcessorV2) bufferWriteProcessor);
+  // TODO please consider concurrency with query and write method.
+  private void closeUnsealedTsFileProcessorCallBack(UnsealedTsFileProcessorV2 bufferWriteProcessor) {
+    closingSequenceTsFileProcessor.remove(bufferWriteProcessor);
     synchronized (fileNodeProcessorStore) {
-      fileNodeProcessorStore.setLatestTimeMap(latestTimeMap);
+      fileNodeProcessorStore.setLatestTimeMap(latestTimeForEachDevice);
 
       if (!sequenceFileList.isEmpty()) {
         // end time with one start time
         Map<String, Long> endTimeMap = new HashMap<>();
-        TsFileResourceV2 resource = workBufferWriteProcessor.getTsFileResource();
+        TsFileResourceV2 resource = workUnsealedSequenceTsFileProcessor.getTsFileResource();
         synchronized (resource) {
           for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
             String deviceId = startTime.getKey();
-            endTimeMap.put(deviceId, latestTimeMap.get(deviceId));
+            endTimeMap.put(deviceId, latestTimeForEachDevice.get(deviceId));
           }
           resource.setEndTimeMap(endTimeMap);
         }
@@ -388,10 +385,10 @@ public class FileNodeProcessorV2 {
   public void forceClose() {
     lock.writeLock().lock();
     try {
-      if (workBufferWriteProcessor != null) {
-        closingBufferWriteProcessor.add(workBufferWriteProcessor);
-        workBufferWriteProcessor.forceClose();
-        workBufferWriteProcessor = null;
+      if (workUnsealedSequenceTsFileProcessor != null) {
+        closingSequenceTsFileProcessor.add(workUnsealedSequenceTsFileProcessor);
+        workUnsealedSequenceTsFileProcessor.forceClose();
+        workUnsealedSequenceTsFileProcessor = null;
       }
     } finally {
       lock.writeLock().unlock();

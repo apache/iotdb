@@ -94,7 +94,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     File insertFile = new File(insertFilePath);
     File restoreFile = new File(restoreFilePath);
     if (insertFile.exists() && restoreFile.exists()) {
-      // read restore file
+      // cloneList restore file
       Pair<Long, List<ChunkGroupMetaData>> restoreInfo = readRestoreInfo();
       long position = restoreInfo.left;
       List<ChunkGroupMetaData> existedMetadatas = restoreInfo.right;
@@ -192,7 +192,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     randomAccessFile = new RandomAccessFile(restoreFilePath, DEFAULT_MODE);
     try {
       long fileLength = randomAccessFile.length();
-      // read tsfile position
+      // cloneList tsfile position
       long point = randomAccessFile.getFilePointer();
       while (point + TS_POSITION_BYTE_SIZE < fileLength) {
         byte[] metadataSizeBytes = new byte[TS_METADATA_BYTE_SIZE];
@@ -205,7 +205,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         groupMetaDatas.addAll(tsDeviceMetadata.getChunkGroupMetaDataList());
         point = randomAccessFile.getFilePointer();
       }
-      // read the tsfile position information using byte[8] which is a long.
+      // cloneList the tsfile position information using byte[8] which is a long.
       randomAccessFile.read(lastPostionBytes);
       long lastPosition = BytesUtils.bytesToLong(lastPostionBytes);
       return new Pair<>(lastPosition, groupMetaDatas);
@@ -255,7 +255,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   /**
    * add all appendChunkGroupMetadatas into memory. After calling this method, other classes can
-   * read these metadata.
+   * cloneList these metadata.
    */
   public void makeMetadataVisible() {
     if (!append.isEmpty()) {

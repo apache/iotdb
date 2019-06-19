@@ -637,7 +637,7 @@ public class OverflowProcessor extends Processor {
     if (isClosed) {
       return;
     }
-    LOGGER.info("The overflow processor {} starts close operation.", getProcessorName());
+    LOGGER.info("The overflow processor {} starts setCloseMark operation.", getProcessorName());
     long closeStartTime = System.currentTimeMillis();
     // asyncFlush data
     try {
@@ -651,11 +651,11 @@ public class OverflowProcessor extends Processor {
       throw new OverflowProcessorException(e);
     }
     if (LOGGER.isInfoEnabled()) {
-      LOGGER.info("The overflow processor {} ends close operation.", getProcessorName());
-      // log close time
+      LOGGER.info("The overflow processor {} ends setCloseMark operation.", getProcessorName());
+      // log setCloseMark time
       long closeEndTime = System.currentTimeMillis();
       LOGGER.info(
-          "The close operation of overflow processor {} starts at {} and ends at {}."
+          "The setCloseMark operation of overflow processor {} starts at {} and ends at {}."
               + " It comsumes {}ms.",
           getProcessorName(), DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
           DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
@@ -712,7 +712,7 @@ public class OverflowProcessor extends Processor {
 
   /**
    * Check whether current overflow file contains too many metadata or size of current overflow file
-   * is too large If true, close current file and open a new one.
+   * is too large If true, setCloseMark current file and open a new one.
    */
   private boolean checkSize() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

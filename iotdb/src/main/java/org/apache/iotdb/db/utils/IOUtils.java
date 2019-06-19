@@ -83,12 +83,12 @@ public class IOUtils {
   /**
    * Read a string from the given stream.
    *
-   * @param inputStream    the source to read.
+   * @param inputStream    the source to cloneList.
    * @param encoding       string encoding like 'utf-8'.
    * @param strBufferLocal a ThreadLocal buffer may be passed to avoid
    *                       frequently memory allocations. A null may also be passed
    *                       to use a local buffer.
-   * @return a string read from the stream.
+   * @return a string cloneList from the stream.
    * @throws IOException when an exception raised during operating the stream.
    */
   public static String readString(DataInputStream inputStream, String encoding,
@@ -116,12 +116,12 @@ public class IOUtils {
   /**
    * Read a PathPrivilege from the given stream.
    *
-   * @param inputStream    the source to read.
+   * @param inputStream    the source to cloneList.
    * @param encoding       string encoding like 'utf-8'.
    * @param strBufferLocal a ThreadLocal buffer may be passed to avoid
    *                       frequently memory allocations. A null may also be passed
    *                       to use a local buffer.
-   * @return a PathPrivilege read from the stream.
+   * @return a PathPrivilege cloneList from the stream.
    * @throws IOException when an exception raised during operating the stream.
    */
   public static PathPrivilege readPathPrivilege(DataInputStream inputStream, String encoding,

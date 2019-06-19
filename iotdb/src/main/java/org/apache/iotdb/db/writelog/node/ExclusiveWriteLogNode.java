@@ -110,11 +110,11 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
       logger.debug("Log node {} closed successfully", identifier);
     } catch (IOException e) {
-      logger.error("Cannot close log node {} because:", identifier, e);
+      logger.error("Cannot setCloseMark log node {} because:", identifier, e);
     }
     long elapse = System.currentTimeMillis() - start;
     if (elapse > 1000) {
-      logger.info("WAL close cost {} ms", elapse);
+      logger.info("WAL setCloseMark cost {} ms", elapse);
     }
     unlockForForceOther();
     unlockForOther();

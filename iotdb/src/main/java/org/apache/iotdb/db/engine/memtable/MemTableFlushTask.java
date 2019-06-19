@@ -150,7 +150,7 @@ public class MemTableFlushTask {
       }
     }
 
-    MemTablePool.getInstance().release(memTable);
+    MemTablePool.getInstance().putBack(memTable);
     LOGGER.info("Processor {} return back a memtable to MemTablePool", processorName);
     if (tsFileIoWriter instanceof RestorableTsFileIOWriter) {
       try {

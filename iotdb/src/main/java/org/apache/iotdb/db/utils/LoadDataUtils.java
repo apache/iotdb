@@ -116,7 +116,7 @@ public class LoadDataUtils {
         lineCount++;
       }
     } catch (IOException e1) {
-      logger.error("read line from inputCsvFileReader failed:{}", inputCsvDataPath, e1);
+      logger.error("cloneList line from inputCsvFileReader failed:{}", inputCsvDataPath, e1);
       extraDataFilePath = null;
     } finally {
       logger.info("write line:{}", lineCount);
@@ -187,7 +187,7 @@ public class LoadDataUtils {
         extraDataFileWriter.close();
       }
     } catch (IOException e) {
-      logger.error("close inputCsvFileReader and extraDataFileWriter failed", e);
+      logger.error("setCloseMark inputCsvFileReader and extraDataFileWriter failed", e);
     }
   }
 

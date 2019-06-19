@@ -147,7 +147,7 @@ public class JMXService implements IService {
     if (jmxConnectorServer != null) {
       try {
         jmxConnectorServer.stop();
-        LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME,
+        LOGGER.info("{}: setCloseMark {} successfully", IoTDBConstant.GLOBAL_DB_NAME,
             this.getID().getName());
       } catch (IOException e) {
         LOGGER.error("Failed to stop {} because of: ", this.getID().getName(), e);

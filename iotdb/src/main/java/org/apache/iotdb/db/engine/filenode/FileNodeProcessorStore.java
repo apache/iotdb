@@ -32,9 +32,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * FileNodeProcessorStore is used to store information about FileNodeProcessor's status.
- * lastUpdateTime is changed and stored by BufferWrite flushMetadata or BufferWrite close.
+ * lastUpdateTime is changed and stored by BufferWrite flushMetadata or BufferWrite setCloseMark.
  * emptyTsFileResource and newFileNodes are changed and stored by Overflow flushMetadata and
- * Overflow close. fileNodeProcessorState is changed and stored by the change of FileNodeProcessor's
+ * Overflow setCloseMark. fileNodeProcessorState is changed and stored by the change of FileNodeProcessor's
  * status such as "work->merge merge->wait wait->work". numOfMergeFile is changed
  * and stored when FileNodeProcessor's status changes from work to merge.
  */

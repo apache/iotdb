@@ -37,13 +37,13 @@ public class FlushManager {
       // TODO do sth
     }
     udfProcessor.setManagedByFlushManager(false);
-    registerBWProcessor(udfProcessor);
+    registerUnsealedTsFileProcessor(udfProcessor);
   };
 
   /**
    * Add BufferWriteProcessor to asyncFlush manager
    */
-  public boolean registerBWProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
+  public boolean registerUnsealedTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
     synchronized (unsealedTsFileProcessor) {
       if (!unsealedTsFileProcessor.isManagedByFlushManager() && unsealedTsFileProcessor.getFlushingMemTableSize() > 0) {
         unsealedTsFileProcessorQueue.add(unsealedTsFileProcessor);

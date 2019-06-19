@@ -165,9 +165,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
     try {
       stopLatch.await();
       reset();
-      LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+      LOGGER.info("{}: setCloseMark {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (InterruptedException e) {
-      LOGGER.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
+      LOGGER.error("{}: setCloseMark {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
     }
   }
 
@@ -228,7 +228,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
         if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
           threadStopLatch.countDown();
         }
-        LOGGER.info("{}: close TThreadPoolServer and TServerSocket for {}",
+        LOGGER.info("{}: setCloseMark TThreadPoolServer and TServerSocket for {}",
             IoTDBConstant.GLOBAL_DB_NAME,
             getID().getName());
       }

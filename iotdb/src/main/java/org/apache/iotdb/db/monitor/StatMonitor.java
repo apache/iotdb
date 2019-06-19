@@ -284,7 +284,7 @@ public class StatMonitor implements IService {
 
 
   /**
-   * close statistic service.
+   * setCloseMark statistic service.
    */
   public void close() {
 

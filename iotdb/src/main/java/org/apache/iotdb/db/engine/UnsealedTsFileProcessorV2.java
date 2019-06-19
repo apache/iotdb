@@ -73,21 +73,21 @@ public class UnsealedTsFileProcessorV2 {
 
   protected VersionController versionController;
 
-  private Callback closeUnsealedTsFileProcessor;
+  private Callback<UnsealedTsFileProcessorV2> closeUnsealedTsFileProcessor;
 
   /**
    * sync this object in query() and asyncFlush()
    */
   private final LinkedList<IMemTable> flushingMemTables = new LinkedList<>();
 
-  public UnsealedTsFileProcessorV2(String storageGroupName, File file, FileSchema fileSchema,
-      VersionController versionController, Callback closeUnsealedTsFileProcessor)
+  public UnsealedTsFileProcessorV2(String storageGroupName, File tsfile, FileSchema fileSchema,
+      VersionController versionController, Callback<UnsealedTsFileProcessorV2> closeUnsealedTsFileProcessor)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
-    this.tsFileResource = new UnsealedTsFileV2(file);
+    this.tsFileResource = new UnsealedTsFileV2(tsfile);
     this.versionController = versionController;
-    this.writer = new NativeRestorableIOWriter(file);
+    this.writer = new NativeRestorableIOWriter(tsfile);
     this.closeUnsealedTsFileProcessor = closeUnsealedTsFileProcessor;
   }
 
@@ -129,11 +129,12 @@ public class UnsealedTsFileProcessorV2 {
   /**
    * return the memtable to MemTablePool and make metadata in writer visible
    */
-  private void removeFlushedMemTable(Object memTable) {
+  private void releaseFlushedMemTable(IMemTable memTable) {
     flushQueryLock.writeLock().lock();
     try {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
+      MemTablePool.getInstance().putBack(memTable);
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -145,20 +146,24 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   /**
-   * put the workMemtable into flushing list and set null
+   * put the workMemtable into flushing list and set the workMemtable to null
    */
   public void asyncFlush() {
     flushingMemTables.addLast(workMemTable);
-    FlushManager.getInstance().registerBWProcessor(this);
+    FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
     workMemTable = null;
   }
 
+  /**
+   * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
+   * the flush manager pool
+   */
   public void flushOneMemTable() throws IOException {
     IMemTable memTableToFlush = flushingMemTables.pollFirst();
     // null memtable only appears when calling forceClose()
     if (memTableToFlush != null) {
       MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
-          this::removeFlushedMemTable);
+          this::releaseFlushedMemTable);
       flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
     }
 
@@ -198,7 +203,7 @@ public class UnsealedTsFileProcessorV2 {
     flushingMemTables.add(workMemTable);
     workMemTable = null;
     shouldClose = true;
-    FlushManager.getInstance().registerBWProcessor(this);
+    FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
   }
 
   public boolean shouldClose() {
@@ -208,7 +213,7 @@ public class UnsealedTsFileProcessorV2 {
     return fileSize > fileSizeThreshold;
   }
 
-  public void close() {
+  public void setCloseMark() {
     shouldClose = true;
   }
 
@@ -226,7 +231,8 @@ public class UnsealedTsFileProcessorV2 {
 
   /**
    * get the chunk(s) in the memtable ( one from work memtable and the other ones in flushing status
-   * and then compact them into one TimeValuePairSorter). Then get its (or their) ChunkMetadata(s).
+   * and then compact them into one TimeValuePairSorter). Then get the related ChunkMetadatas of
+   * data in disk.
    *
    * @param deviceId device id
    * @param measurementId sensor id
@@ -251,7 +257,7 @@ public class UnsealedTsFileProcessorV2 {
       ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(dataType, memSeriesLazyMerger,
           Collections.emptyMap());
       return new Pair<>(timeValuePairSorter,
-          writer.getMetadatas(deviceId, measurementId, dataType));
+          writer.getVisibleMetadatas(deviceId, measurementId, dataType));
     } finally {
       flushQueryLock.readLock().unlock();
     }

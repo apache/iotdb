@@ -152,10 +152,10 @@ public class FileNodeManagerV2 implements IService {
 
   private void closeAllFileNodeProcessor() {
     synchronized (processorMap) {
-      LOGGER.info("Start to close all FileNode");
+      LOGGER.info("Start to setCloseMark all FileNode");
       if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
         LOGGER.info(
-            "Failed to close all FileNode processor because the FileNodeManager's status is {}",
+            "Failed to setCloseMark all FileNode processor because the FileNodeManager's status is {}",
             fileNodeManagerStatus);
         return;
       }

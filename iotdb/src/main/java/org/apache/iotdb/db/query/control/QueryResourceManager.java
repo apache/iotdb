@@ -48,7 +48,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
  * 3. (if using filter)beginQueryOfGivenExpression
  *     - remind FileNodeManager that some files are being used
  * 4. getQueryDataSource - open files for the job or reuse existing readers.
- * 5. endQueryForGivenJob - release the resource used by this job.
+ * 5. endQueryForGivenJob - putBack the resource used by this job.
  * </p>
  */
 public class QueryResourceManager {

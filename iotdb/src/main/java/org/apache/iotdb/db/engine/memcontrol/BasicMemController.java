@@ -130,7 +130,7 @@ public abstract class BasicMemController implements IService {
   public abstract void clear();
 
   /**
-   * close MemController.
+   * setCloseMark MemController.
    */
   public void close() {
     logger.info("MemController exiting");
@@ -170,9 +170,9 @@ public abstract class BasicMemController implements IService {
 
   /**
    * When the memories held by one object (like OverflowProcessor or BufferWriteProcessor) is no
-   * more useful, this object should call this method to release the memories.
+   * more useful, this object should call this method to putBack the memories.
    * @param user an object that holds some memory as a buffer or anything.
-   * @param freeSize how many bytes does the object want to release.
+   * @param freeSize how many bytes does the object want to putBack.
    */
   public abstract void releaseUsage(Object user, long freeSize);
 

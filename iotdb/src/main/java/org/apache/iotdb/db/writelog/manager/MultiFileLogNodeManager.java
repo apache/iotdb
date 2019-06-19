@@ -120,7 +120,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       try {
         node.close();
       } catch (IOException e) {
-        logger.error("{} failed to close", node.toString(), e);
+        logger.error("{} failed to setCloseMark", node.toString(), e);
       }
     }
     nodeMap.clear();

@@ -62,7 +62,7 @@ public class MManager {
   private static final String ROOT_NAME = MetadataConstant.ROOT;
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
-  // the lock for read/write
+  // the lock for cloneList/write
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   // The file storing the serialize info for metadata
   private String datafilePath;
@@ -144,7 +144,7 @@ public class MManager {
     } catch (PathErrorException | MetadataArgsErrorException
         | ClassNotFoundException | IOException e) {
       mgraph = new MGraph(ROOT_NAME);
-      LOGGER.error("Cannot read MGraph from file, using an empty new one");
+      LOGGER.error("Cannot cloneList MGraph from file, using an empty new one");
     } finally {
       lock.writeLock().unlock();
     }
@@ -955,7 +955,7 @@ public class MManager {
     try(FileOutputStream fos = new FileOutputStream(tempFile);
         ObjectOutputStream oos = new ObjectOutputStream(fos)) {
       oos.writeObject(mgraph);
-      // close the logFile stream
+      // setCloseMark the logFile stream
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;

@@ -158,7 +158,7 @@ public class OverflowResource {
   }
 
   private void readMetadata() throws IOException {
-    // read insert meta-data
+    // cloneList insert meta-data
     insertIO.toTail();
     long position = insertIO.getPos();
     while (position != TsFileIOWriter.magicStringBytes.length) {

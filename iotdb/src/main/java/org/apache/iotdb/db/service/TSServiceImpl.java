@@ -165,7 +165,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSCloseSessionResp closeSession(TSCloseSessionReq req) throws TException {
-    LOGGER.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
+    LOGGER.info("{}: receive setCloseMark session", IoTDBConstant.GLOBAL_DB_NAME);
     TS_Status tsStatus;
     if (username.get() == null) {
       tsStatus = new TS_Status(TS_StatusCode.ERROR_STATUS);
@@ -190,7 +190,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
-    LOGGER.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
+    LOGGER.info("{}: receive setCloseMark operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
 
       releaseQueryResource(req);
@@ -548,7 +548,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     statement = statement.toLowerCase().trim();
     if (Pattern.matches(IoTDBConstant.SET_READ_CONSISTENCY_LEVEL_PATTERN, statement)) {
       throw new Exception(
-          "IoTDB Stand-alone version does not support setting read-write consistency level");
+          "IoTDB Stand-alone version does not support setting cloneList-write consistency level");
     } else {
       return false;
     }
@@ -695,7 +695,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
           break;
         default:
-          throw new TException("not support " + type + " in new read process");
+          throw new TException("not support " + type + " in new cloneList process");
       }
     }
     return resp;

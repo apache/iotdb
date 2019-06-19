@@ -36,7 +36,7 @@ public interface WriteLogNode {
   void write(PhysicalPlan plan) throws IOException;
 
   /**
-   * Sync and close streams.
+   * Sync and setCloseMark streams.
    */
   void close() throws IOException;
 

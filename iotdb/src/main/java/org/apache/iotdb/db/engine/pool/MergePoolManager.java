@@ -60,7 +60,7 @@ public class MergePoolManager {
   /**
    * Refuse new merge submits and exit when all RUNNING THREAD in the pool end.
    *
-   * @param block if set block to true, this method will wait for timeOut milliseconds to close the
+   * @param block if set block to true, this method will wait for timeOut milliseconds to setCloseMark the
    * merge pool. false, return directly.
    * @param timeout block time out in milliseconds.
    * @throws ProcessorException if timeOut reach or interrupted while waiting to exit.

@@ -37,7 +37,7 @@ public enum RecoverStage {
   RECOVER_FILE,
 
   /**
-   * In this stage, the mission is to read logs from wal and wal-old files (if exists) and replay
+   * In this stage, the mission is to cloneList logs from wal and wal-old files (if exists) and replay
    * them. Should SET flag afterward,
    */
   REPLAY_LOG,

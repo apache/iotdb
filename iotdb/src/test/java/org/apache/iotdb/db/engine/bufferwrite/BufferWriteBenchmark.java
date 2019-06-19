@@ -102,7 +102,7 @@ public class BufferWriteBenchmark {
 //      }
 //    }
 //    long endTime = System.currentTimeMillis();
-//    bufferWriteProcessor.close();
+//    bufferWriteProcessor.setCloseMark();
 //    System.out.println(String.format(
 //        "Num of time series: %d, " + "Num of points for each time series: %d, "
 //            + "The total time: %d ms. ",

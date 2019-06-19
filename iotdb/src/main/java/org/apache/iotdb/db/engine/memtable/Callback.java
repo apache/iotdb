@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-public interface Callback {
+public interface Callback<T> {
 
-  void call(Object... object);
+  void call(T object);
 
 }

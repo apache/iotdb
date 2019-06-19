@@ -79,7 +79,7 @@ public class SyncSenderDescriptor {
       return;
     }
 
-    LOGGER.info("Start to read sync config file {}", url);
+    LOGGER.info("Start to cloneList sync config file {}", url);
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
@@ -120,7 +120,7 @@ public class SyncSenderDescriptor {
       try {
         inputStream.close();
       } catch (IOException e) {
-        LOGGER.error("Fail to close sync config file input stream because ", e);
+        LOGGER.error("Fail to setCloseMark sync config file input stream because ", e);
       }
     }
   }

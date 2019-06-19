@@ -72,7 +72,7 @@ public class TsFileRecoverPerformer {
     try {
       restorableTsFileIOWriter.endFile(fileSchema);
     } catch (IOException e) {
-      throw new ProcessorException("Cannot close file when recovering", e);
+      throw new ProcessorException("Cannot setCloseMark file when recovering", e);
     }
 
     removeTruncatePosition(insertFile);

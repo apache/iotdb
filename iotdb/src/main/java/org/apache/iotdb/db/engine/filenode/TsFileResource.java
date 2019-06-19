@@ -58,7 +58,7 @@ public class TsFileResource {
   private transient ModificationFile modFile;
 
   /**
-   * @param autoRead whether read the file to initialize startTimeMap and endTimeMap
+   * @param autoRead whether cloneList the file to initialize startTimeMap and endTimeMap
    */
   public TsFileResource(File file, boolean autoRead) throws IOException {
     this(new HashMap<>(), new HashMap<>(), OverflowChangeType.NO_CHANGE, file);
@@ -66,7 +66,7 @@ public class TsFileResource {
       //init startTime and endTime
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath())) {
         if (reader.readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
-          //this is a complete tsfile, and we can read the metadata directly.
+          //this is a complete tsfile, and we can cloneList the metadata directly.
           for (Map.Entry<String, TsDeviceMetadataIndex> deviceEntry : reader.readFileMetadata()
               .getDeviceMap().entrySet()) {
             startTimeMap.put(deviceEntry.getKey(), deviceEntry.getValue().getStartTime());

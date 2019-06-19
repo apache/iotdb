@@ -30,7 +30,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * @param <T>
  */
-public class CopyOnWriteLinkedList<T> {
+public class CopyOnReadLinkedList<T> {
 
   LinkedList<T> data = new LinkedList<>();
   List<T> readCopy;
@@ -52,7 +52,7 @@ public class CopyOnWriteLinkedList<T> {
     readCopy = null;
   }
 
-  public synchronized List<T> read() {
+  public synchronized List<T> cloneList() {
     if (readCopy == null) {
       readCopy = new ArrayList<>(data);
     }

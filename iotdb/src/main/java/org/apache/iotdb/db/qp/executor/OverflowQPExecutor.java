@@ -535,7 +535,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             }
             closeFileNodes.removeAll(deleteFielNodes);
             for (String deleteFileNode : deleteFielNodes) {
-              // close processor
+              // setCloseMark processor
               fileNodeManager.deleteOneFileNode(deleteFileNode);
             }
             for (String closeFileNode : closeFileNodes) {

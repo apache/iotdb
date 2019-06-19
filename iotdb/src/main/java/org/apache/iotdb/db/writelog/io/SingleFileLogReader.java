@@ -93,7 +93,7 @@ public class SingleFileLogReader implements ILogReader {
       try {
         logStream.close();
       } catch (IOException e) {
-        logger.error("Cannot close log file {}", filepath, e);
+        logger.error("Cannot setCloseMark log file {}", filepath, e);
       }
     }
   }

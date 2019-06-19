@@ -538,7 +538,7 @@ public class FileNodeManager implements IStatistic, IService {
         .getConfig().getBufferwriteFileSizeThreshold()) {
       if (LOGGER.isInfoEnabled()) {
         LOGGER.info(
-            "The filenode processor {} will close the bufferwrite processor, "
+            "The filenode processor {} will setCloseMark the bufferwrite processor, "
                 + "because the size[{}] of tsfile {} reaches the threshold {}",
             filenodeName, MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize()),
             bufferWriteProcessor.getInsertFilePath(), MemUtils.bytesCntToStr(
@@ -548,7 +548,7 @@ public class FileNodeManager implements IStatistic, IService {
       fileNodeProcessor.closeBufferWrite();
       start3 = System.currentTimeMillis() - start3;
       if (start3 > 1000) {
-        LOGGER.info("FileNodeManager.insertBufferWrite step-3, close buffer write cost: {}", start3);
+        LOGGER.info("FileNodeManager.insertBufferWrite step-3, setCloseMark buffer write cost: {}", start3);
       }
     }
   }
@@ -821,7 +821,7 @@ public class FileNodeManager implements IStatistic, IService {
           return false;
         }
       }
-      // close bufferwrite file
+      // setCloseMark bufferwrite file
       fileNodeProcessor.closeBufferWrite();
       // append file to storage group.
       fileNodeProcessor.appendFile(appendFile, appendFilePath);
@@ -930,7 +930,7 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   /**
-   * try to close the filenode processor. The name of filenode processor is processorName
+   * try to setCloseMark the filenode processor. The name of filenode processor is processorName
    */
   private boolean closeOneProcessor(String processorName) throws FileNodeManagerException {
     if (!processorMap.containsKey(processorName)) {
@@ -993,7 +993,7 @@ public class FileNodeManager implements IStatistic, IService {
     for (String bufferwritePath : bufferwritePathList) {
       bufferwritePath = standardizeDir(bufferwritePath) + processorName;
       File bufferDir = new File(bufferwritePath);
-      // free and close the streams under this bufferwrite directory
+      // free and setCloseMark the streams under this bufferwrite directory
       if (!bufferDir.exists()) {
         continue;
       }
@@ -1070,7 +1070,7 @@ public class FileNodeManager implements IStatistic, IService {
 
 
   /**
-   * Force to close the filenode processor.
+   * Force to setCloseMark the filenode processor.
    */
   public void closeOneFileNode(String processorName) throws FileNodeManagerException {
     if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
@@ -1079,10 +1079,10 @@ public class FileNodeManager implements IStatistic, IService {
 
     fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
     try {
-      LOGGER.info("Force to close the filenode processor {}.", processorName);
+      LOGGER.info("Force to setCloseMark the filenode processor {}.", processorName);
       while (!closeOneProcessor(processorName)) {
         try {
-          LOGGER.info("Can't force to close the filenode processor {}, wait 100ms to retry",
+          LOGGER.info("Can't force to setCloseMark the filenode processor {}, wait 100ms to retry",
               processorName);
           TimeUnit.MILLISECONDS.sleep(100);
         } catch (InterruptedException e) {
@@ -1097,14 +1097,14 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   /**
-   * try to close the filenode processor.
+   * try to setCloseMark the filenode processor.
    */
   private void close(String processorName) throws FileNodeManagerException {
     if (!processorMap.containsKey(processorName)) {
       LOGGER.warn("The processorMap doesn't contain the filenode processor {}.", processorName);
       return;
     }
-    LOGGER.info("Try to close the filenode processor {}.", processorName);
+    LOGGER.info("Try to setCloseMark the filenode processor {}.", processorName);
     FileNodeProcessor processor = processorMap.get(processorName);
     if (!processor.tryWriteLock()) {
       LOGGER.warn("Can't get the write lock of the filenode processor {}.", processorName);
@@ -1153,12 +1153,12 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   /**
-   * Try to close All.
+   * Try to setCloseMark All.
    */
   public void closeAll() throws FileNodeManagerException {
     LOGGER.info("Start closing all filenode processor");
     if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
-      LOGGER.info("Failed to close all filenode processor because of merge operation");
+      LOGGER.info("Failed to setCloseMark all filenode processor because of merge operation");
       return;
     }
     fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
@@ -1268,7 +1268,7 @@ public class FileNodeManager implements IStatistic, IService {
     try {
       closeAll();
     } catch (FileNodeManagerException e) {
-      LOGGER.error("Failed to close file node manager because .", e);
+      LOGGER.error("Failed to setCloseMark file node manager because .", e);
     }
 
     boolean notFinished = true;
