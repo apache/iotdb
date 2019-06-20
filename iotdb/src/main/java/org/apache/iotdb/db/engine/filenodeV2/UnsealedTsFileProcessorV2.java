@@ -34,7 +34,6 @@ import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTaskV2;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.querycontext.UnsealedTsFileV2;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -85,7 +84,7 @@ public class UnsealedTsFileProcessorV2 {
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
-    this.tsFileResource = new UnsealedTsFileV2(tsfile);
+    this.tsFileResource = new TsFileResourceV2(tsfile);
     this.versionController = versionController;
     this.writer = new NativeRestorableIOWriter(tsfile);
     this.closeUnsealedTsFileProcessor = closeUnsealedTsFileProcessor;

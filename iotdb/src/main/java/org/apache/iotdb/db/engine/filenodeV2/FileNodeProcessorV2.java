@@ -36,7 +36,6 @@ import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.querycontext.UnsealedTsFileV2;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
@@ -217,7 +216,7 @@ public class FileNodeProcessorV2 {
               .toString();
           unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
               new File(filePath),
-              fileSchema, versionController, this::closeUnsealedTsFileProcessor);
+              fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback);
           sequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
         } else {
           // TODO check if the disk is full
@@ -226,7 +225,7 @@ public class FileNodeProcessorV2 {
               .toString();
           unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
               new File(filePath),
-              fileSchema, versionController, this::closeUnsealedTsFileProcessor);
+              fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback);
           unSequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
         }
       }
@@ -292,7 +291,7 @@ public class FileNodeProcessorV2 {
                 .getUnsealedFileProcessor()
                 .query(deviceId, measurementId, dataType, mSchema.getProps());
             tsfileResourcesForQuery
-                .add(new UnsealedTsFileV2(tsFileResource.getFile(), pair.left, pair.right));
+                .add(new TsFileResourceV2(tsFileResource.getFile(), pair.left, pair.right));
           }
         }
       }
@@ -334,7 +333,7 @@ public class FileNodeProcessorV2 {
    * put the memtable back to the MemTablePool and make the metadata in writer visible
    */
   // TODO please consider concurrency with query and write method.
-  private void closeUnsealedTsFileProcessor(UnsealedTsFileProcessorV2 bufferWriteProcessor) {
+  private void closeUnsealedTsFileProcessorCallback(UnsealedTsFileProcessorV2 bufferWriteProcessor) {
     lock.writeLock().unlock();
     try {
       closingSequenceTsFileProcessor.remove(bufferWriteProcessor);
@@ -345,6 +344,7 @@ public class FileNodeProcessorV2 {
           String deviceId = startTime.getKey();
           resource.getEndTimeMap().put(deviceId, latestTimeForEachDevice.get(deviceId));
         }
+        resource.setClosed(true);
       }
       closeFileNodeCondition.signal();
     }finally {
