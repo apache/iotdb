@@ -23,12 +23,13 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.UnsealedTsFileProcessorV2;
@@ -66,12 +67,12 @@ public class FileNodeProcessorV2 {
 
   // includes sealed and unsealed sequnce tsfiles
   private List<TsFileResourceV2> sequenceFileList = new ArrayList<>();
-  private UnsealedTsFileProcessorV2 workUnsealedSequenceTsFileProcessor = null;
+  private UnsealedTsFileProcessorV2 workSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<UnsealedTsFileProcessorV2> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
   // includes sealed and unsealed unsequnce tsfiles
   private List<TsFileResourceV2> unSequenceFileList = new ArrayList<>();
-  private UnsealedTsFileProcessorV2 workUnsealedUnSequenceTsFileProcessor = null;
+  private UnsealedTsFileProcessorV2 workUnSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<UnsealedTsFileProcessorV2> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
   /**
@@ -88,12 +89,20 @@ public class FileNodeProcessorV2 {
 
   private final ReadWriteLock lock;
 
+  private Condition closeFileNodeCondition;
+
+  /**
+   * Mark whether to close file node
+   */
+  private volatile boolean toBeClosed;
+
   private VersionController versionController;
 
   public FileNodeProcessorV2(String absoluteBaseDir, String storageGroupName)
       throws FileNodeProcessorException {
     this.storageGroupName = storageGroupName;
     lock = new ReentrantReadWriteLock();
+    closeFileNodeCondition = lock.writeLock().newCondition();
 
     File storageGroupDir = new File(absoluteBaseDir, storageGroupName);
     if (!storageGroupDir.exists()) {
@@ -160,29 +169,40 @@ public class FileNodeProcessorV2 {
     }
   }
 
-  public boolean insert(TSRecord tsRecord) {
+  /**
+   *
+   * @param tsRecord
+   * @return -1: failed, 1: Overflow, 2:Bufferwrite
+   */
+  public int insert(TSRecord tsRecord) {
     lock.writeLock().lock();
-    boolean result;
+    int insertResult;
 
     try {
+      if(toBeClosed){
+        return -1;
+      }
       // init map
       latestTimeForEachDevice.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
       latestFlushedTimeForEachDevice.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
 
+      boolean result;
       // write to sequence or unsequence file
       if (tsRecord.time > latestFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
-        result = writeUnsealedDataFile(workUnsealedSequenceTsFileProcessor, tsRecord, true);
+        result = writeUnsealedDataFile(workSequenceTsFileProcessor, tsRecord, true);
+        insertResult = result ? 1 : -1;
       } else {
-        result = writeUnsealedDataFile(workUnsealedUnSequenceTsFileProcessor, tsRecord, false);
+        result = writeUnsealedDataFile(workUnSequenceTsFileProcessor, tsRecord, false);
+        insertResult = result ? 2 : -1;
       }
     } catch (Exception e) {
       LOGGER.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
-      result = false;
+      insertResult = -1;
     } finally {
       lock.writeLock().unlock();
     }
 
-    return result;
+    return insertResult;
   }
 
   private boolean writeUnsealedDataFile(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
@@ -282,10 +302,10 @@ public class FileNodeProcessorV2 {
     if (unsealedTsFileProcessor.shouldClose()) {
       if (sequence) {
         closingSequenceTsFileProcessor.add(unsealedTsFileProcessor);
-        workUnsealedSequenceTsFileProcessor = null;
+        workSequenceTsFileProcessor = null;
       } else {
         closingUnSequenceTsFileProcessor.add(unsealedTsFileProcessor);
-        workUnsealedUnSequenceTsFileProcessor = null;
+        workUnSequenceTsFileProcessor = null;
       }
       unsealedTsFileProcessor.setCloseMark();
     }
@@ -304,29 +324,80 @@ public class FileNodeProcessorV2 {
    */
   // TODO please consider concurrency with query and write method.
   private void closeUnsealedTsFileProcessor(UnsealedTsFileProcessorV2 bufferWriteProcessor) {
-    closingSequenceTsFileProcessor.remove(bufferWriteProcessor);
-    // end time with one start time
-    Map<String, Long> endTimeMap = new HashMap<>();
-    TsFileResourceV2 resource = workUnsealedSequenceTsFileProcessor.getTsFileResource();
-    synchronized (resource) {
-      for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
-        String deviceId = startTime.getKey();
-        endTimeMap.put(deviceId, latestTimeForEachDevice.get(deviceId));
+    lock.writeLock().unlock();
+    try {
+      closingSequenceTsFileProcessor.remove(bufferWriteProcessor);
+      // end time with one start time
+      Map<String, Long> endTimeMap = new HashMap<>();
+      TsFileResourceV2 resource = workSequenceTsFileProcessor.getTsFileResource();
+      synchronized (resource) {
+        for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
+          String deviceId = startTime.getKey();
+          endTimeMap.put(deviceId, latestTimeForEachDevice.get(deviceId));
+        }
+        resource.setEndTimeMap(endTimeMap);
       }
-      resource.setEndTimeMap(endTimeMap);
+      closeFileNodeCondition.signal();
+    }finally {
+      lock.writeLock().unlock();
     }
   }
 
-  public void forceClose() {
+  public void asyncForceClose() {
     lock.writeLock().lock();
     try {
-      if (workUnsealedSequenceTsFileProcessor != null) {
-        closingSequenceTsFileProcessor.add(workUnsealedSequenceTsFileProcessor);
-        workUnsealedSequenceTsFileProcessor.forceClose();
-        workUnsealedSequenceTsFileProcessor = null;
+      if (workSequenceTsFileProcessor != null) {
+        closingSequenceTsFileProcessor.add(workSequenceTsFileProcessor);
+        workSequenceTsFileProcessor.forceClose();
+        workSequenceTsFileProcessor = null;
+      }
+      if (workUnSequenceTsFileProcessor != null) {
+        closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
+        workUnSequenceTsFileProcessor.forceClose();
+        workUnSequenceTsFileProcessor = null;
       }
     } finally {
       lock.writeLock().unlock();
     }
+  }
+
+  /**
+   * Block this method until this file node can be closed.
+   */
+  public void syncCloseFileNode(Supplier<Boolean> removeProcessorFromManager){
+    lock.writeLock().lock();
+    try {
+      asyncForceClose();
+      toBeClosed = true;
+      while (true) {
+        if (unSequenceFileList.isEmpty() && sequenceFileList.isEmpty()
+            && workSequenceTsFileProcessor == null && workUnSequenceTsFileProcessor == null) {
+          removeProcessorFromManager.get();
+          break;
+        }
+        closeFileNodeCondition.await();
+      }
+    } catch (InterruptedException e) {
+      LOGGER.error("CloseFileNodeConditon occurs error while waiting for closing the file node {}",
+          storageGroupName, e);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  public UnsealedTsFileProcessorV2 getWorkSequenceTsFileProcessor() {
+    return workSequenceTsFileProcessor;
+  }
+
+  public UnsealedTsFileProcessorV2 getWorkUnSequenceTsFileProcessor() {
+    return workUnSequenceTsFileProcessor;
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
+  }
+
+  public int getClosingProcessorSize(){
+    return unSequenceFileList.size() + sequenceFileList.size();
   }
 }

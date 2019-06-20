@@ -162,7 +162,7 @@ public class UnsealedTsFileProcessorV2 {
    */
   public void flushOneMemTable() throws IOException {
     IMemTable memTableToFlush = flushingMemTables.pollFirst();
-    // null memtable only appears when calling forceClose()
+    // null memtable only appears when calling asyncForceClose()
     if (memTableToFlush != null) {
       MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
           this::releaseFlushedMemTable);
