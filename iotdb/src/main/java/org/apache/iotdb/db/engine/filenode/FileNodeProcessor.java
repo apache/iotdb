@@ -88,6 +88,7 @@ import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -470,15 +471,15 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
     for (int i = 0; i < newFileNodes.size(); i++) {
       TsFileResource tsFile = newFileNodes.get(i);
-      String baseDir = directories
-          .getTsFileFolder(tsFile.getBaseDirIndex());
       try {
-        // recover in initialization
-        new BufferWriteProcessor(baseDir,
-            getProcessorName(),
-            tsFile.getFile().getName(), parameters, bufferwriteCloseConsumer,
-            versionController, fileSchema, tsFile);
-      } catch (BufferWriteProcessorException e) {
+        String filePath = tsFile.getFilePath();
+        String logNodePrefix = BufferWriteProcessor.logNodePrefix(processorName);
+        TsFileRecoverPerformer recoverPerformer =
+            new TsFileRecoverPerformer(filePath, logNodePrefix,
+                fileSchema, versionController, tsFile,
+                tsFile.getModFile());
+        recoverPerformer.recover();
+      } catch (ProcessorException e) {
         LOGGER.error(
             "The filenode processor {} failed to recover the bufferwrite processor, "
                 + "the last bufferwrite file is {}.",

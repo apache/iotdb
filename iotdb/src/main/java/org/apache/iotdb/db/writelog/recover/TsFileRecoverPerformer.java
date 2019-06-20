@@ -32,6 +32,8 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 
@@ -43,6 +45,7 @@ public class TsFileRecoverPerformer {
   private VersionController versionController;
   private LogReplayer logReplayer;
   private IMemTable recoverMemTable;
+  private TsFileResource tsFileResource;
 
   public TsFileRecoverPerformer(String insertFilePath, String processorName,
       FileSchema fileSchema, VersionController versionController,
@@ -56,12 +59,20 @@ public class TsFileRecoverPerformer {
         currentTsFileResource, fileSchema, recoverMemTable);
   }
 
-  public boolean recover() throws ProcessorException {
+  public void recover() throws ProcessorException {
     File insertFile = new File(insertFilePath);
     if (!insertFile.exists()) {
-      return false;
+      return;
     }
     NativeRestorableIOWriter restorableTsFileIOWriter = recoverFile(insertFile);
+    // due to failure, the last ChunkGroup may contain the same data with the WALs, so the time
+    // map must be updated first to avoid duplicated insertion
+    for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter.getChunkGroupMetaDatas()) {
+      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+        tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
+        tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+      }
+    }
 
     logReplayer.replayLogs();
 
@@ -77,15 +88,11 @@ public class TsFileRecoverPerformer {
 
     removeTruncatePosition(insertFile);
 
-    WriteLogNode logNode;
     try {
-      logNode = MultiFileLogNodeManager.getInstance().getNode(
-          processorName + new File(insertFilePath).getName());
-      logNode.delete();
+      MultiFileLogNodeManager.getInstance().deleteNode(processorName + new File(insertFilePath).getName());
     } catch (IOException e) {
       throw new ProcessorException(e);
     }
-    return true;
   }
 
 

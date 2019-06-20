@@ -144,15 +144,6 @@ public class BufferWriteProcessor extends Processor {
     this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
     bufferWriteRelativePath = processorName + File.separatorChar + fileName;
 
-    TsFileRecoverPerformer recoverPerformer =
-        new TsFileRecoverPerformer(insertFilePath, logNodePrefix(),
-            fileSchema, versionController, currentTsFileResource,
-            currentTsFileResource != null ? currentTsFileResource.getModFile() : null);
-    try {
-      recoverPerformer.recover();
-    } catch (ProcessorException e) {
-      throw new BufferWriteProcessorException(e);
-    }
     open();
     try {
       getLogNode();
@@ -482,6 +473,9 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public synchronized void close() throws BufferWriteProcessorException {
+    if (writer == null) {
+      return;
+    }
     try {
       // flushMetadata data (if there are flushing task, flushMetadata() will be blocked) and wait for finishing flushMetadata async
       LOGGER.info("Submit a BufferWrite ({}) setCloseMark task.", getProcessorName());
@@ -590,6 +584,10 @@ public class BufferWriteProcessor extends Processor {
   }
 
   public String logNodePrefix() {
+    return logNodePrefix(processorName);
+  }
+
+  public static String logNodePrefix(String processorName) {
     return processorName + "-BufferWrite-";
   }
 
