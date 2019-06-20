@@ -19,6 +19,10 @@
 package org.apache.iotdb.db.utils;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * FileUtils is just used to calculate file attributes like file size, including some measurement
@@ -83,5 +87,22 @@ public class FileUtils {
 
   public enum Unit {
     B, KB, MB, GB, TB, PB, EB
+  }
+
+  public static long getUsableSpace(String dir) {
+    long space = new File(dir).getFreeSpace();
+    return space;
+  }
+
+  public static boolean hasSpace(String dir) {
+    return getUsableSpace(dir) > 0;
+  }
+
+  public static long getOccupiedSpace(String path) throws IOException {
+    Path folder = Paths.get(path);
+    long size = Files.walk(folder).filter(p -> p.toFile().isFile())
+        .mapToLong(p -> p.toFile().length()).sum();
+
+    return size;
   }
 }

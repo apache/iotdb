@@ -19,16 +19,10 @@
 package org.apache.iotdb.db.conf.directories.strategy;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.stream.Stream;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.utils.FileUtils;
 
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
-
-  // directory space is measured by MB
-  private static final long DATA_SIZE_SHIFT = 1024L * 1024;
 
   @Override
   public int nextFolderIndex() throws DiskSpaceInsufficientException {
@@ -37,15 +31,20 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
   private int getMinOccupiedSpaceFolder() throws DiskSpaceInsufficientException {
     int minIndex = -1;
-    long minSpace = Integer.MAX_VALUE;
+    long minSpace = Long.MAX_VALUE;
 
     for (int i = 0; i < folders.size(); i++) {
       String folder = folders.get(i);
-      if (!hasSpace(folder)) {
+      if (!FileUtils.hasSpace(folder)) {
         continue;
       }
 
-      long space = getOccupiedSpace(folder);
+      long space = 0;
+      try {
+        space = FileUtils.getOccupiedSpace(folder);
+      } catch (IOException e) {
+        LOGGER.error("Cannot calculate occupied space for path {}.", folder, e);
+      }
       if (space < minSpace) {
         minSpace = space;
         minIndex = i;
@@ -57,21 +56,5 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
     }
 
     return minIndex;
-  }
-
-  private long getOccupiedSpace(String path) {
-    Path folder = Paths.get(path);
-    long size = Long.MAX_VALUE;
-    try {
-      try (Stream<Path> stream = Files.walk(folder)) {
-        size = stream.filter(p -> p.toFile().isFile())
-            .mapToLong(p -> p.toFile().length())
-            .sum();
-      }
-    } catch (IOException e) {
-      LOGGER.error("Cannot calculate occupied space for seriesPath {}.", path, e);
-    }
-
-    return size / DATA_SIZE_SHIFT;
   }
 }

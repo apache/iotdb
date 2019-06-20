@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
-import java.io.File;
 import java.util.List;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +46,18 @@ public abstract class DirectoryStrategy {
    */
   public void init(List<String> folders) throws DiskSpaceInsufficientException {
     this.folders = folders;
+
+    boolean hasSpace = false;
+    for (String folder : folders) {
+      if (FileUtils.hasSpace(folder)) {
+        hasSpace = true;
+        break;
+      }
+    }
+    if (!hasSpace) {
+      throw new DiskSpaceInsufficientException(
+          String.format("All disks of folders %s are full, can't init.", folders));
+    }
   }
 
   /**
@@ -73,15 +85,5 @@ public abstract class DirectoryStrategy {
   // only used by test
   public void setFolderForTest(String path) {
     folders.set(0, path);
-  }
-
-  protected long getUsableSpace(String dir) {
-    long space = new File(dir).getFreeSpace();
-    LOGGER.trace("Folder {} has {} available bytes.", dir, space);
-    return space;
-  }
-
-  protected boolean hasSpace(String dir) {
-    return getUsableSpace(dir) > 0;
   }
 }
