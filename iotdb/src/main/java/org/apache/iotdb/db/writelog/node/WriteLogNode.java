@@ -19,9 +19,7 @@
 package org.apache.iotdb.db.writelog.node;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.writelog.LogPosition;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 
 public interface WriteLogNode {
