@@ -104,7 +104,7 @@ public class UnsealedTsFileProcessorV2Test {
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
 
-    for (int flushId = 0; flushId < 1; flushId++) {
+    for (int flushId = 0; flushId < 100; flushId++) {
       for (int i = 1; i <= 100; i++) {
         TSRecord record = new TSRecord(i, deviceId);
         record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
@@ -112,14 +112,13 @@ public class UnsealedTsFileProcessorV2Test {
       }
       processor.asyncFlush();
     }
-
     processor.syncFlush();
 
     pair = processor.query(deviceId, measurementId, dataType, props);
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
-    assertEquals(10, right.size());
+    assertEquals(100, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).getTsDataType());
   }

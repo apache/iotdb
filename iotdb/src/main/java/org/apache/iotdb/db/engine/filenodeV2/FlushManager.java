@@ -19,12 +19,13 @@
 package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.IOException;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 
 public class FlushManager {
 
-  private ConcurrentLinkedQueue<UnsealedTsFileProcessorV2> unsealedTsFileProcessorQueue = new ConcurrentLinkedQueue<>();
+  private ConcurrentLinkedDeque<UnsealedTsFileProcessorV2> unsealedTsFileProcessorQueue = new ConcurrentLinkedDeque<>();
 
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 

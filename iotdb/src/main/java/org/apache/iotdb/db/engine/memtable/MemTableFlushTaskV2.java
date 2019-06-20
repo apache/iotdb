@@ -131,9 +131,6 @@ public class MemTableFlushTaskV2 {
       }
     }
 
-    MemTablePool.getInstance().putBack(memTable);
-    LOGGER.info("Processor {} return back a memtable to MemTablePool", processorName);
-
     tsFileIoWriter.makeMetadataVisible();
     flushCallBack.accept(memTable);
   });

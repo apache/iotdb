@@ -46,6 +46,11 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
+  public boolean isManagedByMemPool() {
+    return true;
+  }
+
+  @Override
   public boolean equals(Object obj) {
     return this == obj;
   }

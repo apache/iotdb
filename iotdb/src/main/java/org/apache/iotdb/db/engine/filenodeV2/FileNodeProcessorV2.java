@@ -206,56 +206,68 @@ public class FileNodeProcessorV2 {
 
   private boolean writeUnsealedDataFile(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
       TSRecord tsRecord, boolean sequence) throws IOException {
-    boolean result;
-    // create a new BufferWriteProcessor
-    if (unsealedTsFileProcessor == null) {
-      if (sequence) {
-        String baseDir = directories.getNextFolderForTsfile();
-        String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "").toString();
-        unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
-            new File(filePath),
-            fileSchema, versionController, this::closeUnsealedTsFileProcessor);
-        sequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
-      } else {
-        // TODO check if the disk is full
-        String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
-        String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "").toString();
-        unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
-            new File(filePath),
-            fileSchema, versionController, this::closeUnsealedTsFileProcessor);
-        unSequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
+    lock.writeLock().lock();
+    try {
+      boolean result;
+      // create a new BufferWriteProcessor
+      if (unsealedTsFileProcessor == null) {
+        if (sequence) {
+          String baseDir = directories.getNextFolderForTsfile();
+          String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "")
+              .toString();
+          unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
+              new File(filePath),
+              fileSchema, versionController, this::closeUnsealedTsFileProcessor);
+          sequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
+        } else {
+          // TODO check if the disk is full
+          String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
+          String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "")
+              .toString();
+          unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
+              new File(filePath),
+              fileSchema, versionController, this::closeUnsealedTsFileProcessor);
+          unSequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
+        }
       }
+
+      // write BufferWrite
+      result = unsealedTsFileProcessor.write(tsRecord);
+
+      // try to update the latest time of the device of this tsRecord
+      if (result && latestTimeForEachDevice.get(tsRecord.deviceId) < tsRecord.time) {
+        latestTimeForEachDevice.put(tsRecord.deviceId, tsRecord.time);
+      }
+
+      // check memtable size and may asyncFlush the workMemtable
+      if (unsealedTsFileProcessor.shouldFlush()) {
+        flushAndCheckShouldClose(unsealedTsFileProcessor, sequence);
+      }
+
+      return result;
+    }finally {
+      lock.writeLock().unlock();
     }
-
-    // write BufferWrite
-    result = unsealedTsFileProcessor.write(tsRecord);
-
-    // try to update the latest time of the device of this tsRecord
-    if (result && latestTimeForEachDevice.get(tsRecord.deviceId) < tsRecord.time) {
-      latestTimeForEachDevice.put(tsRecord.deviceId, tsRecord.time);
-    }
-
-    // check memtable size and may asyncFlush the workMemtable
-    if (unsealedTsFileProcessor.shouldFlush()) {
-      flushAndCheckShouldClose(unsealedTsFileProcessor, sequence);
-    }
-
-    return result;
   }
 
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSourceV2 query(String deviceId, String measurementId) {
 
-    List<TsFileResourceV2> sequnceResources = getFileReSourceListForQuery(sequenceFileList,
-        deviceId, measurementId);
-    List<TsFileResourceV2> unsequnceResources = getFileReSourceListForQuery(unSequenceFileList,
-        deviceId, measurementId);
+    lock.readLock().lock();
+    try {
+      List<TsFileResourceV2> sequnceResources = getFileReSourceListForQuery(sequenceFileList,
+          deviceId, measurementId);
+      List<TsFileResourceV2> unsequnceResources = getFileReSourceListForQuery(unSequenceFileList,
+          deviceId, measurementId);
 
-    return new QueryDataSourceV2(
-        new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId), sequnceResources),
-        new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId), unsequnceResources));
-
+      return new QueryDataSourceV2(
+          new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId), sequnceResources),
+          new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId),
+              unsequnceResources));
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
 
