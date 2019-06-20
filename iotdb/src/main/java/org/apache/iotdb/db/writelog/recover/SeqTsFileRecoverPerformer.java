@@ -27,11 +27,9 @@ import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
@@ -40,28 +38,27 @@ import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 public class SeqTsFileRecoverPerformer {
 
   private String insertFilePath;
-  private String processorName;
+  private String logNodePrefix;
   private FileSchema fileSchema;
   private VersionController versionController;
   private LogReplayer logReplayer;
-  private IMemTable recoverMemTable;
   private TsFileResource tsFileResource;
 
-  public SeqTsFileRecoverPerformer(String insertFilePath, String processorName,
+  public SeqTsFileRecoverPerformer(String insertFilePath, String logNodePrefix,
       FileSchema fileSchema, VersionController versionController,
       TsFileResource currentTsFileResource) {
     this.insertFilePath = insertFilePath;
-    this.processorName = processorName;
+    this.logNodePrefix = logNodePrefix;
     this.fileSchema = fileSchema;
     this.versionController = versionController;
-    this.recoverMemTable = new PrimitiveMemTable();
-    this.logReplayer = new LogReplayer(processorName, insertFilePath, currentTsFileResource.getModFile(),
-        versionController,
-        currentTsFileResource, fileSchema, recoverMemTable);
     this.tsFileResource = currentTsFileResource;
   }
 
   public void recover() throws ProcessorException {
+    IMemTable recoverMemTable = new PrimitiveMemTable();
+    this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
+        versionController,
+        tsFileResource, fileSchema, recoverMemTable);
     File insertFile = new File(insertFilePath);
     if (!insertFile.exists()) {
       return;
@@ -79,7 +76,7 @@ public class SeqTsFileRecoverPerformer {
     logReplayer.replayLogs();
 
     MemTableFlushTask tableFlushTask = new MemTableFlushTask(restorableTsFileIOWriter,
-        processorName, 0, (a,b) -> {});
+        logNodePrefix, 0, (a,b) -> {});
     tableFlushTask.flushMemTable(fileSchema, recoverMemTable, versionController.nextVersion());
 
     try {
@@ -91,7 +88,7 @@ public class SeqTsFileRecoverPerformer {
     removeTruncatePosition(insertFile);
 
     try {
-      MultiFileLogNodeManager.getInstance().deleteNode(processorName + new File(insertFilePath).getName());
+      MultiFileLogNodeManager.getInstance().deleteNode(logNodePrefix + new File(insertFilePath).getName());
     } catch (IOException e) {
       throw new ProcessorException(e);
     }

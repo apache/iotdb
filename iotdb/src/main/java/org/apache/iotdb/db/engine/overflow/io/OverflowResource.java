@@ -344,7 +344,7 @@ public class OverflowResource {
     if (logNode == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
-            logNodePrefix() + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
+            logNodePrefix() + insertFile.getName());
       }
     }
     return logNode;
@@ -356,5 +356,13 @@ public class OverflowResource {
 
   public ModificationFile getModificationFile() {
     return modificationFile;
+  }
+
+  public OverflowIO getInsertIO() {
+    return insertIO;
+  }
+
+  public List<ChunkGroupMetaData> getAppendInsertMetadatas() {
+    return appendInsertMetadatas;
   }
 }
