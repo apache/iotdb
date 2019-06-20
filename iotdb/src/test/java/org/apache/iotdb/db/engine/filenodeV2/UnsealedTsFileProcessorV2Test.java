@@ -169,5 +169,4 @@ public class UnsealedTsFileProcessorV2Test {
     assertTrue(processor.getTsFileResource().isClosed());
 
   }
-
 }

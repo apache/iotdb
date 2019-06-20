@@ -158,23 +158,30 @@ public class UnsealedTsFileProcessorV2 {
       flushingMemTables.addLast(workMemTable);
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
       workMemTable = null;
-    }finally {
+    } finally {
       flushQueryLock.writeLock().unlock();
     }
   }
 
   // only for test
   public void syncFlush() {
+    IMemTable tmpMemTable;
+    flushQueryLock.writeLock().lock();
     try {
-      IMemTable tmpMemTable = workMemTable == null ? new EmptyMemTable() : workMemTable;
+      tmpMemTable = workMemTable == null ? new EmptyMemTable() : workMemTable;
       flushingMemTables.addLast(tmpMemTable);
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
       workMemTable = null;
-      synchronized (tmpMemTable) {
+    } finally {
+      flushQueryLock.writeLock().unlock();
+    }
+
+    synchronized (tmpMemTable) {
+      try {
         tmpMemTable.wait();
+      } catch (InterruptedException e) {
+        LOGGER.error("wait flush finished meets error", e);
       }
-    } catch (InterruptedException e) {
-      LOGGER.error("wait flush finished meets error", e);
     }
   }
 
@@ -190,7 +197,7 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   public synchronized void asyncClose() {
-    flushingMemTables.add(workMemTable);
+    flushingMemTables.add(workMemTable == null ? new EmptyMemTable() : workMemTable);
     workMemTable = null;
     shouldClose = true;
     FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
@@ -217,20 +224,16 @@ public class UnsealedTsFileProcessorV2 {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
 
-
     // null memtable only appears when calling asyncClose()
-    if (memTableToFlush != null) {
-      if(memTableToFlush.isManagedByMemPool()) {
-        MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
-            this::releaseFlushedMemTable);
-        flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
-      }
-      // for sync flush
-      synchronized (memTableToFlush){
-        memTableToFlush.notify();
-      }
+    if (memTableToFlush.isManagedByMemPool()) {
+      MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
+          this::releaseFlushedMemTable);
+      flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
     }
-
+    // for sync flush
+    synchronized (memTableToFlush) {
+      memTableToFlush.notify();
+    }
 
     if (shouldClose && flushingMemTables.isEmpty()) {
       endFile();
@@ -278,7 +281,7 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   public int getFlushingMemTableSize() {
-      return flushingMemTables.size();
+    return flushingMemTables.size();
   }
 
   /**

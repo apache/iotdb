@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.filenodeV2;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Future;
 import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 
 public class FlushManager {
@@ -30,28 +31,27 @@ public class FlushManager {
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 
   private Runnable flushThread = () -> {
-    UnsealedTsFileProcessorV2 udfProcessor = unsealedTsFileProcessorQueue.poll();
+    UnsealedTsFileProcessorV2 unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
     try {
-      udfProcessor.flushOneMemTable();
+      unsealedTsFileProcessor.flushOneMemTable();
     } catch (IOException e) {
       // TODO do sth
     }
-    udfProcessor.setManagedByFlushManager(false);
-    registerUnsealedTsFileProcessor(udfProcessor);
+    unsealedTsFileProcessor.setManagedByFlushManager(false);
+    registerUnsealedTsFileProcessor(unsealedTsFileProcessor);
   };
 
   /**
    * Add BufferWriteProcessor to asyncFlush manager
    */
-  public boolean registerUnsealedTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
+  public Future registerUnsealedTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
     synchronized (unsealedTsFileProcessor) {
       if (!unsealedTsFileProcessor.isManagedByFlushManager() && unsealedTsFileProcessor.getFlushingMemTableSize() > 0) {
         unsealedTsFileProcessorQueue.add(unsealedTsFileProcessor);
         unsealedTsFileProcessor.setManagedByFlushManager(true);
-        flushPool.submit(flushThread);
-        return true;
+        return flushPool.submit(flushThread);
       }
-      return false;
+      return null;
     }
   }
 
