@@ -40,22 +40,27 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 
+/**
+ * LogReplayer finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads
+ * the WALs from the logNode and redoes them into a given MemTable and ModificationFile.
+ */
 public class LogReplayer {
 
-  private String processorName;
+  private String logNodePrefix;
   private String insertFilePath;
   private ModificationFile modFile;
   private VersionController versionController;
   private TsFileResource currentTsFileResource;
+  // fileSchema is used to get the measurement data type
   private FileSchema fileSchema;
   private IMemTable recoverMemTable;
 
-  public LogReplayer(String processorName, String insertFilePath,
+  public LogReplayer(String logNodePrefix, String insertFilePath,
       ModificationFile modFile,
       VersionController versionController,
       TsFileResource currentTsFileResource,
       FileSchema fileSchema, IMemTable memTable) {
-    this.processorName = processorName;
+    this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
     this.modFile = modFile;
     this.versionController = versionController;
@@ -64,11 +69,16 @@ public class LogReplayer {
     this.recoverMemTable = memTable;
   }
 
+  /**
+   * finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads
+   * the WALs from the logNode and redoes them into a given MemTable and ModificationFile.
+   * @throws ProcessorException
+   */
   public void replayLogs() throws ProcessorException {
     WriteLogNode logNode;
     try {
       logNode = MultiFileLogNodeManager.getInstance().getNode(
-          processorName + new File(insertFilePath).getName());
+          logNodePrefix + new File(insertFilePath).getName());
     } catch (IOException e) {
       throw new ProcessorException(e);
     }
@@ -77,9 +87,9 @@ public class LogReplayer {
       while (logReader.hasNext()) {
         PhysicalPlan plan = logReader.next();
         if (plan instanceof InsertPlan) {
-          replayInsert((InsertPlan) plan, recoverMemTable);
+          replayInsert((InsertPlan) plan);
         } else if (plan instanceof DeletePlan) {
-          replayDelete((DeletePlan) plan, recoverMemTable);
+          replayDelete((DeletePlan) plan);
         }
       }
     } catch (IOException e) {
@@ -87,7 +97,7 @@ public class LogReplayer {
     }
   }
 
-  private void replayDelete(DeletePlan deletePlan, IMemTable recoverMemTable) throws IOException {
+  private void replayDelete(DeletePlan deletePlan) throws IOException {
     List<Path> paths = deletePlan.getPaths();
     for (Path path : paths) {
       recoverMemTable.delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteTime());
@@ -96,7 +106,7 @@ public class LogReplayer {
     }
   }
 
-  private void replayInsert(InsertPlan insertPlan, IMemTable recoverMemTable) {
+  private void replayInsert(InsertPlan insertPlan) {
     TSRecord tsRecord = new TSRecord(insertPlan.getTime(), insertPlan.getDeviceId());
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs

@@ -38,7 +38,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
-import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.db.writelog.recover.SeqTsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -106,9 +106,8 @@ public class RecoverTest {
       logNode.write(deletePlan);
       logNode.forceSync();
 
-      TsFileRecoverPerformer performer = new TsFileRecoverPerformer(
-          insertFile.getPath(), deviceId, schema, SysTimeVersionController.INSTANCE, tsFileResource,
-          tsFileResource.getModFile());
+      SeqTsFileRecoverPerformer performer = new SeqTsFileRecoverPerformer(deviceId, schema,
+          SysTimeVersionController.INSTANCE, tsFileResource);
       // used to check if logs are replayed in order
       performer.recover();
 

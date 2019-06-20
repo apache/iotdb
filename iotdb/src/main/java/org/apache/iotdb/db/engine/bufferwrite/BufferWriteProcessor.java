@@ -49,7 +49,6 @@ import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
@@ -57,7 +56,6 @@ import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -144,15 +142,6 @@ public class BufferWriteProcessor extends Processor {
     this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
     bufferWriteRelativePath = processorName + File.separatorChar + fileName;
 
-    TsFileRecoverPerformer recoverPerformer =
-        new TsFileRecoverPerformer(insertFilePath, logNodePrefix(),
-            fileSchema, versionController, currentTsFileResource,
-            currentTsFileResource != null ? currentTsFileResource.getModFile() : null);
-    try {
-      recoverPerformer.recover();
-    } catch (ProcessorException e) {
-      throw new BufferWriteProcessorException(e);
-    }
     open();
     try {
       getLogNode();
@@ -482,6 +471,9 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public synchronized void close() throws BufferWriteProcessorException {
+    if (writer == null) {
+      return;
+    }
     try {
       // flushMetadata data (if there are flushing task, flushMetadata() will be blocked) and wait for finishing flushMetadata async
       LOGGER.info("Submit a BufferWrite ({}) setCloseMark task.", getProcessorName());
@@ -590,6 +582,10 @@ public class BufferWriteProcessor extends Processor {
   }
 
   public String logNodePrefix() {
+    return logNodePrefix(processorName);
+  }
+
+  public static String logNodePrefix(String processorName) {
     return processorName + "-BufferWrite-";
   }
 
