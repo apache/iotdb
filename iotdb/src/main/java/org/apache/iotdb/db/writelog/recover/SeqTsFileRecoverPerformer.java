@@ -74,6 +74,10 @@ public class SeqTsFileRecoverPerformer {
     }
 
     logReplayer.replayLogs();
+    if (recoverMemTable.isEmpty()) {
+      removeTruncatePosition(insertFile);
+      return;
+    }
 
     MemTableFlushTask tableFlushTask = new MemTableFlushTask(restorableTsFileIOWriter,
         logNodePrefix, 0, (a,b) -> {});

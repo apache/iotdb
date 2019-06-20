@@ -47,6 +47,9 @@ public class UnseqTsFileRecoverPerformer {
         resource.getModificationFile(), resource.getVersionController(), null,
         fileSchema, memTable);
     replayer.replayLogs();
+    if (memTable.isEmpty()) {
+      return;
+    }
     try {
       resource.flush(fileSchema, memTable, logNodePrefix, 0, (a,b) -> {});
       resource.appendMetadatas();
