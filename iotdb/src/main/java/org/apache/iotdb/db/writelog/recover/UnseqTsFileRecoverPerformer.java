@@ -28,6 +28,10 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 
+
+/**
+ * UnseqTsFileRecoverPerformer redoes the WALs since last crash and removes the redone logs.
+ */
 public class UnseqTsFileRecoverPerformer {
 
   private FileSchema fileSchema;
@@ -39,6 +43,14 @@ public class UnseqTsFileRecoverPerformer {
     this.fileSchema = fileSchema;
   }
 
+  /**
+   * The UnseqTsFile itself has already been recovered by the OverResource, and duplicated
+   * operation will not break the file, so merely redoing and flush are enough.
+   * 1. redo the WALs to recover unpersisted data
+   * 2. flush
+   * 3. clean WALs
+   * @throws ProcessorException
+   */
   public void recover() throws ProcessorException {
     IMemTable memTable = new PrimitiveMemTable();
     String logNodePrefix = resource.logNodePrefix();

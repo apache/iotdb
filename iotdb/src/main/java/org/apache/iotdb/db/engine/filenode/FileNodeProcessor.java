@@ -473,7 +473,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         String filePath = tsFile.getFilePath();
         String logNodePrefix = BufferWriteProcessor.logNodePrefix(processorName);
         SeqTsFileRecoverPerformer recoverPerformer =
-            new SeqTsFileRecoverPerformer(filePath, logNodePrefix,
+            new SeqTsFileRecoverPerformer(logNodePrefix,
                 fileSchema, versionController, tsFile);
         recoverPerformer.recover();
       } catch (ProcessorException e) {

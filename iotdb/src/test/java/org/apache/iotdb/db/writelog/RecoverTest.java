@@ -106,8 +106,8 @@ public class RecoverTest {
       logNode.write(deletePlan);
       logNode.forceSync();
 
-      SeqTsFileRecoverPerformer performer = new SeqTsFileRecoverPerformer(
-          insertFile.getPath(), deviceId, schema, SysTimeVersionController.INSTANCE, tsFileResource);
+      SeqTsFileRecoverPerformer performer = new SeqTsFileRecoverPerformer(deviceId, schema,
+          SysTimeVersionController.INSTANCE, tsFileResource);
       // used to check if logs are replayed in order
       performer.recover();
 

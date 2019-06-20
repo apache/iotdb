@@ -32,6 +32,10 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * MultiFileLogNodeManager manages all ExclusiveWriteLogNodes, each manages WALs of a TsFile
+ * (either seq or unseq).
+ */
 public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
@@ -46,7 +50,10 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           logger.info("WAL force thread exits.");
           return;
         }
-        logger.debug("Timed force starts, {} nodes to be flushed", nodeMap.size());
+        if (logger.isDebugEnabled()) {
+          logger.debug("Timed force starts, {} nodes to be flushed", nodeMap.size());
+        }
+
         for (WriteLogNode node : nodeMap.values()) {
           try {
             node.forceSync();
@@ -115,7 +122,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       try {
         node.close();
       } catch (IOException e) {
-        logger.error("{} failed to setCloseMark", node.toString(), e);
+        logger.error("failed to close {}", node, e);
       }
     }
     nodeMap.clear();

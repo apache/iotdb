@@ -35,6 +35,10 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 
+/**
+ * SeqTsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last
+ * crash and removes the redone logs.
+ */
 public class SeqTsFileRecoverPerformer {
 
   private String insertFilePath;
@@ -44,16 +48,23 @@ public class SeqTsFileRecoverPerformer {
   private LogReplayer logReplayer;
   private TsFileResource tsFileResource;
 
-  public SeqTsFileRecoverPerformer(String insertFilePath, String logNodePrefix,
+  public SeqTsFileRecoverPerformer(String logNodePrefix,
       FileSchema fileSchema, VersionController versionController,
       TsFileResource currentTsFileResource) {
-    this.insertFilePath = insertFilePath;
+    this.insertFilePath = currentTsFileResource.getFilePath();
     this.logNodePrefix = logNodePrefix;
     this.fileSchema = fileSchema;
     this.versionController = versionController;
     this.tsFileResource = currentTsFileResource;
   }
 
+  /**
+   * 1. recover the TsFile by NativeRestorableIOWriter and truncate position of last recovery
+   * 2. redo the WALs to recover unpersisted data
+   * 3. flush and close the file
+   * 4. clean WALs
+   * @throws ProcessorException
+   */
   public void recover() throws ProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
@@ -64,7 +75,7 @@ public class SeqTsFileRecoverPerformer {
       return;
     }
     NativeRestorableIOWriter restorableTsFileIOWriter = recoverFile(insertFile);
-    // due to failure, the last ChunkGroup may contain the same data with the WALs, so the time
+    // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
     // map must be updated first to avoid duplicated insertion
     for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter.getChunkGroupMetaDatas()) {
       for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {

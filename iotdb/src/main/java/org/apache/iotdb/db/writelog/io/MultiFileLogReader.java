@@ -24,6 +24,10 @@ import java.io.IOException;
 import java.util.NoSuchElementException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
+/**
+ * MultiFileLogReader constructs SingleFileLogReaders for a list of WAL files, and retrieve logs
+ * from the files one-by-one.
+ */
 public class MultiFileLogReader implements ILogReader {
 
   private SingleFileLogReader currentReader;

@@ -26,21 +26,31 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * SingleFileLogReader reads binarized WAL logs from a file through a DataInputStream by scanning
+ * the file from head to tail.
+ */
 public class SingleFileLogReader implements ILogReader {
 
   private static final Logger logger = LoggerFactory.getLogger(SingleFileLogReader.class);
+  private int bufferSize = IoTDBDescriptor.getInstance().getConfig().getMaxLogEntrySize();
   public static final int LEAST_LOG_SIZE = 12; // size + checksum
+
   private DataInputStream logStream;
   private String filepath;
-  private int bufferSize = 4 * 1024 * 1024;
+
   private byte[] buffer = new byte[bufferSize];
   private CRC32 checkSummer = new CRC32();
   private PhysicalPlan planBuffer = null;
+
+  // used to indicate the position of the broken log
+  private int idx;
 
   public SingleFileLogReader(File logFile) throws FileNotFoundException {
     open(logFile);
@@ -66,7 +76,8 @@ public class SingleFileLogReader implements ILogReader {
     checkSummer.reset();
     checkSummer.update(buffer, 0, logSize);
     if (checkSummer.getValue() != checkSum) {
-      throw new IOException("The check sum is incorrect!");
+      throw new IOException(String.format("The check sum of the No.%d log is incorrect! In file: "
+          + "%d Calculated: %d.", idx, checkSum, checkSummer.getValue()));
     }
     planBuffer = PhysicalPlanLogTransfer.logToPlan(buffer);
     return true;
@@ -80,6 +91,7 @@ public class SingleFileLogReader implements ILogReader {
 
     PhysicalPlan ret = planBuffer;
     planBuffer = null;
+    idx ++;
     return ret;
   }
 
@@ -89,7 +101,7 @@ public class SingleFileLogReader implements ILogReader {
       try {
         logStream.close();
       } catch (IOException e) {
-        logger.error("Cannot setCloseMark log file {}", filepath, e);
+        logger.error("Cannot close log file {}", filepath, e);
       }
     }
   }
@@ -97,5 +109,6 @@ public class SingleFileLogReader implements ILogReader {
   public void open(File logFile) throws FileNotFoundException {
     logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
     this.filepath = logFile.getPath();
+    idx = 0;
   }
 }
