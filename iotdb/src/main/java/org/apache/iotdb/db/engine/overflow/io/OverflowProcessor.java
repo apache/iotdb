@@ -193,10 +193,7 @@ public class OverflowProcessor extends Processor {
     }
 
     UnseqTsFileRecoverPerformer recoverPerformer =
-        new UnseqTsFileRecoverPerformer(workResource.logNodePrefix(),
-            workResource.getInsertFilePath(),
-            workResource.getModificationFile(), versionController, fileSchema
-        );
+        new UnseqTsFileRecoverPerformer(workResource, fileSchema);
     recoverPerformer.recover();
   }
 
