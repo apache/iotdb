@@ -21,82 +21,39 @@ package org.apache.iotdb.db.writelog.recover;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.memtable.MemTableFlushCallBack;
-import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.overflow.io.OverflowIO;
-import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.engine.overflow.io.OverflowResource;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 
 public class UnseqTsFileRecoverPerformer {
 
-  private String logNodePrefix;
-  private String insertFilePath;
-  private ModificationFile modFile;
-  private VersionController versionController;
   private FileSchema fileSchema;
-  private OverflowIO overflowIO;
-  private List<ChunkGroupMetaData> appendInsertMetadatas;
+  private OverflowResource resource;
 
-  public UnseqTsFileRecoverPerformer(String logNodePrefix, String insertFilePath,
-      ModificationFile modFile,
-      VersionController versionController, FileSchema fileSchema,
-      OverflowIO overflowIO,
-      List<ChunkGroupMetaData> appendInsertMetadatas) {
-    this.logNodePrefix = logNodePrefix;
-    this.insertFilePath = insertFilePath;
-    this.modFile = modFile;
-    this.versionController = versionController;
+
+  public UnseqTsFileRecoverPerformer(OverflowResource resource, FileSchema fileSchema) {
+    this.resource = resource;
     this.fileSchema = fileSchema;
-    this.overflowIO = overflowIO;
-    this.appendInsertMetadatas = appendInsertMetadatas;
   }
 
   public void recover() throws ProcessorException {
     IMemTable memTable = new PrimitiveMemTable();
+    String logNodePrefix = resource.logNodePrefix();
+    String insertFilePath = resource.getInsertFilePath();
     LogReplayer replayer = new LogReplayer(logNodePrefix, insertFilePath,
-        modFile, versionController, null, fileSchema, memTable);
+        resource.getModificationFile(), resource.getVersionController(), null,
+        fileSchema, memTable);
     replayer.replayLogs();
     try {
-      flush(memTable);
+      resource.flush(fileSchema, memTable, logNodePrefix, 0, (a,b) -> {});
+      resource.appendMetadatas();
       MultiFileLogNodeManager.getInstance().deleteNode(logNodePrefix + new File(insertFilePath).getName());
     } catch (IOException e) {
       throw new ProcessorException(e);
     }
   }
 
-  public void flush(IMemTable memTable) throws IOException {
-    if (memTable != null && !memTable.isEmpty()) {
-      overflowIO.toTail();
-      long lastPosition = overflowIO.getPos();
-      MemTableFlushTask tableFlushTask = new MemTableFlushTask(overflowIO, logNodePrefix, 0,
-          (a,b) -> {});
-      tableFlushTask.flushMemTable(fileSchema, memTable, versionController.nextVersion());
-
-      List<ChunkGroupMetaData> rowGroupMetaDatas = overflowIO.getChunkGroupMetaDatas();
-      appendInsertMetadatas.addAll(rowGroupMetaDatas);
-      if (!rowGroupMetaDatas.isEmpty()) {
-        overflowIO.getWriter().write(BytesUtils.longToBytes(lastPosition));
-        TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
-        tsDeviceMetadata.setChunkGroupMetadataList(rowGroupMetaDatas);
-        long start = overflowIO.getPos();
-        tsDeviceMetadata.serializeTo(overflowIO.getOutputStream());
-        long end = overflowIO.getPos();
-        overflowIO.getWriter().write(BytesUtils.intToBytes((int) (end - start)));
-        // clear the meta-data of insert IO
-        overflowIO.clearRowGroupMetadatas();
-      }
-    }
-  }
 }

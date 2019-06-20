@@ -365,4 +365,8 @@ public class OverflowResource {
   public List<ChunkGroupMetaData> getAppendInsertMetadatas() {
     return appendInsertMetadatas;
   }
+
+  public VersionController getVersionController() {
+    return versionController;
+  }
 }

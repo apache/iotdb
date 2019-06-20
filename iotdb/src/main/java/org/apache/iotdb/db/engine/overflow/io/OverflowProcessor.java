@@ -35,7 +35,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
@@ -63,9 +62,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.db.writelog.recover.LogReplayer;
 import org.apache.iotdb.db.writelog.recover.UnseqTsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -198,8 +195,8 @@ public class OverflowProcessor extends Processor {
     UnseqTsFileRecoverPerformer recoverPerformer =
         new UnseqTsFileRecoverPerformer(workResource.logNodePrefix(),
             workResource.getInsertFilePath(),
-            workResource.getModificationFile(), versionController, fileSchema,
-            workResource.getInsertIO(),workResource.getAppendInsertMetadatas());
+            workResource.getModificationFile(), versionController, fileSchema
+        );
     recoverPerformer.recover();
   }
 
