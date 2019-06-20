@@ -26,10 +26,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.bufferwriteV2.FlushManager;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
-import org.apache.iotdb.db.engine.memtable.Callback;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTaskV2;
@@ -73,7 +74,7 @@ public class UnsealedTsFileProcessorV2 {
 
   protected VersionController versionController;
 
-  private Callback<UnsealedTsFileProcessorV2> closeUnsealedTsFileProcessor;
+  private Consumer<UnsealedTsFileProcessorV2> closeUnsealedTsFileProcessor;
 
   /**
    * sync this object in query() and asyncFlush()
@@ -81,7 +82,8 @@ public class UnsealedTsFileProcessorV2 {
   private final LinkedList<IMemTable> flushingMemTables = new LinkedList<>();
 
   public UnsealedTsFileProcessorV2(String storageGroupName, File tsfile, FileSchema fileSchema,
-      VersionController versionController, Callback<UnsealedTsFileProcessorV2> closeUnsealedTsFileProcessor)
+      VersionController versionController,
+      Consumer<UnsealedTsFileProcessorV2> closeUnsealedTsFileProcessor)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
@@ -182,7 +184,7 @@ public class UnsealedTsFileProcessorV2 {
     writer = null;
 
     // remove this processor from Closing list in FileNodeProcessor
-    closeUnsealedTsFileProcessor.call(this);
+    closeUnsealedTsFileProcessor.accept(this);
 
     // delete the restore for this bufferwrite processor
     if (LOGGER.isInfoEnabled()) {
