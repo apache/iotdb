@@ -88,7 +88,7 @@ import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.db.writelog.recover.SeqTsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -467,17 +467,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
 
-    recoverUpdateTimeMap();
-
     for (int i = 0; i < newFileNodes.size(); i++) {
       TsFileResource tsFile = newFileNodes.get(i);
       try {
         String filePath = tsFile.getFilePath();
         String logNodePrefix = BufferWriteProcessor.logNodePrefix(processorName);
-        TsFileRecoverPerformer recoverPerformer =
-            new TsFileRecoverPerformer(filePath, logNodePrefix,
-                fileSchema, versionController, tsFile,
-                tsFile.getModFile());
+        SeqTsFileRecoverPerformer recoverPerformer =
+            new SeqTsFileRecoverPerformer(filePath, logNodePrefix,
+                fileSchema, versionController, tsFile);
         recoverPerformer.recover();
       } catch (ProcessorException e) {
         LOGGER.error(

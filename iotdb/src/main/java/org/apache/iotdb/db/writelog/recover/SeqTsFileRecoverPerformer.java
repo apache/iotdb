@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 
-public class TsFileRecoverPerformer {
+public class SeqTsFileRecoverPerformer {
 
   private String insertFilePath;
   private String processorName;
@@ -47,16 +47,18 @@ public class TsFileRecoverPerformer {
   private IMemTable recoverMemTable;
   private TsFileResource tsFileResource;
 
-  public TsFileRecoverPerformer(String insertFilePath, String processorName,
+  public SeqTsFileRecoverPerformer(String insertFilePath, String processorName,
       FileSchema fileSchema, VersionController versionController,
-      TsFileResource currentTsFileResource, ModificationFile modFile) {
+      TsFileResource currentTsFileResource) {
     this.insertFilePath = insertFilePath;
     this.processorName = processorName;
     this.fileSchema = fileSchema;
     this.versionController = versionController;
     this.recoverMemTable = new PrimitiveMemTable();
-    this.logReplayer = new LogReplayer(processorName, insertFilePath, modFile, versionController,
+    this.logReplayer = new LogReplayer(processorName, insertFilePath, currentTsFileResource.getModFile(),
+        versionController,
         currentTsFileResource, fileSchema, recoverMemTable);
+    this.tsFileResource = currentTsFileResource;
   }
 
   public void recover() throws ProcessorException {
