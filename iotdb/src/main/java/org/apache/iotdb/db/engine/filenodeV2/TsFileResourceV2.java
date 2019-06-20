@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.directories.Directories;
-import org.apache.iotdb.db.engine.UnsealedTsFileProcessorV2;
 import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.SealedTsFileV2;
@@ -156,9 +155,7 @@ public abstract class TsFileResourceV2 {
 
 
   public boolean isClosed() {
-
     return !endTimeMap.isEmpty();
-
   }
 
   public UnsealedTsFileProcessorV2 getUnsealedFileProcessor() {

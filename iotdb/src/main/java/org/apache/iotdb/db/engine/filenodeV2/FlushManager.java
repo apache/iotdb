@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.bufferwriteV2;
+package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import org.apache.iotdb.db.engine.UnsealedTsFileProcessorV2;
 import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 
 public class FlushManager {

@@ -61,6 +61,8 @@ public class MemTableWriteTimeCost {
     long elapse = System.currentTimeMillis() - start;
     long[] a = new long[2];
     // long[0] is the count, long[1] is the latency in ms
+    if(!timeCostMaps.containsKey(Thread.currentThread().getName()))
+      return;
     a[0] = timeCostMaps.get(Thread.currentThread().getName()).get(type)[0] + 1;
     a[1] = timeCostMaps.get(Thread.currentThread().getName()).get(type)[1] + elapse;
     timeCostMaps.get(Thread.currentThread().getName()).put(type, a);

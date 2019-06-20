@@ -32,7 +32,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
-import org.apache.iotdb.db.engine.UnsealedTsFileProcessorV2;
 import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
@@ -279,7 +278,7 @@ public class FileNodeProcessorV2 {
           } else {
             Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = tsFileResource
                 .getUnsealedFileProcessor()
-                .queryUnsealedFile(deviceId, measurementId, dataType, mSchema.getProps());
+                .query(deviceId, measurementId, dataType, mSchema.getProps());
             tsfileResourcesForQuery
                 .add(new UnsealedTsFileV2(tsFileResource.getFile(), pair.left, pair.right));
           }
@@ -328,14 +327,12 @@ public class FileNodeProcessorV2 {
     try {
       closingSequenceTsFileProcessor.remove(bufferWriteProcessor);
       // end time with one start time
-      Map<String, Long> endTimeMap = new HashMap<>();
       TsFileResourceV2 resource = workSequenceTsFileProcessor.getTsFileResource();
       synchronized (resource) {
         for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
           String deviceId = startTime.getKey();
-          endTimeMap.put(deviceId, latestTimeForEachDevice.get(deviceId));
+          resource.getEndTimeMap().put(deviceId, latestTimeForEachDevice.get(deviceId));
         }
-        resource.setEndTimeMap(endTimeMap);
       }
       closeFileNodeCondition.signal();
     }finally {
@@ -348,12 +345,12 @@ public class FileNodeProcessorV2 {
     try {
       if (workSequenceTsFileProcessor != null) {
         closingSequenceTsFileProcessor.add(workSequenceTsFileProcessor);
-        workSequenceTsFileProcessor.forceClose();
+        workSequenceTsFileProcessor.asyncClose();
         workSequenceTsFileProcessor = null;
       }
       if (workUnSequenceTsFileProcessor != null) {
         closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
-        workUnSequenceTsFileProcessor.forceClose();
+        workUnSequenceTsFileProcessor.asyncClose();
         workUnSequenceTsFileProcessor = null;
       }
     } finally {
