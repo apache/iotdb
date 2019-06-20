@@ -42,10 +42,6 @@ public class SingleFileLogReader implements ILogReader {
   private CRC32 checkSummer = new CRC32();
   private PhysicalPlan planBuffer = null;
 
-  public SingleFileLogReader() {
-    // allowed to construct SingleFileLogReader without input.
-  }
-
   public SingleFileLogReader(File logFile) throws FileNotFoundException {
     open(logFile);
   }

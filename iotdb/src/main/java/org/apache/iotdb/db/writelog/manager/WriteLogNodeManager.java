@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.writelog.manager;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 
 /**
@@ -48,12 +47,4 @@ public interface WriteLogNodeManager {
    * Close all nodes.
    */
   void close();
-
-  /**
-   * return whether wal files exist for certain fileNode.
-   *
-   * @param fileNodeName -fileNode Name
-   * @return Whether WAL files exist for certain fileNode/
-   */
-  boolean hasWAL(String fileNodeName);
 }

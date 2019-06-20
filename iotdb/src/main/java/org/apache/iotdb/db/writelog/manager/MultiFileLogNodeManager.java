@@ -18,17 +18,12 @@
  */
 package org.apache.iotdb.db.writelog.manager;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -49,14 +44,14 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       while (true) {
         if (Thread.interrupted()) {
           logger.info("WAL force thread exits.");
-          break;
+          return;
         }
         logger.debug("Timed force starts, {} nodes to be flushed", nodeMap.size());
         for (WriteLogNode node : nodeMap.values()) {
           try {
             node.forceSync();
           } catch (IOException e) {
-            logger.error("Cannot force {}, because {}", node.toString(), e.toString());
+            logger.error("Cannot force {}, because ", node, e);
           }
         }
         logger.debug("Timed force finished");
@@ -125,33 +120,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     }
     nodeMap.clear();
     logger.info("LogNodeManager closed.");
-  }
-
-  @Override
-  public boolean hasWAL(String fileNodeName) {
-    return hasBufferWriteWAL(fileNodeName) || hasOverflowWAL(fileNodeName);
-  }
-
-  private boolean hasBufferWriteWAL(String fileNodeName) {
-    File bufferWriteWALDir = new File(bufferWriteWALPath(fileNodeName));
-    String[] files = bufferWriteWALDir.list();
-    return files != null && files.length > 0;
-  }
-
-  private String bufferWriteWALPath(String fileNodeName) {
-    return config.getWalFolder() + File.separator + fileNodeName
-        + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX;
-  }
-
-  private boolean hasOverflowWAL(String fileNodeName) {
-    File overflowWALDir = new File(overflowWALPath(fileNodeName));
-    String[] files = overflowWALDir.list();
-    return files != null && files.length > 0;
-  }
-
-  private String overflowWALPath(String fileNodeName) {
-    return config.getWalFolder() + File.separator + fileNodeName
-        + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX;
   }
 
   @Override
