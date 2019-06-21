@@ -32,7 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A service that triggers close and merge operation regularly.
+ * A service that triggers setCloseMark and merge operation regularly.
  *
  * @author liukun
  */
@@ -76,35 +76,35 @@ public class CloseMergeService implements IService {
   public void startService() {
     if (dbConfig.isEnableTimingCloseAndMerge()) {
       if (!isStart) {
-        LOGGER.info("Start the close and merge service");
+        LOGGER.info("Start the setCloseMark and merge service");
         closeAndMergeDaemon.start();
         isStart = true;
         closeAllLastTime = System.currentTimeMillis();
         mergeAllLastTime = System.currentTimeMillis();
       } else {
-        LOGGER.warn("The close and merge service has been already running.");
+        LOGGER.warn("The setCloseMark and merge service has been already running.");
       }
     } else {
-      LOGGER.info("Cannot start close and merge service, it is disabled by configuration.");
+      LOGGER.info("Cannot start setCloseMark and merge service, it is disabled by configuration.");
     }
   }
 
   /**
-   * close service.
+   * setCloseMark service.
    */
   public void closeService() {
     if (dbConfig.isEnableTimingCloseAndMerge()) {
       if (isStart) {
-        LOGGER.info("Prepare to shutdown the close and merge service.");
+        LOGGER.info("Prepare to shutdown the setCloseMark and merge service.");
         isStart = false;
         synchronized (service) {
           service.shutdown();
           service.notifyAll();
         }
         resetCloseMergeService();
-        LOGGER.info("Shutdown close and merge service successfully.");
+        LOGGER.info("Shutdown setCloseMark and merge service successfully.");
       } else {
-        LOGGER.warn("The close and merge service is not running now.");
+        LOGGER.warn("The setCloseMark and merge service is not running now.");
       }
     }
   }
@@ -198,13 +198,13 @@ public class CloseMergeService implements IService {
           IoTDBDescriptor.getInstance().getConfig().getZoneID());
       long timeInterval = thisCloseTime - closeAllLastTime;
       LOGGER.info(
-          "Start the close action regularly, last time is {}, this time is {}, "
+          "Start the setCloseMark action regularly, last time is {}, this time is {}, "
               + "time interval is {}s.", startDateTime, endDateTime, timeInterval / 1000);
       closeAllLastTime = System.currentTimeMillis();
       try {
         FileNodeManager.getInstance().closeAll();
       } catch (Exception e) {
-        LOGGER.error("close all error.", e);
+        LOGGER.error("setCloseMark all error.", e);
       }
     }
   }

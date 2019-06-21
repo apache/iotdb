@@ -78,7 +78,7 @@ public class OpenFileNumUtilTest {
 
   @After
   public void tearDown() {
-    // close FileWriter
+    // setCloseMark FileWriter
     for (FileWriter fw : fileWriterList) {
       try {
         fw.close();
@@ -272,7 +272,7 @@ public class OpenFileNumUtilTest {
       }
       totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
       totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
-      // close FileWriter shall cause total open file number decrease by testFileNum
+      // setCloseMark FileWriter shall cause total open file number decrease by testFileNum
       if (openFileNumUtil.isCommandValid()) {
         assertEquals(-testFileNum, totalOpenFileNumChange);
       } else {

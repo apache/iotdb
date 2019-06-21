@@ -47,6 +47,6 @@ public class AggreResultDataPointReader implements IPointReader {
 
   @Override
   public void close() {
-    // batch data doesn't need to close.
+    // batch data doesn't need to setCloseMark.
   }
 }

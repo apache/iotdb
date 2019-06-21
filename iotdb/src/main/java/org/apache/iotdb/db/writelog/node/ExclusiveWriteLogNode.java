@@ -34,16 +34,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This WriteLogNode is used to manage write ahead logs of BufferWrite or Overflow of a single
- * StorageGroup.
+ * This WriteLogNode is used to manage write ahead logs of a TsFile.
  */
 public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<ExclusiveWriteLogNode> {
 
   public static final String WAL_FILE_NAME = "wal";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
-  /**
-   * This should be the same as the corresponding StorageGroup's name.
-   */
+
   private String identifier;
 
   private String logDirectory;
@@ -55,8 +52,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private List<byte[]> logCache = new ArrayList<>(config.getFlushWalThreshold());
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
-
-  private ReadWriteLock forceLock = new ReentrantReadWriteLock();
 
   private long fileId;
   private long lastFlushedId = -1;
@@ -72,13 +67,10 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         Directories.getInstance().getWALFolder() + File.separator + this.identifier;
     new File(logDirectory).mkdirs();
   }
-
-  /*
-   * Return value is of no use in this implementation.
-   */
+  
   @Override
   public void write(PhysicalPlan plan) throws IOException {
-    lockForWrite();
+    lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
       byte[] logBytes = PhysicalPlanLogTransfer.planToLog(plan);
@@ -92,7 +84,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         logger.info("WAL write cost {} ms", elapse);
       }
     } finally {
-      unlockForWrite();
+      lock.writeLock().unlock();
     }
   }
 
@@ -100,8 +92,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void close() {
     sync();
     forceWal();
-    lockForOther();
-    lockForForceOther();
+    lock.writeLock().lock();
     long start = System.currentTimeMillis();
     try {
       if (this.currentFileWriter != null) {
@@ -111,13 +102,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logger.debug("Log node {} closed successfully", identifier);
     } catch (IOException e) {
       logger.error("Cannot close log node {} because:", identifier, e);
+    } finally {
+      lock.writeLock().unlock();
     }
     long elapse = System.currentTimeMillis() - start;
     if (elapse > 1000) {
-      logger.info("WAL close cost {} ms", elapse);
+      logger.info("WAL log node {} close cost {} ms", identifier, elapse);
     }
-    unlockForForceOther();
-    unlockForOther();
   }
 
   @Override
@@ -129,7 +120,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void notifyStartFlush() {
-    lockForWrite();
+    lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
       close();
@@ -139,13 +130,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         logger.info("WAL notifyStartFlush cost {} ms", elapse);
       }
     } finally {
-      unlockForWrite();
+      lock.writeLock().unlock();
     }
   }
 
   @Override
   public void notifyEndFlush() {
-    lockForWrite();
+    lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
       File logFile = new File(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
@@ -155,7 +146,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         logger.info("WAL notifyEndFlush cost {} ms", elapse);
       }
     } finally {
-      unlockForWrite();
+      lock.writeLock().unlock();
     }
   }
 
@@ -171,7 +162,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void delete() throws IOException {
-    lockForOther();
+    lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
       logCache.clear();
@@ -184,7 +175,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         logger.info("WAL delete cost {} ms", elapse);
       }
     } finally {
-      unlockForOther();
+      lock.writeLock().unlock();
     }
   }
 
@@ -193,34 +184,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     File[] logFiles = new File(logDirectory).listFiles();
     return new MultiFileLogReader(logFiles);
   }
-
-  private void lockForWrite() {
-    lock.writeLock().lock();
-  }
-
-  // other means sync and delete
-  private void lockForOther() {
-    lock.writeLock().lock();
-  }
-
-  private void unlockForWrite() {
-    lock.writeLock().unlock();
-  }
-
-  private void unlockForOther() {
-    lock.writeLock().unlock();
-  }
-
-  private void lockForForceOther() {
-    forceLock.writeLock().lock();
-  }
-
-  private void unlockForForceOther() {
-    forceLock.writeLock().unlock();
-  }
-
+  
   private void sync() {
-    lockForOther();
+    lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
       logger.debug("Log node {} starts sync, {} logs to be synced", identifier, logCache.size());
@@ -239,12 +205,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         logger.info("WAL sync cost {} ms", elapse);
       }
     } finally {
-      unlockForOther();
+      lock.writeLock().unlock();
     }
   }
 
   private void forceWal() {
-    lockForForceOther();
+   lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
       logger.debug("Log node {} starts force, {} logs to be forced", identifier, logCache.size());
@@ -261,7 +227,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         logger.info("WAL forceWal cost {} ms", elapse);
       }
     } finally {
-      unlockForForceOther();
+      lock.writeLock().unlock();
     }
   }
 
@@ -269,10 +235,11 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (!logFile.exists()) {
       logger.info("Log file does not exist");
     } else {
-      if (!logFile.delete()) {
-        logger.error("Old log file of {} cannot be deleted", identifier);
-      } else {
+      try {
+        FileUtils.forceDelete(logFile);
         logger.info("Log node {} cleaned old file", identifier);
+      } catch (IOException e) {
+        logger.error("Old log file {} of {} cannot be deleted", logFile.getName(), identifier, e);
       }
     }
   }

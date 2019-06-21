@@ -35,7 +35,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
@@ -63,9 +62,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.db.writelog.recover.LogReplayer;
+import org.apache.iotdb.db.writelog.recover.UnseqTsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -194,19 +192,9 @@ public class OverflowProcessor extends Processor {
       throw new ProcessorException(e);
     }
 
-    IMemTable memTable = new PrimitiveMemTable();
-    LogReplayer replayer = new LogReplayer(processorName, workResource.getInsertFilePath(),
-        workResource.getModificationFile(), versionController, null, fileSchema,
-        memTable);
-    replayer.replayLogs();
-    flushTask("recover asyncFlush", memTable, 0, (a,b) -> {});
-    try {
-      WriteLogNode node = MultiFileLogNodeManager.getInstance().getNode(
-          workResource.logNodePrefix() + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
-      node.delete();
-    } catch (IOException e) {
-      throw new ProcessorException(e);
-    }
+    UnseqTsFileRecoverPerformer recoverPerformer =
+        new UnseqTsFileRecoverPerformer(workResource, fileSchema);
+    recoverPerformer.recover();
   }
 
   private String[] clearFile(String[] subFilePaths) {
@@ -637,7 +625,7 @@ public class OverflowProcessor extends Processor {
     if (isClosed) {
       return;
     }
-    LOGGER.info("The overflow processor {} starts close operation.", getProcessorName());
+    LOGGER.info("The overflow processor {} starts setCloseMark operation.", getProcessorName());
     long closeStartTime = System.currentTimeMillis();
     // asyncFlush data
     try {
@@ -651,11 +639,11 @@ public class OverflowProcessor extends Processor {
       throw new OverflowProcessorException(e);
     }
     if (LOGGER.isInfoEnabled()) {
-      LOGGER.info("The overflow processor {} ends close operation.", getProcessorName());
-      // log close time
+      LOGGER.info("The overflow processor {} ends setCloseMark operation.", getProcessorName());
+      // log setCloseMark time
       long closeEndTime = System.currentTimeMillis();
       LOGGER.info(
-          "The close operation of overflow processor {} starts at {} and ends at {}."
+          "The setCloseMark operation of overflow processor {} starts at {} and ends at {}."
               + " It comsumes {}ms.",
           getProcessorName(), DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
           DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
@@ -712,7 +700,7 @@ public class OverflowProcessor extends Processor {
 
   /**
    * Check whether current overflow file contains too many metadata or size of current overflow file
-   * is too large If true, close current file and open a new one.
+   * is too large If true, setCloseMark current file and open a new one.
    */
   private boolean checkSize() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

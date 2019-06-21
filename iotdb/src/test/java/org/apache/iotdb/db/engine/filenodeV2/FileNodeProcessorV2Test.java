@@ -16,42 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.filenodeV2;
 
-package org.apache.iotdb.db.engine.memtable;
-
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
-
+import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.junit.After;
+import org.junit.Before;
 
-public class PrimitiveMemTable extends AbstractMemTable {
+public class FileNodeProcessorV2Test {
 
-  public PrimitiveMemTable() {
+  private UnsealedTsFileProcessorV2 processor;
+  private String storageGroup = "storage_group1";
+  private String baseDir = "data";
+  private String deviceId = "root.vehicle.d0";
+  private String measurementId = "s0";
+  private TSDataType dataType = TSDataType.INT32;
+  private Map<String, String> props = Collections.emptyMap();
+
+
+  @Before
+  public void setUp() throws Exception {
+    MetadataManagerHelper.initMetadata();
+    EnvironmentUtils.envSetUp();
   }
 
-  public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
-    super(memTableMap);
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanDir(baseDir);
   }
 
-  @Override
-  protected IWritableMemChunk genMemSeries(TSDataType dataType) {
-    return new WritableMemChunk(dataType);
-  }
 
-  @Override
-  public IMemTable copy() {
-    Map<String, Map<String, IWritableMemChunk>> newMap = new HashMap<>(getMemTableMap());
-
-    return new PrimitiveMemTable(newMap);
-  }
-
-  @Override
-  public boolean isManagedByMemPool() {
-    return true;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return this == obj;
-  }
 }

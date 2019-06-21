@@ -54,7 +54,7 @@ public class QueryContext {
   }
 
   /**
-   * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
+   * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, cloneList
    * them from 'modFile' and put then into the cache.
    */
   public List<Modification> getPathModifications(ModificationFile modFile, String path)

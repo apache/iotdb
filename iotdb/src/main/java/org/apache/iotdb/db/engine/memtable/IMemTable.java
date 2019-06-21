@@ -60,7 +60,7 @@ public interface IMemTable {
       Map<String, String> props);
 
   /**
-   * release all the memory resources.
+   * putBack all the memory resources.
    */
   void clear();
 
@@ -94,4 +94,6 @@ public interface IMemTable {
   IMemTable copy();
 
   boolean containSeries(String deviceId, String measurementId);
+
+  boolean isManagedByMemPool();
 }

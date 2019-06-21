@@ -23,7 +23,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
 /**
- * Vital read interface. Batch method is used to increase query speed. Getting a batch of data a
+ * Vital cloneList interface. Batch method is used to increase query speed. Getting a batch of data a
  * time is faster than getting one point a time.
  */
 public interface IReader {

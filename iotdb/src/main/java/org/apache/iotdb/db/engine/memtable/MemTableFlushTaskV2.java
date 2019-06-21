@@ -17,6 +17,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,11 +43,11 @@ public class MemTableFlushTaskV2 {
   private boolean stop = false;
   private String processorName;
 
-  private Callback flushCallBack;
+  private Consumer<IMemTable> flushCallBack;
   private IMemTable memTable;
 
   public MemTableFlushTaskV2(NativeRestorableIOWriter writer, String processorName,
-      Callback callBack) {
+      Consumer<IMemTable> callBack) {
     this.tsFileIoWriter = writer;
     this.processorName = processorName;
     this.flushCallBack = callBack;
@@ -130,11 +131,8 @@ public class MemTableFlushTaskV2 {
       }
     }
 
-    MemTablePool.getInstance().release(memTable);
-    LOGGER.info("Processor {} return back a memtable to MemTablePool", processorName);
-
     tsFileIoWriter.makeMetadataVisible();
-    flushCallBack.call(memTable);
+    flushCallBack.accept(memTable);
   });
 
 

@@ -27,65 +27,86 @@ import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 
-public class TsFileRecoverPerformer {
+/**
+ * SeqTsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last
+ * crash and removes the redone logs.
+ */
+public class SeqTsFileRecoverPerformer {
 
   private String insertFilePath;
-  private String processorName;
+  private String logNodePrefix;
   private FileSchema fileSchema;
   private VersionController versionController;
   private LogReplayer logReplayer;
-  private IMemTable recoverMemTable;
+  private TsFileResource tsFileResource;
 
-  public TsFileRecoverPerformer(String insertFilePath, String processorName,
+  public SeqTsFileRecoverPerformer(String logNodePrefix,
       FileSchema fileSchema, VersionController versionController,
-      TsFileResource currentTsFileResource, ModificationFile modFile) {
-    this.insertFilePath = insertFilePath;
-    this.processorName = processorName;
+      TsFileResource currentTsFileResource) {
+    this.insertFilePath = currentTsFileResource.getFilePath();
+    this.logNodePrefix = logNodePrefix;
     this.fileSchema = fileSchema;
     this.versionController = versionController;
-    this.recoverMemTable = new PrimitiveMemTable();
-    this.logReplayer = new LogReplayer(processorName, insertFilePath, modFile, versionController,
-        currentTsFileResource, fileSchema, recoverMemTable);
+    this.tsFileResource = currentTsFileResource;
   }
 
-  public boolean recover() throws ProcessorException {
+  /**
+   * 1. recover the TsFile by NativeRestorableIOWriter and truncate position of last recovery
+   * 2. redo the WALs to recover unpersisted data
+   * 3. flush and close the file
+   * 4. clean WALs
+   * @throws ProcessorException
+   */
+  public void recover() throws ProcessorException {
+    IMemTable recoverMemTable = new PrimitiveMemTable();
+    this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
+        versionController,
+        tsFileResource, fileSchema, recoverMemTable);
     File insertFile = new File(insertFilePath);
     if (!insertFile.exists()) {
-      return false;
+      return;
     }
     NativeRestorableIOWriter restorableTsFileIOWriter = recoverFile(insertFile);
+    // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
+    // map must be updated first to avoid duplicated insertion
+    for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter.getChunkGroupMetaDatas()) {
+      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+        tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
+        tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+      }
+    }
 
     logReplayer.replayLogs();
+    if (recoverMemTable.isEmpty()) {
+      removeTruncatePosition(insertFile);
+      return;
+    }
 
     MemTableFlushTask tableFlushTask = new MemTableFlushTask(restorableTsFileIOWriter,
-        processorName, 0, (a,b) -> {});
+        logNodePrefix, 0, (a,b) -> {});
     tableFlushTask.flushMemTable(fileSchema, recoverMemTable, versionController.nextVersion());
 
     try {
       restorableTsFileIOWriter.endFile(fileSchema);
     } catch (IOException e) {
-      throw new ProcessorException("Cannot close file when recovering", e);
+      throw new ProcessorException("Cannot setCloseMark file when recovering", e);
     }
 
     removeTruncatePosition(insertFile);
 
-    WriteLogNode logNode;
     try {
-      logNode = MultiFileLogNodeManager.getInstance().getNode(
-          processorName + new File(insertFilePath).getName());
-      logNode.delete();
+      MultiFileLogNodeManager.getInstance().deleteNode(logNodePrefix + new File(insertFilePath).getName());
     } catch (IOException e) {
       throw new ProcessorException(e);
     }
-    return true;
   }
 
 

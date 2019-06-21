@@ -39,13 +39,11 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
@@ -158,7 +156,7 @@ public class OverflowResource {
   }
 
   private void readMetadata() throws IOException {
-    // read insert meta-data
+    // cloneList insert meta-data
     insertIO.toTail();
     long position = insertIO.getPos();
     while (position != TsFileIOWriter.magicStringBytes.length) {
@@ -346,7 +344,7 @@ public class OverflowResource {
     if (logNode == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
-            logNodePrefix() + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
+            logNodePrefix() + insertFile.getName());
       }
     }
     return logNode;
@@ -358,5 +356,17 @@ public class OverflowResource {
 
   public ModificationFile getModificationFile() {
     return modificationFile;
+  }
+
+  public OverflowIO getInsertIO() {
+    return insertIO;
+  }
+
+  public List<ChunkGroupMetaData> getAppendInsertMetadatas() {
+    return appendInsertMetadatas;
+  }
+
+  public VersionController getVersionController() {
+    return versionController;
   }
 }

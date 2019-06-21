@@ -32,6 +32,7 @@ public class MemTablePool {
 
   /**
    * >= number of storage group * 2
+   * TODO check this parameter to ensure that capaity * MaxMemTable Size < JVM memory / 2
    */
   private static final int capacity = IoTDBDescriptor.getInstance().getConfig()
       .getMaxActiveMemTableSize();
@@ -76,7 +77,7 @@ public class MemTablePool {
     }
   }
 
-  public void release(IMemTable memTable) {
+  public void putBack(IMemTable memTable) {
     synchronized (emptyMemTables) {
       memTable.clear();
       emptyMemTables.push(memTable);

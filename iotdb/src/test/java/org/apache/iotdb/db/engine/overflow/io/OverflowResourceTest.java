@@ -78,7 +78,7 @@ public class OverflowResourceTest {
     ChunkMetaData chunkMetaData = chunkMetaDatas.get(0);
     assertEquals(OverflowTestUtils.dataType1, chunkMetaData.getTsDataType());
     assertEquals(OverflowTestUtils.measurementId1, chunkMetaData.getMeasurementUid());
-    // close
+    // setCloseMark
     work.close();
     // append file
     long originlength = insertFile.length();

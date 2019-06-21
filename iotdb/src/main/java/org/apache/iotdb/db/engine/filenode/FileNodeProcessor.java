@@ -88,6 +88,7 @@ import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.writelog.recover.SeqTsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -151,7 +152,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   //the bufferwrite Processors that are closing. (Because they are not closed well,
   // their memtable are not released and we have to query data from them.
   //private ConcurrentSkipListSet<BufferWriteProcessor> closingBufferWriteProcessor = new ConcurrentSkipListSet<>();
-  private CopyOnWriteLinkedList<BufferWriteProcessor> closingBufferWriteProcessor = new CopyOnWriteLinkedList<>();
+  private CopyOnReadLinkedList<BufferWriteProcessor> closingBufferWriteProcessor = new CopyOnReadLinkedList<>();
 
   private OverflowProcessor overflowProcessor = null;
   private Set<Integer> oldMultiPassTokenSet = null;
@@ -202,7 +203,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 //    @Override
 //    public void act() {
 //      synchronized (fileNodeProcessorStore) {
-//        fileNodeProcessorStore.setLatestTimeMap(lastUpdateTimeMap);
+//        fileNodeProcessorStore.setLatestFlushTimeForEachDevice(lastUpdateTimeMap);
 //        addLastTimeToIntervalFile();
 //        fileNodeProcessorStore.setSequenceFileList(newFileNodes);
 //      }
@@ -466,19 +467,16 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
 
-    recoverUpdateTimeMap();
-
     for (int i = 0; i < newFileNodes.size(); i++) {
       TsFileResource tsFile = newFileNodes.get(i);
-      String baseDir = directories
-          .getTsFileFolder(tsFile.getBaseDirIndex());
       try {
-        // recover in initialization
-        new BufferWriteProcessor(baseDir,
-            getProcessorName(),
-            tsFile.getFile().getName(), parameters, bufferwriteCloseConsumer,
-            versionController, fileSchema, tsFile);
-      } catch (BufferWriteProcessorException e) {
+        String filePath = tsFile.getFilePath();
+        String logNodePrefix = BufferWriteProcessor.logNodePrefix(processorName);
+        SeqTsFileRecoverPerformer recoverPerformer =
+            new SeqTsFileRecoverPerformer(logNodePrefix,
+                fileSchema, versionController, tsFile);
+        recoverPerformer.recover();
+      } catch (ProcessorException e) {
         LOGGER.error(
             "The filenode processor {} failed to recover the bufferwrite processor, "
                 + "the last bufferwrite file is {}.",
@@ -503,7 +501,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
     if (isMerging == FileNodeProcessorStatus.MERGING_WRITE) {
       // re-merge all file
-      // if bufferwrite processor is not null, and close
+      // if bufferwrite processor is not null, and setCloseMark
       LOGGER.info("The filenode processor {} is recovering, the filenode status is {}.",
           getProcessorName(), isMerging);
       merge();
@@ -738,7 +736,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * add multiple pass lock.
    */
   public int addMultiPassCount() {
-    LOGGER.debug("Add MultiPassCount: read lock newMultiPassCount.");
+    LOGGER.debug("Add MultiPassCount: cloneList lock newMultiPassCount.");
     newMultiPassCount.incrementAndGet();
     while (newMultiPassTokenSet.contains(multiPassLockToken)) {
       multiPassLockToken++;
@@ -1014,7 +1012,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   /**
-   * Prepare for merge, close the bufferwrite and overflow.
+   * Prepare for merge, setCloseMark the bufferwrite and overflow.
    */
   private void prepareForMerge() {
     try {
@@ -1026,7 +1024,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           getProcessorName());
       // try to get overflow processor
       getOverflowProcessor(getProcessorName());
-      // must close the overflow processor
+      // must setCloseMark the overflow processor
       while (!getOverflowProcessor().canBeClosed()) {
         waitForClosing();
       }
@@ -1056,7 +1054,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Merge this storage group, merge the tsfile data with overflow data.
    */
   public void merge() throws FileNodeProcessorException {
-    // close bufferwrite and overflow, prepare for merge
+    // setCloseMark bufferwrite and overflow, prepare for merge
     LOGGER.info("The filenode processor {} begins to merge.", getProcessorName());
     writeLock();
     prepareForMerge();
@@ -1808,7 +1806,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   @Override
   public void close() throws FileNodeProcessorException {
-    LOGGER.info("Will close FileNode Processor {}.", getProcessorName());
+    LOGGER.info("Will setCloseMark FileNode Processor {}.", getProcessorName());
     Future<Boolean> result = closeBufferWrite();
     try {
       result.get();
@@ -2017,8 +2015,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  public CopyOnWriteLinkedList<BufferWriteProcessor> getClosingBufferWriteProcessor() {
-    for (BufferWriteProcessor processor: closingBufferWriteProcessor.read()) {
+  public CopyOnReadLinkedList<BufferWriteProcessor> getClosingBufferWriteProcessor() {
+    for (BufferWriteProcessor processor: closingBufferWriteProcessor.cloneList()) {
       if (processor.isClosed()) {
         closingBufferWriteProcessor.remove(processor);
       }

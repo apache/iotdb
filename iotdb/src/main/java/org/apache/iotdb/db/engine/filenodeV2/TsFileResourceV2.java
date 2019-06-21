@@ -19,34 +19,43 @@
 package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import org.apache.iotdb.db.conf.directories.Directories;
-import org.apache.iotdb.db.engine.UnsealedTsFileProcessorV2;
-import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.querycontext.SealedTsFileV2;
-import org.apache.iotdb.db.engine.querycontext.UnsealedTsFileV2;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 
-public abstract class TsFileResourceV2 {
+public class TsFileResourceV2 {
 
   private File file;
 
-  // device -> start time
+  /**
+   * device -> start time
+   */
   private Map<String, Long> startTimeMap;
 
-  // device -> end time
-  // null if it's an unsealed tsfile
+  /**
+   * device -> end time
+   * null if it's an unsealed tsfile
+   */
   private Map<String, Long> endTimeMap;
 
   private UnsealedTsFileProcessorV2 unsealedFileProcessor;
 
   private transient ModificationFile modFile;
+
+  private boolean closed = false;
+
+  /**
+   * Chunk metadata list of unsealed tsfile
+   */
+  private List<ChunkMetaData> timeSeriesChunkMetaDatas;
+
+  /**
+   * Mem chunk data
+   */
+  private ReadOnlyMemChunk readableChunk;
 
   public TsFileResourceV2(File file) {
     this.file = file;
@@ -58,6 +67,14 @@ public abstract class TsFileResourceV2 {
     this.file = file;
     this.startTimeMap = startTimeMap;
     this.endTimeMap = endTimeMap;
+  }
+
+  public TsFileResourceV2(File file,
+      ReadOnlyMemChunk readableChunk,
+      List<ChunkMetaData> timeSeriesChunkMetaDatas) {
+    this.file = file;
+    this.timeSeriesChunkMetaDatas = timeSeriesChunkMetaDatas;
+    this.readableChunk = readableChunk;
   }
 
   public void updateStartTime(String device, long time) {
@@ -88,85 +105,12 @@ public abstract class TsFileResourceV2 {
     return endTimeMap;
   }
 
-  public ModificationFile getModFile() {
-    return modFile;
-  }
-
-  public void setModFile(ModificationFile modFile) {
-    this.modFile = modFile;
-  }
-
-  public void serialize(OutputStream outputStream) throws IOException {
-//    ReadWriteIOUtils.write(this.overflowChangeType.serialize(), outputStream);
-//    ReadWriteIOUtils.write(this.baseDirIndex, outputStream);
-    ReadWriteIOUtils.writeIsNull(this.file, outputStream);
-    if (this.file != null) {
-      ReadWriteIOUtils.write(file.getAbsolutePath(), outputStream);
-    }
-    ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
-    for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-    ReadWriteIOUtils.write(this.endTimeMap.size(), outputStream);
-    for (Entry<String, Long> entry : this.endTimeMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
-    }
-//    ReadWriteIOUtils.write(mergeChanged.size(), outputStream);
-//    for (String mergeChangedElement : this.mergeChanged) {
-//      ReadWriteIOUtils.write(mergeChangedElement, outputStream);
-//    }
-  }
-
-  public static TsFileResourceV2 deSerialize(InputStream inputStream) throws IOException {
-    OverflowChangeType overflowChangeType = OverflowChangeType
-        .deserialize(ReadWriteIOUtils.readShort(inputStream));
-    int baseDirIndex = ReadWriteIOUtils.readInt(inputStream);
-    boolean hasRelativePath = ReadWriteIOUtils.readIsNull(inputStream);
-
-    File file = null;
-    if (hasRelativePath) {
-      String relativePath = ReadWriteIOUtils.readString(inputStream);
-      file = new File(Directories.getInstance().getTsFileFolder(baseDirIndex), relativePath);
-    }
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    Map<String, Long> startTimes = new HashMap<>();
-    for (int i = 0; i < size; i++) {
-      String path = ReadWriteIOUtils.readString(inputStream);
-      long time = ReadWriteIOUtils.readLong(inputStream);
-      startTimes.put(path, time);
-    }
-    size = ReadWriteIOUtils.readInt(inputStream);
-    Map<String, Long> endTimes = new HashMap<>();
-    for (int i = 0; i < size; i++) {
-      String path = ReadWriteIOUtils.readString(inputStream);
-      long time = ReadWriteIOUtils.readLong(inputStream);
-      endTimes.put(path, time);
-    }
-//    size = ReadWriteIOUtils.readInt(inputStream);
-//    Set<String> mergeChanaged = new HashSet<>();
-//    for (int i = 0; i < size; i++) {
-//      String path = ReadWriteIOUtils.readString(inputStream);
-//      mergeChanaged.add(path);
-//    }
-//    tsFileResource.mergeChanged = mergeChanaged;
-
-    return endTimes.isEmpty() ? new UnsealedTsFileV2(file, startTimes, endTimes)
-        : new SealedTsFileV2(file, startTimes, endTimes);
-  }
-
-  public abstract TSFILE_TYPE getTsFileType();
-
-  public enum TSFILE_TYPE {
-    UNSEALED, SEALED
-  }
-
-
   public boolean isClosed() {
+    return closed;
+  }
 
-    return !endTimeMap.isEmpty();
-
+  public void setClosed(boolean closed) {
+    this.closed = closed;
   }
 
   public UnsealedTsFileProcessorV2 getUnsealedFileProcessor() {

@@ -34,9 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
@@ -51,7 +49,6 @@ import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
@@ -59,7 +56,6 @@ import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -146,15 +142,6 @@ public class BufferWriteProcessor extends Processor {
     this.insertFilePath = Paths.get(baseDir, processorName, fileName).toString();
     bufferWriteRelativePath = processorName + File.separatorChar + fileName;
 
-    TsFileRecoverPerformer recoverPerformer =
-        new TsFileRecoverPerformer(insertFilePath, logNodePrefix(),
-            fileSchema, versionController, currentTsFileResource,
-            currentTsFileResource != null ? currentTsFileResource.getModFile() : null);
-    try {
-      recoverPerformer.recover();
-    } catch (ProcessorException e) {
-      throw new BufferWriteProcessorException(e);
-    }
     open();
     try {
       getLogNode();
@@ -447,7 +434,7 @@ public class BufferWriteProcessor extends Processor {
       // switch
       if (isCloseTaskCalled) {
         LOGGER.info(
-            "flushMetadata memtable for bufferwrite processor {} synchronously for close task.",
+            "flushMetadata memtable for bufferwrite processor {} synchronously for setCloseMark task.",
             getProcessorName(), FlushPoolManager.getInstance().getWaitingTasksNumber(),
             FlushPoolManager.getInstance().getCorePoolSize());
         flushTask("synchronously", tmpMemTableToFlush, version, flushId);
@@ -470,7 +457,7 @@ public class BufferWriteProcessor extends Processor {
       }
     } else {
       if (isCloseTaskCalled) {
-        MemTablePool.getInstance().release(workMemTable);
+        MemTablePool.getInstance().putBack(workMemTable);
       }
       flushFuture = new ImmediateFuture<>(true);
     }
@@ -484,14 +471,17 @@ public class BufferWriteProcessor extends Processor {
 
   @Override
   public synchronized void close() throws BufferWriteProcessorException {
+    if (writer == null) {
+      return;
+    }
     try {
       // flushMetadata data (if there are flushing task, flushMetadata() will be blocked) and wait for finishing flushMetadata async
-      LOGGER.info("Submit a BufferWrite ({}) close task.", getProcessorName());
+      LOGGER.info("Submit a BufferWrite ({}) setCloseMark task.", getProcessorName());
       closeFuture = new BWCloseFuture(FlushPoolManager.getInstance().submit(() -> closeTask()));
       //now, we omit the future of the closeTask.
     } catch (Exception e) {
       LOGGER
-          .error("Failed to close the bufferwrite processor when calling the action function.", e);
+          .error("Failed to setCloseMark the bufferwrite processor when calling the action function.", e);
       throw new BufferWriteProcessorException(e);
     }
   }
@@ -505,9 +495,9 @@ public class BufferWriteProcessor extends Processor {
       // end file
       writer.endFile(fileSchema);
       //FIXME suppose the flushMetadata-thread-pool is 2.
-      // then if a flushMetadata task and a close task are running in the same time
-      // and the close task is faster, then writer == null, and the flushMetadata task will throw nullpointer
-      // exception. Add "synchronized" keyword on both flushMetadata and close may solve the issue.
+      // then if a flushMetadata task and a setCloseMark task are running in the same time
+      // and the setCloseMark task is faster, then writer == null, and the flushMetadata task will throw nullpointer
+      // exception. Add "synchronized" keyword on both flushMetadata and setCloseMark may solve the issue.
       writer = null;
       // update the IntervalFile for interval list
       bufferwriteCloseConsumer.accept(this);
@@ -592,6 +582,10 @@ public class BufferWriteProcessor extends Processor {
   }
 
   public String logNodePrefix() {
+    return logNodePrefix(processorName);
+  }
+
+  public static String logNodePrefix(String processorName) {
     return processorName + "-BufferWrite-";
   }
 

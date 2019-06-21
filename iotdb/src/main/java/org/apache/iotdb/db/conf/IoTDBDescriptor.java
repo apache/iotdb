@@ -79,7 +79,7 @@ public class IoTDBDescriptor {
       return;
     }
 
-    LOGGER.info("Start to read config file {}", url);
+    LOGGER.info("Start to cloneList config file {}", url);
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
@@ -261,7 +261,7 @@ public class IoTDBDescriptor {
       try {
         inputStream.close();
       } catch (IOException e) {
-        LOGGER.error("Fail to close config file input stream because ", e);
+        LOGGER.error("Fail to setCloseMark config file input stream because ", e);
       }
     }
   }

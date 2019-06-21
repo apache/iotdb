@@ -29,7 +29,7 @@ public interface IService {
 
   /**
    * Stop current service. If current service uses thread or thread pool,
-   * current service should guarantee to release thread or thread pool.
+   * current service should guarantee to putBack thread or thread pool.
    */
   void stop();
 

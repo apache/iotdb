@@ -64,7 +64,7 @@ public abstract class AggregateFunction {
    *
    * @param dataInThisPage the data in the DataPage
    * @param unsequenceReader unsequence data reader
-   * @throws IOException TsFile data read exception
+   * @throws IOException TsFile data cloneList exception
    * @throws ProcessorException wrong aggregation method parameter
    */
   public abstract void calculateValueFromPageData(BatchData dataInThisPage,
@@ -79,7 +79,7 @@ public abstract class AggregateFunction {
    * @param dataInThisPage the data in the DataPage
    * @param unsequenceReader unsequence data reader
    * @param bound the time upper bounder of data in unsequence data reader
-   * @throws IOException TsFile data read exception
+   * @throws IOException TsFile data cloneList exception
    * @throws ProcessorException wrong aggregation method parameter
    */
   public abstract void calculateValueFromPageData(BatchData dataInThisPage,
@@ -102,7 +102,7 @@ public abstract class AggregateFunction {
    *
    * @param unsequenceReader unsequence data reader
    * @param bound the time upper bounder of data in unsequence data reader
-   * @throws IOException TsFile data read exception
+   * @throws IOException TsFile data cloneList exception
    */
   public abstract void calculateValueFromUnsequenceReader(IPointReader unsequenceReader, long bound)
       throws IOException, ProcessorException;
@@ -112,7 +112,7 @@ public abstract class AggregateFunction {
    * This method is calculate the aggregation using the common timestamps of cross series filter.
    * </p>
    *
-   * @throws IOException TsFile data read error
+   * @throws IOException TsFile data cloneList error
    */
   public abstract void calcAggregationUsingTimestamps(long[] timestamps, int length,
       EngineReaderByTimeStamp dataReader) throws IOException;

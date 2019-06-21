@@ -107,7 +107,7 @@ public class FileReaderManager implements IService {
         try {
           reader.close();
         } catch (IOException e) {
-          LOGGER.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+          LOGGER.error("Can not setCloseMark TsFileSequenceReader {} !", reader.getFileName(), e);
         }
         readerMap.remove(entry.getKey());
         refMap.remove(entry.getKey());
