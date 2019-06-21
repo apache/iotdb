@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -44,6 +44,12 @@ Run-length encoding can also be used to encode floating-point numbers, but it is
 
 GORILLA encoding is more suitable for floating-point sequence with similar values and is not recommended for sequence data with large fluctuations.
 
+* REGULAR
+
+Regular data encoding is more suitable for encoding regular sequence increasing data (e.g. the timeseries with the same time elapsed between each data point), which its performance would be better than TS_2DIFF in this situation.
+
+Regular data encoding method is not suitable for the data with fluctuations (irregular data), which is recommended to use the TS_2DIFF encoder to deal with it.
+
 * Correspondence between data type and encoding
 
 The four encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in Table 2-3.
@@ -53,8 +59,8 @@ The four encodings described in the previous sections are applicable to differen
 |Data Type	|Supported Encoding|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF|
-|INT64	|PLAIN, RLE, TS_2DIFF|
+|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR|
+|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN|

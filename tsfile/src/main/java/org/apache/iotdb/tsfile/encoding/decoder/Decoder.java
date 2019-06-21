@@ -92,6 +92,16 @@ public abstract class Decoder {
           throw new TsFileDecodingException(
               "Decoder not found:" + type + " , DataType is :" + dataType);
       }
+    } else if (type == TSEncoding.REGULAR) {
+      switch (dataType) {
+        case INT32:
+          return new RegularDataDecoder.IntRegularDecoder();
+        case INT64:
+          return new RegularDataDecoder.LongRegularDecoder();
+        default:
+          throw new TsFileDecodingException(
+              "Decoder not found:" + type + " , DataType is :" + dataType);
+      }
     } else {
       throw new TsFileDecodingException(
           "Decoder not found:" + type + " , DataType is :" + dataType);

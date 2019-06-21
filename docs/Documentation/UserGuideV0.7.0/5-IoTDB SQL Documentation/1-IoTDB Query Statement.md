@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -48,7 +48,7 @@ Note: PrefixPath can not include `*`
 CREATE TIMESERIES <Timeseries> WITH <AttributeClauses>
 AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMMA <ExtraAttributeClause>]*
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
-EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF
+EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
 ExtraAttributeClause: {
 	COMPRESSOR = <CompressorValue>
 	MAX_POINT_NUMBER = Integer

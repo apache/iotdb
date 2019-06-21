@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
 
-  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA;
+  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA, REGULAR;
 
   /**
    * judge the encoding deserialize type.
@@ -44,6 +44,8 @@ public enum TSEncoding {
         return BITMAP;
       case 6:
         return GORILLA;
+      case 7:
+        return REGULAR;
       default:
         return PLAIN;
     }
@@ -74,6 +76,8 @@ public enum TSEncoding {
         return 5;
       case GORILLA:
         return 6;
+      case REGULAR:
+        return 7;
       default:
         return 0;
     }
