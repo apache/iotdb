@@ -17,17 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader.sequence;
+package org.apache.iotdb.db.query.reader.adapter;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
 
-public class FileSeriesByTimestampIAggregateReader implements EngineReaderByTimeStamp {
+/**
+ * SeriesReaderByTimestamp to EngineReaderByTimeStamp adapter.
+ */
+public class SeriesReaderByTimestampAdapter implements EngineReaderByTimeStamp {
 
   private SeriesReaderByTimestamp seriesReaderByTimestamp;
 
-  public FileSeriesByTimestampIAggregateReader(SeriesReaderByTimestamp seriesReaderByTimestamp) {
+  public SeriesReaderByTimestampAdapter(SeriesReaderByTimestamp seriesReaderByTimestamp) {
     this.seriesReaderByTimestamp = seriesReaderByTimestamp;
   }
 

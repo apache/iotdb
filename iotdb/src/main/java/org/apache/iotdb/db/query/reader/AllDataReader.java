@@ -24,6 +24,9 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
+/**
+ * include all data of a series: sequence data and unsequence data.
+ */
 public class AllDataReader implements IPointReader {
 
   private IBatchReader batchReader;

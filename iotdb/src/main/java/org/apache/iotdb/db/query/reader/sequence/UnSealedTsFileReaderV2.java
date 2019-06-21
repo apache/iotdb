@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.adapter.FileSeriesReaderAdapter;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -72,9 +73,9 @@ public class UnSealedTsFileReaderV2 extends IterateReader {
     MemChunkReader memChunkReader = new MemChunkReader(unsealedTsFile.getReadOnlyMemChunk(), filter);
     if (isReverse) {
       seriesReaders.add(memChunkReader);
-      seriesReaders.add(new FileSeriesIAggregateReader(unSealedReader));
+      seriesReaders.add(new FileSeriesReaderAdapter(unSealedReader));
     } else {
-      seriesReaders.add(new FileSeriesIAggregateReader(unSealedReader));
+      seriesReaders.add(new FileSeriesReaderAdapter(unSealedReader));
       seriesReaders.add(memChunkReader);
 
     }
