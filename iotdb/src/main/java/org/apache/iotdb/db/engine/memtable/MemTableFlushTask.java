@@ -156,7 +156,7 @@ public class MemTableFlushTask {
       try {
         ((RestorableTsFileIOWriter) tsFileIoWriter).writeRestoreInfo();
       } catch (IOException e) {
-        LOGGER.error("write restore file meet error", e);
+        LOGGER.error("insert restore file meet error", e);
       }
     }
     flushCallBack.afterFlush(memTable, tsFileIoWriter);

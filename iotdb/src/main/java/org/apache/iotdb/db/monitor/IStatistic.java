@@ -29,7 +29,7 @@ public interface IStatistic {
 
   /**
    * Get A HashMap that contains the module seriesPaths and their statistics measurement.
-   * @return A HashMap that contains the module seriesPath like: root.stats.write.global,
+   * @return A HashMap that contains the module seriesPath like: root.stats.insert.global,
    *        and its value is TSRecord format contains all statistics measurement
    */
   Map<String, TSRecord> getAllStatisticsValue();

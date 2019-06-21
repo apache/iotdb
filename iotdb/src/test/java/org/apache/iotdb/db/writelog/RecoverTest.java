@@ -70,7 +70,7 @@ public class RecoverTest {
 
   @Test
   public void testFullRecover() throws IOException, RecoverException, ProcessorException {
-    // this test write a log file and try to recover from these logs as if no previous attempts exist.
+    // this test insert a log file and try to recover from these logs as if no previous attempts exist.
     File insertFile = new File("testTemp");
     FileSchema schema = new FileSchema();
     String deviceId = "root.testLogNode";

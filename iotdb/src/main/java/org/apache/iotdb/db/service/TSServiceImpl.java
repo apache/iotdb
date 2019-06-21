@@ -548,7 +548,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     statement = statement.toLowerCase().trim();
     if (Pattern.matches(IoTDBConstant.SET_READ_CONSISTENCY_LEVEL_PATTERN, statement)) {
       throw new Exception(
-          "IoTDB Stand-alone version does not support setting cloneList-write consistency level");
+          "IoTDB Stand-alone version does not support setting cloneList-insert consistency level");
     } else {
       return false;
     }

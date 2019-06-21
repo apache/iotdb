@@ -67,7 +67,7 @@ public class PerformanceTest {
 
   @Test
   public void writeLogTest() throws IOException {
-    // this test write 1000000 * 3 logs and report elapsed time
+    // this test insert 1000000 * 3 logs and report elapsed time
     if (skip) {
       return;
     }
@@ -121,7 +121,7 @@ public class PerformanceTest {
   public void recoverTest()
       throws IOException, RecoverException, FileNodeManagerException, PathErrorException,
       MetadataArgsErrorException {
-    // this test write 1000000 * 3 logs , recover from them and report elapsed time
+    // this test insert 1000000 * 3 logs , recover from them and report elapsed time
     if (skip) {
       return;
     }

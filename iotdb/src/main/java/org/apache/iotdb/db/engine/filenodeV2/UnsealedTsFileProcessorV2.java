@@ -96,13 +96,13 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   /**
-   * write a TsRecord into the workMemtable. If the memory usage is beyond the memTableThreshold,
+   * insert a TsRecord into the workMemtable. If the memory usage is beyond the memTableThreshold,
    * put it into flushing list.
    *
    * @param tsRecord data to be written
    * @return succeed or fail
    */
-  public boolean write(TSRecord tsRecord) {
+  public boolean insert(TSRecord tsRecord) {
 
     if (workMemTable == null) {
       // TODO change the impl of getEmptyMemTable to non-blocking
@@ -114,12 +114,12 @@ public class UnsealedTsFileProcessorV2 {
       }
     }
 
-    // TODO write WAL
+    // TODO insert WAL
 
     // update start time of this memtable
     tsFileResource.updateStartTime(tsRecord.deviceId, tsRecord.time);
 
-    // write tsRecord to work memtable
+    // insert tsRecord to work memtable
     workMemTable.insert(tsRecord);
 
     return true;

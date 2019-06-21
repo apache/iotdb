@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * ILogWriter provides functions to write WAL logs that have already been converted to bytes to a
+ * ILogWriter provides functions to insert WAL logs that have already been converted to bytes to a
  * persistent medium.
  */
 public interface ILogWriter {

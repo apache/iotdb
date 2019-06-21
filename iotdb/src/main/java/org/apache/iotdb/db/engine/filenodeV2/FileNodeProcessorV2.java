@@ -166,12 +166,12 @@ public class FileNodeProcessorV2 {
       latestFlushedTimeForEachDevice.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
 
       boolean result;
-      // write to sequence or unSequence file
+      // insert to sequence or unSequence file
       if (tsRecord.time > latestFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
-        result = writeUnsealedDataFile(tsRecord, true);
+        result = insertUnsealedDataFile(tsRecord, true);
         insertResult = result ? 1 : -1;
       } else {
-        result = writeUnsealedDataFile(tsRecord, false);
+        result = insertUnsealedDataFile(tsRecord, false);
         insertResult = result ? 2 : -1;
       }
     } catch (Exception e) {
@@ -184,7 +184,7 @@ public class FileNodeProcessorV2 {
     return insertResult;
   }
 
-  private boolean writeUnsealedDataFile(TSRecord tsRecord, boolean sequence) throws IOException {
+  private boolean insertUnsealedDataFile(TSRecord tsRecord, boolean sequence) throws IOException {
     lock.writeLock().lock();
     UnsealedTsFileProcessorV2 unsealedTsFileProcessor;
     try {
@@ -216,8 +216,8 @@ public class FileNodeProcessorV2 {
         unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
       }
 
-      // write BufferWrite
-      result = unsealedTsFileProcessor.write(tsRecord);
+      // insert BufferWrite
+      result = unsealedTsFileProcessor.insert(tsRecord);
 
       // try to update the latest time of the device of this tsRecord
       if (result && latestTimeForEachDevice.get(tsRecord.deviceId) < tsRecord.time) {
@@ -325,7 +325,7 @@ public class FileNodeProcessorV2 {
   /**
    * put the memtable back to the MemTablePool and make the metadata in writer visible
    */
-  // TODO please consider concurrency with query and write method.
+  // TODO please consider concurrency with query and insert method.
   public void closeUnsealedTsFileProcessorCallback(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
     lock.writeLock().lock();
     try {

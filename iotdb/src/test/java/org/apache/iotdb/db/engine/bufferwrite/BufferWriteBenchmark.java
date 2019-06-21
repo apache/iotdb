@@ -98,7 +98,7 @@ public class BufferWriteBenchmark {
 //    for (int i = 0; i < numOfPoint; i++) {
 //      for (int j = 0; j < numOfDevice; j++) {
 //        TSRecord tsRecord = getRecord(deviceIds[j]);
-//        bufferWriteProcessor.write(tsRecord);
+//        bufferWriteProcessor.insert(tsRecord);
 //      }
 //    }
 //    long endTime = System.currentTimeMillis();

@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
  * A tsfile io writer that has the ability to restore an incomplete tsfile. <br/> An incomplete
  * tsfile represents the file which does not have tsfile metadata in the end. Besides, the last
  * Chunk group data may be broken. This class can slice off the broken Chunk group data, accept
- * writing new data, and finally write the tsfile metadata. <br/> There are two cases: (1) though
+ * writing new data, and finally insert the tsfile metadata. <br/> There are two cases: (1) though
  * the tsfile loses the tsfile metadata in the end, a corresponding. restore file exists. (2) no
  * .restore file, and then the class has to traverse all the data for fixing the file.
  */
@@ -165,12 +165,12 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       }
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       tsDeviceMetadata.serializeTo(baos);
-      // write metadata size using int
+      // insert metadata size using int
       int metadataSize = baos.size();
       out.write(BytesUtils.intToBytes(metadataSize));
-      // write metadata
+      // insert metadata
       out.write(baos.toByteArray());
-      // write tsfile position using byte[8] which is a long
+      // insert tsfile position using byte[8] which is a long
       byte[] lastPositionBytes = BytesUtils.longToBytes(lastPosition);
       out.write(lastPositionBytes);
     }

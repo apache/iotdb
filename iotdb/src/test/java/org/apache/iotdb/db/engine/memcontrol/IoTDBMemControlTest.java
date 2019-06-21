@@ -107,7 +107,7 @@ public class IoTDBMemControlTest {
 
   @Test
   public void test() throws ClassNotFoundException, SQLException, InterruptedException {
-    // test a huge amount of write causes block
+    // test a huge amount of insert causes block
     if (!testFlag) {
       return;
     }

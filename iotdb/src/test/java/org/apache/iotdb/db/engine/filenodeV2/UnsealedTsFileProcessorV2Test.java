@@ -28,7 +28,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.function.Consumer;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
@@ -82,7 +81,7 @@ public class UnsealedTsFileProcessorV2Test {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.write(record);
+      processor.insert(record);
     }
 
     // query data in memory
@@ -127,7 +126,7 @@ public class UnsealedTsFileProcessorV2Test {
       for (int i = 1; i <= 10; i++) {
         TSRecord record = new TSRecord(i, deviceId);
         record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-        processor.write(record);
+        processor.insert(record);
       }
       processor.asyncFlush();
     }
@@ -168,7 +167,7 @@ public class UnsealedTsFileProcessorV2Test {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.write(record);
+      processor.insert(record);
     }
 
     // query data in memory

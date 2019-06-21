@@ -40,9 +40,9 @@ public class MonitorConstants {
   private static final String FILE_SIZE = "file_size";
   public static final String FILE_SIZE_STORAGE_GROUP_NAME = STAT_STORAGE_GROUP_PREFIX
       + MONITOR_PATH_SEPARATOR + FILE_SIZE;
-  // statistic for write module
-  static final String FILE_NODE_MANAGER_PATH = "write.global";
-  public static final String FILE_NODE_PATH = "write";
+  // statistic for insert module
+  static final String FILE_NODE_MANAGER_PATH = "insert.global";
+  public static final String FILE_NODE_PATH = "insert";
   /**
    * Stat information.
    */

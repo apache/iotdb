@@ -168,7 +168,7 @@ public class BufferWriteProcessor extends Processor {
   /**
    * Only for Test
    *
-   * write one data point to the buffer write.
+   * insert one data point to the buffer insert.
    *
    * @param deviceId device name
    * @param measurementId sensor name
@@ -204,7 +204,7 @@ public class BufferWriteProcessor extends Processor {
 
     start1 = System.currentTimeMillis() - start1;
     if (start1 > 1000) {
-      LOGGER.info("BufferWriteProcessor.write step1 cost: {}", start1);
+      LOGGER.info("BufferWriteProcessor.insert step1 cost: {}", start1);
     }
 
     String memory;
@@ -219,10 +219,10 @@ public class BufferWriteProcessor extends Processor {
         valueCount++;
         start2 = System.currentTimeMillis() - start2;
         if (start2 > 1000) {
-          LOGGER.info("BufferWriteProcessor.write step2 of SAFE cost: {}", start2);
+          LOGGER.info("BufferWriteProcessor.insert step2 of SAFE cost: {}", start2);
           Map<MemTableWriteTimeCostType, long[]> map = MemTableWriteTimeCost.getInstance().getTimeCostMaps().get(Thread.currentThread().getName());
           for(MemTableWriteTimeCostType type: MemTableWriteTimeCostType.values()){
-            LOGGER.info("In BufferWriteProcessor.write step2 of SAFE, {} cost {} ms, execute {} times", type, map.get(type)[1], map.get(type)[0]);
+            LOGGER.info("In BufferWriteProcessor.insert step2 of SAFE, {} cost {} ms, execute {} times", type, map.get(type)[1], map.get(type)[0]);
           }
         }
         checkMemThreshold4Flush(memUsage);
@@ -238,10 +238,10 @@ public class BufferWriteProcessor extends Processor {
         valueCount++;
         start2 = System.currentTimeMillis() - start2;
         if (start2 > 1000) {
-          LOGGER.info("BufferWriteProcessor.write step2 of WARNING cost: {}", start2);
+          LOGGER.info("BufferWriteProcessor.insert step2 of WARNING cost: {}", start2);
           Map<MemTableWriteTimeCostType, long[]> map = MemTableWriteTimeCost.getInstance().getTimeCostMaps().get(Thread.currentThread().getName());
           for(MemTableWriteTimeCostType type: MemTableWriteTimeCostType.values()){
-            LOGGER.info("In BufferWriteProcessor.write step2 of WARNING, {} cost {} ms, execute {} times", type, map.get(type)[1], map.get(type)[0]);
+            LOGGER.info("In BufferWriteProcessor.insert step2 of WARNING, {} cost {} ms, execute {} times", type, map.get(type)[1], map.get(type)[0]);
           }
         }
         try {

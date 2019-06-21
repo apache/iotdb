@@ -221,7 +221,7 @@ public class SyncServiceImpl implements SyncService.Iface {
           FileChannel channel = fos.getChannel()) {
         channel.write(schema);
       } catch (Exception e) {
-        logger.error("Cannot write data to file {}.", file.getPath(), e);
+        logger.error("Cannot insert data to file {}.", file.getPath(), e);
         md5OfReceiver = Boolean.toString(Boolean.FALSE);
       }
     } else {
@@ -346,7 +346,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         channel = fos.getChannel();
         channel.write(dataToReceive);
       } catch (IOException e) {
-        logger.error("cannot write data to file {}", file.getPath(), e);
+        logger.error("cannot insert data to file {}", file.getPath(), e);
         md5OfReceiver = Boolean.toString(Boolean.FALSE);
 
       }

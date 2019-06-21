@@ -227,7 +227,7 @@ public class OverflowProcessor extends Processor {
     UsageLevel usageLevel = BasicMemController.getInstance().acquireUsage(this, memUage);
     switch (usageLevel) {
       case SAFE:
-        // write data
+        // insert data
         workSupport.insert(tsRecord);
         valueCount++;
         // check asyncFlush
@@ -242,7 +242,7 @@ public class OverflowProcessor extends Processor {
         }
         break;
       case WARNING:
-        // write data
+        // insert data
         workSupport.insert(tsRecord);
         valueCount++;
         // asyncFlush
@@ -525,7 +525,7 @@ public class OverflowProcessor extends Processor {
       workResource
           .flush(fileSchema, currentMemTableToFlush, getProcessorName(), flushId, removeFlushedMemTable);
       filenodeFlushAction.act();
-      // write-ahead log
+      // insert-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         getLogNode().notifyEndFlush();
       }

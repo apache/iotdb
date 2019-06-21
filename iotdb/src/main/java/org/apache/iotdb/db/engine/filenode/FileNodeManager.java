@@ -327,7 +327,7 @@ public class FileNodeManager implements IStatistic, IService {
         insertType = 2;
       }
     } catch (FileNodeProcessorException e) {
-      LOGGER.error(String.format("Encounter an error when closing the buffer write processor %s.",
+      LOGGER.error(String.format("Encounter an error when closing the buffer insert processor %s.",
           fileNodeProcessor.getProcessorName()), e);
       throw new FileNodeManagerException(e);
     } finally {
@@ -403,13 +403,13 @@ public class FileNodeManager implements IStatistic, IService {
       }
       throw new FileNodeManagerException(e);
     }
-    // write wal
+    // insert wal
     try {
       writeLog(tsRecord, isMonitor, overflowProcessor.getLogNode());
     } catch (IOException e) {
       throw new FileNodeManagerException(e);
     }
-    // write overflow data
+    // insert overflow data
     try {
       overflowProcessor.insert(tsRecord);
       fileNodeProcessor.changeTypeToChanged(deviceId, timestamp);
@@ -477,7 +477,7 @@ public class FileNodeManager implements IStatistic, IService {
     long start2 = System.currentTimeMillis();
 
     long start2_1 = start2;
-    // write wal
+    // insert wal
     try {
       writeLog(tsRecord, isMonitor, bufferWriteProcessor.getLogNode());
     } catch (IOException e) {
@@ -503,7 +503,7 @@ public class FileNodeManager implements IStatistic, IService {
     try {
       long start2_3 = System.currentTimeMillis();
 
-      // write tsrecord and check flushMetadata
+      // insert tsrecord and check flushMetadata
       if (!bufferWriteProcessor.write(tsRecord)) {
         start2_3 = System.currentTimeMillis() - start2_3;
         if (start2_3 > 1000) {
@@ -548,7 +548,7 @@ public class FileNodeManager implements IStatistic, IService {
       fileNodeProcessor.closeBufferWrite();
       start3 = System.currentTimeMillis() - start3;
       if (start3 > 1000) {
-        LOGGER.info("FileNodeManager.insertBufferWrite step-3, setCloseMark buffer write cost: {}", start3);
+        LOGGER.info("FileNodeManager.insertBufferWrite step-3, setCloseMark buffer insert cost: {}", start3);
       }
     }
   }
@@ -589,7 +589,7 @@ public class FileNodeManager implements IStatistic, IService {
       fileNodeProcessor.changeTypeToChanged(deviceId, startTime, finalEndTime);
       fileNodeProcessor.setOverflowed(true);
 
-      // write wal
+      // insert wal
       try {
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           overflowProcessor.getLogNode().write(
@@ -619,7 +619,7 @@ public class FileNodeManager implements IStatistic, IService {
                 + "the filenode processor is {}",
             fileNodeProcessor.getProcessorName());
       } else {
-        // write wal
+        // insert wal
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           // get processors for wal
           String filenodeName = fileNodeProcessor.getProcessorName();
@@ -674,7 +674,7 @@ public class FileNodeManager implements IStatistic, IService {
     FileNodeProcessor processor = processorMap.get(processorName);
     if (!processor.tryWriteLock()) {
       throw new FileNodeManagerException(String
-          .format("Can't delete the filenode processor %s because Can't get the write lock.",
+          .format("Can't delete the filenode processor %s because Can't get the insert lock.",
               processorName));
     }
 
@@ -1004,7 +1004,7 @@ public class FileNodeManager implements IStatistic, IService {
         }
       } else {
         LOGGER.info(
-            "Can't delete the filenode processor {}, because it can't get the write lock."
+            "Can't delete the filenode processor {}, because it can't get the insert lock."
                 + " Wait 100ms to retry", processorName);
       }
       try {
@@ -1110,7 +1110,7 @@ public class FileNodeManager implements IStatistic, IService {
     LOGGER.info("Try to setCloseMark the filenode processor {}.", processorName);
     FileNodeProcessor processor = processorMap.get(processorName);
     if (!processor.tryWriteLock()) {
-      LOGGER.warn("Can't get the write lock of the filenode processor {}.", processorName);
+      LOGGER.warn("Can't get the insert lock of the filenode processor {}.", processorName);
       return;
     }
     try {

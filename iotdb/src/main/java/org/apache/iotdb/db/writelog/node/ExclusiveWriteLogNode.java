@@ -36,7 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This WriteLogNode is used to manage write ahead logs of a TsFile.
+ * This WriteLogNode is used to manage insert ahead logs of a TsFile.
  */
 public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<ExclusiveWriteLogNode> {
 
@@ -83,7 +83,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
-        logger.info("WAL write cost {} ms", elapse);
+        logger.info("WAL insert cost {} ms", elapse);
       }
     } finally {
       lock.writeLock().unlock();
