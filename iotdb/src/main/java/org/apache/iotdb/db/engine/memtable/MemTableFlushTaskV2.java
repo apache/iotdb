@@ -131,7 +131,6 @@ public class MemTableFlushTaskV2 {
       }
     }
 
-    tsFileIoWriter.makeMetadataVisible();
     flushCallBack.accept(memTable);
   });
 

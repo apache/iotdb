@@ -130,21 +130,6 @@ public class UnsealedTsFileProcessorV2 {
     return tsFileResource;
   }
 
-  /**
-   * return the memtable to MemTablePool and make metadata in writer visible
-   */
-  private void releaseFlushedMemTable(IMemTable memTable) {
-    flushQueryLock.writeLock().lock();
-    try {
-      writer.makeMetadataVisible();
-      flushingMemTables.remove(memTable);
-      MemTablePool.getInstance().putBack(memTable, storageGroupName);
-    } finally {
-      flushQueryLock.writeLock().unlock();
-    }
-  }
-
-
   public boolean shouldFlush() {
     return workMemTable.memSize() > TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
   }
@@ -190,37 +175,20 @@ public class UnsealedTsFileProcessorV2 {
     }
   }
 
-  public boolean shouldClose() {
-    long fileSize = tsFileResource.getFileSize();
-    long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getBufferwriteFileSizeThreshold();
-    return fileSize > fileSizeThreshold;
-  }
 
-  public void setCloseMark() {
-    shouldClose = true;
-  }
-
-  public synchronized void asyncClose() {
-    flushingMemTables.add(workMemTable == null ? new EmptyMemTable() : workMemTable);
-    FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
-    flushUpdateLatestFlushTimeCallback.get();
-    shouldClose = true;
-    workMemTable = null;
-  }
-
-
-  public void syncClose() {
-    asyncClose();
-    synchronized (flushingMemTables) {
-      try {
-        flushingMemTables.wait();
-      } catch (InterruptedException e) {
-        LOGGER.error("wait close interrupted", e);
-      }
+  /**
+   * return the memtable to MemTablePool and make metadata in writer visible
+   */
+  private void releaseFlushedMemTableCallback(IMemTable memTable) {
+    flushQueryLock.writeLock().lock();
+    try {
+      writer.makeMetadataVisible();
+      flushingMemTables.remove(memTable);
+      MemTablePool.getInstance().putBack(memTable, storageGroupName);
+    } finally {
+      flushQueryLock.writeLock().unlock();
     }
   }
-
 
   /**
    * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
@@ -233,7 +201,7 @@ public class UnsealedTsFileProcessorV2 {
     // null memtable only appears when calling asyncClose()
     if (memTableToFlush.isManagedByMemPool()) {
       MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
-          this::releaseFlushedMemTable);
+          this::releaseFlushedMemTableCallback);
       flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
     }
     // for sync flush
@@ -275,6 +243,37 @@ public class UnsealedTsFileProcessorV2 {
           DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
           DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
           closeEndTime - closeStartTime);
+    }
+  }
+
+
+  public boolean shouldClose() {
+    long fileSize = tsFileResource.getFileSize();
+    long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
+        .getBufferwriteFileSizeThreshold();
+    return fileSize > fileSizeThreshold;
+  }
+
+  public void setCloseMark() {
+    shouldClose = true;
+  }
+
+  public synchronized void asyncClose() {
+    flushingMemTables.add(workMemTable == null ? new EmptyMemTable() : workMemTable);
+    FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
+    flushUpdateLatestFlushTimeCallback.get();
+    shouldClose = true;
+    workMemTable = null;
+  }
+
+  public void syncClose() {
+    asyncClose();
+    synchronized (flushingMemTables) {
+      try {
+        flushingMemTables.wait();
+      } catch (InterruptedException e) {
+        LOGGER.error("wait close interrupted", e);
+      }
     }
   }
 
@@ -323,4 +322,5 @@ public class UnsealedTsFileProcessorV2 {
       flushQueryLock.readLock().unlock();
     }
   }
+
 }

@@ -287,7 +287,7 @@ public class FileNodeProcessorV2 {
 
   /**
    * ensure there must be a flush thread submitted after setCloseMark() is called, therefore the setCloseMark task
-   * will be executed by a flush thread. -- said by qiaojialin
+   * will be executed by a flush thread.
    *
    * only called by insert(), thread-safety should be ensured by caller
    */
@@ -306,47 +306,6 @@ public class FileNodeProcessorV2 {
     }
 
     unsealedTsFileProcessor.asyncFlush();
-  }
-
-
-  public boolean updateLatestFlushTimeCallback() {
-    lock.writeLock().lock();
-    try {
-      // update the largest timestamp in the last flushing memtable
-      for (Entry<String, Long> entry : latestTimeForEachDevice.entrySet()) {
-        latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
-      }
-    } finally {
-      lock.writeLock().unlock();
-    }
-    return true;
-  }
-
-  /**
-   * put the memtable back to the MemTablePool and make the metadata in writer visible
-   */
-  // TODO please consider concurrency with query and insert method.
-  public void closeUnsealedTsFileProcessorCallback(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
-    lock.writeLock().lock();
-    try {
-      if (closingSequenceTsFileProcessor.contains(unsealedTsFileProcessor)) {
-        closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
-      } else {
-        closingUnSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
-      }
-      // end time with one start time
-      TsFileResourceV2 resource = unsealedTsFileProcessor.getTsFileResource();
-      synchronized (resource) {
-        for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
-          String deviceId = startTime.getKey();
-          resource.getEndTimeMap().put(deviceId, latestTimeForEachDevice.get(deviceId));
-        }
-        resource.setClosed(true);
-      }
-      closeFileNodeCondition.signal();
-    }finally {
-      lock.writeLock().unlock();
-    }
   }
 
   public void asyncForceClose() {
@@ -410,6 +369,47 @@ public class FileNodeProcessorV2 {
       LOGGER.error("CloseFileNodeConditon occurs error while waiting for closing the file node {}",
           storageGroupName, e);
     } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+
+  public boolean updateLatestFlushTimeCallback() {
+    lock.writeLock().lock();
+    try {
+      // update the largest timestamp in the last flushing memtable
+      for (Entry<String, Long> entry : latestTimeForEachDevice.entrySet()) {
+        latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+    return true;
+  }
+
+  /**
+   * put the memtable back to the MemTablePool and make the metadata in writer visible
+   */
+  // TODO please consider concurrency with query and insert method.
+  public void closeUnsealedTsFileProcessorCallback(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
+    lock.writeLock().lock();
+    try {
+      if (closingSequenceTsFileProcessor.contains(unsealedTsFileProcessor)) {
+        closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
+      } else {
+        closingUnSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
+      }
+      // end time with one start time
+      TsFileResourceV2 resource = unsealedTsFileProcessor.getTsFileResource();
+      synchronized (resource) {
+        for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
+          String deviceId = startTime.getKey();
+          resource.getEndTimeMap().put(deviceId, latestTimeForEachDevice.get(deviceId));
+        }
+        resource.setClosed(true);
+      }
+      closeFileNodeCondition.signal();
+    }finally {
       lock.writeLock().unlock();
     }
   }
