@@ -44,7 +44,7 @@ public class ChunkGroupMetaData {
   private int serializedSize;
 
   /**
-   * Byte offset of the corresponding data in the file Notice: include the chunk group header and marker.
+   * Byte offset of the corresponding data in the file.
    * For Hadoop and Spark.
    */
   private long startOffsetOfChunkGroup;

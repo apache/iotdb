@@ -83,7 +83,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
           out.truncate(TSFileConfig.MAGIC_STRING.length());
         } else {
           //remove broken data
-          out.truncate(truncatedPosition + 1);
+          out.truncate(truncatedPosition);
         }
       }
     }
