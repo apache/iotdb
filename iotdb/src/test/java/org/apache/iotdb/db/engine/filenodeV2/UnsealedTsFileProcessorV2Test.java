@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Consumer;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
@@ -145,16 +146,17 @@ public class UnsealedTsFileProcessorV2Test {
   @Test
   public void testWriteAndClose() throws WriteProcessException, IOException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{
-      TsFileResourceV2 resource = processor.getTsFileResource();
-      synchronized (resource) {
-        for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
-          String deviceId = startTime.getKey();
-          resource.getEndTimeMap().put(deviceId, resource.getStartTimeMap().get(deviceId));
-          resource.setClosed(true);
-        }
-      }
-    });
+        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE,
+        unsealedTsFileProcessorV2 -> {
+          TsFileResourceV2 resource = unsealedTsFileProcessorV2.getTsFileResource();
+          synchronized (resource) {
+            for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
+              String deviceId = startTime.getKey();
+              resource.getEndTimeMap().put(deviceId, resource.getStartTimeMap().get(deviceId));
+            }
+            resource.setClosed(true);
+          }
+        });
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);

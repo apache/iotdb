@@ -135,31 +135,34 @@ public class FileNodeManagerV2 implements IStatistic, IService {
 
   private FileNodeProcessorV2 getProcessor(String devicePath)
       throws FileNodeManagerException {
-    String filenodeName;
+    String filenodeName = "";
     try {
       // return the storage group name
       filenodeName = MManager.getInstance().getFileNameByPath(devicePath);
-    } catch (PathErrorException e) {
-      LOGGER.error("MManager get storage group name error, seriesPath is {}", devicePath);
-      throw new FileNodeManagerException(e);
-    }
-    FileNodeProcessorV2 processor;
-    processor = processorMap.get(filenodeName);
-    if (processor == null) {
-      filenodeName = filenodeName.intern();
-      synchronized (filenodeName) {
-        processor = processorMap.get(filenodeName);
-        if (processor == null) {
-          LOGGER.debug("construct a processor instance, the storage group is {}, Thread is {}",
-              filenodeName, Thread.currentThread().getId());
-          processor = new FileNodeProcessorV2(filenodeName);
-          synchronized (processorMap) {
-            processorMap.put(filenodeName, processor);
+      FileNodeProcessorV2 processor;
+      processor = processorMap.get(filenodeName);
+      if (processor == null) {
+        filenodeName = filenodeName.intern();
+        synchronized (filenodeName) {
+          processor = processorMap.get(filenodeName);
+          if (processor == null) {
+            LOGGER.debug("construct a processor instance, the storage group is {}, Thread is {}",
+                filenodeName, Thread.currentThread().getId());
+            processor = new FileNodeProcessorV2(baseDir, filenodeName);
+            synchronized (processorMap) {
+              processorMap.put(filenodeName, processor);
+            }
           }
         }
       }
+      return processor;
+    } catch (PathErrorException e) {
+      LOGGER.error("MManager get storage group name error, seriesPath is {}", devicePath);
+      throw new FileNodeManagerException(e);
+    } catch (FileNodeProcessorException e) {
+      LOGGER.error("Fail to init simple file version controller of file node {}", filenodeName,  e);
+      throw new FileNodeManagerException(e);
     }
-    return processor;
   }
 
 

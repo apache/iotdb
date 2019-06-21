@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * this class can just guarantee some behavior in a concurrent thread safety mode:
@@ -57,6 +56,10 @@ public class CopyOnReadLinkedList<T> {
       readCopy = new ArrayList<>(data);
     }
     return readCopy;
+  }
+
+  public boolean isEmpty() {
+    return size() == 0;
   }
 
   public int size() {
