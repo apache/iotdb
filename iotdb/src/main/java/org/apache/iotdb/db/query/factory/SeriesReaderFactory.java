@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SealedTsFilesReader;
 import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderByTimestampV2;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReaderByTimestamp;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -215,6 +217,42 @@ public class SeriesReaderFactory {
       PriorityMergeReaderByTimestamp unSeqMergeReader = SeriesReaderFactory.getInstance()
           .createUnSeqMergeReaderByTimestamp(queryDataSource.getOverflowSeriesDataSource());
       mergeReaderByTimestamp.addReaderWithPriority(unSeqMergeReader, 2);
+
+      readersOfSelectedSeries.add(mergeReaderByTimestamp);
+    }
+
+    return readersOfSelectedSeries;
+  }
+
+  /**
+   * construct ByTimestampReader, include sequential data and unsequential data.
+   *
+   * @param paths selected series path
+   * @param context query context
+   * @return the list of EngineReaderByTimeStamp
+   */
+  public static List<EngineReaderByTimeStamp> getByTimestampReadersOfSelectedPathsV2(
+      List<Path> paths, QueryContext context) throws IOException, FileNodeManagerException {
+
+    List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
+
+    for (Path path : paths) {
+
+      QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance().getQueryDataSourceV2(path,
+          context);
+
+      PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
+
+      // reader for sequence data
+      SequenceDataReaderByTimestampV2 tsFilesReader = new SequenceDataReaderByTimestampV2(path,
+          queryDataSource.getSeqDataSource().getQueryTsFiles(), context);
+      mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
+
+      // reader for unSequence data
+      //TODO
+//      PriorityMergeReaderByTimestamp unSeqMergeReader = SeriesReaderFactory.getInstance()
+//          .createUnSeqMergeReaderByTimestamp(queryDataSource.getOverflowSeriesDataSource());
+//      mergeReaderByTimestamp.addReaderWithPriority(unSeqMergeReader, 2);
 
       readersOfSelectedSeries.add(mergeReaderByTimestamp);
     }
