@@ -22,10 +22,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2.TSFILE_TYPE;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSourceV2;
-import org.apache.iotdb.db.engine.querycontext.UnsealedTsFileV2;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
@@ -62,11 +60,11 @@ public class SequenceDataReaderV2 extends IterateReader {
     this.enableReverse = isReverse;
 
     for (TsFileResourceV2 tsFileResource : sources.getQueryTsFiles()) {
-      if (tsFileResource.getTsFileType().equals(TSFILE_TYPE.SEALED)) {
+      if (tsFileResource.isClosed()) {
         constructSealedTsFileReader(tsFileResource, filter, context, seriesReaders);
       } else {
         seriesReaders.add(
-            new UnSealedTsFileReaderV2((UnsealedTsFileV2) tsFileResource, filter, enableReverse));
+            new UnSealedTsFileReaderV2(tsFileResource, filter, enableReverse));
       }
     }
 

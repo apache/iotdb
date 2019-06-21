@@ -23,7 +23,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2.TSFILE_TYPE;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
@@ -85,7 +84,7 @@ public class JobFileManager {
     //sequence data
     for(TsFileResourceV2 tsFileResource : dataSource.getSeqDataSource().getQueryTsFiles()){
       String path = tsFileResource.getFile().getPath();
-      if(tsFileResource.getTsFileType().equals(TSFILE_TYPE.SEALED)){
+      if(tsFileResource.isClosed()){
         addFilePathToMap(jobId, path, true);
       }
       else {
@@ -94,9 +93,9 @@ public class JobFileManager {
     }
 
     //overflow data
-    for(TsFileResourceV2 tsFileResource : dataSource.getOverflowSeriesDataSource().getQueryTsFiles()){
+    for(TsFileResourceV2 tsFileResource : dataSource.getUnSequenceDataSource().getQueryTsFiles()){
       String path = tsFileResource.getFile().getPath();
-      if(tsFileResource.getTsFileType().equals(TSFILE_TYPE.SEALED)){
+      if(tsFileResource.isClosed()){
         addFilePathToMap(jobId, path, true);
       }
       else {

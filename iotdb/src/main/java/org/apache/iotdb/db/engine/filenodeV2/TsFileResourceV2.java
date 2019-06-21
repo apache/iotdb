@@ -50,12 +50,13 @@ public class TsFileResourceV2 {
   /**
    * Chunk metadata list of unsealed tsfile
    */
-  private List<ChunkMetaData> timeSeriesChunkMetaDatas;
+  private List<ChunkMetaData> chunkMetaDatas;
+
 
   /**
    * Mem chunk data
    */
-  private ReadOnlyMemChunk readableChunk;
+  private ReadOnlyMemChunk readOnlyMemChunk;
 
   public TsFileResourceV2(File file) {
     this.file = file;
@@ -70,11 +71,11 @@ public class TsFileResourceV2 {
   }
 
   public TsFileResourceV2(File file,
-      ReadOnlyMemChunk readableChunk,
-      List<ChunkMetaData> timeSeriesChunkMetaDatas) {
+      ReadOnlyMemChunk readOnlyMemChunk,
+      List<ChunkMetaData> chunkMetaDatas) {
     this.file = file;
-    this.timeSeriesChunkMetaDatas = timeSeriesChunkMetaDatas;
-    this.readableChunk = readableChunk;
+    this.chunkMetaDatas = chunkMetaDatas;
+    this.readOnlyMemChunk = readOnlyMemChunk;
   }
 
   public void updateStartTime(String device, long time) {
@@ -83,6 +84,18 @@ public class TsFileResourceV2 {
     if (time < startTimeMap.get(device)) {
       startTimeMap.put(device, startTime);
     }
+  }
+
+  public List<ChunkMetaData> getChunkMetaDatas() {
+    return chunkMetaDatas;
+  }
+
+  public ReadOnlyMemChunk getReadOnlyMemChunk() {
+    return readOnlyMemChunk;
+  }
+
+  public ModificationFile getModFile() {
+    return modFile;
   }
 
   public File getFile() {

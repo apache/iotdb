@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.reader.sequence;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.engine.querycontext.UnsealedTsFileV2;
+import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -48,13 +48,13 @@ public class UnSealedTsFileReaderV2 extends IterateReader {
    * @param isReverse true-traverse chunks from behind forward; false-traverse chunks from front to
    * back;
    */
-  public UnSealedTsFileReaderV2(UnsealedTsFileV2 unsealedTsFile, Filter filter, boolean isReverse)
+  public UnSealedTsFileReaderV2(TsFileResourceV2 unsealedTsFile, Filter filter, boolean isReverse)
       throws IOException {
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
         .get(unsealedTsFile.getFile().getPath(), false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
-    List<ChunkMetaData> metaDataList = unsealedTsFile.getChunkMetaDataList();
+    List<ChunkMetaData> metaDataList = unsealedTsFile.getChunkMetaDatas();
     // reverse chunk metadata list if traversing chunks from behind forward
     if (isReverse && metaDataList != null && !metaDataList.isEmpty()) {
       Collections.reverse(metaDataList);
@@ -69,7 +69,7 @@ public class UnSealedTsFileReaderV2 extends IterateReader {
     }
 
     // data in flushing memtable
-    MemChunkReader memChunkReader = new MemChunkReader(unsealedTsFile.getReadableChunk(), filter);
+    MemChunkReader memChunkReader = new MemChunkReader(unsealedTsFile.getReadOnlyMemChunk(), filter);
     if (isReverse) {
       seriesReaders.add(memChunkReader);
       seriesReaders.add(new FileSeriesIAggregateReader(unSealedReader));
