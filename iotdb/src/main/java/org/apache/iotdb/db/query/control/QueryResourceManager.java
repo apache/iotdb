@@ -28,9 +28,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -166,6 +168,19 @@ public class QueryResourceManager {
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
     QueryDataSource queryDataSource = FileNodeManager.getInstance()
         .query(singleSeriesExpression, context);
+
+    // add used files to current thread request cached map
+    filePathsManager.addUsedFilesForGivenJob(context.getJobId(), queryDataSource);
+
+    return queryDataSource;
+  }
+
+  public QueryDataSourceV2 getQueryDataSourceV2(Path selectedPath,
+      QueryContext context)
+      throws FileNodeManagerException {
+
+    SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
+    QueryDataSourceV2 queryDataSource = FileNodeManagerV2.getInstance().query(singleSeriesExpression, context);
 
     // add used files to current thread request cached map
     filePathsManager.addUsedFilesForGivenJob(context.getJobId(), queryDataSource);

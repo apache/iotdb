@@ -43,6 +43,7 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -276,7 +277,7 @@ public class FileNodeProcessorV2 {
   }
 
 
-  public QueryDataSourceV2 query(String deviceId, String measurementId) {
+  public QueryDataSourceV2 query(String deviceId, String measurementId, QueryContext context) {
 
     List<TsFileResourceV2> sequnceResources = getFileReSourceListForQuery(sequenceFileList, deviceId, measurementId);
     List<TsFileResourceV2> unsequnceResources = getFileReSourceListForQuery(unSequenceFileList, deviceId, measurementId);

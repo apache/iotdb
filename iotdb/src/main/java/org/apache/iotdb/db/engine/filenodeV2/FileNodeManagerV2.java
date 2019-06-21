@@ -19,18 +19,27 @@
 package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.File;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.engine.filenode.FileNodeProcessor;
+import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSourceV2;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -166,6 +175,25 @@ public class FileNodeManagerV2 implements IService {
       }
 
     }
+  }
+
+  /**
+   * query data.
+   */
+  public QueryDataSourceV2 query(SingleSeriesExpression seriesExpression, QueryContext context)
+      throws FileNodeManagerException {
+    String deviceId = seriesExpression.getSeriesPath().getDevice();
+    String measurementId = seriesExpression.getSeriesPath().getMeasurement();
+    FileNodeProcessorV2 fileNodeProcessor = null;
+    try {
+      fileNodeProcessor = getProcessor(deviceId);
+    } catch (FileNodeProcessorException e) {
+      throw new FileNodeManagerException(e);
+    }
+//    LOGGER.debug("Get the FileNodeProcessor: filenode is {}, query.",
+//        fileNodeProcessor.getProcessorName());
+      return fileNodeProcessor.query(deviceId, measurementId, context);
+
   }
 
 }

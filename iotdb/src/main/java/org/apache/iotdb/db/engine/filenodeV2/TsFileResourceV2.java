@@ -88,6 +88,14 @@ public abstract class TsFileResourceV2 {
     return endTimeMap;
   }
 
+  public ModificationFile getModFile() {
+    return modFile;
+  }
+
+  public void setModFile(ModificationFile modFile) {
+    this.modFile = modFile;
+  }
+
   public void serialize(OutputStream outputStream) throws IOException {
 //    ReadWriteIOUtils.write(this.overflowChangeType.serialize(), outputStream);
 //    ReadWriteIOUtils.write(this.baseDirIndex, outputStream);

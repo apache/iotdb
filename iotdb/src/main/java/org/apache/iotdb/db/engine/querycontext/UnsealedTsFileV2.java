@@ -59,4 +59,12 @@ public class UnsealedTsFileV2 extends TsFileResourceV2 {
   public void setTimeSeriesChunkMetaDatas(List<ChunkMetaData> timeSeriesChunkMetaDatas) {
     this.timeSeriesChunkMetaDatas = timeSeriesChunkMetaDatas;
   }
+
+  public ReadOnlyMemChunk getReadableChunk() {
+    return readableChunk;
+  }
+
+  public void setReadableChunk(ReadOnlyMemChunk readableChunk) {
+    this.readableChunk = readableChunk;
+  }
 }

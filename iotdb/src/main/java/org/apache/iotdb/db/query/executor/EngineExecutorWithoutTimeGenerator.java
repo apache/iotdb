@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 /**
  * IoTDB query executor of Stand-alone version with global time filter.
  */
-public class EngineExecutorWithoutTimeGenerator extends AbstractExecutorWithoutTimeGenerator {
+public class EngineExecutorWithoutTimeGenerator extends AbstractExecutorWithoutTimeGeneratorV2 {
 
   private QueryExpression queryExpression;
 
