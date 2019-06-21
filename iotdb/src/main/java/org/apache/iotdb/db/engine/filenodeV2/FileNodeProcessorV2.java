@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -55,8 +56,6 @@ import org.slf4j.LoggerFactory;
 public class FileNodeProcessorV2 {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessorV2.class);
-
-  private static final String RESTORE_FILE_SUFFIX = ".restore";
 
   private static final MManager mManager = MManager.getInstance();
   private static final Directories directories = Directories.getInstance();
@@ -96,29 +95,17 @@ public class FileNodeProcessorV2 {
 
   private VersionController versionController;
 
-  public FileNodeProcessorV2(String absoluteBaseDir, String storageGroupName)
-      throws FileNodeProcessorException {
+  public FileNodeProcessorV2(String storageGroupName) {
     this.storageGroupName = storageGroupName;
     lock = new ReentrantReadWriteLock();
     closeFileNodeCondition = lock.writeLock().newCondition();
-
-    File storageGroupDir = new File(absoluteBaseDir, storageGroupName);
-    if (!storageGroupDir.exists()) {
-      storageGroupDir.mkdir();
-      LOGGER.info("The directory of the storage group {} doesn't exist. Create a new " +
-          "directory {}", storageGroupName, storageGroupDir.getAbsolutePath());
-    }
 
     recovery();
 
     /**
      * version controller
      */
-    try {
-      versionController = new SimpleFileVersionController(storageGroupDir.getAbsolutePath());
-    } catch (IOException e) {
-      throw new FileNodeProcessorException(e);
-    }
+    versionController = SysTimeVersionController.INSTANCE;
 
     // construct the file schema
     this.fileSchema = constructFileSchema(storageGroupName);
@@ -175,10 +162,10 @@ public class FileNodeProcessorV2 {
       boolean result;
       // write to sequence or unsequence file
       if (tsRecord.time > latestFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
-        result = writeUnsealedDataFile(workSequenceTsFileProcessor, tsRecord, true);
+        result = writeUnsealedDataFile(tsRecord, true);
         insertResult = result ? 1 : -1;
       } else {
-        result = writeUnsealedDataFile(workUnSequenceTsFileProcessor, tsRecord, false);
+        result = writeUnsealedDataFile(tsRecord, false);
         insertResult = result ? 2 : -1;
       }
     } catch (Exception e) {
@@ -191,31 +178,35 @@ public class FileNodeProcessorV2 {
     return insertResult;
   }
 
-  private boolean writeUnsealedDataFile(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
-      TSRecord tsRecord, boolean sequence) throws IOException {
+  private boolean writeUnsealedDataFile(TSRecord tsRecord, boolean sequence) throws IOException {
     lock.writeLock().lock();
+    UnsealedTsFileProcessorV2 unsealedTsFileProcessor;
     try {
       boolean result;
       // create a new BufferWriteProcessor
-      if (unsealedTsFileProcessor == null) {
-        if (sequence) {
+      if (sequence) {
+        if (workSequenceTsFileProcessor == null) {
           String baseDir = directories.getNextFolderForTsfile();
-          String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "")
+          String filePath = Paths.get(baseDir, System.currentTimeMillis() + "")
               .toString();
-          unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
+          workSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
               new File(filePath),
               fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback);
-          sequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
-        } else {
+          sequenceFileList.add(workSequenceTsFileProcessor.getTsFileResource());
+        }
+        unsealedTsFileProcessor = workSequenceTsFileProcessor;
+      } else {
+        if (workUnSequenceTsFileProcessor == null) {
           // TODO check if the disk is full
           String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
-          String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "")
+          String filePath = Paths.get(baseDir, System.currentTimeMillis() + "")
               .toString();
-          unsealedTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
+          workUnSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
               new File(filePath),
               fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback);
-          unSequenceFileList.add(unsealedTsFileProcessor.getTsFileResource());
+          unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
         }
+        unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
       }
 
       // write BufferWrite

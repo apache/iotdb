@@ -18,16 +18,8 @@
  */
 package org.apache.iotdb.db.engine.filenodeV2;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
-import org.apache.iotdb.db.engine.filenode.FileNodeProcessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.BufferWriteProcessorException;
-import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -43,15 +35,13 @@ public class FileNodeProcessorV2Test {
   private String baseDir = "data";
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
-  private TSDataType dataType = TSDataType.INT32;
-  private Map<String, String> props = Collections.emptyMap();
   private FileNodeProcessorV2 processor;
 
   @Before
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-    processor = new FileNodeProcessorV2(baseDir, storageGroup);
+    processor = new FileNodeProcessorV2(storageGroup);
   }
 
   @After
@@ -62,23 +52,19 @@ public class FileNodeProcessorV2Test {
 
 
   @Test
-  public void testAsyncClose()
-      throws FileNodeProcessorException, BufferWriteProcessorException, ExecutionException, InterruptedException {
-
-
+  public void testAsyncClose() {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
-      for (int i = 0; i < 10; i++) {
-        record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(i)));
-      }
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(record);
       processor.asyncForceClose();
     }
 
     QueryDataSourceV2 queryDataSource = processor.query(deviceId, measurementId);
-
     Assert.assertEquals(queryDataSource.getSeqDataSource().getQueryTsFiles().size(), 10);
-
+    for (TsFileResourceV2 resource: queryDataSource.getSeqDataSource().getQueryTsFiles()) {
+      Assert.assertEquals(resource.isClosed(), true);
+    }
   }
 
 
