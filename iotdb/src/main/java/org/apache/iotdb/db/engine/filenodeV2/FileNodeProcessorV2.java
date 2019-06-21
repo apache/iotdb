@@ -106,7 +106,10 @@ public class FileNodeProcessorV2 {
      */
     try {
       File storageGroupInfoDir = new File(baseDir, storageGroupName);
-      storageGroupInfoDir.mkdirs();
+      if (storageGroupInfoDir.mkdirs()) {
+        LOGGER.info("Storage Group Info Directory {} doesn't exist, create it", storageGroupInfoDir.getPath());
+      }
+
       versionController = new SimpleFileVersionController(
           storageGroupInfoDir.getPath());
     } catch (IOException e) {
@@ -352,7 +355,7 @@ public class FileNodeProcessorV2 {
   /**
    * This method will be blocked until this file node can be closed.
    */
-  public void syncCloseAndReleaseFileNode(Supplier<Boolean> removeProcessorFromManagerCallback){
+  public void syncCloseAndStopFileNode(Supplier<Boolean> removeProcessorFromManagerCallback){
     lock.writeLock().lock();
     try {
       asyncForceClose();

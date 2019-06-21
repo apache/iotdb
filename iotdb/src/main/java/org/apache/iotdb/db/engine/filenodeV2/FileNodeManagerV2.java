@@ -66,7 +66,7 @@ public class FileNodeManagerV2 implements IService {
    * This map is used to manage all filenode processor,<br> the key is filenode name which is
    * storage group seriesPath.
    */
-  private final ConcurrentHashMap<String, FileNodeProcessorV2> processorMap;
+  private final ConcurrentHashMap<String, FileNodeProcessorV2> processorMap = new ConcurrentHashMap<>();
 
   private static final FileNodeManagerV2 INSTANCE = new FileNodeManagerV2();
 
@@ -85,19 +85,12 @@ public class FileNodeManagerV2 implements IService {
 
 
   private FileNodeManagerV2() {
-    String normalizedBaseDir = config.getFileNodeDir();
-    if (normalizedBaseDir.charAt(normalizedBaseDir.length() - 1) != File.separatorChar) {
-      normalizedBaseDir += Character.toString(File.separatorChar);
-    }
-    baseDir = normalizedBaseDir;
-    processorMap = new ConcurrentHashMap<>();
-
+    baseDir = FilePathUtils.regularizePath(config.getFileNodeDir());
     // create baseDir
     File dir = new File(baseDir);
     if (dir.mkdirs()) {
-      LOGGER.info("baseDir {} doesn't exist, create it", dir.getPath());
+      LOGGER.info("Base directory {} of all storage groups doesn't exist, create it", dir.getPath());
     }
-
   }
 
   @Override
@@ -182,31 +175,15 @@ public class FileNodeManagerV2 implements IService {
     return fileNodeProcessor.insert(tsRecord);
   }
 
-  private void closeAllFileNodeProcessor() {
+
+  public void asyncFlushAndSealAllFiles() {
     synchronized (processorMap) {
-      LOGGER.info("Start to setCloseMark all FileNode");
-      if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
-        LOGGER.info(
-            "Failed to setCloseMark all FileNode processor because the FileNodeManager's status is {}",
-            fileNodeManagerStatus);
-        return;
+      for (FileNodeProcessorV2 fileNodeProcessor: processorMap.values()) {
+        fileNodeProcessor.asyncForceClose();
       }
-
-      fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
-
-      for (Map.Entry<String, FileNodeProcessorV2> processorEntry : processorMap.entrySet()) {
-
-      }
-
     }
   }
 
-  private void checkTimestamp(TSRecord tsRecord) throws FileNodeManagerException {
-    if (tsRecord.time < 0) {
-      LOGGER.error("The insert time lt 0, {}.", tsRecord);
-      throw new FileNodeManagerException("The insert time lt 0, the tsrecord is " + tsRecord);
-    }
-  }
 
   /**
    * recovery the filenode processor.
@@ -341,7 +318,7 @@ public class FileNodeManagerV2 implements IService {
   private void deleteFileNodeBlocked(String processorName) throws IOException {
     LOGGER.info("Forced to delete the filenode processor {}", processorName);
     FileNodeProcessorV2 processor = processorMap.get(processorName);
-    processor.syncCloseAndReleaseFileNode(() -> {
+    processor.syncCloseAndStopFileNode(() -> {
       String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getFileNodeDir();
       fileNodePath = FilePathUtils.regularizePath(fileNodePath) + processorName;
       try {
