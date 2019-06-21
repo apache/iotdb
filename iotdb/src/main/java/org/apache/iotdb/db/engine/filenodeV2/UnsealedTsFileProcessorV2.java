@@ -71,7 +71,7 @@ public class UnsealedTsFileProcessorV2 {
 
   private VersionController versionController;
 
-  private Consumer<UnsealedTsFileProcessorV2> closeUnsealedTsFileProcessor;
+  private Consumer<UnsealedTsFileProcessorV2> closeUnsealedFileCallback;
 
   /**
    * sync this object in query() and asyncFlush()
@@ -80,14 +80,14 @@ public class UnsealedTsFileProcessorV2 {
 
   public UnsealedTsFileProcessorV2(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,
-      Consumer<UnsealedTsFileProcessorV2> closeUnsealedTsFileProcessor)
+      Consumer<UnsealedTsFileProcessorV2> closeUnsealedFileCallback)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
     this.tsFileResource = new TsFileResourceV2(tsfile);
     this.versionController = versionController;
     this.writer = new NativeRestorableIOWriter(tsfile);
-    this.closeUnsealedTsFileProcessor = closeUnsealedTsFileProcessor;
+    this.closeUnsealedFileCallback = closeUnsealedFileCallback;
   }
 
   /**
@@ -254,7 +254,7 @@ public class UnsealedTsFileProcessorV2 {
     writer = null;
 
     // remove this processor from Closing list in FileNodeProcessor
-    closeUnsealedTsFileProcessor.accept(this);
+    closeUnsealedFileCallback.accept(this);
 
     // delete the restore for this bufferwrite processor
     if (LOGGER.isInfoEnabled()) {

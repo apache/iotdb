@@ -152,11 +152,7 @@ public class FileNodeManagerV2 implements IStatistic, IService {
         if (processor == null) {
           LOGGER.debug("construct a processor instance, the storage group is {}, Thread is {}",
               filenodeName, Thread.currentThread().getId());
-          try {
-            processor = new FileNodeProcessorV2(baseDir, filenodeName);
-          } catch (FileNodeProcessorException e) {
-            throw new FileNodeManagerException(e);
-          }
+          processor = new FileNodeProcessorV2(filenodeName);
           synchronized (processorMap) {
             processorMap.put(filenodeName, processor);
           }

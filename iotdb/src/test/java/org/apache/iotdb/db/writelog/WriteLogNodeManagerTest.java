@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.writelog;
 
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertNotSame;
+import static junit.framework.TestCase.assertSame;
 import static junit.framework.TestCase.assertTrue;
 
 import java.io.File;
@@ -63,6 +66,21 @@ public class WriteLogNodeManagerTest {
   }
 
   @Test
+  public void testGetAndDelete() throws IOException {
+    String identifier = "testLogNode";
+    WriteLogNodeManager manager = MultiFileLogNodeManager.getInstance();
+    WriteLogNode logNode = manager.getNode(identifier);
+    assertEquals(identifier, logNode.getIdentifier());
+
+    WriteLogNode theSameNode = manager.getNode(identifier);
+    assertSame(logNode, theSameNode);
+
+    manager.deleteNode(identifier);
+    WriteLogNode anotherNode = manager.getNode(identifier);
+    assertNotSame(logNode, anotherNode);
+  }
+
+  @Test
   public void testAutoSync() throws IOException, InterruptedException {
     // this test check that nodes in a manager will sync periodically.
     int flushWalPeriod = config.getFlushWalThreshold();
@@ -84,7 +102,7 @@ public class WriteLogNodeManagerTest {
     logNode.write(updatePlan);
     logNode.write(deletePlan);
 
-    File walFile = new File(logNode.getLogDirectory() + File.separator + "wal");
+    File walFile = new File(logNode.getLogDirectory() + File.separator + "wal1");
     assertTrue(!walFile.exists());
 
     Thread.sleep(config.getFlushWalPeriodInMs() + 1000);
