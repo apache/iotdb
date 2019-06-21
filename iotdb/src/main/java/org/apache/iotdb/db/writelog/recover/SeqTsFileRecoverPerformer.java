@@ -74,6 +74,7 @@ public class SeqTsFileRecoverPerformer {
     if (!insertFile.exists()) {
       return;
     }
+    // remove corrupted part of the TsFile
     NativeRestorableIOWriter restorableTsFileIOWriter = recoverFile(insertFile);
 
     // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
@@ -85,16 +86,19 @@ public class SeqTsFileRecoverPerformer {
       }
     }
 
+    // redo logs
     logReplayer.replayLogs();
     if (recoverMemTable.isEmpty()) {
       removeTruncatePosition(insertFile);
       return;
     }
 
+    // flush logs
     MemTableFlushTask tableFlushTask = new MemTableFlushTask(restorableTsFileIOWriter,
         logNodePrefix, 0, (a,b) -> {});
     tableFlushTask.flushMemTable(fileSchema, recoverMemTable, versionController.nextVersion());
 
+    // close file
     try {
       restorableTsFileIOWriter.endFile(fileSchema);
     } catch (IOException e) {
@@ -103,6 +107,7 @@ public class SeqTsFileRecoverPerformer {
 
     removeTruncatePosition(insertFile);
 
+    // clean logs
     try {
       MultiFileLogNodeManager.getInstance().deleteNode(logNodePrefix + new File(insertFilePath).getName());
     } catch (IOException e) {
