@@ -63,20 +63,17 @@ public class WriteLogNodeTest {
   public void testWriteLogAndSync() throws IOException {
     // this test uses a dummy write log node to write a few logs and flushes them
     // then reads the logs from file
-    File tempRestore = new File("testtemp", "restore");
-    File tempProcessorStore = new File("testtemp", "processorStore");
-    tempRestore.getParentFile().mkdirs();
-    tempRestore.createNewFile();
-    tempProcessorStore.createNewFile();
+    String identifier = "root.logTestDevice";
+
     CRC32 crc32 = new CRC32();
 
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
+    WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
 
-    InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
+    InsertPlan bwInsertPlan = new InsertPlan(1, identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path(identifier + ".s1"));
+    DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
 
     logNode.write(bwInsertPlan);
     logNode.write(updatePlan);
@@ -85,7 +82,7 @@ public class WriteLogNodeTest {
     logNode.forceSync();
 
     File walFile = new File(
-        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal");
+        config.getWalFolder() + File.separator + identifier + File.separator + "wal1");
     assertTrue(walFile.exists());
 
     RandomAccessFile raf = new RandomAccessFile(walFile, "r");
@@ -128,9 +125,6 @@ public class WriteLogNodeTest {
 
     raf.close();
     logNode.delete();
-    tempRestore.delete();
-    tempProcessorStore.delete();
-    tempRestore.getParentFile().delete();
   }
 
   @Test

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.writelog.io;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -65,6 +66,7 @@ public class LogWriterReaderTest {
     LogWriter writer = new LogWriter(filePath);
     writer.write(logs);
     try {
+      writer.force();
       writer.close();
       SingleFileLogReader reader = new SingleFileLogReader(new File(filePath));
       List<byte[]> res = new ArrayList<>();
