@@ -88,7 +88,7 @@ public class UnsealedTsFileProcessorV2 {
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
-    this.tsFileResource = new TsFileResourceV2(tsfile);
+    this.tsFileResource = new TsFileResourceV2(tsfile, this);
     this.versionController = versionController;
     this.writer = new NativeRestorableIOWriter(tsfile);
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;

@@ -41,7 +41,7 @@ public class TsFileResourceV2 {
    */
   private Map<String, Long> endTimeMap;
 
-  private UnsealedTsFileProcessorV2 unsealedFileProcessor;
+  private UnsealedTsFileProcessorV2 processor;
 
   private transient ModificationFile modFile;
 
@@ -58,16 +58,11 @@ public class TsFileResourceV2 {
    */
   private ReadOnlyMemChunk readOnlyMemChunk;
 
-  public TsFileResourceV2(File file) {
+  public TsFileResourceV2(File file, UnsealedTsFileProcessorV2 processor) {
     this.file = file;
     this.startTimeMap = new HashMap<>();
     this.endTimeMap = new HashMap<>();
-  }
-
-  public TsFileResourceV2(File file, Map<String, Long> startTimeMap, Map<String, Long> endTimeMap) {
-    this.file = file;
-    this.startTimeMap = startTimeMap;
-    this.endTimeMap = endTimeMap;
+    this.processor = processor;
   }
 
   public TsFileResourceV2(File file,
@@ -127,6 +122,6 @@ public class TsFileResourceV2 {
   }
 
   public UnsealedTsFileProcessorV2 getUnsealedFileProcessor() {
-    return unsealedFileProcessor;
+    return processor;
   }
 }
