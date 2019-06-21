@@ -40,7 +40,6 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -167,7 +166,7 @@ public class FileNodeProcessorV2 {
       latestFlushedTimeForEachDevice.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
 
       boolean result;
-      // write to sequence or unsequence file
+      // write to sequence or unSequence file
       if (tsRecord.time > latestFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
         result = writeUnsealedDataFile(tsRecord, true);
         insertResult = result ? 1 : -1;
@@ -194,12 +193,11 @@ public class FileNodeProcessorV2 {
       if (sequence) {
         if (workSequenceTsFileProcessor == null) {
           String baseDir = directories.getNextFolderForTsfile();
-          String filePath = Paths.get(baseDir, System.currentTimeMillis() + "-" + versionController.nextVersion())
-              .toString();
-          System.out.println(filePath);
-          workSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
-              new File(filePath),
-              fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback);
+          String filePath = Paths.get(baseDir, System.currentTimeMillis() + "-" + versionController.nextVersion()).toString();
+
+          workSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
+              fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);
+
           sequenceFileList.add(workSequenceTsFileProcessor.getTsFileResource());
         }
         unsealedTsFileProcessor = workSequenceTsFileProcessor;
@@ -207,11 +205,12 @@ public class FileNodeProcessorV2 {
         if (workUnSequenceTsFileProcessor == null) {
           // TODO check if the disk is full
           String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
-          String filePath = Paths.get(baseDir, System.currentTimeMillis() + "" + + versionController.nextVersion())
-              .toString();
-          workUnSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName,
-              new File(filePath),
-              fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback);
+          new File(baseDir).mkdirs();
+          String filePath = Paths.get(baseDir, System.currentTimeMillis() + "-" + +versionController.nextVersion()).toString();
+
+          workUnSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
+              fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);
+
           unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
         }
         unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
@@ -246,7 +245,6 @@ public class FileNodeProcessorV2 {
           deviceId, measurementId);
       List<TsFileResourceV2> unsequnceResources = getFileReSourceListForQuery(unSequenceFileList,
           deviceId, measurementId);
-
       return new QueryDataSourceV2(
           new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId), sequnceResources),
           new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId),
@@ -308,13 +306,21 @@ public class FileNodeProcessorV2 {
     }
 
     unsealedTsFileProcessor.asyncFlush();
-
-    // update the largest timestamp in the last flushing memtable
-    for (Entry<String, Long> entry : latestTimeForEachDevice.entrySet()) {
-      latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
-    }
   }
 
+
+  public boolean updateLatestFlushTimeCallback() {
+    lock.writeLock().lock();
+    try {
+      // update the largest timestamp in the last flushing memtable
+      for (Entry<String, Long> entry : latestTimeForEachDevice.entrySet()) {
+        latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+    return true;
+  }
 
   /**
    * put the memtable back to the MemTablePool and make the metadata in writer visible
@@ -323,7 +329,11 @@ public class FileNodeProcessorV2 {
   public void closeUnsealedTsFileProcessorCallback(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
     lock.writeLock().lock();
     try {
-      closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
+      if (closingSequenceTsFileProcessor.contains(unsealedTsFileProcessor)) {
+        closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
+      } else {
+        closingUnSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
+      }
       // end time with one start time
       TsFileResourceV2 resource = unsealedTsFileProcessor.getTsFileResource();
       synchronized (resource) {
@@ -358,9 +368,32 @@ public class FileNodeProcessorV2 {
   }
 
   /**
-   * Block this method until this file node can be closed.
+   * This method will be blocked until all tsfile processors are closed.
    */
-  public void syncCloseFileNode(Supplier<Boolean> removeProcessorFromManagerCallback){
+  public void syncCloseFileNode(){
+    lock.writeLock().lock();
+    try {
+      asyncForceClose();
+      while (true) {
+        if (closingSequenceTsFileProcessor.isEmpty() && closingUnSequenceTsFileProcessor.isEmpty()
+            && workSequenceTsFileProcessor == null && workUnSequenceTsFileProcessor == null) {
+          break;
+        }
+        closeFileNodeCondition.await();
+      }
+    } catch (InterruptedException e) {
+      LOGGER.error("CloseFileNodeConditon occurs error while waiting for closing the file node {}",
+          storageGroupName, e);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+
+  /**
+   * This method will be blocked until this file node can be closed.
+   */
+  public void syncCloseAndReleaseFileNode(Supplier<Boolean> removeProcessorFromManagerCallback){
     lock.writeLock().lock();
     try {
       asyncForceClose();
@@ -380,6 +413,7 @@ public class FileNodeProcessorV2 {
       lock.writeLock().unlock();
     }
   }
+
 
   public UnsealedTsFileProcessorV2 getWorkSequenceTsFileProcessor() {
     return workSequenceTsFileProcessor;

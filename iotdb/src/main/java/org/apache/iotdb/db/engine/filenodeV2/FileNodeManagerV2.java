@@ -429,7 +429,7 @@ public class FileNodeManagerV2 implements IStatistic, IService {
   private void deleteFileNodeBlocked(String processorName) throws IOException {
     LOGGER.info("Forced to delete the filenode processor {}", processorName);
     FileNodeProcessorV2 processor = processorMap.get(processorName);
-    processor.syncCloseFileNode(() -> {
+    processor.syncCloseAndReleaseFileNode(() -> {
       String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getFileNodeDir();
       fileNodePath = FilePathUtils.regularizePath(fileNodePath) + processorName;
       try {

@@ -38,6 +38,10 @@ public class CopyOnReadLinkedList<T> {
     data.add(d);
   }
 
+  public synchronized boolean contains(T d) {
+    return data.contains(d);
+  }
+
   public synchronized void remove(T d) {
     data.remove(d);
   }
@@ -65,4 +69,5 @@ public class CopyOnReadLinkedList<T> {
   public int size() {
     return data.size();
   }
+
 }

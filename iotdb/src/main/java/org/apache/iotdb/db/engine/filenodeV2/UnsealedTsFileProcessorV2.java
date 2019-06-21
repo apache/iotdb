@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.EmptyMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -73,6 +74,8 @@ public class UnsealedTsFileProcessorV2 {
 
   private Consumer<UnsealedTsFileProcessorV2> closeUnsealedFileCallback;
 
+  private Supplier flushUpdateLatestFlushTimeCallback;
+
   /**
    * sync this object in query() and asyncFlush()
    */
@@ -80,7 +83,8 @@ public class UnsealedTsFileProcessorV2 {
 
   public UnsealedTsFileProcessorV2(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,
-      Consumer<UnsealedTsFileProcessorV2> closeUnsealedFileCallback)
+      Consumer<UnsealedTsFileProcessorV2> closeUnsealedFileCallback,
+      Supplier flushUpdateLatestFlushTimeCallback)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
@@ -88,6 +92,7 @@ public class UnsealedTsFileProcessorV2 {
     this.versionController = versionController;
     this.writer = new NativeRestorableIOWriter(tsfile);
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;
+    this.flushUpdateLatestFlushTimeCallback = flushUpdateLatestFlushTimeCallback;
   }
 
   /**
@@ -133,8 +138,7 @@ public class UnsealedTsFileProcessorV2 {
     try {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
-      MemTablePool.getInstance().putBack(memTable);
-      LOGGER.info("Processor {} return back a memtable to MemTablePool", storageGroupName);
+      MemTablePool.getInstance().putBack(memTable, storageGroupName);
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -156,6 +160,7 @@ public class UnsealedTsFileProcessorV2 {
       }
       flushingMemTables.addLast(workMemTable);
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
+      flushUpdateLatestFlushTimeCallback.get();
       workMemTable = null;
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -170,6 +175,7 @@ public class UnsealedTsFileProcessorV2 {
       tmpMemTable = workMemTable == null ? new EmptyMemTable() : workMemTable;
       flushingMemTables.addLast(tmpMemTable);
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
+      flushUpdateLatestFlushTimeCallback.get();
       workMemTable = null;
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -197,9 +203,10 @@ public class UnsealedTsFileProcessorV2 {
 
   public synchronized void asyncClose() {
     flushingMemTables.add(workMemTable == null ? new EmptyMemTable() : workMemTable);
-    workMemTable = null;
-    shouldClose = true;
     FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
+    flushUpdateLatestFlushTimeCallback.get();
+    shouldClose = true;
+    workMemTable = null;
   }
 
 

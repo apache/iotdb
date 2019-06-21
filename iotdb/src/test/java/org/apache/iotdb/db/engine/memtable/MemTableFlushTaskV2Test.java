@@ -62,7 +62,7 @@ public class MemTableFlushTaskV2Test {
     MemTableFlushTaskV2 memTableFlushTask = new MemTableFlushTaskV2(writer, storageGroup,
         memtable -> {
           writer.makeMetadataVisible();
-          MemTablePool.getInstance().putBack(memtable);
+          MemTablePool.getInstance().putBack(memtable, storageGroup);
         });
     assertTrue(writer
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
