@@ -524,7 +524,6 @@ public class TsFileSequenceReader implements AutoCloseable{
     long startOffsetOfChunkGroup = 0;
     long endOffsetOfChunkGroup;
     long versionOfChunkGroup = 0;
-    boolean newGroup = true;
 
     if (fileSize < TSFileConfig.MAGIC_STRING.length()) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
