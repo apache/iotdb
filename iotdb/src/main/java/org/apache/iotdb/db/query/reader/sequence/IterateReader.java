@@ -26,6 +26,9 @@ import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
+/**
+ * get data sequentially from the reader list.
+ */
 public class IterateReader implements IAggregateReader {
 
   protected List<IAggregateReader> seriesReaders;

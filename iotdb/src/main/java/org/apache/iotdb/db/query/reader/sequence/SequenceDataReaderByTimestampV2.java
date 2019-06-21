@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.adapter.SeriesReaderByTimestampAdapter;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -35,6 +36,10 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
 
+/**
+ * EngineReaderByTimeStamp of data in: 1) sealed tsfile. 2) unsealed tsfile, which include data in disk of
+ * unsealed file and in memtables that will be flushing to unsealed tsfile.
+ */
 public class SequenceDataReaderByTimestampV2 implements EngineReaderByTimeStamp {
 
   protected Path seriesPath;
@@ -44,7 +49,7 @@ public class SequenceDataReaderByTimestampV2 implements EngineReaderByTimeStamp 
   private QueryContext context;
 
   /**
-   * init with seriesPath and sealedTsFiles.
+   * init with seriesPath and tsfile list which include sealed tsfile and unseadled tsfile.
    */
   public SequenceDataReaderByTimestampV2(Path seriesPath,
       List<TsFileResourceV2> tsFileResourceV2List,
@@ -61,6 +66,7 @@ public class SequenceDataReaderByTimestampV2 implements EngineReaderByTimeStamp 
     Object value = null;
     if (seriesReader != null) {
       value = seriesReader.getValueInTimestamp(timestamp);
+      // if get value or no value in this timestamp, return.
       if (value != null || seriesReader.hasNext()) {
         return value;
       }
@@ -98,13 +104,15 @@ public class SequenceDataReaderByTimestampV2 implements EngineReaderByTimeStamp 
     while (nextIntervalFileIndex < tsFileResourceV2List.size()) {
       TsFileResourceV2 tsFile = tsFileResourceV2List.get(nextIntervalFileIndex);
       nextIntervalFileIndex++;
+      // init unsealed tsfile.
       if (!tsFile.isClosed()) {
-        initUnSealedTsFileReader(tsFile, context);
-        break;
+        initUnSealedTsFileReader(tsFile);
+        return;
       }
+      // init sealed tsfile.
       if (singleTsFileSatisfied(tsFile, timestamp)) {
         initSealedTsFileReader(tsFile, context);
-        break;
+        return;
       }
     }
   }
@@ -119,7 +127,7 @@ public class SequenceDataReaderByTimestampV2 implements EngineReaderByTimeStamp 
     return true;
   }
 
-  private void initUnSealedTsFileReader(TsFileResourceV2 tsFile, QueryContext context)
+  private void initUnSealedTsFileReader(TsFileResourceV2 tsFile)
       throws IOException {
     seriesReader = new UnSealedTsFilesReaderByTimestampV2(tsFile);
   }
@@ -141,7 +149,7 @@ public class SequenceDataReaderByTimestampV2 implements EngineReaderByTimeStamp 
     }
     ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
-    seriesReader = new FileSeriesByTimestampIAggregateReader(
+    seriesReader = new SeriesReaderByTimestampAdapter(
         new SeriesReaderByTimestamp(chunkLoader, metaDataList));
   }
 }

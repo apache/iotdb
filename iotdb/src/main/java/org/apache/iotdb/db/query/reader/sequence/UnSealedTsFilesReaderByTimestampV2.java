@@ -30,11 +30,25 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
 
+/**
+ * include data in one closing bufferWriteProcessfor or working bufferWriteProcessfor: 1) the data
+ * in unseal tsfile part which has been flushed to disk 2) the data in flushing memtable list
+ */
 public class UnSealedTsFilesReaderByTimestampV2 implements EngineReaderByTimeStamp {
 
   protected Path seriesPath;
+  /**
+   * reader the data of unseal tsfile part which has been flushed to disk
+   */
   private SeriesReaderByTimestamp unSealedReader;
+  /**
+   * reader of the data in flushing memtable list
+   */
   private EngineReaderByTimeStamp memSeriesReader;
+  /**
+   * whether unSealedReader has been used. True if current reader is memSeriesReader,
+   * false if current reader is unSealedReader.
+   */
   private boolean unSealedReaderEnded;
 
   /**
