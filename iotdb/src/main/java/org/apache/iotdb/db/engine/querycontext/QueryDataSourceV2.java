@@ -21,22 +21,22 @@ package org.apache.iotdb.db.engine.querycontext;
 public class QueryDataSourceV2 {
 
   // sequence data source
-  private GlobalSortedSeriesDataSourceV2 seriesDataSource;
+  private GlobalSortedSeriesDataSourceV2 sequenceDataSource;
 
   // unSequence data source
-  private GlobalSortedSeriesDataSourceV2 overflowSeriesDataSource;
+  private GlobalSortedSeriesDataSourceV2 unSequenceDataSource;
 
-  public QueryDataSourceV2(GlobalSortedSeriesDataSourceV2 seriesDataSource,
-      GlobalSortedSeriesDataSourceV2 overflowSeriesDataSource) {
-    this.seriesDataSource = seriesDataSource;
-    this.overflowSeriesDataSource = overflowSeriesDataSource;
+  public QueryDataSourceV2(GlobalSortedSeriesDataSourceV2 sequenceDataSource,
+      GlobalSortedSeriesDataSourceV2 unSequenceDataSource) {
+    this.sequenceDataSource = sequenceDataSource;
+    this.unSequenceDataSource = unSequenceDataSource;
   }
 
   public GlobalSortedSeriesDataSourceV2 getSeqDataSource() {
-    return seriesDataSource;
+    return sequenceDataSource;
   }
 
-  public GlobalSortedSeriesDataSourceV2 getOverflowSeriesDataSource() {
-    return overflowSeriesDataSource;
+  public GlobalSortedSeriesDataSourceV2 getUnSequenceDataSource() {
+    return unSequenceDataSource;
   }
 }

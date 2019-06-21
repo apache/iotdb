@@ -51,7 +51,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
   /**
    * all chunk group metadata which have been serialized on disk.
    */
-  private Map<String, Map<String, List<ChunkMetaData>>> metadatas;
+  private Map<String, Map<String, List<ChunkMetaData>>> metadatas = new HashMap<>();
 
 
   long getTruncatedPosition() {

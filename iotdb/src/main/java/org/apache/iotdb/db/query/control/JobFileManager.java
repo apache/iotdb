@@ -22,8 +22,10 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
+import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 
 /**
  * <p>
@@ -71,6 +73,34 @@ public class JobFileManager {
       String overflowFilePath = overflowInsertFile.getFilePath();
       // overflow is unclosed by default
       addFilePathToMap(jobId, overflowFilePath, false);
+    }
+  }
+
+  /**
+   * Add the unique file paths to sealedFilePathsMap and unsealedFilePathsMap.
+   */
+  public void addUsedFilesForGivenJob(long jobId, QueryDataSourceV2 dataSource) {
+
+    //sequence data
+    for(TsFileResourceV2 tsFileResource : dataSource.getSeqDataSource().getQueryTsFiles()){
+      String path = tsFileResource.getFile().getPath();
+      if(tsFileResource.isClosed()){
+        addFilePathToMap(jobId, path, true);
+      }
+      else {
+        addFilePathToMap(jobId, path, false);
+      }
+    }
+
+    //overflow data
+    for(TsFileResourceV2 tsFileResource : dataSource.getUnSequenceDataSource().getQueryTsFiles()){
+      String path = tsFileResource.getFile().getPath();
+      if(tsFileResource.isClosed()){
+        addFilePathToMap(jobId, path, true);
+      }
+      else {
+        addFilePathToMap(jobId, path, false);
+      }
     }
   }
 

@@ -43,11 +43,11 @@ public class MemTableFlushTaskV2 {
   private boolean stop = false;
   private String processorName;
 
-  private Callback<IMemTable> flushCallBack;
+  private Consumer<IMemTable> flushCallBack;
   private IMemTable memTable;
 
   public MemTableFlushTaskV2(NativeRestorableIOWriter writer, String processorName,
-      Callback<IMemTable> callBack) {
+      Consumer<IMemTable> callBack) {
     this.tsFileIoWriter = writer;
     this.processorName = processorName;
     this.flushCallBack = callBack;
@@ -131,11 +131,8 @@ public class MemTableFlushTaskV2 {
       }
     }
 
-    MemTablePool.getInstance().putBack(memTable);
-    LOGGER.info("Processor {} return back a memtable to MemTablePool", processorName);
-
     tsFileIoWriter.makeMetadataVisible();
-    flushCallBack.call(memTable);
+    flushCallBack.accept(memTable);
   });
 
 

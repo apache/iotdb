@@ -930,34 +930,6 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   /**
-   * try to setCloseMark the filenode processor. The name of filenode processor is processorName
-   */
-  private boolean closeOneProcessor(String processorName) throws FileNodeManagerException {
-    if (!processorMap.containsKey(processorName)) {
-      return true;
-    }
-
-    Processor processor = processorMap.get(processorName);
-    if (processor.tryWriteLock()) {
-      try {
-        if (processor.canBeClosed()) {
-          processor.close();
-          return true;
-        } else {
-          return false;
-        }
-      } catch (ProcessorException e) {
-        LOGGER.error("Close the filenode processor {} error.", processorName, e);
-        throw new FileNodeManagerException(e);
-      } finally {
-        processor.writeUnlock();
-      }
-    } else {
-      return false;
-    }
-  }
-
-  /**
    * delete one filenode.
    */
   public void deleteOneFileNode(String processorName) throws FileNodeManagerException {
@@ -1096,8 +1068,39 @@ public class FileNodeManager implements IStatistic, IService {
     }
   }
 
+
+  /**
+   * try to setCloseMark the filenode processor. The name of filenode processor is processorName
+   * notice: this method has the same function with close()
+   */
+  private boolean closeOneProcessor(String processorName) throws FileNodeManagerException {
+    if (!processorMap.containsKey(processorName)) {
+      return true;
+    }
+
+    Processor processor = processorMap.get(processorName);
+    if (processor.tryWriteLock()) {
+      try {
+        if (processor.canBeClosed()) {
+          processor.close();
+          return true;
+        } else {
+          return false;
+        }
+      } catch (ProcessorException e) {
+        LOGGER.error("Close the filenode processor {} error.", processorName, e);
+        throw new FileNodeManagerException(e);
+      } finally {
+        processor.writeUnlock();
+      }
+    } else {
+      return false;
+    }
+  }
+
   /**
    * try to setCloseMark the filenode processor.
+   * notice: This method has the same function with closeOneProcessor()
    */
   private void close(String processorName) throws FileNodeManagerException {
     if (!processorMap.containsKey(processorName)) {
