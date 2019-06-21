@@ -442,7 +442,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   /**
-   * if overflow insert, update and delete write into this filenode processor, set
+   * if overflow insert, update and delete insert into this filenode processor, set
    * <code>isOverflowed</code> to true.
    */
   public void setOverflowed(boolean isOverflowed) {
@@ -535,7 +535,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   /**
-   * get buffer write processor by processor name and insert time.
+   * get buffer insert processor by processor name and insert time.
    */
   public BufferWriteProcessor getBufferWriteProcessor(String processorName, long insertTime)
       throws FileNodeProcessorException {
@@ -1145,7 +1145,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                   zoneId), ofInstant(Instant.ofEpochMilli(endTime), zoneId), timeConsume,
               numOfMergeFiles / (float) allNeedMergeFiles * 100);
         } catch (IOException | PathErrorException e) {
-          LOGGER.error("Merge: query and write data error.", e);
+          LOGGER.error("Merge: query and insert data error.", e);
           throw new FileNodeProcessorException(e);
         }
       } else if (backupIntervalFile.getOverflowChangeType() == OverflowChangeType.MERGING_CHANGE) {
@@ -1313,11 +1313,11 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           writeStoreToDisk(fileNodeProcessorStore);
         } catch (FileNodeProcessorException e) {
           LOGGER.error(
-              "Merge: failed to write filenode information to revocery file, the filenode is " +
+              "Merge: failed to insert filenode information to revocery file, the filenode is " +
                   "{}.",
               getProcessorName(), e);
           throw new FileNodeProcessorException(
-              "Merge: write filenode information to revocery file failed, the filenode is "
+              "Merge: insert filenode information to revocery file failed, the filenode is "
                   + getProcessorName());
         }
       }
@@ -1400,7 +1400,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         // overflow switch from merge to work
         overflowProcessor.switchMergeToWork();
 
-        // write status to file
+        // insert status to file
         isMerging = FileNodeProcessorStatus.NONE;
         synchronized (fileNodeProcessorStore) {
           fileNodeProcessorStore.setFileNodeProcessorStatus(isMerging);
@@ -1592,7 +1592,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           // start a new rowGroupMetadata
           mergeIsChunkGroupHasData = true;
           // the datasize and numOfChunk is fake
-          // the accurate datasize and numOfChunk will get after write all this device data.
+          // the accurate datasize and numOfChunk will get after insert all this device data.
           mergeFileWriter.startFlushChunkGroup(path.getDevice());// TODO please check me.
           mergeStartPos = mergeFileWriter.getPos();
         }
@@ -1603,7 +1603,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         int pageSizeThreshold = TSFileConfig.pageSizeInByte;
         ChunkWriterImpl seriesWriterImpl = new ChunkWriterImpl(measurementSchema, pageWriter,
             pageSizeThreshold);
-        // write the series data
+        // insert the series data
         writeOneSeries(path.getDevice(), seriesWriterImpl, dataType,
             seriesReader,
             startTimeMap, endTimeMap, timeValuePair);

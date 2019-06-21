@@ -77,7 +77,7 @@ public class PhysicalPlanLogTransfer {
     try {
       return codec.encode(plan);
     } catch (BufferOverflowException e) {
-      throw new WALOverSizedException("Plan " + plan.toString() + " is too big to write to WAL");
+      throw new WALOverSizedException("Plan " + plan.toString() + " is too big to insert to WAL");
     }
   }
 

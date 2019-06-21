@@ -69,7 +69,7 @@ public class UnsealedTsFileProcessorV2Test {
   @Test
   public void testWriteAndFlush() throws WriteProcessException, IOException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{});
+        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{}, ()-> true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -81,7 +81,7 @@ public class UnsealedTsFileProcessorV2Test {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.write(record);
+      processor.insert(record);
     }
 
     // query data in memory
@@ -113,7 +113,7 @@ public class UnsealedTsFileProcessorV2Test {
   @Test
   public void testMultiFlush() throws WriteProcessException, IOException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{});
+        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{}, ()->true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -122,11 +122,11 @@ public class UnsealedTsFileProcessorV2Test {
     assertTrue(left.isEmpty());
     assertEquals(0, right.size());
 
-    for (int flushId = 0; flushId < 100; flushId++) {
-      for (int i = 1; i <= 100; i++) {
+    for (int flushId = 0; flushId < 10; flushId++) {
+      for (int i = 1; i <= 10; i++) {
         TSRecord record = new TSRecord(i, deviceId);
         record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-        processor.write(record);
+        processor.insert(record);
       }
       processor.asyncFlush();
     }
@@ -136,7 +136,7 @@ public class UnsealedTsFileProcessorV2Test {
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
-    assertEquals(100, right.size());
+    assertEquals(10, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).getTsDataType());
   }
@@ -145,16 +145,17 @@ public class UnsealedTsFileProcessorV2Test {
   @Test
   public void testWriteAndClose() throws WriteProcessException, IOException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{
-      TsFileResourceV2 resource = processor.getTsFileResource();
-      synchronized (resource) {
-        for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
-          String deviceId = startTime.getKey();
-          resource.getEndTimeMap().put(deviceId, resource.getStartTimeMap().get(deviceId));
-          resource.setClosed(true);
-        }
-      }
-    });
+        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE,
+        unsealedTsFileProcessorV2 -> {
+          TsFileResourceV2 resource = unsealedTsFileProcessorV2.getTsFileResource();
+          synchronized (resource) {
+            for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
+              String deviceId = startTime.getKey();
+              resource.getEndTimeMap().put(deviceId, resource.getStartTimeMap().get(deviceId));
+            }
+            resource.setClosed(true);
+          }
+        }, ()->true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -166,7 +167,7 @@ public class UnsealedTsFileProcessorV2Test {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.write(record);
+      processor.insert(record);
     }
 
     // query data in memory

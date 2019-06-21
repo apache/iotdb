@@ -71,7 +71,7 @@ public class FileSizeTest {
 
     dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.DATA);
     byte[] contentInBytes = TEST_FILE_CONTENT.getBytes();
-    // write something into the test file under data dir
+    // insert something into the test file under data dir
     try (FileOutputStream fileOutputStream = new FileOutputStream(testFile)) {
       fileOutputStream.write(contentInBytes);
       fileOutputStream.flush();

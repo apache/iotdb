@@ -86,7 +86,7 @@ public class QueryResourceManager {
    * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_1, 3)</code> and
    * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_2, 4)</code> must be invoked
    *
-   * Last but no least, to ensure the correctness of write process and query process of IoTDB,
+   * Last but no least, to ensure the correctness of insert process and query process of IoTDB,
    * <code>FileNodeManager.getInstance().beginQuery()</code> and
    * <code>FileNodeManager.getInstance().endQueryForGivenJob()</code> must be executed rightly.
    * </p>

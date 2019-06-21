@@ -20,18 +20,14 @@ package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.filenode.FileNodeProcessor;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
@@ -40,9 +36,6 @@ import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.monitor.IStatistic;
-import org.apache.iotdb.db.monitor.MonitorConstants;
-import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -57,12 +50,11 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FileNodeManagerV2 implements IStatistic, IService {
+public class FileNodeManagerV2 implements IService {
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final Directories directories = Directories.getInstance();
 
   /**
    * a folder (system/info/ by default) that persist FileNodeProcessorStore classes. Ends with
@@ -74,7 +66,7 @@ public class FileNodeManagerV2 implements IStatistic, IService {
    * This map is used to manage all filenode processor,<br> the key is filenode name which is
    * storage group seriesPath.
    */
-  private final ConcurrentHashMap<String, FileNodeProcessorV2> processorMap;
+  private final ConcurrentHashMap<String, FileNodeProcessorV2> processorMap = new ConcurrentHashMap<>();
 
   private static final FileNodeManagerV2 INSTANCE = new FileNodeManagerV2();
 
@@ -87,30 +79,18 @@ public class FileNodeManagerV2 implements IStatistic, IService {
    */
   private volatile FileNodeManagerStatus fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 
-  /**
-   * There is no need to add concurrently
-   **/
-  private HashMap<String, AtomicLong> statParamsHashMap;
-
   private enum FileNodeManagerStatus {
     NONE, MERGE, CLOSE
   }
 
 
   private FileNodeManagerV2() {
-    String normalizedBaseDir = config.getFileNodeDir();
-    if (normalizedBaseDir.charAt(normalizedBaseDir.length() - 1) != File.separatorChar) {
-      normalizedBaseDir += Character.toString(File.separatorChar);
-    }
-    baseDir = normalizedBaseDir;
-    processorMap = new ConcurrentHashMap<>();
-
+    baseDir = FilePathUtils.regularizePath(config.getFileNodeDir());
     // create baseDir
     File dir = new File(baseDir);
     if (dir.mkdirs()) {
-      LOGGER.info("baseDir {} doesn't exist, create it", dir.getPath());
+      LOGGER.info("Base directory {} of all storage groups doesn't exist, create it", dir.getPath());
     }
-
   }
 
   @Override
@@ -135,120 +115,52 @@ public class FileNodeManagerV2 implements IStatistic, IService {
 
   private FileNodeProcessorV2 getProcessor(String devicePath)
       throws FileNodeManagerException {
-    String filenodeName;
+    String storageGroup = "";
     try {
       // return the storage group name
-      filenodeName = MManager.getInstance().getFileNameByPath(devicePath);
-    } catch (PathErrorException e) {
-      LOGGER.error("MManager get storage group name error, seriesPath is {}", devicePath);
-      throw new FileNodeManagerException(e);
-    }
-    FileNodeProcessorV2 processor;
-    processor = processorMap.get(filenodeName);
-    if (processor == null) {
-      filenodeName = filenodeName.intern();
-      synchronized (filenodeName) {
-        processor = processorMap.get(filenodeName);
-        if (processor == null) {
-          LOGGER.debug("construct a processor instance, the storage group is {}, Thread is {}",
-              filenodeName, Thread.currentThread().getId());
-          processor = new FileNodeProcessorV2(filenodeName);
-          synchronized (processorMap) {
-            processorMap.put(filenodeName, processor);
+      storageGroup = MManager.getInstance().getFileNameByPath(devicePath);
+      FileNodeProcessorV2 processor;
+      processor = processorMap.get(storageGroup);
+      if (processor == null) {
+        storageGroup = storageGroup.intern();
+        synchronized (storageGroup) {
+          processor = processorMap.get(storageGroup);
+          if (processor == null) {
+            LOGGER.debug("construct a processor instance, the storage group is {}, Thread is {}",
+                storageGroup, Thread.currentThread().getId());
+            processor = new FileNodeProcessorV2(baseDir, storageGroup);
+            synchronized (processorMap) {
+              processorMap.put(storageGroup, processor);
+            }
           }
         }
       }
-    }
-    return processor;
-  }
-
-
-  private void updateStatHashMapWhenFail(TSRecord tsRecord) {
-    statParamsHashMap.get(MonitorConstants.FileNodeManagerStatConstants.TOTAL_REQ_FAIL.name())
-        .incrementAndGet();
-    statParamsHashMap.get(MonitorConstants.FileNodeManagerStatConstants.TOTAL_POINTS_FAIL.name())
-        .addAndGet(tsRecord.dataPointList.size());
-  }
-
-  /**
-   * get stats parameter hash map.
-   *
-   * @return the key represents the params' name, values is AtomicLong type
-   */
-  @Override
-  public Map<String, AtomicLong> getStatParamsHashMap() {
-    return statParamsHashMap;
-  }
-
-  @Override
-  public List<String> getAllPathForStatistic() {
-    List<String> list = new ArrayList<>();
-    for (MonitorConstants.FileNodeManagerStatConstants statConstant :
-        MonitorConstants.FileNodeManagerStatConstants.values()) {
-      list.add(MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPARATOR
-          + statConstant.name());
-    }
-    return list;
-  }
-
-  @Override
-  public Map<String, TSRecord> getAllStatisticsValue() {
-    long curTime = System.currentTimeMillis();
-    TSRecord tsRecord = StatMonitor
-        .convertToTSRecord(getStatParamsHashMap(), MonitorConstants.STAT_STORAGE_DELTA_NAME,
-            curTime);
-    HashMap<String, TSRecord> ret = new HashMap<>();
-    ret.put(MonitorConstants.STAT_STORAGE_DELTA_NAME, tsRecord);
-    return ret;
-  }
-
-  /**
-   * Init Stat MetaDta.
-   */
-  @Override
-  public void registerStatMetadata() {
-    Map<String, String> hashMap = new HashMap<>();
-    for (MonitorConstants.FileNodeManagerStatConstants statConstant :
-        MonitorConstants.FileNodeManagerStatConstants.values()) {
-      hashMap
-          .put(MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPARATOR
-              + statConstant.name(), MonitorConstants.DATA_TYPE_INT64);
-    }
-    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
-  }
-
-  private void updateStat(boolean isMonitor, TSRecord tsRecord) {
-    if (!isMonitor) {
-      statParamsHashMap.get(MonitorConstants.FileNodeManagerStatConstants.TOTAL_POINTS.name())
-          .addAndGet(tsRecord.dataPointList.size());
+      return processor;
+    } catch (PathErrorException e) {
+      LOGGER.error("MManager get storage group name error, seriesPath is {}", devicePath);
+      throw new FileNodeManagerException(e);
+    } catch (FileNodeProcessorException e) {
+      LOGGER.error("Fail to init simple file version controller of file node {}", storageGroup,  e);
+      throw new FileNodeManagerException(e);
     }
   }
+
 
   /**
    * This function is just for unit test.
    */
   public synchronized void resetFileNodeManager() {
-    for (String key : statParamsHashMap.keySet()) {
-      statParamsHashMap.put(key, new AtomicLong());
-    }
     processorMap.clear();
   }
-
 
 
   /**
    * insert TsRecord into storage group.
    *
    * @param tsRecord input Data
-   * @param isMonitor if true, the insertion is done by StatMonitor and the statistic Info will not
-   * be recorded. if false, the statParamsHashMap will be updated.
    * @return an int value represents the insert type, 0: failed; 1: overflow; 2: bufferwrite
    */
-  public int insert(TSRecord tsRecord, boolean isMonitor) throws FileNodeManagerException {
-
-    checkTimestamp(tsRecord);
-
-    updateStat(isMonitor, tsRecord);
+  public int insert(TSRecord tsRecord) throws FileNodeManagerException {
 
     FileNodeProcessorV2 fileNodeProcessor;
     try {
@@ -263,31 +175,15 @@ public class FileNodeManagerV2 implements IStatistic, IService {
     return fileNodeProcessor.insert(tsRecord);
   }
 
-  private void closeAllFileNodeProcessor() {
+
+  public void asyncFlushAndSealAllFiles() {
     synchronized (processorMap) {
-      LOGGER.info("Start to setCloseMark all FileNode");
-      if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
-        LOGGER.info(
-            "Failed to setCloseMark all FileNode processor because the FileNodeManager's status is {}",
-            fileNodeManagerStatus);
-        return;
+      for (FileNodeProcessorV2 fileNodeProcessor: processorMap.values()) {
+        fileNodeProcessor.asyncForceClose();
       }
-
-      fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
-
-      for (Map.Entry<String, FileNodeProcessorV2> processorEntry : processorMap.entrySet()) {
-
-      }
-
     }
   }
 
-  private void checkTimestamp(TSRecord tsRecord) throws FileNodeManagerException {
-    if (tsRecord.time < 0) {
-      LOGGER.error("The insert time lt 0, {}.", tsRecord);
-      throw new FileNodeManagerException("The insert time lt 0, the tsrecord is " + tsRecord);
-    }
-  }
 
   /**
    * recovery the filenode processor.
@@ -351,12 +247,8 @@ public class FileNodeManagerV2 implements IStatistic, IService {
       throws FileNodeManagerException {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
-    FileNodeProcessorV2 fileNodeProcessor = null;
-    fileNodeProcessor = getProcessor(deviceId);
-
-//    LOGGER.debug("Get the FileNodeProcessor: filenode is {}, query.",
-//        fileNodeProcessor.getProcessorName());
-      return fileNodeProcessor.query(deviceId, measurementId);
+    FileNodeProcessorV2 fileNodeProcessor = getProcessor(deviceId);
+    return fileNodeProcessor.query(deviceId, measurementId);
   }
 
   /**
@@ -426,7 +318,7 @@ public class FileNodeManagerV2 implements IStatistic, IService {
   private void deleteFileNodeBlocked(String processorName) throws IOException {
     LOGGER.info("Forced to delete the filenode processor {}", processorName);
     FileNodeProcessorV2 processor = processorMap.get(processorName);
-    processor.syncCloseFileNode(() -> {
+    processor.syncCloseAndStopFileNode(() -> {
       String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getFileNodeDir();
       fileNodePath = FilePathUtils.regularizePath(fileNodePath) + processorName;
       try {

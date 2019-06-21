@@ -71,7 +71,7 @@ public abstract class Processor {
   }
 
   /**
-   * Acquire the write lock
+   * Acquire the insert lock
    */
   public void writeLock() {
     lock.writeLock().lock();
@@ -79,7 +79,7 @@ public abstract class Processor {
   }
 
   /**
-   * Release the write lock
+   * Release the insert lock
    */
   public void writeUnlock() {
 //    start = System.currentTimeMillis() - start;
@@ -91,7 +91,7 @@ public abstract class Processor {
 
   /**
    * @param isWriteLock
-   *            true acquire write lock, false acquire cloneList lock
+   *            true acquire insert lock, false acquire cloneList lock
    */
   public void lock(boolean isWriteLock) {
     if (isWriteLock) {
@@ -112,7 +112,7 @@ public abstract class Processor {
 
   /**
    * @param isWriteUnlock
-   *            true putBack write lock, false putBack cloneList unlock
+   *            true putBack insert lock, false putBack cloneList unlock
    */
   public void unlock(boolean isWriteUnlock) {
 //    start = System.currentTimeMillis() - start;
@@ -136,7 +136,7 @@ public abstract class Processor {
   }
 
   /**
-   * Try to get the write lock
+   * Try to get the insert lock
    *
    * @return
    */

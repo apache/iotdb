@@ -32,7 +32,7 @@ import org.junit.Test;
 public class FileNodeProcessorV2Test {
 
   private String storageGroup = "storage_group1";
-  private String baseDir = "data";
+  private String systemDir = "data/info";
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private FileNodeProcessorV2 processor;
@@ -41,31 +41,63 @@ public class FileNodeProcessorV2Test {
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-    processor = new FileNodeProcessorV2(storageGroup);
+    processor = new FileNodeProcessorV2(systemDir, storageGroup);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir(baseDir);
+    EnvironmentUtils.cleanDir(systemDir);
   }
 
 
   @Test
-  public void testAsyncClose() {
-    for (int j = 1; j <= 10; j++) {
+  public void testSequenceSyncClose() {
+    for (int j = 1; j <= 100; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(record);
       processor.asyncForceClose();
     }
 
+    processor.syncCloseFileNode();
     QueryDataSourceV2 queryDataSource = processor.query(deviceId, measurementId);
-    Assert.assertEquals(queryDataSource.getSeqDataSource().getQueryTsFiles().size(), 10);
-    for (TsFileResourceV2 resource: queryDataSource.getSeqDataSource().getQueryTsFiles()) {
-      Assert.assertEquals(resource.isClosed(), true);
+    Assert.assertEquals(queryDataSource.getSeqDataSource().getQueryTsFiles().size(), 100);
+    for (TsFileResourceV2 resource : queryDataSource.getSeqDataSource().getQueryTsFiles()) {
+      Assert.assertTrue(resource.isClosed());
     }
   }
 
+
+  @Test
+  public void testSeqAndUnSeqSyncClose() {
+
+    for (int j = 21; j <= 30; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(record);
+      processor.asyncForceClose();
+    }
+    processor.syncCloseFileNode();
+
+    for (int j = 10; j >= 1; j--) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(record);
+      processor.asyncForceClose();
+    }
+
+    processor.syncCloseFileNode();
+
+    QueryDataSourceV2 queryDataSource = processor.query(deviceId, measurementId);
+    Assert.assertEquals(10, queryDataSource.getSeqDataSource().getQueryTsFiles().size());
+    Assert.assertEquals(10, queryDataSource.getUnSequenceDataSource().getQueryTsFiles().size());
+    for (TsFileResourceV2 resource : queryDataSource.getSeqDataSource().getQueryTsFiles()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+    for (TsFileResourceV2 resource : queryDataSource.getUnSequenceDataSource().getQueryTsFiles()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
 
 }

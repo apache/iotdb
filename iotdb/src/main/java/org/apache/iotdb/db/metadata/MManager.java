@@ -52,7 +52,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
  * into files. This class contains all the interfaces to modify the metadata for delta system. All
- * the operations will be write into the logs temporary in case the downtime of the delta system.
+ * the operations will be insert into the logs temporary in case the downtime of the delta system.
  *
  * @author Jinrui Zhang
  */
@@ -62,7 +62,7 @@ public class MManager {
   private static final String ROOT_NAME = MetadataConstant.ROOT;
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
-  // the lock for cloneList/write
+  // the lock for cloneList/insert
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   // The file storing the serialize info for metadata
   private String datafilePath;

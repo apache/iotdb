@@ -114,10 +114,8 @@ public class EnvironmentUtils {
     cleanDir(config.getDerbyHome());
     // delete index
     cleanDir(config.getIndexFileDir());
-    // delte data
-    cleanDir("data");
-    // delte derby log
-    // cleanDir("derby.log");
+    // delete data
+    cleanDir(config.getDataDir());
   }
 
   public static void cleanDir(String dir) throws IOException {
@@ -150,7 +148,9 @@ public class EnvironmentUtils {
     config.setEnableMemMonitor(false);
   }
 
-  public static void envSetUp() throws StartupException {
+  public static void envSetUp() throws StartupException, IOException {
+
+    createAllDir();
     // disable the memory control
     config.setEnableMemMonitor(false);
     // disable the system monitor
@@ -175,5 +175,33 @@ public class EnvironmentUtils {
     } catch (StartupException e) {
       LOGGER.error("", e);
     }
+  }
+
+  private static void createAllDir() throws IOException {
+    // create bufferwrite
+    for (String path : directories.getAllTsFileFolders()) {
+      createDir(path);
+    }
+    // create overflow
+    createDir(config.getOverflowDataDir());
+    // create filenode
+    createDir(config.getFileNodeDir());
+    // create metadata
+    createDir(config.getMetadataDir());
+    // create wal
+    createDir(config.getWalFolder());
+    // create derby
+    createDir(config.getDerbyHome());
+    // create index
+    createDir(config.getIndexFileDir());
+    // create data
+    createDir("data");
+    // delte derby log
+    // cleanDir("derby.log");
+  }
+
+  public static void createDir(String dir) throws IOException {
+    File file = new File(dir);
+    file.mkdirs();
   }
 }

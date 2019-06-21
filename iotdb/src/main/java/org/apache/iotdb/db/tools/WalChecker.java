@@ -32,7 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * WalChecker verifies that whether all write ahead logs in the WAL folder are recognizable.
+ * WalChecker verifies that whether all insert ahead logs in the WAL folder are recognizable.
  */
 public class WalChecker {
 

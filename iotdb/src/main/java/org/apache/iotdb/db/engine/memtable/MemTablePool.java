@@ -86,6 +86,15 @@ public class MemTablePool {
     }
   }
 
+  public void putBack(IMemTable memTable, String storageGroup) {
+    synchronized (emptyMemTables) {
+      memTable.clear();
+      emptyMemTables.push(memTable);
+      emptyMemTables.notify();
+      LOGGER.info("{} return a memtable, stack size {}", storageGroup, emptyMemTables.size());
+    }
+  }
+
   public static MemTablePool getInstance() {
     return InstanceHolder.INSTANCE;
   }

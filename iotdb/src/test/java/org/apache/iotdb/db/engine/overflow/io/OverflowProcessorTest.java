@@ -87,7 +87,7 @@ public class OverflowProcessorTest {
     assertEquals(false, processor.isFlush());
     assertEquals(false, processor.isMerge());
     QueryContext context = new QueryContext();
-    // write update data
+    // insert update data
     OverflowSeriesDataSource overflowSeriesDataSource = processor.query(OverflowTestUtils.deviceId1,
         OverflowTestUtils.measurementId1, OverflowTestUtils.dataType1, Collections.emptyMap(),
         context);
@@ -98,7 +98,7 @@ public class OverflowProcessorTest {
         overflowSeriesDataSource.getOverflowInsertFileList().get(0).getChunkMetaDataList().size());
     processor.flush();
     assertEquals(false, processor.isMerge());
-    // write insert data
+    // insert insert data
     OverflowTestUtils.produceInsertData(processor);
     TimeUnit.SECONDS.sleep(1);
     assertEquals(false, processor.isFlush());

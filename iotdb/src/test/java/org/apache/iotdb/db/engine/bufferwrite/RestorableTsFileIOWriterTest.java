@@ -99,7 +99,7 @@ public class RestorableTsFileIOWriterTest {
     writer.endFile(new FileSchema());
 
     FileOutputStream out = new FileOutputStream(new File(restorePath));
-    // write tsfile position using byte[8] which is present one long
+    // insert tsfile position using byte[8] which is present one long
     writeRestoreFile(out, 2);
     writeRestoreFile(out, 3);
     byte[] lastPositionBytes = BytesUtils.longToBytes(200);
@@ -124,7 +124,7 @@ public class RestorableTsFileIOWriterTest {
 
     File restoreFile = new File(insertPath + ".restore");
     FileOutputStream out = new FileOutputStream(new File(restorePath));
-    // write tsfile position using byte[8] which is present one long
+    // insert tsfile position using byte[8] which is present one long
     writeRestoreFile(out, 2);
     writeRestoreFile(out, 3);
     byte[] lastPositionBytes = BytesUtils.longToBytes(200);
@@ -254,10 +254,10 @@ public class RestorableTsFileIOWriterTest {
     tsDeviceMetadata.setChunkGroupMetadataList(appendRowGroupMetaDatas);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     tsDeviceMetadata.serializeTo(baos);
-    // write metadata size using int
+    // insert metadata size using int
     int metadataSize = baos.size();
     out.write(BytesUtils.intToBytes(metadataSize));
-    // write metadata
+    // insert metadata
     out.write(baos.toByteArray());
   }
 

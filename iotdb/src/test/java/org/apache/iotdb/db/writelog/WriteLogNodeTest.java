@@ -64,7 +64,7 @@ public class WriteLogNodeTest {
 
   @Test
   public void testWriteLogAndSync() throws IOException {
-    // this test uses a dummy write log node to write a few logs and flushes them
+    // this test uses a dummy insert log node to insert a few logs and flushes them
     // then reads the logs from file
     String identifier = "root.logTestDevice";
 
@@ -166,7 +166,7 @@ public class WriteLogNodeTest {
 
   @Test
   public void testDelete() throws IOException {
-    // this test uses a dummy write log node to write a few logs and flushes them
+    // this test uses a dummy insert log node to insert a few logs and flushes them
     // then deletes the node
 
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
@@ -194,7 +194,7 @@ public class WriteLogNodeTest {
 
   @Test
   public void testOverSizedWAL() throws IOException {
-    // this test uses a dummy write log node to write an over-sized log and assert exception caught
+    // this test uses a dummy insert log node to insert an over-sized log and assert exception caught
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice.oversize", 100,

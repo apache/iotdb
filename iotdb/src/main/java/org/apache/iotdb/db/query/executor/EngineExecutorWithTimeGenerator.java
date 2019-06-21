@@ -66,7 +66,7 @@ public class EngineExecutorWithTimeGenerator {
     try {
       timestampGenerator = new EngineTimeGenerator(queryExpression.getExpression(), context);
       readersOfSelectedSeries = SeriesReaderFactory
-          .getByTimestampReadersOfSelectedPaths(queryExpression.getSelectedSeries(), context);
+          .getByTimestampReadersOfSelectedPathsV2(queryExpression.getSelectedSeries(), context);
     } catch (IOException ex) {
       throw new FileNodeManagerException(ex);
     }

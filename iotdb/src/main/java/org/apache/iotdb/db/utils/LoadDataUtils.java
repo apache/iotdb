@@ -107,7 +107,7 @@ public class LoadDataUtils {
         }
         if (lineCount % 1000000 == 0) {
           long endTime = System.currentTimeMillis();
-          logger.info("write line:{}, use time:{}", lineCount, endTime - temp);
+          logger.info("insert line:{}, use time:{}", lineCount, endTime - temp);
           temp = System.currentTimeMillis();
           logger.info("load data points:{}, load data speed:{}w point/s", totalPointCount,
               FileUtils.format(((float) totalPointCount / 10) / (endTime - startTime), 2));
@@ -119,7 +119,7 @@ public class LoadDataUtils {
       logger.error("cloneList line from inputCsvFileReader failed:{}", inputCsvDataPath, e1);
       extraDataFilePath = null;
     } finally {
-      logger.info("write line:{}", lineCount);
+      logger.info("insert line:{}", lineCount);
       close();
       closeWriteInstance();
     }
@@ -213,12 +213,12 @@ public class LoadDataUtils {
       close();
       return;
     } catch (WriteProcessException e) {
-      logger.error("the write process meet error!", e);
+      logger.error("the insert process meet error!", e);
     }
     String extraPath = inputCsvDataPath;
     List<String> extraPaths = new ArrayList<>();
     do {
-      logger.info("cycle: write csv file: {}", extraPath);
+      logger.info("cycle: insert csv file: {}", extraPath);
       extraPath = loadLocalDataOnePass(extraPath);
       extraPaths.add(extraPath);
     } while (hasExtra);

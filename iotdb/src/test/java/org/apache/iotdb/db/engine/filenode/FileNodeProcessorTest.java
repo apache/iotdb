@@ -62,7 +62,7 @@ public class FileNodeProcessorTest {
   private String processName = "root.vehicle";
 
   @Before
-  public void setUp() throws FileNodeProcessorException, StartupException {
+  public void setUp() throws FileNodeProcessorException, StartupException, IOException {
     // init metadata
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();

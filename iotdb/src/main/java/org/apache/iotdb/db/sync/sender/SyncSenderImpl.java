@@ -293,7 +293,7 @@ public class SyncSenderImpl implements SyncSender {
         uuid = generateUUID();
         out.write(uuid.getBytes());
       } catch (IOException e) {
-        LOGGER.error("Cannot write UUID to file {}", file.getPath());
+        LOGGER.error("Cannot insert UUID to file {}", file.getPath());
         throw new IOException(e);
       }
     } else {
