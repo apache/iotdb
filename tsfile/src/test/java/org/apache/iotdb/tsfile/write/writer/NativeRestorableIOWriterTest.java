@@ -25,11 +25,13 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -333,6 +335,55 @@ public class NativeRestorableIOWriterTest {
     TsDeviceMetadataIndex index = reader.readFileMetadata().getDeviceMap().get("d1");
     assertEquals(2, reader.readTsDeviceMetaData(index).getChunkGroupMetaDataList().size());
     reader.close();
+    assertTrue(file.delete());
+  }
+
+  @Test
+  public void testLastChunkGroupCorrupted() throws IOException, WriteProcessException {
+    File file = new File(FILE_NAME);
+    TsFileWriter writer = new TsFileWriter(file);
+    writer.addMeasurement(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    writer.addMeasurement(new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+    writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
+        .addTuple(new FloatDataPoint("s2", 4)));
+    writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
+        .addTuple(new FloatDataPoint("s2", 4)));
+    writer.flushForTest();
+    long firstFlushPos = file.length();
+
+    writer.write(new TSRecord(3, "d1").addTuple(new FloatDataPoint("s1", 5))
+        .addTuple(new FloatDataPoint("s2", 4)));
+    writer.write(new TSRecord(4, "d1").addTuple(new FloatDataPoint("s1", 5))
+        .addTuple(new FloatDataPoint("s2", 4)));
+    writer.flushForTest();
+    long secondFlushPos = file.length();
+    writer.getIOWriter().forceClose();
+
+    FileOutputStream fileOutputStream = new FileOutputStream(file, true);
+    fileOutputStream.getChannel().truncate((firstFlushPos + secondFlushPos)/2);
+    fileOutputStream.close();
+
+    NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
+    writer = new TsFileWriter(rWriter);
+    writer.close();
+
+    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(file.getPath()));
+    List<Path> pathList = new ArrayList<>();
+    pathList.add(new Path("d1", "s1"));
+    pathList.add(new Path("d1", "s2"));
+    QueryExpression queryExpression = QueryExpression.create(pathList, null);
+    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    RowRecord record = dataSet.next();
+    assertEquals(1, record.getTimestamp());
+    assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001f);
+    assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001f);
+    record = dataSet.next();
+    assertEquals(2, record.getTimestamp());
+    assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001f);
+    assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001f);
+    assertFalse(dataSet.hasNext());
+
+    assertEquals(271, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
   }
 }
