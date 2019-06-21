@@ -55,8 +55,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private long fileId;
-  private long lastFlushedId = -1;
+  private long fileId = 0;
+  private long lastFlushedId = 0;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -168,9 +168,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     try {
       long start = System.currentTimeMillis();
       logCache.clear();
-      if (currentFileWriter != null) {
-        currentFileWriter.close();
-      }
+      close();
       FileUtils.deleteDirectory(new File(logDirectory));
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
