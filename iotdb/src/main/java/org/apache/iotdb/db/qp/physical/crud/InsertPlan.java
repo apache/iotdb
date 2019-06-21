@@ -20,9 +20,11 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
@@ -37,6 +39,14 @@ public class InsertPlan extends PhysicalPlan {
   // insertType
   // 1 : BufferWrite Insert 2 : Overflow Insert
   private int insertType;
+
+  public InsertPlan(String deviceId, long insertTime, String measurement, String insertValue) {
+    super(false, OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.measurements = new String[] {measurement};
+    this.values = new String[] {insertValue};
+  }
 
   public InsertPlan(String deviceId, long insertTime, String[] measurementList,
       String[] insertValues) {
