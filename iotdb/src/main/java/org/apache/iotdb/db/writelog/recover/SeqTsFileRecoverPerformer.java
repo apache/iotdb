@@ -75,6 +75,7 @@ public class SeqTsFileRecoverPerformer {
       return;
     }
     NativeRestorableIOWriter restorableTsFileIOWriter = recoverFile(insertFile);
+
     // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
     // map must be updated first to avoid duplicated insertion
     for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter.getChunkGroupMetaDatas()) {

@@ -27,6 +27,8 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
@@ -34,8 +36,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
+import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
@@ -164,6 +171,22 @@ public class NativeRestorableIOWriterTest {
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+
+    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(file.getPath()));
+    List< Path > pathList = new ArrayList<>();
+    pathList.add(new Path("d1", "s1"));
+    pathList.add(new Path("d1", "s2"));
+    QueryExpression queryExpression = QueryExpression.create(pathList, null);
+    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    RowRecord record = dataSet.next();
+    assertEquals(1, record.getTimestamp());
+    assertEquals(5.0f, record.getFields().get(0).getFloatV());
+    assertEquals(4.0f, record.getFields().get(1).getFloatV());
+    record = dataSet.next();
+    assertEquals(2, record.getTimestamp());
+    assertEquals(5.0f, record.getFields().get(0).getFloatV());
+    assertEquals(4.0f, record.getFields().get(1).getFloatV());
+
     assertEquals(TsFileIOWriter.magicStringBytes.length, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
   }
