@@ -355,10 +355,12 @@ public class FileNodeManagerV2 implements IStatistic, IService {
       throws FileNodeManagerException {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
-    FileNodeProcessorV2 fileNodeProcessor = getProcessor(deviceId);
-    LOGGER.debug("Get the FileNodeProcessor: filenode is {}, query.",
-        fileNodeProcessor.getStorageGroupName());
-    return fileNodeProcessor.query(deviceId, measurementId);
+    FileNodeProcessorV2 fileNodeProcessor = null;
+    fileNodeProcessor = getProcessor(deviceId);
+
+//    LOGGER.debug("Get the FileNodeProcessor: filenode is {}, query.",
+//        fileNodeProcessor.getProcessorName());
+      return fileNodeProcessor.query(deviceId, measurementId);
   }
 
   /**
