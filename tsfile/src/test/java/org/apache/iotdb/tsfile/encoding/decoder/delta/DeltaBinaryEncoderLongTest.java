@@ -102,6 +102,28 @@ public class DeltaBinaryEncoderLongTest {
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
+    ROW_NUM = dates.size();
+
+    long[] data = new long[ROW_NUM];
+    for(int i = 0; i < dates.size(); i++) {
+      try {
+        Date date = dateFormat.parse(dates.get(i));
+        data[i] =date.getTime();
+      } catch (ParseException e) {
+        e.printStackTrace();
+      }
+    }
+
+    shouldReadAndWrite(data, ROW_NUM);
+  }
+
+
+  @Test
+  public void testRegularWithMissingPoints() throws IOException{
+    List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
+
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
     int kong = 0;
     for(int i = 0; i < dates.size(); i++) {
       if(i % 500 == 0) {
@@ -121,28 +143,6 @@ public class DeltaBinaryEncoderLongTest {
       try {
         Date date = dateFormat.parse(dates.get(i));
         data[j++] = date.getTime();
-      } catch (ParseException e) {
-        e.printStackTrace();
-      }
-    }
-
-    shouldReadAndWrite(data, ROW_NUM);
-  }
-
-
-  @Test
-  public void testRegularWithMissingPoints() throws IOException{
-    List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
-
-    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-
-    ROW_NUM = dates.size();
-
-    long[] data = new long[ROW_NUM];
-    for(int i = 0; i < dates.size(); i++) {
-      try {
-        Date date = dateFormat.parse(dates.get(i));
-        data[i] =date.getTime();
       } catch (ParseException e) {
         e.printStackTrace();
       }
