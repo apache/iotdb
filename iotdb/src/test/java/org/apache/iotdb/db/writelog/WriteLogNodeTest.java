@@ -22,11 +22,8 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
-import com.sun.tools.javac.util.GraphUtils;
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.zip.CRC32;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -36,10 +33,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 

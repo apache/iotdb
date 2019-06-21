@@ -36,14 +36,12 @@ import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -136,13 +134,6 @@ public class UnseqTsFileRecoverTest {
     int priorityValue = 0;
     PriorityMergeReader unSeqMergeReader = new PriorityMergeReader();
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
-
-      DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
-          chunkMetaData.getEndTime(),
-          chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
-          chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
-          chunkMetaData.getTsDataType());
-
 
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);

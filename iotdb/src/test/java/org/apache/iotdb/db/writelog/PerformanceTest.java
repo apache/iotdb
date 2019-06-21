@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.writelog;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -30,12 +32,10 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -47,7 +47,6 @@ import org.junit.Test;
 public class PerformanceTest {
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private TSFileConfig fileConfig = TSFileDescriptor.getInstance().getConfig();
 
   private boolean enableWal;
   private boolean skip = true;
@@ -188,7 +187,7 @@ public class PerformanceTest {
     UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
         new Path("root.logTestDevice.s1"));
     for (int i = 0; i < 20; i++) {
-      updatePlan.addInterval(new Pair<Long, Long>(200l, 300l));
+      updatePlan.addInterval(new Pair<>(200L, 300L));
     }
 
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
@@ -201,9 +200,9 @@ public class PerformanceTest {
 
     time = System.currentTimeMillis();
     for (int i = 0; i < 1000000; i++) {
-      bwInsertPlan = (InsertPlan) PhysicalPlanLogTransfer.logToPlan(bytes1);
-      updatePlan = (UpdatePlan) PhysicalPlanLogTransfer.logToPlan(bytes2);
-      deletePlan = (DeletePlan) PhysicalPlanLogTransfer.logToPlan(bytes3);
+      assertTrue(PhysicalPlanLogTransfer.logToPlan(bytes1) instanceof InsertPlan);
+      assertTrue(PhysicalPlanLogTransfer.logToPlan(bytes2) instanceof UpdatePlan);
+      assertTrue(PhysicalPlanLogTransfer.logToPlan(bytes3) instanceof DeletePlan);
     }
     System.out.println("3000000 logs decoding use " + (System.currentTimeMillis() - time) + "ms");
   }
@@ -217,13 +216,13 @@ public class PerformanceTest {
         new String[]{"1.0", "15", "str", "false"});
     long time = System.currentTimeMillis();
     for (int i = 0; i < 1000000; i++) {
-      byte[] bytes = PhysicalPlanLogTransfer.planToLog(bwInsertPlan);
+      PhysicalPlanLogTransfer.planToLog(bwInsertPlan);
     }
     System.out.println("1000000 logs encoding use " + (System.currentTimeMillis() - time) + "ms");
 
     time = System.currentTimeMillis();
     for (int i = 0; i < 1000000; i++) {
-      byte[] bytes = sql.getBytes();
+      sql.getBytes();
     }
     System.out.println("1000000 sqls encoding use " + (System.currentTimeMillis() - time) + "ms");
   }

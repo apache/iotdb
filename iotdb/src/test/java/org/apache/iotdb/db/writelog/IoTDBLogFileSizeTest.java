@@ -24,9 +24,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -35,17 +33,13 @@ import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public class IoTDBLogFileSizeTest {
 
-  private IoTDB deamon;
-
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private TSFileConfig fileConfig = TSFileDescriptor.getInstance().getConfig();
+  private IoTDB daemon;
 
   private boolean skip = true;
 
@@ -66,11 +60,11 @@ public class IoTDBLogFileSizeTest {
     if (skip) {
       return;
     }
-    groupSize = fileConfig.groupSizeInByte;
-    fileConfig.groupSizeInByte = 8 * 1024 * 1024;
+    groupSize = TSFileConfig.groupSizeInByte;
+    TSFileConfig.groupSizeInByte = 8 * 1024 * 1024;
     EnvironmentUtils.closeStatMonitor();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
     executeSQL(setUpSqls);
   }
@@ -80,9 +74,9 @@ public class IoTDBLogFileSizeTest {
     if (skip) {
       return;
     }
-    fileConfig.groupSizeInByte = groupSize;
+    TSFileConfig.groupSizeInByte = groupSize;
     executeSQL(tearDownSqls);
-    deamon.stop();
+    daemon.stop();
     Thread.sleep(5000);
     EnvironmentUtils.cleanEnv();
   }
@@ -132,7 +126,6 @@ public class IoTDBLogFileSizeTest {
             connection.close();
           } catch (SQLException e) {
             e.printStackTrace();
-            return;
           }
         }
       }
@@ -193,7 +186,6 @@ public class IoTDBLogFileSizeTest {
             connection.close();
           } catch (SQLException e) {
             e.printStackTrace();
-            return;
           }
         }
       }
@@ -211,10 +203,8 @@ public class IoTDBLogFileSizeTest {
 
   private void executeSQL(String[] sqls) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")) {
       Statement statement = connection.createStatement();
       for (String sql : sqls) {
         statement.execute(sql);
@@ -222,10 +212,6 @@ public class IoTDBLogFileSizeTest {
       statement.close();
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }
