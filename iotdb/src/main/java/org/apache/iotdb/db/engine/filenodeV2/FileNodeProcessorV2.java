@@ -109,25 +109,13 @@ public class FileNodeProcessorV2 {
           "directory {}", storageGroupName, storageGroupDir.getAbsolutePath());
     }
 
-    /**
-     * restore
-     */
-    File restoreFolder = new File(absoluteBaseDir + storageGroupName);
-    if (!restoreFolder.exists()) {
-      restoreFolder.mkdirs();
-      LOGGER.info("The restore directory of the filenode processor {} doesn't exist. Create new " +
-          "directory {}", storageGroupName, restoreFolder.getAbsolutePath());
-    }
-
-    String absoluteFileNodeRestoreFilePath = new File(restoreFolder, storageGroupName + RESTORE_FILE_SUFFIX).getAbsolutePath();
-
     recovery();
 
     /**
      * version controller
      */
     try {
-      versionController = new SimpleFileVersionController(restoreFolder.getPath());
+      versionController = new SimpleFileVersionController(storageGroupDir.getAbsolutePath());
     } catch (IOException e) {
       throw new FileNodeProcessorException(e);
     }
