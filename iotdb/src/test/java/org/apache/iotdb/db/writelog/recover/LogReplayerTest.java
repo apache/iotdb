@@ -111,8 +111,8 @@ public class LogReplayerTest {
       assertEquals(new Deletion("device0.sensor0", 5, 3), mods[0]);
 
       for (int i = 0; i < 5; i++) {
-        assertEquals(i, (Object)tsFileResource.getStartTimeMap().get("device" + i));
-        assertEquals(i, (Object)tsFileResource.getEndTimeMap().get("device" + i));
+        assertEquals(i, (long)tsFileResource.getStartTimeMap().get("device" + i));
+        assertEquals(i, (long)tsFileResource.getEndTimeMap().get("device" + i));
       }
     } finally {
       modFile.close();

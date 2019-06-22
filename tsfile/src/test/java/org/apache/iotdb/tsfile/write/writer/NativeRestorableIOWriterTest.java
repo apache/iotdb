@@ -180,14 +180,15 @@ public class NativeRestorableIOWriterTest {
     QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
     RowRecord record = dataSet.next();
     assertEquals(1, record.getTimestamp());
-    assertEquals(5.0f, record.getFields().get(0).getFloatV());
-    assertEquals(4.0f, record.getFields().get(1).getFloatV());
+    assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001);
+    assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001);
     record = dataSet.next();
     assertEquals(2, record.getTimestamp());
-    assertEquals(5.0f, record.getFields().get(0).getFloatV());
-    assertEquals(4.0f, record.getFields().get(1).getFloatV());
+    assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001);
+    assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001);
+    readOnlyTsFile.close();
 
-    assertEquals(TsFileIOWriter.magicStringBytes.length, rWriter.getTruncatedPosition());
+    assertEquals(271, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
   }
 

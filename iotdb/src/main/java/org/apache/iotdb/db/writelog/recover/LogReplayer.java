@@ -117,7 +117,8 @@ public class LogReplayer {
   private void replayInsert(InsertPlan insertPlan) {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      if (currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId()) >= insertPlan.getTime() &&
+      Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId());
+      if ( lastEndTime != null && lastEndTime >= insertPlan.getTime() &&
           !acceptDuplication) {
         return;
       }
