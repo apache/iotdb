@@ -101,7 +101,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         }
         return flag;
       case INSERT:
-        return insert((InsertPlan) plan) == 0;
+        return insert((InsertPlan) plan);
       default:
         throw new UnsupportedOperationException();
     }
@@ -187,7 +187,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public int insert(InsertPlan insertPlan) {
+  public boolean insert(InsertPlan insertPlan) {
     for (int i = 0; i < insertPlan.getMeasurements().length; i++) {
       String strPath = insertPlan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + insertPlan.getMeasurements()[i];
       if (!demoMemDataBase.containsKey(strPath)) {
@@ -196,7 +196,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
       demoMemDataBase.get(strPath).data.put(insertPlan.getTime(), Integer.valueOf(insertPlan.getValues()[i]));
       timeStampUnion.add(insertPlan.getTime());
     }
-    return 0;
+    return true;
   }
 
   @Override

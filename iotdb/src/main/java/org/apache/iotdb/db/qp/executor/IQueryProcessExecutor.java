@@ -111,7 +111,7 @@ public interface IQueryProcessExecutor {
    *
    * @return - Operate Type.
    */
-  int insert(InsertPlan insertPlan) throws ProcessorException;
+  boolean insert(InsertPlan insertPlan) throws ProcessorException;
 
   boolean judgePathExists(Path fullPath);
 

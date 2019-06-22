@@ -161,7 +161,7 @@ public class FileNodeManagerV2 implements IService {
    * @param insertPlan physical plan of insertion
    * @return an int value represents the insert type, 0: failed; 1: overflow; 2: bufferwrite
    */
-  public int insert(InsertPlan insertPlan) throws FileNodeManagerException {
+  public boolean insert(InsertPlan insertPlan) throws FileNodeManagerException {
 
     FileNodeProcessorV2 fileNodeProcessor;
     try {

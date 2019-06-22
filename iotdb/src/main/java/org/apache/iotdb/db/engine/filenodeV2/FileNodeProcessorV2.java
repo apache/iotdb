@@ -207,13 +207,12 @@ public class FileNodeProcessorV2 {
   /**
    * @return -1: failed, 1: Overflow, 2:Bufferwrite
    */
-  public int insert(InsertPlan insertPlan) {
+  public boolean insert(InsertPlan insertPlan) {
     lock.writeLock().lock();
-    int insertResult;
 
     try {
       if(toBeClosed){
-        return -1;
+        throw new FileNodeProcessorException("storage group " + storageGroupName + " is to be closed, this insertion is rejected");
       }
       // init map
       latestTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
@@ -222,20 +221,16 @@ public class FileNodeProcessorV2 {
       boolean result;
       // insert to sequence or unSequence file
       if (insertPlan.getTime() > latestFlushedTimeForEachDevice.get(insertPlan.getDeviceId())) {
-        result = insertUnsealedDataFile(insertPlan, true);
-        insertResult = result ? 1 : -1;
+        return insertUnsealedDataFile(insertPlan, true);
       } else {
-        result = insertUnsealedDataFile(insertPlan, false);
-        insertResult = result ? 2 : -1;
+        return insertUnsealedDataFile(insertPlan, false);
       }
-    } catch (Exception e) {
+    } catch (FileNodeProcessorException | IOException e) {
       LOGGER.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
-      insertResult = -1;
+      return false;
     } finally {
       lock.writeLock().unlock();
     }
-
-    return insertResult;
   }
 
   private boolean insertUnsealedDataFile(InsertPlan insertPlan, boolean sequence) throws IOException {

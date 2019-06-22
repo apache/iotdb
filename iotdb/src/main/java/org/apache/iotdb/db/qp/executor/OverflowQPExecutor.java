@@ -123,7 +123,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         }
         return flag;
       case INSERT:
-        return insert((InsertPlan)plan) == 0;
+        return insert((InsertPlan)plan);
       case CREATE_ROLE:
       case DELETE_ROLE:
       case CREATE_USER:
@@ -247,7 +247,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
 
   @Override
-  public int insert(InsertPlan insertPlan)
+  public boolean insert(InsertPlan insertPlan)
       throws ProcessorException {
 
     try {

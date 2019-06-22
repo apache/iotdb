@@ -48,7 +48,7 @@ public class IoTDBConfig {
   /**
    * Is the insert ahead log enable.
    */
-  private boolean enableWal = false;
+  private boolean enableWal = true;
 
   /**
    * When a certain amount of insert ahead logs is reached, they will be flushed to the disk. It is
