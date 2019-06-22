@@ -18,16 +18,16 @@
  */
 package org.apache.iotdb.db.query.factory;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * This class defines the interface of construct readers for different data source. Note that, job
@@ -41,27 +41,27 @@ public interface ISeriesReaderFactory {
    * This method is used to read all unsequence data for IoTDB request, such as query, aggregation
    * and groupby request.
    */
-  IPointReader createUnSeqReader(Path seriesPath, List<TsFileResourceV2> unSeqResources,
-      Filter filter) throws IOException;
+  IPointReader createUnSeqReader(Path seriesPath, List<TsFileResourceV2> unSeqResources, QueryContext context,
+                                 Filter filter) throws IOException;
 
 
   /**
    * construct ByTimestampReader, including sequential data and unsequential data.
    *
-   * @param paths selected series path
+   * @param paths   selected series path
    * @param context query context
    * @return the list of EngineReaderByTimeStamp
    */
   List<EngineReaderByTimeStamp> createByTimestampReadersOfSelectedPaths(List<Path> paths,
-      QueryContext context) throws FileNodeManagerException;
+                                                                        QueryContext context) throws IOException, FileNodeManagerException;
 
   /**
    * construct IPointReader, include sequential data and unsequential data.
    *
-   * @param path selected series path
+   * @param path    selected series path
    * @param context query context
    * @return the list of EngineReaderByTimeStamp
    */
   IPointReader createAllDataReader(Path path, Filter timeFilter,
-      QueryContext context) throws FileNodeManagerException;
+                                   QueryContext context) throws FileNodeManagerException;
 }

@@ -117,7 +117,7 @@ public class SeriesReaderFactory {
             : new ChunkReaderWithoutFilter(chunk);
 
         unSeqMergeReader
-            .addReaderWithPriority(new EngineChunkReader(chunkReader, unClosedTsFileReader),
+            .addReaderWithPriority(new EngineChunkReader(chunkReader),
                 priorityValue);
         priorityValue++;
       }
