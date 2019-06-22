@@ -103,7 +103,9 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // delete overflow
-    cleanDir(config.getOverflowDataDir());
+    for (String path : directoryManager.getAllOverflowFileFolders()) {
+      cleanDir(path);
+    }
     // delete filenode
     cleanDir(config.getFileNodeDir());
     // delete metadata
@@ -183,7 +185,9 @@ public class EnvironmentUtils {
       createDir(path);
     }
     // create overflow
-    createDir(config.getOverflowDataDir());
+    for (String path : directoryManager.getAllOverflowFileFolders()) {
+      cleanDir(path);
+    }
     // create filenode
     createDir(config.getFileNodeDir());
     // create metadata

@@ -124,45 +124,51 @@ public class FileNodeProcessorV2 {
   }
 
   private void recover() throws ProcessorException {
-    List<String> tsFiles = new ArrayList<>();
-    List<String> fileFolders = directoryManager.getAllTsFileFolders();
-    for (String baseDir: fileFolders) {
+    List<File> tsFiles = new ArrayList<>();
+    List<String> seqFileFolders = directoryManager.getAllTsFileFolders();
+    for (String baseDir: seqFileFolders) {
       File fileFolder = new File(baseDir, storageGroupName);
       if (!fileFolder.exists()) {
         continue;
       }
       for (File tsfile: fileFolder.listFiles()) {
-        tsFiles.add(tsfile.getPath());
+        tsFiles.add(tsfile);
       }
     }
     recoverSeqFiles(tsFiles);
 
     tsFiles.clear();
-    String unseqFileFolder = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
-    File fileFolder = new File(unseqFileFolder, storageGroupName);
-    if (!fileFolder.exists()) {
-      return;
-    }
-    for (File unseqFile: fileFolder.listFiles()) {
-      tsFiles.add(unseqFile.getPath());
+    List<String> unseqFileFolder = directoryManager.getAllOverflowFileFolders();
+    for (String baseDir: unseqFileFolder) {
+      File fileFolder = new File(baseDir, storageGroupName);
+      if (!fileFolder.exists()) {
+        continue;
+      }
+      for (File tsfile: fileFolder.listFiles()) {
+        tsFiles.add(tsfile);
+      }
     }
     recoverUnseqFiles(tsFiles);
   }
 
-  private void recoverSeqFiles(List<String> tsfiles) throws ProcessorException {
-    tsfiles.sort(Comparator.comparingInt(file -> Integer.parseInt(file.split("-")[1])));
-    for (String tsfile: tsfiles) {
-      TsFileResourceV2 tsFileResource = new TsFileResourceV2(new File(tsfile));
+  private static int getTsFileSerialNum(File tsFile) {
+    return Integer.parseInt(tsFile.getName().split("-")[1]);
+  }
+
+  private void recoverSeqFiles(List<File> tsfiles) throws ProcessorException {
+    tsfiles.sort(Comparator.comparingInt(FileNodeProcessorV2::getTsFileSerialNum));
+    for (File tsfile: tsfiles) {
+      TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsfile);
       sequenceFileList.add(tsFileResource);
       SeqTsFileRecoverPerformer recoverPerformer = new SeqTsFileRecoverPerformer(storageGroupName + "-", fileSchema, versionController, tsFileResource);
       recoverPerformer.recover();
     }
   }
 
-  private void recoverUnseqFiles(List<String> tsfiles) throws ProcessorException {
-    tsfiles.sort(Comparator.comparingInt(file -> Integer.parseInt(file.split("-")[1])));
-    for (String tsfile: tsfiles) {
-      TsFileResourceV2 tsFileResource = new TsFileResourceV2(new File(tsfile));
+  private void recoverUnseqFiles(List<File> tsfiles) throws ProcessorException {
+    tsfiles.sort(Comparator.comparingInt(FileNodeProcessorV2::getTsFileSerialNum));
+    for (File tsfile: tsfiles) {
+      TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsfile);
       unSequenceFileList.add(tsFileResource);
       UnSeqTsFileRecoverPerformer recoverPerformer = new UnSeqTsFileRecoverPerformer(storageGroupName + "-", fileSchema,
           versionController, tsFileResource);
@@ -255,7 +261,7 @@ public class FileNodeProcessorV2 {
       } else {
         if (workUnSequenceTsFileProcessor == null) {
           // TODO check if the disk is full, move this
-          String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
+          String baseDir = directoryManager.getNextFolderForOverflowFile();
           new File(baseDir, storageGroupName).mkdirs();
           String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "-" + +versionController.nextVersion()).toString();
 
