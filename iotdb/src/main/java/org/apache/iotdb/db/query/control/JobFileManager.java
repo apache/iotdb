@@ -82,7 +82,7 @@ public class JobFileManager {
   public void addUsedFilesForGivenJob(long jobId, QueryDataSourceV2 dataSource) {
 
     //sequence data
-    for(TsFileResourceV2 tsFileResource : dataSource.getSeqDataSource().getQueryTsFiles()){
+    for(TsFileResourceV2 tsFileResource : dataSource.getSeqResources()){
       String path = tsFileResource.getFile().getPath();
       if(tsFileResource.isClosed()){
         addFilePathToMap(jobId, path, true);
@@ -93,7 +93,7 @@ public class JobFileManager {
     }
 
     //overflow data
-    for(TsFileResourceV2 tsFileResource : dataSource.getUnSequenceDataSource().getQueryTsFiles()){
+    for(TsFileResourceV2 tsFileResource : dataSource.getUnseqResources()){
       String path = tsFileResource.getFile().getPath();
       if(tsFileResource.isClosed()){
         addFilePathToMap(jobId, path, true);

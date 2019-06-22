@@ -115,6 +115,7 @@ public class AggregateEngineExecutor {
       // unseq reader for all chunk groups in unSeqFile, memory
       PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
           .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
+
       readersOfSequenceData.add(sequenceReader);
       readersOfUnSequenceData.add(unSeqMergeReader);
     }
