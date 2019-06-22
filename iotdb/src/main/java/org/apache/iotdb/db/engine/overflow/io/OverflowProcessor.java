@@ -63,7 +63,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.db.writelog.recover.UnseqTsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -192,9 +191,9 @@ public class OverflowProcessor extends Processor {
       throw new ProcessorException(e);
     }
 
-    UnseqTsFileRecoverPerformer recoverPerformer =
-        new UnseqTsFileRecoverPerformer(workResource, fileSchema);
-    recoverPerformer.recover();
+//    UnseqTsFileRecoverPerformer recoverPerformer =
+//        new UnseqTsFileRecoverPerformer(workResource, fileSchema);
+//    recoverPerformer.recover();
   }
 
   private String[] clearFile(String[] subFilePaths) {
