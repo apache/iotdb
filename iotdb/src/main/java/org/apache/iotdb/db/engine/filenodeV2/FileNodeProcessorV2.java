@@ -195,9 +195,12 @@ public class FileNodeProcessorV2 {
       // create a new BufferWriteProcessor
       if (sequence) {
         if (workSequenceTsFileProcessor == null) {
-          String baseDir = directories.getNextFolderForTsfile();
-          String filePath = Paths.get(baseDir, System.currentTimeMillis() + "-" + versionController.nextVersion()).toString();
 
+          // TODO directories add method getAndCreateNextFolderTsfile
+          String baseDir = directories.getNextFolderForTsfile();
+          String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "-" + versionController.nextVersion()).toString();
+
+          new File(baseDir, storageGroupName).mkdirs();
           workSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
               fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);
 
@@ -208,8 +211,8 @@ public class FileNodeProcessorV2 {
         if (workUnSequenceTsFileProcessor == null) {
           // TODO check if the disk is full
           String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
-          new File(baseDir).mkdirs();
-          String filePath = Paths.get(baseDir, System.currentTimeMillis() + "-" + +versionController.nextVersion()).toString();
+          new File(baseDir, storageGroupName).mkdirs();
+          String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "-" + +versionController.nextVersion()).toString();
 
           workUnSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
               fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);
