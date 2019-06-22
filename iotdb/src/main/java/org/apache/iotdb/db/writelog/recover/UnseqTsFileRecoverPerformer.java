@@ -58,6 +58,7 @@ public class UnseqTsFileRecoverPerformer {
     LogReplayer replayer = new LogReplayer(logNodePrefix, insertFilePath,
         resource.getModificationFile(), resource.getVersionController(), null,
         fileSchema, memTable);
+
     replayer.replayLogs();
     if (memTable.isEmpty()) {
       return;

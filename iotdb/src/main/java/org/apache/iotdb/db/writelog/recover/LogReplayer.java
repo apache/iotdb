@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -90,6 +91,8 @@ public class LogReplayer {
           replayInsert((InsertPlan) plan);
         } else if (plan instanceof DeletePlan) {
           replayDelete((DeletePlan) plan);
+        } else if (plan instanceof UpdatePlan) {
+          replayUpdate((UpdatePlan) plan);
         }
       }
     } catch (IOException e) {
@@ -125,5 +128,10 @@ public class LogReplayer {
       tsRecord.addTuple(dataPoint);
     }
     recoverMemTable.insert(tsRecord);
+  }
+
+  private void replayUpdate(UpdatePlan updatePlan) {
+    // TODO: support update
+    throw new UnsupportedOperationException("Update not supported");
   }
 }
