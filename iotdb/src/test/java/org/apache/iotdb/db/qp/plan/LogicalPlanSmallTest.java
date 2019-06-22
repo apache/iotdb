@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
@@ -146,10 +147,10 @@ public class LogicalPlanSmallTest {
     Path path4 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d4", "s1"},
             SystemConstant.PATH_SEPARATOR));
-    executor.insert(path1, 10, "10");
-    executor.insert(path2, 10, "10");
-    executor.insert(path3, 10, "10");
-    executor.insert(path4, 10, "10");
+    executor.insert(new InsertPlan(path1.getDevice(), 10, path1.getMeasurement(), "10"));
+    executor.insert(new InsertPlan(path2.getDevice(), 10, path2.getMeasurement(), "10"));
+    executor.insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));
+    executor.insert(new InsertPlan(path4.getDevice(), 10, path4.getMeasurement(), "10"));
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
     operator = (SFWOperator) concatPathOptimizer.transform(operator);
     // expected to throw LogicalOptimizeException: Wrong use of SLIMIT: SLIMIT is not allowed to be used with

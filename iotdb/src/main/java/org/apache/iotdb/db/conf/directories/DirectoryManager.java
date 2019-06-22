@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
-import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +32,14 @@ import org.slf4j.LoggerFactory;
  *
  * @author East
  */
-public class Directories {
+public class DirectoryManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Directories.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DirectoryManager.class);
 
   private List<String> tsfileFolders;
   private DirectoryStrategy strategy;
 
-  private Directories() {
+  private DirectoryManager() {
     tsfileFolders = new ArrayList<>(
         Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
     initFolders();
@@ -56,7 +55,7 @@ public class Directories {
     }
   }
 
-  public static Directories getInstance() {
+  public static DirectoryManager getInstance() {
     return DirectoriesHolder.INSTANCE;
   }
 
@@ -105,7 +104,7 @@ public class Directories {
   }
 
   private static class DirectoriesHolder {
-    private static final Directories INSTANCE = new Directories();
+    private static final DirectoryManager INSTANCE = new DirectoryManager();
   }
 
   public String getWALFolder() {

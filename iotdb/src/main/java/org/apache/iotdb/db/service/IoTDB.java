@@ -18,24 +18,17 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.sync.receiver.SyncServiceManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.db.writelog.manager.WriteLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +77,7 @@ public class IoTDB implements IoTDBMBean {
 
     boolean enableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
-    FileNodeManager.getInstance().recovery();
+    FileNodeManagerV2.getInstance().recovery();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(enableWAL);
 
     // When registering statMonitor, we should start recovering some statistics
@@ -94,7 +87,7 @@ public class IoTDB implements IoTDBMBean {
       StatMonitor.getInstance().recovery();
     }
 
-    registerManager.register(FileNodeManager.getInstance());
+    registerManager.register(FileNodeManagerV2.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(JMXService.getInstance());
     registerManager.register(JDBCService.getInstance());

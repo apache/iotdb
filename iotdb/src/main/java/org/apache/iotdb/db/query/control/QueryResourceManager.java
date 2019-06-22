@@ -18,22 +18,18 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
-import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
-import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -66,29 +62,29 @@ public class QueryResourceManager {
    * <p>
    * For example, during a query process Q1, given a query sql <sql>select device_1.sensor_1,
    * device_1.sensor_2, device_2.sensor_1, device_2.sensor_2</sql>, we will invoke
-   * <code>FileNodeManager.getInstance().beginQuery(device_1)</code> and
-   * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> both once. Although there
+   * <code>FileNodeManagerV2.getInstance().beginQuery(device_1)</code> and
+   * <code>FileNodeManagerV2.getInstance().beginQuery(device_2)</code> both once. Although there
    * exists four paths, but the unique devices are only `device_1` and `device_2`. When invoking
-   * <code>FileNodeManager.getInstance().beginQuery(device_1)</code>, it returns result token `1`.
+   * <code>FileNodeManagerV2.getInstance().beginQuery(device_1)</code>, it returns result token `1`.
    * Similarly,
-   * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> returns result token `2`.
+   * <code>FileNodeManagerV2.getInstance().beginQuery(device_2)</code> returns result token `2`.
    *
    * In the meanwhile, another query process Q2 aroused by other client is triggered, whose sql
-   * statement is same to Q1. Although <code>FileNodeManager.getInstance().beginQuery(device_1)
+   * statement is same to Q1. Although <code>FileNodeManagerV2.getInstance().beginQuery(device_1)
    * </code>
    * and
-   * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> will be invoked again, it
+   * <code>FileNodeManagerV2.getInstance().beginQuery(device_2)</code> will be invoked again, it
    * returns result token `3` and `4` .
    *
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_1, 1)</code> and
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_2, 2)</code> must be invoked no matter how
+   * <code>FileNodeManagerV2.getInstance().endQueryForGivenJob(device_1, 1)</code> and
+   * <code>FileNodeManagerV2.getInstance().endQueryForGivenJob(device_2, 2)</code> must be invoked no matter how
    * query process Q1 exits normally or abnormally. So is Q2,
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_1, 3)</code> and
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_2, 4)</code> must be invoked
+   * <code>FileNodeManagerV2.getInstance().endQueryForGivenJob(device_1, 3)</code> and
+   * <code>FileNodeManagerV2.getInstance().endQueryForGivenJob(device_2, 4)</code> must be invoked
    *
    * Last but no least, to ensure the correctness of insert process and query process of IoTDB,
-   * <code>FileNodeManager.getInstance().beginQuery()</code> and
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob()</code> must be executed rightly.
+   * <code>FileNodeManagerV2.getInstance().beginQuery()</code> and
+   * <code>FileNodeManagerV2.getInstance().endQueryForGivenJob()</code> must be executed rightly.
    * </p>
    */
   private ConcurrentHashMap<Long, ConcurrentHashMap<String, List<Integer>>> queryTokensMap;
@@ -126,7 +122,7 @@ public class QueryResourceManager {
 
     for (String deviceId : deviceIdSet) {
       putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          FileNodeManager.getInstance().beginQuery(deviceId));
+          FileNodeManagerV2.getInstance().beginQuery(deviceId));
     }
   }
 
@@ -140,7 +136,7 @@ public class QueryResourceManager {
     getUniquePaths(expression, deviceIdSet);
     for (String deviceId : deviceIdSet) {
       putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          FileNodeManager.getInstance().beginQuery(deviceId));
+          FileNodeManagerV2.getInstance().beginQuery(deviceId));
     }
   }
 
@@ -157,16 +153,16 @@ public class QueryResourceManager {
     deviceIdSet.removeAll(remoteDeviceIdSet);
     for (String deviceId : deviceIdSet) {
       putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          FileNodeManager.getInstance().beginQuery(deviceId));
+          FileNodeManagerV2.getInstance().beginQuery(deviceId));
     }
   }
 
-  public QueryDataSource getQueryDataSource(Path selectedPath,
+  public QueryDataSourceV2 getQueryDataSource(Path selectedPath,
       QueryContext context)
-      throws FileNodeManagerException {
+      throws FileNodeManagerException, ProcessorException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
-    QueryDataSource queryDataSource = FileNodeManager.getInstance()
+    QueryDataSourceV2 queryDataSource = FileNodeManagerV2.getInstance()
         .query(singleSeriesExpression, context);
 
     // add used files to current thread request cached map
@@ -177,7 +173,7 @@ public class QueryResourceManager {
 
   public QueryDataSourceV2 getQueryDataSourceV2(Path selectedPath,
       QueryContext context)
-      throws FileNodeManagerException {
+      throws FileNodeManagerException, ProcessorException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
     QueryDataSourceV2 queryDataSource = FileNodeManagerV2.getInstance().query(singleSeriesExpression, context);
@@ -199,7 +195,7 @@ public class QueryResourceManager {
     }
     for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
       for (int token : entry.getValue()) {
-        FileNodeManager.getInstance().endQuery(entry.getKey(), token);
+        FileNodeManagerV2.getInstance().endQuery(entry.getKey(), token);
       }
     }
     queryTokensMap.remove(jobId);

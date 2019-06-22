@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -186,9 +187,14 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
     for (Path path : paths) {
 
-      QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
-              .getQueryDataSourceV2(path,
-                      context);
+      QueryDataSourceV2 queryDataSource = null;
+      try {
+        queryDataSource = QueryResourceManager.getInstance()
+            .getQueryDataSourceV2(path,
+                context);
+      } catch (ProcessorException e) {
+        throw new FileNodeManagerException(e);
+      }
 
       PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
 
@@ -210,9 +216,14 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
   @Override
   public IPointReader createAllDataReader(Path path, Filter timeFilter, QueryContext context)
-          throws FileNodeManagerException, IOException {
-    QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
-            .getQueryDataSourceV2(path, context);
+      throws FileNodeManagerException, IOException {
+    QueryDataSourceV2 queryDataSource = null;
+    try {
+      queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSourceV2(path, context);
+    } catch (ProcessorException e) {
+      throw new FileNodeManagerException(e);
+    }
 
     // sequence reader for one sealed tsfile
     SequenceDataReaderV2 tsFilesReader;

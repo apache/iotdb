@@ -31,11 +31,12 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
@@ -57,7 +58,7 @@ public class LoadDataUtils {
   private int writeInstanceThreshold;
   private boolean hasExtra = false;
   private long totalPointCount = 0;
-  private FileNodeManager fileNodeManager;
+  private FileNodeManagerV2 fileNodeManager;
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
   /**
@@ -65,7 +66,7 @@ public class LoadDataUtils {
    */
   public LoadDataUtils() {
     writeInstanceMap = new HashSet<>();
-    fileNodeManager = FileNodeManager.getInstance();
+    fileNodeManager = FileNodeManagerV2.getInstance();
     writeInstanceThreshold = conf.getWriteInstanceThreshold();
   }
 
@@ -151,7 +152,7 @@ public class LoadDataUtils {
     }
     // appeared before, insert directly
     try {
-      fileNodeManager.insert(record, false);
+      fileNodeManager.insert(new InsertPlan(record));
     } catch (FileNodeManagerException e) {
       logger.error("failed when insert into fileNodeManager, record:{}", line, e);
     }

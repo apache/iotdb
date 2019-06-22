@@ -25,7 +25,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.db.writelog.io.ILogReader;
@@ -66,7 +66,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public ExclusiveWriteLogNode(String identifier) {
     this.identifier = identifier;
     this.logDirectory =
-        Directories.getInstance().getWALFolder() + File.separator + this.identifier;
+        DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
     new File(logDirectory).mkdirs();
   }
 

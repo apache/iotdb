@@ -34,6 +34,7 @@ public class IoTDBConfig {
   public static final String DEFAULT_DATA_DIR = "data";
   public static final String DEFAULT_SYS_DIR = "system";
   public static final String DEFAULT_TSFILE_DIR = "settled";
+  public static final String DEFAULT_OVERFLOW_DIR = "unorder";
   public static final String MULT_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   public static final String DEFAULT_MULT_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";

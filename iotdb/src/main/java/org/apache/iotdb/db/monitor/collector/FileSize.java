@@ -30,8 +30,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
@@ -54,7 +55,7 @@ public class FileSize implements IStatistic {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileSize.class);
   private static final long ABNORMAL_VALUE = -1L;
   private static final long INIT_VALUE_IF_FILE_NOT_EXIST = 0L;
-  private FileNodeManager fileNodeManager;
+  private FileNodeManagerV2 fileNodeManager;
 
   @Override
   public Map<String, TSRecord> getAllStatisticsValue() {
@@ -80,7 +81,7 @@ public class FileSize implements IStatistic {
         fileNodeManager.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
             TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
             Collections.emptyMap());
-      } catch (FileNodeManagerException e) {
+      } catch (FileNodeManagerException | ProcessorException e) {
         LOGGER.error("Register File Size Stats into fileNodeManager Failed.", e);
       }
     }
@@ -114,7 +115,7 @@ public class FileSize implements IStatistic {
   }
 
   private FileSize() {
-    fileNodeManager = FileNodeManager.getInstance();
+    fileNodeManager = FileNodeManagerV2.getInstance();
     if (config.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();

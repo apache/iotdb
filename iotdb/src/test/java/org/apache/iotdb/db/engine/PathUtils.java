@@ -21,15 +21,15 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 
 public class PathUtils {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static Directories directories = Directories.getInstance();
+  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   public static File getBufferWriteDir(String nameSpacePath) {
-    String bufferwriteDirPath = directories.getFolderForTest();
+    String bufferwriteDirPath = directoryManager.getFolderForTest();
     if (bufferwriteDirPath.length() > 0
         && bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
       bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
