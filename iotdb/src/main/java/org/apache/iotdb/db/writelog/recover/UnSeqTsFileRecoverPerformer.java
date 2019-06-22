@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
  * SeqTsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last
  * crash and removes the redone logs.
  */
-public class SeqTsFileRecoverPerformer {
+public class UnSeqTsFileRecoverPerformer {
 
   private String insertFilePath;
   private String logNodePrefix;
@@ -49,7 +49,7 @@ public class SeqTsFileRecoverPerformer {
   private LogReplayer logReplayer;
   private TsFileResourceV2 tsFileResource;
 
-  public SeqTsFileRecoverPerformer(String logNodePrefix,
+  public UnSeqTsFileRecoverPerformer(String logNodePrefix,
       FileSchema fileSchema, VersionController versionController,
       TsFileResourceV2 currentTsFileResource) {
     this.insertFilePath = currentTsFileResource.getFile().getPath();
@@ -60,26 +60,28 @@ public class SeqTsFileRecoverPerformer {
   }
 
   /**
-   * 1. recover the TsFile by NativeRestorableIOWriter and truncate position of last recovery
-   * 2. redo the WALs to recover unpersisted data
-   * 3. flush and close the file
-   * 4. clean WALs
+   * 1. redo the WALs to recover unpersisted data
+   * 2. flush and close the file
+   * 3. clean WALs
    * @throws ProcessorException
    */
   public void recover() throws ProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
         versionController,
-        tsFileResource, fileSchema, recoverMemTable, false);
+        tsFileResource, fileSchema, recoverMemTable, true);
     File insertFile = new File(insertFilePath);
     if (!insertFile.exists()) {
       return;
     }
     // remove corrupted part of the TsFile
-    NativeRestorableIOWriter restorableTsFileIOWriter = recoverFile(insertFile);
+    NativeRestorableIOWriter restorableTsFileIOWriter = null;
+    try {
+      restorableTsFileIOWriter = new NativeRestorableIOWriter(insertFile);
+    } catch (IOException e) {
+      throw new ProcessorException(e);
+    }
 
-    // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
-    // map must be updated first to avoid duplicated insertion
     for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter.getChunkGroupMetaDatas()) {
       for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
         tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
@@ -90,7 +92,6 @@ public class SeqTsFileRecoverPerformer {
     // redo logs
     logReplayer.replayLogs();
     if (recoverMemTable.isEmpty()) {
-      removeTruncatePosition(insertFile);
       return;
     }
 
@@ -106,72 +107,11 @@ public class SeqTsFileRecoverPerformer {
       throw new ProcessorException("Cannot setCloseMark file when recovering", e);
     }
 
-    removeTruncatePosition(insertFile);
-
     // clean logs
     try {
       MultiFileLogNodeManager.getInstance().deleteNode(logNodePrefix + new File(insertFilePath).getName());
     } catch (IOException e) {
       throw new ProcessorException(e);
-    }
-  }
-
-
-  private NativeRestorableIOWriter recoverFile(File insertFile) throws ProcessorException {
-    long truncatePos = getTruncatePosition(insertFile);
-    NativeRestorableIOWriter restorableIOWriter;
-    if (truncatePos != -1 && insertFile.length() != truncatePos) {
-      try (FileChannel channel = new FileOutputStream(insertFile).getChannel()) {
-        channel.truncate(truncatePos);
-        restorableIOWriter = new NativeRestorableIOWriter(insertFile, true);
-      } catch (IOException e) {
-        throw new ProcessorException(e);
-      }
-    } else {
-      try {
-        restorableIOWriter = new NativeRestorableIOWriter(insertFile, true);
-        saveTruncatePosition(insertFile);
-      } catch (IOException e) {
-        throw new ProcessorException(e);
-      }
-    }
-    return restorableIOWriter;
-  }
-
-  private long getTruncatePosition(File insertFile) {
-    File parentDir = insertFile.getParentFile();
-    File[] truncatePoses = parentDir.listFiles((dir, name) -> name.contains(insertFile.getName() +
-        "@"));
-    long maxPos = -1;
-    if (truncatePoses != null) {
-      for (File truncatePos : truncatePoses) {
-        long pos = Long.parseLong(truncatePos.getName().split("@")[1]);
-        if (pos > maxPos) {
-          maxPos = pos;
-        }
-      }
-    }
-    return maxPos;
-  }
-
-  private void saveTruncatePosition(File insertFile)
-      throws IOException {
-    File truncatePosFile = new File(insertFile.getParent(),
-        insertFile.getName() + "@" + insertFile.length());
-    try (FileOutputStream outputStream = new FileOutputStream(truncatePosFile)) {
-      outputStream.write(0);
-      outputStream.flush();
-    }
-  }
-
-  private void removeTruncatePosition(File insertFile) {
-    File parentDir = insertFile.getParentFile();
-    File[] truncatePoses = parentDir.listFiles((dir, name) -> name.contains(insertFile.getName() +
-        "@"));
-    if (truncatePoses != null) {
-      for (File truncatePos : truncatePoses) {
-        truncatePos.delete();
-      }
     }
   }
 }

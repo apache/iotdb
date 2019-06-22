@@ -31,14 +31,17 @@ import java.util.Collections;
 import java.util.Iterator;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -70,14 +73,14 @@ public class DeletionFileNodeTest {
 
   @Before
   public void setup() throws MetadataArgsErrorException,
-      PathErrorException, IOException, FileNodeManagerException, StartupException {
+      PathErrorException, IOException, FileNodeManagerException, StartupException, ProcessorException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageLevelToMTree(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
           encoding);
-      FileNodeManager.getInstance()
+      FileNodeManagerV2.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
               TSEncoding.valueOf(encoding), CompressionType.valueOf(TSFileConfig.compressor),
               Collections.emptyMap());
@@ -91,29 +94,29 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-      FileNodeManagerException {
+      FileNodeManagerException, ProcessorException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
     }
 
-    FileNodeManager.getInstance().delete(processorName, measurements[3], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[4], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 30);
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 50);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[4], 50);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 30);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(TEST_QUERY_JOB_ID, expression);
-    QueryDataSource dataSource = QueryResourceManager.getInstance()
+    QueryDataSourceV2 dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
 
     Iterator<TimeValuePair> timeValuePairs =
-        dataSource.getSeqDataSource().getReadableChunk().getIterator();
+        dataSource.getSeqResources().get(0).getReadOnlyMemChunk().getIterator();
     int count = 0;
     while (timeValuePairs.hasNext()) {
       timeValuePairs.next();
@@ -130,13 +133,13 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
     }
-    FileNodeManager.getInstance().closeAll();
+    FileNodeManagerV2.getInstance().syncCloseAllProcessor();
 
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[4], 40);
-    FileNodeManager.getInstance().delete(processorName, measurements[3], 30);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 50);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[4], 40);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
         new Deletion(processorName + "." + measurements[5], 102, 50),
@@ -166,16 +169,16 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInOverflowCache() throws FileNodeManagerException {
+  public void testDeleteInOverflowCache() throws FileNodeManagerException, ProcessorException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
     }
-    FileNodeManager.getInstance().closeAll();
+    FileNodeManagerV2.getInstance().syncCloseAllProcessor();
 
     // insert into Overflow
     for (int i = 1; i <= 100; i++) {
@@ -183,23 +186,23 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
     }
 
-    FileNodeManager.getInstance().delete(processorName, measurements[3], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[4], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 30);
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 50);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[4], 50);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 30);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
 
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(TEST_QUERY_JOB_ID, expression);
-    QueryDataSource dataSource = QueryResourceManager.getInstance()
+    QueryDataSourceV2 dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
 
     Iterator<TimeValuePair> timeValuePairs =
-        dataSource.getOverflowSeriesDataSource().getReadableMemChunk().getIterator();
+        dataSource.getSeqResources().get(0).getReadOnlyMemChunk().getIterator();
     int count = 0;
     while (timeValuePairs.hasNext()) {
       timeValuePairs.next();
@@ -218,9 +221,9 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
     }
-    FileNodeManager.getInstance().closeAll();
+    FileNodeManagerV2.getInstance().syncCloseAllProcessor();
 
     // insert into Overflow
     for (int i = 1; i <= 100; i++) {
@@ -228,13 +231,13 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
     }
-    FileNodeManager.getInstance().closeAll();
+    FileNodeManagerV2.getInstance().syncCloseAllProcessor();
 
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[4], 40);
-    FileNodeManager.getInstance().delete(processorName, measurements[3], 30);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 50);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[4], 40);
+    FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
         new Deletion(processorName + "." + measurements[5], 103, 50),

@@ -57,11 +57,14 @@ public class LogReplayer {
   private FileSchema fileSchema;
   private IMemTable recoverMemTable;
 
+  // overflow file tolerates duplicated data
+  private boolean acceptDuplication;
+
   public LogReplayer(String logNodePrefix, String insertFilePath,
       ModificationFile modFile,
       VersionController versionController,
       TsFileResourceV2 currentTsFileResource,
-      FileSchema fileSchema, IMemTable memTable) {
+      FileSchema fileSchema, IMemTable memTable, boolean acceptDuplication) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
     this.modFile = modFile;
@@ -69,6 +72,7 @@ public class LogReplayer {
     this.currentTsFileResource = currentTsFileResource;
     this.fileSchema = fileSchema;
     this.recoverMemTable = memTable;
+    this.acceptDuplication = acceptDuplication;
   }
 
   /**
@@ -112,8 +116,9 @@ public class LogReplayer {
 
   private void replayInsert(InsertPlan insertPlan) {
     if (currentTsFileResource != null) {
-      // the last chunk group may contain the same data with the logs, ignore such logs
-      if (currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId()) >= insertPlan.getTime()) {
+      // the last chunk group may contain the same data with the logs, ignore such logs in seq file
+      if (currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId()) >= insertPlan.getTime() &&
+          !acceptDuplication) {
         return;
       }
       currentTsFileResource.updateTime(insertPlan.getDeviceId(), insertPlan.getTime());

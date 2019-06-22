@@ -26,7 +26,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.exception.StartupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -176,7 +176,7 @@ public class CloseMergeService implements IService {
               + "time interval is {}s.", startDateTime, endDateTime, timeInterval / 1000);
       mergeAllLastTime = System.currentTimeMillis();
       try {
-        FileNodeManager.getInstance().mergeAll();
+        FileNodeManagerV2.getInstance().mergeAll();
       } catch (Exception e) {
         LOGGER.error("Merge all error.", e);
       }
@@ -202,7 +202,7 @@ public class CloseMergeService implements IService {
               + "time interval is {}s.", startDateTime, endDateTime, timeInterval / 1000);
       closeAllLastTime = System.currentTimeMillis();
       try {
-        FileNodeManager.getInstance().closeAll();
+        FileNodeManagerV2.getInstance().syncCloseAllProcessor();
       } catch (Exception e) {
         LOGGER.error("setCloseMark all error.", e);
       }

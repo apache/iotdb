@@ -28,7 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.cache.RowGroupBlockMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -73,7 +73,7 @@ public class EnvironmentUtils {
     // tsFileConfig.duplicateIncompletedPage = false;
     // clean filenode manager
     try {
-      if (!FileNodeManager.getInstance().deleteAll()) {
+      if (!FileNodeManagerV2.getInstance().deleteAll()) {
         LOGGER.error("Can't setCloseMark the filenode manager in EnvironmentUtils");
         Assert.fail();
       }
@@ -81,7 +81,7 @@ public class EnvironmentUtils {
       throw new IOException(e);
     }
     StatMonitor.getInstance().close();
-    FileNodeManager.getInstance().resetFileNodeManager();
+    FileNodeManagerV2.getInstance().resetFileNodeManager();
     // clean wal
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
@@ -92,7 +92,7 @@ public class EnvironmentUtils {
     MManager.getInstance().flushObjectToFile();
     // delete all directory
     cleanAllDir();
-    // FileNodeManager.getInstance().reset();
+    // FileNodeManagerV2.getInstance().reset();
     // reset MemController
     BasicMemController.getInstance().close();
   }
@@ -166,7 +166,7 @@ public class EnvironmentUtils {
     } catch (AuthException e) {
       throw new StartupException(e.getMessage());
     }
-    FileNodeManager.getInstance().resetFileNodeManager();
+    FileNodeManagerV2.getInstance().resetFileNodeManager();
     MultiFileLogNodeManager.getInstance().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);

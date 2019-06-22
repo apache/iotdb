@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.filenodeV2;
 
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -56,7 +57,7 @@ public class FileNodeProcessorV2Test {
     for (int j = 1; j <= 100; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(record);
+      processor.insert(new InsertPlan(record));
       processor.asyncForceClose();
     }
 
@@ -75,7 +76,7 @@ public class FileNodeProcessorV2Test {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(record);
+      processor.insert(new InsertPlan(record));
       processor.asyncForceClose();
     }
     processor.syncCloseFileNode();
@@ -83,7 +84,7 @@ public class FileNodeProcessorV2Test {
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(record);
+      processor.insert(new InsertPlan(record));
       processor.asyncForceClose();
     }
 

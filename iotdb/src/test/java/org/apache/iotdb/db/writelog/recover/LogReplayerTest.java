@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
+import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -67,7 +68,7 @@ public class LogReplayerTest {
         return 5;
       }
     };
-    TsFileResource tsFileResource = new TsFileResource(tsFile, false);
+    TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
     FileSchema schema = new FileSchema();
 
@@ -77,7 +78,7 @@ public class LogReplayerTest {
       }
 
       LogReplayer replayer = new LogReplayer(logNodePrefix, tsFile.getPath(), modFile,
-          versionController, tsFileResource, schema, memTable);
+          versionController, tsFileResource, schema, memTable, true);
 
       WriteLogNode node =
           MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
@@ -110,8 +111,8 @@ public class LogReplayerTest {
       assertEquals(new Deletion("device0.sensor0", 5, 3), mods[0]);
 
       for (int i = 0; i < 5; i++) {
-        assertEquals(i, tsFileResource.getStartTime("device" + i));
-        assertEquals(i, tsFileResource.getEndTime("device" + i));
+        assertEquals(i, (Object)tsFileResource.getStartTimeMap().get("device" + i));
+        assertEquals(i, (Object)tsFileResource.getEndTimeMap().get("device" + i));
       }
     } finally {
       modFile.close();

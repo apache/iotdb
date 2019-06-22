@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
 
 public class InsertPlan extends PhysicalPlan {
 
@@ -48,6 +49,20 @@ public class InsertPlan extends PhysicalPlan {
     this.deviceId = deviceId;
     this.measurements = new String[] {measurement};
     this.values = new String[] {insertValue};
+  }
+
+  public InsertPlan(TSRecord tsRecord) {
+    super(false, OperatorType.INSERT);
+    this.deviceId = tsRecord.deviceId;
+    this.time = tsRecord.time;
+    this.measurements = new String[tsRecord.dataPointList.size()];
+    this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
+    this.values = new String[tsRecord.dataPointList.size()];
+    for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
+      measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
+      dataTypes[i] = tsRecord.dataPointList.get(i).getType();
+      values[i] = tsRecord.dataPointList.get(i).getValue().toString();
+    }
   }
 
   public InsertPlan(String deviceId, long insertTime, String[] measurementList,

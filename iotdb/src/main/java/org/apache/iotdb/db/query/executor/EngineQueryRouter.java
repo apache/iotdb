@@ -69,13 +69,17 @@ public class EngineQueryRouter implements IEngineQueryRouter{
           return engineExecutor.execute(context);
         }
 
-      } catch (QueryFilterOptimizationException e) {
+      } catch (QueryFilterOptimizationException | IOException e) {
         throw new FileNodeManagerException(e);
       }
     } else {
       EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
           queryExpression);
-      return engineExecutor.execute(context);
+      try {
+        return engineExecutor.execute(context);
+      } catch (IOException e) {
+        throw new FileNodeManagerException(e);
+      }
     }
   }
 

@@ -29,7 +29,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
+import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -70,15 +70,15 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * init reader and aggregate function.
    */
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
-      throws FileNodeManagerException, PathErrorException, ProcessorException, IOException {
+      throws FileNodeManagerException, PathErrorException, ProcessorException {
     initAggreFuction(aggres);
 
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
     QueryResourceManager
         .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
     this.timestampGenerator = new EngineTimeGenerator(expression, context);
-    this.allDataReaderList = SeriesReaderFactory
-        .getByTimestampReadersOfSelectedPaths(selectedSeries, context);
+    this.allDataReaderList = SeriesReaderFactoryImpl.getInstance()
+        .createByTimestampReadersOfSelectedPaths(selectedSeries, context);
   }
 
   @Override

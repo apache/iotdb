@@ -28,12 +28,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeProcessor;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -115,7 +115,7 @@ public class FileNodeManagerV2 implements IService {
 
 
   private FileNodeProcessorV2 getProcessor(String devicePath)
-      throws FileNodeManagerException {
+      throws FileNodeManagerException, ProcessorException {
     String storageGroup = "";
     try {
       // return the storage group name
@@ -217,7 +217,7 @@ public class FileNodeManagerV2 implements IService {
   }
 
   private void delete(String processorName,
-      Iterator<Entry<String, FileNodeProcessor>> processorIterator)
+      Iterator<Entry<String, FileNodeProcessorV2>> processorIterator)
       throws FileNodeManagerException {
     // TODO
   }
@@ -245,7 +245,7 @@ public class FileNodeManagerV2 implements IService {
    * query data.
    */
   public QueryDataSourceV2 query(SingleSeriesExpression seriesExpression, QueryContext context)
-      throws FileNodeManagerException {
+      throws FileNodeManagerException, ProcessorException {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     FileNodeProcessorV2 fileNodeProcessor = getProcessor(deviceId);
@@ -340,7 +340,7 @@ public class FileNodeManagerV2 implements IService {
    */
   public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor,
-      Map<String, String> props) throws FileNodeManagerException {
+      Map<String, String> props) throws FileNodeManagerException, ProcessorException {
     FileNodeProcessorV2 fileNodeProcessor = getProcessor(path.getFullPath());
     fileNodeProcessor.addTimeSeries(path.getMeasurement(), dataType, encoding, compressor, props);
   }

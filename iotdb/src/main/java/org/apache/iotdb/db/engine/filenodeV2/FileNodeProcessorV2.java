@@ -96,7 +96,7 @@ public class FileNodeProcessorV2 {
 
   private VersionController versionController;
 
-  public FileNodeProcessorV2(String baseDir, String storageGroupName) throws FileNodeProcessorException {
+  public FileNodeProcessorV2(String baseDir, String storageGroupName) throws ProcessorException {
     this.storageGroupName = storageGroupName;
     lock = new ReentrantReadWriteLock();
     closeFileNodeCondition = lock.writeLock().newCondition();
@@ -153,7 +153,6 @@ public class FileNodeProcessorV2 {
       tsfiles.add(unseqFile.getPath());
     }
 
-    for
 
   }
 

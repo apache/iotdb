@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -71,9 +71,9 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  public void constructReaders(QueryDataSource queryDataSource, QueryContext context)
-      throws IOException {
-    super.constructReaders(queryDataSource, context, beforeRange);
+  public void constructReaders(Path path, QueryContext context)
+      throws IOException, FileNodeManagerException {
+    super.constructReaders(path, context, beforeRange);
   }
 
   @Override

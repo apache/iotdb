@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.engine.memcontrol;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
+import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +56,13 @@ public class ForceFLushAllPolicy implements Policy {
 
   private Thread createWorkerThread() {
     return new Thread(() ->
-            FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.DANGEROUS),
+    {
+      try {
+        FileNodeManagerV2.getInstance().syncCloseAllProcessor();
+      } catch (FileNodeManagerException e) {
+        logger.error("sync close all file node processor failed", e);
+      }
+    },
             ThreadName.FORCE_FLUSH_ALL_POLICY.getName());
   }
 }

@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
+import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -57,7 +58,7 @@ public class SeqTsFileRecoverTest {
   private WriteLogNode node;
   private String logNodePrefix = "testNode";
   private FileSchema schema;
-  private TsFileResource resource;
+  private TsFileResourceV2 resource;
   private VersionController versionController = new VersionController() {
     private int i;
     @Override
@@ -110,7 +111,7 @@ public class SeqTsFileRecoverTest {
       }
       node.notifyStartFlush();
     }
-    resource = new TsFileResource(tsF, true);
+    resource = new TsFileResourceV2(tsF);
   }
 
   @After
