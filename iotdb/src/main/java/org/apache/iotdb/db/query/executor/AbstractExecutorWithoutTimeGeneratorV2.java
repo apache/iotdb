@@ -64,7 +64,7 @@ public abstract class AbstractExecutorWithoutTimeGeneratorV2 {
     // sequence reader for one sealed tsfile
     SequenceDataReaderV2 tsFilesReader;
     try {
-      tsFilesReader = new SequenceDataReaderV2(queryDataSource.getSeqDataSource(),
+      tsFilesReader = new SequenceDataReaderV2(queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(),
           timeFilter, context);
     } catch (IOException e) {
       throw new FileNodeManagerException(e);

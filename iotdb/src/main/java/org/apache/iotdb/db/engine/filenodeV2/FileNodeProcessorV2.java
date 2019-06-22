@@ -33,7 +33,6 @@ import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
-import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
@@ -244,14 +243,11 @@ public class FileNodeProcessorV2 {
 
     lock.readLock().lock();
     try {
-      List<TsFileResourceV2> sequnceResources = getFileReSourceListForQuery(sequenceFileList,
+      List<TsFileResourceV2> seqResources = getFileReSourceListForQuery(sequenceFileList,
           deviceId, measurementId);
-      List<TsFileResourceV2> unsequnceResources = getFileReSourceListForQuery(unSequenceFileList,
+      List<TsFileResourceV2> unseqResources = getFileReSourceListForQuery(unSequenceFileList,
           deviceId, measurementId);
-      return new QueryDataSourceV2(
-          new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId), sequnceResources),
-          new GlobalSortedSeriesDataSourceV2(new Path(deviceId, measurementId),
-              unsequnceResources));
+      return new QueryDataSourceV2(new Path(deviceId, measurementId), seqResources, unseqResources);
     } finally {
       lock.readLock().unlock();
     }
