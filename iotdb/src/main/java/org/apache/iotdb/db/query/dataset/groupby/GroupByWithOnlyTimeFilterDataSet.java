@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -30,11 +30,10 @@ import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
+import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
+import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderV2;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -47,8 +46,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
 
-  protected List<IPointReader> unSequenceReaderList;
-  protected List<IAggregateReader> sequenceReaderList;
+  private List<IPointReader> unSequenceReaderList;
+  private List<IAggregateReader> sequenceReaderList;
   private List<BatchData> batchDataList;
   private List<Boolean> hasCachedSequenceDataList;
   private Filter timeFilter;
@@ -81,17 +80,19 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(selectedSeries.get(i), context);
+    for (Path path : selectedSeries) {
+      QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSourceV2(path, context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SequenceDataReader sequenceReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-          timeFilter, context, false);
+      SequenceDataReaderV2 sequenceReader = new SequenceDataReaderV2(
+          queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context,
+          false);
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
-          .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
+      IPointReader unSeqMergeReader = SeriesReaderFactoryImpl.getInstance()
+          .createUnSeqReader(queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(),
+              timeFilter);
 
       sequenceReaderList.add(sequenceReader);
       unSequenceReaderList.add(unSeqMergeReader);
@@ -108,7 +109,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(startTime);
     for (int i = 0; i < functions.size(); i++) {
-      AggreResultData res = null;
+      AggreResultData res;
       try {
         res = nextSeries(i);
       } catch (ProcessorException e) {

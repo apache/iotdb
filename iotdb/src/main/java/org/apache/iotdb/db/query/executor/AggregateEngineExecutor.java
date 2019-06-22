@@ -23,12 +23,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.aggregation.impl.LastAggrFunc;
@@ -37,11 +36,12 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
+import org.apache.iotdb.db.query.factory.AggreFuncFactory;
+import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
+import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
+import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderV2;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -88,7 +88,7 @@ public class AggregateEngineExecutor {
     QueryResourceManager
         .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
 
-    List<SequenceDataReader> readersOfSequenceData = new ArrayList<>();
+    List<IAggregateReader> readersOfSequenceData = new ArrayList<>();
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
@@ -99,22 +99,23 @@ public class AggregateEngineExecutor {
       function.init();
       aggregateFunctions.add(function);
 
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(selectedSeries.get(i), context);
+      QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSourceV2(selectedSeries.get(i), context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SequenceDataReader sequenceReader;
+      SequenceDataReaderV2 sequenceReader;
       if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
-        sequenceReader = new SequenceDataReader(queryDataSource.getSeqDataSource(), timeFilter,
-            context, true);
+        sequenceReader = new SequenceDataReaderV2(queryDataSource.getSeriesPath(),
+            queryDataSource.getSeqResources(), timeFilter, context, true);
       } else {
-        sequenceReader = new SequenceDataReader(queryDataSource.getSeqDataSource(), timeFilter,
-            context, false);
+        sequenceReader = new SequenceDataReaderV2(queryDataSource.getSeriesPath(),
+            queryDataSource.getSeqResources(), timeFilter, context, false);
       }
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
-          .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
+      IPointReader unSeqMergeReader = SeriesReaderFactoryImpl.getInstance()
+          .createUnSeqReader(queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(),
+              timeFilter);
 
       readersOfSequenceData.add(sequenceReader);
       readersOfUnSequenceData.add(unSeqMergeReader);
@@ -139,7 +140,7 @@ public class AggregateEngineExecutor {
    * @return one series aggregate result data
    */
   private AggreResultData aggregateWithOutTimeGenerator(AggregateFunction function,
-      SequenceDataReader sequenceReader, IPointReader unSequenceReader, Filter filter)
+      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter filter)
       throws IOException, ProcessorException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
       return handleLastMaxTimeWithOutTimeGenerator(function, sequenceReader, unSequenceReader,
@@ -206,7 +207,7 @@ public class AggregateEngineExecutor {
    * @return BatchData-aggregate result
    */
   private AggreResultData handleLastMaxTimeWithOutTimeGenerator(AggregateFunction function,
-      SequenceDataReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
+      IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter timeFilter)
       throws IOException, ProcessorException {
     long lastBatchTimeStamp = Long.MIN_VALUE;
     boolean isChunkEnd = false;
@@ -262,8 +263,8 @@ public class AggregateEngineExecutor {
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
-    List<EngineReaderByTimeStamp> readersOfSelectedSeries = SeriesReaderFactory
-        .getByTimestampReadersOfSelectedPaths(selectedSeries, context);
+    List<EngineReaderByTimeStamp> readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
+        .createByTimestampReadersOfSelectedPaths(selectedSeries, context);
 
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {

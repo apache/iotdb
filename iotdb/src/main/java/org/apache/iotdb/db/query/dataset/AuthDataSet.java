@@ -29,8 +29,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class AuthDataSet extends QueryDataSet {
 
-  List<RowRecord> records = new ArrayList<>();
-  int index = 0;
+  private List<RowRecord> records = new ArrayList<>();
+  private int index = 0;
 
   public AuthDataSet(List<Path> paths,
       List<TSDataType> dataTypes) {
@@ -43,7 +43,7 @@ public class AuthDataSet extends QueryDataSet {
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  public RowRecord next() {
     return records.get(index++);
   }
 

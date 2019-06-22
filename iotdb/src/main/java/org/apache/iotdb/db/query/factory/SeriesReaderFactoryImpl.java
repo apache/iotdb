@@ -34,8 +34,19 @@ import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderByTimestampV2
 import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderV2;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
+
+  private static final Logger logger = LoggerFactory.getLogger(SeriesReaderFactory.class);
+
+  private SeriesReaderFactoryImpl() {
+  }
+
+  public static SeriesReaderFactoryImpl getInstance() {
+    return SeriesReaderFactoryHelper.INSTANCE;
+  }
 
   @Override
   public IPointReader createUnSeqReader(Path seriesPath, List<TsFileResourceV2> unSeqResources,
@@ -80,30 +91,35 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
   @Override
   public IPointReader createAllDataReader(Path path, Filter timeFilter, QueryContext context)
-      throws FileNodeManagerException {
+      throws FileNodeManagerException, IOException {
     QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
-        .getQueryDataSourceV2(path,
-            context);
+        .getQueryDataSourceV2(path, context);
 
     // sequence reader for one sealed tsfile
     SequenceDataReaderV2 tsFilesReader;
-    try {
+
       tsFilesReader = new SequenceDataReaderV2(queryDataSource.getSeriesPath(),
           queryDataSource.getSeqResources(),
           timeFilter, context);
-    } catch (IOException e) {
-      throw new FileNodeManagerException(e);
-    }
 
     // unseq reader for all chunk groups in unSeqFile
     IPointReader unSeqMergeReader = null;
-    try {
       unSeqMergeReader = createUnSeqReader(path, queryDataSource.getUnseqResources(), timeFilter);
-    } catch (IOException e) {
-      throw new FileNodeManagerException(e);
+
+    if (!tsFilesReader.hasNext()) {
+      //only have unsequence data.
+      return unSeqMergeReader;
+    } else {
+      //merge sequence data with unsequence data.
+      return new AllDataReader(tsFilesReader, unSeqMergeReader);
     }
-    // merge sequence data with unsequence data.
-    return new AllDataReader(tsFilesReader, unSeqMergeReader);
   }
 
+  private static class SeriesReaderFactoryHelper {
+
+    private static final SeriesReaderFactoryImpl INSTANCE = new SeriesReaderFactoryImpl();
+
+    private SeriesReaderFactoryHelper() {
+    }
+  }
 }
