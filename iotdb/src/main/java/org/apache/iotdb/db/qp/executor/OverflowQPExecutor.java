@@ -35,7 +35,7 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -58,7 +58,6 @@ import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AuthDataSet;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.LoadDataUtils;
@@ -73,8 +72,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,11 +80,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
   private static final Logger LOG = LoggerFactory.getLogger(OverflowQPExecutor.class);
 
-  private FileNodeManager fileNodeManager;
+  private FileNodeManagerV2 fileNodeManager;
   private MManager mManager = MManager.getInstance();
 
   public OverflowQPExecutor() {
-    fileNodeManager = FileNodeManager.getInstance();
+    fileNodeManager = FileNodeManagerV2.getInstance();
   }
 
   public static String checkValue(TSDataType dataType, String value) throws ProcessorException {
@@ -126,10 +123,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         }
         return flag;
       case INSERT:
-        InsertPlan insert = (InsertPlan) plan;
-        int result = multiInsert(insert.getDeviceId(), insert.getTime(), insert.getMeasurements(),
-            insert.getValues());
-        return result > 0;
+        return insert((InsertPlan)plan) == 0;
       case CREATE_ROLE:
       case DELETE_ROLE:
       case CREATE_USER:
@@ -230,10 +224,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       fileNodeManager.update(deviceId, measurementId, startTime, endTime, dataType, value);
       return true;
     } catch (PathErrorException e) {
-      throw new ProcessorException(e.getMessage());
-    } catch (FileNodeManagerException e) {
-      e.printStackTrace();
-      throw new ProcessorException(e.getMessage());
+      throw new ProcessorException(e);
     }
   }
 
@@ -254,35 +245,17 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     }
   }
 
-  @Override
-  // return 0: failed, 1: Overflow, 2:Bufferwrite
-  public int insert(Path path, long timestamp, String value) throws ProcessorException {
-    String deviceId = path.getDevice();
-    String measurementId = path.getMeasurement();
-
-    try {
-      TSDataType type = mManager.getSeriesType(deviceId + "," + measurementId);
-      TSRecord tsRecord = new TSRecord(timestamp, deviceId);
-      DataPoint dataPoint = DataPoint.getDataPoint(type, measurementId, value);
-      tsRecord.addTuple(dataPoint);
-      return fileNodeManager.insert(tsRecord, false);
-
-    } catch (PathErrorException e) {
-      throw new ProcessorException("Error in insert: " + e.getMessage());
-    } catch (FileNodeManagerException e) {
-      e.printStackTrace();
-      throw new ProcessorException(e);
-    }
-  }
 
   @Override
-  public int multiInsert(String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues)
+  public int insert(InsertPlan insertPlan)
       throws ProcessorException {
-    try {
-      TSRecord tsRecord = new TSRecord(insertTime, deviceId);
 
-      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+    try {
+      String[] measurementList = insertPlan.getMeasurements();
+      String deviceId = insertPlan.getDeviceId();
+      MNode node = mManager.getNodeByDeviceIdFromCache(insertPlan.getDeviceId());
+      String[] values = insertPlan.getValues();
+      TSDataType[] dataTypes = new TSDataType[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
         if (!node.hasChild(measurementList[i])) {
@@ -297,13 +270,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                   measurementList[i]));
         }
 
-        TSDataType dataType = measurementNode.getSchema().getType();
-        String value = insertValues[i];
-        value = checkValue(dataType, value);
-        DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList[i], value);
-        tsRecord.addTuple(dataPoint);
+        dataTypes[i] = measurementNode.getSchema().getType();
+        values[i] = checkValue(dataTypes[i], values[i]);
       }
-      return fileNodeManager.insert(tsRecord, false);
+      insertPlan.setDataTypes(dataTypes);
+      return fileNodeManager.insert(insertPlan);
 
     } catch (PathErrorException | FileNodeManagerException e) {
       throw new ProcessorException(e.getMessage());
@@ -539,7 +510,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               fileNodeManager.deleteOneFileNode(deleteFileNode);
             }
             for (String closeFileNode : closeFileNodes) {
-              fileNodeManager.closeOneFileNode(closeFileNode);
+              // TODO add close file node method in FileNodeManager
+//              fileNodeManager.(closeFileNode);
             }
           }
           break;

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -106,26 +107,11 @@ public interface IQueryProcessExecutor {
   boolean delete(Path path, long deleteTime) throws ProcessorException;
 
   /**
-   * insert a single value. Only used in test
-   *
-   * @param path seriesPath to be inserted
-   * @param insertTime - it's time point but not a range
-   * @param value value to be inserted
-   * @return - Operate Type.
-   */
-  int insert(Path path, long insertTime, String value) throws ProcessorException;
-
-  /**
    * execute insert command and return whether the operator is successful.
    *
-   * @param deviceId deviceId to be inserted
-   * @param insertTime - it's time point but not a range
-   * @param measurementList measurements to be inserted
-   * @param insertValues values to be inserted
    * @return - Operate Type.
    */
-  int multiInsert(String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) throws ProcessorException;
+  int insert(InsertPlan insertPlan) throws ProcessorException;
 
   boolean judgePathExists(Path fullPath);
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -54,7 +55,7 @@ public interface IMemTable {
    */
   long memSize();
 
-  void insert(TSRecord tsRecord);
+  void insert(InsertPlan insertPlan);
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       Map<String, String> props);

@@ -26,6 +26,7 @@ import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class InsertPlan extends PhysicalPlan {
@@ -33,6 +34,7 @@ public class InsertPlan extends PhysicalPlan {
   private static final long serialVersionUID = 6102845312368561515L;
   private String deviceId;
   private String[] measurements;
+  private TSDataType[] dataTypes;
   private String[] values;
   private long time;
 
@@ -73,6 +75,14 @@ public class InsertPlan extends PhysicalPlan {
 
   public void setTime(long time) {
     this.time = time;
+  }
+
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
+  }
+
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
   }
 
   @Override

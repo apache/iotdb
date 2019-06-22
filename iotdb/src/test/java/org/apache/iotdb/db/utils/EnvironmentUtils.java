@@ -25,7 +25,7 @@ import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.cache.RowGroupBlockMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
@@ -57,7 +57,7 @@ public class EnvironmentUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentUtils.class);
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static Directories directories = Directories.getInstance();
+  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
   private static TSFileConfig tsfileConfig = TSFileDescriptor.getInstance().getConfig();
 
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
@@ -99,7 +99,7 @@ public class EnvironmentUtils {
 
   private static void cleanAllDir() throws IOException {
     // delete bufferwrite
-    for (String path : directories.getAllTsFileFolders()) {
+    for (String path : directoryManager.getAllTsFileFolders()) {
       cleanDir(path);
     }
     // delete overflow
@@ -179,7 +179,7 @@ public class EnvironmentUtils {
 
   private static void createAllDir() throws IOException {
     // create bufferwrite
-    for (String path : directories.getAllTsFileFolders()) {
+    for (String path : directoryManager.getAllTsFileFolders()) {
       createDir(path);
     }
     // create overflow

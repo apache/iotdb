@@ -37,6 +37,9 @@ import org.apache.iotdb.db.engine.memtable.MemTablePool;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
+import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -76,6 +79,8 @@ public class UnsealedTsFileProcessorV2 {
 
   private Supplier flushUpdateLatestFlushTimeCallback;
 
+  private WriteLogNode logNode;
+
   /**
    * sync this object in query() and asyncFlush()
    */
@@ -91,6 +96,7 @@ public class UnsealedTsFileProcessorV2 {
     this.tsFileResource = new TsFileResourceV2(tsfile, this);
     this.versionController = versionController;
     this.writer = new NativeRestorableIOWriter(tsfile);
+    this.logNode = MultiFileLogNodeManager.getInstance().getNode(storageGroupName + "-" + tsfile.getName());
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;
     this.flushUpdateLatestFlushTimeCallback = flushUpdateLatestFlushTimeCallback;
   }
@@ -99,10 +105,10 @@ public class UnsealedTsFileProcessorV2 {
    * insert a TsRecord into the workMemtable. If the memory usage is beyond the memTableThreshold,
    * put it into flushing list.
    *
-   * @param tsRecord data to be written
+   * @param insertPlan physical plan of insertion
    * @return succeed or fail
    */
-  public boolean insert(TSRecord tsRecord) {
+  public boolean insert(InsertPlan insertPlan) {
 
     if (workMemTable == null) {
       // TODO change the impl of getEmptyMemTable to non-blocking
@@ -114,13 +120,18 @@ public class UnsealedTsFileProcessorV2 {
       }
     }
 
-    // TODO insert WAL
+    try {
+      logNode.write(insertPlan);
+    } catch (IOException e) {
+      LOGGER.error("write WAL failed", e);
+      return false;
+    }
 
     // update start time of this memtable
-    tsFileResource.updateStartTime(tsRecord.deviceId, tsRecord.time);
+    tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
 
     // insert tsRecord to work memtable
-    workMemTable.insert(tsRecord);
+    workMemTable.insert(insertPlan);
 
     return true;
   }
@@ -143,10 +154,13 @@ public class UnsealedTsFileProcessorV2 {
       if (workMemTable == null) {
         return;
       }
+      logNode.notifyStartFlush();
       flushingMemTables.addLast(workMemTable);
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
       flushUpdateLatestFlushTimeCallback.get();
       workMemTable = null;
+    } catch (IOException e) {
+      LOGGER.error("WAL notify start flush failed", e);
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -203,7 +217,9 @@ public class UnsealedTsFileProcessorV2 {
       MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
           this::releaseFlushedMemTableCallback);
       flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
+      logNode.notifyEndFlush();
     }
+
     // for sync flush
     synchronized (memTableToFlush) {
       memTableToFlush.notify();

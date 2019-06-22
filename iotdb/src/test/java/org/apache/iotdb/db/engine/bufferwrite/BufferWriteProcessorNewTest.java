@@ -31,7 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
@@ -93,7 +93,7 @@ public class BufferWriteProcessorNewTest {
   @Test
   public void testWriteAndFlush()
       throws BufferWriteProcessorException, WriteProcessException, IOException, InterruptedException {
-    bufferwrite = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(),
+    bufferwrite = new BufferWriteProcessor(DirectoryManager.getInstance().getFolderForTest(),
         processorName, filename,
         parameters, x->{},  SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(processorName));
@@ -148,7 +148,7 @@ public class BufferWriteProcessorNewTest {
 
     // test recovery
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
-        Directories.getInstance().getFolderForTest(), processorName, filename, parameters, x->{},
+        DirectoryManager.getInstance().getFolderForTest(), processorName, filename, parameters, x->{},
         SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(processorName));
     pair = bufferWriteProcessor.queryBufferWriteData(processorName, measurementId, dataType, props);

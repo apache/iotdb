@@ -30,8 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.locks.ReadWriteLock;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.bufferwrite.RestorableTsFileIOWriter;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -48,7 +47,7 @@ public class TsFileResource {
 
   private OverflowChangeType overflowChangeType;
 
-  //the file index of `settled` folder in the Directories.
+  //the file index of `settled` folder in the DirectoryManager.
   private int baseDirIndex;
   private File file;
   private Map<String, Long> startTimeMap;
@@ -114,7 +113,7 @@ public class TsFileResource {
 
     this.overflowChangeType = type;
     if (file != null) {
-      this.baseDirIndex = Directories.getInstance()
+      this.baseDirIndex = DirectoryManager.getInstance()
           .getTsFileFolderIndex(file.getParentFile().getParent());
       this.modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
     }
@@ -157,7 +156,7 @@ public class TsFileResource {
     File file = null;
     if (hasRelativePath) {
       String relativePath = ReadWriteIOUtils.readString(inputStream);
-      file = new File(Directories.getInstance().getTsFileFolder(baseDirIndex), relativePath);
+      file = new File(DirectoryManager.getInstance().getTsFileFolder(baseDirIndex), relativePath);
     }
     int size = ReadWriteIOUtils.readInt(inputStream);
     Map<String, Long> startTimes = new HashMap<>();
@@ -375,7 +374,7 @@ public class TsFileResource {
   public void setFile(File file) throws IOException {
     this.file = file;
     if (file != null) {
-      this.baseDirIndex = Directories.getInstance()
+      this.baseDirIndex = DirectoryManager.getInstance()
           .getTsFileFolderIndex(file.getParentFile().getParent());
       if (this.modFile != null) {
         this.modFile.close();

@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -57,6 +58,13 @@ public class TsFileResourceV2 {
    * Mem chunk data
    */
   private ReadOnlyMemChunk readOnlyMemChunk;
+
+  public TsFileResourceV2(File file) {
+    this.file = file;
+    this.startTimeMap = new HashMap<>();
+    this.endTimeMap = new HashMap<>();
+    this.closed = true;
+  }
 
   public TsFileResourceV2(File file, UnsealedTsFileProcessorV2 processor) {
     this.file = file;
@@ -123,5 +131,13 @@ public class TsFileResourceV2 {
 
   public UnsealedTsFileProcessorV2 getUnsealedFileProcessor() {
     return processor;
+  }
+
+  public void updateTime(String deviceId, long time) {
+    startTimeMap.putIfAbsent(deviceId, time);
+    Long endTime = endTimeMap.get(deviceId);
+    if (endTime == null || endTime < time) {
+      endTimeMap.put(deviceId, time);
+    }
   }
 }

@@ -42,7 +42,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
@@ -471,7 +471,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         String relativePath = path.substring(header.length());
         TsFileResource fileNode = new TsFileResource(startTimeMap, endTimeMap,
             OverflowChangeType.NO_CHANGE, new File(
-            Directories.getInstance().getNextFolderIndexForTsFile() + File.separator + relativePath)
+            DirectoryManager.getInstance().getNextFolderIndexForTsFile() + File.separator + relativePath)
         );
         // call interface of load external file
         try {
@@ -557,7 +557,7 @@ public class SyncServiceImpl implements SyncService.Iface {
             }
           }
           if (insertExecutor
-              .multiInsert(deviceId, record.getTimestamp(), measurementList.toArray(new String[]{}),
+              .insert(deviceId, record.getTimestamp(), measurementList.toArray(new String[]{}),
                   insertValues.toArray(new String[]{})) <= 0) {
             throw new IOException("Inserting series data to IoTDB engine has failed.");
           }
@@ -634,7 +634,7 @@ public class SyncServiceImpl implements SyncService.Iface {
           /** If there has no overlap data with the timeseries, inserting all data in the sync file **/
           if (originDataPoints.isEmpty()) {
             for (InsertPlan insertPlan : newDataPoints) {
-              if (insertExecutor.multiInsert(insertPlan.getDeviceId(), insertPlan.getTime(),
+              if (insertExecutor.insert(insertPlan.getDeviceId(), insertPlan.getTime(),
                   insertPlan.getMeasurements(), insertPlan.getValues()) <= 0) {
                 throw new IOException("Inserting series data to IoTDB engine has failed.");
               }
@@ -643,7 +643,7 @@ public class SyncServiceImpl implements SyncService.Iface {
             /** Compare every data to get valid data **/
             for (InsertPlan insertPlan : newDataPoints) {
               if (!originDataPoints.contains(insertPlan)) {
-                if (insertExecutor.multiInsert(insertPlan.getDeviceId(), insertPlan.getTime(),
+                if (insertExecutor.insert(insertPlan.getDeviceId(), insertPlan.getTime(),
                     insertPlan.getMeasurements(), insertPlan.getValues()) <= 0) {
                   throw new IOException("Inserting series data to IoTDB engine has failed.");
                 }

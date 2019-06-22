@@ -50,7 +50,7 @@ import java.util.function.Consumer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.ActionException;
@@ -120,7 +120,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessor.class);
   private static final IoTDBConfig TsFileDBConf = IoTDBDescriptor.getInstance().getConfig();
   private static final MManager mManager = MManager.getInstance();
-  private static final Directories directories = Directories.getInstance();
+  private static final DirectoryManager DIRECTORY_MANAGER = DirectoryManager.getInstance();
   private final String statStorageDeltaName;
   private final HashMap<String, AtomicLong> statParamsHashMap = new HashMap<>();
   /**
@@ -545,7 +545,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       //params.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
       params
           .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
-      String baseDir = directories.getNextFolderForTsfile();
+      String baseDir = DIRECTORY_MANAGER.getNextFolderForTsfile();
       LOGGER.info("Allocate folder {} for the new bufferwrite processor.", baseDir);
       // construct processor or restore
       try {
@@ -924,7 +924,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                 + Constans.BACK_UP_DIRECTORY_NAME
                 + File.separatorChar + tsFileResource.getRelativePath();
         File newFile = new File(
-            Directories.getInstance().getTsFileFolder(tsFileResource.getBaseDirIndex()),
+            DirectoryManager.getInstance().getTsFileFolder(tsFileResource.getBaseDirIndex()),
             relativeFilePath);
         if (!newFile.getParentFile().exists()) {
           newFile.getParentFile().mkdirs();
@@ -1378,7 +1378,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         // delete the all files which are in the newFileNodes
         // notice: the last restore file of the interval file
 
-        List<String> bufferwriteDirPathList = directories.getAllTsFileFolders();
+        List<String> bufferwriteDirPathList = DIRECTORY_MANAGER.getAllTsFileFolders();
         List<File> bufferwriteDirList = new ArrayList<>();
         collectBufferWriteDirs(bufferwriteDirPathList, bufferwriteDirList);
 
@@ -1577,7 +1577,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         numOfChunk++;
         TimeValuePair timeValuePair = seriesReader.next();
         if (mergeFileWriter == null) {
-          mergeBaseDir = directories.getNextFolderForTsfile();
+          mergeBaseDir = DIRECTORY_MANAGER.getNextFolderForTsfile();
           mergeFileName = timeValuePair.getTimestamp()
               + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis();
           mergeOutputPath = constructOutputFilePath(mergeBaseDir, getProcessorName(),

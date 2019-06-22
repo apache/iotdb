@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,21 +32,23 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.writelog.recover.SeqTsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -56,7 +59,7 @@ public class FileNodeProcessorV2 {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessorV2.class);
 
   private static final MManager mManager = MManager.getInstance();
-  private static final Directories directories = Directories.getInstance();
+  private static final DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   private FileSchema fileSchema;
 
@@ -119,9 +122,42 @@ public class FileNodeProcessorV2 {
     this.fileSchema = constructFileSchema(storageGroupName);
   }
 
-  // TODO: Jiang Tian
-  private void recovery(){
+  private void recovery() throws ProcessorException {
+    List<String> tsfiles = new ArrayList<>();
+    List<String> fileFolders = directoryManager.getAllTsFileFolders();
+    for (String baseDir: fileFolders) {
+      File fileFolder = new File(baseDir, storageGroupName);
+      if (!fileFolder.exists()) {
+        continue;
+      }
+      for (File tsfile: fileFolder.listFiles()) {
+        tsfiles.add(tsfile.getPath());
+      }
+    }
+
+    Collections.sort(tsfiles, );
+
+    for (String tsfile: tsfiles) {
+      TsFileResourceV2 tsFileResource = new TsFileResourceV2(new File(tsfile));
+      SeqTsFileRecoverPerformer recoverPerformer = new SeqTsFileRecoverPerformer(storageGroupName + "-", fileSchema, versionController, tsFileResource);
+      recoverPerformer.recover();
+    }
+
+    tsfiles.clear();
+    String unseqFileFolder = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
+    File fileFolder = new File(unseqFileFolder, storageGroupName);
+    if (!fileFolder.exists()) {
+      return;
+    }
+    for (File unseqFile: fileFolder.listFiles()) {
+      tsfiles.add(unseqFile.getPath());
+    }
+
+    for
+
   }
+
+
 
   private FileSchema constructFileSchema(String storageGroupName) {
     List<MeasurementSchema> columnSchemaList;
@@ -151,11 +187,9 @@ public class FileNodeProcessorV2 {
   }
 
   /**
-   *
-   * @param tsRecord
    * @return -1: failed, 1: Overflow, 2:Bufferwrite
    */
-  public int insert(TSRecord tsRecord) {
+  public int insert(InsertPlan insertPlan) {
     lock.writeLock().lock();
     int insertResult;
 
@@ -164,16 +198,16 @@ public class FileNodeProcessorV2 {
         return -1;
       }
       // init map
-      latestTimeForEachDevice.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
-      latestFlushedTimeForEachDevice.putIfAbsent(tsRecord.deviceId, Long.MIN_VALUE);
+      latestTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
+      latestFlushedTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
 
       boolean result;
       // insert to sequence or unSequence file
-      if (tsRecord.time > latestFlushedTimeForEachDevice.get(tsRecord.deviceId)) {
-        result = insertUnsealedDataFile(tsRecord, true);
+      if (insertPlan.getTime() > latestFlushedTimeForEachDevice.get(insertPlan.getDeviceId())) {
+        result = insertUnsealedDataFile(insertPlan, true);
         insertResult = result ? 1 : -1;
       } else {
-        result = insertUnsealedDataFile(tsRecord, false);
+        result = insertUnsealedDataFile(insertPlan, false);
         insertResult = result ? 2 : -1;
       }
     } catch (Exception e) {
@@ -186,7 +220,7 @@ public class FileNodeProcessorV2 {
     return insertResult;
   }
 
-  private boolean insertUnsealedDataFile(TSRecord tsRecord, boolean sequence) throws IOException {
+  private boolean insertUnsealedDataFile(InsertPlan insertPlan, boolean sequence) throws IOException {
     lock.writeLock().lock();
     UnsealedTsFileProcessorV2 unsealedTsFileProcessor;
     try {
@@ -195,8 +229,8 @@ public class FileNodeProcessorV2 {
       if (sequence) {
         if (workSequenceTsFileProcessor == null) {
 
-          // TODO directories add method getAndCreateNextFolderTsfile
-          String baseDir = directories.getNextFolderForTsfile();
+          // TODO directoryManager add method getAndCreateNextFolderTsfile
+          String baseDir = directoryManager.getNextFolderForTsfile();
           String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "-" + versionController.nextVersion()).toString();
 
           new File(baseDir, storageGroupName).mkdirs();
@@ -208,7 +242,7 @@ public class FileNodeProcessorV2 {
         unsealedTsFileProcessor = workSequenceTsFileProcessor;
       } else {
         if (workUnSequenceTsFileProcessor == null) {
-          // TODO check if the disk is full
+          // TODO check if the disk is full, move this
           String baseDir = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
           new File(baseDir, storageGroupName).mkdirs();
           String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "-" + +versionController.nextVersion()).toString();
@@ -222,11 +256,11 @@ public class FileNodeProcessorV2 {
       }
 
       // insert BufferWrite
-      result = unsealedTsFileProcessor.insert(tsRecord);
+      result = unsealedTsFileProcessor.insert(insertPlan);
 
       // try to update the latest time of the device of this tsRecord
-      if (result && latestTimeForEachDevice.get(tsRecord.deviceId) < tsRecord.time) {
-        latestTimeForEachDevice.put(tsRecord.deviceId, tsRecord.time);
+      if (result && latestTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
+        latestTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
       }
 
       // check memtable size and may asyncFlush the workMemtable

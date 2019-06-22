@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
+import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -51,7 +52,7 @@ public class LogReplayer {
   private String insertFilePath;
   private ModificationFile modFile;
   private VersionController versionController;
-  private TsFileResource currentTsFileResource;
+  private TsFileResourceV2 currentTsFileResource;
   // fileSchema is used to get the measurement data type
   private FileSchema fileSchema;
   private IMemTable recoverMemTable;
@@ -59,7 +60,7 @@ public class LogReplayer {
   public LogReplayer(String logNodePrefix, String insertFilePath,
       ModificationFile modFile,
       VersionController versionController,
-      TsFileResource currentTsFileResource,
+      TsFileResourceV2 currentTsFileResource,
       FileSchema fileSchema, IMemTable memTable) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
@@ -110,24 +111,20 @@ public class LogReplayer {
   }
 
   private void replayInsert(InsertPlan insertPlan) {
-    TSRecord tsRecord = new TSRecord(insertPlan.getTime(), insertPlan.getDeviceId());
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs
-      if (currentTsFileResource.getEndTime(insertPlan.getDeviceId()) >= insertPlan.getTime()) {
+      if (currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId()) >= insertPlan.getTime()) {
         return;
       }
       currentTsFileResource.updateTime(insertPlan.getDeviceId(), insertPlan.getTime());
     }
     String[] measurementList = insertPlan.getMeasurements();
-    String[] insertValues = insertPlan.getValues();
-
+    TSDataType[] dataTypes = new TSDataType[measurementList.length];
     for (int i = 0; i < measurementList.length; i++) {
-      TSDataType dataType = fileSchema.getMeasurementDataType(measurementList[i]);
-      String value = insertValues[i];
-      DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList[i], value);
-      tsRecord.addTuple(dataPoint);
+      dataTypes[i] = fileSchema.getMeasurementDataType(measurementList[i]);
     }
-    recoverMemTable.insert(tsRecord);
+    insertPlan.setDataTypes(dataTypes);
+    recoverMemTable.insert(insertPlan);
   }
 
   private void replayUpdate(UpdatePlan updatePlan) {

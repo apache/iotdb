@@ -27,6 +27,7 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -101,10 +101,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         }
         return flag;
       case INSERT:
-        InsertPlan insert = (InsertPlan) plan;
-        int result = multiInsert(insert.getDeviceId(), insert.getTime(), insert.getMeasurements(),
-            insert.getValues());
-        return result == 0;
+        return insert((InsertPlan) plan) == 0;
       default:
         throw new UnsupportedOperationException();
     }
@@ -181,18 +178,6 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public int insert(Path path, long insertTime, String value) {
-    String strPath = path.toString();
-    if (!demoMemDataBase.containsKey(strPath)) {
-      demoMemDataBase.put(strPath, new TestSeries());
-    }
-    demoMemDataBase.get(strPath).data.put(insertTime, Integer.valueOf(value));
-    timeStampUnion.add(insertTime);
-    LOG.info("insert into {}:<{},{}>", path, insertTime, value);
-    return 0;
-  }
-
-  @Override
   public List<String> getAllPaths(String fullPath) {
     return fakeAllPaths != null ? fakeAllPaths.get(fullPath) : new ArrayList<String>() {
       {
@@ -202,8 +187,15 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public int multiInsert(String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) {
+  public int insert(InsertPlan insertPlan) {
+    for (int i = 0; i < insertPlan.getMeasurements().length; i++) {
+      String strPath = insertPlan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + insertPlan.getMeasurements()[i];
+      if (!demoMemDataBase.containsKey(strPath)) {
+        demoMemDataBase.put(strPath, new TestSeries());
+      }
+      demoMemDataBase.get(strPath).data.put(insertPlan.getTime(), Integer.valueOf(insertPlan.getValues()[i]));
+      timeStampUnion.add(insertPlan.getTime());
+    }
     return 0;
   }
 

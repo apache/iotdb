@@ -37,7 +37,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
@@ -78,7 +78,7 @@ public class FileNodeManager implements IStatistic, IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeManager.class);
   private static final IoTDBConfig TsFileDBConf = IoTDBDescriptor.getInstance().getConfig();
-  private static final Directories directories = Directories.getInstance();
+  private static final DirectoryManager DIRECTORY_MANAGER = DirectoryManager.getInstance();
   /**
    * a folder that persist FileNodeProcessorStore classes. Each stroage group will have a subfolder.
    * by default, it is system/info
@@ -961,7 +961,7 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   private void cleanBufferWrite(String processorName) throws IOException {
-    List<String> bufferwritePathList = directories.getAllTsFileFolders();
+    List<String> bufferwritePathList = DIRECTORY_MANAGER.getAllTsFileFolders();
     for (String bufferwritePath : bufferwritePathList) {
       bufferwritePath = standardizeDir(bufferwritePath) + processorName;
       File bufferDir = new File(bufferwritePath);

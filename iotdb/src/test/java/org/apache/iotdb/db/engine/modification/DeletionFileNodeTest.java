@@ -30,7 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -144,7 +144,7 @@ public class DeletionFileNodeTest {
         new Deletion(processorName + "." + measurements[3], 104, 30),
     };
 
-    String fileNodePath = Directories.getInstance().getTsFileFolder(0) + File.separator
+    String fileNodePath = DirectoryManager.getInstance().getTsFileFolder(0) + File.separator
         + processorName;
     File fileNodeDir = new File(fileNodePath);
     File[] modFiles = fileNodeDir.listFiles((dir, name)

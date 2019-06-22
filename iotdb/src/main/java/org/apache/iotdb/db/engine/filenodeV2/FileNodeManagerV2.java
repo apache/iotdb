@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -157,22 +158,22 @@ public class FileNodeManagerV2 implements IService {
   /**
    * insert TsRecord into storage group.
    *
-   * @param tsRecord input Data
+   * @param insertPlan physical plan of insertion
    * @return an int value represents the insert type, 0: failed; 1: overflow; 2: bufferwrite
    */
-  public int insert(TSRecord tsRecord) throws FileNodeManagerException {
+  public int insert(InsertPlan insertPlan) throws FileNodeManagerException {
 
     FileNodeProcessorV2 fileNodeProcessor;
     try {
-      fileNodeProcessor = getProcessor(tsRecord.deviceId);
+      fileNodeProcessor = getProcessor(insertPlan.getDeviceId());
     } catch (Exception e) {
-      LOGGER.warn("get FileNodeProcessor of device {} failed, because {}", tsRecord.deviceId,
+      LOGGER.warn("get FileNodeProcessor of device {} failed, because {}", insertPlan.getDeviceId(),
           e.getMessage(), e);
       throw new FileNodeManagerException(e);
     }
 
     // TODO monitor: update statistics
-    return fileNodeProcessor.insert(tsRecord);
+    return fileNodeProcessor.insert(insertPlan);
   }
 
 
