@@ -84,7 +84,7 @@ public class IoTDBSequenceDataQueryIT {
     daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(5000);
+//    Thread.sleep(5000);
     insertData();
   }
 
@@ -132,7 +132,7 @@ public class IoTDBSequenceDataQueryIT {
         }
       }
 
-      statement.execute("flushMetadata");
+      statement.execute("flush");
 
       // insert data (time from 1200-1499)
       for (long time = 1200; time < 1500; time++) {
