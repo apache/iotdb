@@ -135,7 +135,7 @@ public class FileNodeProcessorV2 {
       }
     }
 
-    Collections.sort(tsfiles, );
+//    Collections.sort(tsfiles, );
 
     for (String tsfile: tsfiles) {
       TsFileResourceV2 tsFileResource = new TsFileResourceV2(new File(tsfile));
