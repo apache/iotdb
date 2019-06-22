@@ -22,7 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.writelog.recover.SeqTsFileRecoverPerformer;
+import org.apache.iotdb.db.writelog.recover.UnSeqTsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -101,7 +102,7 @@ public class FileNodeProcessorV2 {
     lock = new ReentrantReadWriteLock();
     closeFileNodeCondition = lock.writeLock().newCondition();
 
-    recovery();
+    recover();
 
     /**
      * version controller
@@ -122,8 +123,8 @@ public class FileNodeProcessorV2 {
     this.fileSchema = constructFileSchema(storageGroupName);
   }
 
-  private void recovery() throws ProcessorException {
-    List<String> tsfiles = new ArrayList<>();
+  private void recover() throws ProcessorException {
+    List<String> tsFiles = new ArrayList<>();
     List<String> fileFolders = directoryManager.getAllTsFileFolders();
     for (String baseDir: fileFolders) {
       File fileFolder = new File(baseDir, storageGroupName);
@@ -131,31 +132,43 @@ public class FileNodeProcessorV2 {
         continue;
       }
       for (File tsfile: fileFolder.listFiles()) {
-        tsfiles.add(tsfile.getPath());
+        tsFiles.add(tsfile.getPath());
       }
     }
+    recoverSeqFiles(tsFiles);
 
-//    Collections.sort(tsfiles, );
-
-    for (String tsfile: tsfiles) {
-      TsFileResourceV2 tsFileResource = new TsFileResourceV2(new File(tsfile));
-      SeqTsFileRecoverPerformer recoverPerformer = new SeqTsFileRecoverPerformer(storageGroupName + "-", fileSchema, versionController, tsFileResource);
-      recoverPerformer.recover();
-    }
-
-    tsfiles.clear();
+    tsFiles.clear();
     String unseqFileFolder = IoTDBDescriptor.getInstance().getConfig().getOverflowDataDir();
     File fileFolder = new File(unseqFileFolder, storageGroupName);
     if (!fileFolder.exists()) {
       return;
     }
     for (File unseqFile: fileFolder.listFiles()) {
-      tsfiles.add(unseqFile.getPath());
+      tsFiles.add(unseqFile.getPath());
     }
-
-
+    recoverUnseqFiles(tsFiles);
   }
 
+  private void recoverSeqFiles(List<String> tsfiles) throws ProcessorException {
+    tsfiles.sort(Comparator.comparingInt(file -> Integer.parseInt(file.split("-")[1])));
+    for (String tsfile: tsfiles) {
+      TsFileResourceV2 tsFileResource = new TsFileResourceV2(new File(tsfile));
+      sequenceFileList.add(tsFileResource);
+      SeqTsFileRecoverPerformer recoverPerformer = new SeqTsFileRecoverPerformer(storageGroupName + "-", fileSchema, versionController, tsFileResource);
+      recoverPerformer.recover();
+    }
+  }
+
+  private void recoverUnseqFiles(List<String> tsfiles) throws ProcessorException {
+    tsfiles.sort(Comparator.comparingInt(file -> Integer.parseInt(file.split("-")[1])));
+    for (String tsfile: tsfiles) {
+      TsFileResourceV2 tsFileResource = new TsFileResourceV2(new File(tsfile));
+      unSequenceFileList.add(tsFileResource);
+      UnSeqTsFileRecoverPerformer recoverPerformer = new UnSeqTsFileRecoverPerformer(storageGroupName + "-", fileSchema,
+          versionController, tsFileResource);
+      recoverPerformer.recover();
+    }
+  }
 
 
   private FileSchema constructFileSchema(String storageGroupName) {
