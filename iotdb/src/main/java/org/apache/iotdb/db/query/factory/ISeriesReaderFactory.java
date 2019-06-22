@@ -63,5 +63,5 @@ public interface ISeriesReaderFactory {
    * @return the list of EngineReaderByTimeStamp
    */
   IPointReader createAllDataReader(Path path, Filter timeFilter,
-                                   QueryContext context) throws FileNodeManagerException;
+      QueryContext context) throws FileNodeManagerException, IOException;
 }
