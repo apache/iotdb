@@ -318,6 +318,8 @@ public class UnsealedTsFileProcessorV2 {
           Collections.emptyMap());
       return new Pair<>(timeValuePairSorter,
           writer.getVisibleMetadatas(deviceId, measurementId, dataType));
+      //RL: TODO 后面查询处理时认为这里返回的List<ChunkMetaData>是已经被mod处理过的？
+
     } finally {
       flushQueryLock.readLock().unlock();
     }

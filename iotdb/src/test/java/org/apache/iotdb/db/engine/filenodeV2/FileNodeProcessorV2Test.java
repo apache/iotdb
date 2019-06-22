@@ -62,8 +62,8 @@ public class FileNodeProcessorV2Test {
 
     processor.syncCloseFileNode();
     QueryDataSourceV2 queryDataSource = processor.query(deviceId, measurementId);
-    Assert.assertEquals(queryDataSource.getSeqDataSource().getQueryTsFiles().size(), 100);
-    for (TsFileResourceV2 resource : queryDataSource.getSeqDataSource().getQueryTsFiles()) {
+    Assert.assertEquals(queryDataSource.getSeqResources().size(), 100);
+    for (TsFileResourceV2 resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
   }
@@ -90,12 +90,12 @@ public class FileNodeProcessorV2Test {
     processor.syncCloseFileNode();
 
     QueryDataSourceV2 queryDataSource = processor.query(deviceId, measurementId);
-    Assert.assertEquals(10, queryDataSource.getSeqDataSource().getQueryTsFiles().size());
-    Assert.assertEquals(10, queryDataSource.getUnSequenceDataSource().getQueryTsFiles().size());
-    for (TsFileResourceV2 resource : queryDataSource.getSeqDataSource().getQueryTsFiles()) {
+    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
+    for (TsFileResourceV2 resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
-    for (TsFileResourceV2 resource : queryDataSource.getUnSequenceDataSource().getQueryTsFiles()) {
+    for (TsFileResourceV2 resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
   }

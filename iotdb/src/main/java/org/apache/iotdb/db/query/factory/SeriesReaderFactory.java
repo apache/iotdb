@@ -245,7 +245,7 @@ public class SeriesReaderFactory {
 
       // reader for sequence data
       SequenceDataReaderByTimestampV2 tsFilesReader = new SequenceDataReaderByTimestampV2(path,
-          queryDataSource.getSeqDataSource().getQueryTsFiles(), context);
+          queryDataSource.getSeqResources(), context);
       mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
 
       // reader for unSequence data
