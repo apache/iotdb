@@ -31,7 +31,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -40,6 +40,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
 import org.apache.iotdb.db.monitor.collector.FileSize;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -349,7 +350,7 @@ public class StatMonitor implements IService {
         if (seconds >= statMonitorDetectFreqSec) {
           runningTimeMillis = currentTimeMillis;
           // delete time-series data
-          FileNodeManager fManager = FileNodeManager.getInstance();
+          FileNodeManagerV2 fManager = FileNodeManagerV2.getInstance();
           try {
             for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
               for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
@@ -374,11 +375,11 @@ public class StatMonitor implements IService {
     }
 
     public void insert(Map<String, TSRecord> tsRecordHashMap) {
-      FileNodeManager fManager = FileNodeManager.getInstance();
+      FileNodeManagerV2 fManager = FileNodeManagerV2.getInstance();
       int pointNum;
       for (Map.Entry<String, TSRecord> entry : tsRecordHashMap.entrySet()) {
         try {
-          fManager.insert(entry.getValue(), true);
+          fManager.insert(new InsertPlan(entry.getValue()));
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);

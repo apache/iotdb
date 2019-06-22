@@ -39,7 +39,7 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -416,7 +416,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     switch (statement) {
       case "flushMetadata":
         try {
-          FileNodeManager.getInstance().closeAll();
+          FileNodeManagerV2.getInstance().syncCloseAllProcessor();
         } catch (FileNodeManagerException e) {
           LOGGER.error("meet error while FileNodeManager closing all!", e);
           throw new IOException(e);
@@ -424,7 +424,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return true;
       case "merge":
         try {
-          FileNodeManager.getInstance().mergeAll();
+          // TODO change to merge!!!
+          FileNodeManagerV2.getInstance().syncCloseAllProcessor();
         } catch (FileNodeManagerException e) {
           LOGGER.error("meet error while FileNodeManager merging all!", e);
           throw new IOException(e);

@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.PathUtils;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
@@ -137,7 +137,7 @@ public class BufferwriteFileSizeControlTest {
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
 
     try {
-      processor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(), nsp,
+      processor = new BufferWriteProcessor(DirectoryManager.getInstance().getFolderForTest(), nsp,
           filename,
           parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
           FileSchemaUtils.constructFileSchema(nsp));

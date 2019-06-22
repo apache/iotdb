@@ -26,7 +26,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
@@ -63,5 +62,5 @@ public interface ISeriesReaderFactory {
    * @return the list of EngineReaderByTimeStamp
    */
   IPointReader createAllDataReader(Path path, Filter timeFilter,
-      QueryContext context) throws FileNodeManagerException;
+      QueryContext context) throws FileNodeManagerException, IOException;
 }

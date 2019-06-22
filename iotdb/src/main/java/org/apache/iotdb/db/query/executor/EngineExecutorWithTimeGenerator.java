@@ -28,7 +28,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithTimeGenerator;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
+import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 /**
- * IoTDB query executor with filter.
+ * IoTDB query executor with value filter.
  */
 public class EngineExecutorWithTimeGenerator {
 
@@ -51,7 +51,6 @@ public class EngineExecutorWithTimeGenerator {
    * execute query.
    *
    * @return QueryDataSet object
-   * @throws IOException IOException
    * @throws FileNodeManagerException FileNodeManagerException
    */
   public QueryDataSet execute(QueryContext context) throws FileNodeManagerException {
@@ -63,13 +62,10 @@ public class EngineExecutorWithTimeGenerator {
 
     EngineTimeGenerator timestampGenerator;
     List<EngineReaderByTimeStamp> readersOfSelectedSeries;
-    try {
-      timestampGenerator = new EngineTimeGenerator(queryExpression.getExpression(), context);
-      readersOfSelectedSeries = SeriesReaderFactory
-          .getByTimestampReadersOfSelectedPathsV2(queryExpression.getSelectedSeries(), context);
-    } catch (IOException ex) {
-      throw new FileNodeManagerException(ex);
-    }
+
+    timestampGenerator = new EngineTimeGenerator(queryExpression.getExpression(), context);
+    readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
+        .createByTimestampReadersOfSelectedPaths(queryExpression.getSelectedSeries(), context);
 
     List<TSDataType> dataTypes = new ArrayList<>();
 

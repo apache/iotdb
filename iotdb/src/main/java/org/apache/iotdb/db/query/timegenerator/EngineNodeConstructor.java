@@ -24,8 +24,11 @@ import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 import java.io.IOException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 
 public class EngineNodeConstructor extends AbstractNodeConstructor {
@@ -38,7 +41,6 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
    *
    * @param expression expression
    * @return Node object
-   * @throws IOException IOException
    * @throws FileNodeManagerException FileNodeManagerException
    */
   @Override
@@ -46,8 +48,10 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
       throws FileNodeManagerException {
     if (expression.getType() == SERIES) {
       try {
-        return new EngineLeafNode(generateSeriesReader((SingleSeriesExpression) expression,
-            context));
+        Filter filter = ((SingleSeriesExpression) expression).getFilter();
+        Path path = ((SingleSeriesExpression) expression).getSeriesPath();
+        return new EngineLeafNode(
+            SeriesReaderFactoryImpl.getInstance().createAllDataReader(path, filter, context));
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }

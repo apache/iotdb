@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
@@ -69,10 +70,10 @@ public class PhysicalPlanTest {
     Path path4 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d4", "s1"},
             SystemConstant.PATH_SEPARATOR));
-    processor.getExecutor().insert(path1, 10, "10");
-    processor.getExecutor().insert(path2, 10, "10");
-    processor.getExecutor().insert(path3, 10, "10");
-    processor.getExecutor().insert(path4, 10, "10");
+    processor.getExecutor().insert(new InsertPlan(path1.getDevice(), 10, path1.getMeasurement(), "10"));
+    processor.getExecutor().insert(new InsertPlan(path2.getDevice(), 10, path2.getMeasurement(), "10"));
+    processor.getExecutor().insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));
+    processor.getExecutor().insert(new InsertPlan(path4.getDevice(), 10, path4.getMeasurement(), "10"));
   }
 
   @Test

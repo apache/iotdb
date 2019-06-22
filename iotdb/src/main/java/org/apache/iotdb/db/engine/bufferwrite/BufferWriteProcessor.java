@@ -52,6 +52,7 @@ import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -198,7 +199,7 @@ public class BufferWriteProcessor extends Processor {
   public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
     MemTableWriteTimeCost.getInstance().init();
     long start1 = System.currentTimeMillis();
-    long memUsage = MemUtils.getRecordSize(tsRecord);
+    long memUsage = MemUtils.getRecordSize(new InsertPlan(tsRecord));
     BasicMemController.UsageLevel level = BasicMemController.getInstance()
         .acquireUsage(this, memUsage);
 

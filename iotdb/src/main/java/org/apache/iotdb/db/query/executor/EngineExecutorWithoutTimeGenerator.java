@@ -22,9 +22,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
+import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -36,7 +39,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 /**
  * IoTDB query executor of Stand-alone version with global time filter.
  */
-public class EngineExecutorWithoutTimeGenerator extends AbstractExecutorWithoutTimeGeneratorV2 {
+public class EngineExecutorWithoutTimeGenerator {
 
   private QueryExpression queryExpression;
 
@@ -48,7 +51,7 @@ public class EngineExecutorWithoutTimeGenerator extends AbstractExecutorWithoutT
    * without filter or with global time filter.
    */
   public QueryDataSet execute(QueryContext context)
-      throws FileNodeManagerException {
+      throws FileNodeManagerException, IOException {
 
     Filter timeFilter = null;
     if (queryExpression.hasQueryFilter()) {
@@ -73,5 +76,27 @@ public class EngineExecutorWithoutTimeGenerator extends AbstractExecutorWithoutT
     } catch (IOException e) {
       throw new FileNodeManagerException(e);
     }
+  }
+
+  /**
+   * Create reader of a series
+   *
+   * @param context query context
+   * @param path series path
+   * @param dataTypes list of data type
+   * @param timeFilter time filter
+   * @return reader of the series
+   */
+  public static IPointReader createSeriesReader(QueryContext context, Path path,
+      List<TSDataType> dataTypes, Filter timeFilter)
+      throws FileNodeManagerException, IOException {
+    // add data type
+    try {
+      dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+    } catch (PathErrorException e) {
+      throw new FileNodeManagerException(e);
+    }
+
+    return SeriesReaderFactoryImpl.getInstance().createAllDataReader(path, timeFilter, context);
   }
 }

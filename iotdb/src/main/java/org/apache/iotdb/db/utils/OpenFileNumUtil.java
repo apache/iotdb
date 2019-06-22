@@ -28,7 +28,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +48,7 @@ public class OpenFileNumUtil {
   private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static Directories directories = Directories.getInstance();
+  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
   private static final String[] COMMAND_TEMPLATE = {"/bin/bash", "-c", ""};
   private static boolean isOutputValid = false;
   private int pid;
@@ -256,7 +256,7 @@ public class OpenFileNumUtil {
   public enum OpenFileNumStatistics {
     TOTAL_OPEN_FILE_NUM(null),
     DATA_OPEN_FILE_NUM(Collections.singletonList(config.getDataDir())),
-    DELTA_OPEN_FILE_NUM(directories.getAllTsFileFolders()),
+    DELTA_OPEN_FILE_NUM(directoryManager.getAllTsFileFolders()),
     OVERFLOW_OPEN_FILE_NUM(Collections.singletonList(config.getOverflowDataDir())),
     WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalFolder())),
     METADATA_OPEN_FILE_NUM(Collections.singletonList(config.getMetadataDir())),

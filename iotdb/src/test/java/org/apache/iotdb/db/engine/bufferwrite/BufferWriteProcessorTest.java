@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.PathUtils;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -92,7 +92,7 @@ public class BufferWriteProcessorTest {
   private TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
   private Map<String, Action> parameters = new HashMap<>();
   private BufferWriteProcessor bufferwrite;
-  private Directories directories = Directories.getInstance();
+  private DirectoryManager directoryManager = DirectoryManager.getInstance();
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
@@ -124,7 +124,7 @@ public class BufferWriteProcessorTest {
   @Test
   public void testWriteAndAbnormalRecover()
       throws WriteProcessException, InterruptedException, IOException, ProcessorException {
-    bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
+    bufferwrite = new BufferWriteProcessor(directoryManager.getFolderForTest(), deviceId, insertPath,
         parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     for (int i = 1; i < 100; i++) {
@@ -154,7 +154,7 @@ public class BufferWriteProcessorTest {
     }
     file.renameTo(restoreFile);
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
-        directories.getFolderForTest(), deviceId,
+        directoryManager.getFolderForTest(), deviceId,
         insertPath, parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     assertTrue(insertFile.exists());
@@ -178,7 +178,7 @@ public class BufferWriteProcessorTest {
   @Test
   public void testWriteAndNormalRecover()
       throws WriteProcessException, ProcessorException, InterruptedException {
-    bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
+    bufferwrite = new BufferWriteProcessor(directoryManager.getFolderForTest(), deviceId, insertPath,
         parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     for (int i = 1; i < 100; i++) {
@@ -192,7 +192,7 @@ public class BufferWriteProcessorTest {
     File restoreFile = new File(dataFile, restoreFilePath);
     assertTrue(restoreFile.exists());
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
-        directories.getFolderForTest(), deviceId,
+        directoryManager.getFolderForTest(), deviceId,
         insertPath, parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
@@ -215,7 +215,7 @@ public class BufferWriteProcessorTest {
   @Test
   public void testWriteAndQuery()
       throws WriteProcessException, InterruptedException, ProcessorException {
-    bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
+    bufferwrite = new BufferWriteProcessor(directoryManager.getFolderForTest(), deviceId, insertPath,
         parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     assertTrue(bufferwrite.canBeClosed());

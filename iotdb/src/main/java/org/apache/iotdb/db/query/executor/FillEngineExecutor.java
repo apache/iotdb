@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -64,11 +63,9 @@ public class FillEngineExecutor {
     List<IFill> fillList = new ArrayList<>();
     List<TSDataType> dataTypeList = new ArrayList<>();
     for (Path path : selectedSeries) {
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(path, context);
       TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
       dataTypeList.add(dataType);
-      IFill fill = null;
+      IFill fill;
       if (!typeIFillMap.containsKey(dataType)) {
         fill = new PreviousFill(dataType, queryTime, 0);
       } else {
@@ -76,7 +73,7 @@ public class FillEngineExecutor {
       }
       fill.setDataType(dataType);
       fill.setQueryTime(queryTime);
-      fill.constructReaders(queryDataSource, context);
+      fill.constructReaders(path, context);
       fillList.add(fill);
     }
 

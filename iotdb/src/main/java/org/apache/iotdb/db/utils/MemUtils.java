@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -44,55 +45,28 @@ public class MemUtils {
   /**
    * function for getting the record size.
    */
-  public static long getRecordSize(TSRecord record) {
+  public static long getRecordSize(InsertPlan insertPlan) {
     long memSize = 0;
-    for (DataPoint dataPoint : record.dataPointList) {
-      memSize += getPointSize(dataPoint);
+    for (int i = 0; i < insertPlan.getValues().length; i++) {
+      switch (insertPlan.getDataTypes()[i]) {
+        case INT32:
+          memSize += 8L + 4L; break;
+        case INT64:
+          memSize += 8L + 8L; break;
+        case FLOAT:
+          memSize += 8L + 4L; break;
+        case DOUBLE:
+          memSize += 8L + 8L; break;
+        case BOOLEAN:
+          memSize += 8L + 1L; break;
+        case TEXT:
+          memSize += 8L + insertPlan.getValues()[i].length() * 2; break;
+        default:
+          memSize += 8L + 8L;
+      }
     }
     return memSize;
   }
-
-  private static long getPointSize(DataPoint dataPoint) {
-    switch (dataPoint.getType()) {
-      case INT32:
-        return 8L + 4L;
-      case INT64:
-        return 8L + 8L;
-      case FLOAT:
-        return 8L + 4L;
-      case DOUBLE:
-        return 8L + 8L;
-      case BOOLEAN:
-        return 8L + 1L;
-      case TEXT:
-        return 8L + dataPoint.getValue().toString().length() * 2;
-      default:
-        return 8L + 8L;
-    }
-  }
-
-  /**
-   * @param value can be null if the type is not TEXT
-   */
-  public static long getPointSize(TSDataType type, String value) {
-    switch (type) {
-      case INT32:
-        return 8L + 4L;
-      case INT64:
-        return 8L + 8L;
-      case FLOAT:
-        return 8L + 4L;
-      case DOUBLE:
-        return 8L + 8L;
-      case BOOLEAN:
-        return 8L + 1L;
-      case TEXT:
-        return 8L + value.length() * 2;
-      default:
-        return 8L + 8L;
-    }
-  }
-
 
   /**
    * Calculate how much memory will be used if the given record is written to Bufferwrite.

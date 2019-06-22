@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
+import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -46,12 +47,12 @@ public class UnSeqTsFileRecoverPerformer {
   private FileSchema fileSchema;
   private VersionController versionController;
   private LogReplayer logReplayer;
-  private TsFileResource tsFileResource;
+  private TsFileResourceV2 tsFileResource;
 
   public UnSeqTsFileRecoverPerformer(String logNodePrefix,
       FileSchema fileSchema, VersionController versionController,
-      TsFileResource currentTsFileResource) {
-    this.insertFilePath = currentTsFileResource.getFilePath();
+      TsFileResourceV2 currentTsFileResource) {
+    this.insertFilePath = currentTsFileResource.getFile().getPath();
     this.logNodePrefix = logNodePrefix;
     this.fileSchema = fileSchema;
     this.versionController = versionController;
