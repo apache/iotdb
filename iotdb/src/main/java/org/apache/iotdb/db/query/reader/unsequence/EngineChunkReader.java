@@ -32,15 +32,8 @@ public class EngineChunkReader implements IPointReader {
   private ChunkReader chunkReader;
   private BatchData data;
 
-  /**
-   * Each EngineChunkReader has a corresponding UnClosedTsFileReader, when EngineChunkReader is
-   * closed, UnClosedTsFileReader also should be closed in meanwhile.
-   */
-  private TsFileSequenceReader unClosedTsFileReader;
-
-  public EngineChunkReader(ChunkReader chunkReader, TsFileSequenceReader unClosedTsFileReader) {
+  public EngineChunkReader(ChunkReader chunkReader) {
     this.chunkReader = chunkReader;
-    this.unClosedTsFileReader = unClosedTsFileReader;
   }
 
   @Override
@@ -72,6 +65,5 @@ public class EngineChunkReader implements IPointReader {
   @Override
   public void close() throws IOException {
     this.chunkReader.close();
-    this.unClosedTsFileReader.close();
   }
 }

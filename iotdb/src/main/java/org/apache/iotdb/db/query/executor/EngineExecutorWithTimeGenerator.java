@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -35,6 +32,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * IoTDB query executor with value filter.
@@ -53,7 +54,7 @@ public class EngineExecutorWithTimeGenerator {
    * @return QueryDataSet object
    * @throws FileNodeManagerException FileNodeManagerException
    */
-  public QueryDataSet execute(QueryContext context) throws FileNodeManagerException {
+  public QueryDataSet execute(QueryContext context) throws FileNodeManagerException, IOException {
 
     QueryResourceManager.getInstance()
         .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
