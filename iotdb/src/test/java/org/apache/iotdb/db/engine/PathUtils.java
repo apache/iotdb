@@ -29,7 +29,7 @@ public class PathUtils {
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   public static File getBufferWriteDir(String nameSpacePath) {
-    String bufferwriteDirPath = directoryManager.getFolderForTest();
+    String bufferwriteDirPath = directoryManager.getTsFolderForTest();
     if (bufferwriteDirPath.length() > 0
         && bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
       bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
@@ -39,13 +39,13 @@ public class PathUtils {
     return dataDir;
   }
 
-  public static File getOverflowWriteDir(String nameSpacePath) {
-    String overflowWriteDir = config.getOverflowDataDir();
+  public static File getOverflowWriteDir(String processName) {
+    String overflowWriteDir = DirectoryManager.getInstance().getOverflowFolderForTest();
     if (overflowWriteDir.length() > 0
         && overflowWriteDir.charAt(overflowWriteDir.length() - 1) != File.separatorChar) {
       overflowWriteDir = overflowWriteDir + File.separatorChar;
     }
-    String dataDirPath = overflowWriteDir + nameSpacePath;
+    String dataDirPath = overflowWriteDir + processName;
     File dataDir = new File(dataDirPath);
     return dataDir;
   }

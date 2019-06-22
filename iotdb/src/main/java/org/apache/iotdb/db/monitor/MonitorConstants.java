@@ -94,7 +94,8 @@ public class MonitorConstants {
 
   public enum FileSizeConstants {
     DATA(Monitor.INSTANCE.getBaseDirectory()),
-    OVERFLOW(new File(config.getOverflowDataDir()).getAbsolutePath()),
+    //TODO FIXME this is absolutely wrong!
+    OVERFLOW(Monitor.INSTANCE.getBaseDirectory() + File.separatorChar + "overflow"),
     SETTLED(Monitor.INSTANCE.getBaseDirectory() + File.separatorChar + "settled"),
     WAL(new File(config.getWalFolder()).getAbsolutePath()),
     INFO(new File(config.getFileNodeDir()).getAbsolutePath()),

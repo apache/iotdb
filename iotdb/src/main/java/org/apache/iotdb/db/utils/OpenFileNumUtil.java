@@ -257,7 +257,7 @@ public class OpenFileNumUtil {
     TOTAL_OPEN_FILE_NUM(null),
     DATA_OPEN_FILE_NUM(Collections.singletonList(config.getDataDir())),
     DELTA_OPEN_FILE_NUM(directoryManager.getAllTsFileFolders()),
-    OVERFLOW_OPEN_FILE_NUM(Collections.singletonList(config.getOverflowDataDir())),
+    OVERFLOW_OPEN_FILE_NUM(directoryManager.getAllOverflowFileFolders()),
     WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalFolder())),
     METADATA_OPEN_FILE_NUM(Collections.singletonList(config.getMetadataDir())),
     DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getFileNodeDir())),

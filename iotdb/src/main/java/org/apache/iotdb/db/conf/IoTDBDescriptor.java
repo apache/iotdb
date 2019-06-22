@@ -131,6 +131,8 @@ public class IoTDBDescriptor {
       conf.setDataDir(properties.getProperty("data_dir", conf.getDataDir()));
       conf.setBufferWriteDirs(properties.getProperty("tsfile_dir", conf.DEFAULT_TSFILE_DIR)
           .split(","));
+      conf.setOverflowDataDirs(properties.getProperty("overflow_dir", conf.DEFAULT_OVERFLOW_DIR)
+                    .split(","));
       conf.setSysDir(properties.getProperty("sys_dir", conf.getSysDir()));
       conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 

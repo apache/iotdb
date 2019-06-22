@@ -34,7 +34,7 @@ public class IoTDBConfig {
   public static final String DEFAULT_DATA_DIR = "data";
   public static final String DEFAULT_SYS_DIR = "system";
   public static final String DEFAULT_TSFILE_DIR = "settled";
-  public static final String DEFAULT_OVERFLOW_DIR = "unorder";
+  public static final String DEFAULT_OVERFLOW_DIR = "overflow";
   public static final String MULT_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   public static final String DEFAULT_MULT_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
@@ -86,7 +86,7 @@ public class IoTDBConfig {
   /**
    * Data directory of Overflow data.
    */
-  private String overflowDataDir = "overflow";
+  private String[] overflowDataDirs = {DEFAULT_OVERFLOW_DIR};
 
   /**
    * Data directory of fileNode data.
@@ -309,7 +309,16 @@ public class IoTDBConfig {
     if (getDataDir().length() > 0 && !getDataDir().endsWith(File.separator)) {
       setDataDir(getDataDir() + File.separatorChar);
     }
-    setOverflowDataDir(getDataDir() + getOverflowDataDir());
+    if (getOverflowDataDirs() == null || getOverflowDataDirs().length == 0) {
+      setOverflowDataDirs(new String[]{DEFAULT_OVERFLOW_DIR});
+    }
+    for (int i = 0; i < getOverflowDataDirs().length; i++) {
+      if (new File(getOverflowDataDirs()[i]).isAbsolute()) {
+        continue;
+      }
+
+      getOverflowDataDirs()[i] = getDataDir() + getOverflowDataDirs()[i];
+    }
 
     if (getBufferWriteDirs() == null || getBufferWriteDirs().length == 0) {
       setBufferWriteDirs(new String[]{DEFAULT_TSFILE_DIR});
@@ -500,12 +509,12 @@ public class IoTDBConfig {
     this.walDir = walDir;
   }
 
-  public String getOverflowDataDir() {
-    return overflowDataDir;
+  public String[] getOverflowDataDirs() {
+    return overflowDataDirs;
   }
 
-  public void setOverflowDataDir(String overflowDataDir) {
-    this.overflowDataDir = overflowDataDir;
+  public void setOverflowDataDirs(String[] overflowDataDirs) {
+    this.overflowDataDirs = overflowDataDirs;
   }
 
   public String getFileNodeDir() {

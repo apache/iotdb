@@ -37,21 +37,28 @@ public class DirectoryManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(DirectoryManager.class);
 
   private List<String> tsfileFolders;
-  private DirectoryStrategy strategy;
+  private List<String> overflowFolders;
+  private DirectoryStrategy tsfileStrategy;
+  private DirectoryStrategy overflowStrategy;
 
   private DirectoryManager() {
     tsfileFolders = new ArrayList<>(
         Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
-    initFolders();
+    initFolders(tsfileFolders);
+    overflowFolders = new ArrayList<>(
+    Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getOverflowDataDirs()));
+    initFolders(overflowFolders);
 
     String strategyName = "";
     try {
       strategyName = IoTDBDescriptor.getInstance().getConfig().getMultDirStrategyClassName();
       Class<?> clazz = Class.forName(strategyName);
-      strategy = (DirectoryStrategy) clazz.newInstance();
-      strategy.init(tsfileFolders);
+      tsfileStrategy = (DirectoryStrategy) clazz.newInstance();
+      tsfileStrategy.init(tsfileFolders);
+      overflowStrategy = (DirectoryStrategy) clazz.newInstance();
+      overflowStrategy.init(overflowFolders);
     } catch (Exception e) {
-      LOGGER.error("can't find strategy {} for mult-directories.", strategyName, e);
+      LOGGER.error("can't find tsfileStrategy {} for mult-directories.", strategyName, e);
     }
   }
 
@@ -59,22 +66,22 @@ public class DirectoryManager {
     return DirectoriesHolder.INSTANCE;
   }
 
-  private void initFolders() {
-    for (String folder : tsfileFolders) {
+  private void initFolders(List<String> folders) {
+    for (String folder : folders) {
       File file = new File(folder);
       if (file.mkdirs()) {
-        LOGGER.info("folder {} in tsfileFolders doesn't exist, create it", file.getPath());
+        LOGGER.info("folder {} doesn't exist, create it", file.getPath());
       }
     }
   }
 
   // only used by test
-  public String getFolderForTest() {
+  public String getTsFolderForTest() {
     return tsfileFolders.get(0);
   }
 
   // only used by test
-  public void setFolderForTest(String path) {
+  public void setTsFolderForTest(String path) {
     tsfileFolders.set(0, path);
   }
 
@@ -88,7 +95,7 @@ public class DirectoryManager {
    * @return next folder index
    */
   public int getNextFolderIndexForTsFile() {
-    return strategy.nextFolderIndex();
+    return tsfileStrategy.nextFolderIndex();
   }
 
   public String getTsFileFolder(int index) {
@@ -109,5 +116,35 @@ public class DirectoryManager {
 
   public String getWALFolder() {
     return IoTDBDescriptor.getInstance().getConfig().getWalFolder();
+  }
+
+  public String getNextFolderForOverflowFile() {
+    return getOverflowFileFolder(getNextFolderIndexForOverflowFile());
+  }
+
+  /**
+   * get next folder index for OverflowFile.
+   *
+   * @return next folder index
+   */
+  public int getNextFolderIndexForOverflowFile() {
+    return overflowStrategy.nextFolderIndex();
+  }
+
+  public String getOverflowFileFolder(int index) {
+    return overflowFolders.get(index);
+  }
+
+  public int getOverflowFileFolderIndex(String folder) {
+    return overflowFolders.indexOf(folder);
+  }
+
+  public List<String> getAllOverflowFileFolders() {
+    return overflowFolders;
+  }
+
+  // only used by test
+  public String getOverflowFolderForTest() {
+    return overflowFolders.get(0);
   }
 }

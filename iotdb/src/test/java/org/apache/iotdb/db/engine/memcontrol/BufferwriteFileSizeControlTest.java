@@ -137,7 +137,7 @@ public class BufferwriteFileSizeControlTest {
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
 
     try {
-      processor = new BufferWriteProcessor(DirectoryManager.getInstance().getFolderForTest(), nsp,
+      processor = new BufferWriteProcessor(DirectoryManager.getInstance().getTsFolderForTest(), nsp,
           filename,
           parameters, bfcloseConsumer, SysTimeVersionController.INSTANCE,
           FileSchemaUtils.constructFileSchema(nsp));
