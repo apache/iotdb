@@ -35,9 +35,7 @@ public class FlushManager {
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 
   private Runnable flushThread = () -> {
-    LOGGER.info("flush thread start");
     UnsealedTsFileProcessorV2 unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
-    LOGGER.info("flush thread poll an tsfile processor succeed, flushing memtable size: {}", unsealedTsFileProcessor.getFlushingMemTableSize());
     try {
       unsealedTsFileProcessor.flushOneMemTable();
     } catch (IOException e) {

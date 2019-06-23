@@ -92,7 +92,7 @@ public class FileNodeProcessorV2 {
 
   private String storageGroupName;
 
-  private final ReadWriteLock lock;
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
   private Condition closeFileNodeCondition;
 
@@ -112,7 +112,6 @@ public class FileNodeProcessorV2 {
 
   public FileNodeProcessorV2(String baseDir, String storageGroupName) throws ProcessorException {
     this.storageGroupName = storageGroupName;
-    lock = new ReentrantReadWriteLock();
     closeFileNodeCondition = lock.writeLock().newCondition();
 
     recover();
@@ -137,6 +136,7 @@ public class FileNodeProcessorV2 {
   }
 
   private void recover() throws ProcessorException {
+    LOGGER.info("recover FileNodeProcessor {}", storageGroupName);
     List<File> tsFiles = new ArrayList<>();
     List<String> seqFileFolders = directoryManager.getAllTsFileFolders();
     for (String baseDir: seqFileFolders) {
@@ -452,6 +452,11 @@ public class FileNodeProcessorV2 {
    */
   private void flushAndCheckShouldClose(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
       boolean sequence) {
+
+    LOGGER.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+        unsealedTsFileProcessor.getWorkMemTableMemory(),
+        unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+
     // check file size and may setCloseMark the BufferWrite
     if (unsealedTsFileProcessor.shouldClose()) {
       if (sequence) {
@@ -462,6 +467,9 @@ public class FileNodeProcessorV2 {
         workUnSequenceTsFileProcessor = null;
       }
       unsealedTsFileProcessor.setCloseMark();
+      LOGGER.info("The file size {} reaches the threshold, async close tsfile: {}.",
+          unsealedTsFileProcessor.getTsFileResource().getFileSize(),
+          unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
     }
 
     unsealedTsFileProcessor.asyncFlush();
@@ -470,6 +478,7 @@ public class FileNodeProcessorV2 {
 
   public void asyncForceClose() {
     lock.writeLock().lock();
+    LOGGER.info("async force close all file in storage group: {}", storageGroupName);
     try {
       if (workSequenceTsFileProcessor != null) {
         closingSequenceTsFileProcessor.add(workSequenceTsFileProcessor);

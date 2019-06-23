@@ -102,6 +102,7 @@ public class FileNodeManagerV2 implements IService {
       List<String> storageGroups = MManager.getInstance().getAllFileNames();
       for (String storageGroup: storageGroups) {
         FileNodeProcessorV2 processor = new FileNodeProcessorV2(baseDir, storageGroup);
+        LOGGER.info("FileNodeProcessor {} is recovered successfully", storageGroup);
         processorMap.put(storageGroup, processor);
       }
     } catch (PathErrorException | ProcessorException e) {

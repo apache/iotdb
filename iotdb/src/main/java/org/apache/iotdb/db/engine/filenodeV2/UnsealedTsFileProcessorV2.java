@@ -105,6 +105,7 @@ public class UnsealedTsFileProcessorV2 {
     this.logNode = MultiFileLogNodeManager.getInstance().getNode(storageGroupName + "-" + tsfile.getName());
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;
     this.flushUpdateLatestFlushTimeCallback = flushUpdateLatestFlushTimeCallback;
+    LOGGER.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
   }
 
   /**
@@ -188,6 +189,7 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   public void syncClose() {
+    LOGGER.info("Synch close file: {}, first async close it", tsFileResource.getFile().getAbsolutePath());
     asyncClose();
     synchronized (flushingMemTables) {
       try {
@@ -196,10 +198,12 @@ public class UnsealedTsFileProcessorV2 {
         LOGGER.error("wait close interrupted", e);
       }
     }
+    LOGGER.info("File {} is closed synchronously", tsFileResource.getFile().getAbsolutePath());
   }
 
   public void asyncClose() {
     flushQueryLock.writeLock().lock();
+    LOGGER.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
     try {
       IMemTable tmpMemTable = workMemTable == null ? new EmptyMemTable() : workMemTable;
       if (!tmpMemTable.isManagedByMemPool()) {
@@ -289,6 +293,8 @@ public class UnsealedTsFileProcessorV2 {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
 
+    LOGGER.info("start to flush a memtable in a flush thread");
+
     // null memtable only appears when calling asyncClose()
     if (memTableToFlush.isManagedByMemPool()) {
       MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
@@ -296,8 +302,9 @@ public class UnsealedTsFileProcessorV2 {
       flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
       MemTablePool.getInstance().putBack(memTableToFlush, storageGroupName);
       logNode.notifyEndFlush();
+      LOGGER.info("flush a memtable has finished");
     } else {
-      LOGGER.info("release an empty memtable, which is submitted in force flush");
+      LOGGER.info("release an empty memtable from flushing memtable list, which is submitted in force flush");
       releaseFlushedMemTableCallback(memTableToFlush);
     }
 
@@ -333,10 +340,9 @@ public class UnsealedTsFileProcessorV2 {
 
       long closeEndTime = System.currentTimeMillis();
 
-      LOGGER.info(
-          "Close bufferwrite processor {}, the file name is {}, start time is {}, end time is {}, "
-              + "time consumption is {}ms",
-          storageGroupName, tsFileResource.getFile().getAbsoluteFile(),
+      LOGGER.info("Close the file {}, start time is {}, end time is {}, "
+              + "time consumption of flushing metadata is {}ms",
+          tsFileResource.getFile().getAbsoluteFile(),
           DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
           DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
           closeEndTime - closeStartTime);
@@ -358,6 +364,10 @@ public class UnsealedTsFileProcessorV2 {
 
   public int getFlushingMemTableSize() {
     return flushingMemTables.size();
+  }
+
+  public long getWorkMemTableMemory() {
+    return workMemTable.memSize();
   }
 
   /**
@@ -399,7 +409,7 @@ public class UnsealedTsFileProcessorV2 {
 
       return new Pair<>(timeValuePairSorter, chunkMetaDataList);
     } catch (IOException e) {
-      throw new UnsealedTsFileProcessorException("read modification file failed", e);
+      throw new UnsealedTsFileProcessorException(e);
     } finally {
       flushQueryLock.readLock().unlock();
     }
