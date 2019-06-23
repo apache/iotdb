@@ -62,7 +62,7 @@ public class IOTDBGroupByIT {
           + "values(4, 4.4, false, 44)",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(5, 5.5, false, 55)",
-      "flushMetadata",
+      "flush",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(100, 100.1, false, 110)",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
@@ -73,7 +73,7 @@ public class IOTDBGroupByIT {
           + "values(250, 400.4, false, 440)",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(300, 500.5, false, 550)",
-      "flushMetadata",
+      "flush",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(10, 10.1, false, 110)",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
@@ -84,7 +84,7 @@ public class IOTDBGroupByIT {
           + "values(40, 40.4, false, 440)",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(50, 50.5, false, 550)",
-      "flushMetadata",
+      "flush",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(500, 100.1, false, 110)",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
@@ -95,7 +95,7 @@ public class IOTDBGroupByIT {
           + "values(530, 400.4, false, 440)",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(540, 500.5, false, 550)",
-      "flushMetadata",
+      "flush",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(580, 100.1, false, 110)",
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "

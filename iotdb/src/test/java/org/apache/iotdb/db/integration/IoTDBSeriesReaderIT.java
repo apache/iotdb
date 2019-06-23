@@ -138,7 +138,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      // statement.execute("flushMetadata");
+      // statement.execute("flush");
 
       // insert large amount of data time range : 13700 ~ 24000
       for (int time = 13700; time < 24000; time++) {
@@ -172,7 +172,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      statement.execute("flushMetadata");
+      statement.execute("flush");
 
       // bufferwrite data, memory data
       for (int time = 200000; time < 201000; time++) {

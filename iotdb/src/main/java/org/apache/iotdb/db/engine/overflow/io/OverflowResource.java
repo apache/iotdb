@@ -225,7 +225,7 @@ public class OverflowResource {
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
           "Overflow processor {} flushes overflow insert data, actual:{}, time consumption:{} ms,"
-              + " flushMetadata rate:{}/s",
+              + " flush rate:{}/s",
           processorName, MemUtils.bytesCntToStr(insertSize), timeInterval,
           MemUtils.bytesCntToStr(insertSize / timeInterval * 1000));
     }

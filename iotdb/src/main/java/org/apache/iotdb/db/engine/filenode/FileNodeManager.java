@@ -503,7 +503,7 @@
 //    try {
 //      long start2_3 = System.currentTimeMillis();
 //
-//      // insert tsrecord and check flushMetadata
+//      // insert tsrecord and check flush
 //      if (!bufferWriteProcessor.write(tsRecord)) {
 //        start2_3 = System.currentTimeMillis() - start2_3;
 //        if (start2_3 > 1000) {
@@ -1176,39 +1176,39 @@
 //  }
 //
 //  /**
-//   * force flushMetadata to control memory usage.
+//   * force flush to control memory usage.
 //   */
 //  public void forceFlush(BasicMemController.UsageLevel level) {
 //    // you may add some delicate process like below
 //    // or you could provide multiple methods for different urgency
 //    switch (level) {
 //      // only select the most urgent (most active or biggest in size)
-//      // processors to flushMetadata
-//      // only select top 10% active memory user to flushMetadata
+//      // processors to flush
+//      // only select top 10% active memory user to flush
 //      case WARNING:
 //        try {
 //          flushTop(0.1f);
 //        } catch (IOException e) {
-//          LOGGER.error("force flushMetadata memory data error: {}", e);
+//          LOGGER.error("force flush memory data error: {}", e);
 //        }
 //        break;
-//      // force all processors to flushMetadata
+//      // force all processors to flush
 //      case DANGEROUS:
 //        try {
 //          flushAll();
 //        } catch (IOException e) {
-//          LOGGER.error("force flushMetadata memory data error: {}", e);
+//          LOGGER.error("force flush memory data error: {}", e);
 //        }
 //        break;
-//      // if the flushMetadata thread pool is not full ( or half full), start a new
-//      // flushMetadata task
+//      // if the flush thread pool is not full ( or half full), start a new
+//      // flush task
 //      case SAFE:
 //        if (FlushPoolManager.getInstance().getActiveCnt() < 0.5 * FlushPoolManager.getInstance()
 //            .getThreadCnt()) {
 //          try {
 //            flushTop(0.01f);
 //          } catch (IOException e) {
-//            LOGGER.error("force flushMetadata memory data error: ", e);
+//            LOGGER.error("force flush memory data error: ", e);
 //          }
 //        }
 //        break;
@@ -1257,7 +1257,7 @@
 //        processor.writeUnlock();
 //      }
 //      start = System.currentTimeMillis() - start;
-//      LOGGER.info("flushMetadata Top cost: {}", start);
+//      LOGGER.info("flush Top cost: {}", start);
 //    }
 //  }
 //

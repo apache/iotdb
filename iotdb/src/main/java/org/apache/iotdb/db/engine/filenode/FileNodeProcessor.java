@@ -629,7 +629,7 @@
 //  }
 //
 //  /**
-//   * get flushMetadata last update time.
+//   * get flush last update time.
 //   */
 //  public long getFlushLastUpdateTime(String deviceId) {
 //    if (!flushLastUpdateTimeMap.containsKey(deviceId)) {
@@ -1078,7 +1078,7 @@
 //      fileNodeProcessorStore.setFileNodeProcessorStatus(isMerging);
 //      fileNodeProcessorStore.setNewFileNodes(newFileNodes);
 //      fileNodeProcessorStore.setEmptyTsFileResource(emptyTsFileResource);
-//      // flushMetadata this filenode information
+//      // flush this filenode information
 //      try {
 //        writeStoreToDisk(fileNodeProcessorStore);
 //      } catch (FileNodeProcessorException e) {
@@ -1607,7 +1607,7 @@
 //        writeOneSeries(path.getDevice(), seriesWriterImpl, dataType,
 //            seriesReader,
 //            startTimeMap, endTimeMap, timeValuePair);
-//        // flushMetadata the series data
+//        // flush the series data
 //        seriesWriterImpl.writeToFileWriter(mergeFileWriter);
 //      }
 //    } finally {

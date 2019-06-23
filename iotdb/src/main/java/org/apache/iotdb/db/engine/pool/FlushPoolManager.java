@@ -64,7 +64,7 @@ public class FlushPoolManager {
   }
 
   /**
-   * Refuse new flushMetadata submits and exit when all RUNNING THREAD in the pool end.
+   * Refuse new flush submits and exit when all RUNNING THREAD in the pool end.
    *
    * @param block
    *            if set to true, this method will wait for timeOut milliseconds.
@@ -83,14 +83,14 @@ public class FlushPoolManager {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new ProcessorException("Interrupted while waiting flushMetadata thread pool to exit. "
+        throw new ProcessorException("Interrupted while waiting flush thread pool to exit. "
             , e);
       }
     }
   }
 
   /**
-   * Block new flushMetadata submits and exit when all RUNNING THREADS AND TASKS IN THE QUEUE end.
+   * Block new flush submits and exit when all RUNNING THREADS AND TASKS IN THE QUEUE end.
    *
    * @param block
    *            if set to true, this method will wait for timeOut milliseconds.
@@ -109,7 +109,7 @@ public class FlushPoolManager {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new ProcessorException("Interrupted while waiting flushMetadata thread pool to exit. ", e);
+        throw new ProcessorException("Interrupted while waiting flush thread pool to exit. ", e);
       }
     }
   }

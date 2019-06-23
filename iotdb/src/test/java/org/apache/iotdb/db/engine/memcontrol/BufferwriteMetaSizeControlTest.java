@@ -151,7 +151,7 @@ public class BufferwriteMetaSizeControlTest {
         System.out.println(i + "," + MemUtils.bytesCntToStr(processor.getMetaSize()));
       }
     }
-    // wait to flushMetadata end
+    // wait to flush end
     try {
       Thread.sleep(3000);
     } catch (InterruptedException e) {

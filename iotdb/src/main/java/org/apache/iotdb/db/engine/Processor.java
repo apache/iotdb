@@ -197,7 +197,7 @@ public abstract class Processor {
   public abstract boolean canBeClosed();
 
   /**
-   * call flushMetadata operation asynchronously
+   * call flush operation asynchronously
    * @return a future that returns true if successfully, otherwise false.
    * @throws IOException
    */

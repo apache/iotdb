@@ -27,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class only gives a hint to FilenodeManager that it may flushMetadata some data to avoid rush hour.
+ * This class only gives a hint to FilenodeManager that it may flush some data to avoid rush hour.
  */
 public class FlushPartialPolicy implements Policy {
 
@@ -51,7 +51,7 @@ public class FlushPartialPolicy implements Policy {
       workerThread.start();
     } else {
       if (workerThread.isAlive()) {
-        LOGGER.debug("Last flushMetadata is ongoing...");
+        LOGGER.debug("Last flush is ongoing...");
       } else {
         workerThread = createWorkerThread();
         workerThread.start();

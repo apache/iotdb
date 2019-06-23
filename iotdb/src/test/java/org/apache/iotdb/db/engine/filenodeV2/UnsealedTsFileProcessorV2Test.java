@@ -98,7 +98,7 @@ public class UnsealedTsFileProcessorV2Test {
       assertEquals(num, timeValuePair.getValue().getInt());
     }
 
-    // flushMetadata asynchronously
+    // flush asynchronously
     processor.syncFlush();
 
     pair = processor.query(deviceId, measurementId, dataType, props);
@@ -184,7 +184,7 @@ public class UnsealedTsFileProcessorV2Test {
       assertEquals(num, timeValuePair.getValue().getInt());
     }
 
-    // flushMetadata asynchronously
+    // flush asynchronously
     processor.syncClose();
 
     assertTrue(processor.getTsFileResource().isClosed());

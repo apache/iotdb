@@ -108,7 +108,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       recoverMetadata(existedMetadatas);
       LOGGER.info(
           "Recover the bufferwrite processor {}, the tsfile seriesPath is {}, "
-              + "the position of last flushMetadata is {}, the size of rowGroupMetadata is {}",
+              + "the position of last flushed ChunkGroup is {}, the size of rowGroupMetadata is {}",
           processorName, insertFilePath, position, existedMetadatas.size());
       isNewResource = false;
     } else {
@@ -154,7 +154,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   public void writeRestoreInfo() throws IOException {
     long start = System.currentTimeMillis();
     long lastPosition = this.getPos();
-    // TODO: no need to create a TsRowGroupBlockMetadata, flushMetadata RowGroupMetadata one by one is ok
+    // TODO: no need to create a TsRowGroupBlockMetadata, flush RowGroupMetadata one by one is ok
     TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
     this.getAppendedRowGroupMetadata();
     tsDeviceMetadata.setChunkGroupMetadataList(this.append);

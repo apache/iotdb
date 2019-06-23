@@ -53,7 +53,7 @@ public class MemTableFlushTaskV2 {
     this.flushCallBack = callBack;
     ioFlushThread.start();
     memoryFlushThread.start();
-    LOGGER.info("Processor {} flushMetadata task created", processorName);
+    LOGGER.info("Processor {} flush task created", processorName);
   }
 
 
@@ -67,7 +67,7 @@ public class MemTableFlushTaskV2 {
         try {
           Thread.sleep(10);
         } catch (InterruptedException e) {
-          LOGGER.error("BufferWrite Processor {}, io flushMetadata task is interrupted.", processorName, e);
+          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processorName, e);
         }
       } else {
         if (task instanceof String) {
@@ -109,7 +109,7 @@ public class MemTableFlushTaskV2 {
         try {
           Thread.sleep(10);
         } catch (InterruptedException e) {
-          LOGGER.error("BufferWrite Processor {}, io flushMetadata task is interrupted.", processorName, e);
+          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processorName, e);
         }
       } else {
         long starTime = System.currentTimeMillis();
@@ -200,7 +200,7 @@ public class MemTableFlushTaskV2 {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
-        LOGGER.error("BufferWrite Processor {}, flushMetadata memtable table thread is interrupted.",
+        LOGGER.error("BufferWrite Processor {}, flush memtable table thread is interrupted.",
             processorName, e);
         throw new RuntimeException(e);
       }

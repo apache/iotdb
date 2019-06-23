@@ -46,7 +46,7 @@ public class IoTDBFlushQueryMergeTest {
       "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
       "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
       "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
-      "flushMetadata",
+      "flush",
       "insert into root.vehicle.d0(timestamp,s0) values(2,10000)",
       "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
       "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",

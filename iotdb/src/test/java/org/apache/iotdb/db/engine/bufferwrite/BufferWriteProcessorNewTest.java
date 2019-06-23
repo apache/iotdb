@@ -125,17 +125,17 @@ public class BufferWriteProcessorNewTest {
       assertEquals(num, timeValuePair.getValue().getInt());
     }
     long lastFlushTime = bufferwrite.getLastFlushTime();
-    // flushMetadata asynchronously
+    // flush asynchronously
     bufferwrite.flush();
     assertTrue(bufferwrite.getLastFlushTime() != lastFlushTime);
     assertTrue(bufferwrite.canBeClosed());
-    // waiting for the end of flushMetadata.
+    // waiting for the end of flush.
     try {
       bufferwrite.getFlushFuture().get(10, TimeUnit.SECONDS);
     } catch (Exception e) {
-      //because UT uses a mock flushMetadata operation, 10 seconds should be enough.
+      //because UT uses a mock flush operation, 10 seconds should be enough.
       LOGGER.error(e.getMessage(), e);
-      Assert.fail("mock flushMetadata spends more than 10 seconds... "
+      Assert.fail("mock flush spends more than 10 seconds... "
           + "Please modify the value or change a better test environment");
     }
     pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType, props);
