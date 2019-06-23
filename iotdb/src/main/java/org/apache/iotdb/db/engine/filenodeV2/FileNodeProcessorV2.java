@@ -353,35 +353,34 @@ public class FileNodeProcessorV2 {
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
-    mergeDeleteLock.lock();
-    long lastUpdateTime = latestTimeForEachDevice.get(deviceId);
-    // no tsfile data, the delete operation is invalid
-    if (lastUpdateTime == Long.MIN_VALUE) {
-      LOGGER.warn("The last update time is -1, delete overflow is invalid, "
-          + "the storage group is {}", storageGroupName);
-      return;
-    }
-
-    // write log
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      if (workSequenceTsFileProcessor != null) {
-        workSequenceTsFileProcessor.getLogNode()
-            .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
-      }
-      if (workUnSequenceTsFileProcessor != null) {
-        workUnSequenceTsFileProcessor.getLogNode()
-            .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
-      }
-    }
-
-    long version = versionController.nextVersion();
+    lock.writeLock().lock();
 
     // record what files are updated so we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
+      long lastUpdateTime = latestTimeForEachDevice.get(deviceId);
+      // no tsfile data, the delete operation is invalid
+      if (lastUpdateTime == Long.MIN_VALUE) {
+        LOGGER.warn("The last update time is -1, delete overflow is invalid, "
+            + "the storage group is {}", storageGroupName);
+        return;
+      }
+
+      // write log
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        if (workSequenceTsFileProcessor != null) {
+          workSequenceTsFileProcessor.getLogNode()
+              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+        }
+        if (workUnSequenceTsFileProcessor != null) {
+          workUnSequenceTsFileProcessor.getLogNode()
+              .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+        }
+      }
+
       Path fullPath = new Path(deviceId, measurementId);
-      Deletion deletion = new Deletion(fullPath, version, timestamp);
+      Deletion deletion = new Deletion(fullPath, versionController.nextVersion(), timestamp);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
@@ -397,7 +396,7 @@ public class FileNodeProcessorV2 {
       }
       throw new IOException(e);
     } finally {
-      mergeDeleteLock.unlock();
+      lock.writeLock().unlock();
     }
   }
 
