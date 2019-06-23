@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
  * include data in one closing bufferWriteProcessfor or working bufferWriteProcessfor: 1) the data
  * in unseal tsfile part which has been flushed to disk 2) the data in flushing memtable list
  */
-public class UnSealedTsFilesReaderByTimestampV2 implements EngineReaderByTimeStamp {
+public class UnSealedTsFileReaderByTimestampV2 implements EngineReaderByTimeStamp {
 
   protected Path seriesPath;
   /**
@@ -56,7 +56,7 @@ public class UnSealedTsFilesReaderByTimestampV2 implements EngineReaderByTimeSta
    *
    * @param tsFileResource -unclosed tsfile resource
    */
-  public UnSealedTsFilesReaderByTimestampV2(TsFileResourceV2 tsFileResource) throws IOException {
+  public UnSealedTsFileReaderByTimestampV2(TsFileResourceV2 tsFileResource) throws IOException {
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
         .get(tsFileResource.getFile().getPath(), false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
