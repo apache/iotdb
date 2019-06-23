@@ -51,7 +51,7 @@ IoTDB provides you two installation methods, you can refer to the following sugg
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
 
-Here in the Quick Start part, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 5 of this document.
+Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 4 of the User Guide.
 
 ### Installation from source code
 
@@ -157,7 +157,7 @@ In total, we provide users three kinds of configurations module:
 * system config module (tsfile-format.properties, iotdb-engine.properties)
 * log config module (logback.xml)
 
-The configuration files of the three configuration items are located in the IoTDB installation directory: $IOTDB_HOME/conf folder. For more, you are advised to check Chapter 5 to give you the details.
+The configuration files of the three configuration items are located in the IoTDB installation directory: $IOTDB_HOME/conf folder. For more, you are advised to check Chapter 4 of the User Guide to give you the details.
 
 ## Start
 
@@ -278,7 +278,7 @@ IoTDB> SHOW TIMESERIES
 	}
 }
 ```
-Now, for your conveniect, SHOW TIMESERIES clause also supports extention syntax, the pattern is (for further details, check Chapter x):
+Now, for your conveniect, SHOW TIMESERIES clause also supports extention syntax, the pattern is (for further details, check Chapter 5 of the User Guide):
 
 ```
 SHOW TIMESERIES <PATH>
@@ -347,7 +347,7 @@ IoTDB> SELECT * FROM root.ln.wf01.wt01
 
 If your session looks similar to what’s above, congrats, your IoTDB is operational!
 
-For more on what commands are supported by IoTDB SQL, see Chapter xx. It will give you help.
+For more on what commands are supported by IoTDB SQL, see Chapter 5 of the User Guide. It will give you help.
 
 ### Stop Server
 
