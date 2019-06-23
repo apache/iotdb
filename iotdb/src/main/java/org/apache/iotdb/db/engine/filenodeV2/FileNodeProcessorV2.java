@@ -445,6 +445,7 @@ public class FileNodeProcessorV2 {
     }
 
     unsealedTsFileProcessor.asyncFlush();
+
   }
 
   public void asyncForceClose() {
@@ -453,15 +454,29 @@ public class FileNodeProcessorV2 {
       if (workSequenceTsFileProcessor != null) {
         closingSequenceTsFileProcessor.add(workSequenceTsFileProcessor);
         workSequenceTsFileProcessor.asyncClose();
+        updateEndTimeMap(workSequenceTsFileProcessor);
         workSequenceTsFileProcessor = null;
       }
       if (workUnSequenceTsFileProcessor != null) {
         closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
         workUnSequenceTsFileProcessor.asyncClose();
+        updateEndTimeMap(workUnSequenceTsFileProcessor);
         workUnSequenceTsFileProcessor = null;
       }
     } finally {
       lock.writeLock().unlock();
+    }
+  }
+
+  /**
+   * when close an UnsealedTsFileProcessor, update its EndTimeMap immediately
+   * @param tsFileProcessor processor to be closed
+   */
+  private void updateEndTimeMap(UnsealedTsFileProcessorV2 tsFileProcessor) {
+    TsFileResourceV2 resource = tsFileProcessor.getTsFileResource();
+    for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
+      String deviceId = startTime.getKey();
+      resource.getEndTimeMap().put(deviceId, latestTimeForEachDevice.get(deviceId));
     }
   }
 
@@ -533,19 +548,12 @@ public class FileNodeProcessorV2 {
     try {
       if (closingSequenceTsFileProcessor.contains(unsealedTsFileProcessor)) {
         closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
-        LOGGER.info("removed a sequence tsfile processor, closing list size: {}", closingSequenceTsFileProcessor.size());
       } else {
-//        closingUnSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
+        closingUnSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
       }
       // end time with one start time
       TsFileResourceV2 resource = unsealedTsFileProcessor.getTsFileResource();
-      synchronized (resource) {
-        for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
-          String deviceId = startTime.getKey();
-          resource.getEndTimeMap().put(deviceId, latestTimeForEachDevice.get(deviceId));
-        }
-        resource.setClosed(true);
-      }
+      resource.setClosed(true);
       LOGGER.info("signal closing file node condition");
       closeFileNodeCondition.signal();
     }finally {

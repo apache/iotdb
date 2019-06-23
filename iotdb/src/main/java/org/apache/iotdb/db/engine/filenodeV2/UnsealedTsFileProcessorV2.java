@@ -182,6 +182,16 @@ public class UnsealedTsFileProcessorV2 {
     shouldClose = true;
   }
 
+  public void syncClose() {
+    asyncClose();
+    synchronized (flushingMemTables) {
+      try {
+        flushingMemTables.wait();
+      } catch (InterruptedException e) {
+        LOGGER.error("wait close interrupted", e);
+      }
+    }
+  }
 
   public void asyncClose() {
     flushQueryLock.writeLock().lock();
@@ -200,7 +210,9 @@ public class UnsealedTsFileProcessorV2 {
     }
   }
 
-  // only for test
+  /**
+   * TODO if the flushing thread is too fast, the tmpMemTable.wait() may never wakeup
+   */
   public void syncFlush() {
     IMemTable tmpMemTable;
     flushQueryLock.writeLock().lock();
@@ -222,19 +234,6 @@ public class UnsealedTsFileProcessorV2 {
         tmpMemTable.wait();
       } catch (InterruptedException e) {
         LOGGER.error("wait flush finished meets error", e);
-      }
-    }
-  }
-
-
-
-  public void syncClose() {
-    asyncClose();
-    synchronized (flushingMemTables) {
-      try {
-        flushingMemTables.wait();
-      } catch (InterruptedException e) {
-        LOGGER.error("wait close interrupted", e);
       }
     }
   }
