@@ -91,8 +91,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     switch (plan.getOperatorType()) {
       case DELETE:
-        DeletePlan delete = (DeletePlan) plan;
-        return delete(delete.getPaths(), delete.getDeleteTime());
+        return delete((DeletePlan) plan);
       case UPDATE:
         UpdatePlan update = (UpdatePlan) plan;
         boolean flag = true;
