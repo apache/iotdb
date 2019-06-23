@@ -116,7 +116,7 @@
 //    this.baseDir = normalizedBaseDir;
 //    File dir = new File(normalizedBaseDir);
 //    if (dir.mkdirs()) {
-//      LOGGER.info("{} dir home doesn't exist, create it", dir.getPath());
+//      LOGGER.info("{} dir home doesn't exist, create it", dir.getPathString());
 //    }
 //    //TODO merge this with label A
 //    if (TsFileDBConf.isEnableStatMonitor()) {
@@ -972,7 +972,7 @@
 //      File[] bufferFiles = bufferDir.listFiles();
 //      if (bufferFiles != null) {
 //        for (File bufferFile : bufferFiles) {
-//          FileReaderManager.getInstance().closeFileAndRemoveReader(bufferFile.getPath());
+//          FileReaderManager.getInstance().closeFileAndRemoveReader(bufferFile.getPathString());
 //        }
 //      }
 //      FileUtils.deleteDirectory(new File(bufferwritePath));

@@ -33,8 +33,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -151,7 +149,7 @@ public abstract class AbstractMemTable implements IMemTable {
     for (Modification modification : modifications) {
       if (modification instanceof  Deletion) {
         Deletion deletion = (Deletion) modification;
-        if (deletion.getPath().equals(path) && deletion.getTimestamp() > undeletedTime) {
+        if (deletion.getPathString().equals(path) && deletion.getTimestamp() > undeletedTime) {
           undeletedTime = deletion.getTimestamp();
         }
       }

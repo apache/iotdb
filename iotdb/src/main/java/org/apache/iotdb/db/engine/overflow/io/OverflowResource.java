@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
@@ -335,8 +336,7 @@ public class OverflowResource {
   public void delete(String deviceId, String measurementId, long timestamp, long version,
       List<ModificationFile> updatedModFiles)
       throws IOException {
-    modificationFile.write(new Deletion(deviceId + IoTDBConstant.PATH_SEPARATOR
-        + measurementId, version, timestamp));
+    modificationFile.write(new Deletion(new Path(deviceId, measurementId), version, timestamp));
     updatedModFiles.add(modificationFile);
   }
 

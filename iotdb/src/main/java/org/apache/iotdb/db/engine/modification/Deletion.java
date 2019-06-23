@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.modification;
 
 import java.util.Objects;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * Deletion is a delete operation on a timeseries.
@@ -31,7 +32,7 @@ public class Deletion extends Modification {
    */
   private long timestamp;
 
-  public Deletion(String path, long versionNum, long timestamp) {
+  public Deletion(Path path, long versionNum, long timestamp) {
     super(Type.DELETION, path, versionNum);
     this.timestamp = timestamp;
   }

@@ -109,8 +109,7 @@ public class LogReplayer {
     List<Path> paths = deletePlan.getPaths();
     for (Path path : paths) {
       recoverMemTable.delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteTime());
-      modFile.write(new Deletion(path.getFullPath(),
-          versionController.nextVersion(),deletePlan.getDeleteTime()));
+      modFile.write(new Deletion(path, versionController.nextVersion(),deletePlan.getDeleteTime()));
     }
   }
 

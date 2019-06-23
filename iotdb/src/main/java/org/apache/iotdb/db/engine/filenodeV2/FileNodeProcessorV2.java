@@ -32,7 +32,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
@@ -253,28 +252,13 @@ public class FileNodeProcessorV2 {
       // create a new BufferWriteProcessor
       if (sequence) {
         if (workSequenceTsFileProcessor == null) {
-
-          // TODO directoryManager add method getAndCreateNextFolderTsfile
-          String baseDir = directoryManager.getNextFolderForTsfile();
-          String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "-" + versionController.nextVersion()).toString();
-
-          new File(baseDir, storageGroupName).mkdirs();
-          workSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
-              fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);
-
+          workSequenceTsFileProcessor = createTsFileProcessor(true);
           sequenceFileList.add(workSequenceTsFileProcessor.getTsFileResource());
         }
         unsealedTsFileProcessor = workSequenceTsFileProcessor;
       } else {
         if (workUnSequenceTsFileProcessor == null) {
-          // TODO check if the disk is full, move this
-          String baseDir = directoryManager.getNextFolderForOverflowFile();
-          new File(baseDir, storageGroupName).mkdirs();
-          String filePath = Paths.get(baseDir, storageGroupName, System.currentTimeMillis() + "-" + +versionController.nextVersion()).toString();
-
-          workUnSequenceTsFileProcessor = new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
-              fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);
-
+          workUnSequenceTsFileProcessor = createTsFileProcessor(false);
           unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
         }
         unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
@@ -297,6 +281,22 @@ public class FileNodeProcessorV2 {
     }finally {
       lock.writeLock().unlock();
     }
+  }
+
+  private UnsealedTsFileProcessorV2 createTsFileProcessor(boolean sequence) throws IOException {
+    String baseDir;
+    if (sequence) {
+      baseDir = directoryManager.getNextFolderForSequenceFile();
+    } else {
+      baseDir = directoryManager.getNextFolderForUnSequenceFile();
+    }
+    new File(baseDir, storageGroupName).mkdirs();
+
+    String filePath = Paths.get(baseDir, storageGroupName,
+        System.currentTimeMillis() + "-" + versionController.nextVersion()).toString();
+
+    return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
+        fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);
   }
 
 
@@ -364,8 +364,14 @@ public class FileNodeProcessorV2 {
 
     // write log
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      workSequenceTsFileProcessor.getLogNode().write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
-      workUnSequenceTsFileProcessor.getLogNode().write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+      if (workSequenceTsFileProcessor != null) {
+        workSequenceTsFileProcessor.getLogNode()
+            .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+      }
+      if (workUnSequenceTsFileProcessor != null) {
+        workUnSequenceTsFileProcessor.getLogNode()
+            .write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+      }
     }
 
     long version = versionController.nextVersion();
@@ -374,41 +380,15 @@ public class FileNodeProcessorV2 {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
+      Path fullPath = new Path(deviceId, measurementId);
       Deletion deletion = new Deletion(fullPath, version, timestamp);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
       }
 
-      // delete sequence files
-      for (TsFileResourceV2 tsFileResource : sequenceFileList) {
-        if (!tsFileResource.containsDevice(deviceId) ||
-            tsFileResource.getStartTimeMap().get(deviceId) <= deletion.getTimestamp()) {
-          continue;
-        }
-        if (tsFileResource.isClosed()) {
-          tsFileResource.getModFile().write(deletion);
-          updatedModFiles.add(tsFileResource.getModFile());
-        } else {
-          // TODO delete unsealed file
-        }
-      }
-
-      // delete unSequence files
-      for (TsFileResourceV2 tsFileResource : unSequenceFileList) {
-        if (!tsFileResource.containsDevice(deviceId) ||
-            tsFileResource.getStartTimeMap().get(deviceId) <= deletion.getTimestamp()) {
-          continue;
-        }
-        if (tsFileResource.isClosed()) {
-          tsFileResource.getModFile().write(deletion);
-          updatedModFiles.add(tsFileResource.getModFile());
-        } else {
-          // TODO delete unsealed file
-        }
-      }
-
+      deleteFiles(sequenceFileList, deletion, updatedModFiles);
+      deleteFiles(unSequenceFileList, deletion, updatedModFiles);
 
     } catch (Exception e) {
       // roll back
@@ -421,6 +401,29 @@ public class FileNodeProcessorV2 {
     }
   }
 
+
+  private void deleteFiles(List<TsFileResourceV2> tsFileResourceList, Deletion deletion, List<ModificationFile> updatedModFiles)
+      throws IOException {
+    String deviceId = deletion.getDevice();
+    for (TsFileResourceV2 tsFileResource : tsFileResourceList) {
+      if (!tsFileResource.containsDevice(deviceId) ||
+          deletion.getTimestamp() < tsFileResource.getStartTimeMap().get(deviceId)) {
+        continue;
+      }
+
+      // write deletion into modification file
+      tsFileResource.getModFile().write(deletion);
+
+      // delete data in memory of unsealed file
+      if (!tsFileResource.isClosed()) {
+        UnsealedTsFileProcessorV2 tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
+        tsfileProcessor.delete(deviceId, deletion.getPathString(), deletion.getTimestamp());
+      }
+
+      // add a record in case of rollback
+      updatedModFiles.add(tsFileResource.getModFile());
+    }
+  }
 
   /**
    * ensure there must be a flush thread submitted after setCloseMark() is called, therefore the setCloseMark task

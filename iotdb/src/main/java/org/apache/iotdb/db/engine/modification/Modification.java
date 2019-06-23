@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.modification;
 
 import java.util.Objects;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * Modification represents an UPDATE or DELETE operation on a certain timeseries.
@@ -27,20 +28,32 @@ import java.util.Objects;
 public abstract class Modification {
 
   protected Type type;
-  protected String path;
+  protected Path path;
   protected long versionNum;
 
-  Modification(Type type, String path, long versionNum) {
+  Modification(Type type, Path path, long versionNum) {
     this.type = type;
     this.path = path;
     this.versionNum = versionNum;
   }
 
-  public String getPath() {
+  public String getPathString() {
+    return path.getFullPath();
+  }
+
+  public Path getPath() {
     return path;
   }
 
-  public void setPath(String path) {
+  public String getDevice() {
+    return path.getDevice();
+  }
+
+  public String getMeasurement() {
+    return path.getMeasurement();
+  }
+
+  public void setPath(Path path) {
     this.path = path;
   }
 

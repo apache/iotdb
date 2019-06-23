@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.memtable.MemTableFlushTaskV2;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -137,6 +138,28 @@ public class UnsealedTsFileProcessorV2 {
     return true;
   }
 
+  /**
+   * Delete data whose timestamp <= 'timestamp' and belonging to timeseries deviceId.measurementId.
+   * Delete data in both working MemTable and flushing MemTables.
+   *
+   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param timestamp the upper-bound of deletion time.
+   */
+  public void delete(String deviceId, String measurementId, long timestamp) {
+    if (shouldClose) {
+      return;
+    }
+    flushQueryLock.writeLock().lock();
+    try {
+      workMemTable.delete(deviceId, measurementId, timestamp);
+      for (IMemTable memTable: flushingMemTables) {
+        memTable.delete(deviceId, measurementId, timestamp);
+      }
+    } finally {
+      flushQueryLock.writeLock().unlock();
+    }
+  }
 
   public TsFileResourceV2 getTsFileResource() {
     return tsFileResource;
@@ -147,7 +170,7 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   /**
-   * put the workMemtable into flushing list and set the workMemtable to null
+   * put the working memtable into flushing list and set the working memtable to null
    */
   public void asyncFlush() {
     flushQueryLock.writeLock().lock();

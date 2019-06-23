@@ -300,7 +300,7 @@
 //          getProcessorName(), restoreFolder.getAbsolutePath());
 //    }
 //    fileNodeRestoreFilePath = new File(restoreFolder, processorName + RESTORE_FILE_SUFFIX)
-//        .getPath();
+//        .getPathString();
 //    try {
 //      fileNodeProcessorStore = readStoreFromDisk();
 //    } catch (FileNodeProcessorException e) {
@@ -332,7 +332,7 @@
 //      statMonitor.registerStatistics(statStorageDeltaName, this);
 //    }
 //    try {
-//      versionController = new SimpleFileVersionController(restoreFolder.getPath());
+//      versionController = new SimpleFileVersionController(restoreFolder.getPathString());
 //    } catch (IOException e) {
 //      throw new FileNodeProcessorException(e);
 //    }
@@ -545,7 +545,7 @@
 //      //params.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
 //      params
 //          .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
-//      String baseDir = DIRECTORY_MANAGER.getNextFolderForTsfile();
+//      String baseDir = DIRECTORY_MANAGER.getNextFolderForSequenceFile();
 //      LOGGER.info("Allocate folder {} for the new bufferwrite processor.", baseDir);
 //      // construct processor or restore
 //      try {
@@ -873,7 +873,7 @@
 //      }
 //      if (!originFile.renameTo(targetFile)) {
 //        LOGGER.warn("File renaming failed when appending new file. Origin: {}, Target: {}",
-//            originFile.getPath(), targetFile.getPath());
+//            originFile.getPathString(), targetFile.getPathString());
 //      }
 //      // append the new tsfile
 //      this.newFileNodes.add(appendFile);
@@ -929,11 +929,11 @@
 //        if (!newFile.getParentFile().exists()) {
 //          newFile.getParentFile().mkdirs();
 //        }
-//        java.nio.file.Path link = FileSystems.getDefault().getPath(newFile.getPath());
+//        java.nio.file.Path link = FileSystems.getDefault().getPathString(newFile.getPathString());
 //        java.nio.file.Path target = FileSystems.getDefault()
-//            .getPath(tsFileResource.getFile().getAbsolutePath());
+//            .getPathString(tsFileResource.getFile().getAbsolutePath());
 //        Files.createLink(link, target);
-//        overlapFiles.add(newFile.getPath());
+//        overlapFiles.add(newFile.getPathString());
 //        break;
 //      }
 //    }
@@ -1459,10 +1459,10 @@
 //        continue;
 //      }
 //      for (File file : files) {
-//        if (!bufferFiles.contains(file.getPath())) {
-//          FileReaderManager.getInstance().closeFileAndRemoveReader(file.getPath());
+//        if (!bufferFiles.contains(file.getPathString())) {
+//          FileReaderManager.getInstance().closeFileAndRemoveReader(file.getPathString());
 //          if (!file.delete()) {
-//            LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
+//            LOGGER.warn("Cannot delete BufferWrite file {}", file.getPathString());
 //          }
 //        }
 //      }
@@ -1577,7 +1577,7 @@
 //        numOfChunk++;
 //        TimeValuePair timeValuePair = seriesReader.next();
 //        if (mergeFileWriter == null) {
-//          mergeBaseDir = DIRECTORY_MANAGER.getNextFolderForTsfile();
+//          mergeBaseDir = DIRECTORY_MANAGER.getNextFolderForSequenceFile();
 //          mergeFileName = timeValuePair.getTimestamp()
 //              + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis();
 //          mergeOutputPath = constructOutputFilePath(mergeBaseDir, getProcessorName(),
@@ -1687,7 +1687,7 @@
 //      dataDir.mkdirs();
 //    }
 //    File outputFile = new File(dataDir, fileName);
-//    return outputFile.getPath();
+//    return outputFile.getPathString();
 //  }
 //
 //  private FileSchema constructFileSchema(String processorName) throws WriteProcessException {
