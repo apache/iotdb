@@ -129,7 +129,7 @@ public class SequenceDataReaderByTimestampV2 implements EngineReaderByTimeStamp 
 
   private void initUnSealedTsFileReader(TsFileResourceV2 tsFile)
       throws IOException {
-    seriesReader = new UnSealedTsFilesReaderByTimestampV2(tsFile);
+    seriesReader = new UnSealedTsFileReaderByTimestampV2(tsFile);
   }
 
   private void initSealedTsFileReader(TsFileResourceV2 fileNode, QueryContext context)

@@ -19,20 +19,11 @@
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
-import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeProcessorV2;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 public class UnsealedSeqReaderTest extends ReaderTestHelper {
@@ -44,9 +35,9 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
     Assert.assertEquals(false, resourceV2.isClosed());
     UnSealedTsFileReaderV2 readerV2 = new UnSealedTsFileReaderV2(resourceV2, null, false);
     long time = 999;
-    while (readerV2.hasNext()){
+    while (readerV2.hasNext()) {
       BatchData batchData = readerV2.nextBatch();
-      while (batchData.hasNext()){
+      while (batchData.hasNext()) {
         time++;
         Assert.assertEquals(time, batchData.currentTime());
         batchData.next();
@@ -60,21 +51,21 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     TsFileResourceV2 resourceV2 = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resourceV2.isClosed());
-    UnSealedTsFilesReaderByTimestampV2 readerV2 = new UnSealedTsFilesReaderByTimestampV2(resourceV2);
+    UnSealedTsFileReaderByTimestampV2 readerV2 = new UnSealedTsFileReaderByTimestampV2(
+        resourceV2);
 
-    for (int time = 1000; time <= 3020; time+=10) {
+    for (int time = 1000; time <= 3020; time += 10) {
       int value = (int) readerV2.getValueInTimestamp(time);
       Assert.assertEquals(time, value);
     }
 
     Assert.assertEquals(true, readerV2.hasNext());
-    for (int time = 3050; time <= 3080; time+=10) {
+    for (int time = 3050; time <= 3080; time += 10) {
       Integer value = (Integer) readerV2.getValueInTimestamp(time);
       Assert.assertEquals(null, value);
     }
     Assert.assertEquals(false, readerV2.hasNext());
   }
-
 
 
   @Override

@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
-import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -30,20 +28,18 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class SeqDataReaderTest extends ReaderTestHelper {
+
   @Test
-  public void test() throws IOException {}
-
-
- // @Test
   public void testSeqReader() throws IOException {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
-    SequenceDataReaderV2 readerV2 = new SequenceDataReaderV2(path, queryDataSource.getSeqResources(), null,
+    SequenceDataReaderV2 readerV2 = new SequenceDataReaderV2(path,
+        queryDataSource.getSeqResources(), null,
         EnvironmentUtils.TEST_QUERY_CONTEXT);
     long time = 999;
-    while (readerV2.hasNext()){
+    while (readerV2.hasNext()) {
       BatchData batchData = readerV2.nextBatch();
-      while (batchData.hasNext()){
+      while (batchData.hasNext()) {
         time++;
         Assert.assertEquals(time, batchData.currentTime());
         batchData.next();
@@ -52,25 +48,25 @@ public class SeqDataReaderTest extends ReaderTestHelper {
     Assert.assertEquals(3029L, time);
   }
 
-  //@Test
+  @Test
   public void testSeqByTimestampReader() throws IOException {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
-    SequenceDataReaderByTimestampV2 readerV2 = new SequenceDataReaderByTimestampV2(path, queryDataSource.getSeqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);
+    SequenceDataReaderByTimestampV2 readerV2 = new SequenceDataReaderByTimestampV2(path,
+        queryDataSource.getSeqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);
 
-    for (int time = 1000; time <= 3020; time+=10) {
+    for (int time = 1000; time <= 3020; time += 10) {
       int value = (int) readerV2.getValueInTimestamp(time);
       Assert.assertEquals(time, value);
     }
 
     Assert.assertEquals(true, readerV2.hasNext());
-    for (int time = 3050; time <= 3080; time+=10) {
+    for (int time = 3050; time <= 3080; time += 10) {
       Integer value = (Integer) readerV2.getValueInTimestamp(time);
       Assert.assertEquals(null, value);
     }
     Assert.assertEquals(false, readerV2.hasNext());
   }
-
 
 
   @Override
