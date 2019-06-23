@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.filenodeV2;
 
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
+import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -62,7 +63,12 @@ public class FileNodeProcessorV2Test {
     }
 
     processor.syncCloseFileNode();
-    QueryDataSourceV2 queryDataSource = processor.query(deviceId, measurementId);
+    QueryDataSourceV2 queryDataSource = null;
+    try {
+      queryDataSource = processor.query(deviceId, measurementId);
+    } catch (FileNodeProcessorException e) {
+      e.printStackTrace();
+    }
     Assert.assertEquals(queryDataSource.getSeqResources().size(), 100);
     for (TsFileResourceV2 resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
@@ -71,7 +77,7 @@ public class FileNodeProcessorV2Test {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() {
+  public void testSeqAndUnSeqSyncClose() throws FileNodeProcessorException {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);

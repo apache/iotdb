@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.sequence;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
+import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
@@ -29,7 +30,7 @@ import org.junit.Test;
 public class UnsealedSeqReaderTest extends ReaderTestHelper {
 
   @Test
-  public void testUnSealedReader() throws IOException {
+  public void testUnSealedReader() throws IOException, FileNodeProcessorException {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     TsFileResourceV2 resourceV2 = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resourceV2.isClosed());
@@ -47,7 +48,7 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testUnSealedByTimestampReader() throws IOException {
+  public void testUnSealedByTimestampReader() throws IOException, FileNodeProcessorException {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     TsFileResourceV2 resourceV2 = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resourceV2.isClosed());

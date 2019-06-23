@@ -44,6 +44,7 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -311,7 +312,8 @@ public class FileNodeProcessorV2 {
 
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
-  public QueryDataSourceV2 query(String deviceId, String measurementId) {
+  public QueryDataSourceV2 query(String deviceId, String measurementId)
+      throws FileNodeProcessorException {
     lock.readLock().lock();
     try {
       List<TsFileResourceV2> seqResources = getFileReSourceListForQuery(sequenceFileList,
@@ -329,7 +331,7 @@ public class FileNodeProcessorV2 {
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
   private List<TsFileResourceV2> getFileReSourceListForQuery(List<TsFileResourceV2> tsFileResources,
-      String deviceId, String measurementId) {
+      String deviceId, String measurementId) throws FileNodeProcessorException {
 
     MeasurementSchema mSchema = fileSchema.getMeasurementSchema(measurementId);
     TSDataType dataType = mSchema.getType();
@@ -344,9 +346,14 @@ public class FileNodeProcessorV2 {
           if (tsFileResource.isClosed()) {
             tsfileResourcesForQuery.add(tsFileResource);
           } else {
-            Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = tsFileResource
-                .getUnsealedFileProcessor()
-                .query(deviceId, measurementId, dataType, mSchema.getProps());
+            Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = null;
+            try {
+              pair = tsFileResource
+                  .getUnsealedFileProcessor()
+                  .query(deviceId, measurementId, dataType, mSchema.getProps());
+            } catch (UnsealedTsFileProcessorException e) {
+              throw new FileNodeProcessorException(e);
+            }
             tsfileResourcesForQuery
                 .add(new TsFileResourceV2(tsFileResource.getFile(), pair.left, pair.right));
           }

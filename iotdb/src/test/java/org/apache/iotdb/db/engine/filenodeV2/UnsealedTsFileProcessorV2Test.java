@@ -31,6 +31,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
+import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileSchemaUtils;
@@ -68,7 +69,8 @@ public class UnsealedTsFileProcessorV2Test {
   }
 
   @Test
-  public void testWriteAndFlush() throws WriteProcessException, IOException {
+  public void testWriteAndFlush()
+      throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{}, ()-> true);
 
@@ -112,7 +114,8 @@ public class UnsealedTsFileProcessorV2Test {
 
 
   @Test
-  public void testMultiFlush() throws WriteProcessException, IOException {
+  public void testMultiFlush()
+      throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{}, ()->true);
 
@@ -144,7 +147,8 @@ public class UnsealedTsFileProcessorV2Test {
 
 
   @Test
-  public void testWriteAndClose() throws WriteProcessException, IOException {
+  public void testWriteAndClose()
+      throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE,
         unsealedTsFileProcessorV2 -> {

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
+import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -30,7 +31,7 @@ import org.junit.Test;
 public class SeqDataReaderTest extends ReaderTestHelper {
 
   @Test
-  public void testSeqReader() throws IOException {
+  public void testSeqReader() throws IOException, FileNodeProcessorException {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
     SequenceDataReaderV2 readerV2 = new SequenceDataReaderV2(path,
@@ -49,7 +50,7 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testSeqByTimestampReader() throws IOException {
+  public void testSeqByTimestampReader() throws IOException, FileNodeProcessorException {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
     SequenceDataReaderByTimestampV2 readerV2 = new SequenceDataReaderByTimestampV2(path,
