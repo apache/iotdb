@@ -40,8 +40,8 @@ public interface ISeriesReaderFactory {
    * This method is used to read all unsequence data for IoTDB request, such as query, aggregation
    * and groupby request.
    */
-  IPointReader createUnSeqReader(Path seriesPath, List<TsFileResourceV2> unSeqResources,
-      Filter filter) throws IOException;
+  IPointReader createUnSeqReader(Path seriesPath, List<TsFileResourceV2> unSeqResources, QueryContext context,
+                                 Filter filter) throws IOException;
 
 
   /**
@@ -52,7 +52,7 @@ public interface ISeriesReaderFactory {
    * @return the list of EngineReaderByTimeStamp
    */
   List<EngineReaderByTimeStamp> createByTimestampReadersOfSelectedPaths(List<Path> paths,
-      QueryContext context) throws FileNodeManagerException;
+      QueryContext context) throws FileNodeManagerException, IOException;
 
   /**
    * construct IPointReader, include sequential data and unsequential data.

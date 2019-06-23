@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -43,6 +40,10 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
 
@@ -91,8 +92,8 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
 
       // unseq reader for all chunk groups in unSeqFile, memory
       IPointReader unSeqMergeReader = SeriesReaderFactoryImpl.getInstance()
-          .createUnSeqReader(queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(),
-              timeFilter);
+              .createUnSeqReader(queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context,
+                      timeFilter);
 
       sequenceReaderList.add(sequenceReader);
       unSequenceReaderList.add(unSeqMergeReader);
