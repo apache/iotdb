@@ -375,7 +375,7 @@ public class UnsealedTsFileProcessorV2 {
         memSeriesLazyMerger
             .addMemSeries(flushingMemTable.query(deviceId, measurementId, dataType, props));
       }
-      if (workMemTable != null) {
+      if (workMemTable != null && workMemTable.isManagedByMemPool()) {
         memSeriesLazyMerger
             .addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
       }
