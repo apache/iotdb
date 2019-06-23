@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,11 +35,15 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTaskV2;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
+import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -366,7 +371,8 @@ public class UnsealedTsFileProcessorV2 {
    * @return corresponding chunk data and chunk metadata in memory
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> query(String deviceId,
-      String measurementId, TSDataType dataType, Map<String, String> props) {
+      String measurementId, TSDataType dataType, Map<String, String> props)
+      throws UnsealedTsFileProcessorException {
     flushQueryLock.readLock().lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -385,10 +391,15 @@ public class UnsealedTsFileProcessorV2 {
       // so we do not need to handle it again in the following readOnlyMemChunk
       ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(dataType, memSeriesLazyMerger,
           Collections.emptyMap());
-      return new Pair<>(timeValuePairSorter,
-          writer.getVisibleMetadatas(deviceId, measurementId, dataType));
-      //RL: TODO 后面查询处理时认为这里返回的List<ChunkMetaData>是已经被mod处理过的？
 
+      ModificationFile modificationFile = tsFileResource.getModFile();
+
+      List<ChunkMetaData> chunkMetaDataList = writer.getVisibleMetadatas(deviceId, measurementId, dataType);
+      QueryUtils.modifyChunkMetaData(chunkMetaDataList, (List<Modification>) modificationFile.getModifications());
+
+      return new Pair<>(timeValuePairSorter, chunkMetaDataList);
+    } catch (IOException e) {
+      throw new UnsealedTsFileProcessorException("read modification file failed", e);
     } finally {
       flushQueryLock.readLock().unlock();
     }
