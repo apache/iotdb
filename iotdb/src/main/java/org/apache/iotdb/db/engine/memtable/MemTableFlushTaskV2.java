@@ -206,9 +206,8 @@ public class MemTableFlushTaskV2 {
       }
     }
     stop = true;
+
     while (ioFlushThread.isAlive()) {
-      LOGGER.info("io flush thread is alive");
-      // wait until the after works are done
     }
 
     LOGGER.info("flushing a memtable finished!");
