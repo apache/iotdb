@@ -130,8 +130,6 @@ public class MemTableFlushTaskV2 {
         ioTime += System.currentTimeMillis() - starTime;
       }
     }
-
-    flushCallBack.accept(memTable);
   });
 
 
@@ -196,7 +194,7 @@ public class MemTableFlushTaskV2 {
       memoryTaskQueue.add(theLastTask);
     }
     LOGGER.info(
-        "BufferWrite Processor {}, flushing a memtable into disk: data sort time cost {} ms.",
+        "{}, flushing a memtable into disk: data sort time cost {} ms.",
         processorName, sortTime);
     while (!theLastTask.finished) {
       try {
@@ -209,8 +207,12 @@ public class MemTableFlushTaskV2 {
     }
     stop = true;
     while (ioFlushThread.isAlive()) {
+      LOGGER.info("io flush thread is alive");
       // wait until the after works are done
     }
+
+    LOGGER.info("flushing a memtable finished!");
+    flushCallBack.accept(memTable);
   }
 
 

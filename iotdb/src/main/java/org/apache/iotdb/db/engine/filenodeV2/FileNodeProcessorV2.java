@@ -473,14 +473,13 @@ public class FileNodeProcessorV2 {
     try {
       asyncForceClose();
       while (true) {
-        if (closingSequenceTsFileProcessor.isEmpty() && closingUnSequenceTsFileProcessor.isEmpty()
-            && workSequenceTsFileProcessor == null && workUnSequenceTsFileProcessor == null) {
+        if (closingSequenceTsFileProcessor.isEmpty() && closingUnSequenceTsFileProcessor.isEmpty()) {
           break;
         }
         closeFileNodeCondition.await();
       }
     } catch (InterruptedException e) {
-      LOGGER.error("CloseFileNodeConditon occurs error while waiting for closing the file node {}",
+      LOGGER.error("CloseFileNodeCondition occurs error while waiting for closing the file node {}",
           storageGroupName, e);
     } finally {
       lock.writeLock().unlock();
@@ -497,15 +496,14 @@ public class FileNodeProcessorV2 {
       asyncForceClose();
       toBeClosed = true;
       while (true) {
-        if (closingSequenceTsFileProcessor.isEmpty() && closingUnSequenceTsFileProcessor.isEmpty()
-            && workSequenceTsFileProcessor == null && workUnSequenceTsFileProcessor == null) {
+        if (closingSequenceTsFileProcessor.isEmpty() && closingUnSequenceTsFileProcessor.isEmpty()) {
           removeProcessorFromManagerCallback.get();
           break;
         }
         closeFileNodeCondition.await();
       }
     } catch (InterruptedException e) {
-      LOGGER.error("CloseFileNodeConditon occurs error while waiting for closing the file node {}",
+      LOGGER.error("CloseFileNodeCondition occurs error while waiting for closing the file node {}",
           storageGroupName, e);
     } finally {
       lock.writeLock().unlock();
@@ -535,8 +533,9 @@ public class FileNodeProcessorV2 {
     try {
       if (closingSequenceTsFileProcessor.contains(unsealedTsFileProcessor)) {
         closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
+        LOGGER.info("removed a sequence tsfile processor, closing list size: {}", closingSequenceTsFileProcessor.size());
       } else {
-        closingUnSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
+//        closingUnSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
       }
       // end time with one start time
       TsFileResourceV2 resource = unsealedTsFileProcessor.getTsFileResource();
@@ -547,6 +546,7 @@ public class FileNodeProcessorV2 {
         }
         resource.setClosed(true);
       }
+      LOGGER.info("signal closing file node condition");
       closeFileNodeCondition.signal();
     }finally {
       lock.writeLock().unlock();

@@ -23,18 +23,25 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Future;
 import org.apache.iotdb.db.engine.pool.FlushPoolManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FlushManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
 
   private ConcurrentLinkedDeque<UnsealedTsFileProcessorV2> unsealedTsFileProcessorQueue = new ConcurrentLinkedDeque<>();
 
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 
   private Runnable flushThread = () -> {
+    LOGGER.info("flush thread start");
     UnsealedTsFileProcessorV2 unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
+    LOGGER.info("flush thread poll an tsfile processor succeed, flushing memtable size: {}", unsealedTsFileProcessor.getFlushingMemTableSize());
     try {
       unsealedTsFileProcessor.flushOneMemTable();
     } catch (IOException e) {
+      LOGGER.error("flush one memtable meet error", e);
       // TODO do sth
     }
     unsealedTsFileProcessor.setManagedByFlushManager(false);
@@ -47,6 +54,12 @@ public class FlushManager {
   public Future registerUnsealedTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
     synchronized (unsealedTsFileProcessor) {
       if (!unsealedTsFileProcessor.isManagedByFlushManager() && unsealedTsFileProcessor.getFlushingMemTableSize() > 0) {
+        LOGGER.info("begin to submit a flush thread, flushing memtable size: {}", unsealedTsFileProcessor.getFlushingMemTableSize());
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
         unsealedTsFileProcessorQueue.add(unsealedTsFileProcessor);
         unsealedTsFileProcessor.setManagedByFlushManager(true);
         return flushPool.submit(flushThread);

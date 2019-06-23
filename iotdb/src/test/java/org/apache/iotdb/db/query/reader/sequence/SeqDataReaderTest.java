@@ -89,7 +89,9 @@ public class SeqDataReaderTest extends ReaderTestHelper {
       insertOneRecord(j, j);
     }
     fileNodeProcessorV2.syncCloseFileNode();
-   // fileNodeProcessorV2.getWorkSequenceTsFileProcessor().asyncFlush();
+
+    assert fileNodeProcessorV2.getWorkSequenceTsFileProcessor() == null;
+
     for (int j = 3020; j <= 3029; j++) {
       insertOneRecord(j, j);
     }
