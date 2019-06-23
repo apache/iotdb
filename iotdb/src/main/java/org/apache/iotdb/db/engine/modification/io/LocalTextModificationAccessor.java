@@ -31,6 +31,7 @@ import java.util.List;
 
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,7 +129,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
 
   private static String encodeDeletion(Deletion del) {
     StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder.append(del.getType().toString()).append(SEPARATOR).append(del.getPath())
+    stringBuilder.append(del.getType().toString()).append(SEPARATOR).append(del.getPathString())
             .append(SEPARATOR).append(del.getVersionNum()).append(SEPARATOR)
             .append(del.getTimestamp());
     return stringBuilder.toString();
@@ -152,6 +153,6 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
       throw new IOException("Invalide timestamp: " + fields[3]);
     }
 
-    return new Deletion(path, versionNum, timestamp);
+    return new Deletion(new Path(path), versionNum, timestamp);
   }
 }

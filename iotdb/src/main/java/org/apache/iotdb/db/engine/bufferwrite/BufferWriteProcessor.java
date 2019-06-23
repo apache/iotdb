@@ -60,6 +60,7 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -620,7 +621,7 @@ public class BufferWriteProcessor extends Processor {
       // flushing MemTable cannot be directly modified since another thread is reading it
     for (IMemTable memTable : flushingMemTables) {
       if (memTable.containSeries(deviceId, measurementId)) {
-        memTable.delete(new Deletion(deviceId + PATH_SEPARATOR + measurementId, 0, timestamp));
+        memTable.delete(new Deletion(new Path(deviceId, measurementId), 0, timestamp));
       }
     }
   }

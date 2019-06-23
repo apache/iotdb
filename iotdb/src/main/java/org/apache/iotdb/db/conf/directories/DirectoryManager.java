@@ -85,7 +85,7 @@ public class DirectoryManager {
     tsfileFolders.set(0, path);
   }
 
-  public String getNextFolderForTsfile() {
+  public String getNextFolderForSequenceFile() {
     return getTsFileFolder(getNextFolderIndexForTsFile());
   }
 
@@ -118,7 +118,7 @@ public class DirectoryManager {
     return IoTDBDescriptor.getInstance().getConfig().getWalFolder();
   }
 
-  public String getNextFolderForOverflowFile() {
+  public String getNextFolderForUnSequenceFile() {
     return getOverflowFileFolder(getNextFolderIndexForOverflowFile());
   }
 

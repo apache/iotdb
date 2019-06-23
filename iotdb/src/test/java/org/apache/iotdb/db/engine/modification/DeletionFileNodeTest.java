@@ -29,11 +29,9 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
@@ -142,23 +140,21 @@ public class DeletionFileNodeTest {
     FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(processorName + "." + measurements[5], 102, 50),
-        new Deletion(processorName + "." + measurements[4], 103, 40),
-        new Deletion(processorName + "." + measurements[3], 104, 30),
+        new Deletion(new Path(processorName, measurements[5]), 102, 50),
+        new Deletion(new Path(processorName, measurements[4]), 103, 40),
+        new Deletion(new Path(processorName, measurements[3]), 104, 30),
     };
 
-    String fileNodePath = DirectoryManager.getInstance().getTsFileFolder(0) + File.separator
-        + processorName;
-    File fileNodeDir = new File(fileNodePath);
+    File fileNodeDir = new File(DirectoryManager.getInstance().getTsFileFolder(0), processorName);
     File[] modFiles = fileNodeDir.listFiles((dir, name)
         -> name.endsWith(ModificationFile.FILE_SUFFIX));
-    assertEquals(modFiles.length, 1);
+    assertEquals(1, modFiles.length);
 
     LocalTextModificationAccessor accessor =
         new LocalTextModificationAccessor(modFiles[0].getPath());
     try {
       Collection<Modification> modifications = accessor.read();
-      assertEquals(modifications.size(), 3);
+      assertEquals(3, modifications.size());
       int i = 0;
       for (Modification modification : modifications) {
         assertTrue(modification.equals(realModifications[i++]));
@@ -240,12 +236,12 @@ public class DeletionFileNodeTest {
     FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(processorName + "." + measurements[5], 103, 50),
-        new Deletion(processorName + "." + measurements[4], 104, 40),
-        new Deletion(processorName + "." + measurements[3], 105, 30),
+        new Deletion(new Path(processorName, measurements[5]), 103, 50),
+        new Deletion(new Path(processorName, measurements[4]), 104, 40),
+        new Deletion(new Path(processorName, measurements[3]), 105, 30),
     };
 
-    String fileNodePath = DirectoryManager.getInstance().getNextFolderForOverflowFile() + File.separator
+    String fileNodePath = DirectoryManager.getInstance().getNextFolderForUnSequenceFile() + File.separator
         + processorName + File.separator + "0" + File.separator;
     File fileNodeDir = new File(fileNodePath);
     File[] modFiles = fileNodeDir.listFiles((dir, name)
