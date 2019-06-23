@@ -326,6 +326,9 @@ public class FileNodeProcessorV2 {
 
     List<TsFileResourceV2> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileResourceV2 tsFileResource : tsFileResources) {
+      if (!tsFileResource.containsDevice(deviceId)) {
+        continue;
+      }
       synchronized (tsFileResource) {
         if (!tsFileResource.getStartTimeMap().isEmpty()) {
           if (tsFileResource.isClosed()) {
