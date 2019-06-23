@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -91,11 +92,10 @@ public interface IQueryProcessExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param paths : delete series paths
-   * @param deleteTime end time in delete command
+   * @param deletePlan physical delete plan
    * @return - whether the operator is successful.
    */
-  boolean delete(List<Path> paths, long deleteTime) throws ProcessorException;
+  boolean delete(DeletePlan deletePlan) throws ProcessorException;
 
   /**
    * execute delete command and return whether the operator is successful.

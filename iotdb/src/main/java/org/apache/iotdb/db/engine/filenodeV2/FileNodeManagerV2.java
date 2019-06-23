@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IService;
@@ -115,7 +117,7 @@ public class FileNodeManagerV2 implements IService {
 
 
   private FileNodeProcessorV2 getProcessor(String devicePath)
-      throws FileNodeManagerException, ProcessorException {
+      throws FileNodeManagerException {
     String storageGroup = "";
     try {
       // return the storage group name
@@ -137,11 +139,8 @@ public class FileNodeManagerV2 implements IService {
         }
       }
       return processor;
-    } catch (PathErrorException e) {
-      LOGGER.error("MManager get storage group name error, seriesPath is {}", devicePath);
-      throw new FileNodeManagerException(e);
-    } catch (FileNodeProcessorException e) {
-      LOGGER.error("Fail to init simple file version controller of file node {}", storageGroup,  e);
+    } catch (PathErrorException | ProcessorException e) {
+      LOGGER.error("Fail to get FileNodeProcessor {}", storageGroup,  e);
       throw new FileNodeManagerException(e);
     }
   }
@@ -213,7 +212,12 @@ public class FileNodeManagerV2 implements IService {
    */
   public void delete(String deviceId, String measurementId, long timestamp)
       throws FileNodeManagerException {
-    // TODO
+    FileNodeProcessorV2 fileNodeProcessor = getProcessor(deviceId);
+    try {
+      fileNodeProcessor.delete(deviceId, measurementId, timestamp);
+    } catch (IOException e) {
+      throw new FileNodeManagerException(e);
+    }
   }
 
   private void delete(String processorName,

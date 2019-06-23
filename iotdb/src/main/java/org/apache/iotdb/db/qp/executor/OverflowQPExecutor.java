@@ -113,8 +113,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     switch (plan.getOperatorType()) {
       case DELETE:
-        DeletePlan delete = (DeletePlan) plan;
-        return delete(delete.getPaths(), delete.getDeleteTime());
+        return delete((DeletePlan) plan);
       case UPDATE:
         UpdatePlan update = (UpdatePlan) plan;
         boolean flag = true;
@@ -216,7 +215,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     try {
       String fullPath = deviceId + "." + measurementId;
       if (!mManager.pathExist(fullPath)) {
-        throw new ProcessorException(String.format("Timeseries %s does not exist.", fullPath));
+        throw new ProcessorException(String.format("Time series %s does not exist.", fullPath));
       }
       mManager.getFileNameByPath(fullPath);
       TSDataType dataType = mManager.getSeriesType(fullPath);
@@ -235,7 +234,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     try {
       if (!mManager.pathExist(path.getFullPath())) {
         throw new ProcessorException(
-            String.format("Timeseries %s does not exist.", path.getFullPath()));
+            String.format("Time series %s does not exist.", path.getFullPath()));
       }
       mManager.getFileNameByPath(path.getFullPath());
       fileNodeManager.delete(deviceId, measurementId, timestamp);

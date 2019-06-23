@@ -29,11 +29,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
@@ -41,6 +45,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.writelog.recover.SeqTsFileRecoverPerformer;
 import org.apache.iotdb.db.writelog.recover.UnSeqTsFileRecoverPerformer;
@@ -96,6 +101,13 @@ public class FileNodeProcessorV2 {
   private volatile boolean toBeClosed;
 
   private VersionController versionController;
+
+  private ReentrantLock mergeDeleteLock = new ReentrantLock();
+
+  /**
+   * This is the modification file of the result of the current merge.
+   */
+  private ModificationFile mergingModification;
 
   public FileNodeProcessorV2(String baseDir, String storageGroupName) throws ProcessorException {
     this.storageGroupName = storageGroupName;
@@ -290,7 +302,6 @@ public class FileNodeProcessorV2 {
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSourceV2 query(String deviceId, String measurementId) {
-
     lock.readLock().lock();
     try {
       List<TsFileResourceV2> seqResources = getFileReSourceListForQuery(sequenceFileList,
@@ -302,7 +313,6 @@ public class FileNodeProcessorV2 {
       lock.readLock().unlock();
     }
   }
-
 
   /**
    * @param tsFileResources includes sealed and unsealed tsfile resources
@@ -331,6 +341,84 @@ public class FileNodeProcessorV2 {
       }
     }
     return tsfileResourcesForQuery;
+  }
+
+
+  /**
+   * Delete data whose timestamp <= 'timestamp' and belong to timeseries deviceId.measurementId.
+   *
+   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param timestamp the delete range is (0, timestamp].
+   */
+  public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
+    // TODO: how to avoid partial deletion?
+    mergeDeleteLock.lock();
+    long lastUpdateTime = latestTimeForEachDevice.get(deviceId);
+    // no tsfile data, the delete operation is invalid
+    if (lastUpdateTime == Long.MIN_VALUE) {
+      LOGGER.warn("The last update time is -1, delete overflow is invalid, "
+          + "the storage group is {}", storageGroupName);
+      return;
+    }
+
+    // write log
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+      workSequenceTsFileProcessor.getLogNode().write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+      workUnSequenceTsFileProcessor.getLogNode().write(new DeletePlan(timestamp, new Path(deviceId, measurementId)));
+    }
+
+    long version = versionController.nextVersion();
+
+    // record what files are updated so we can roll back them in case of exception
+    List<ModificationFile> updatedModFiles = new ArrayList<>();
+
+    try {
+      String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
+      Deletion deletion = new Deletion(fullPath, version, timestamp);
+      if (mergingModification != null) {
+        mergingModification.write(deletion);
+        updatedModFiles.add(mergingModification);
+      }
+
+      // delete sequence files
+      for (TsFileResourceV2 tsFileResource : sequenceFileList) {
+        if (!tsFileResource.containsDevice(deviceId) ||
+            tsFileResource.getStartTimeMap().get(deviceId) <= deletion.getTimestamp()) {
+          continue;
+        }
+        if (tsFileResource.isClosed()) {
+          tsFileResource.getModFile().write(deletion);
+          updatedModFiles.add(tsFileResource.getModFile());
+        } else {
+          // TODO delete unsealed file
+        }
+      }
+
+      // delete unSequence files
+      for (TsFileResourceV2 tsFileResource : unSequenceFileList) {
+        if (!tsFileResource.containsDevice(deviceId) ||
+            tsFileResource.getStartTimeMap().get(deviceId) <= deletion.getTimestamp()) {
+          continue;
+        }
+        if (tsFileResource.isClosed()) {
+          tsFileResource.getModFile().write(deletion);
+          updatedModFiles.add(tsFileResource.getModFile());
+        } else {
+          // TODO delete unsealed file
+        }
+      }
+
+
+    } catch (Exception e) {
+      // roll back
+      for (ModificationFile modFile : updatedModFiles) {
+        modFile.abort();
+      }
+      throw new IOException(e);
+    } finally {
+      mergeDeleteLock.unlock();
+    }
   }
 
 

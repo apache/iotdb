@@ -97,8 +97,15 @@ public class TsFileResourceV2 {
     return readOnlyMemChunk;
   }
 
-  public ModificationFile getModFile() {
+  public synchronized ModificationFile getModFile() {
+    if (modFile == null) {
+      modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+    }
     return modFile;
+  }
+
+  public boolean containsDevice(String deviceId) {
+    return startTimeMap.containsKey(deviceId);
   }
 
   public File getFile() {

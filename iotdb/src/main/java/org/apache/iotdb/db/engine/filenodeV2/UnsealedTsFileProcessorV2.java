@@ -120,13 +120,14 @@ public class UnsealedTsFileProcessorV2 {
       }
     }
 
-    try {
-      logNode.write(insertPlan);
-    } catch (IOException e) {
-      LOGGER.error("write WAL failed", e);
-      return false;
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+      try {
+        logNode.write(insertPlan);
+      } catch (IOException e) {
+        LOGGER.error("write WAL failed", e);
+        return false;
+      }
     }
-
     // update start time of this memtable
     tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
 
@@ -295,6 +296,10 @@ public class UnsealedTsFileProcessorV2 {
 
   public boolean isManagedByFlushManager() {
     return managedByFlushManager;
+  }
+
+  public WriteLogNode getLogNode() {
+    return logNode;
   }
 
   public void setManagedByFlushManager(boolean managedByFlushManager) {

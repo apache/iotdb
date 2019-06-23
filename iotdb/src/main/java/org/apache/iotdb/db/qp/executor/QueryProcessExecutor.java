@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -101,27 +102,25 @@ public abstract class QueryProcessExecutor implements IQueryProcessExecutor {
   }
 
   @Override
-  public boolean delete(List<Path> paths, long deleteTime) throws ProcessorException {
+  public boolean delete(DeletePlan deletePlan) throws ProcessorException {
     try {
       boolean result = true;
       MManager mManager = MManager.getInstance();
-      Set<String> pathSet = new HashSet<>();
-      for (Path p : paths) {
-        pathSet.addAll(mManager.getPaths(p.getFullPath()));
+      Set<String> existingPaths = new HashSet<>();
+      for (Path p : deletePlan.getPaths()) {
+        existingPaths.addAll(mManager.getPaths(p.getFullPath()));
       }
-      if (pathSet.isEmpty()) {
-        throw new ProcessorException("TimeSeries does not exist and cannot be delete data");
+      if (existingPaths.isEmpty()) {
+        throw new ProcessorException("TimeSeries does not exist and its data cannot be deleted");
       }
-      for (String onePath : pathSet) {
+      for (String onePath : existingPaths) {
         if (!mManager.pathExist(onePath)) {
           throw new ProcessorException(
-              String.format("TimeSeries %s does not exist and cannot be delete its data", onePath));
+              String.format("TimeSeries %s does not exist and its data cannot be deleted", onePath));
         }
       }
-      List<String> fullPath = new ArrayList<>();
-      fullPath.addAll(pathSet);
-      for (String path : fullPath) {
-        result &= delete(new Path(path), deleteTime);
+      for (String path : existingPaths) {
+        result &= delete(new Path(path), deletePlan.getDeleteTime());
       }
       return result;
     } catch (PathErrorException e) {
