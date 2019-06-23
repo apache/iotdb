@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -162,12 +163,8 @@ public class FileNodeProcessorV2 {
     recoverUnseqFiles(tsFiles);
   }
 
-  private static int getTsFileSerialNum(File tsFile) {
-    return Integer.parseInt(tsFile.getName().split("-")[1]);
-  }
-
   private void recoverSeqFiles(List<File> tsfiles) throws ProcessorException {
-    tsfiles.sort(Comparator.comparingInt(FileNodeProcessorV2::getTsFileSerialNum));
+    tsfiles.sort(new CompareFileName());
     for (File tsfile: tsfiles) {
       TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsfile);
       sequenceFileList.add(tsFileResource);
@@ -177,7 +174,7 @@ public class FileNodeProcessorV2 {
   }
 
   private void recoverUnseqFiles(List<File> tsfiles) throws ProcessorException {
-    tsfiles.sort(Comparator.comparingInt(FileNodeProcessorV2::getTsFileSerialNum));
+    tsfiles.sort(new CompareFileName());
     for (File tsfile: tsfiles) {
       TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsfile);
       unSequenceFileList.add(tsFileResource);
@@ -187,6 +184,19 @@ public class FileNodeProcessorV2 {
     }
   }
 
+  class CompareFileName implements Comparator<File> {
+
+    @Override
+    public int compare(File o1, File o2) {
+      String[] items1 = o1.getName().split("-");
+      String[] items2 = o2.getName().split("-");
+      if (Long.valueOf(items1[0]) - Long.valueOf(items2[0]) == 0) {
+        return  Long.compare(Long.valueOf(items1[1]), Long.valueOf(items2[1]));
+      } else {
+        return Long.compare(Long.valueOf(items1[0]), Long.valueOf(items2[0]));
+      }
+    }
+  }
 
   private FileSchema constructFileSchema(String storageGroupName) {
     List<MeasurementSchema> columnSchemaList;
