@@ -148,7 +148,7 @@ public class UnseqTsFileRecoverTest {
       ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
 
       unSeqMergeReader
-          .addReaderWithPriority(new EngineChunkReader(chunkReader, fileReader),
+          .addReaderWithPriority(new EngineChunkReader(chunkReader),
               priorityValue);
       priorityValue++;
     }
