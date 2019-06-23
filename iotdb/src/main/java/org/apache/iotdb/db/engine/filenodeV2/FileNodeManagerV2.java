@@ -94,6 +94,19 @@ public class FileNodeManagerV2 implements IService {
     if (dir.mkdirs()) {
       LOGGER.info("Base directory {} of all storage groups doesn't exist, create it", dir.getPath());
     }
+
+    /**
+     * recovery all file node processors.
+     */
+    try {
+      List<String> storageGroups = MManager.getInstance().getAllFileNames();
+      for (String storageGroup: storageGroups) {
+        FileNodeProcessorV2 processor = new FileNodeProcessorV2(baseDir, storageGroup);
+        processorMap.put(storageGroup, processor);
+      }
+    } catch (PathErrorException | ProcessorException e) {
+      e.printStackTrace();
+    }
   }
 
   @Override
@@ -183,15 +196,6 @@ public class FileNodeManagerV2 implements IService {
       }
     }
   }
-
-
-  /**
-   * recovery the filenode processor.
-   */
-  public void recovery() {
-    // TODO
-  }
-
 
   private void writeLog(TSRecord tsRecord, boolean isMonitor, WriteLogNode logNode)
       throws FileNodeManagerException {

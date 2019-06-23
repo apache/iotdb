@@ -78,7 +78,6 @@ public class IoTDB implements IoTDBMBean {
 
     boolean enableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
-    FileNodeManagerV2.getInstance().recovery();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(enableWAL);
 
     // When registering statMonitor, we should start recovering some statistics
