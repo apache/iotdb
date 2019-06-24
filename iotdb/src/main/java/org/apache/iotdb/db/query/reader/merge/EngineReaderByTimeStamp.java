@@ -25,6 +25,9 @@ public interface EngineReaderByTimeStamp {
   /**
    * Given a timestamp, the reader is supposed to return the corresponding value in the timestamp.
    * If no value in this timestamp, null will be returned.
+   *
+   * Note that when the higher layer needs to call this function multiple times, it is required that the timestamps
+   * be in strictly increasing order.
    */
   Object getValueInTimestamp(long timestamp) throws IOException;
 
