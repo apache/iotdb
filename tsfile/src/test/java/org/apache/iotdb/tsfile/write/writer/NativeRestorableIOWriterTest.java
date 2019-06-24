@@ -80,7 +80,7 @@ public class NativeRestorableIOWriterTest {
     rWriter = new NativeRestorableIOWriter(file);
     assertEquals(TsFileCheckStatus.COMPLETE_FILE, rWriter.getTruncatedPosition());
     assertFalse(rWriter.canWrite());
-    rWriter = new NativeRestorableIOWriter(file, true);
+    rWriter = new NativeRestorableIOWriter(file);
     assertEquals(TSFileConfig.MAGIC_STRING.length(), rWriter.getTruncatedPosition());
     writer = new TsFileWriter(rWriter);
     writer.close();
@@ -322,7 +322,7 @@ public class NativeRestorableIOWriterTest {
     assertFalse(rWriter.canWrite());
     rWriter.close();
 
-    rWriter = new NativeRestorableIOWriter(file, true);
+    rWriter = new NativeRestorableIOWriter(file);
     assertTrue(rWriter.canWrite());
     writer = new TsFileWriter(rWriter);
     writer.write(new TSRecord(3, "d1").addTuple(new FloatDataPoint("s1", 5))

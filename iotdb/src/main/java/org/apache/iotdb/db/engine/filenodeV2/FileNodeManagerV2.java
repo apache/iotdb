@@ -365,6 +365,7 @@ public class FileNodeManagerV2 implements IService {
   }
 
   /**
+   * flush command
    * Sync asyncCloseOneProcessor all file node processors.
    */
   public void syncCloseAllProcessor() throws FileNodeManagerException {

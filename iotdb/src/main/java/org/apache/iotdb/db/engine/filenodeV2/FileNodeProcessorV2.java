@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.filenodeV2;
 
+import static org.apache.iotdb.tsfile.common.constant.SystemConstant.TSFILE_SUFFIX;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -33,6 +35,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
@@ -144,7 +147,7 @@ public class FileNodeProcessorV2 {
       if (!fileFolder.exists()) {
         continue;
       }
-      for (File tsfile: fileFolder.listFiles(file->!file.getName().contains("mods"))) {
+      for (File tsfile: fileFolder.listFiles(file->file.getName().endsWith(TSFILE_SUFFIX))) {
         tsFiles.add(tsfile);
       }
     }
@@ -157,11 +160,16 @@ public class FileNodeProcessorV2 {
       if (!fileFolder.exists()) {
         continue;
       }
-      for (File tsfile: fileFolder.listFiles(file->!file.getName().contains("mods"))) {
+      for (File tsfile: fileFolder.listFiles(file->file.getName().endsWith(TSFILE_SUFFIX))) {
         tsFiles.add(tsfile);
       }
     }
     recoverUnseqFiles(tsFiles);
+
+    for (TsFileResourceV2 resource: sequenceFileList) {
+      latestTimeForEachDevice.putAll(resource.getEndTimeMap());
+      latestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
+    }
   }
 
   private void recoverSeqFiles(List<File> tsfiles) throws ProcessorException {
@@ -304,7 +312,8 @@ public class FileNodeProcessorV2 {
     new File(baseDir, storageGroupName).mkdirs();
 
     String filePath = Paths.get(baseDir, storageGroupName,
-        System.currentTimeMillis() + "-" + versionController.nextVersion()).toString();
+        System.currentTimeMillis() + "-" + versionController.nextVersion()).toString()
+        + TSFILE_SUFFIX;
 
     return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
         fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);

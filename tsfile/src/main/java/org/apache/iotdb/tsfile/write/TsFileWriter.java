@@ -118,16 +118,6 @@ public class TsFileWriter implements AutoCloseable{
    * init this TsFileWriter.
    *
    * @param file the File to be written by this TsFileWriter
-   * @param conf the configuration of this TsFile
-   */
-  public TsFileWriter(File file, TSFileConfig conf) throws IOException {
-    this(new TsFileIOWriter(file), new FileSchema(), conf);
-  }
-
-  /**
-   * init this TsFileWriter.
-   *
-   * @param file the File to be written by this TsFileWriter
    * @param schema the schema of this TsFile
    * @param conf the configuration of this TsFile
    */
