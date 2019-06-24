@@ -127,8 +127,8 @@ public class UnseqTsFileRecoverTest {
 
   @Test
   public void test() throws ProcessorException, IOException {
-    UnSeqTsFileRecoverPerformer performer = new UnSeqTsFileRecoverPerformer(logNodePrefix, schema,
-        versionController, resource);
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
+        versionController, resource, true);
     performer.recover();
 
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsF.getPath(), true);
