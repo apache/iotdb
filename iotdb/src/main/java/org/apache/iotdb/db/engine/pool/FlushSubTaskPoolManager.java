@@ -30,26 +30,23 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ProcessorException;
 
-public class FlushPoolManager {
+public class FlushSubTaskPoolManager {
 
   private static final int EXIT_WAIT_TIME = 60 * 1000;
 
   private ExecutorService pool;
-  private int threadCnt;
 
-  private FlushPoolManager() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    this.threadCnt = config.getConcurrentFlushThread();
-    this.pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
+  private FlushSubTaskPoolManager() {
+    this.pool = IoTDBThreadPoolFactory
+        .newCachedThreadPool(ThreadName.FLUSH_SUB_TASK_SERVICE.getName());
   }
 
-  public static FlushPoolManager getInstance() {
-    return InstanceHolder.instance;
+  public static FlushSubTaskPoolManager getInstance() {
+    return FlushSubTaskPoolManager.InstanceHolder.instance;
   }
 
   /**
-   * @throws ProcessorException
-   *             if the pool is not terminated.
+   * @throws ProcessorException if the pool is not terminated.
    */
   public void reopen() throws ProcessorException {
     if (!pool.isTerminated()) {
@@ -62,12 +59,9 @@ public class FlushPoolManager {
   /**
    * Refuse new flush submits and exit when all RUNNING THREAD in the pool end.
    *
-   * @param block
-   *            if set to true, this method will wait for timeOut milliseconds.
-   * @param timeOut
-   *            block time out in milliseconds.
-   * @throws ProcessorException
-   *             if timeOut is reached or being interrupted while waiting to exit.
+   * @param block if set to true, this method will wait for timeOut milliseconds.
+   * @param timeOut block time out in milliseconds.
+   * @throws ProcessorException if timeOut is reached or being interrupted while waiting to exit.
    */
   public void forceClose(boolean block, long timeOut) throws ProcessorException {
     pool.shutdownNow();
@@ -88,12 +82,9 @@ public class FlushPoolManager {
   /**
    * Block new flush submits and exit when all RUNNING THREADS AND TASKS IN THE QUEUE end.
    *
-   * @param block
-   *            if set to true, this method will wait for timeOut milliseconds.
-   * @param timeout
-   *            block time out in milliseconds.
-   * @throws ProcessorException
-   *             if timeOut is reached or being interrupted while waiting to exit.
+   * @param block if set to true, this method will wait for timeOut milliseconds.
+   * @param timeout block time out in milliseconds.
+   * @throws ProcessorException if timeOut is reached or being interrupted while waiting to exit.
    */
   public void close(boolean block, long timeout) throws ProcessorException {
     pool.shutdown();
@@ -114,7 +105,7 @@ public class FlushPoolManager {
     return pool.submit(task);
   }
 
-  public synchronized <T>Future<T> submit(Callable<T> task){
+  public synchronized <T> Future<T> submit(Callable<T> task) {
     return pool.submit(task);
   }
 
@@ -122,15 +113,13 @@ public class FlushPoolManager {
     return ((ThreadPoolExecutor) pool).getActiveCount();
   }
 
-  public int getThreadCnt() {
-    return threadCnt;
-  }
-
   private static class InstanceHolder {
-    private InstanceHolder(){
+
+    private InstanceHolder() {
       //allowed to do nothing
     }
-    private static FlushPoolManager instance = new FlushPoolManager();
+
+    private static FlushSubTaskPoolManager instance = new FlushSubTaskPoolManager();
   }
 
   public int getWaitingTasksNumber() {

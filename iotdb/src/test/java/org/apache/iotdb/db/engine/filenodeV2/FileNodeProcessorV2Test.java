@@ -54,12 +54,17 @@ public class FileNodeProcessorV2Test {
 
   @Test
   public void testSequenceSyncClose() {
-    for (int j = 1; j <= 100; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
-      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(new InsertPlan(record));
+    int cnt = 100;
+    for(int i =0 ; i < cnt ; i++) {
+
+      for (int j = 1; j <= 1000; j++) {
+        TSRecord record = new TSRecord(j + i * 1000, deviceId);
+        record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+        processor.insert(new InsertPlan(record));
+      }
       processor.asyncForceClose();
     }
+    System.out.println("reach");
 
     processor.syncCloseFileNode();
     QueryDataSourceV2 queryDataSource = null;
