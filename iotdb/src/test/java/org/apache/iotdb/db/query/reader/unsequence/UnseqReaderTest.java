@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.reader.unsequence;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
+import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
@@ -49,7 +50,7 @@ public class UnseqReaderTest extends ReaderTestHelper {
     }
 
     @Test
-    public void testUnSeqReaderWithGlobalTimeFilter() throws IOException {
+    public void testUnSeqReaderWithGlobalTimeFilter() throws IOException, FileNodeProcessorException {
         Path path = new Path(deviceId, measurementId);
         QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
         IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnSeqReader(path,
@@ -65,7 +66,7 @@ public class UnseqReaderTest extends ReaderTestHelper {
     }
 
     @Test
-    public void testUnSeqReaderWithoutFilter() throws IOException {
+    public void testUnSeqReaderWithoutFilter() throws IOException, FileNodeProcessorException {
         Path path = new Path(deviceId, measurementId);
         QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
         IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnSeqReader(path,
