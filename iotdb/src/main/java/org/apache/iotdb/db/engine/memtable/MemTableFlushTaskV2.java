@@ -41,33 +41,32 @@ public class MemTableFlushTaskV2 {
   private ConcurrentLinkedQueue ioTaskQueue = new ConcurrentLinkedQueue();
   private ConcurrentLinkedQueue memoryTaskQueue = new ConcurrentLinkedQueue();
   private boolean stop = false;
-  private String processorName;
+  private String storageGroup;
 
   private Consumer<IMemTable> flushCallBack;
   private IMemTable memTable;
 
-  public MemTableFlushTaskV2(NativeRestorableIOWriter writer, String processorName,
+  public MemTableFlushTaskV2(NativeRestorableIOWriter writer, String storageGroup,
       Consumer<IMemTable> callBack) {
     this.tsFileIoWriter = writer;
-    this.processorName = processorName;
+    this.storageGroup = storageGroup;
     this.flushCallBack = callBack;
     ioFlushThread.start();
     memoryFlushThread.start();
-    LOGGER.info("Processor {} flush task created", processorName);
+    LOGGER.info("flush task created in Storage group {} ", storageGroup);
   }
 
 
   private Thread memoryFlushThread = new Thread(() -> {
     long memSerializeTime = 0;
-    LOGGER.info(
-        "BufferWrite Processor {},start serialize data into mem.", processorName);
+    LOGGER.info("Storage group {},start serialize data into mem.", storageGroup);
     while (!stop) {
       Object task = memoryTaskQueue.poll();
       if (task == null) {
         try {
           Thread.sleep(10);
         } catch (InterruptedException e) {
-          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processorName, e);
+          LOGGER.error("Storage group {}, io flush task is interrupted.", storageGroup, e);
         }
       } else {
         if (task instanceof String) {
@@ -85,31 +84,30 @@ public class MemTableFlushTaskV2 {
                 memorySerializeTask.right.getType());
             ioTaskQueue.add(seriesWriter);
           } catch (IOException e) {
-            LOGGER.error("BufferWrite Processor {}, io error.", processorName, e);
+            LOGGER.error("Storage group {}, io error.", storageGroup, e);
             throw new RuntimeException(e);
           }
           memSerializeTime += System.currentTimeMillis() - starTime;
         }
       }
     }
-    LOGGER.info(
-        "BufferWrite Processor {},flushing a memtable into disk: serialize data into mem cost {} ms.",
-        processorName, memSerializeTime);
+    LOGGER.info("Storage group {}, flushing a memtable into disk: serialize data into mem cost {} ms.",
+        storageGroup, memSerializeTime);
   });
 
 
-  //TODO more better way is: for each TsFile, assign it a Executors.singleThreadPool,
+  //TODO a better way is: for each TsFile, assign it a Executors.singleThreadPool,
   // rather than per each memtable.
   private Thread ioFlushThread = new Thread(() -> {
     long ioTime = 0;
-    LOGGER.info("BufferWrite Processor {}, start io cost.", processorName);
+    LOGGER.info("Storage group {}, start io cost.", storageGroup);
     while (!stop) {
       Object seriesWriterOrEndChunkGroupTask = ioTaskQueue.poll();
       if (seriesWriterOrEndChunkGroupTask == null) {
         try {
           Thread.sleep(10);
         } catch (InterruptedException e) {
-          LOGGER.error("BufferWrite Processor {}, io flush task is interrupted.", processorName, e);
+          LOGGER.error("Storage group {}, io flush task is interrupted.", storageGroup, e);
         }
       } else {
         long starTime = System.currentTimeMillis();
@@ -124,12 +122,13 @@ public class MemTableFlushTaskV2 {
             task.finished = true;
           }
         } catch (IOException e) {
-          LOGGER.error("BufferWrite Processor {}, io error.", processorName, e);
+          LOGGER.error("Storage group {}, io error.", storageGroup, e);
           throw new RuntimeException(e);
         }
         ioTime += System.currentTimeMillis() - starTime;
       }
     }
+    LOGGER.info("flushing a memtable in storage group {}, cost {}ms", storageGroup, ioTime);
   });
 
 
@@ -164,7 +163,7 @@ public class MemTableFlushTaskV2 {
               .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
           break;
         default:
-          LOGGER.error("BufferWrite Processor {}, don't support data type: {}", processorName,
+          LOGGER.error("Storage group {}, don't support data type: {}", storageGroup,
               dataType);
           break;
       }
@@ -195,13 +194,13 @@ public class MemTableFlushTaskV2 {
     }
     LOGGER.info(
         "{}, flushing a memtable into disk: data sort time cost {} ms.",
-        processorName, sortTime);
+        storageGroup, sortTime);
     while (!theLastTask.finished) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
-        LOGGER.error("BufferWrite Processor {}, flush memtable table thread is interrupted.",
-            processorName, e);
+        LOGGER.error("Storage group {}, flush memtable table thread is interrupted.",
+            storageGroup, e);
         throw new RuntimeException(e);
       }
     }
