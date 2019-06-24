@@ -323,6 +323,9 @@ public class UnsealedTsFileProcessorV2 {
 
   private void endFile() throws IOException {
     long closeStartTime = System.currentTimeMillis();
+
+    tsFileResource.serialize();
+
     writer.endFile(fileSchema);
     //FIXME suppose the flush-thread-pool is 2.
     // then if a flush task and a endFile task are running in the same time

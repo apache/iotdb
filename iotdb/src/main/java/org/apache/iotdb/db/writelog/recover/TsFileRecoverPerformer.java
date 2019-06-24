@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import static org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2.RESOURCE_SUFFIX;
+
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
-import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.filenodeV2.UnsealedTsFileProcessorV2;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -80,17 +80,27 @@ public class TsFileRecoverPerformer {
     // remove corrupted part of the TsFile
     NativeRestorableIOWriter restorableTsFileIOWriter = null;
     try {
-      restorableTsFileIOWriter = new NativeRestorableIOWriter(insertFile, true);
+      restorableTsFileIOWriter = new NativeRestorableIOWriter(insertFile);
     } catch (IOException e) {
       throw new ProcessorException(e);
     }
 
-    // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
-    // map must be updated first to avoid duplicated insertion
-    for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter.getChunkGroupMetaDatas()) {
-      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-        tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
-        tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+    if (!restorableTsFileIOWriter.hasCrashed()) {
+      try {
+        tsFileResource.deSerialize();
+        return;
+      } catch (IOException e) {
+        throw new ProcessorException("recover the resource file failed: " + insertFilePath
+            + RESOURCE_SUFFIX, e);
+      }
+    } else {
+      // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
+      // map must be updated first to avoid duplicated insertion
+      for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter.getChunkGroupMetaDatas()) {
+        for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+          tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
+          tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+        }
       }
     }
 
@@ -108,6 +118,7 @@ public class TsFileRecoverPerformer {
     // close file
     try {
       restorableTsFileIOWriter.endFile(fileSchema);
+      tsFileResource.serialize();
     } catch (IOException e) {
       throw new ProcessorException("Cannot setCloseMark file when recovering", e);
     }

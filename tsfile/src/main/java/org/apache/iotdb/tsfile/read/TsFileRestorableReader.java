@@ -61,7 +61,7 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
     if (!isComplete()) {
       // Try to close it
       LOGGER.info("File {} has no correct tail magic, try to repair...", file);
-      NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(new File(file), false);
+      NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(new File(file));
       TsFileWriter writer = new TsFileWriter(rWriter);
       // This writes the right magic string
       writer.close();

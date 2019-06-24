@@ -18,18 +18,32 @@
  */
 package org.apache.iotdb.db.engine.filenodeV2;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileResourceV2 {
 
   private File file;
+
+  public static final String RESOURCE_SUFFIX = ".resource";
 
   /**
    * device -> start time
@@ -79,6 +93,51 @@ public class TsFileResourceV2 {
     this.file = file;
     this.chunkMetaDatas = chunkMetaDatas;
     this.readOnlyMemChunk = readOnlyMemChunk;
+  }
+
+  public TsFileResourceV2(File file, Map<String, Long> startTimeMap, Map<String, Long> endTimeMap) {
+    this.file = file;
+    this.startTimeMap = startTimeMap;
+    this.endTimeMap = endTimeMap;
+    this.closed = true;
+  }
+
+
+  public void serialize() throws IOException {
+    try (OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file + RESOURCE_SUFFIX))){
+      ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
+      for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+      }
+      ReadWriteIOUtils.write(this.endTimeMap.size(), outputStream);
+      for (Entry<String, Long> entry : this.endTimeMap.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+      }
+    }
+  }
+
+
+  public void deSerialize() throws IOException {
+    try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file + RESOURCE_SUFFIX))) {
+      int size = ReadWriteIOUtils.readInt(inputStream);
+      Map<String, Long> startTimes = new HashMap<>();
+      for (int i = 0; i < size; i++) {
+        String path = ReadWriteIOUtils.readString(inputStream);
+        long time = ReadWriteIOUtils.readLong(inputStream);
+        startTimes.put(path, time);
+      }
+      size = ReadWriteIOUtils.readInt(inputStream);
+      Map<String, Long> endTimes = new HashMap<>();
+      for (int i = 0; i < size; i++) {
+        String path = ReadWriteIOUtils.readString(inputStream);
+        long time = ReadWriteIOUtils.readLong(inputStream);
+        endTimes.put(path, time);
+      }
+      this.startTimeMap = startTimes;
+      this.endTimeMap = endTimes;
+    }
   }
 
   public void updateStartTime(String device, long time) {
