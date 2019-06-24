@@ -97,6 +97,7 @@ public class EngineExecutorWithoutTimeGenerator {
       throw new FileNodeManagerException(e);
     }
 
-    return SeriesReaderFactoryImpl.getInstance().createAllDataReader(path, timeFilter, context);
+    return SeriesReaderFactoryImpl.getInstance()
+        .createTimeFilterAllDataReader(path, timeFilter, context);
   }
 }
