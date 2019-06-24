@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -122,8 +121,8 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void test() throws ProcessorException, IOException {
-    SeqTsFileRecoverPerformer performer = new SeqTsFileRecoverPerformer(logNodePrefix, schema,
-        versionController, resource);
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, schema,
+        versionController, resource, true);
     performer.recover();
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));

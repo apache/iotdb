@@ -21,7 +21,9 @@ package org.apache.iotdb.db.writelog.recover;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -59,6 +61,9 @@ public class LogReplayer {
 
   // overflow file tolerates duplicated data
   private boolean acceptDuplication;
+
+  private Map<String, Long> tempStartTimeMap = new HashMap<>();
+  private Map<String, Long> tempEndTimeMap = new HashMap<>();
 
   public LogReplayer(String logNodePrefix, String insertFilePath,
       ModificationFile modFile,
@@ -103,6 +108,8 @@ public class LogReplayer {
     } catch (IOException e) {
       throw new ProcessorException("Cannot replay logs", e);
     }
+    tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateTime(k, v));
+    tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateTime(k, v));
   }
 
   private void replayDelete(DeletePlan deletePlan) throws IOException {
@@ -121,7 +128,11 @@ public class LogReplayer {
           !acceptDuplication) {
         return;
       }
-      currentTsFileResource.updateTime(insertPlan.getDeviceId(), insertPlan.getTime());
+      tempStartTimeMap.putIfAbsent(insertPlan.getDeviceId(), insertPlan.getTime());
+      Long endTime = tempEndTimeMap.get(insertPlan.getDeviceId());
+      if (endTime == null || endTime < insertPlan.getTime()) {
+        tempEndTimeMap.put(insertPlan.getDeviceId(), insertPlan.getTime());
+      }
     }
     String[] measurementList = insertPlan.getMeasurements();
     TSDataType[] dataTypes = new TSDataType[measurementList.length];

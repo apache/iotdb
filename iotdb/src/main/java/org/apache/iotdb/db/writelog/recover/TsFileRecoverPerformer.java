@@ -37,10 +37,10 @@ import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 
 /**
- * SeqTsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last
+ * TsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last
  * crash and removes the redone logs.
  */
-public class UnSeqTsFileRecoverPerformer {
+public class TsFileRecoverPerformer {
 
   private String insertFilePath;
   private String logNodePrefix;
@@ -48,28 +48,31 @@ public class UnSeqTsFileRecoverPerformer {
   private VersionController versionController;
   private LogReplayer logReplayer;
   private TsFileResourceV2 tsFileResource;
+  private boolean acceptUnseq;
 
-  public UnSeqTsFileRecoverPerformer(String logNodePrefix,
+  public TsFileRecoverPerformer(String logNodePrefix,
       FileSchema fileSchema, VersionController versionController,
-      TsFileResourceV2 currentTsFileResource) {
+      TsFileResourceV2 currentTsFileResource, boolean acceptUnseq) {
     this.insertFilePath = currentTsFileResource.getFile().getPath();
     this.logNodePrefix = logNodePrefix;
     this.fileSchema = fileSchema;
     this.versionController = versionController;
     this.tsFileResource = currentTsFileResource;
+    this.acceptUnseq = acceptUnseq;
   }
 
   /**
-   * 1. redo the WALs to recover unpersisted data
-   * 2. flush and close the file
-   * 3. clean WALs
+   * 1. recover the TsFile by NativeRestorableIOWriter and truncate position of last recovery
+   * 2. redo the WALs to recover unpersisted data
+   * 3. flush and close the file
+   * 4. clean WALs
    * @throws ProcessorException
    */
   public void recover() throws ProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
         versionController,
-        tsFileResource, fileSchema, recoverMemTable, true);
+        tsFileResource, fileSchema, recoverMemTable, acceptUnseq);
     File insertFile = new File(insertFilePath);
     if (!insertFile.exists()) {
       return;
@@ -77,11 +80,13 @@ public class UnSeqTsFileRecoverPerformer {
     // remove corrupted part of the TsFile
     NativeRestorableIOWriter restorableTsFileIOWriter = null;
     try {
-      restorableTsFileIOWriter = new NativeRestorableIOWriter(insertFile);
+      restorableTsFileIOWriter = new NativeRestorableIOWriter(insertFile, true);
     } catch (IOException e) {
       throw new ProcessorException(e);
     }
 
+    // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
+    // map must be updated first to avoid duplicated insertion
     for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter.getChunkGroupMetaDatas()) {
       for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
         tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
@@ -114,4 +119,5 @@ public class UnSeqTsFileRecoverPerformer {
       throw new ProcessorException(e);
     }
   }
+
 }
