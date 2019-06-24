@@ -276,13 +276,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     IPointReader unSeqMergeReader;
     unSeqMergeReader = createUnSeqReader(path, queryDataSource.getUnseqResources(), context, null);
 
-    if (!tsFilesReader.hasNext()) {
-      //only have unsequence data.
-      return unSeqMergeReader;
-    } else {
-      //merge sequence data with unsequence data.
-      return new AllDataReaderWithValueFilter(tsFilesReader, unSeqMergeReader, filter);
-    }
+    return new AllDataReaderWithValueFilter(tsFilesReader, unSeqMergeReader, filter);
   }
 
   private static class SeriesReaderFactoryHelper {

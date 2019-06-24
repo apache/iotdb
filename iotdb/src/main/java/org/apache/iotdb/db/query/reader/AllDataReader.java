@@ -109,7 +109,7 @@ public class AllDataReader implements IPointReader {
     }
 
     // has value in batchReader
-    while (batchReader.hasNext()) {
+    while (batchReader != null && batchReader.hasNext()) {
       batchData = batchReader.nextBatch();
       if (batchData.hasNext()) {
         hasCachedBatchData = true;
