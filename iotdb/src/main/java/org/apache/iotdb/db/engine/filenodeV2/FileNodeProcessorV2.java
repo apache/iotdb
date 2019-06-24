@@ -436,7 +436,7 @@ public class FileNodeProcessorV2 {
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
         UnsealedTsFileProcessorV2 tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
-        tsfileProcessor.delete(deviceId, deletion.getMeasurement(), deletion.getTimestamp());
+        tsfileProcessor.delete(deletion);
       }
 
       // add a record in case of rollback
@@ -575,14 +575,14 @@ public class FileNodeProcessorV2 {
   public void closeUnsealedTsFileProcessorCallback(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
     lock.writeLock().lock();
     try {
+      // end time with one start time
+      TsFileResourceV2 resource = unsealedTsFileProcessor.getTsFileResource();
+      resource.setClosed(true);
       if (closingSequenceTsFileProcessor.contains(unsealedTsFileProcessor)) {
         closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
       } else {
         closingUnSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
       }
-      // end time with one start time
-      TsFileResourceV2 resource = unsealedTsFileProcessor.getTsFileResource();
-      resource.setClosed(true);
       LOGGER.info("signal closing file node condition");
       closeFileNodeCondition.signal();
     }finally {

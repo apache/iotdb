@@ -54,4 +54,5 @@ public class PrimitiveMemTable extends AbstractMemTable {
   public boolean equals(Object obj) {
     return this == obj;
   }
+
 }

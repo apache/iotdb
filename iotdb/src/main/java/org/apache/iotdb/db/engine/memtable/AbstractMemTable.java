@@ -36,6 +36,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class AbstractMemTable implements IMemTable {
 
+  private long version;
+
   private List<Modification> modifications = new ArrayList<>();
 
   private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
@@ -238,5 +240,13 @@ public abstract class AbstractMemTable implements IMemTable {
   public boolean containSeries(String deviceId, String measurementId) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
     return deviceMap != null && deviceMap.containsKey(measurementId);
+  }
+
+  public void setVersion(long version) {
+    this.version = version;
+  }
+
+  public long getVersion() {
+    return version;
   }
 }

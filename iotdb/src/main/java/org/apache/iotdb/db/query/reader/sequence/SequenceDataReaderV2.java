@@ -30,6 +30,7 @@ import org.apache.iotdb.db.query.reader.adapter.FileSeriesReaderAdapter;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
@@ -77,7 +78,6 @@ public class SequenceDataReaderV2 extends IterateReader {
             new UnSealedTsFileReaderV2(tsFileResource, timeFilter, enableReverse));
       }
     }
-
   }
 
   /**

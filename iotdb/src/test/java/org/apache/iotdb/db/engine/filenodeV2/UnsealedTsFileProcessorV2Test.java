@@ -65,7 +65,6 @@ public class UnsealedTsFileProcessorV2Test {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir(filePath);
   }
 
   @Test

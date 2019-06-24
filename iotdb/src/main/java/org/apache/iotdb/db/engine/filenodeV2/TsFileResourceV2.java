@@ -134,6 +134,7 @@ public class TsFileResourceV2 {
 
   public void setClosed(boolean closed) {
     this.closed = closed;
+    processor = null;
   }
 
   public UnsealedTsFileProcessorV2 getUnsealedFileProcessor() {

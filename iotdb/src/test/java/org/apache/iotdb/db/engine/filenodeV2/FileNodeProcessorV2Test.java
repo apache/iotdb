@@ -49,7 +49,6 @@ public class FileNodeProcessorV2Test {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir(systemDir);
   }
 
 

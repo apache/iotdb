@@ -97,4 +97,8 @@ public interface IMemTable {
   boolean containSeries(String deviceId, String measurementId);
 
   boolean isManagedByMemPool();
+
+  long getVersion();
+
+  void setVersion(long version);
 }

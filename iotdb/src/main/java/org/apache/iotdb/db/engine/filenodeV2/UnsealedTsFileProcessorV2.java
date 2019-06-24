@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTaskV2;
 import org.apache.iotdb.db.engine.memtable.MemTablePool;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -147,20 +148,16 @@ public class UnsealedTsFileProcessorV2 {
   /**
    * Delete data whose timestamp <= 'timestamp' and belonging to timeseries deviceId.measurementId.
    * Delete data in both working MemTable and flushing MemTables.
-   *
-   * @param deviceId the deviceId of the timeseries to be deleted.
-   * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the upper-bound of deletion time.
    */
-  public void delete(String deviceId, String measurementId, long timestamp) {
-    if (shouldClose) {
-      return;
-    }
+  public void delete(Deletion deletion) {
     flushQueryLock.writeLock().lock();
     try {
-      workMemTable.delete(deviceId, measurementId, timestamp);
+      if (workMemTable != null) {
+        workMemTable
+            .delete(deletion.getDevice(), deletion.getMeasurement(), deletion.getTimestamp());
+      }
       for (IMemTable memTable: flushingMemTables) {
-        memTable.delete(deviceId, measurementId, timestamp);
+        memTable.delete(deletion);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -210,6 +207,7 @@ public class UnsealedTsFileProcessorV2 {
         LOGGER.debug("add an empty memtable into flushing memtable list when sync close");
       }
       flushingMemTables.add(tmpMemTable);
+      tmpMemTable.setVersion(versionController.nextVersion());
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
       flushUpdateLatestFlushTimeCallback.get();
       shouldClose = true;
@@ -231,6 +229,7 @@ public class UnsealedTsFileProcessorV2 {
         LOGGER.debug("add an empty memtable into flushing memtable list when sync flush");
       }
       flushingMemTables.addLast(tmpMemTable);
+      tmpMemTable.setVersion(versionController.nextVersion());
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
       flushUpdateLatestFlushTimeCallback.get();
       workMemTable = null;
@@ -258,6 +257,7 @@ public class UnsealedTsFileProcessorV2 {
       }
       logNode.notifyStartFlush();
       flushingMemTables.addLast(workMemTable);
+      workMemTable.setVersion(versionController.nextVersion());
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
       flushUpdateLatestFlushTimeCallback.get();
       workMemTable = null;
@@ -267,8 +267,6 @@ public class UnsealedTsFileProcessorV2 {
       flushQueryLock.writeLock().unlock();
     }
   }
-
-
 
 
   /**
@@ -299,7 +297,7 @@ public class UnsealedTsFileProcessorV2 {
     if (memTableToFlush.isManagedByMemPool()) {
       MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
           this::releaseFlushedMemTableCallback);
-      flushTask.flushMemTable(fileSchema, memTableToFlush, versionController.nextVersion());
+      flushTask.flushMemTable(fileSchema, memTableToFlush);
       MemTablePool.getInstance().putBack(memTableToFlush, storageGroupName);
       logNode.notifyEndFlush();
       LOGGER.info("flush a memtable has finished");
@@ -368,6 +366,10 @@ public class UnsealedTsFileProcessorV2 {
 
   public long getWorkMemTableMemory() {
     return workMemTable.memSize();
+  }
+
+  public VersionController getVersionController() {
+    return versionController;
   }
 
   /**

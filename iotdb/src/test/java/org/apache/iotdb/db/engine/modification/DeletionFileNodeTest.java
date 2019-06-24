@@ -140,9 +140,9 @@ public class DeletionFileNodeTest {
     FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(new Path(processorName, measurements[5]), 102, 50),
-        new Deletion(new Path(processorName, measurements[4]), 103, 40),
-        new Deletion(new Path(processorName, measurements[3]), 104, 30),
+        new Deletion(new Path(processorName, measurements[5]), 103, 50),
+        new Deletion(new Path(processorName, measurements[4]), 104, 40),
+        new Deletion(new Path(processorName, measurements[3]), 105, 30),
     };
 
     File fileNodeDir = new File(DirectoryManager.getInstance().getTsFileFolder(0), processorName);
@@ -166,7 +166,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInOverflowCache() throws FileNodeManagerException, ProcessorException {
-    // insert into BufferWrite
+    // insert sequence data
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -176,7 +176,7 @@ public class DeletionFileNodeTest {
     }
     FileNodeManagerV2.getInstance().syncCloseAllProcessor();
 
-    // insert into Overflow
+    // insert unsequence data
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -198,7 +198,7 @@ public class DeletionFileNodeTest {
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
 
     Iterator<TimeValuePair> timeValuePairs =
-        dataSource.getSeqResources().get(0).getReadOnlyMemChunk().getIterator();
+        dataSource.getUnseqResources().get(0).getReadOnlyMemChunk().getIterator();
     int count = 0;
     while (timeValuePairs.hasNext()) {
       timeValuePairs.next();
@@ -236,14 +236,12 @@ public class DeletionFileNodeTest {
     FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(new Path(processorName, measurements[5]), 103, 50),
-        new Deletion(new Path(processorName, measurements[4]), 104, 40),
-        new Deletion(new Path(processorName, measurements[3]), 105, 30),
+        new Deletion(new Path(processorName, measurements[5]), 105, 50),
+        new Deletion(new Path(processorName, measurements[4]), 106, 40),
+        new Deletion(new Path(processorName, measurements[3]), 107, 30),
     };
 
-    String fileNodePath = DirectoryManager.getInstance().getNextFolderForUnSequenceFile() + File.separator
-        + processorName + File.separator + "0" + File.separator;
-    File fileNodeDir = new File(fileNodePath);
+    File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), processorName);
     File[] modFiles = fileNodeDir.listFiles((dir, name)
         -> name.endsWith(ModificationFile.FILE_SUFFIX));
     assertEquals(modFiles.length, 1);

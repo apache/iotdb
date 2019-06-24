@@ -31,7 +31,7 @@ public class FileSeriesReaderAdapter implements IAggregateReader {
 
   private FileSeriesReader fileSeriesReader;
 
-  public FileSeriesReaderAdapter(FileSeriesReader fileSeriesReader){
+  public FileSeriesReaderAdapter(FileSeriesReader fileSeriesReader) {
     this.fileSeriesReader = fileSeriesReader;
   }
 

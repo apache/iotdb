@@ -34,17 +34,21 @@ public class FlushManager {
 
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 
-  private Runnable flushThread = () -> {
-    UnsealedTsFileProcessorV2 unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
-    try {
-      unsealedTsFileProcessor.flushOneMemTable();
-    } catch (IOException e) {
-      LOGGER.error("flush one memtable meet error", e);
-      // TODO do sth
+  class FlushThread implements Runnable {
+
+    @Override
+    public void run() {
+      UnsealedTsFileProcessorV2 unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
+      try {
+        unsealedTsFileProcessor.flushOneMemTable();
+      } catch (IOException e) {
+        LOGGER.error("flush one memtable meet error", e);
+        // TODO do sth
+      }
+      unsealedTsFileProcessor.setManagedByFlushManager(false);
+      registerUnsealedTsFileProcessor(unsealedTsFileProcessor);
     }
-    unsealedTsFileProcessor.setManagedByFlushManager(false);
-    registerUnsealedTsFileProcessor(unsealedTsFileProcessor);
-  };
+  }
 
   /**
    * Add BufferWriteProcessor to asyncFlush manager
@@ -60,7 +64,7 @@ public class FlushManager {
         }
         unsealedTsFileProcessorQueue.add(unsealedTsFileProcessor);
         unsealedTsFileProcessor.setManagedByFlushManager(true);
-        return flushPool.submit(flushThread);
+        return flushPool.submit(new FlushThread());
       }
       return null;
     }

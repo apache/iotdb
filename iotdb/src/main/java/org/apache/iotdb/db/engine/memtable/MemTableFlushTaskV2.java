@@ -174,7 +174,7 @@ public class MemTableFlushTaskV2 {
   /**
    * the function for flushing memtable.
    */
-  public void flushMemTable(FileSchema fileSchema, IMemTable imemTable, long version) {
+  public void flushMemTable(FileSchema fileSchema, IMemTable imemTable) {
     long sortTime = 0;
     ChunkGroupIoTask theLastTask = EMPTY_TASK;
     this.memTable = imemTable;
@@ -190,7 +190,7 @@ public class MemTableFlushTaskV2 {
         sortTime += System.currentTimeMillis() - startTime;
         memoryTaskQueue.add(new Pair<>(sortedTimeValuePairs, desc));
       }
-      theLastTask = new ChunkGroupIoTask(seriesNumber, deviceId, version);
+      theLastTask = new ChunkGroupIoTask(seriesNumber, deviceId, imemTable.getVersion());
       memoryTaskQueue.add(theLastTask);
     }
     LOGGER.info(

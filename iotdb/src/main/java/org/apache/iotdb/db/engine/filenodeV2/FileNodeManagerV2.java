@@ -371,7 +371,7 @@ public class FileNodeManagerV2 implements IService {
     LOGGER.info("Start closing all filenode processor");
     synchronized (processorMap){
       for(FileNodeProcessorV2 processor: processorMap.values()){
-        processor.asyncForceClose();
+        processor.syncCloseFileNode();
       }
     }
   }

@@ -67,7 +67,7 @@ public class MemTableFlushTaskV2Test {
     assertTrue(writer
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).isEmpty());
-    memTableFlushTask.flushMemTable(MemTableTestUtils.getFileSchema(), memTable, 1L);
+    memTableFlushTask.flushMemTable(MemTableTestUtils.getFileSchema(), memTable);
     assertEquals(1, writer
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());
