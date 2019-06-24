@@ -114,7 +114,8 @@ public class FileNodeProcessorV2 {
     this.storageGroupName = storageGroupName;
     closeFileNodeCondition = lock.writeLock().newCondition();
 
-    recover();
+    // construct the file schema
+    this.fileSchema = constructFileSchema(storageGroupName);
 
     /**
      * version controller
@@ -131,8 +132,7 @@ public class FileNodeProcessorV2 {
       throw new FileNodeProcessorException(e);
     }
 
-    // construct the file schema
-    this.fileSchema = constructFileSchema(storageGroupName);
+    recover();
   }
 
   private void recover() throws ProcessorException {
