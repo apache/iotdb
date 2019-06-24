@@ -118,6 +118,10 @@ public class IoTDBDescriptor {
       conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
           Boolean.toString(conf.isEnableWal()))));
 
+      conf.setMemtableNumber(Integer
+          .parseInt(properties.getProperty("memtable_number",
+              Integer.toString(conf.getMemtableNumber()))));
+
       conf.setFlushWalThreshold(Integer
           .parseInt(properties.getProperty("flush_wal_threshold",
                   Integer.toString(conf.getFlushWalThreshold()))));
