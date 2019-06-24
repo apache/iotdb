@@ -315,8 +315,15 @@ public class FileNodeProcessorV2 {
         System.currentTimeMillis() + "-" + versionController.nextVersion()).toString()
         + TSFILE_SUFFIX;
 
-    return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
-        fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);
+    if (sequence) {
+      return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
+          fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
+          this::updateLatestFlushTimeCallback);
+    } else {
+      return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
+          fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
+          ()->true);
+    }
   }
 
 
