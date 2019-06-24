@@ -144,7 +144,7 @@ public class FileNodeProcessorV2 {
       if (!fileFolder.exists()) {
         continue;
       }
-      for (File tsfile: fileFolder.listFiles()) {
+      for (File tsfile: fileFolder.listFiles(file->!file.getName().contains("mods"))) {
         tsFiles.add(tsfile);
       }
     }
@@ -157,7 +157,7 @@ public class FileNodeProcessorV2 {
       if (!fileFolder.exists()) {
         continue;
       }
-      for (File tsfile: fileFolder.listFiles()) {
+      for (File tsfile: fileFolder.listFiles(file->!file.getName().contains("mods"))) {
         tsFiles.add(tsfile);
       }
     }
@@ -436,7 +436,7 @@ public class FileNodeProcessorV2 {
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
         UnsealedTsFileProcessorV2 tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
-        tsfileProcessor.delete(deviceId, deletion.getPathString(), deletion.getTimestamp());
+        tsfileProcessor.delete(deviceId, deletion.getMeasurement(), deletion.getTimestamp());
       }
 
       // add a record in case of rollback

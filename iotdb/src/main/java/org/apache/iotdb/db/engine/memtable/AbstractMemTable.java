@@ -172,6 +172,9 @@ public abstract class AbstractMemTable implements IMemTable {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
     if (deviceMap != null) {
       IWritableMemChunk chunk = deviceMap.get(measurementId);
+      if (chunk == null) {
+        return true;
+      }
       IWritableMemChunk newChunk = filterChunk(chunk, timestamp);
       if (newChunk != null) {
         deviceMap.put(measurementId, newChunk);
