@@ -40,7 +40,7 @@ public class MemTableFlushTaskV2 {
 
   private ConcurrentLinkedQueue ioTaskQueue = new ConcurrentLinkedQueue();
   private ConcurrentLinkedQueue memoryTaskQueue = new ConcurrentLinkedQueue();
-  private boolean stop = false;
+  private volatile boolean stop = false;
   private String storageGroup;
 
   private Consumer<IMemTable> flushCallBack;
@@ -219,7 +219,7 @@ public class MemTableFlushTaskV2 {
     int seriesNumber;
     String deviceId;
     long version;
-    boolean finished;
+    volatile boolean finished;
 
     public ChunkGroupIoTask(int seriesNumber, String deviceId, long version) {
       this(seriesNumber, deviceId, version, false);
