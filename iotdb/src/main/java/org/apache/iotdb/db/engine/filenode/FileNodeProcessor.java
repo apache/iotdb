@@ -88,7 +88,7 @@
 //import org.apache.iotdb.db.utils.MemUtils;
 //import org.apache.iotdb.db.utils.QueryUtils;
 //import org.apache.iotdb.db.utils.TimeValuePair;
-//import org.apache.iotdb.db.writelog.recover.SeqTsFileRecoverPerformer;
+//import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 //import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 //import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 //import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -472,8 +472,8 @@
 ////      try {
 ////        String filePath = tsFile.getFilePath();
 ////        String logNodePrefix = BufferWriteProcessor.logNodePrefix(processorName);
-////        SeqTsFileRecoverPerformer recoverPerformer =
-////            new SeqTsFileRecoverPerformer(logNodePrefix,
+////        TsFileRecoverPerformer recoverPerformer =
+////            new TsFileRecoverPerformer(logNodePrefix,
 ////                fileSchema, versionController, tsFile);
 ////        recoverPerformer.recover();
 ////      } catch (ProcessorException e) {

@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.engine.filenodeV2;
 
+import static org.apache.iotdb.tsfile.common.constant.SystemConstant.TSFILE_SUFFIX;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +34,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
@@ -48,8 +50,7 @@ import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.writelog.recover.SeqTsFileRecoverPerformer;
-import org.apache.iotdb.db.writelog.recover.UnSeqTsFileRecoverPerformer;
+import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -114,7 +115,8 @@ public class FileNodeProcessorV2 {
     this.storageGroupName = storageGroupName;
     closeFileNodeCondition = lock.writeLock().newCondition();
 
-    recover();
+    // construct the file schema
+    this.fileSchema = constructFileSchema(storageGroupName);
 
     /**
      * version controller
@@ -131,8 +133,7 @@ public class FileNodeProcessorV2 {
       throw new FileNodeProcessorException(e);
     }
 
-    // construct the file schema
-    this.fileSchema = constructFileSchema(storageGroupName);
+    recover();
   }
 
   private void recover() throws ProcessorException {
@@ -144,7 +145,7 @@ public class FileNodeProcessorV2 {
       if (!fileFolder.exists()) {
         continue;
       }
-      for (File tsfile: fileFolder.listFiles(file->!file.getName().contains("mods"))) {
+      for (File tsfile: fileFolder.listFiles(file->file.getName().endsWith(TSFILE_SUFFIX))) {
         tsFiles.add(tsfile);
       }
     }
@@ -157,11 +158,16 @@ public class FileNodeProcessorV2 {
       if (!fileFolder.exists()) {
         continue;
       }
-      for (File tsfile: fileFolder.listFiles(file->!file.getName().contains("mods"))) {
+      for (File tsfile: fileFolder.listFiles(file->file.getName().endsWith(TSFILE_SUFFIX))) {
         tsFiles.add(tsfile);
       }
     }
     recoverUnseqFiles(tsFiles);
+
+    for (TsFileResourceV2 resource: sequenceFileList) {
+      latestTimeForEachDevice.putAll(resource.getEndTimeMap());
+      latestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
+    }
   }
 
   private void recoverSeqFiles(List<File> tsfiles) throws ProcessorException {
@@ -169,7 +175,8 @@ public class FileNodeProcessorV2 {
     for (File tsfile: tsfiles) {
       TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsfile);
       sequenceFileList.add(tsFileResource);
-      SeqTsFileRecoverPerformer recoverPerformer = new SeqTsFileRecoverPerformer(storageGroupName + "-", fileSchema, versionController, tsFileResource);
+      TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
+          , fileSchema, versionController, tsFileResource, false);
       recoverPerformer.recover();
     }
   }
@@ -179,8 +186,8 @@ public class FileNodeProcessorV2 {
     for (File tsfile: tsfiles) {
       TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsfile);
       unSequenceFileList.add(tsFileResource);
-      UnSeqTsFileRecoverPerformer recoverPerformer = new UnSeqTsFileRecoverPerformer(storageGroupName + "-", fileSchema,
-          versionController, tsFileResource);
+      TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-", fileSchema,
+          versionController, tsFileResource, true);
       recoverPerformer.recover();
     }
   }
@@ -304,10 +311,18 @@ public class FileNodeProcessorV2 {
     new File(baseDir, storageGroupName).mkdirs();
 
     String filePath = Paths.get(baseDir, storageGroupName,
-        System.currentTimeMillis() + "-" + versionController.nextVersion()).toString();
+        System.currentTimeMillis() + "-" + versionController.nextVersion()).toString()
+        + TSFILE_SUFFIX;
 
-    return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
-        fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback, this::updateLatestFlushTimeCallback);
+    if (sequence) {
+      return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
+          fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
+          this::updateLatestFlushTimeCallback);
+    } else {
+      return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
+          fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
+          ()->true);
+    }
   }
 
 

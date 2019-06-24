@@ -114,6 +114,8 @@ public class IoTDBConfig {
    */
   private String derbyHome = "derby";
 
+  private int memtableNumber = 23;
+
   /**
    * Data directory of Write ahead log folder.
    */
@@ -171,11 +173,6 @@ public class IoTDBConfig {
    * How many threads can concurrently flush. When <= 0, use CPU core number.
    */
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
-
-  /**
-   * Maximum number of active mem tables.
-   */
-  private int maxActiveMemTableSize = 100;
 
   private ZoneId zoneID = ZoneId.systemDefault();
   /**
@@ -617,6 +614,14 @@ public class IoTDBConfig {
     this.periodTimeForFlush = periodTimeForFlush;
   }
 
+  public int getMemtableNumber() {
+    return memtableNumber;
+  }
+
+  public void setMemtableNumber(int memtableNumber) {
+    this.memtableNumber = memtableNumber;
+  }
+
   public long getPeriodTimeForMerge() {
     return periodTimeForMerge;
   }
@@ -845,11 +850,4 @@ public class IoTDBConfig {
     this.rpcImplClassName = rpcImplClassName;
   }
 
-  public int getMaxActiveMemTableSize() {
-    return maxActiveMemTableSize;
-  }
-
-  public void setMaxActiveMemTableSize(int maxActiveMemTableSize) {
-    this.maxActiveMemTableSize = maxActiveMemTableSize;
-  }
 }

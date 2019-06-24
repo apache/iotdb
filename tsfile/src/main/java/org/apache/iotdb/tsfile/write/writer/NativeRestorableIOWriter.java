@@ -48,6 +48,8 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
 
   private int lastFlushedChunkGroupIndex = 0;
 
+  private boolean crashed;
+
   /**
    * all chunk group metadata which have been serialized on disk.
    */
@@ -58,40 +60,40 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
     return truncatedPosition;
   }
 
-  public NativeRestorableIOWriter(File file) throws IOException {
-    this(file, false);
-  }
-
   /**
    * @param file a given tsfile path you want to (continue to) write
-   * @param append if true, then the file can support appending data even though the file is complete (i.e., tail magic string exists)
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
-  public NativeRestorableIOWriter(File file, boolean append) throws IOException {
-    super();
+  public NativeRestorableIOWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file, true);
+
+    // file doesn't exist
     if (file.length() == 0) {
-      //this is a new file
+      startFile();
       return;
     }
+
     if (file.exists()) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        if (reader.isComplete() && !append) {
+
+        // this tsfile is complete
+        if (reader.isComplete()) {
+          crashed = false;
           canWrite = false;
           out.close();
           return;
         }
-        truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetaDataList, !append);
-        if (truncatedPosition == TsFileCheckStatus.COMPLETE_FILE && !append) {
-            this.canWrite = false;
-            out.close();
-        } else if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
+
+        // uncompleted file
+        truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetaDataList, true);
+        if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
-          throw new IOException(
-              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+          throw new IOException(String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
+          crashed = true;
           out.truncate(TSFileConfig.MAGIC_STRING.length());
         } else {
+          crashed = true;
           //remove broken data
           out.truncate(truncatedPosition + 1);
         }
@@ -157,6 +159,9 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
     }
   }
 
+  public boolean hasCrashed() {
+    return crashed;
+  }
 
   /**
    * get all the chunkGroups' metadata which are appended after the last calling of this method, or
