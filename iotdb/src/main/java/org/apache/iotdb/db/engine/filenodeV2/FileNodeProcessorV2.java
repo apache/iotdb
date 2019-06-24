@@ -379,11 +379,10 @@ public class FileNodeProcessorV2 {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      long lastUpdateTime = latestTimeForEachDevice.get(deviceId);
+      Long lastUpdateTime = latestTimeForEachDevice.get(deviceId);
       // no tsfile data, the delete operation is invalid
-      if (lastUpdateTime == Long.MIN_VALUE) {
-        LOGGER.warn("The last update time is -1, delete overflow is invalid, "
-            + "the storage group is {}", storageGroupName);
+      if (lastUpdateTime == null || lastUpdateTime == Long.MIN_VALUE) {
+        LOGGER.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
         return;
       }
 
