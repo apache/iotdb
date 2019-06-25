@@ -40,8 +40,9 @@ public interface ISeriesReaderFactory {
    * This method is used to read all unsequence data for IoTDB request, such as query, aggregation
    * and groupby request.
    */
-  IPointReader createUnSeqReader(Path seriesPath, List<TsFileResourceV2> unSeqResources, QueryContext context,
-                                 Filter filter) throws IOException;
+  IPointReader createUnSeqReader(Path seriesPath, List<TsFileResourceV2> unSeqResources,
+      QueryContext context,
+      Filter filter) throws IOException;
 
 
   /**
@@ -55,12 +56,28 @@ public interface ISeriesReaderFactory {
       QueryContext context) throws FileNodeManagerException, IOException;
 
   /**
-   * construct IPointReader, include sequential data and unsequential data.
+   * construct IPointReader with <br>only time filter or no filter</br>, include sequential data and
+   * unsequential data. This reader won't filter the result of merged sequential data and
+   * unsequential data reader.
    *
    * @param path selected series path
+   * @param timeFilter time filter or null
    * @param context query context
-   * @return the list of EngineReaderByTimeStamp
+   * @return data reader including seq and unseq data source.
    */
-  IPointReader createAllDataReader(Path path, Filter timeFilter,
+  IPointReader createTimeFilterAllDataReader(Path path, Filter timeFilter,
       QueryContext context) throws FileNodeManagerException, IOException;
+
+  /**
+   * construct IPointReader with <br>value filter</br>, include sequential data and unsequential
+   * data. This reader will filter the result of merged sequential data and unsequential data
+   * reader, so if only has time filter please call createTimeFilterAllDataReader().
+   *
+   * @param path selected series path
+   * @param filter time filter or null
+   * @param context query context
+   * @return data reader including seq and unseq data source.
+   */
+  IPointReader createValueFilterAllDataReader(Path path, Filter filter, QueryContext context)
+      throws FileNodeManagerException, IOException;
 }

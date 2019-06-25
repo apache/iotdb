@@ -1593,7 +1593,7 @@
 //          mergeIsChunkGroupHasData = true;
 //          // the datasize and numOfChunk is fake
 //          // the accurate datasize and numOfChunk will get after insert all this device data.
-//          mergeFileWriter.startFlushChunkGroup(path.getDevice());// TODO please check me.
+//          mergeFileWriter.startChunkGroup(path.getDevice());// TODO please check me.
 //          mergeStartPos = mergeFileWriter.getPos();
 //        }
 //        // init the serieswWriteImpl

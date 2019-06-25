@@ -26,14 +26,13 @@ import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.AllDataReader;
+import org.apache.iotdb.db.query.reader.AllDataReaderWithOptGlobalTimeFilter;
 import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReader;
@@ -43,7 +42,6 @@ import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SealedTsFilesReader;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderByTimestampV2;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReaderByTimestamp;
@@ -161,7 +159,7 @@ public class SeriesReaderFactory {
       return unSeqMergeReader;
     } else {
       // merge sequence data with unsequence data.
-      return new AllDataReader(seriesInTsFileReader, unSeqMergeReader);
+      return new AllDataReaderWithOptGlobalTimeFilter(seriesInTsFileReader, unSeqMergeReader);
     }
 
   }

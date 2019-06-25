@@ -133,16 +133,12 @@ public class TsFileIOWriter {
     out.write(magicStringBytes);
   }
 
-  public AtomicLong getFlushID() {
-    return new AtomicLong();
-  }
-
   /**
    * start a {@linkplain ChunkGroupMetaData ChunkGroupMetaData}.
    *
    * @param deviceId device id
    */
-  public void startFlushChunkGroup(String deviceId) throws IOException {
+  public void startChunkGroup(String deviceId) throws IOException {
     LOG.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     currentChunkGroupMetaData = new ChunkGroupMetaData(deviceId, new ArrayList<>(), out.getPosition());
   }
