@@ -286,7 +286,11 @@ public class FileNodeProcessorV2 {
 
     // check memtable size and may asyncFlush the workMemtable
     if (unsealedTsFileProcessor.shouldFlush()) {
-      flushAndCheckShouldClose(unsealedTsFileProcessor, sequence);
+      if (unsealedTsFileProcessor.shouldClose()) {
+        asyncCloseTsFileProcessor(unsealedTsFileProcessor, sequence);
+      } else {
+        unsealedTsFileProcessor.asyncFlush();
+      }
     }
 
     return result;
@@ -314,6 +318,33 @@ public class FileNodeProcessorV2 {
           fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
           () -> true);
     }
+  }
+
+  /**
+   * only called by insert(), thread-safety should be ensured by caller
+   */
+  private void asyncCloseTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
+      boolean sequence) {
+
+    LOGGER.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+        unsealedTsFileProcessor.getWorkMemTableMemory(),
+        unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+
+    // check file size and may setCloseMark the BufferWrite
+    if (sequence) {
+      closingSequenceTsFileProcessor.add(unsealedTsFileProcessor);
+      workSequenceTsFileProcessor = null;
+    } else {
+      closingUnSequenceTsFileProcessor.add(unsealedTsFileProcessor);
+      workUnSequenceTsFileProcessor = null;
+    }
+
+    // async close tsfile
+    unsealedTsFileProcessor.asyncClose();
+
+    LOGGER.info("The file size {} reaches the threshold, async close tsfile: {}.",
+        unsealedTsFileProcessor.getTsFileResource().getFileSize(),
+        unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
   }
 
 
@@ -450,35 +481,6 @@ public class FileNodeProcessorV2 {
     }
   }
 
-  /**
-   * ensure there must be a flush thread submitted after setCloseMark() is called, therefore the
-   * setCloseMark task will be executed by a flush thread.
-   *
-   * only called by insert(), thread-safety should be ensured by caller
-   */
-  private void flushAndCheckShouldClose(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
-      boolean sequence) {
-
-    LOGGER.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
-        unsealedTsFileProcessor.getWorkMemTableMemory(),
-        unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
-
-    // check file size and may setCloseMark the BufferWrite
-    if (unsealedTsFileProcessor.shouldClose()) {
-      if (sequence) {
-        closingSequenceTsFileProcessor.add(unsealedTsFileProcessor);
-        workSequenceTsFileProcessor = null;
-      } else {
-        closingUnSequenceTsFileProcessor.add(unsealedTsFileProcessor);
-        workUnSequenceTsFileProcessor = null;
-      }
-      LOGGER.info("The file size {} reaches the threshold, async close tsfile: {}.",
-          unsealedTsFileProcessor.getTsFileResource().getFileSize(),
-          unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
-    }
-
-    unsealedTsFileProcessor.asyncClose();
-  }
 
   public void asyncForceClose() {
     lock.writeLock().lock();
