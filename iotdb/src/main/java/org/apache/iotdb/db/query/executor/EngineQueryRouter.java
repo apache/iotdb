@@ -47,7 +47,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
  * plan, physical plan will be executed by EngineQueryRouter.
  */
-public class EngineQueryRouter implements IEngineQueryRouter{
+public class EngineQueryRouter implements IEngineQueryRouter {
 
   @Override
   public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
@@ -58,25 +58,22 @@ public class EngineQueryRouter implements IEngineQueryRouter{
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
             .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
         queryExpression.setExpression(optimizedExpression);
-
+        EngineExecutor engineExecutor =
+            new EngineExecutor(queryExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-          EngineExecutorWithoutTimeGenerator engineExecutor =
-              new EngineExecutorWithoutTimeGenerator(queryExpression);
-          return engineExecutor.execute(context);
+          return engineExecutor.executeWithOutTimeGenerator(context);
         } else {
-          EngineExecutorWithTimeGenerator engineExecutor = new EngineExecutorWithTimeGenerator(
-              queryExpression);
-          return engineExecutor.execute(context);
+          return engineExecutor.executeWithTimeGenerator(context);
         }
 
       } catch (QueryFilterOptimizationException | IOException e) {
         throw new FileNodeManagerException(e);
       }
     } else {
-      EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
+      EngineExecutor engineExecutor = new EngineExecutor(
           queryExpression);
       try {
-        return engineExecutor.execute(context);
+        return engineExecutor.executeWithOutTimeGenerator(context);
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }

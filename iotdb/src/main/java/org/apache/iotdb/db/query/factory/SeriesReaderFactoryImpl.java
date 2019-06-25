@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
 
 public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
-  private static final Logger logger = LoggerFactory.getLogger(SeriesReaderFactory.class);
+  private static final Logger logger = LoggerFactory.getLogger(SeriesReaderFactoryImpl.class);
 
   private SeriesReaderFactoryImpl() {
   }
@@ -186,7 +186,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   }
 
   @Override
-  public List<EngineReaderByTimeStamp> createByTimestampReadersOfSelectedPaths(List<Path> paths,
+  public List<EngineReaderByTimeStamp> createByTimestampReaders(List<Path> paths,
       QueryContext context) throws FileNodeManagerException, IOException {
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
@@ -221,7 +221,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   }
 
   @Override
-  public IPointReader createTimeFilterAllDataReader(Path path, Filter timeFilter,
+  public IPointReader createReaderWithOptGlobalTimeFilter(Path path, Filter timeFilter,
       QueryContext context)
       throws FileNodeManagerException, IOException {
     QueryDataSourceV2 queryDataSource = null;
@@ -254,7 +254,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   }
 
   @Override
-  public IPointReader createValueFilterAllDataReader(Path path, Filter filter, QueryContext context)
+  public IPointReader createReaderWithValueFilter(Path path, Filter filter, QueryContext context)
       throws FileNodeManagerException, IOException {
     QueryDataSourceV2 queryDataSource = null;
     try {

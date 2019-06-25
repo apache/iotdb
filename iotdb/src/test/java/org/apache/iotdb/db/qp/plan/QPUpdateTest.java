@@ -188,7 +188,7 @@ public class QPUpdateTest {
     String sqlStr = "insert into root.qp_update_test.device_1 (timestamp, sensor_1, sensor_2) values (13, 50, 40)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 
-    // execute insert
+    // executeWithOutTimeGenerator insert
     boolean upRet = processor.getExecutor().processNonQuery(plan1);
     assertTrue(upRet);
 

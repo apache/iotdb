@@ -472,14 +472,12 @@ public class FileNodeProcessorV2 {
         closingUnSequenceTsFileProcessor.add(unsealedTsFileProcessor);
         workUnSequenceTsFileProcessor = null;
       }
-      unsealedTsFileProcessor.setCloseMark();
       LOGGER.info("The file size {} reaches the threshold, async close tsfile: {}.",
           unsealedTsFileProcessor.getTsFileResource().getFileSize(),
           unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
     }
 
-    unsealedTsFileProcessor.asyncFlush();
-
+    unsealedTsFileProcessor.asyncClose();
   }
 
   public void asyncForceClose() {

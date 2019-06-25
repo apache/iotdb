@@ -52,12 +52,12 @@ public interface ISeriesReaderFactory {
    * @param context query context
    * @return the list of EngineReaderByTimeStamp
    */
-  List<EngineReaderByTimeStamp> createByTimestampReadersOfSelectedPaths(List<Path> paths,
+  List<EngineReaderByTimeStamp> createByTimestampReaders(List<Path> paths,
       QueryContext context) throws FileNodeManagerException, IOException;
 
   /**
-   * construct IPointReader with <br>only time filter or no filter</br>, include sequential data and
-   * unsequential data. This reader won't filter the result of merged sequential data and
+   * construct IPointReader with <br>only time filter or no filter</br>, including sequential data
+   * and unsequential data. This reader won't filter the result of merged sequential data and
    * unsequential data reader.
    *
    * @param path selected series path
@@ -65,19 +65,19 @@ public interface ISeriesReaderFactory {
    * @param context query context
    * @return data reader including seq and unseq data source.
    */
-  IPointReader createTimeFilterAllDataReader(Path path, Filter timeFilter,
+  IPointReader createReaderWithOptGlobalTimeFilter(Path path, Filter timeFilter,
       QueryContext context) throws FileNodeManagerException, IOException;
 
   /**
    * construct IPointReader with <br>value filter</br>, include sequential data and unsequential
    * data. This reader will filter the result of merged sequential data and unsequential data
-   * reader, so if only has time filter please call createTimeFilterAllDataReader().
+   * reader, so if only has time filter please call createReaderWithOptGlobalTimeFilter().
    *
    * @param path selected series path
    * @param filter time filter or null
    * @param context query context
    * @return data reader including seq and unseq data source.
    */
-  IPointReader createValueFilterAllDataReader(Path path, Filter filter, QueryContext context)
+  IPointReader createReaderWithValueFilter(Path path, Filter filter, QueryContext context)
       throws FileNodeManagerException, IOException;
 }
