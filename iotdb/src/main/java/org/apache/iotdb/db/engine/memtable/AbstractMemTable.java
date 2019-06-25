@@ -130,6 +130,8 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void clear() {
     memTableMap.clear();
+    modifications.clear();
+    memSize = 0;
   }
 
   @Override
