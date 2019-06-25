@@ -81,7 +81,7 @@ public class MemTableFlushTaskV2 {
         // TODO if we can not use TSFileIO writer, then we have to redesign the class of TSFileIO.
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
-        List<TimeValuePair> sortedTimeValuePairs = series.getSortedTimeValuePairList();
+        DeduplicatedSortedData sortedTimeValuePairs = series.getDeduplicatedSortedData();
         sortTime += System.currentTimeMillis() - startTime;
         memoryTaskQueue.add(new Pair<>(sortedTimeValuePairs, desc));
       }
@@ -137,7 +137,7 @@ public class MemTableFlushTaskV2 {
               ioTaskQueue.add(task);
             } else {
               long starTime = System.currentTimeMillis();
-              Pair<List<TimeValuePair>, MeasurementSchema> memorySerializeTask = (Pair<List<TimeValuePair>, MeasurementSchema>) task;
+              Pair<DeduplicatedSortedData, MeasurementSchema> memorySerializeTask = (Pair<DeduplicatedSortedData, MeasurementSchema>) task;
               ChunkBuffer chunkBuffer = new ChunkBuffer(memorySerializeTask.right);
               IChunkWriter seriesWriter = new ChunkWriterImpl(memorySerializeTask.right, chunkBuffer,
                   PAGE_SIZE_THRESHOLD);
@@ -226,10 +226,11 @@ public class MemTableFlushTaskV2 {
   };
 
 
-  private void writeOneSeries(List<TimeValuePair> tvPairs, IChunkWriter seriesWriterImpl,
+  private void writeOneSeries(DeduplicatedSortedData tvPairs, IChunkWriter seriesWriterImpl,
       TSDataType dataType)
       throws IOException {
-    for (TimeValuePair timeValuePair : tvPairs) {
+    while (tvPairs.hasNext()) {
+      TimeValuePair timeValuePair = tvPairs.next();
       switch (dataType) {
         case BOOLEAN:
           seriesWriterImpl
