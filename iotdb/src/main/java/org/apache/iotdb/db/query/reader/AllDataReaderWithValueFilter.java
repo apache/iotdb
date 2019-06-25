@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 /**
  * A value filter reader for read data source, including sequence data and unsequence data.
  */
-public class AllDataReaderWithValueFilter extends AllDataReader {
+public class AllDataReaderWithValueFilter extends AllDataReaderWithOptGlobalTimeFilter {
 
   private Filter filter;
   private boolean hasCachedValue;
