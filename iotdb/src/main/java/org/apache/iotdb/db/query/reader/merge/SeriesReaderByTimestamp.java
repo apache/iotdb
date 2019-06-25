@@ -27,7 +27,7 @@ import java.util.List;
  * <p>
  * Usage: Get value in timestamp by sorting time-value pair in multiple readers with time and
  * priority. (1) merge multiple chunk group readers in the unsequence file (2）merge sequence reader,
- * unsequence reader and mem reader
+ * unsequence reader
  * </p>
  */
 public class SeriesReaderByTimestamp implements EngineReaderByTimeStamp {

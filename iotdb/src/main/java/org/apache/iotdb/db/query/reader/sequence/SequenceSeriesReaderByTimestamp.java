@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
-import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 /**
  * EngineReaderByTimeStamp of data in: 1) sealed tsfile. 2) unsealed tsfile, which include data in disk of
@@ -150,6 +150,6 @@ public class SequenceSeriesReaderByTimestamp implements EngineReaderByTimeStamp 
     ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     seriesReader = new SeriesReaderByTimestampAdapter(
-        new SeriesReaderByTimestamp(chunkLoader, metaDataList));
+        new FileSeriesReaderByTimestamp(chunkLoader, metaDataList));
   }
 }

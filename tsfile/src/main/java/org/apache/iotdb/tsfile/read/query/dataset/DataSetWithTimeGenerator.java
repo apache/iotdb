@@ -20,14 +20,12 @@ package org.apache.iotdb.tsfile.read.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 /**
  * query processing: (1) generate time by series that has filter (2) get value of series that does
@@ -36,7 +34,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class DataSetWithTimeGenerator extends QueryDataSet {
 
   private TimeGenerator timeGenerator;
-  private List<SeriesReaderByTimestamp> readers;
+  private List<FileSeriesReaderByTimestamp> readers;
   private List<Boolean> cached;
 
   /**
@@ -46,11 +44,11 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
    * @param cached cached boolean in List(boolean) structure
    * @param dataTypes TSDataTypes in List structure
    * @param timeGenerator TimeGenerator object
-   * @param readers readers in List(SeriesReaderByTimestamp) structure
+   * @param readers readers in List(FileSeriesReaderByTimestamp) structure
    */
   public DataSetWithTimeGenerator(List<Path> paths, List<Boolean> cached,
       List<TSDataType> dataTypes,
-      TimeGenerator timeGenerator, List<SeriesReaderByTimestamp> readers) {
+      TimeGenerator timeGenerator, List<FileSeriesReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.cached = cached;
     this.timeGenerator = timeGenerator;
@@ -77,8 +75,8 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
       }
 
       // get value from series reader without filter
-      SeriesReaderByTimestamp seriesReaderByTimestamp = readers.get(i);
-      Object value = seriesReaderByTimestamp.getValueInTimestamp(timestamp);
+      FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp = readers.get(i);
+      Object value = fileSeriesReaderByTimestamp.getValueInTimestamp(timestamp);
       rowRecord.addField(getField(value, dataTypes.get(i)));
     }
 

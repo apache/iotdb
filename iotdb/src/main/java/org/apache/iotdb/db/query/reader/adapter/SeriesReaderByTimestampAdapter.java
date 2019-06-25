@@ -21,26 +21,26 @@ package org.apache.iotdb.db.query.reader.adapter;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 /**
- * SeriesReaderByTimestamp to EngineReaderByTimeStamp adapter.
+ * FileSeriesReaderByTimestamp to EngineReaderByTimeStamp adapter.
  */
 public class SeriesReaderByTimestampAdapter implements EngineReaderByTimeStamp {
 
-  private SeriesReaderByTimestamp seriesReaderByTimestamp;
+  private FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp;
 
-  public SeriesReaderByTimestampAdapter(SeriesReaderByTimestamp seriesReaderByTimestamp) {
-    this.seriesReaderByTimestamp = seriesReaderByTimestamp;
+  public SeriesReaderByTimestampAdapter(FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp) {
+    this.fileSeriesReaderByTimestamp = fileSeriesReaderByTimestamp;
   }
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    return seriesReaderByTimestamp.getValueInTimestamp(timestamp);
+    return fileSeriesReaderByTimestamp.getValueInTimestamp(timestamp);
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    return seriesReaderByTimestamp.hasNext();
+    return fileSeriesReaderByTimestamp.hasNext();
   }
 }

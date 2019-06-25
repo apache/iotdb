@@ -34,7 +34,7 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   public void testSeqReader() throws IOException, FileNodeProcessorException {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
-    SequentialSeriesReader readerV2 = new SequentialSeriesReader(path,
+    SequenceSeriesReader readerV2 = new SequenceSeriesReader(path,
         queryDataSource.getSeqResources(), null,
         EnvironmentUtils.TEST_QUERY_CONTEXT);
     long time = 999;

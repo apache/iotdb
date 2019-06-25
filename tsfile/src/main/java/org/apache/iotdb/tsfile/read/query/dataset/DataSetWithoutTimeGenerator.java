@@ -55,7 +55,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
    *
    * @param paths paths in List structure
    * @param dataTypes TSDataTypes in List structure
-   * @param readers readers in List(SeriesReaderByTimestamp) structure
+   * @param readers readers in List(FileSeriesReaderByTimestamp) structure
    * @throws IOException IOException
    */
   public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
