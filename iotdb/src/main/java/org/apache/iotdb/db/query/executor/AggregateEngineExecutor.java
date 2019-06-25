@@ -76,7 +76,7 @@ public class AggregateEngineExecutor {
   }
 
   /**
-   * execute aggregate function with only time filter or no filter.
+   * executeWithOutTimeGenerator aggregate function with only time filter or no filter.
    *
    * @param context query context
    */
@@ -253,7 +253,7 @@ public class AggregateEngineExecutor {
 
 
   /**
-   * execute aggregate function with value filter.
+   * executeWithOutTimeGenerator aggregate function with value filter.
    *
    * @param context query context.
    */
@@ -265,7 +265,7 @@ public class AggregateEngineExecutor {
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
-        .createByTimestampReadersOfSelectedPaths(selectedSeries, context);
+        .createByTimestampReaders(selectedSeries, context);
 
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
