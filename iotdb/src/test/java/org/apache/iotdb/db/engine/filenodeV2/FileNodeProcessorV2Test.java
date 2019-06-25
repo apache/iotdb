@@ -61,9 +61,9 @@ public class FileNodeProcessorV2Test {
       processor.asyncForceClose();
     }
 
-    System.out.println("reach");
 
     processor.syncCloseFileNode();
+    System.out.println("reach");
     QueryDataSourceV2 queryDataSource = null;
     try {
       queryDataSource = processor.query(deviceId, measurementId);
