@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
  * a series with given timestamps.
  * </p>
  */
-public class SeriesReaderByTimestamp {
+public class FileSeriesReaderByTimestamp {
 
   protected ChunkLoader chunkLoader;
   protected List<ChunkMetaData> chunkMetaDataList;
@@ -47,7 +47,7 @@ public class SeriesReaderByTimestamp {
   /**
    * init with chunkLoader and chunkMetaDataList.
    */
-  public SeriesReaderByTimestamp(ChunkLoader chunkLoader, List<ChunkMetaData> chunkMetaDataList) {
+  public FileSeriesReaderByTimestamp(ChunkLoader chunkLoader, List<ChunkMetaData> chunkMetaDataList) {
     this.chunkLoader = chunkLoader;
     this.chunkMetaDataList = chunkMetaDataList;
     currentTimestamp = Long.MIN_VALUE;

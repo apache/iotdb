@@ -24,14 +24,13 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
+import org.apache.iotdb.db.query.reader.unsequence.UnsequenceSeriesReader;
+import org.apache.iotdb.db.query.reader.unsequence.DiskChunkReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -140,7 +139,7 @@ public class UnseqTsFileRecoverTest {
     OverflowInsertFile overflowInsertFile = new OverflowInsertFile(tsF.getPath(),
         metadataQuerier.getChunkMetaDataList(path));
 
-    PriorityMergeReader unSeqMergeReader = new PriorityMergeReader();
+    UnsequenceSeriesReader unSeqMergeReader = new UnsequenceSeriesReader();
     int priorityValue = 1;
 
     for (ChunkMetaData chunkMetaData : overflowInsertFile.getChunkMetaDataList()) {
@@ -148,7 +147,7 @@ public class UnseqTsFileRecoverTest {
       ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
 
       unSeqMergeReader
-          .addReaderWithPriority(new EngineChunkReader(chunkReader),
+          .addReaderWithPriority(new DiskChunkReader(chunkReader),
               priorityValue);
       priorityValue++;
     }

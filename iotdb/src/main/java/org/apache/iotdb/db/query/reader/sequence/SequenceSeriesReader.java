@@ -18,19 +18,15 @@
  */
 package org.apache.iotdb.db.query.reader.sequence;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
-import org.apache.iotdb.db.query.reader.adapter.FileSeriesReaderAdapter;
+import org.apache.iotdb.db.query.reader.sequence.adapter.FileSeriesReaderAdapter;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
@@ -40,11 +36,15 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+
 /**
- * batch reader of data in: 1) sealed tsfile. 2) unsealed tsfile, which include data in disk of
+ * batch reader of data in: 1) sealed tsfile. 2) unsealed tsfile, which include data on disk of
  * unsealed file and in memtables that will be flushing to unsealed tsfile.
  */
-public class SequenceDataReaderV2 extends IterateReader {
+public class SequenceSeriesReader extends IterateReader {
 
   private Path seriesPath;
   /**
@@ -56,14 +56,14 @@ public class SequenceDataReaderV2 extends IterateReader {
   /**
    * init with globalSortedSeriesDataSource, filter, context and isReverse.
    *
-   * @param seriesPath data source
+   * @param seriesPath   data source
    * @param seqResources null if no filter
-   * @param context query context
-   * @param isReverse true-traverse chunks from behind forward, false-traverse chunks from front to
-   * back.
+   * @param context      query context
+   * @param isReverse    true-traverse chunks from behind forward, false-traverse chunks from front to
+   *                     back.
    */
-  public SequenceDataReaderV2(Path seriesPath, List<TsFileResourceV2> seqResources,
-      Filter timeFilter, QueryContext context, boolean isReverse) throws IOException {
+  public SequenceSeriesReader(Path seriesPath, List<TsFileResourceV2> seqResources,
+                              Filter timeFilter, QueryContext context, boolean isReverse) throws IOException {
     super();
     this.seriesPath = seriesPath;
     this.enableReverse = isReverse;
@@ -72,10 +72,10 @@ public class SequenceDataReaderV2 extends IterateReader {
     }
     for (TsFileResourceV2 tsFileResource : seqResources) {
       if (tsFileResource.isClosed()) {
-        constructSealedTsFileReader(tsFileResource, timeFilter, context, seriesReaders);
+        constructSealedTsFileReader(tsFileResource, timeFilter, context, seqResourceSeriesReaderList);
       } else {
-        seriesReaders.add(
-            new UnSealedTsFileReaderV2(tsFileResource, timeFilter, enableReverse));
+        seqResourceSeriesReaderList.add(
+                new UnSealedTsFileReader(tsFileResource, timeFilter, enableReverse));
       }
     }
   }
@@ -83,17 +83,17 @@ public class SequenceDataReaderV2 extends IterateReader {
   /**
    * traverse chunks from front to back.
    */
-  public SequenceDataReaderV2(Path seriesPath, List<TsFileResourceV2> seqResources,
-      Filter timeFilter, QueryContext context) throws IOException {
+  public SequenceSeriesReader(Path seriesPath, List<TsFileResourceV2> seqResources,
+                              Filter timeFilter, QueryContext context) throws IOException {
     this(seriesPath, seqResources, timeFilter, context, false);
   }
 
   private void constructSealedTsFileReader(TsFileResourceV2 tsFileResource, Filter filter,
-      QueryContext context, List<IAggregateReader> readerList)
-      throws IOException {
+                                           QueryContext context, List<IAggregateReader> seqResourceSeriesReaderList)
+          throws IOException {
     if (singleTsFileSatisfied(tsFileResource, filter)) {
-      readerList.add(
-          new FileSeriesReaderAdapter(initSealedTsFileReader(tsFileResource, filter, context)));
+      seqResourceSeriesReaderList.add(
+              new FileSeriesReaderAdapter(initSealedTsFileReader(tsFileResource, filter, context)));
     }
 
   }
@@ -116,18 +116,18 @@ public class SequenceDataReaderV2 extends IterateReader {
   }
 
   private FileSeriesReader initSealedTsFileReader(TsFileResourceV2 tsfile, Filter filter,
-      QueryContext context)
-      throws IOException {
+                                                  QueryContext context)
+          throws IOException {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(tsfile.getFile().getPath(), true);
+            .get(tsfile.getFile().getPath(), true);
 
     MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
     List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
 
     List<Modification> pathModifications = context.getPathModifications(tsfile.getModFile(),
-        seriesPath.getFullPath());
+            seriesPath.getFullPath());
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
     }

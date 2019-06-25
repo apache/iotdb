@@ -24,13 +24,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class PriorityMergeReaderByTimestampTest {
+public class SeriesReaderByTimestampTest {
 
   @Test
   public void test() throws IOException {
@@ -41,7 +42,7 @@ public class PriorityMergeReaderByTimestampTest {
     FakedPrioritySeriesReaderByTimestamp reader3 = new FakedPrioritySeriesReaderByTimestamp(1080,
         200, 13, 31);
 
-    PriorityMergeReaderByTimestamp priorityReader = new PriorityMergeReaderByTimestamp();
+    SeriesReaderByTimestamp priorityReader = new SeriesReaderByTimestamp();
     priorityReader.addReaderWithPriority(reader1, 1);
     priorityReader.addReaderWithPriority(reader2, 2);
     priorityReader.addReaderWithPriority(reader3, 3);
@@ -92,7 +93,7 @@ public class PriorityMergeReaderByTimestampTest {
 
   }
 
-  public static class FakedPrioritySeriesReaderByTimestamp implements EngineReaderByTimeStamp,
+  public static class FakedPrioritySeriesReaderByTimestamp implements IReaderByTimeStamp,
       IPointReader {
 
     private Iterator<TimeValuePair> iterator;

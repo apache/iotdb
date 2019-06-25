@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -38,7 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CreateByTimestampReadersOfSelectedPathsTest {
+public class UnseqSeriesReaderByTimestampTest {
     private String systemDir = "data/info";
     private String deviceId = "root.vehicle.d0";
     private String measurementId = "s0";
@@ -56,7 +56,7 @@ public class CreateByTimestampReadersOfSelectedPathsTest {
     }
 
     @Test
-    public void testUnSeqReaderWithoutFilter() throws IOException, FileNodeManagerException {
+    public void testUnseqSeriesReaderByTimestamp() throws IOException, FileNodeManagerException {
         // write
         for (int j = 1; j <= 10; j++) {
             TSRecord record = new TSRecord(j, deviceId);
@@ -79,10 +79,10 @@ public class CreateByTimestampReadersOfSelectedPathsTest {
         // query
         List<Path> paths = new ArrayList<>();
         paths.add(new Path(deviceId, measurementId));
-        List<EngineReaderByTimeStamp> readers = SeriesReaderFactoryImpl.getInstance().
-            createByTimestampReaders(paths, EnvironmentUtils.TEST_QUERY_CONTEXT);
+        List<IReaderByTimeStamp> readers = SeriesReaderFactoryImpl.getInstance().
+                createSeriesReadersByTimestamp(paths, EnvironmentUtils.TEST_QUERY_CONTEXT);
         Assert.assertEquals(1, readers.size());
-        EngineReaderByTimeStamp reader = readers.get(0);
+        IReaderByTimeStamp reader = readers.get(0);
 
         for (long time = 1; time <= 10; time++) {
             // NOTE that the timestamps should be in be in strictly increasing order.

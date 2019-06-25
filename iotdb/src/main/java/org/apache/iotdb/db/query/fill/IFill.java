@@ -54,7 +54,7 @@ public abstract class IFill {
       throws IOException, FileNodeManagerException {
     Filter timeFilter = constructFilter(beforeRange);
     allDataReader = SeriesReaderFactoryImpl.getInstance()
-        .createReaderWithOptGlobalTimeFilter(path, timeFilter, context);
+        .createSeriesReaderWithoutValueFilter(path, timeFilter, context);
   }
 
   public abstract IPointReader getFillResult() throws IOException;

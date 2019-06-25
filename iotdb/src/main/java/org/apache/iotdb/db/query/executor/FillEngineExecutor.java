@@ -28,7 +28,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
+import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -52,7 +52,7 @@ public class FillEngineExecutor {
   }
 
   /**
-   * executeWithOutTimeGenerator fill.
+   * executeWithoutValueFilter fill.
    *
    * @param context query context
    */
@@ -82,7 +82,7 @@ public class FillEngineExecutor {
       readers.add(fill.getFillResult());
     }
 
-    return new EngineDataSetWithoutTimeGenerator(selectedSeries, dataTypeList, readers);
+    return new EngineDataSetWithoutValueFilter(selectedSeries, dataTypeList, readers);
   }
 
 }

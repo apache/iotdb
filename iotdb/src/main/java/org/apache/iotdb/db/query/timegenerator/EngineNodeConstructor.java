@@ -52,7 +52,7 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
         return new EngineLeafNode(
             SeriesReaderFactoryImpl.getInstance()
-                .createReaderWithValueFilter(path, filter, context));
+                .createSeriesReaderWithValueFilter(path, filter, context));
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }

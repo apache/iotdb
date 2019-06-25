@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
-import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -87,7 +87,7 @@ public class ReaderByTimestampTest {
     long startTimestamp = System.currentTimeMillis();
     count = 0;
 
-    SeriesReaderByTimestamp seriesReaderFromSingleFileByTimestamp = new SeriesReaderByTimestamp(
+    FileSeriesReaderByTimestamp seriesReaderFromSingleFileByTimestamp = new FileSeriesReaderByTimestamp(
         seriesChunkLoader,
         chunkMetaDataList);
 

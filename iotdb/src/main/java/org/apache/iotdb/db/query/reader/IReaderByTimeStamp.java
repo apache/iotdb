@@ -16,31 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.query.reader.adapter;
+package org.apache.iotdb.db.query.reader;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
 
-/**
- * SeriesReaderByTimestamp to EngineReaderByTimeStamp adapter.
- */
-public class SeriesReaderByTimestampAdapter implements EngineReaderByTimeStamp {
+public interface IReaderByTimeStamp {
 
-  private SeriesReaderByTimestamp seriesReaderByTimestamp;
+  /**
+   * Given a timestamp, the reader is supposed to return the corresponding value in the timestamp.
+   * If no value in this timestamp, null will be returned.
+   *
+   * Note that when the higher layer needs to call this function multiple times, it is required that the timestamps
+   * be in strictly increasing order.
+   */
+  Object getValueInTimestamp(long timestamp) throws IOException;
 
-  public SeriesReaderByTimestampAdapter(SeriesReaderByTimestamp seriesReaderByTimestamp) {
-    this.seriesReaderByTimestamp = seriesReaderByTimestamp;
-  }
-
-  @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    return seriesReaderByTimestamp.getValueInTimestamp(timestamp);
-  }
-
-  @Override
-  public boolean hasNext() throws IOException {
-    return seriesReaderByTimestamp.hasNext();
-  }
+  boolean hasNext() throws IOException;
 }

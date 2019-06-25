@@ -18,26 +18,27 @@
  */
 package org.apache.iotdb.db.query.reader.sequence;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * get data sequentially from the reader list.
  */
 public class IterateReader implements IAggregateReader {
 
-  protected List<IAggregateReader> seriesReaders;
+  protected List<IAggregateReader> seqResourceSeriesReaderList;
   protected boolean curReaderInitialized;
   protected int nextSeriesReaderIndex;
   protected IAggregateReader currentSeriesReader;
 
   public IterateReader() {
-    this.seriesReaders = new ArrayList<>();
+    this.seqResourceSeriesReaderList = new ArrayList<>();
     this.curReaderInitialized = false;
     this.nextSeriesReaderIndex = 0;
   }
@@ -51,8 +52,8 @@ public class IterateReader implements IAggregateReader {
       curReaderInitialized = false;
     }
 
-    while (nextSeriesReaderIndex < seriesReaders.size()) {
-      currentSeriesReader = seriesReaders.get(nextSeriesReaderIndex++);
+    while (nextSeriesReaderIndex < seqResourceSeriesReaderList.size()) {
+      currentSeriesReader = seqResourceSeriesReaderList.get(nextSeriesReaderIndex++);
       if (currentSeriesReader.hasNext()) {
         curReaderInitialized = true;
         return true;
@@ -63,7 +64,7 @@ public class IterateReader implements IAggregateReader {
 
   @Override
   public void close() throws IOException {
-    for (IBatchReader seriesReader : seriesReaders) {
+    for (IBatchReader seriesReader : seqResourceSeriesReaderList) {
       seriesReader.close();
     }
   }

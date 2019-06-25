@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.adapter;
+package org.apache.iotdb.db.query.reader.sequence.adapter;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 
 /**
- *  FileSeriesReader to IAggregateReader adapter.
+ *  This class is used to convert FileSeriesReader (in TsFile) to IAggregateReader.
  */
 public class FileSeriesReaderAdapter implements IAggregateReader {
 

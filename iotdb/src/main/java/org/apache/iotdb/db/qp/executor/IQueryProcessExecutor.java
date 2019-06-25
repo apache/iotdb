@@ -78,7 +78,7 @@ public interface IQueryProcessExecutor {
       throws ProcessorException, IOException, PathErrorException, FileNodeManagerException;
 
   /**
-   * executeWithOutTimeGenerator update command and return whether the operator is successful.
+   * executeWithoutValueFilter update command and return whether the operator is successful.
    *
    * @param path : update series seriesPath
    * @param startTime start time in update command
@@ -90,7 +90,7 @@ public interface IQueryProcessExecutor {
       throws ProcessorException;
 
   /**
-   * executeWithOutTimeGenerator delete command and return whether the operator is successful.
+   * executeWithoutValueFilter delete command and return whether the operator is successful.
    *
    * @param deletePlan physical delete plan
    * @return - whether the operator is successful.
@@ -98,7 +98,7 @@ public interface IQueryProcessExecutor {
   boolean delete(DeletePlan deletePlan) throws ProcessorException;
 
   /**
-   * executeWithOutTimeGenerator delete command and return whether the operator is successful.
+   * executeWithoutValueFilter delete command and return whether the operator is successful.
    *
    * @param path : delete series seriesPath
    * @param deleteTime end time in delete command
@@ -107,7 +107,7 @@ public interface IQueryProcessExecutor {
   boolean delete(Path path, long deleteTime) throws ProcessorException;
 
   /**
-   * executeWithOutTimeGenerator insert command and return whether the operator is successful.
+   * executeWithoutValueFilter insert command and return whether the operator is successful.
    *
    * @return - Operate Type.
    */

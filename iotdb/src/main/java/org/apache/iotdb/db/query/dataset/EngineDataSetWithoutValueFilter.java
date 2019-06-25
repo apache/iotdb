@@ -37,9 +37,9 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 /**
  * TODO implement this class as TsFile DataSetWithoutTimeGenerator.
  */
-public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
+public class EngineDataSetWithoutValueFilter extends QueryDataSet {
 
-  private List<IPointReader> readers;
+  private List<IPointReader> seriesReaderWithoutValueFilterList;
 
   private TimeValuePair[] cacheTimeValueList;
 
@@ -48,28 +48,28 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
   private Set<Long> timeSet;
 
   /**
-   * constructor of EngineDataSetWithoutTimeGenerator.
+   * constructor of EngineDataSetWithoutValueFilter.
    *
    * @param paths paths in List structure
    * @param dataTypes time series data type
-   * @param readers readers in List(IReader) structure
+   * @param readers readers in List(IPointReader) structure
    * @throws IOException IOException
    */
-  public EngineDataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
-      List<IPointReader> readers)
+  public EngineDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
+                                         List<IPointReader> readers)
       throws IOException {
     super(paths, dataTypes);
-    this.readers = readers;
+    this.seriesReaderWithoutValueFilterList = readers;
     initHeap();
   }
 
   private void initHeap() throws IOException {
     timeSet = new HashSet<>();
     timeHeap = new PriorityQueue<>();
-    cacheTimeValueList = new TimeValuePair[readers.size()];
+    cacheTimeValueList = new TimeValuePair[seriesReaderWithoutValueFilterList.size()];
 
-    for (int i = 0; i < readers.size(); i++) {
-      IPointReader reader = readers.get(i);
+    for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
+      IPointReader reader = seriesReaderWithoutValueFilterList.get(i);
       if (reader.hasNext()) {
         TimeValuePair timeValuePair = reader.next();
         cacheTimeValueList[i] = timeValuePair;
@@ -89,14 +89,14 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
 
     RowRecord record = new RowRecord(minTime);
 
-    for (int i = 0; i < readers.size(); i++) {
-      IPointReader reader = readers.get(i);
+    for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
+      IPointReader reader = seriesReaderWithoutValueFilterList.get(i);
       if (cacheTimeValueList[i] == null) {
         record.addField(new Field(null));
       } else {
         if (cacheTimeValueList[i].getTimestamp() == minTime) {
           record.addField(getField(cacheTimeValueList[i].getValue(), dataTypes.get(i)));
-          if (readers.get(i).hasNext()) {
+          if (seriesReaderWithoutValueFilterList.get(i).hasNext()) {
             cacheTimeValueList[i] = reader.next();
             timeHeapPut(cacheTimeValueList[i].getTimestamp());
           }
@@ -156,6 +156,6 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
   }
 
   public List<IPointReader> getReaders() {
-    return readers;
+    return seriesReaderWithoutValueFilterList;
   }
 }
