@@ -64,6 +64,8 @@ public class IoTDBCompleteIT {
     insertTest();
     selectTest();
     deleteTest();
+    groupByTest();
+    funcTest();
 
     funcTestWithOutTimeGenerator();
   }

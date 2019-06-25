@@ -39,6 +39,7 @@ public class FlushManager {
     @Override
     public void run() {
       UnsealedTsFileProcessorV2 unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
+      long startTime = System.currentTimeMillis();
       try {
         unsealedTsFileProcessor.flushOneMemTable();
       } catch (IOException e) {
@@ -46,6 +47,7 @@ public class FlushManager {
         // TODO do sth
       }
       unsealedTsFileProcessor.setManagedByFlushManager(false);
+      LOGGER.info("flush process consume {} ms", System.currentTimeMillis() - startTime);
       registerUnsealedTsFileProcessor(unsealedTsFileProcessor);
     }
   }
@@ -57,11 +59,6 @@ public class FlushManager {
     synchronized (unsealedTsFileProcessor) {
       if (!unsealedTsFileProcessor.isManagedByFlushManager() && unsealedTsFileProcessor.getFlushingMemTableSize() > 0) {
         LOGGER.info("begin to submit a flush thread, flushing memtable size: {}", unsealedTsFileProcessor.getFlushingMemTableSize());
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
         unsealedTsFileProcessorQueue.add(unsealedTsFileProcessor);
         unsealedTsFileProcessor.setManagedByFlushManager(true);
         return flushPool.submit(new FlushThread());
