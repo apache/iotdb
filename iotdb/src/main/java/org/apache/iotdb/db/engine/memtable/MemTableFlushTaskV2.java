@@ -60,6 +60,7 @@ public class MemTableFlushTaskV2 {
   private Thread memoryFlushThread = new Thread(() -> {
     long memSerializeTime = 0;
     LOGGER.info("Storage group {},start serialize data into mem.", storageGroup);
+    long waitTime = 0;
     while (!stop) {
       Object task = memoryTaskQueue.poll();
       if (task == null) {
@@ -68,7 +69,12 @@ public class MemTableFlushTaskV2 {
         } catch (InterruptedException e) {
           LOGGER.error("Storage group {}, io flush task is interrupted.", storageGroup, e);
         }
+        waitTime += 10;
+        if (waitTime % 1000 == 0) {
+          LOGGER.info("encoding thread has waited {}ms", waitTime);
+        }
       } else {
+        waitTime = 0;
         if (task instanceof String) {
           ioTaskQueue.add(task);
         } else if (task instanceof ChunkGroupIoTask) {
@@ -101,6 +107,7 @@ public class MemTableFlushTaskV2 {
   private Thread ioFlushThread = new Thread(() -> {
     long ioTime = 0;
     LOGGER.info("Storage group {}, start io cost.", storageGroup);
+    long waitTime = 0;
     while (!stop) {
       Object seriesWriterOrEndChunkGroupTask = ioTaskQueue.poll();
       if (seriesWriterOrEndChunkGroupTask == null) {
@@ -109,7 +116,12 @@ public class MemTableFlushTaskV2 {
         } catch (InterruptedException e) {
           LOGGER.error("Storage group {}, io flush task is interrupted.", storageGroup, e);
         }
+        waitTime += 10;
+        if (waitTime % 1000 == 0) {
+          LOGGER.info("io thread has waited {}ms", waitTime);
+        }
       } else {
+        waitTime = 0;
         long starTime = System.currentTimeMillis();
         try {
           if (seriesWriterOrEndChunkGroupTask instanceof IChunkWriter) {
