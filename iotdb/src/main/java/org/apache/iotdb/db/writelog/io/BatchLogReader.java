@@ -32,7 +32,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
  */
 public class BatchLogReader implements ILogReader{
 
-  Iterator<PhysicalPlan> planIterator;
+  private Iterator<PhysicalPlan> planIterator;
 
   public BatchLogReader(ByteBuffer buffer) {
     List<PhysicalPlan> logs = readLogs(buffer);

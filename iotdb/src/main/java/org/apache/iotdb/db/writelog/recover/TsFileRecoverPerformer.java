@@ -24,7 +24,6 @@ import static org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2.RESOURCE_SU
 import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
-import org.apache.iotdb.db.engine.filenodeV2.UnsealedTsFileProcessorV2;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -78,7 +77,7 @@ public class TsFileRecoverPerformer {
       return;
     }
     // remove corrupted part of the TsFile
-    NativeRestorableIOWriter restorableTsFileIOWriter = null;
+    NativeRestorableIOWriter restorableTsFileIOWriter;
     try {
       restorableTsFileIOWriter = new NativeRestorableIOWriter(insertFile);
     } catch (IOException e) {

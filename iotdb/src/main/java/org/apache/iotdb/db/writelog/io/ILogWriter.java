@@ -20,7 +20,6 @@ package org.apache.iotdb.db.writelog.io;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 /**
  * ILogWriter provides functions to insert WAL logs that have already been converted to bytes to a
