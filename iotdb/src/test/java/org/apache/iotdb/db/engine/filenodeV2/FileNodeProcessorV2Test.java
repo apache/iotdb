@@ -60,10 +60,8 @@ public class FileNodeProcessorV2Test {
       processor.insert(new InsertPlan(record));
       processor.asyncForceClose();
     }
-
-
+    
     processor.syncCloseFileNode();
-    System.out.println("reach");
     QueryDataSourceV2 queryDataSource = null;
     try {
       queryDataSource = processor.query(deviceId, measurementId);
