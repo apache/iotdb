@@ -69,6 +69,11 @@ public class IoTDBConfig {
   private long forceWalPeriodInMs = 10;
 
   /**
+   * Size of log buffer in each log node(in byte).
+   */
+  private int walBufferSize = 16*1024*1024;
+
+  /**
    * Data directory.
    */
   private String dataDir = null;
@@ -850,4 +855,11 @@ public class IoTDBConfig {
     this.rpcImplClassName = rpcImplClassName;
   }
 
+  public int getWalBufferSize() {
+    return walBufferSize;
+  }
+
+  public void setWalBufferSize(int walBufferSize) {
+    this.walBufferSize = walBufferSize;
+  }
 }
