@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
  * batch reader of data in: 1) sealed tsfile. 2) unsealed tsfile, which include data in disk of
  * unsealed file and in memtables that will be flushing to unsealed tsfile.
  */
-public class SequentialSeriesReader extends IterateReader {
+public class SequenceSeriesReader extends IterateReader {
 
   private Path seriesPath;
   /**
@@ -61,8 +61,8 @@ public class SequentialSeriesReader extends IterateReader {
    * @param isReverse true-traverse chunks from behind forward, false-traverse chunks from front to
    * back.
    */
-  public SequentialSeriesReader(Path seriesPath, List<TsFileResourceV2> seqResources,
-                                Filter timeFilter, QueryContext context, boolean isReverse) throws IOException {
+  public SequenceSeriesReader(Path seriesPath, List<TsFileResourceV2> seqResources,
+                              Filter timeFilter, QueryContext context, boolean isReverse) throws IOException {
     super();
     this.seriesPath = seriesPath;
     this.enableReverse = isReverse;
@@ -82,8 +82,8 @@ public class SequentialSeriesReader extends IterateReader {
   /**
    * traverse chunks from front to back.
    */
-  public SequentialSeriesReader(Path seriesPath, List<TsFileResourceV2> seqResources,
-                                Filter timeFilter, QueryContext context) throws IOException {
+  public SequenceSeriesReader(Path seriesPath, List<TsFileResourceV2> seqResources,
+                              Filter timeFilter, QueryContext context) throws IOException {
     this(seriesPath, seqResources, timeFilter, context, false);
   }
 

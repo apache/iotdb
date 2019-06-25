@@ -30,7 +30,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.sequence.SequentialSeriesReader;
+import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -86,7 +86,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
           .getQueryDataSourceV2(path, context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SequentialSeriesReader sequenceReader = new SequentialSeriesReader(
+      SequenceSeriesReader sequenceReader = new SequenceSeriesReader(
           queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context,
           false);
 

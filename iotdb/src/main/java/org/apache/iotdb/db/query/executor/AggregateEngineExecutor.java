@@ -38,7 +38,7 @@ import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.reader.sequence.SequentialSeriesReader;
+import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -104,12 +104,12 @@ public class AggregateEngineExecutor {
           .getQueryDataSourceV2(selectedSeries.get(i), context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SequentialSeriesReader sequenceReader;
+      SequenceSeriesReader sequenceReader;
       if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
-        sequenceReader = new SequentialSeriesReader(queryDataSource.getSeriesPath(),
+        sequenceReader = new SequenceSeriesReader(queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, true);
       } else {
-        sequenceReader = new SequentialSeriesReader(queryDataSource.getSeriesPath(),
+        sequenceReader = new SequenceSeriesReader(queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, false);
       }
 

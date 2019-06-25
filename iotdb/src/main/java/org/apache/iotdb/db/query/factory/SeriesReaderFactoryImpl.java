@@ -38,7 +38,7 @@ import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.merge.UnsequenceSeriesReader;
 import org.apache.iotdb.db.query.reader.merge.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.sequence.SequentialSeriesReader;
+import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReaderByTimestamp;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -232,9 +232,9 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     }
 
     // sequence reader for one sealed tsfile
-    SequentialSeriesReader tsFilesReader;
+    SequenceSeriesReader tsFilesReader;
 
-    tsFilesReader = new SequentialSeriesReader(queryDataSource.getSeriesPath(),
+    tsFilesReader = new SequenceSeriesReader(queryDataSource.getSeriesPath(),
         queryDataSource.getSeqResources(),
         timeFilter, context);
 
@@ -264,9 +264,9 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     }
 
     // sequence reader for one sealed tsfile
-    SequentialSeriesReader tsFilesReader;
+    SequenceSeriesReader tsFilesReader;
 
-    tsFilesReader = new SequentialSeriesReader(queryDataSource.getSeriesPath(),
+    tsFilesReader = new SequenceSeriesReader(queryDataSource.getSeriesPath(),
         queryDataSource.getSeqResources(),
         filter, context);
 
