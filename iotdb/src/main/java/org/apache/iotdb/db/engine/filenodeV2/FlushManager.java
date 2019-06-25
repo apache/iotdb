@@ -58,7 +58,7 @@ public class FlushManager {
   public Future registerUnsealedTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
     synchronized (unsealedTsFileProcessor) {
       if (!unsealedTsFileProcessor.isManagedByFlushManager() && unsealedTsFileProcessor.getFlushingMemTableSize() > 0) {
-        LOGGER.info("begin to submit a flush thread, flushing memtable size: {}", unsealedTsFileProcessor.getFlushingMemTableSize());
+        LOGGER.info("begin to submit a flush thread, flushing memtable getTotalDataNumber: {}", unsealedTsFileProcessor.getFlushingMemTableSize());
         unsealedTsFileProcessorQueue.add(unsealedTsFileProcessor);
         unsealedTsFileProcessor.setManagedByFlushManager(true);
         return flushPool.submit(new FlushThread());

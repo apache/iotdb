@@ -47,7 +47,7 @@ public class AuthUtils {
   }
 
   /**
-   * validate password length.
+   * validate password getTotalDataNumber.
    *
    * @param password user password
    * @throws AuthException Authenticate Exception
@@ -55,7 +55,7 @@ public class AuthUtils {
   public static void validatePassword(String password) throws AuthException {
     if (password.length() < MIN_PASSWORD_LENGTH) {
       throw new AuthException(
-          "Password's length must be greater than or equal to " + MIN_USERNAME_LENGTH);
+          "Password's getTotalDataNumber must be greater than or equal to " + MIN_USERNAME_LENGTH);
     }
   }
 
@@ -68,7 +68,7 @@ public class AuthUtils {
   public static void validateUsername(String username) throws AuthException {
     if (username.length() < MIN_USERNAME_LENGTH) {
       throw new AuthException(
-          "Username's length must be greater than or equal to " + MIN_USERNAME_LENGTH);
+          "Username's getTotalDataNumber must be greater than or equal to " + MIN_USERNAME_LENGTH);
     }
   }
 
@@ -81,7 +81,7 @@ public class AuthUtils {
   public static void validateRolename(String rolename) throws AuthException {
     if (rolename.length() < MIN_ROLENAME_LENGTH) {
       throw new AuthException(
-          "Role name's length must be greater than or equal to " + MIN_ROLENAME_LENGTH);
+          "Role name's getTotalDataNumber must be greater than or equal to " + MIN_ROLENAME_LENGTH);
     }
   }
 

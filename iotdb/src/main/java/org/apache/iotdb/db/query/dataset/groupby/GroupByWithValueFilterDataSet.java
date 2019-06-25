@@ -52,7 +52,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   private boolean hasCachedTimestamp;
 
   /**
-   * group by batch calculation size.
+   * group by batch calculation getTotalDataNumber.
    */
   private int timeStampFetchSize;
 
@@ -135,8 +135,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * construct an array of timestamps for one batch of a group by partition calculating.
    *
    * @param timestampArray timestamp array
-   * @param timeArrayLength the current length of timestamp array
-   * @return time array length
+   * @param timeArrayLength the current getTotalDataNumber of timestamp array
+   * @return time array getTotalDataNumber
    */
   private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
       throws IOException {

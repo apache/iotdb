@@ -137,7 +137,7 @@ public class IoTDBLogFileSizeTest {
 
     }
     System.out.println(
-        "Max size of bufferwrite wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after "
+        "Max getTotalDataNumber of bufferwrite wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after "
             + runtime + "ms continuous writing");
   }
 
@@ -197,7 +197,7 @@ public class IoTDBLogFileSizeTest {
 
     }
     System.out.println(
-        "Max size of overflow wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after " + runtime
+        "Max getTotalDataNumber of overflow wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after " + runtime
             + "ms continuous writing");
   }
 

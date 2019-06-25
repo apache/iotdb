@@ -24,79 +24,71 @@ import java.util.List;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
 import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
 
-public class PrimitiveArrayList {
+public class PrimitiveArrayListV2 {
 
   private static final int MAX_SIZE_OF_ONE_ARRAY = 512;
-  private static final int INITIAL_SIZE = 512;
+  private static final int INITIAL_SIZE = 16;
 
   private Class clazz;
   private List<Object> values;
   private List<long[]> timestamps;
 
-  private int length; // Total getTotalDataNumber of all objects of current ArrayList
-  private int currentIndex; // current index of array
-  private int currentArrayIndex; // current index of element in current array
+  private int totalDataNumber; // Total getTotalDataNumber of all objects of current ArrayList
+  private int currentArrayIndex; // current index of array
+  private int offsetInCurrentArray; // current index of element in current array
   private int currentArraySize; // getTotalDataNumber of current array
 
-  public PrimitiveArrayList(Class clazz) {
+  public PrimitiveArrayListV2(Class clazz) {
     this.clazz = clazz;
     values = new ArrayList<>();
     timestamps = new ArrayList<>();
     values.add(Array.newInstance(clazz, INITIAL_SIZE));
     timestamps.add(new long[INITIAL_SIZE]);
-    length = 0;
+    totalDataNumber = 0;
 
-    currentIndex = 0;
+    currentArrayIndex = 0;
     currentArraySize = INITIAL_SIZE;
-    currentArrayIndex = -1;
+    offsetInCurrentArray = -1;
   }
 
-  private void capacity(int aimSize) {
+  private void checkCapacity(int aimSize) {
     if (currentArraySize < aimSize) {
       if (currentArraySize < MAX_SIZE_OF_ONE_ARRAY) {
         long start = System.currentTimeMillis();
         // expand current Array
         int newCapacity = Math.min(MAX_SIZE_OF_ONE_ARRAY, currentArraySize * 2);
-        values.set(currentIndex,
-            expandArray(values.get(currentIndex), currentArraySize, newCapacity));
-        timestamps.set(currentIndex,
-            (long[]) expandArray(timestamps.get(currentIndex), currentArraySize, newCapacity));
+        values.set(currentArrayIndex,
+            expandArray(values.get(currentArrayIndex), currentArraySize, newCapacity));
+        timestamps.set(currentArrayIndex,
+            (long[]) expandArray(timestamps.get(currentArrayIndex), currentArraySize, newCapacity));
         currentArraySize = newCapacity;
         MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.CAPACITY_1, start);
       } else {
-        long start = System.currentTimeMillis();
-        // add a new Array to the list
-        values.add(Array.newInstance(clazz, INITIAL_SIZE));
-        timestamps.add(new long[INITIAL_SIZE]);
-        currentIndex++;
-        currentArraySize = INITIAL_SIZE;
-        currentArrayIndex = -1;
-        MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.CAPACITY_2, start);
+        if (currentArrayIndex == values.size() - 1) {
+          // add a new Array to the list
+          values.add(Array.newInstance(clazz, INITIAL_SIZE));
+          timestamps.add(new long[INITIAL_SIZE]);
+        }
+        currentArrayIndex++;
+        currentArraySize = timestamps.get(currentArrayIndex).length;
+        offsetInCurrentArray = -1;
       }
     }
   }
 
   private Object expandArray(Object array, int preLentgh, int aimLength) {
-    long start = System.currentTimeMillis();
     Class arrayClass = array.getClass().getComponentType();
     Object newArray = Array.newInstance(arrayClass, aimLength);
-    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.EXPAND_ARRAY_1, start);
-    start = System.currentTimeMillis();
     System.arraycopy(array, 0, newArray, 0, preLentgh);
-    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.EXPAND_ARRAY_2, start);
     return newArray;
   }
 
   public void putTimestamp(long timestamp, Object value) {
-    long start = System.currentTimeMillis();
-    capacity(currentArrayIndex + 1 + 1);
-    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.PUT_TIMESTAMP_1, start);
-    start = System.currentTimeMillis();
-    currentArrayIndex++;
-    timestamps.get(currentIndex)[currentArrayIndex] = timestamp;
-    Array.set(values.get(currentIndex), currentArrayIndex, value);
-    length++;
-    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.PUT_TIMESTAMP_2, start);
+    checkCapacity(offsetInCurrentArray + 1 + 1);
+    offsetInCurrentArray++;
+    timestamps.get(currentArrayIndex)[offsetInCurrentArray] = timestamp;
+    Array.set(values.get(currentArrayIndex), offsetInCurrentArray, value);
+    totalDataNumber++;
   }
 
   public long getTimestamp(int index) {
@@ -113,18 +105,18 @@ public class PrimitiveArrayList {
     if (index < 0) {
       throw new NegativeArraySizeException("negetive array index:" + index);
     }
-    if (index >= length) {
+    if (index >= totalDataNumber) {
       throw new ArrayIndexOutOfBoundsException("index: " + index);
     }
   }
 
-  public int size() {
-    return length;
+  public int getTotalDataNumber() {
+    return totalDataNumber;
   }
 
   @Override
-  public PrimitiveArrayList clone() {
-    PrimitiveArrayList cloneList = new PrimitiveArrayList(clazz);
+  public PrimitiveArrayListV2 clone() {
+    PrimitiveArrayListV2 cloneList = new PrimitiveArrayListV2(clazz);
     cloneList.values.clear();
     cloneList.timestamps.clear();
     for (Object valueArray : values) {
@@ -133,9 +125,9 @@ public class PrimitiveArrayList {
     for (Object timestampArray : timestamps) {
       cloneList.timestamps.add((long[]) cloneArray(timestampArray, long.class));
     }
-    cloneList.length = length;
-    cloneList.currentIndex = currentIndex;
+    cloneList.totalDataNumber = totalDataNumber;
     cloneList.currentArrayIndex = currentArrayIndex;
+    cloneList.offsetInCurrentArray = offsetInCurrentArray;
     cloneList.currentArraySize = currentArraySize;
     return cloneList;
   }
@@ -146,4 +138,13 @@ public class PrimitiveArrayList {
     return cloneArray;
   }
 
+  public Class getClazz() {
+    return clazz;
+  }
+
+  public void reset(){
+    totalDataNumber = 0;
+    currentArrayIndex = 0;
+    offsetInCurrentArray = -1;
+  }
 }

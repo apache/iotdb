@@ -57,7 +57,7 @@ public class LogWriter implements ILogWriter {
     }
     logBuffer.flip();
     int logSize = logBuffer.limit();
-    // 4 bytes length and 8 bytes check sum
+    // 4 bytes getTotalDataNumber and 8 bytes check sum
 
     checkSummer.reset();
     checkSummer.update(logBuffer);

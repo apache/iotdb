@@ -154,7 +154,7 @@ public class StatMonitor implements IService {
   /**
    * register monitor statistics time series metadata into MManager.
    *
-   * @param hashMap series path and data type pair, for example: [root.stat.file.size.DATA, INT64]
+   * @param hashMap series path and data type pair, for example: [root.stat.file.getTotalDataNumber.DATA, INT64]
    */
   public synchronized void registerStatStorageGroup(Map<String, String> hashMap) {
     MManager mManager = MManager.getInstance();
@@ -197,7 +197,7 @@ public class StatMonitor implements IService {
   /**
    * register class which implemented IStatistic interface into statisticMap
    *
-   * @param path the stat series prefix path, like root.stat.file.size
+   * @param path the stat series prefix path, like root.stat.file.getTotalDataNumber
    * @param iStatistic instance of class which implemented IStatistic interface
    */
   public void registerStatistics(String path, IStatistic iStatistic) {

@@ -35,7 +35,7 @@ public class Constans {
   public static final String BACK_UP_DIRECTORY_NAME = "backup";
 
   /**
-   * Split data file , block size at each transmission
+   * Split data file , block getTotalDataNumber at each transmission
    **/
   public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
 

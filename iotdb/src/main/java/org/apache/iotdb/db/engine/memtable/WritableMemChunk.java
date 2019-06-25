@@ -22,8 +22,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.utils.PrimitiveArrayList;
-import org.apache.iotdb.db.utils.PrimitiveArrayListFactory;
+import org.apache.iotdb.db.utils.PrimitiveArrayListV2;
+import org.apache.iotdb.db.utils.PrimitiveDataListPool;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -33,12 +33,12 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class WritableMemChunk implements IWritableMemChunk {
 
   private TSDataType dataType;
-  private PrimitiveArrayList list;
+  private PrimitiveArrayListV2 list;
   private long timeOffset = 0;
 
   public WritableMemChunk(TSDataType dataType) {
     this.dataType = dataType;
-    this.list = PrimitiveArrayListFactory.getByDataType(dataType);
+    this.list = PrimitiveDataListPool.getInstance().getPrimitiveDataListByDataType(dataType);
   }
 
   @Override
@@ -126,7 +126,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   // TODO: Consider using arrays to sort and remove duplicates
   public List<TimeValuePair> getSortedTimeValuePairList() {
-    int length = list.size();
+    int length = list.getTotalDataNumber();
     Map<Long, TsPrimitiveType> map = new HashMap<>(length, 1.0f);
     for (int i = 0; i < length; i++) {
       if (list.getTimestamp(i) >= timeOffset) {
@@ -141,12 +141,12 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void reset() {
-    this.list = PrimitiveArrayListFactory.getByDataType(dataType);
+    this.list = PrimitiveDataListPool.getInstance().getPrimitiveDataListByDataType(dataType);
   }
 
   @Override
   public long count() {
-    return list.size();
+    return list.getTotalDataNumber();
   }
 
   @Override
@@ -157,6 +157,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void setTimeOffset(long offset) {
     timeOffset = offset;
+  }
+
+  @Override
+  public void releasePrimitiveArrayList(){
+    PrimitiveDataListPool.getInstance().release(list);
   }
 
 }

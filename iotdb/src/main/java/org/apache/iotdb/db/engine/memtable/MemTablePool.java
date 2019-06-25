@@ -48,12 +48,12 @@ public class MemTablePool {
     synchronized (emptyMemTables) {
       if (emptyMemTables.isEmpty() && size < capacity) {
         size++;
-        LOGGER.info("generated a new memtable for {}, system memtable size: {}, stack size: {}",
+        LOGGER.info("generated a new memtable for {}, system memtable getTotalDataNumber: {}, stack getTotalDataNumber: {}",
             applier, size, emptyMemTables.size());
         return new PrimitiveMemTable();
       } else if (!emptyMemTables.isEmpty()) {
         LOGGER
-            .info("system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
+            .info("system memtable getTotalDataNumber: {}, stack getTotalDataNumber: {}, then get a memtable from stack for {}",
                 size, emptyMemTables.size(), applier);
         return emptyMemTables.pop();
       }
@@ -63,7 +63,7 @@ public class MemTablePool {
       while (true) {
         if (!emptyMemTables.isEmpty()) {
           LOGGER.info(
-              "system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
+              "system memtable getTotalDataNumber: {}, stack getTotalDataNumber: {}, then get a memtable from stack for {}",
               size, emptyMemTables.size(), applier);
           return emptyMemTables.pop();
         }
@@ -82,7 +82,7 @@ public class MemTablePool {
       memTable.clear();
       emptyMemTables.push(memTable);
       emptyMemTables.notify();
-      LOGGER.info("a memtable returned, stack size {}", emptyMemTables.size());
+      LOGGER.info("a memtable returned, stack getTotalDataNumber {}", emptyMemTables.size());
     }
   }
 
@@ -91,7 +91,7 @@ public class MemTablePool {
       memTable.clear();
       emptyMemTables.push(memTable);
       emptyMemTables.notify();
-      LOGGER.info("{} return a memtable, stack size {}", storageGroup, emptyMemTables.size());
+      LOGGER.info("{} return a memtable, stack getTotalDataNumber {}", storageGroup, emptyMemTables.size());
     }
   }
 

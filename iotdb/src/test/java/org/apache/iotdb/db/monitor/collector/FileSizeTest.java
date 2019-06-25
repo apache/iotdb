@@ -79,12 +79,12 @@ public class FileSizeTest {
       isWriteSuccess = false;
       e.printStackTrace();
     }
-    // calculate the delta of data dir file size
+    // calculate the delta of data dir file getTotalDataNumber
     dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.DATA);
     long deltaSize = dataSizeAfter - dataSizeBefore;
 
     if (isWriteSuccess) {
-      //check if the the delta of data dir file size is equal to the written content size in byte
+      //check if the the delta of data dir file getTotalDataNumber is equal to the written content getTotalDataNumber in byte
       assertEquals(contentInBytes.length, deltaSize);
     } else {
       assertEquals(0, deltaSize);

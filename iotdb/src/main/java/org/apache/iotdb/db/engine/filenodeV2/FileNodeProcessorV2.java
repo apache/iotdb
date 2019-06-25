@@ -284,7 +284,7 @@ public class FileNodeProcessorV2 {
       latestTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // check memtable size and may asyncFlush the workMemtable
+    // check memtable getTotalDataNumber and may asyncFlush the workMemtable
     if (unsealedTsFileProcessor.shouldFlush()) {
       if (unsealedTsFileProcessor.shouldClose()) {
         asyncCloseTsFileProcessor(unsealedTsFileProcessor, sequence);
@@ -326,11 +326,11 @@ public class FileNodeProcessorV2 {
   private void asyncCloseTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
       boolean sequence) {
 
-    LOGGER.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+    LOGGER.info("The memtable getTotalDataNumber {} reaches the threshold, async flush it to tsfile: {}",
         unsealedTsFileProcessor.getWorkMemTableMemory(),
         unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
-    // check file size and may setCloseMark the BufferWrite
+    // check file getTotalDataNumber and may setCloseMark the BufferWrite
     if (sequence) {
       closingSequenceTsFileProcessor.add(unsealedTsFileProcessor);
       workSequenceTsFileProcessor = null;
@@ -342,7 +342,7 @@ public class FileNodeProcessorV2 {
     // async close tsfile
     unsealedTsFileProcessor.asyncClose();
 
-    LOGGER.info("The file size {} reaches the threshold, async close tsfile: {}.",
+    LOGGER.info("The file getTotalDataNumber {} reaches the threshold, async close tsfile: {}.",
         unsealedTsFileProcessor.getTsFileResource().getFileSize(),
         unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
   }

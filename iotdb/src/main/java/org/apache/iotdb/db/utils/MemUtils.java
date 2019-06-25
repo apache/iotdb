@@ -43,7 +43,7 @@ public class MemUtils {
   }
 
   /**
-   * function for getting the record size.
+   * function for getting the record getTotalDataNumber.
    */
   public static long getRecordSize(InsertPlan insertPlan) {
     long memSize = 0;
@@ -90,7 +90,7 @@ public class MemUtils {
   }
 
   /**
-   * function for getting the memory size of the given string.
+   * function for getting the memory getTotalDataNumber of the given string.
    */
   public static long getStringMem(String str) {
     // wide char (2 bytes each) and 64B String overhead
@@ -98,7 +98,7 @@ public class MemUtils {
   }
 
   /**
-   * function for getting the memory size of the given data point.
+   * function for getting the memory getTotalDataNumber of the given data point.
    */
   public static long getDataPointMem(DataPoint dataPoint) {
     // type reference

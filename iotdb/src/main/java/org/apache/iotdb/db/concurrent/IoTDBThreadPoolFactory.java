@@ -37,7 +37,7 @@ public class IoTDBThreadPoolFactory {
    * see {@link Executors#newFixedThreadPool(int, java.util.concurrent.ThreadFactory)}.
    *
    * @param poolName - the name of thread pool
-   * @return fixed size thread pool
+   * @return fixed getTotalDataNumber thread pool
    */
   public static ExecutorService newFixedThreadPool(int nthreads, String poolName) {
     return Executors.newFixedThreadPool(nthreads, new IoTThreadFactory(poolName));

@@ -108,7 +108,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       recoverMetadata(existedMetadatas);
       LOGGER.info(
           "Recover the bufferwrite processor {}, the tsfile seriesPath is {}, "
-              + "the position of last flushed ChunkGroup is {}, the size of rowGroupMetadata is {}",
+              + "the position of last flushed ChunkGroup is {}, the getTotalDataNumber of rowGroupMetadata is {}",
           processorName, insertFilePath, position, existedMetadatas.size());
       isNewResource = false;
     } else {
@@ -165,7 +165,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       }
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       tsDeviceMetadata.serializeTo(baos);
-      // insert metadata size using int
+      // insert metadata getTotalDataNumber using int
       int metadataSize = baos.size();
       out.write(BytesUtils.intToBytes(metadataSize));
       // insert metadata

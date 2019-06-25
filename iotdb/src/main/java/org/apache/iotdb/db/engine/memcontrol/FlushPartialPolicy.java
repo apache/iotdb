@@ -38,7 +38,7 @@ public class FlushPartialPolicy implements Policy {
   @Override
   public void execute() {
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Memory reaches {}, current memory size is {}, JVM memory is {}, flushing.",
+      LOGGER.debug("Memory reaches {}, current memory getTotalDataNumber is {}, JVM memory is {}, flushing.",
               BasicMemController.getInstance().getCurrLevel(),
               MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
               MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()

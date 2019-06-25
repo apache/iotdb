@@ -116,7 +116,7 @@ public class PhysicalGenerator {
       // UpdatePlan updatePlan = new UpdatePlan();
       // updatePlan.setValue(update.getValue());
       // paths = update.getSelectedPaths();
-      // if (paths.size() > 1) {
+      // if (paths.getTotalDataNumber() > 1) {
       // throw new LogicalOperatorException("update command, must have and only have one seriesPath:" + paths);
       // }
       // updatePlan.setPath(paths.get(0));
@@ -317,9 +317,9 @@ public class PhysicalGenerator {
   // break;
   // }
   // }
-  // if (valueList.size() == 1) {
+  // if (valueList.getTotalDataNumber() == 1) {
   // valueFilter = valueList.get(0);
-  // } else if (valueList.size() > 1) {
+  // } else if (valueList.getTotalDataNumber() > 1) {
   // valueFilter = new FilterOperator(KW_AND, false);
   // valueFilter.setChildren(valueList);
   // }

@@ -103,7 +103,7 @@ public class PerformanceTest {
         logNode.forceSync();
         System.out.println("forceWalPeriodInMs = " + config.getForceWalPeriodInMs());
         System.out.println(
-            3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size "
+            3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch getTotalDataNumber "
                 + config.getFlushWalThreshold());
 
         logNode.delete();

@@ -110,7 +110,7 @@
 //    }
 //
 //    String normalizedBaseDir = baseDir;
-//    if (normalizedBaseDir.charAt(normalizedBaseDir.length() - 1) != File.separatorChar) {
+//    if (normalizedBaseDir.charAt(normalizedBaseDir.getTotalDataNumber() - 1) != File.separatorChar) {
 //      normalizedBaseDir += Character.toString(File.separatorChar);
 //    }
 //    this.baseDir = normalizedBaseDir;
@@ -126,12 +126,12 @@
 //    }
 //
 //    closedProcessorCleaner.scheduleWithFixedDelay(()->{
-//      int size = 0;
+//      int getTotalDataNumber = 0;
 //      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
-//        size += fileNodeProcessor.getClosingBufferWriteProcessor().size();
+//        getTotalDataNumber += fileNodeProcessor.getClosingBufferWriteProcessor().getTotalDataNumber();
 //      }
-//      if (size > 5) {
-//        LOGGER.info("Current closing processor number is {}", size);
+//      if (getTotalDataNumber > 5) {
+//        LOGGER.info("Current closing processor number is {}", getTotalDataNumber);
 //      }
 ////      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
 ////        fileNodeProcessor.checkAllClosingProcessors();
@@ -148,7 +148,7 @@
 //    statParamsHashMap.get(MonitorConstants.FileNodeManagerStatConstants.TOTAL_REQ_FAIL.name())
 //        .incrementAndGet();
 //    statParamsHashMap.get(MonitorConstants.FileNodeManagerStatConstants.TOTAL_POINTS_FAIL.name())
-//        .addAndGet(tsRecord.dataPointList.size());
+//        .addAndGet(tsRecord.dataPointList.getTotalDataNumber());
 //  }
 //
 //  /**
@@ -337,7 +337,7 @@
 //    if (!isMonitor) {
 //      fileNodeProcessor.getStatParamsHashMap()
 //          .get(MonitorConstants.FileNodeProcessorStatConstants.TOTAL_POINTS_SUCCESS.name())
-//          .addAndGet(tsRecord.dataPointList.size());
+//          .addAndGet(tsRecord.dataPointList.getTotalDataNumber());
 //      fileNodeProcessor.getStatParamsHashMap()
 //          .get(MonitorConstants.FileNodeProcessorStatConstants.TOTAL_REQ_SUCCESS.name())
 //          .incrementAndGet();
@@ -345,7 +345,7 @@
 //          .incrementAndGet();
 //      statParamsHashMap
 //          .get(MonitorConstants.FileNodeManagerStatConstants.TOTAL_POINTS_SUCCESS.name())
-//          .addAndGet(tsRecord.dataPointList.size());
+//          .addAndGet(tsRecord.dataPointList.getTotalDataNumber());
 //    }
 //    return insertType;
 //  }
@@ -354,8 +354,8 @@
 //      throws FileNodeManagerException {
 //    try {
 //      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-//        String[] measurementList = new String[tsRecord.dataPointList.size()];
-//        String[] insertValues = new String[tsRecord.dataPointList.size()];
+//        String[] measurementList = new String[tsRecord.dataPointList.getTotalDataNumber()];
+//        String[] insertValues = new String[tsRecord.dataPointList.getTotalDataNumber()];
 //        int i=0;
 //        for (DataPoint dp : tsRecord.dataPointList) {
 //          measurementList[i] = dp.getMeasurementId();
@@ -383,7 +383,7 @@
 //  private void updateStat(boolean isMonitor, TSRecord tsRecord) {
 //    if (!isMonitor) {
 //      statParamsHashMap.get(MonitorConstants.FileNodeManagerStatConstants.TOTAL_POINTS.name())
-//          .addAndGet(tsRecord.dataPointList.size());
+//          .addAndGet(tsRecord.dataPointList.getTotalDataNumber());
 //    }
 //  }
 //
@@ -539,7 +539,7 @@
 //      if (LOGGER.isInfoEnabled()) {
 //        LOGGER.info(
 //            "The filenode processor {} will setCloseMark the bufferwrite processor, "
-//                + "because the size[{}] of tsfile {} reaches the threshold {}",
+//                + "because the getTotalDataNumber[{}] of tsfile {} reaches the threshold {}",
 //            filenodeName, MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize()),
 //            bufferWriteProcessor.getInsertFilePath(), MemUtils.bytesCntToStr(
 //                IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold()));
@@ -1018,9 +1018,9 @@
 //
 //  private String standardizeDir(String originalPath) {
 //    String res = originalPath;
-//    if ((originalPath.length() > 0
-//        && originalPath.charAt(originalPath.length() - 1) != File.separatorChar)
-//        || originalPath.length() == 0) {
+//    if ((originalPath.getTotalDataNumber() > 0
+//        && originalPath.charAt(originalPath.getTotalDataNumber() - 1) != File.separatorChar)
+//        || originalPath.getTotalDataNumber() == 0) {
 //      res = originalPath + File.separatorChar;
 //    }
 //    return res;
@@ -1182,7 +1182,7 @@
 //    // you may add some delicate process like below
 //    // or you could provide multiple methods for different urgency
 //    switch (level) {
-//      // only select the most urgent (most active or biggest in size)
+//      // only select the most urgent (most active or biggest in getTotalDataNumber)
 //      // processors to flush
 //      // only select top 10% active memory user to flush
 //      case WARNING:
@@ -1237,10 +1237,10 @@
 //    // sort the tempProcessors as descending order
 //    tempProcessors.sort((o1, o2) -> (int) (o2.memoryUsage() - o1.memoryUsage()));
 //    int flushNum =
-//        (int) (tempProcessors.size() * percentage) > 1
-//            ? (int) (tempProcessors.size() * percentage)
+//        (int) (tempProcessors.getTotalDataNumber() * percentage) > 1
+//            ? (int) (tempProcessors.getTotalDataNumber() * percentage)
 //            : 1;
-//    for (int i = 0; i < flushNum && i < tempProcessors.size(); i++) {
+//    for (int i = 0; i < flushNum && i < tempProcessors.getTotalDataNumber(); i++) {
 //      FileNodeProcessor processor = tempProcessors.get(i);
 //      // 64M
 //      if (processor.memoryUsage() <= TSFileConfig.groupSizeInByte / 2) {
@@ -1276,11 +1276,11 @@
 //
 //    boolean notFinished = true;
 //    while (notFinished) {
-//      int size = 0;
+//      int getTotalDataNumber = 0;
 //      for (FileNodeProcessor fileNodeProcessor : processorMap.values()) {
-//        size += fileNodeProcessor.getClosingBufferWriteProcessor().size();
+//        getTotalDataNumber += fileNodeProcessor.getClosingBufferWriteProcessor().getTotalDataNumber();
 //      }
-//      if (size == 0) {
+//      if (getTotalDataNumber == 0) {
 //        notFinished = false;
 //      } else {
 //        try {

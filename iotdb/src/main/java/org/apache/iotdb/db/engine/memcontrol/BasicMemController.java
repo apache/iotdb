@@ -153,7 +153,7 @@ public abstract class BasicMemController implements IService {
   }
 
   /**
-   * Any object (like OverflowProcessor or BufferWriteProcessor) that wants to hold some fixed size
+   * Any object (like OverflowProcessor or BufferWriteProcessor) that wants to hold some fixed getTotalDataNumber
    * of memory should call this method to check the returned memory usage level to decide any
    * further actions.
    * @param user an object that wants some memory as a buffer or anything.

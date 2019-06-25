@@ -281,7 +281,7 @@ public class UnsealedTsFileProcessorV2 {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
       LOGGER.info(
-          "flush finished, remove a memtable from flushing list, flushing memtable list size: {}",
+          "flush finished, remove a memtable from flushing list, flushing memtable list getTotalDataNumber: {}",
           flushingMemTables.size());
     } finally {
       flushQueryLock.writeLock().unlock();
