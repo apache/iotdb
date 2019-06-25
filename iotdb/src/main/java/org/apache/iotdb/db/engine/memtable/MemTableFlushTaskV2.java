@@ -40,24 +40,25 @@ public class MemTableFlushTaskV2 {
   private static final int PAGE_SIZE_THRESHOLD = TSFileConfig.pageSizeInByte;
   private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
       .getInstance();
-  private Future memoryFlushTaskFuture;
   private Future ioFlushTaskFuture;
   private NativeRestorableIOWriter tsFileIoWriter;
 
   private ConcurrentLinkedQueue ioTaskQueue = new ConcurrentLinkedQueue();
   private ConcurrentLinkedQueue memoryTaskQueue = new ConcurrentLinkedQueue();
-  private volatile boolean stop = false;
   private String storageGroup;
 
   private Consumer<IMemTable> flushCallBack;
   private IMemTable memTable;
+
+  private boolean memoryFlushNoMoreTask = false;
+  private boolean ioFlushTaskCanStop = false;
 
   public MemTableFlushTaskV2(NativeRestorableIOWriter writer, String storageGroup,
       Consumer<IMemTable> callBack) {
     this.tsFileIoWriter = writer;
     this.storageGroup = storageGroup;
     this.flushCallBack = callBack;
-    this.memoryFlushTaskFuture = subTaskPoolManager.submit(memoryFlushTask);
+    subTaskPoolManager.submit(memoryFlushTask);
     this.ioFlushTaskFuture = subTaskPoolManager.submit(ioFlushTask);
     LOGGER.info("flush task of Storage group {} memtable {} is created ",
         storageGroup, memTable.getVersion());
@@ -67,11 +68,18 @@ public class MemTableFlushTaskV2 {
     @Override
     public void run() {
       long memSerializeTime = 0;
+      boolean returnWhenNoTask = false;
       LOGGER.info("Storage group {} memtable {}, starts to serialize data into mem.", storageGroup,
           memTable.getVersion());
-      while (!stop) {
+      while (true) {
+        if (memoryFlushNoMoreTask) {
+          returnWhenNoTask = true;
+        }
         Object task = memoryTaskQueue.poll();
         if (task == null) {
+          if (returnWhenNoTask) {
+            break;
+          }
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
@@ -108,6 +116,7 @@ public class MemTableFlushTaskV2 {
           }
         }
       }
+      ioFlushTaskCanStop = true;
       LOGGER.info("Storage group {}, flushing memtable {} into disk: serialize data into mem cost "
               + "{} ms.",
           storageGroup, memTable.getVersion(), memSerializeTime);
@@ -121,10 +130,17 @@ public class MemTableFlushTaskV2 {
     @Override
     public void run() {
       long ioTime = 0;
+      boolean returnWhenNoTask = false;
       LOGGER.info("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
-      while (!stop) {
+      while (true) {
+        if (ioFlushTaskCanStop) {
+          returnWhenNoTask = true;
+        }
         Object seriesWriterOrEndChunkGroupTask = ioTaskQueue.poll();
         if (seriesWriterOrEndChunkGroupTask == null) {
+          if (returnWhenNoTask) {
+            break;
+          }
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
@@ -223,19 +239,10 @@ public class MemTableFlushTaskV2 {
       theLastTask = new ChunkGroupIoTask(seriesNumber, deviceId, imemTable.getVersion());
       memoryTaskQueue.add(theLastTask);
     }
+    memoryFlushNoMoreTask = true;
     LOGGER.info(
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);
-    while (!theLastTask.finished) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        LOGGER.error("Storage group {} memtable {}, flush memtable table thread is interrupted.",
-            storageGroup, memTable.getVersion(), e);
-        throw new RuntimeException(e);
-      }
-    }
-    stop = true;
 
     try {
       ioFlushTaskFuture.get();
