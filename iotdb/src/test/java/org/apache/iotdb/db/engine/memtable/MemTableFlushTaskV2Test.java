@@ -59,7 +59,7 @@ public class MemTableFlushTaskV2Test {
     MemTableTestUtils.produceData(memTable, startTime, endTime, MemTableTestUtils.deviceId0,
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
-    MemTableFlushTaskV2 memTableFlushTask = new MemTableFlushTaskV2(writer, storageGroup,
+    MemTableFlushTaskV2 memTableFlushTask = new MemTableFlushTaskV2(memTable, MemTableTestUtils.getFileSchema(), writer, storageGroup,
         memtable -> {
           writer.makeMetadataVisible();
           MemTablePool.getInstance().putBack(memtable, storageGroup);
@@ -67,7 +67,7 @@ public class MemTableFlushTaskV2Test {
     assertTrue(writer
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).isEmpty());
-    memTableFlushTask.flushMemTable(MemTableTestUtils.getFileSchema(), memTable);
+    memTableFlushTask.flushMemTable();
     assertEquals(1, writer
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());

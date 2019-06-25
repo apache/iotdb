@@ -296,9 +296,9 @@ public class UnsealedTsFileProcessorV2 {
 
     // null memtable only appears when calling asyncClose()
     if (memTableToFlush.isManagedByMemPool()) {
-      MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(writer, storageGroupName,
+      MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(memTableToFlush, fileSchema, writer, storageGroupName,
           this::releaseFlushedMemTableCallback);
-      flushTask.flushMemTable(fileSchema, memTableToFlush);
+      flushTask.flushMemTable();
       MemTablePool.getInstance().putBack(memTableToFlush, storageGroupName);
       logNode.notifyEndFlush();
       LOGGER.info("flush a memtable has finished");
