@@ -27,7 +27,7 @@ import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWrite
 public class PrimitiveArrayList {
 
   private static final int MAX_SIZE_OF_ONE_ARRAY = 512;
-  private static final int INITIAL_SIZE = 128;
+  private static final int INITIAL_SIZE = 512;
 
   private Class clazz;
   private List<Object> values;
