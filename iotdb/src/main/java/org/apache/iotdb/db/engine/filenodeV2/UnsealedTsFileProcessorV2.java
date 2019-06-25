@@ -197,6 +197,10 @@ public class UnsealedTsFileProcessorV2 {
     LOGGER.info("File {} is closed synchronously", tsFileResource.getFile().getAbsolutePath());
   }
 
+  /**
+   * Ensure there must be a flush thread submitted after setCloseMark() is called,
+   * therefore the setCloseMark task will be executed by a flush thread.
+   */
   public void asyncClose() {
     flushQueryLock.writeLock().lock();
     LOGGER.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
@@ -206,11 +210,11 @@ public class UnsealedTsFileProcessorV2 {
         LOGGER.debug("add an empty memtable into flushing memtable list when sync close");
       }
       flushingMemTables.add(tmpMemTable);
+      shouldClose = true;
+      workMemTable = null;
       tmpMemTable.setVersion(versionController.nextVersion());
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
       flushUpdateLatestFlushTimeCallback.get();
-      shouldClose = true;
-      workMemTable = null;
     } finally {
       flushQueryLock.writeLock().unlock();
     }
