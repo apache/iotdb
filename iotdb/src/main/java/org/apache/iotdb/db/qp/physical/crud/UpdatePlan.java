@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 
 public class UpdatePlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = 8952248212926920033L;
   private List<Pair<Long, Long>> intervals = new ArrayList<>();
   private String value;
   private Path path;

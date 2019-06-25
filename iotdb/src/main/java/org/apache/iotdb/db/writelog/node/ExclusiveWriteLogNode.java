@@ -14,8 +14,11 @@
  */
 package org.apache.iotdb.db.writelog.node;
 
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils.IO;
 import java.io.File;
 import java.io.IOException;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -42,6 +45,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   public static final String WAL_FILE_NAME = "wal";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
+  private static int logBufferSize = 64*1024*1024;
 
   private String identifier;
 
@@ -51,12 +55,14 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private List<byte[]> logCache = new ArrayList<>(config.getFlushWalThreshold());
+  private ByteBuffer logBuffer = ByteBuffer.allocate(logBufferSize);
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
 
   private long fileId = 0;
   private long lastFlushedId = 0;
+
+  private int bufferedLogNum = 0;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -75,16 +81,26 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
-      byte[] logBytes = PhysicalPlanLogTransfer.planToLog(plan);
-      logCache.add(logBytes);
+      logBuffer.mark();
+      try {
+        plan.serializeTo(logBuffer);
+      } catch (BufferOverflowException e) {
+        logBuffer.reset();
+        sync();
+        plan.serializeTo(logBuffer);
+      }
 
-      if (logCache.size() >= config.getFlushWalThreshold()) {
+      bufferedLogNum ++;
+
+      if (bufferedLogNum >= config.getFlushWalThreshold()) {
         sync();
       }
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
         logger.info("WAL insert cost {} ms", elapse);
       }
+    } catch (BufferOverflowException e) {
+      throw new IOException("Log cannot fit into buffer", e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -167,7 +183,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
-      logCache.clear();
+      logBuffer.clear();
       close();
       FileUtils.deleteDirectory(new File(logDirectory));
       long elapse = System.currentTimeMillis() - start;
@@ -204,7 +220,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
-      logger.debug("Log node {} starts force, {} logs to be forced", identifier, logCache.size());
+      logger.debug("Log node {} starts force, {} logs to be forced", identifier, bufferedLogNum);
       try {
         if (currentFileWriter != null) {
           currentFileWriter.force();
@@ -226,16 +242,18 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
-      logger.debug("Log node {} starts sync, {} logs to be synced", identifier, logCache.size());
-      if (logCache.isEmpty()) {
+      logger.debug("Log node {} starts sync, {} logs to be synced", identifier, bufferedLogNum);
+      if (bufferedLogNum == 0) {
         return;
       }
       try {
-        getCurrentFileWriter().write(logCache);
+        getCurrentFileWriter().write(logBuffer);
       } catch (IOException e) {
         logger.error("Log node {} sync failed", identifier, e);
       }
-      logCache.clear();
+      logBuffer.clear();
+      bufferedLogNum = 0;
+
       logger.debug("Log node {} ends sync.", identifier);
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {

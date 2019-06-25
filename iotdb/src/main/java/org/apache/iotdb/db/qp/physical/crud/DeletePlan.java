@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.transfer.SystemLogOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DeletePlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = -6532570247476907037L;
   private long deleteTime;
   private List<Path> paths = new ArrayList<>();
 
@@ -92,4 +94,18 @@ public class DeletePlan extends PhysicalPlan {
     return deleteTime == that.deleteTime && Objects.equals(paths, that.paths);
   }
 
+  @Override
+  public void serializeTo(ByteBuffer buffer) {
+    int type = SystemLogOperator.DELETE;
+    buffer.put((byte) type);
+    buffer.putLong(deleteTime);
+    putString(buffer, paths.get(0).getFullPath());
+  }
+
+  @Override
+  public void deserializeFrom(ByteBuffer buffer) {
+    this.deleteTime = buffer.getLong();
+    this.paths = new ArrayList();
+    this.paths.add(new Path(readString(buffer)));
+  }
 }

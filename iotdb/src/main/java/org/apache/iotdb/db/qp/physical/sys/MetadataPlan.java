@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class MetadataPlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = -3717406842093744475L;
   private final MetadataOperator.NamespaceType namespaceType;
   private Path path;
   private TSDataType dataType;

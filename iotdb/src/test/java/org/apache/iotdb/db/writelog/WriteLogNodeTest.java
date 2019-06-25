@@ -68,11 +68,9 @@ public class WriteLogNodeTest {
     InsertPlan bwInsertPlan = new InsertPlan(1, identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path(identifier + ".s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
 
     logNode.write(bwInsertPlan);
-    logNode.write(updatePlan);
     logNode.write(deletePlan);
 
     logNode.close();
@@ -83,7 +81,6 @@ public class WriteLogNodeTest {
 
     ILogReader reader = logNode.getLogReader();
     assertEquals(bwInsertPlan, reader.next());
-    assertEquals(updatePlan, reader.next());
     assertEquals(deletePlan, reader.next());
 
     logNode.delete();
@@ -100,24 +97,15 @@ public class WriteLogNodeTest {
     InsertPlan bwInsertPlan = new InsertPlan(1, identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path(identifier + ".s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
 
     logNode.write(bwInsertPlan);
-    logNode.notifyStartFlush();
-    logNode.write(updatePlan);
     logNode.notifyStartFlush();
     logNode.write(deletePlan);
     logNode.notifyStartFlush();
 
     ILogReader logReader = logNode.getLogReader();
     assertEquals(bwInsertPlan, logReader.next());
-    assertEquals(updatePlan, logReader.next());
-    assertEquals(deletePlan, logReader.next());
-
-    logNode.notifyEndFlush();
-    logReader = logNode.getLogReader();
-    assertEquals(updatePlan, logReader.next());
     assertEquals(deletePlan, logReader.next());
 
     logNode.notifyEndFlush();
@@ -135,18 +123,16 @@ public class WriteLogNodeTest {
   public void testSyncThreshold() throws IOException {
     // this test checks that if more logs than threshold are written, a sync will be triggered.
     int flushWalThreshold = config.getFlushWalThreshold();
-    config.setFlushWalThreshold(3);
+    config.setFlushWalThreshold(2);
 
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
-    logNode.write(updatePlan);
 
     File walFile = new File(
         config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal1");
@@ -169,11 +155,9 @@ public class WriteLogNodeTest {
     InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
-    logNode.write(updatePlan);
     logNode.write(deletePlan);
 
     logNode.forceSync();
@@ -194,7 +178,7 @@ public class WriteLogNodeTest {
 
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice.oversize", 100,
         new String[]{"s1", "s2", "s3", "s4"},
-        new String[]{"1.0", "15", new String(new char[4 * 1024 * 1024]), "false"});
+        new String[]{"1.0", "15", new String(new char[65 * 1024 * 1024]), "false"});
 
     boolean caught = false;
     try {

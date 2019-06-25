@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,13 +27,13 @@ import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.transfer.SystemLogOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 
 public class InsertPlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = 6102845312368561515L;
   private String deviceId;
   private String[] measurements;
   private TSDataType[] dataTypes;
@@ -42,6 +43,10 @@ public class InsertPlan extends PhysicalPlan {
   // insertType
   // 1 : BufferWrite Insert 2 : Overflow Insert
   private int insertType;
+
+  public InsertPlan() {
+    super(false, OperatorType.INSERT);
+  }
 
   public InsertPlan(String deviceId, long insertTime, String measurement, String insertValue) {
     super(false, OperatorType.INSERT);
@@ -156,4 +161,42 @@ public class InsertPlan extends PhysicalPlan {
         && Arrays.equals(values, that.values);
   }
 
+  @Override
+  public void serializeTo(ByteBuffer buffer) {
+    int type = SystemLogOperator.INSERT;
+    buffer.put((byte) type);
+    buffer.put((byte) insertType);
+    buffer.putLong(time);
+
+    putString(buffer, deviceId);
+
+    buffer.putInt(measurements.length);
+    for (String m : measurements) {
+      putString(buffer, m);
+    }
+
+    buffer.putInt(values.length);
+    for (String m : values) {
+      putString(buffer, m);
+    }
+  }
+
+  @Override
+  public void deserializeFrom(ByteBuffer buffer) {
+    this.insertType = buffer.get();
+    this.time = buffer.getLong();
+    this.deviceId = readString(buffer);
+
+    int measurementSize = buffer.getInt();
+    this.measurements = new String[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      measurements[i] = readString(buffer);
+    }
+
+    int valueSize = buffer.getInt();
+    this.values = new String[valueSize];
+    for (int i = 0; i < valueSize; i++) {
+      values[i] = readString(buffer);
+    }
+  }
 }

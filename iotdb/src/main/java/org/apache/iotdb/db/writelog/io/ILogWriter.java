@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.writelog.io;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 /**
@@ -32,11 +33,11 @@ public interface ILogWriter {
    * NOTICE: the logs may be cached in the OS/FileSystem, if the OS/FileSystem you are using do
    * not guarantee strong persistency and you want the logs to be persisted immediately, please
    * call force() after calling this method.
-   * @param logCache WAL logs that have been converted to bytes, each element in this list
-   * represents one log.
+   * Notice: do not flip the buffer before calling this method
+   * @param logBuffer WAL logs that have been converted to bytes
    * @throws IOException
    */
-  void write(List<byte[]> logCache) throws IOException;
+  void write(ByteBuffer logBuffer) throws IOException;
 
   /**
    * force the OS/FileSystem to flush its cache to make sure logs are persisted.

@@ -24,11 +24,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,18 +38,18 @@ import org.slf4j.LoggerFactory;
 public class SingleFileLogReader implements ILogReader {
 
   private static final Logger logger = LoggerFactory.getLogger(SingleFileLogReader.class);
-  private int bufferSize = IoTDBDescriptor.getInstance().getConfig().getMaxLogEntrySize();
   public static final int LEAST_LOG_SIZE = 12; // size + checksum
 
   private DataInputStream logStream;
   private String filepath;
 
-  private byte[] buffer = new byte[bufferSize];
+  private byte[] buffer;
   private CRC32 checkSummer = new CRC32();
-  private PhysicalPlan planBuffer = null;
 
   // used to indicate the position of the broken log
   private int idx;
+
+  private BatchLogReader batchLogReader;
 
   public SingleFileLogReader(File logFile) throws FileNotFoundException {
     open(logFile);
@@ -58,7 +57,7 @@ public class SingleFileLogReader implements ILogReader {
 
   @Override
   public boolean hasNext() throws IOException{
-    if (planBuffer != null) {
+    if (batchLogReader != null && batchLogReader.hasNext()) {
       return true;
     }
 
@@ -67,19 +66,26 @@ public class SingleFileLogReader implements ILogReader {
     }
 
     int logSize = logStream.readInt();
-    if (logSize > bufferSize) {
-      bufferSize = logSize;
-      buffer = new byte[bufferSize];
+    if (logSize <= 0) {
+      return false;
     }
+    buffer = new byte[logSize];
+
+    int readLen = logStream.read(buffer, 0, logSize);
+    if (readLen < logSize) {
+      throw new IOException("Reach eof");
+    }
+
     final long checkSum = logStream.readLong();
-    logStream.read(buffer, 0, logSize);
     checkSummer.reset();
     checkSummer.update(buffer, 0, logSize);
     if (checkSummer.getValue() != checkSum) {
-      throw new IOException(String.format("The check sum of the No.%d log is incorrect! In file: "
+      throw new IOException(String.format("The check sum of the No.%d log batch is incorrect! In "
+          + "file: "
           + "%d Calculated: %d.", idx, checkSum, checkSummer.getValue()));
     }
-    planBuffer = PhysicalPlanLogTransfer.logToPlan(buffer);
+
+    batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
     return true;
   }
 
@@ -89,10 +95,8 @@ public class SingleFileLogReader implements ILogReader {
       throw new NoSuchElementException();
     }
 
-    PhysicalPlan ret = planBuffer;
-    planBuffer = null;
     idx ++;
-    return ret;
+    return batchLogReader.next();
   }
 
   @Override

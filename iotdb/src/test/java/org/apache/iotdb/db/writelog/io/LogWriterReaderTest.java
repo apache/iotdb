@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.writelog.io;
 
-import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,7 +37,7 @@ import org.junit.Test;
 public class LogWriterReaderTest {
 
   private static String filePath = "logtest.test";
-  List<byte[]> logs = new ArrayList<>();
+  ByteBuffer logsBuffer = ByteBuffer.allocate(64*1024);
   List<PhysicalPlan> plans = new ArrayList<>();
 
   @Before
@@ -49,32 +49,29 @@ public class LogWriterReaderTest {
         new String[]{"1", "2"});
     InsertPlan insertPlan2 = new InsertPlan(2, "d1", 10L, new String[]{"s1", "s2"},
         new String[]{"1", "2"});
-    UpdatePlan updatePlan = new UpdatePlan(8L, 11L, "3", new Path("root.d1.s1"));
     DeletePlan deletePlan = new DeletePlan(10L, new Path("root.d1.s1"));
     plans.add(insertPlan1);
     plans.add(insertPlan2);
-    plans.add(updatePlan);
     plans.add(deletePlan);
     for (PhysicalPlan plan : plans) {
-      logs.add(PhysicalPlanLogTransfer.planToLog(plan));
-
+      plan.serializeTo(logsBuffer);
     }
   }
 
   @Test
   public void testWriteAndRead() throws IOException {
     LogWriter writer = new LogWriter(filePath);
-    writer.write(logs);
+    writer.write(logsBuffer);
     try {
       writer.force();
       writer.close();
       SingleFileLogReader reader = new SingleFileLogReader(new File(filePath));
-      List<byte[]> res = new ArrayList<>();
+      List<PhysicalPlan> res = new ArrayList<>();
       while (reader.hasNext()) {
-        res.add(PhysicalPlanLogTransfer.planToLog(reader.next()));
+        res.add(reader.next());
       }
-      for (int i = 0; i < logs.size(); i++) {
-        assertArrayEquals(logs.get(i), res.get(i));
+      for (int i = 0; i < plans.size(); i++) {
+        assertEquals(plans.get(i), res.get(i));
       }
       reader.close();
     } finally {

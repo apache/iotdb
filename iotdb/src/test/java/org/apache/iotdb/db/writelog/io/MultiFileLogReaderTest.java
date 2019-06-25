@@ -23,12 +23,10 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.ByteBuffer;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
@@ -51,13 +49,12 @@ public class MultiFileLogReaderTest {
         fileLogs[i][j] = new DeletePlan(i * logsPerFile + j, new Path("path" + j));
       }
 
-      List<byte[]> logCache = new ArrayList<>();
+      ByteBuffer buffer = ByteBuffer.allocate(64*1024);
       for (PhysicalPlan plan : fileLogs[i]) {
-        logCache.add(PhysicalPlanLogTransfer.planToLog(plan));
+        plan.serializeTo(buffer);
       }
-
       ILogWriter writer = new LogWriter(logFiles[i]);
-      writer.write(logCache);
+      writer.write(buffer);
       writer.force();
       writer.close();
     }

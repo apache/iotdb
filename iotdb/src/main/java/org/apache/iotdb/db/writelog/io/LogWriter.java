@@ -23,7 +23,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.List;
 import java.util.zip.CRC32;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,6 +38,8 @@ public class LogWriter implements ILogWriter {
   private FileChannel channel;
   private CRC32 checkSummer = new CRC32();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
+  private ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
 
   public LogWriter(String logFilePath) {
     logFile = new File(logFilePath);
@@ -49,25 +50,32 @@ public class LogWriter implements ILogWriter {
   }
 
   @Override
-  public void write(List<byte[]> logCache) throws IOException {
+  public void write(ByteBuffer logBuffer) throws IOException {
     if (channel == null) {
       fileOutputStream = new FileOutputStream(logFile, true);
       channel = fileOutputStream.getChannel();
     }
-    int totalSize = 0;
-    for (byte[] bytes : logCache) {
-      totalSize += 4 + 8 + bytes.length;
-    }
-    ByteBuffer buffer = ByteBuffer.allocate(totalSize);
-    for (byte[] bytes : logCache) {
-      buffer.putInt(bytes.length);
-      checkSummer.reset();
-      checkSummer.update(bytes);
-      buffer.putLong(checkSummer.getValue());
-      buffer.put(bytes);
-    }
-    buffer.flip();
-    channel.write(buffer);
+    logBuffer.flip();
+    int logSize = logBuffer.limit();
+    // 4 bytes length and 8 bytes check sum
+
+    checkSummer.reset();
+    checkSummer.update(logBuffer);
+    long checkSum = checkSummer.getValue();
+
+    logBuffer.flip();
+
+    lengthBuffer.clear();
+    checkSumBuffer.clear();
+    lengthBuffer.putInt(logSize);
+    checkSumBuffer.putLong(checkSum);
+    lengthBuffer.flip();
+    checkSumBuffer.flip();
+
+    channel.write(lengthBuffer);
+    channel.write(logBuffer);
+    channel.write(checkSumBuffer);
+
     if (config.getForceWalPeriodInMs() == 0) {
       channel.force(true);
     }

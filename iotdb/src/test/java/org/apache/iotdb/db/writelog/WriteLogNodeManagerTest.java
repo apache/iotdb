@@ -29,7 +29,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.manager.WriteLogNodeManager;
@@ -88,11 +87,9 @@ public class WriteLogNodeManagerTest {
     InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
-    logNode.write(updatePlan);
     logNode.write(deletePlan);
 
     File walFile = new File(logNode.getLogDirectory() + File.separator + "wal1");
