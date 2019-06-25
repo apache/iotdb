@@ -138,7 +138,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      // statement.execute("flush");
+      // statement.executeWithOutTimeGenerator("flush");
 
       // insert large amount of data time range : 13700 ~ 24000
       for (int time = 13700; time < 24000; time++) {
@@ -226,7 +226,7 @@ public class IoTDBSeriesReaderIT {
       }
 
       // overflow update
-      // statement.execute("UPDATE root.vehicle SET d0.s1 = 11111111 WHERE time > 23000 and time < 100100");
+      // statement.executeWithOutTimeGenerator("UPDATE root.vehicle SET d0.s1 = 11111111 WHERE time > 23000 and time < 100100");
 
       statement.close();
     } catch (Exception e) {

@@ -26,9 +26,12 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.EngineDataSetWithTimeGenerator;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -39,18 +42,18 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 /**
  * IoTDB query executor of Stand-alone version with global time filter.
  */
-public class EngineExecutorWithoutTimeGenerator {
+public class EngineExecutor {
 
   private QueryExpression queryExpression;
 
-  public EngineExecutorWithoutTimeGenerator(QueryExpression queryExpression) {
+  public EngineExecutor(QueryExpression queryExpression) {
     this.queryExpression = queryExpression;
   }
 
   /**
    * without filter or with global time filter.
    */
-  public QueryDataSet execute(QueryContext context)
+  public QueryDataSet executeWithOutTimeGenerator(QueryContext context)
       throws FileNodeManagerException, IOException {
 
     Filter timeFilter = null;
@@ -66,7 +69,15 @@ public class EngineExecutorWithoutTimeGenerator {
 
     for (Path path : queryExpression.getSelectedSeries()) {
 
-      IPointReader reader = createSeriesReader(context, path, dataTypes, timeFilter);
+      // add data type
+      try {
+        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+      } catch (PathErrorException e) {
+        throw new FileNodeManagerException(e);
+      }
+
+      IPointReader reader = SeriesReaderFactoryImpl.getInstance()
+          .createReaderWithOptGlobalTimeFilter(path, timeFilter, context);
       readersOfSelectedSeries.add(reader);
     }
 
@@ -79,25 +90,38 @@ public class EngineExecutorWithoutTimeGenerator {
   }
 
   /**
-   * Create reader of a series
+   * executeWithOutTimeGenerator query.
    *
-   * @param context query context
-   * @param path series path
-   * @param dataTypes list of data type
-   * @param timeFilter time filter
-   * @return reader of the series
+   * @return QueryDataSet object
+   * @throws FileNodeManagerException FileNodeManagerException
    */
-  public static IPointReader createSeriesReader(QueryContext context, Path path,
-      List<TSDataType> dataTypes, Filter timeFilter)
-      throws FileNodeManagerException, IOException {
-    // add data type
-    try {
-      dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
-    } catch (PathErrorException e) {
-      throw new FileNodeManagerException(e);
-    }
+  public QueryDataSet executeWithTimeGenerator(QueryContext context) throws FileNodeManagerException, IOException {
 
-    return SeriesReaderFactoryImpl.getInstance()
-        .createTimeFilterAllDataReader(path, timeFilter, context);
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
+    QueryResourceManager.getInstance()
+        .beginQueryOfGivenExpression(context.getJobId(), queryExpression.getExpression());
+
+    EngineTimeGenerator timestampGenerator;
+    List<EngineReaderByTimeStamp> readersOfSelectedSeries;
+
+    timestampGenerator = new EngineTimeGenerator(queryExpression.getExpression(), context);
+    readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
+        .createByTimestampReaders(queryExpression.getSelectedSeries(), context);
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+
+    for (Path path : queryExpression.getSelectedSeries()) {
+      try {
+        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+      } catch (PathErrorException e) {
+        throw new FileNodeManagerException(e);
+      }
+
+    }
+    return new EngineDataSetWithTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
+        timestampGenerator,
+        readersOfSelectedSeries);
   }
+
 }

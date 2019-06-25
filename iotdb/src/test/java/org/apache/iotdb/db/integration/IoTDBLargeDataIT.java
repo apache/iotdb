@@ -136,7 +136,7 @@ public class IoTDBLargeDataIT {
       }
 
       statement.execute("flush");
-      // statement.execute("merge");
+      // statement.executeWithOutTimeGenerator("merge");
 
       Thread.sleep(5000);
 
@@ -208,7 +208,7 @@ public class IoTDBLargeDataIT {
       }
 
       // overflow delete
-      // statement.execute("DELETE FROM root.vehicle.d0.s1 WHERE time < 3200");
+      // statement.executeWithOutTimeGenerator("DELETE FROM root.vehicle.d0.s1 WHERE time < 3200");
 
       statement.close();
     } catch (Exception e) {

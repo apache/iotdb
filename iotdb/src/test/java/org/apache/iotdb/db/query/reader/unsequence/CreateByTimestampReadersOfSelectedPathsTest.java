@@ -80,7 +80,7 @@ public class CreateByTimestampReadersOfSelectedPathsTest {
         List<Path> paths = new ArrayList<>();
         paths.add(new Path(deviceId, measurementId));
         List<EngineReaderByTimeStamp> readers = SeriesReaderFactoryImpl.getInstance().
-                createByTimestampReadersOfSelectedPaths(paths, EnvironmentUtils.TEST_QUERY_CONTEXT);
+            createByTimestampReaders(paths, EnvironmentUtils.TEST_QUERY_CONTEXT);
         Assert.assertEquals(1, readers.size());
         EngineReaderByTimeStamp reader = readers.get(0);
 

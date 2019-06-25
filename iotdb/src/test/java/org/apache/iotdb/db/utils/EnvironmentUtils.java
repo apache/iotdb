@@ -127,6 +127,12 @@ public class EnvironmentUtils {
         for (File subFile : file.listFiles()) {
           cleanDir(subFile.getAbsolutePath());
         }
+        if(file.listFiles().length != 0){
+          System.out.println(String.format("The file %s has file.", dir));
+          for (File f: file.listFiles()) {
+            System.out.println(f.getAbsolutePath());
+          }
+        }
       }
       if (!file.delete()) {
         throw new IOException(String.format("The file %s can't be deleted", dir));
