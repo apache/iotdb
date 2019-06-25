@@ -90,7 +90,7 @@ public class FileNodeProcessorV2 {
 
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private Object closeFileNodeCondition = new Object();
+  private final Object closeFileNodeCondition = new Object();
 
   /**
    * Mark whether to close file node
@@ -233,6 +233,7 @@ public class FileNodeProcessorV2 {
    * @return -1: failed, 1: Overflow, 2:Bufferwrite
    */
   public boolean insert(InsertPlan insertPlan) {
+    lock.writeLock().lock();
     try {
       if (toBeClosed) {
         throw new FileNodeProcessorException(
@@ -251,47 +252,44 @@ public class FileNodeProcessorV2 {
     } catch (FileNodeProcessorException | IOException e) {
       LOGGER.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
       return false;
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 
   private boolean insertUnsealedDataFile(InsertPlan insertPlan, boolean sequence)
       throws IOException {
-    lock.writeLock().lock();
     UnsealedTsFileProcessorV2 unsealedTsFileProcessor;
-    try {
-      boolean result;
-      // create a new BufferWriteProcessor
-      if (sequence) {
-        if (workSequenceTsFileProcessor == null) {
-          workSequenceTsFileProcessor = createTsFileProcessor(true);
-          sequenceFileList.add(workSequenceTsFileProcessor.getTsFileResource());
-        }
-        unsealedTsFileProcessor = workSequenceTsFileProcessor;
-      } else {
-        if (workUnSequenceTsFileProcessor == null) {
-          workUnSequenceTsFileProcessor = createTsFileProcessor(false);
-          unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
-        }
-        unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
+    boolean result;
+    // create a new BufferWriteProcessor
+    if (sequence) {
+      if (workSequenceTsFileProcessor == null) {
+        workSequenceTsFileProcessor = createTsFileProcessor(true);
+        sequenceFileList.add(workSequenceTsFileProcessor.getTsFileResource());
       }
-
-      // insert BufferWrite
-      result = unsealedTsFileProcessor.insert(insertPlan);
-
-      // try to update the latest time of the device of this tsRecord
-      if (result && latestTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
-        latestTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
+      unsealedTsFileProcessor = workSequenceTsFileProcessor;
+    } else {
+      if (workUnSequenceTsFileProcessor == null) {
+        workUnSequenceTsFileProcessor = createTsFileProcessor(false);
+        unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
       }
-
-      // check memtable size and may asyncFlush the workMemtable
-      if (unsealedTsFileProcessor.shouldFlush()) {
-        flushAndCheckShouldClose(unsealedTsFileProcessor, sequence);
-      }
-
-      return result;
-    } finally {
-      lock.writeLock().unlock();
+      unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
     }
+
+    // insert BufferWrite
+    result = unsealedTsFileProcessor.insert(insertPlan);
+
+    // try to update the latest time of the device of this tsRecord
+    if (result && latestTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
+      latestTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
+    }
+
+    // check memtable size and may asyncFlush the workMemtable
+    if (unsealedTsFileProcessor.shouldFlush()) {
+      flushAndCheckShouldClose(unsealedTsFileProcessor, sequence);
+    }
+
+    return result;
   }
 
   private UnsealedTsFileProcessorV2 createTsFileProcessor(boolean sequence) throws IOException {

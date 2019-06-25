@@ -50,7 +50,7 @@ public class UnsealedTsFileProcessorV2Test {
 
   private UnsealedTsFileProcessorV2 processor;
   private String storageGroup = "storage_group1";
-  private String filePath = "testUnsealedTsFileProcessor.tsfile";
+  private String filePath = "data/testUnsealedTsFileProcessor.tsfile";
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
