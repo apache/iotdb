@@ -28,26 +28,26 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class EngineDataSetWithTimeGenerator extends QueryDataSet {
+public class EngineDataSetWithValueFilter extends QueryDataSet {
 
   private EngineTimeGenerator timeGenerator;
-  private List<EngineReaderByTimeStamp> readers;
+  private List<EngineReaderByTimeStamp> seriesReaderByTimestampList;
   private boolean hasCachedRowRecord;
   private RowRecord cachedRowRecord;
 
   /**
-   * constructor of EngineDataSetWithTimeGenerator.
+   * constructor of EngineDataSetWithValueFilter.
    *
    * @param paths paths in List structure
    * @param dataTypes time series data type
    * @param timeGenerator EngineTimeGenerator object
    * @param readers readers in List(EngineReaderByTimeStamp) structure
    */
-  public EngineDataSetWithTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
-      EngineTimeGenerator timeGenerator, List<EngineReaderByTimeStamp> readers) {
+  public EngineDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
+                                      EngineTimeGenerator timeGenerator, List<EngineReaderByTimeStamp> readers) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
-    this.readers = readers;
+    this.seriesReaderByTimestampList = readers;
   }
 
   @Override
@@ -77,8 +77,8 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
       boolean hasField = false;
       long timestamp = timeGenerator.next();
       RowRecord rowRecord = new RowRecord(timestamp);
-      for (int i = 0; i < readers.size(); i++) {
-        EngineReaderByTimeStamp reader = readers.get(i);
+      for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
+        EngineReaderByTimeStamp reader = seriesReaderByTimestampList.get(i);
         Object value = reader.getValueInTimestamp(timestamp);
         if (value == null) {
           rowRecord.addField(new Field(null));
@@ -101,6 +101,6 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
   }
 
   public List<EngineReaderByTimeStamp> getReaders() {
-    return readers;
+    return seriesReaderByTimestampList;
   }
 }

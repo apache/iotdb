@@ -34,7 +34,7 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   public void testSeqReader() throws IOException, FileNodeProcessorException {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
-    SequenceDataReaderV2 readerV2 = new SequenceDataReaderV2(path,
+    SequentialSeriesReader readerV2 = new SequentialSeriesReader(path,
         queryDataSource.getSeqResources(), null,
         EnvironmentUtils.TEST_QUERY_CONTEXT);
     long time = 999;
@@ -53,7 +53,7 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   public void testSeqByTimestampReader() throws IOException, FileNodeProcessorException {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
-    SequenceDataReaderByTimestampV2 readerV2 = new SequenceDataReaderByTimestampV2(path,
+    SequenceSeriesReaderByTimestamp readerV2 = new SequenceSeriesReaderByTimestamp(path,
         queryDataSource.getSeqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     for (int time = 1000; time <= 3020; time += 10) {

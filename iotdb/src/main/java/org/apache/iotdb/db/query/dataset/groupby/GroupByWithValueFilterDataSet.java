@@ -78,7 +78,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
     this.timestampGenerator = new EngineTimeGenerator(expression, context);
     this.allDataReaderList = SeriesReaderFactoryImpl.getInstance()
-        .createByTimestampReaders(selectedSeries, context);
+        .createSeriesReadersByTimestamp(selectedSeries, context);
   }
 
   @Override

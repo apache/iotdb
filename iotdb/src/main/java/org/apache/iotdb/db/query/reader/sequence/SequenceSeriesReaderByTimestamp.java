@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
  * EngineReaderByTimeStamp of data in: 1) sealed tsfile. 2) unsealed tsfile, which include data in disk of
  * unsealed file and in memtables that will be flushing to unsealed tsfile.
  */
-public class SequenceDataReaderByTimestampV2 implements EngineReaderByTimeStamp {
+public class SequenceSeriesReaderByTimestamp implements EngineReaderByTimeStamp {
 
   protected Path seriesPath;
   private List<TsFileResourceV2> tsFileResourceV2List;
@@ -51,9 +51,9 @@ public class SequenceDataReaderByTimestampV2 implements EngineReaderByTimeStamp 
   /**
    * init with seriesPath and tsfile list which include sealed tsfile and unseadled tsfile.
    */
-  public SequenceDataReaderByTimestampV2(Path seriesPath,
-      List<TsFileResourceV2> tsFileResourceV2List,
-      QueryContext context) {
+  public SequenceSeriesReaderByTimestamp(Path seriesPath,
+                                         List<TsFileResourceV2> tsFileResourceV2List,
+                                         QueryContext context) {
     this.seriesPath = seriesPath;
     this.tsFileResourceV2List = tsFileResourceV2List;
     this.nextIntervalFileIndex = 0;

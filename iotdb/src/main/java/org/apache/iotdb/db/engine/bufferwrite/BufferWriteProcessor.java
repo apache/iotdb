@@ -224,7 +224,7 @@ public class BufferWriteProcessor extends Processor {
           LOGGER.info("BufferWriteProcessor.insert step2 of SAFE cost: {}", start2);
           Map<MemTableWriteTimeCostType, long[]> map = MemTableWriteTimeCost.getInstance().getTimeCostMaps().get(Thread.currentThread().getName());
           for(MemTableWriteTimeCostType type: MemTableWriteTimeCostType.values()){
-            LOGGER.info("In BufferWriteProcessor.insert step2 of SAFE, {} cost {} ms, executeWithOutTimeGenerator {} times", type, map.get(type)[1], map.get(type)[0]);
+            LOGGER.info("In BufferWriteProcessor.insert step2 of SAFE, {} cost {} ms, executeWithoutValueFilter {} times", type, map.get(type)[1], map.get(type)[0]);
           }
         }
         checkMemThreshold4Flush(memUsage);
@@ -243,7 +243,7 @@ public class BufferWriteProcessor extends Processor {
           LOGGER.info("BufferWriteProcessor.insert step2 of WARNING cost: {}", start2);
           Map<MemTableWriteTimeCostType, long[]> map = MemTableWriteTimeCost.getInstance().getTimeCostMaps().get(Thread.currentThread().getName());
           for(MemTableWriteTimeCostType type: MemTableWriteTimeCostType.values()){
-            LOGGER.info("In BufferWriteProcessor.insert step2 of WARNING, {} cost {} ms, executeWithOutTimeGenerator {} times", type, map.get(type)[1], map.get(type)[0]);
+            LOGGER.info("In BufferWriteProcessor.insert step2 of WARNING, {} cost {} ms, executeWithoutValueFilter {} times", type, map.get(type)[1], map.get(type)[0]);
           }
         }
         try {

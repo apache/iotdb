@@ -72,11 +72,11 @@ public class UnSealedTsFileReaderV2 extends IterateReader {
     // data in flushing memtable
     MemChunkReader memChunkReader = new MemChunkReader(unsealedTsFile.getReadOnlyMemChunk(), filter);
     if (isReverse) {
-      seriesReaders.add(memChunkReader);
-      seriesReaders.add(new FileSeriesReaderAdapter(unSealedReader));
+      seqResourceSeriesReaderList.add(memChunkReader);
+      seqResourceSeriesReaderList.add(new FileSeriesReaderAdapter(unSealedReader));
     } else {
-      seriesReaders.add(new FileSeriesReaderAdapter(unSealedReader));
-      seriesReaders.add(memChunkReader);
+      seqResourceSeriesReaderList.add(new FileSeriesReaderAdapter(unSealedReader));
+      seqResourceSeriesReaderList.add(memChunkReader);
 
     }
   }

@@ -51,7 +51,7 @@ public class SeriesMergeSortReaderTest {
   }
 
   private void test(long[] retTimestamp, long[] retValue, long[]... sources) throws IOException {
-    PriorityMergeReader seriesMergeSortReader = new PriorityMergeReader();
+    UnsequenceSeriesReader seriesMergeSortReader = new UnsequenceSeriesReader();
     for (int i = 0; i < sources.length; i++) {
       seriesMergeSortReader.addReaderWithPriority(
           new FakedSeriesReader(sources[i], i + 1), i + 1);

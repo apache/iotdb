@@ -26,8 +26,8 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithTimeGenerator;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
+import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
+import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
@@ -53,7 +53,7 @@ public class EngineExecutor {
   /**
    * without filter or with global time filter.
    */
-  public QueryDataSet executeWithOutTimeGenerator(QueryContext context)
+  public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws FileNodeManagerException, IOException {
 
     Filter timeFilter = null;
@@ -77,12 +77,12 @@ public class EngineExecutor {
       }
 
       IPointReader reader = SeriesReaderFactoryImpl.getInstance()
-          .createReaderWithOptGlobalTimeFilter(path, timeFilter, context);
+          .createSeriesReaderWithoutValueFilter(path, timeFilter, context);
       readersOfSelectedSeries.add(reader);
     }
 
     try {
-      return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
+      return new EngineDataSetWithoutValueFilter(queryExpression.getSelectedSeries(), dataTypes,
           readersOfSelectedSeries);
     } catch (IOException e) {
       throw new FileNodeManagerException(e);
@@ -90,12 +90,12 @@ public class EngineExecutor {
   }
 
   /**
-   * executeWithOutTimeGenerator query.
+   * executeWithoutValueFilter query.
    *
    * @return QueryDataSet object
    * @throws FileNodeManagerException FileNodeManagerException
    */
-  public QueryDataSet executeWithTimeGenerator(QueryContext context) throws FileNodeManagerException, IOException {
+  public QueryDataSet executeWithValueFilter(QueryContext context) throws FileNodeManagerException, IOException {
 
     QueryResourceManager.getInstance()
         .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
@@ -107,7 +107,7 @@ public class EngineExecutor {
 
     timestampGenerator = new EngineTimeGenerator(queryExpression.getExpression(), context);
     readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
-        .createByTimestampReaders(queryExpression.getSelectedSeries(), context);
+        .createSeriesReadersByTimestamp(queryExpression.getSelectedSeries(), context);
 
     List<TSDataType> dataTypes = new ArrayList<>();
 
@@ -119,7 +119,7 @@ public class EngineExecutor {
       }
 
     }
-    return new EngineDataSetWithTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
+    return new EngineDataSetWithValueFilter(queryExpression.getSelectedSeries(), dataTypes,
         timestampGenerator,
         readersOfSelectedSeries);
   }

@@ -30,9 +30,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Test {@code PriorityMergeReader}
+ * Test {@code UnsequenceSeriesReader}
  */
-public class PriorityMergeReaderTest {
+public class UnsequenceSeriesReaderTest {
 
   @Test
   public void test() throws IOException {
@@ -40,14 +40,14 @@ public class PriorityMergeReaderTest {
     FakedPrioritySeriesReader reader2 = new FakedPrioritySeriesReader(150, 60, 6, 19);
     FakedPrioritySeriesReader reader3 = new FakedPrioritySeriesReader(180, 50, 7, 31);
 
-    PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
-    priorityMergeReader.addReaderWithPriority(reader1, 3);
-    priorityMergeReader.addReaderWithPriority(reader2, 2);
-    priorityMergeReader.addReaderWithPriority(reader3, 1);
+    UnsequenceSeriesReader unsequenceSeriesReader = new UnsequenceSeriesReader();
+    unsequenceSeriesReader.addReaderWithPriority(reader1, 3);
+    unsequenceSeriesReader.addReaderWithPriority(reader2, 2);
+    unsequenceSeriesReader.addReaderWithPriority(reader3, 1);
 
     int cnt = 0;
-    while (priorityMergeReader.hasNext()) {
-      TimeValuePair timeValuePair = priorityMergeReader.next();
+    while (unsequenceSeriesReader.hasNext()) {
+      TimeValuePair timeValuePair = unsequenceSeriesReader.next();
       long time = timeValuePair.getTimestamp();
       long value = timeValuePair.getValue().getLong();
 

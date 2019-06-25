@@ -30,7 +30,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderV2;
+import org.apache.iotdb.db.query.reader.sequence.SequentialSeriesReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -86,13 +86,13 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
           .getQueryDataSourceV2(path, context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SequenceDataReaderV2 sequenceReader = new SequenceDataReaderV2(
+      SequentialSeriesReader sequenceReader = new SequentialSeriesReader(
           queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context,
           false);
 
       // unseq reader for all chunk groups in unSeqFile, memory
       IPointReader unSeqMergeReader = SeriesReaderFactoryImpl.getInstance()
-              .createUnSeqReader(queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context,
+              .createUnseqSeriesReader(queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context,
                       timeFilter);
 
       sequenceReaderList.add(sequenceReader);

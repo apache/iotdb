@@ -40,44 +40,44 @@ public interface ISeriesReaderFactory {
    * This method is used to read all unsequence data for IoTDB request, such as query, aggregation
    * and groupby request.
    */
-  IPointReader createUnSeqReader(Path seriesPath, List<TsFileResourceV2> unSeqResources,
-      QueryContext context,
-      Filter filter) throws IOException;
+  IPointReader createUnseqSeriesReader(Path seriesPath, List<TsFileResourceV2> unSeqResources,
+                                       QueryContext context,
+                                       Filter filter) throws IOException;
 
 
   /**
-   * construct ByTimestampReader, including sequential data and unsequential data.
+   * construct ByTimestampReader, including sequence data and unsequence data.
    *
    * @param paths selected series path
    * @param context query context
    * @return the list of EngineReaderByTimeStamp
    */
-  List<EngineReaderByTimeStamp> createByTimestampReaders(List<Path> paths,
-      QueryContext context) throws FileNodeManagerException, IOException;
+  List<EngineReaderByTimeStamp> createSeriesReadersByTimestamp(List<Path> paths,
+                                                               QueryContext context) throws FileNodeManagerException, IOException;
 
   /**
-   * construct IPointReader with <br>only time filter or no filter</br>, including sequential data
-   * and unsequential data. This reader won't filter the result of merged sequential data and
-   * unsequential data reader.
+   * construct IPointReader with <br>only time filter or no filter</br>, including sequence data
+   * and unsequence data. This reader won't filter the result of merged sequence data and
+   * unsequence data reader.
    *
    * @param path selected series path
    * @param timeFilter time filter or null
    * @param context query context
    * @return data reader including seq and unseq data source.
    */
-  IPointReader createReaderWithOptGlobalTimeFilter(Path path, Filter timeFilter,
-      QueryContext context) throws FileNodeManagerException, IOException;
+  IPointReader createSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
+                                                    QueryContext context) throws FileNodeManagerException, IOException;
 
   /**
-   * construct IPointReader with <br>value filter</br>, include sequential data and unsequential
-   * data. This reader will filter the result of merged sequential data and unsequential data
-   * reader, so if only has time filter please call createReaderWithOptGlobalTimeFilter().
+   * construct IPointReader with <br>value filter</br>, include sequence data and unsequence
+   * data. This reader will filter the result of merged sequence data and unsequence data
+   * reader, so if only has time filter please call createSeriesReaderWithoutValueFilter().
    *
    * @param path selected series path
    * @param filter time filter or null
    * @param context query context
    * @return data reader including seq and unseq data source.
    */
-  IPointReader createReaderWithValueFilter(Path path, Filter filter, QueryContext context)
+  IPointReader createSeriesReaderWithValueFilter(Path path, Filter filter, QueryContext context)
       throws FileNodeManagerException, IOException;
 }

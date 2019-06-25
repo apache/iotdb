@@ -29,16 +29,16 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.AllDataReaderWithOptGlobalTimeFilter;
-import org.apache.iotdb.db.query.reader.AllDataReaderWithValueFilter;
+import org.apache.iotdb.db.query.reader.SeriesReaderWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderByTimestampV2;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReaderV2;
+import org.apache.iotdb.db.query.reader.merge.UnsequenceSeriesReader;
+import org.apache.iotdb.db.query.reader.merge.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.sequence.SequentialSeriesReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReaderByTimestamp;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -70,14 +70,14 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   }
 
   @Override
-  public IPointReader createUnSeqReader(Path seriesPath, List<TsFileResourceV2> unSeqResources,
-      QueryContext context,
-      Filter filter) throws IOException {
-    PriorityMergeReader unSeqMergeReader = new PriorityMergeReader();
+  public IPointReader createUnseqSeriesReader(Path seriesPath, List<TsFileResourceV2> unseqResources,
+                                              QueryContext context,
+                                              Filter filter) throws IOException {
+    UnsequenceSeriesReader unseqMergeReader = new UnsequenceSeriesReader();
 
     int priorityValue = 1;
 
-    for (TsFileResourceV2 tsFileResourceV2 : unSeqResources) {
+    for (TsFileResourceV2 tsFileResourceV2 : unseqResources) {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
@@ -118,29 +118,29 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
         ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
             : new ChunkReaderWithoutFilter(chunk);
 
-        unSeqMergeReader.addReaderWithPriority(new EngineChunkReader(chunkReader), priorityValue);
+        unseqMergeReader.addReaderWithPriority(new EngineChunkReader(chunkReader), priorityValue);
 
         priorityValue++;
       }
 
       // add reader for MemTable
       if (!tsFileResourceV2.isClosed()) {
-        unSeqMergeReader.addReaderWithPriority(
+        unseqMergeReader.addReaderWithPriority(
             new MemChunkReader(tsFileResourceV2.getReadOnlyMemChunk(), filter), priorityValue++);
       }
     }
 
     // TODO add external sort when needed
-    return unSeqMergeReader;
+    return unseqMergeReader;
   }
 
-  private PriorityMergeReaderByTimestamp createUnSeqByTimestampReader(Path seriesPath,
-      List<TsFileResourceV2> unSeqResources, QueryContext context) throws IOException {
-    PriorityMergeReaderByTimestamp unSeqMergeReader = new PriorityMergeReaderByTimestamp();
+  private SeriesReaderByTimestamp createUnseqSeriesReaderByTimestamp(Path seriesPath,
+                                                                     List<TsFileResourceV2> unseqResources, QueryContext context) throws IOException {
+    SeriesReaderByTimestamp unseqMergeReader = new SeriesReaderByTimestamp();
 
     int priorityValue = 1;
 
-    for (TsFileResourceV2 tsFileResourceV2 : unSeqResources) {
+    for (TsFileResourceV2 tsFileResourceV2 : unseqResources) {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
@@ -168,7 +168,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
         Chunk chunk = chunkLoader.getChunk(chunkMetaData);
         ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk);
 
-        unSeqMergeReader.addReaderWithPriority(new EngineChunkReaderByTimestamp(chunkReader),
+        unseqMergeReader.addReaderWithPriority(new EngineChunkReaderByTimestamp(chunkReader),
             priorityValue);
 
         priorityValue++;
@@ -176,18 +176,18 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
       // add reader for MemTable
       if (!tsFileResourceV2.isClosed()) {
-        unSeqMergeReader.addReaderWithPriority(
+        unseqMergeReader.addReaderWithPriority(
             new MemChunkReaderByTimestamp(tsFileResourceV2.getReadOnlyMemChunk()), priorityValue++);
       }
     }
 
     // TODO add external sort when needed
-    return unSeqMergeReader;
+    return unseqMergeReader;
   }
 
   @Override
-  public List<EngineReaderByTimeStamp> createByTimestampReaders(List<Path> paths,
-      QueryContext context) throws FileNodeManagerException, IOException {
+  public List<EngineReaderByTimeStamp> createSeriesReadersByTimestamp(List<Path> paths,
+                                                                      QueryContext context) throws FileNodeManagerException, IOException {
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
     for (Path path : paths) {
@@ -201,18 +201,17 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
         throw new FileNodeManagerException(e);
       }
 
-      PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
+      SeriesReaderByTimestamp mergeReaderByTimestamp = new SeriesReaderByTimestamp();
 
       // reader for sequence data
-      SequenceDataReaderByTimestampV2 tsFilesReader = new SequenceDataReaderByTimestampV2(path,
+      SequenceSeriesReaderByTimestamp tsFilesReader = new SequenceSeriesReaderByTimestamp(path,
           queryDataSource.getSeqResources(), context);
       mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
 
-      // reader for unSequence data
-      //TODO add create unseq reader
-      PriorityMergeReaderByTimestamp unSeqMergeReader = createUnSeqByTimestampReader(path,
+      // reader for unsequence data
+      SeriesReaderByTimestamp unseqMergeReader = createUnseqSeriesReaderByTimestamp(path,
           queryDataSource.getUnseqResources(), context);
-      mergeReaderByTimestamp.addReaderWithPriority(unSeqMergeReader, 2);
+      mergeReaderByTimestamp.addReaderWithPriority(unseqMergeReader, 2);
 
       readersOfSelectedSeries.add(mergeReaderByTimestamp);
     }
@@ -221,8 +220,8 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   }
 
   @Override
-  public IPointReader createReaderWithOptGlobalTimeFilter(Path path, Filter timeFilter,
-      QueryContext context)
+  public IPointReader createSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
+                                                           QueryContext context)
       throws FileNodeManagerException, IOException {
     QueryDataSourceV2 queryDataSource = null;
     try {
@@ -233,28 +232,28 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     }
 
     // sequence reader for one sealed tsfile
-    SequenceDataReaderV2 tsFilesReader;
+    SequentialSeriesReader tsFilesReader;
 
-    tsFilesReader = new SequenceDataReaderV2(queryDataSource.getSeriesPath(),
+    tsFilesReader = new SequentialSeriesReader(queryDataSource.getSeriesPath(),
         queryDataSource.getSeqResources(),
         timeFilter, context);
 
-    // unseq reader for all chunk groups in unSeqFile
-    IPointReader unSeqMergeReader = null;
-    unSeqMergeReader = createUnSeqReader(path, queryDataSource.getUnseqResources(), context,
+    // unseq reader for all chunk groups in unseqFile
+    IPointReader unseqMergeReader = null;
+    unseqMergeReader = createUnseqSeriesReader(path, queryDataSource.getUnseqResources(), context,
         timeFilter);
 
     if (!tsFilesReader.hasNext()) {
       //only have unsequence data.
-      return unSeqMergeReader;
+      return unseqMergeReader;
     } else {
       //merge sequence data with unsequence data.
-      return new AllDataReaderWithOptGlobalTimeFilter(tsFilesReader, unSeqMergeReader);
+      return new SeriesReaderWithoutValueFilter(tsFilesReader, unseqMergeReader);
     }
   }
 
   @Override
-  public IPointReader createReaderWithValueFilter(Path path, Filter filter, QueryContext context)
+  public IPointReader createSeriesReaderWithValueFilter(Path path, Filter filter, QueryContext context)
       throws FileNodeManagerException, IOException {
     QueryDataSourceV2 queryDataSource = null;
     try {
@@ -265,18 +264,18 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     }
 
     // sequence reader for one sealed tsfile
-    SequenceDataReaderV2 tsFilesReader;
+    SequentialSeriesReader tsFilesReader;
 
-    tsFilesReader = new SequenceDataReaderV2(queryDataSource.getSeriesPath(),
+    tsFilesReader = new SequentialSeriesReader(queryDataSource.getSeriesPath(),
         queryDataSource.getSeqResources(),
         filter, context);
 
-    // unseq reader for all chunk groups in unSeqFile. Filter for unSeqMergeReader is null, because
+    // unseq reader for all chunk groups in unseqFile. Filter for unseqMergeReader is null, because
     // we won't push down filter in unsequence data source.
-    IPointReader unSeqMergeReader;
-    unSeqMergeReader = createUnSeqReader(path, queryDataSource.getUnseqResources(), context, null);
+    IPointReader unseqMergeReader;
+    unseqMergeReader = createUnseqSeriesReader(path, queryDataSource.getUnseqResources(), context, null);
 
-    return new AllDataReaderWithValueFilter(tsFilesReader, unSeqMergeReader, filter);
+    return new SeriesReaderWithValueFilter(tsFilesReader, unseqMergeReader, filter);
   }
 
   private static class SeriesReaderFactoryHelper {

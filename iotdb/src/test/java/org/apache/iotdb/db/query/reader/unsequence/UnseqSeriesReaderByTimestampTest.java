@@ -38,7 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CreateByTimestampReadersOfSelectedPathsTest {
+public class UnseqSeriesReaderByTimestampTest {
     private String systemDir = "data/info";
     private String deviceId = "root.vehicle.d0";
     private String measurementId = "s0";
@@ -56,7 +56,7 @@ public class CreateByTimestampReadersOfSelectedPathsTest {
     }
 
     @Test
-    public void testUnSeqReaderWithoutFilter() throws IOException, FileNodeManagerException {
+    public void testUnseqSeriesReaderByTimestamp() throws IOException, FileNodeManagerException {
         // write
         for (int j = 1; j <= 10; j++) {
             TSRecord record = new TSRecord(j, deviceId);
@@ -80,7 +80,7 @@ public class CreateByTimestampReadersOfSelectedPathsTest {
         List<Path> paths = new ArrayList<>();
         paths.add(new Path(deviceId, measurementId));
         List<EngineReaderByTimeStamp> readers = SeriesReaderFactoryImpl.getInstance().
-            createByTimestampReaders(paths, EnvironmentUtils.TEST_QUERY_CONTEXT);
+                createSeriesReadersByTimestamp(paths, EnvironmentUtils.TEST_QUERY_CONTEXT);
         Assert.assertEquals(1, readers.size());
         EngineReaderByTimeStamp reader = readers.get(0);
 

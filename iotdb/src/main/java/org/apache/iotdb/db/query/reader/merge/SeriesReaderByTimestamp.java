@@ -30,7 +30,7 @@ import java.util.List;
  * unsequence reader and mem reader
  * </p>
  */
-public class PriorityMergeReaderByTimestamp implements EngineReaderByTimeStamp {
+public class SeriesReaderByTimestamp implements EngineReaderByTimeStamp {
 
   private List<EngineReaderByTimeStamp> readerList = new ArrayList<>();
   private List<Integer> priorityList = new ArrayList<>();

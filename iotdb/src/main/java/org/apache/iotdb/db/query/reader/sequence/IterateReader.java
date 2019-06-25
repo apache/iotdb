@@ -31,13 +31,13 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
  */
 public class IterateReader implements IAggregateReader {
 
-  protected List<IAggregateReader> seriesReaders;
+  protected List<IAggregateReader> seqResourceSeriesReaderList;
   protected boolean curReaderInitialized;
   protected int nextSeriesReaderIndex;
   protected IAggregateReader currentSeriesReader;
 
   public IterateReader() {
-    this.seriesReaders = new ArrayList<>();
+    this.seqResourceSeriesReaderList = new ArrayList<>();
     this.curReaderInitialized = false;
     this.nextSeriesReaderIndex = 0;
   }
@@ -51,8 +51,8 @@ public class IterateReader implements IAggregateReader {
       curReaderInitialized = false;
     }
 
-    while (nextSeriesReaderIndex < seriesReaders.size()) {
-      currentSeriesReader = seriesReaders.get(nextSeriesReaderIndex++);
+    while (nextSeriesReaderIndex < seqResourceSeriesReaderList.size()) {
+      currentSeriesReader = seqResourceSeriesReaderList.get(nextSeriesReaderIndex++);
       if (currentSeriesReader.hasNext()) {
         curReaderInitialized = true;
         return true;
@@ -63,7 +63,7 @@ public class IterateReader implements IAggregateReader {
 
   @Override
   public void close() throws IOException {
-    for (IBatchReader seriesReader : seriesReaders) {
+    for (IBatchReader seriesReader : seqResourceSeriesReaderList) {
       seriesReader.close();
     }
   }
