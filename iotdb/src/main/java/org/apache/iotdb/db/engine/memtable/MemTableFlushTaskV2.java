@@ -93,7 +93,7 @@ public class MemTableFlushTaskV2 {
     }
     LOGGER.info("Storage group {}, flushing a memtable into disk: serialize data into mem cost {} ms.",
         storageGroup, memSerializeTime);
-  });
+  }, Thread.currentThread().getName() + "memFLush");
 
 
   //TODO a better way is: for each TsFile, assign it a Executors.singleThreadPool,
@@ -129,7 +129,7 @@ public class MemTableFlushTaskV2 {
       }
     }
     LOGGER.info("flushing a memtable in storage group {}, cost {}ms", storageGroup, ioTime);
-  });
+  }, Thread.currentThread().getName() + "ioFLush");
 
 
   private void writeOneSeries(List<TimeValuePair> tvPairs, IChunkWriter seriesWriterImpl,
