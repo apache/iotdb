@@ -59,7 +59,7 @@ public class MemTableFlushTaskV2Test {
     MemTableTestUtils.produceData(memTable, startTime, endTime, MemTableTestUtils.deviceId0,
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
-    MemTableFlushTaskV3 memTableFlushTask = new MemTableFlushTaskV3(writer, storageGroup,
+    MemTableFlushTaskV2 memTableFlushTask = new MemTableFlushTaskV2(writer, storageGroup,
         memtable -> {
           writer.makeMetadataVisible();
           MemTablePool.getInstance().putBack(memtable, storageGroup);
