@@ -49,5 +49,6 @@ public class PrimitiveArrayListTest {
       Assert.assertEquals(i, v);
     }
     printMemUsed();
+    System.out.println("time consume: " + System.currentTimeMillis() + "ms" );
   }
 }
