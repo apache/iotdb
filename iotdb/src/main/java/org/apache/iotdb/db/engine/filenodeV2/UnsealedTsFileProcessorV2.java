@@ -100,7 +100,8 @@ public class UnsealedTsFileProcessorV2 {
     this.tsFileResource = new TsFileResourceV2(tsfile, this);
     this.versionController = versionController;
     this.writer = new NativeRestorableIOWriter(tsfile);
-    this.logNode = MultiFileLogNodeManager.getInstance().getNode(storageGroupName + "-" + tsfile.getName());
+    this.logNode = MultiFileLogNodeManager.getInstance()
+        .getNode(storageGroupName + "-" + tsfile.getName());
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;
     this.flushUpdateLatestFlushTimeCallback = flushUpdateLatestFlushTimeCallback;
     LOGGER.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
@@ -153,7 +154,7 @@ public class UnsealedTsFileProcessorV2 {
         workMemTable
             .delete(deletion.getDevice(), deletion.getMeasurement(), deletion.getTimestamp());
       }
-      for (IMemTable memTable: flushingMemTables) {
+      for (IMemTable memTable : flushingMemTables) {
         memTable.delete(deletion);
       }
     } finally {
@@ -183,7 +184,8 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   public void syncClose() {
-    LOGGER.info("Synch close file: {}, first async close it", tsFileResource.getFile().getAbsolutePath());
+    LOGGER.info("Synch close file: {}, first async close it",
+        tsFileResource.getFile().getAbsolutePath());
     asyncClose();
     synchronized (flushingMemTables) {
       try {
@@ -274,7 +276,9 @@ public class UnsealedTsFileProcessorV2 {
     try {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
-      LOGGER.info("flush finished, remove a memtable from flushing list, flushing memtable list size: {}", flushingMemTables.size());
+      LOGGER.info(
+          "flush finished, remove a memtable from flushing list, flushing memtable list size: {}",
+          flushingMemTables.size());
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -299,7 +303,8 @@ public class UnsealedTsFileProcessorV2 {
       logNode.notifyEndFlush();
       LOGGER.info("flush a memtable has finished");
     } else {
-      LOGGER.info("release an empty memtable from flushing memtable list, which is submitted in force flush");
+      LOGGER.info(
+          "release an empty memtable from flushing memtable list, which is submitted in force flush");
       releaseFlushedMemTableCallback(memTableToFlush);
     }
 
@@ -316,6 +321,7 @@ public class UnsealedTsFileProcessorV2 {
         flushingMemTables.notify();
       }
     }
+
   }
 
   private void endFile() throws IOException {
@@ -406,8 +412,10 @@ public class UnsealedTsFileProcessorV2 {
 
       ModificationFile modificationFile = tsFileResource.getModFile();
 
-      List<ChunkMetaData> chunkMetaDataList = writer.getVisibleMetadatas(deviceId, measurementId, dataType);
-      QueryUtils.modifyChunkMetaData(chunkMetaDataList, (List<Modification>) modificationFile.getModifications());
+      List<ChunkMetaData> chunkMetaDataList = writer
+          .getVisibleMetadatas(deviceId, measurementId, dataType);
+      QueryUtils.modifyChunkMetaData(chunkMetaDataList,
+          (List<Modification>) modificationFile.getModifications());
 
       return new Pair<>(timeValuePairSorter, chunkMetaDataList);
     } catch (IOException e) {
