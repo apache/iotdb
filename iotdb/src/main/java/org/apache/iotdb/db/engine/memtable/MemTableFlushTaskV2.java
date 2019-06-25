@@ -51,8 +51,8 @@ public class MemTableFlushTaskV2 {
   private IMemTable memTable;
   private FileSchema fileSchema;
 
-  private boolean memoryFlushNoMoreTask = false;
-  private boolean ioFlushTaskCanStop = false;
+  private volatile boolean memoryFlushNoMoreTask = false;
+  private volatile boolean ioFlushTaskCanStop = false;
 
   public MemTableFlushTaskV2(IMemTable memTable, FileSchema fileSchema, NativeRestorableIOWriter writer, String storageGroup,
       Consumer<IMemTable> callBack) {
@@ -61,14 +61,49 @@ public class MemTableFlushTaskV2 {
     this.tsFileIoWriter = writer;
     this.storageGroup = storageGroup;
     this.flushCallBack = callBack;
-    subTaskPoolManager.submit(memoryFlushTask);
+    subTaskPoolManager.submit(encodingTask);
     this.ioFlushTaskFuture = subTaskPoolManager.submit(ioFlushTask);
     LOGGER.info("flush task of Storage group {} memtable {} is created ",
         storageGroup, memTable.getVersion());
   }
 
 
-  private Runnable memoryFlushTask = new Runnable() {
+  /**
+   * the function for flushing memtable.
+   */
+  public void flushMemTable() {
+    long sortTime = 0;
+    for (String deviceId : memTable.getMemTableMap().keySet()) {
+      memoryTaskQueue.add(deviceId);
+      int seriesNumber = memTable.getMemTableMap().get(deviceId).size();
+      for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
+        long startTime = System.currentTimeMillis();
+        // TODO if we can not use TSFileIO writer, then we have to redesign the class of TSFileIO.
+        IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
+        MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
+        List<TimeValuePair> sortedTimeValuePairs = series.getSortedTimeValuePairList();
+        sortTime += System.currentTimeMillis() - startTime;
+        memoryTaskQueue.add(new Pair<>(sortedTimeValuePairs, desc));
+      }
+      memoryTaskQueue.add(new ChunkGroupIoTask(seriesNumber, deviceId, memTable.getVersion()));
+    }
+    memoryFlushNoMoreTask = true;
+    LOGGER.info(
+        "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
+        storageGroup, memTable.getVersion(), sortTime);
+
+    try {
+      ioFlushTaskFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      LOGGER.error("Waiting for IO flush task end meets error", e);
+    }
+
+    LOGGER.info("Storage group {} memtable {} flushing a memtable finished!", storageGroup, memTable);
+    flushCallBack.accept(memTable);
+  }
+
+
+  private Runnable encodingTask = new Runnable() {
     @Override
     public void run() {
       try {
@@ -115,8 +150,8 @@ public class MemTableFlushTaskV2 {
                     memTable.getVersion(), e);
                 throw new RuntimeException(e);
               }
-              LOGGER.info("Storage group {} memtable {}, issues a write chunk task.",
-                  storageGroup, memTable.getVersion());
+//              LOGGER.info("Storage group {} memtable {}, issues a write chunk task.",
+//                  storageGroup, memTable.getVersion());
               memSerializeTime += System.currentTimeMillis() - starTime;
             }
           }
@@ -145,8 +180,8 @@ public class MemTableFlushTaskV2 {
           if (ioFlushTaskCanStop) {
             returnWhenNoTask = true;
           }
-          Object seriesWriterOrEndChunkGroupTask = ioTaskQueue.poll();
-          if (seriesWriterOrEndChunkGroupTask == null) {
+          Object ioTask = ioTaskQueue.poll();
+          if (ioTask == null) {
             if (returnWhenNoTask) {
               break;
             }
@@ -159,20 +194,20 @@ public class MemTableFlushTaskV2 {
           } else {
             long starTime = System.currentTimeMillis();
             try {
-              if (seriesWriterOrEndChunkGroupTask instanceof IChunkWriter) {
-                LOGGER.info("Storage group {} memtable {}, writing a series to file.", storageGroup,
-                    memTable.getVersion());
-                ((IChunkWriter) seriesWriterOrEndChunkGroupTask).writeToFileWriter(tsFileIoWriter);
-              } else if (seriesWriterOrEndChunkGroupTask instanceof String) {
+              if (ioTask instanceof String) {
                 LOGGER.info("Storage group {} memtable {}, start a chunk group.", storageGroup,
                     memTable.getVersion());
-                tsFileIoWriter.startChunkGroup((String) seriesWriterOrEndChunkGroupTask);
+                tsFileIoWriter.startChunkGroup((String) ioTask);
+              } else if (ioTask instanceof IChunkWriter) {
+//                LOGGER.info("Storage group {} memtable {}, writing a series to file.", storageGroup,
+//                    memTable.getVersion());
+                ((IChunkWriter) ioTask).writeToFileWriter(tsFileIoWriter);
               } else {
                 LOGGER.info("Storage group {} memtable {}, end a chunk group.", storageGroup,
                     memTable.getVersion());
-                ChunkGroupIoTask task = (ChunkGroupIoTask) seriesWriterOrEndChunkGroupTask;
-                tsFileIoWriter.endChunkGroup(task.version);
-                task.finished = true;
+                ChunkGroupIoTask endGroupTask = (ChunkGroupIoTask) ioTask;
+                tsFileIoWriter.endChunkGroup(endGroupTask.version);
+                endGroupTask.finished = true;
               }
             } catch (IOException e) {
               LOGGER.error("Storage group {} memtable {}, io error.", storageGroup,
@@ -229,43 +264,6 @@ public class MemTableFlushTaskV2 {
     }
   }
 
-  /**
-   * the function for flushing memtable.
-   */
-  public void flushMemTable() {
-    long sortTime = 0;
-    ChunkGroupIoTask theLastTask = EMPTY_TASK;
-    for (String deviceId : memTable.getMemTableMap().keySet()) {
-      memoryTaskQueue.add(deviceId);
-      int seriesNumber = memTable.getMemTableMap().get(deviceId).size();
-      for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
-        long startTime = System.currentTimeMillis();
-        // TODO if we can not use TSFileIO writer, then we have to redesign the class of TSFileIO.
-        IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
-        MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
-        List<TimeValuePair> sortedTimeValuePairs = series.getSortedTimeValuePairList();
-        sortTime += System.currentTimeMillis() - startTime;
-        memoryTaskQueue.add(new Pair<>(sortedTimeValuePairs, desc));
-      }
-      theLastTask = new ChunkGroupIoTask(seriesNumber, deviceId, memTable.getVersion());
-      memoryTaskQueue.add(theLastTask);
-    }
-    memoryFlushNoMoreTask = true;
-    LOGGER.info(
-        "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
-        storageGroup, memTable.getVersion(), sortTime);
-
-    try {
-      ioFlushTaskFuture.get();
-    } catch (InterruptedException | ExecutionException e) {
-      LOGGER.error("Waiting for IO flush task end meets error", e);
-    }
-
-    LOGGER.info("Storage group {} memtable {} flushing a memtable finished!", storageGroup, memTable);
-    flushCallBack.accept(memTable);
-  }
-
-
   static class ChunkGroupIoTask {
 
     int seriesNumber;
@@ -284,7 +282,5 @@ public class MemTableFlushTaskV2 {
       this.finished = finished;
     }
   }
-
-  private static ChunkGroupIoTask EMPTY_TASK = new ChunkGroupIoTask(0, "", 0, true);
 
 }
