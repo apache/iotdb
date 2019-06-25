@@ -273,7 +273,7 @@ public class TsFileWriter implements AutoCloseable{
         long pos = fileWriter.getPos();
         String deviceId = entry.getKey();
         IChunkGroupWriter groupWriter = entry.getValue();
-        fileWriter.startFlushChunkGroup(deviceId);
+        fileWriter.startChunkGroup(deviceId);
         ChunkGroupFooter chunkGroupFooter = groupWriter.flushToFileWriter(fileWriter);
         if (fileWriter.getPos() - pos != chunkGroupFooter.getDataSize()) {
           throw new IOException(String.format(

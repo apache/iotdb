@@ -108,20 +108,20 @@ public class MemTableFlushTask {
     long currentTsFileFlushId;
     LOGGER.info("BufferWrite Processor {}, start io cost.", processorName);
     long waitStartTime = System.currentTimeMillis();
-    while ((currentTsFileFlushId = tsFileIoWriter.getFlushID().get()) != flushId) {
-      try {
-        long waitedTime = System.currentTimeMillis() - waitStartTime;
-        long currWaitIdx = waitedTime / 2000;
-        if (currWaitIdx > lastWaitIdx) {
-          lastWaitIdx  = currWaitIdx;
-          LOGGER.info("tsFileIoWriter flushID: {}, flush task flushID: {} has waited {}ms", currentTsFileFlushId,
-              flushId, waitedTime);
-        }
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        LOGGER.error("Processor {}, last flush io task is not finished.", processorName, e);
-      }
-    }
+//    while ((currentTsFileFlushId = tsFileIoWriter.getFlushID().get()) != flushId) {
+//      try {
+//        long waitedTime = System.currentTimeMillis() - waitStartTime;
+//        long currWaitIdx = waitedTime / 2000;
+//        if (currWaitIdx > lastWaitIdx) {
+//          lastWaitIdx  = currWaitIdx;
+//          LOGGER.info("tsFileIoWriter flushID: {}, flush task flushID: {} has waited {}ms", currentTsFileFlushId,
+//              flushId, waitedTime);
+//        }
+//        Thread.sleep(10);
+//      } catch (InterruptedException e) {
+//        LOGGER.error("Processor {}, last flush io task is not finished.", processorName, e);
+//      }
+//    }
     while (!stop) {
       Object seriesWriterOrEndChunkGroupTask = ioTaskQueue.poll();
       if (seriesWriterOrEndChunkGroupTask == null) {
@@ -136,7 +136,7 @@ public class MemTableFlushTask {
           if (seriesWriterOrEndChunkGroupTask instanceof IChunkWriter) {
             ((IChunkWriter) seriesWriterOrEndChunkGroupTask).writeToFileWriter(tsFileIoWriter);
           } else if (seriesWriterOrEndChunkGroupTask instanceof String) {
-            tsFileIoWriter.startFlushChunkGroup((String) seriesWriterOrEndChunkGroupTask);
+            tsFileIoWriter.startChunkGroup((String) seriesWriterOrEndChunkGroupTask);
           } else {
             ChunkGroupIoTask task = (ChunkGroupIoTask) seriesWriterOrEndChunkGroupTask;
             tsFileIoWriter.endChunkGroup(task.version);
@@ -163,9 +163,9 @@ public class MemTableFlushTask {
 
 
     // enable next flush task to IO
-    long newId = tsFileIoWriter.getFlushID().incrementAndGet();
-    LOGGER.info("BufferWrite Processor {}, flushing a memtable into disk:  io cost {}ms, new flushID in tsFileIoWriter: {}.",
-        processorName, ioTime, newId);
+//    long newId = tsFileIoWriter.getFlushID().incrementAndGet();
+//    LOGGER.info("BufferWrite Processor {}, flushing a memtable into disk:  io cost {}ms, new flushID in tsFileIoWriter: {}.",
+//        processorName, ioTime, newId);
   });
 
 

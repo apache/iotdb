@@ -56,6 +56,7 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }
+
     } else {
       return constructNotSeriesNode(expression, context);
     }

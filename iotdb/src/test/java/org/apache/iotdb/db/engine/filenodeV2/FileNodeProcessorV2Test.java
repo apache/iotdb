@@ -60,7 +60,7 @@ public class FileNodeProcessorV2Test {
       processor.insert(new InsertPlan(record));
       processor.asyncForceClose();
     }
-
+    
     processor.syncCloseFileNode();
     QueryDataSourceV2 queryDataSource = null;
     try {

@@ -23,7 +23,6 @@ import java.util.List;
 
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -91,7 +90,7 @@ public class MemTableFlushUtil {
     long ioTime = 0;
     for (String deviceId : imemTable.getMemTableMap().keySet()) {
       long startPos = tsFileIoWriter.getPos();
-      tsFileIoWriter.startFlushChunkGroup(deviceId);
+      tsFileIoWriter.startChunkGroup(deviceId);
       int seriesNumber = imemTable.getMemTableMap().get(deviceId).size();
       for (String measurementId : imemTable.getMemTableMap().get(deviceId).keySet()) {
         long startTime = System.currentTimeMillis();

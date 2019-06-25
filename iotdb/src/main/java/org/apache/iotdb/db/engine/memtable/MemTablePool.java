@@ -72,7 +72,7 @@ public class MemTablePool {
         } catch (InterruptedException e) {
           LOGGER.error("{} fails to wait fot memtables {}, continue to wait", applier, e);
         }
-        LOGGER.info("{} has waited for a memtable for {}ms", applier, waitCount * WAIT_TIME);
+        LOGGER.info("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
       }
     }
   }

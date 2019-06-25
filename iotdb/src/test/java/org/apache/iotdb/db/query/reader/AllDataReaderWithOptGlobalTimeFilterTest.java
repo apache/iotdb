@@ -24,18 +24,18 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class AllDataReaderTest {
+public class AllDataReaderWithOptGlobalTimeFilterTest {
 
-  private AllDataReader reader1;
-  private AllDataReader reader2;
+  private AllDataReaderWithOptGlobalTimeFilter reader1;
+  private AllDataReaderWithOptGlobalTimeFilter reader2;
 
   private void init() {
     IBatchReader batchReader1 = new FakedIBatchPoint(100, 1000, 7, 11);
     IBatchReader batchReader2 = new FakedIBatchPoint(100, 1000, 7, 11);
     IPointReader pointReader = new FakedIPointReader(20, 500, 11, 19);
 
-    reader1 = new AllDataReader(batchReader1, pointReader);
-    reader2 = new AllDataReader(batchReader2, null);
+    reader1 = new AllDataReaderWithOptGlobalTimeFilter(batchReader1, pointReader);
+    reader2 = new AllDataReaderWithOptGlobalTimeFilter(batchReader2, null);
   }
 
   @Test

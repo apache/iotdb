@@ -29,7 +29,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.AllDataReader;
+import org.apache.iotdb.db.query.reader.AllDataReaderWithOptGlobalTimeFilter;
 import org.apache.iotdb.db.query.reader.AllDataReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
@@ -249,7 +249,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
       return unSeqMergeReader;
     } else {
       //merge sequence data with unsequence data.
-      return new AllDataReader(tsFilesReader, unSeqMergeReader);
+      return new AllDataReaderWithOptGlobalTimeFilter(tsFilesReader, unSeqMergeReader);
     }
   }
 
