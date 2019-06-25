@@ -52,6 +52,7 @@ import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -74,6 +75,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
@@ -948,5 +950,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return properties;
   }
 
+  @Override
+  public TSExecuteStatementResp executeInsertion(TSInsertionReq req) {
+    if (!checkLogin()) {
+      LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
+    }
+    InsertPlan plan = new InsertPlan();
+    plan.setTime(req.getTimestamp());
+    plan.setDeviceId(req.getDeviceId());
+    plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
+    plan.setValues(req.getValues().toArray(new String[0]));
+    try {
+      return executeUpdateStatement(plan);
+    } catch (Exception e) {
+      LOGGER.info("meet error while executing an insertion into {}", req.getDeviceId(), e);
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+    }
+  }
 }
 

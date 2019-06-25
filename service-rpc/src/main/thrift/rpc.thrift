@@ -248,6 +248,13 @@ struct TSSetTimeZoneResp {
     1: required TS_Status status
 }
 
+struct TSInsertionReq {
+    1: required string deviceId
+    2: required list<string> measurements
+    3: required list<string> values
+    4: required i64 timestamp
+}
+
 struct ServerProperties {
 	1: required string version;
 	2: required list<string> supportedTimeAggregationOperations;
@@ -279,4 +286,6 @@ service TSIService {
 	TSSetTimeZoneResp setTimeZone(1:TSSetTimeZoneReq req);
 	
 	ServerProperties getProperties();
+
+	TSExecuteStatementResp executeInsertion(1:TSInsertionReq req);
 	}

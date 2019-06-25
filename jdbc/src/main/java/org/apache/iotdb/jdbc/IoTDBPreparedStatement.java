@@ -49,9 +49,9 @@ import java.util.Map;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 
-public class IoTDBPrepareStatement extends IoTDBStatement implements PreparedStatement {
+public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedStatement {
 
-  private final String sql;
+  private String sql;
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
 
   /**
@@ -59,7 +59,12 @@ public class IoTDBPrepareStatement extends IoTDBStatement implements PreparedSta
    */
   private final Map<Integer, String> parameters = new HashMap<>();
 
-  public IoTDBPrepareStatement(IoTDBConnection connection, Iface client,
+  public IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
+      TS_SessionHandle sessionHandle, ZoneId zoneId) {
+    super(connection, client, sessionHandle, zoneId);
+  }
+
+  public IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
       TS_SessionHandle sessionHandle, String sql,
       ZoneId zoneId) {
     super(connection, client, sessionHandle, zoneId);

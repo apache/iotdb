@@ -61,7 +61,7 @@ public class IoTDBStatement implements Statement {
   private IoTDBConnection connection;
   private int fetchSize = Config.fetchSize;
   private int queryTimeout = 10;
-  private TSIService.Iface client = null;
+  protected TSIService.Iface client = null;
   private TS_SessionHandle sessionHandle = null;
   private TSOperationHandle operationHandle = null;
   private List<String> batchSQLList;
