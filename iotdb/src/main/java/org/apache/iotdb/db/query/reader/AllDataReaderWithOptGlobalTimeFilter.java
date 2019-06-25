@@ -25,9 +25,10 @@ import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
- * include all data of a series: sequence data and unsequence data.
+ * It used to merge sequence data and unsequence data with <br>only time filter or no
+ * filter.</br>
  */
-public class AllDataReader implements IPointReader {
+public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
 
   private IBatchReader batchReader;
   private IPointReader pointReader;
@@ -38,7 +39,7 @@ public class AllDataReader implements IPointReader {
   /**
    * merge sequence reader, unsequence reader.
    */
-  public AllDataReader(IBatchReader batchReader, IPointReader pointReader) {
+  public AllDataReaderWithOptGlobalTimeFilter(IBatchReader batchReader, IPointReader pointReader) {
     this.batchReader = batchReader;
     this.pointReader = pointReader;
 
@@ -109,7 +110,7 @@ public class AllDataReader implements IPointReader {
     }
 
     // has value in batchReader
-    while (batchReader.hasNext()) {
+    while (batchReader != null && batchReader.hasNext()) {
       batchData = batchReader.nextBatch();
       if (batchData.hasNext()) {
         hasCachedBatchData = true;
@@ -121,7 +122,7 @@ public class AllDataReader implements IPointReader {
 
   @Override
   public TimeValuePair current() throws IOException {
-    throw new IOException("current() in AllDataReader is an empty method.");
+    throw new IOException("current() in AllDataReaderWithOptGlobalTimeFilter is an empty method.");
   }
 
   @Override
