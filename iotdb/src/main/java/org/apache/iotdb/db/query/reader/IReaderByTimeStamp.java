@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.merge;
+package org.apache.iotdb.db.query.reader;
 
 import java.io.IOException;
 
-public interface EngineReaderByTimeStamp {
+public interface IReaderByTimeStamp {
 
   /**
    * Given a timestamp, the reader is supposed to return the corresponding value in the timestamp.

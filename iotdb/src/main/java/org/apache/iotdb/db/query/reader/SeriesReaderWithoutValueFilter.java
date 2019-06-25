@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
 
 /**
  * It used to merge sequence data and unsequence data with <br>only time filter or no

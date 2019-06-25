@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.query.factory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
@@ -29,18 +26,18 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.SeriesReaderWithoutValueFilter;
-import org.apache.iotdb.db.query.reader.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.SeriesReaderWithValueFilter;
+import org.apache.iotdb.db.query.reader.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.db.query.reader.merge.UnsequenceSeriesReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.merge.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.unsequence.UnsequenceSeriesReader;
 import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
-import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
-import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.unsequence.DiskChunkReader;
+import org.apache.iotdb.db.query.reader.unsequence.DiskChunkReaderByTimestamp;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -57,6 +54,10 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
@@ -81,7 +82,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-          .get(tsFileResourceV2.getFile().getPath(), tsFileResourceV2.isClosed());
+              .get(tsFileResourceV2.getFile().getPath(), tsFileResourceV2.isClosed());
 
       // get modified chunk metadatas
       List<ChunkMetaData> metaDataList;
@@ -90,8 +91,8 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
         metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
         // mod
         List<Modification> pathModifications = context
-            .getPathModifications(tsFileResourceV2.getModFile(),
-                seriesPath.getFullPath());
+                .getPathModifications(tsFileResourceV2.getModFile(),
+                        seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
@@ -100,15 +101,15 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
       }
 
       // add readers for chunks
-      // TODO 下面这段对chunkmetadata过滤考虑复用
+      // TODO future advancement: decrease the duplicated code
       ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
         DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
-            chunkMetaData.getEndTime(),
-            chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
-            chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
-            chunkMetaData.getTsDataType());
+                chunkMetaData.getEndTime(),
+                chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
+                chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
+                chunkMetaData.getTsDataType());
 
         if (filter != null && !filter.satisfy(digest)) {
           continue;
@@ -116,9 +117,9 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
         Chunk chunk = chunkLoader.getChunk(chunkMetaData);
         ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
-            : new ChunkReaderWithoutFilter(chunk);
+                : new ChunkReaderWithoutFilter(chunk);
 
-        unseqMergeReader.addReaderWithPriority(new EngineChunkReader(chunkReader), priorityValue);
+        unseqMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
 
         priorityValue++;
       }
@@ -126,7 +127,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
       // add reader for MemTable
       if (!tsFileResourceV2.isClosed()) {
         unseqMergeReader.addReaderWithPriority(
-            new MemChunkReader(tsFileResourceV2.getReadOnlyMemChunk(), filter), priorityValue++);
+                new MemChunkReader(tsFileResourceV2.getReadOnlyMemChunk(), filter), priorityValue++);
       }
     }
 
@@ -144,7 +145,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-          .get(tsFileResourceV2.getFile().getPath(), tsFileResourceV2.isClosed());
+              .get(tsFileResourceV2.getFile().getPath(), tsFileResourceV2.isClosed());
 
       List<ChunkMetaData> metaDataList;
       if (tsFileResourceV2.isClosed()) {
@@ -152,8 +153,8 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
         metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
         // mod
         List<Modification> pathModifications = context
-            .getPathModifications(tsFileResourceV2.getModFile(),
-                seriesPath.getFullPath());
+                .getPathModifications(tsFileResourceV2.getModFile(),
+                        seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
@@ -168,8 +169,8 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
         Chunk chunk = chunkLoader.getChunk(chunkMetaData);
         ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk);
 
-        unseqMergeReader.addReaderWithPriority(new EngineChunkReaderByTimestamp(chunkReader),
-            priorityValue);
+        unseqMergeReader.addReaderWithPriority(new DiskChunkReaderByTimestamp(chunkReader),
+                priorityValue);
 
         priorityValue++;
       }
@@ -177,7 +178,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
       // add reader for MemTable
       if (!tsFileResourceV2.isClosed()) {
         unseqMergeReader.addReaderWithPriority(
-            new MemChunkReaderByTimestamp(tsFileResourceV2.getReadOnlyMemChunk()), priorityValue++);
+                new MemChunkReaderByTimestamp(tsFileResourceV2.getReadOnlyMemChunk()), priorityValue++);
       }
     }
 
@@ -186,17 +187,17 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   }
 
   @Override
-  public List<EngineReaderByTimeStamp> createSeriesReadersByTimestamp(List<Path> paths,
-                                                                      QueryContext context) throws FileNodeManagerException, IOException {
-    List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
+  public List<IReaderByTimeStamp> createSeriesReadersByTimestamp(List<Path> paths,
+                                                                 QueryContext context) throws FileNodeManagerException, IOException {
+    List<IReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
     for (Path path : paths) {
 
       QueryDataSourceV2 queryDataSource = null;
       try {
         queryDataSource = QueryResourceManager.getInstance()
-            .getQueryDataSourceV2(path,
-                context);
+                .getQueryDataSourceV2(path,
+                        context);
       } catch (ProcessorException e) {
         throw new FileNodeManagerException(e);
       }
@@ -205,12 +206,12 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
       // reader for sequence data
       SequenceSeriesReaderByTimestamp tsFilesReader = new SequenceSeriesReaderByTimestamp(path,
-          queryDataSource.getSeqResources(), context);
+              queryDataSource.getSeqResources(), context);
       mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
 
       // reader for unsequence data
       SeriesReaderByTimestamp unseqMergeReader = createUnseqSeriesReaderByTimestamp(path,
-          queryDataSource.getUnseqResources(), context);
+              queryDataSource.getUnseqResources(), context);
       mergeReaderByTimestamp.addReaderWithPriority(unseqMergeReader, 2);
 
       readersOfSelectedSeries.add(mergeReaderByTimestamp);
@@ -222,11 +223,11 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   @Override
   public IPointReader createSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
                                                            QueryContext context)
-      throws FileNodeManagerException, IOException {
+          throws FileNodeManagerException, IOException {
     QueryDataSourceV2 queryDataSource = null;
     try {
       queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSourceV2(path, context);
+              .getQueryDataSourceV2(path, context);
     } catch (ProcessorException e) {
       throw new FileNodeManagerException(e);
     }
@@ -235,13 +236,13 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     SequenceSeriesReader tsFilesReader;
 
     tsFilesReader = new SequenceSeriesReader(queryDataSource.getSeriesPath(),
-        queryDataSource.getSeqResources(),
-        timeFilter, context);
+            queryDataSource.getSeqResources(),
+            timeFilter, context);
 
     // unseq reader for all chunk groups in unseqFile
     IPointReader unseqMergeReader = null;
     unseqMergeReader = createUnseqSeriesReader(path, queryDataSource.getUnseqResources(), context,
-        timeFilter);
+            timeFilter);
 
     if (!tsFilesReader.hasNext()) {
       //only have unsequence data.
@@ -254,11 +255,11 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
   @Override
   public IPointReader createSeriesReaderWithValueFilter(Path path, Filter filter, QueryContext context)
-      throws FileNodeManagerException, IOException {
+          throws FileNodeManagerException, IOException {
     QueryDataSourceV2 queryDataSource = null;
     try {
       queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSourceV2(path, context);
+              .getQueryDataSourceV2(path, context);
     } catch (ProcessorException e) {
       throw new FileNodeManagerException(e);
     }
@@ -267,8 +268,8 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     SequenceSeriesReader tsFilesReader;
 
     tsFilesReader = new SequenceSeriesReader(queryDataSource.getSeriesPath(),
-        queryDataSource.getSeqResources(),
-        filter, context);
+            queryDataSource.getSeqResources(),
+            filter, context);
 
     // unseq reader for all chunk groups in unseqFile. Filter for unseqMergeReader is null, because
     // we won't push down filter in unsequence data source.

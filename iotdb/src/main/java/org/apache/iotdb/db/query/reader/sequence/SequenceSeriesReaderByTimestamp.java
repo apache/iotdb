@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.query.reader.sequence;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.adapter.SeriesReaderByTimestampAdapter;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.sequence.adapter.SeriesReaderByTimestampAdapter;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -36,16 +34,19 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
+import java.io.IOException;
+import java.util.List;
+
 /**
- * EngineReaderByTimeStamp of data in: 1) sealed tsfile. 2) unsealed tsfile, which include data in disk of
+ * IReaderByTimeStamp of data in: 1) sealed tsfile. 2) unsealed tsfile, which include data on disk of
  * unsealed file and in memtables that will be flushing to unsealed tsfile.
  */
-public class SequenceSeriesReaderByTimestamp implements EngineReaderByTimeStamp {
+public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
 
   protected Path seriesPath;
   private List<TsFileResourceV2> tsFileResourceV2List;
   private int nextIntervalFileIndex;
-  protected EngineReaderByTimeStamp seriesReader;
+  protected IReaderByTimeStamp seriesReader;
   private QueryContext context;
 
   /**
@@ -128,28 +129,28 @@ public class SequenceSeriesReaderByTimestamp implements EngineReaderByTimeStamp 
   }
 
   private void initUnSealedTsFileReader(TsFileResourceV2 tsFile)
-      throws IOException {
-    seriesReader = new UnSealedTsFileReaderByTimestampV2(tsFile);
+          throws IOException {
+    seriesReader = new UnSealedTsFileReaderByTimestamp(tsFile);
   }
 
   private void initSealedTsFileReader(TsFileResourceV2 fileNode, QueryContext context)
-      throws IOException {
+          throws IOException {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(fileNode.getFile().getPath(), true);
+            .get(fileNode.getFile().getPath(), true);
 
     MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
     List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
 
     List<Modification> pathModifications = context.getPathModifications(fileNode.getModFile(),
-        seriesPath.getFullPath());
+            seriesPath.getFullPath());
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
     }
     ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     seriesReader = new SeriesReaderByTimestampAdapter(
-        new FileSeriesReaderByTimestamp(chunkLoader, metaDataList));
+            new FileSeriesReaderByTimestamp(chunkLoader, metaDataList));
   }
 }

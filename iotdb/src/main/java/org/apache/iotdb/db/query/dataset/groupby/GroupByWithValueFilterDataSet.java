@@ -30,7 +30,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<EngineReaderByTimeStamp> allDataReaderList;
+  private List<IReaderByTimeStamp> allDataReaderList;
   private TimeGenerator timestampGenerator;
   /**
    * cached timestamp for next group by partition.

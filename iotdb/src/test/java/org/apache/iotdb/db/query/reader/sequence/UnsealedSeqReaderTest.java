@@ -34,7 +34,7 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     TsFileResourceV2 resourceV2 = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resourceV2.isClosed());
-    UnSealedTsFileReaderV2 readerV2 = new UnSealedTsFileReaderV2(resourceV2, null, false);
+    UnSealedTsFileReader readerV2 = new UnSealedTsFileReader(resourceV2, null, false);
     long time = 999;
     while (readerV2.hasNext()) {
       BatchData batchData = readerV2.nextBatch();
@@ -52,7 +52,7 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
     QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
     TsFileResourceV2 resourceV2 = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resourceV2.isClosed());
-    UnSealedTsFileReaderByTimestampV2 readerV2 = new UnSealedTsFileReaderByTimestampV2(
+    UnSealedTsFileReaderByTimestamp readerV2 = new UnSealedTsFileReaderByTimestamp(
         resourceV2);
 
     for (int time = 1000; time <= 3020; time += 10) {

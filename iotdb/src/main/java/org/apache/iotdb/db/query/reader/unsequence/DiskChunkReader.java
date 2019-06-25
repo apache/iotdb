@@ -16,23 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.reader.unsequence;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public class EngineChunkReader implements IPointReader {
+import java.io.IOException;
+
+/**
+ * IPointReader of data in a chunk.
+ * Note that currently this class is only used by unsequence query logic.
+ */
+public class DiskChunkReader implements IPointReader {
 
   private ChunkReader chunkReader;
   private BatchData data;
 
-  public EngineChunkReader(ChunkReader chunkReader) {
+  public DiskChunkReader(ChunkReader chunkReader) {
     this.chunkReader = chunkReader;
   }
 

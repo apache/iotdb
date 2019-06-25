@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader.adapter;
+package org.apache.iotdb.db.query.reader.sequence.adapter;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 /**
- * FileSeriesReaderByTimestamp to EngineReaderByTimeStamp adapter.
+ * This class is used to convert FileSeriesReaderByTimestamp (in TsFile) to IReaderByTimeStamp.
  */
-public class SeriesReaderByTimestampAdapter implements EngineReaderByTimeStamp {
+public class SeriesReaderByTimestampAdapter implements IReaderByTimeStamp {
 
   private FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp;
 

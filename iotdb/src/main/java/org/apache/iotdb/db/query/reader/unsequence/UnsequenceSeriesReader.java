@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.query.reader.merge;
+package org.apache.iotdb.db.query.reader.unsequence;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,10 +25,10 @@ import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
-/**
- * <p>
- * Usage: (1) merge multiple chunk group readers in the unsequence file.
- * </p>
+ /**
+  * This class is used to read unsequence data in: 1) sealed tsfile resources,
+  * 2) unsealed tsfile resources, which include data on disk and in memtables
+  * that will be flushing to unsealed tsfile resources.
  */
 public class UnsequenceSeriesReader implements IPointReader {
 

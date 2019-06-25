@@ -37,7 +37,7 @@ import org.apache.iotdb.db.query.factory.AggreFuncFactory;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -264,7 +264,7 @@ public class AggregateEngineExecutor {
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
-    List<EngineReaderByTimeStamp> readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
+    List<IReaderByTimeStamp> readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
         .createSeriesReadersByTimestamp(selectedSeries, context);
 
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
@@ -286,7 +286,7 @@ public class AggregateEngineExecutor {
   private List<AggreResultData> aggregateWithTimeGenerator(
       List<AggregateFunction> aggregateFunctions,
       EngineTimeGenerator timestampGenerator,
-      List<EngineReaderByTimeStamp> readersOfSelectedSeries)
+      List<IReaderByTimeStamp> readersOfSelectedSeries)
       throws IOException {
 
     while (timestampGenerator.hasNext()) {

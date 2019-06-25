@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.reader.merge;
 
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,20 +28,21 @@ import java.util.List;
 /**
  * <p>
  * Usage: Get value in timestamp by sorting time-value pair in multiple readers with time and
- * priority. (1) merge multiple chunk group readers in the unsequence file (2）merge sequence reader,
- * unsequence reader
+ * priority. (1) merge multiple chunk group readers in the unsequence file, e.g.,
+ * SeriesReaderFactoryImpl.createUnseqSeriesReaderByTimestamp; (2）merge sequence reader and
+ * unsequence reader, e.g., SeriesReaderFactoryImpl.createSeriesReaderByTimestamp.
  * </p>
  */
-public class SeriesReaderByTimestamp implements EngineReaderByTimeStamp {
+public class SeriesReaderByTimestamp implements IReaderByTimeStamp {
 
-  private List<EngineReaderByTimeStamp> readerList = new ArrayList<>();
+  private List<IReaderByTimeStamp> readerList = new ArrayList<>();
   private List<Integer> priorityList = new ArrayList<>();
 
   /**
-   * This function doesn't sort reader by priority. So you have to call this function in order of
+   * NOTE: This function doesn't sort reader by priority. So you have to call this function in order of
    * reader priority from small to large.
    */
-  public void addReaderWithPriority(EngineReaderByTimeStamp reader, int priority) {
+  public void addReaderWithPriority(IReaderByTimeStamp reader, int priority) {
     readerList.add(reader);
     priorityList.add(priority);
   }

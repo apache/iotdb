@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -79,10 +79,10 @@ public class UnseqSeriesReaderByTimestampTest {
         // query
         List<Path> paths = new ArrayList<>();
         paths.add(new Path(deviceId, measurementId));
-        List<EngineReaderByTimeStamp> readers = SeriesReaderFactoryImpl.getInstance().
+        List<IReaderByTimeStamp> readers = SeriesReaderFactoryImpl.getInstance().
                 createSeriesReadersByTimestamp(paths, EnvironmentUtils.TEST_QUERY_CONTEXT);
         Assert.assertEquals(1, readers.size());
-        EngineReaderByTimeStamp reader = readers.get(0);
+        IReaderByTimeStamp reader = readers.get(0);
 
         for (long time = 1; time <= 10; time++) {
             // NOTE that the timestamps should be in be in strictly increasing order.
