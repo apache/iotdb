@@ -59,26 +59,33 @@ public class MemTableFlushTaskV2 {
     this.flushCallBack = callBack;
     this.memoryFlushTaskFuture = subTaskPoolManager.submit(memoryFlushTask);
     this.ioFlushTaskFuture = subTaskPoolManager.submit(ioFlushTask);
-    LOGGER.info("flush task created in Storage group {} ", storageGroup);
+    LOGGER.info("flush task of Storage group {} memtable {} is created ",
+        storageGroup, memTable.getVersion());
   }
 
   private Runnable memoryFlushTask = new Runnable() {
     @Override
     public void run() {
       long memSerializeTime = 0;
-      LOGGER.info("Storage group {},start serialize data into mem.", storageGroup);
+      LOGGER.info("Storage group {} memtable {}, starts to serialize data into mem.", storageGroup,
+          memTable.getVersion());
       while (!stop) {
         Object task = memoryTaskQueue.poll();
         if (task == null) {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
-            LOGGER.error("Storage group {}, io flush task is interrupted.", storageGroup, e);
+            LOGGER.error("Storage group {} memtable {}, io flush task is interrupted.",
+                storageGroup, memTable.getVersion(), e);
           }
         } else {
           if (task instanceof String) {
+            LOGGER.info("Storage group {} memtable {}, issues a start flush chunk group task.",
+                storageGroup, memTable.getVersion());
             ioTaskQueue.add(task);
           } else if (task instanceof ChunkGroupIoTask) {
+            LOGGER.info("Storage group {} memtable {}, issues a end flush chunk group task.",
+                storageGroup, memTable.getVersion());
             ioTaskQueue.add(task);
           } else {
             long starTime = System.currentTimeMillis();
@@ -91,15 +98,19 @@ public class MemTableFlushTaskV2 {
                   memorySerializeTask.right.getType());
               ioTaskQueue.add(seriesWriter);
             } catch (IOException e) {
-              LOGGER.error("Storage group {}, io error.", storageGroup, e);
+              LOGGER.error("Storage group {} memtable {}, io error.", storageGroup,
+                  memTable.getVersion(), e);
               throw new RuntimeException(e);
             }
+            LOGGER.info("Storage group {} memtable {}, issues a write chunk task.",
+                storageGroup, memTable.getVersion());
             memSerializeTime += System.currentTimeMillis() - starTime;
           }
         }
       }
-      LOGGER.info("Storage group {}, flushing a memtable into disk: serialize data into mem cost {} ms.",
-          storageGroup, memSerializeTime);
+      LOGGER.info("Storage group {}, flushing memtable {} into disk: serialize data into mem cost "
+              + "{} ms.",
+          storageGroup, memTable.getVersion(), memSerializeTime);
     }
   };
 
@@ -110,35 +121,44 @@ public class MemTableFlushTaskV2 {
     @Override
     public void run() {
       long ioTime = 0;
-      LOGGER.info("Storage group {}, start io cost.", storageGroup);
+      LOGGER.info("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
       while (!stop) {
         Object seriesWriterOrEndChunkGroupTask = ioTaskQueue.poll();
         if (seriesWriterOrEndChunkGroupTask == null) {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
-            LOGGER.error("Storage group {}, io flush task is interrupted.", storageGroup, e);
+            LOGGER.error("Storage group {} memtable, io flush task is interrupted.", storageGroup
+                , memTable.getVersion(), e);
           }
         } else {
           long starTime = System.currentTimeMillis();
           try {
             if (seriesWriterOrEndChunkGroupTask instanceof IChunkWriter) {
+              LOGGER.info("Storage group {} memtable {}, writing a series to file.", storageGroup,
+                  memTable.getVersion());
               ((IChunkWriter) seriesWriterOrEndChunkGroupTask).writeToFileWriter(tsFileIoWriter);
             } else if (seriesWriterOrEndChunkGroupTask instanceof String) {
+              LOGGER.info("Storage group {} memtable {}, start a chunk group.", storageGroup,
+                  memTable.getVersion());
               tsFileIoWriter.startChunkGroup((String) seriesWriterOrEndChunkGroupTask);
             } else {
+              LOGGER.info("Storage group {} memtable {}, end a chunk group.", storageGroup,
+                  memTable.getVersion());
               ChunkGroupIoTask task = (ChunkGroupIoTask) seriesWriterOrEndChunkGroupTask;
               tsFileIoWriter.endChunkGroup(task.version);
               task.finished = true;
             }
           } catch (IOException e) {
-            LOGGER.error("Storage group {}, io error.", storageGroup, e);
+            LOGGER.error("Storage group {} memtable {}, io error.", storageGroup,
+                memTable.getVersion(), e);
             throw new RuntimeException(e);
           }
           ioTime += System.currentTimeMillis() - starTime;
         }
       }
-      LOGGER.info("flushing a memtable in storage group {}, cost {}ms", storageGroup, ioTime);
+      LOGGER.info("flushing a memtable {} in storage group {}, cost {}ms", memTable.getVersion(),
+          storageGroup, ioTime);
     }
   };
 
@@ -204,14 +224,14 @@ public class MemTableFlushTaskV2 {
       memoryTaskQueue.add(theLastTask);
     }
     LOGGER.info(
-        "{}, flushing a memtable into disk: data sort time cost {} ms.",
-        storageGroup, sortTime);
+        "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
+        storageGroup, memTable.getVersion(), sortTime);
     while (!theLastTask.finished) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
-        LOGGER.error("Storage group {}, flush memtable table thread is interrupted.",
-            storageGroup, e);
+        LOGGER.error("Storage group {} memtable {}, flush memtable table thread is interrupted.",
+            storageGroup, memTable.getVersion(), e);
         throw new RuntimeException(e);
       }
     }
@@ -223,7 +243,7 @@ public class MemTableFlushTaskV2 {
       LOGGER.error("Waiting for IO flush task end meets error", e);
     }
 
-    LOGGER.info("flushing a memtable finished!");
+    LOGGER.info("Storage group {} memtable {} flushing a memtable finished!", storageGroup, memTable);
     flushCallBack.accept(memTable);
   }
 
