@@ -41,7 +41,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   public static final String WAL_FILE_NAME = "wal";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
-  private static int logBufferSize = 64*1024*1024;
+  private static int logBufferSize = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
 
   private String identifier;
 
@@ -77,16 +77,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.writeLock().lock();
     try {
       long start = System.currentTimeMillis();
-      logBuffer.mark();
-      try {
-        plan.serializeTo(logBuffer);
-      } catch (BufferOverflowException e) {
-        logBuffer.reset();
-        sync();
-        plan.serializeTo(logBuffer);
-      }
 
-      bufferedLogNum ++;
+      putLog(plan);
 
       if (bufferedLogNum >= config.getFlushWalThreshold()) {
         sync();
@@ -100,6 +92,18 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } finally {
       lock.writeLock().unlock();
     }
+  }
+
+  private void putLog(PhysicalPlan plan) {
+    logBuffer.mark();
+    try {
+      plan.serializeTo(logBuffer);
+    } catch (BufferOverflowException e) {
+      logBuffer.reset();
+      sync();
+      plan.serializeTo(logBuffer);
+    }
+    bufferedLogNum ++;
   }
 
   @Override

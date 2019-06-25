@@ -131,6 +131,8 @@ public class IoTDBDescriptor {
       conf.setForceWalPeriodInMs(Long
           .parseLong(properties.getProperty("force_wal_period_in_ms",
                   Long.toString(conf.getForceWalPeriodInMs()))));
+      conf.setWalBufferSize(Integer.parseInt(properties.getProperty("wal_buffer_size",
+          Integer.toString(conf.getWalBufferSize()))));
 
       conf.setDataDir(properties.getProperty("data_dir", conf.getDataDir()));
       conf.setBufferWriteDirs(properties.getProperty("tsfile_dir", conf.DEFAULT_TSFILE_DIR)
