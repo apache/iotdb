@@ -64,6 +64,7 @@ public class MemTableFlushTaskV2 {
         storageGroup, memTable.getVersion());
   }
 
+
   private Runnable memoryFlushTask = new Runnable() {
     @Override
     public void run() {
