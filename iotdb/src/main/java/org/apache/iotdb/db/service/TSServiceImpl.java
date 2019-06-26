@@ -31,6 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -52,6 +54,7 @@ import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -74,6 +77,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSHandleIdentifier;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
@@ -112,6 +116,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
+
+  private AtomicLong globalStmtId = new AtomicLong(0L);
+  // (statementId) -> (statement)
+  // TODO: remove unclosed statements
+  private Map<Long, PhysicalPlan> idStmtMap = new ConcurrentHashMap<>();
 
   public TSServiceImpl() throws IOException {
     processor = new QueryProcessor(new OverflowQPExecutor());
@@ -190,8 +199,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
-    LOGGER.info("{}: receive setCloseMark operation", IoTDBConstant.GLOBAL_DB_NAME);
+    LOGGER.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
+
+      if (req != null && req.isSetStmtId()) {
+        long stmtId = req.getStmtId();
+        idStmtMap.remove(stmtId);
+      }
 
       releaseQueryResource(req);
 
@@ -948,5 +962,41 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return properties;
   }
 
+  @Override
+  public TSExecuteStatementResp executeInsertion(TSInsertionReq req) {
+    if (!checkLogin()) {
+      LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
+    }
+
+    long stmtId = req.getStmtId();
+    InsertPlan plan = (InsertPlan) idStmtMap.computeIfAbsent(stmtId, k -> new InsertPlan());
+
+    // the old parameter will be used if new parameter is not set
+    if (req.isSetDeviceId()) {
+      plan.setDeviceId(req.getDeviceId());
+    }
+    if (req.isSetTimestamp()) {
+      plan.setTime(req.getTimestamp());
+    }
+    if (req.isSetMeasurements()) {
+      plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
+    }
+    if (req.isSetValues()) {
+      plan.setValues(req.getValues().toArray(new String[0]));
+    }
+
+    try {
+      return executeUpdateStatement(plan);
+    } catch (Exception e) {
+      LOGGER.info("meet error while executing an insertion into {}", req.getDeviceId(), e);
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+    }
+  }
+
+  @Override
+  public long requestStatementId() {
+    return globalStmtId.incrementAndGet();
+  }
 }
 
