@@ -45,6 +45,7 @@ public class ChunkGroupMetaData {
 
   /**
    * Byte offset of the corresponding data in the file.
+   * ( Notice: include the marker of its first Chunk header.)
    * For Hadoop and Spark.
    */
   private long startOffsetOfChunkGroup;
