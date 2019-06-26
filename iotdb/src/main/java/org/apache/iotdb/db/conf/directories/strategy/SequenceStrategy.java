@@ -30,6 +30,8 @@ public class SequenceStrategy extends DirectoryStrategy {
   public void init(List<String> folders) throws DiskSpaceInsufficientException {
     super.init(folders);
 
+    // super.init() ensures at least one folder is not full,
+    // so currentIndex will not be -1 after loop
     currentIndex = -1;
     for (int i = 0; i < folders.size(); i++) {
       if (FileUtils.hasSpace(folders.get(i))) {
