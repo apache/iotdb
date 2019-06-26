@@ -47,7 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class is to collect some file getTotalDataNumber statistics.
+ * This class is to collect some file size statistics.
  */
 public class FileSize implements IStatistic {
 
@@ -128,16 +128,16 @@ public class FileSize implements IStatistic {
   }
 
   /**
-   * Return a map[FileSizeConstants, Long]. The key is the dir type and the value is the dir getTotalDataNumber in
+   * Return a map[FileSizeConstants, Long]. The key is the dir type and the value is the dir size in
    * byte.
    *
-   * @return a map[FileSizeConstants, Long] with the dir type and the dir getTotalDataNumber in byte
+   * @return a map[FileSizeConstants, Long] with the dir type and the dir size in byte
    */
   public Map<FileSizeConstants, Long> getFileSizesInByte() {
     EnumMap<FileSizeConstants, Long> fileSizes = new EnumMap<>(FileSizeConstants.class);
     for (FileSizeConstants kinds : MonitorConstants.FileSizeConstants.values()) {
       if (kinds.equals(MonitorConstants.FileSizeConstants.SETTLED)) {
-        //sum bufferWriteDirs getTotalDataNumber
+        //sum bufferWriteDirs size
         long settledSize = INIT_VALUE_IF_FILE_NOT_EXIST;
         for (String bufferWriteDir : config.getBufferWriteDirs()) {
           File settledFile = new File(bufferWriteDir);
@@ -145,7 +145,7 @@ public class FileSize implements IStatistic {
             try {
               settledSize += FileUtils.sizeOfDirectory(settledFile);
             } catch (Exception e) {
-              LOGGER.error("Meet error while trying to get {} getTotalDataNumber with dir {} .", kinds,
+              LOGGER.error("Meet error while trying to get {} size with dir {} .", kinds,
                   bufferWriteDir, e);
               fileSizes.put(kinds, ABNORMAL_VALUE);
             }
@@ -159,7 +159,7 @@ public class FileSize implements IStatistic {
             fileSizes.put(kinds, FileUtils.sizeOfDirectory(file));
           } catch (Exception e) {
             LOGGER
-                .error("Meet error while trying to get {} getTotalDataNumber with dir {} .", kinds,
+                .error("Meet error while trying to get {} size with dir {} .", kinds,
                     kinds.getPath(),
                     e);
             fileSizes.put(kinds, ABNORMAL_VALUE);

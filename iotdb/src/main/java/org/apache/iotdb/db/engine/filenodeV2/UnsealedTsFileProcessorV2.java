@@ -116,6 +116,7 @@ public class UnsealedTsFileProcessorV2 {
    */
   public boolean insert(InsertPlan insertPlan) {
 
+    long start1 = System.currentTimeMillis();
     if (workMemTable == null) {
       // TODO change the impl of getEmptyMemTable to non-blocking
       workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
@@ -124,6 +125,10 @@ public class UnsealedTsFileProcessorV2 {
       if (workMemTable == null) {
         return false;
       }
+    }
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("UFP get a memtable cost: {}", start1);
     }
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -137,8 +142,13 @@ public class UnsealedTsFileProcessorV2 {
     // update start time of this memtable
     tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
 
+    long start2 = System.currentTimeMillis();
     // insert tsRecord to work memtable
     workMemTable.insert(insertPlan);
+    start2 = System.currentTimeMillis() - start2;
+    if (start2 > 1000) {
+      LOGGER.info("UFP insert into memtable cost: {}", start2);
+    }
 
     return true;
   }
@@ -207,7 +217,9 @@ public class UnsealedTsFileProcessorV2 {
     try {
       IMemTable tmpMemTable = workMemTable == null ? new EmptyMemTable() : workMemTable;
       if (!tmpMemTable.isManagedByMemPool()) {
-        LOGGER.debug("add an empty memtable into flushing memtable list when sync close");
+        LOGGER.info("add an empty memtable into flushing memtable list when async close");
+      } else {
+        LOGGER.info("async flush a memtable when async close");
       }
       flushingMemTables.add(tmpMemTable);
       shouldClose = true;
@@ -282,9 +294,8 @@ public class UnsealedTsFileProcessorV2 {
     try {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
-      LOGGER.info(
-          "flush finished, remove a memtable from flushing list, flushing memtable list getTotalDataNumber: {}",
-          flushingMemTables.size());
+      LOGGER.info("flush finished, remove a memtable from flushing list, "
+              + "flushing memtable list size: {}", flushingMemTables.size());
     } finally {
       flushQueryLock.writeLock().unlock();
     }

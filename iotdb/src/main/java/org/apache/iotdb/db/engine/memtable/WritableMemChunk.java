@@ -38,7 +38,26 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   public WritableMemChunk(TSDataType dataType) {
     this.dataType = dataType;
-    this.list = PrimitiveDataListPool.getInstance().getPrimitiveDataListByDataType(dataType);
+    this.list = getPrimitiveDataListByDataType(dataType);
+  }
+
+  public PrimitiveArrayListV2 getPrimitiveDataListByDataType(TSDataType dataType) {
+    switch (dataType) {
+      case BOOLEAN:
+        return new PrimitiveArrayListV2(boolean.class);
+      case INT32:
+        return new PrimitiveArrayListV2(int.class);
+      case INT64:
+        return new PrimitiveArrayListV2(long.class);
+      case FLOAT:
+        return new PrimitiveArrayListV2(float.class);
+      case DOUBLE:
+        return new PrimitiveArrayListV2(double.class);
+      case TEXT:
+        return new PrimitiveArrayListV2(Binary.class);
+      default:
+        throw new UnSupportedDataTypeException("DataType: " + dataType);
+    }
   }
 
   @Override
@@ -153,11 +172,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void reset() {
-    this.list = PrimitiveDataListPool.getInstance().getPrimitiveDataListByDataType(dataType);
-  }
-
-  @Override
   public long count() {
     return list.getTotalDataNumber();
   }
@@ -176,6 +190,5 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void releasePrimitiveArrayList(){
     PrimitiveDataListPool.getInstance().release(list);
   }
-
 
 }

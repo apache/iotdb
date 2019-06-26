@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils;
 import java.io.File;
 
 /**
- * FileUtils is just used to calculate file attributes like file getTotalDataNumber, including some measurement
+ * FileUtils is just used to calculate file attributes like file size, including some measurement
  * conversions among B, KB, MB etc.
  *
  * @author kangrong

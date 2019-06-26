@@ -196,24 +196,24 @@ public class IoTDBConfig {
   private long memMonitorInterval = 1000;
   /**
    * Decide how to control memory usage of inserting data. 0 is RecordMemController, which sums the
-   * getTotalDataNumber of each record (tuple). 1 is JVMMemController, which uses the JVM heap memory as the
+   * size of each record (tuple). 1 is JVMMemController, which uses the JVM heap memory as the
    * memory usage indicator.
    */
   private int memControllerType = 1;
   /**
-   * When a bufferwrite's metadata getTotalDataNumber (in byte) exceed this, the bufferwrite is forced closed.
+   * When a bufferwrite's metadata size (in byte) exceed this, the bufferwrite is forced closed.
    */
   private long bufferwriteMetaSizeThreshold = 200 * 1024 * 1024L;
   /**
-   * When a bufferwrite's file getTotalDataNumber (in byte) exceed this, the bufferwrite is forced closed.
+   * When a bufferwrite's file size (in byte) exceed this, the bufferwrite is forced closed.
    */
   private long bufferwriteFileSizeThreshold = 2 * 1024 * 1024 * 1024L;
   /**
-   * When a overflow's metadata getTotalDataNumber (in byte) exceed this, the overflow is forced closed.
+   * When a overflow's metadata size (in byte) exceed this, the overflow is forced closed.
    */
   private long overflowMetaSizeThreshold = 20 * 1024 * 1024L;
   /**
-   * When a overflow's file getTotalDataNumber (in byte) exceed this, the overflow is forced closed.
+   * When a overflow's file size (in byte) exceed this, the overflow is forced closed.
    */
   private long overflowFileSizeThreshold = 200 * 1024 * 1024L;
   /**
@@ -253,11 +253,11 @@ public class IoTDBConfig {
    */
   private int externalSortThreshold = 50;
   /**
-   * Cache getTotalDataNumber of {@code checkAndGetDataTypeCache} in {@link MManager}.
+   * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
    */
   private int mManagerCacheSize = 400000;
   /**
-   * The maximum getTotalDataNumber of a single log in byte. If a log exceeds this getTotalDataNumber, it cannot be written to
+   * The maximum size of a single log in byte. If a log exceeds this size, it cannot be written to
    * the WAL file and an exception is thrown.
    */
   private int maxLogEntrySize = 4 * 1024 * 1024;

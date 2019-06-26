@@ -60,7 +60,7 @@ public class AggregateEngineExecutor {
   private IExpression expression;
 
   /**
-   * aggregation batch calculation getTotalDataNumber.
+   * aggregation batch calculation size.
    **/
   private int aggregateFetchSize;
 

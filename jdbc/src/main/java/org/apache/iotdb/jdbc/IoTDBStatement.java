@@ -61,7 +61,7 @@ public class IoTDBStatement implements Statement {
   private IoTDBConnection connection;
   private int fetchSize = Config.fetchSize;
   private int queryTimeout = 10;
-  private TSIService.Iface client = null;
+  protected TSIService.Iface client = null;
   private TS_SessionHandle sessionHandle = null;
   private TSOperationHandle operationHandle = null;
   private List<String> batchSQLList;
@@ -87,6 +87,8 @@ public class IoTDBStatement implements Statement {
    * Add SQLWarnings to the warningChain if needed.
    */
   private SQLWarning warningChain = null;
+
+  protected long stmtId = -1;
 
   /**
    * Constructor of IoTDBStatement.
@@ -161,6 +163,7 @@ public class IoTDBStatement implements Statement {
     try {
       if (operationHandle != null) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, -1);
+        closeReq.setStmtId(stmtId);
         TSCloseOperationResp closeResp = client.closeOperation(closeReq);
         Utils.verifySuccess(closeResp.getStatus());
       }
@@ -592,4 +595,11 @@ public class IoTDBStatement implements Statement {
     }
   }
 
+  void requestStmtId() throws SQLException {
+    try {
+      this.stmtId = client.requestStatementId();
+    } catch (TException e) {
+      throw new SQLException("Cannot get id for statement", e);
+    }
+  }
 }

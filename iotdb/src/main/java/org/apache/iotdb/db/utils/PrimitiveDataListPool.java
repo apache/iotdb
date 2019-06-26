@@ -24,21 +24,25 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manage all primitive data list in memory, including get and release operation.
  */
 public class PrimitiveDataListPool {
 
-  private static final Map<Class, ConcurrentLinkedQueue<PrimitiveArrayListV2>> primitiveArrayListsMap = new ConcurrentHashMap<>();
+  private static final Logger LOGGER = LoggerFactory.getLogger(PrimitiveDataListPool.class);
+
+  private static final Map<Class, ConcurrentLinkedQueue<PrimitiveArrayListV2>> primitiveDataListsMap = new ConcurrentHashMap<>();
 
   static {
-    primitiveArrayListsMap.put(boolean.class, new ConcurrentLinkedQueue<>());
-    primitiveArrayListsMap.put(int.class, new ConcurrentLinkedQueue<>());
-    primitiveArrayListsMap.put(long.class, new ConcurrentLinkedQueue<>());
-    primitiveArrayListsMap.put(float.class, new ConcurrentLinkedQueue<>());
-    primitiveArrayListsMap.put(double.class, new ConcurrentLinkedQueue<>());
-    primitiveArrayListsMap.put(Binary.class, new ConcurrentLinkedQueue<>());
+    primitiveDataListsMap.put(boolean.class, new ConcurrentLinkedQueue<>());
+    primitiveDataListsMap.put(int.class, new ConcurrentLinkedQueue<>());
+    primitiveDataListsMap.put(long.class, new ConcurrentLinkedQueue<>());
+    primitiveDataListsMap.put(float.class, new ConcurrentLinkedQueue<>());
+    primitiveDataListsMap.put(double.class, new ConcurrentLinkedQueue<>());
+    primitiveDataListsMap.put(Binary.class, new ConcurrentLinkedQueue<>());
   }
 
   private PrimitiveDataListPool() {
@@ -64,14 +68,14 @@ public class PrimitiveDataListPool {
   }
 
   private PrimitiveArrayListV2 getPrimitiveDataList(Class clazz) {
-    ConcurrentLinkedQueue<PrimitiveArrayListV2> primitiveArrayList = primitiveArrayListsMap.get(clazz);
+    ConcurrentLinkedQueue<PrimitiveArrayListV2> primitiveArrayList = primitiveDataListsMap.get(clazz);
     PrimitiveArrayListV2 dataList = primitiveArrayList.poll();
     return dataList == null ? new PrimitiveArrayListV2(clazz) : dataList;
   }
 
   public void release(PrimitiveArrayListV2 primitiveArrayList) {
     primitiveArrayList.reset();
-    primitiveArrayListsMap.get(primitiveArrayList.getClazz()).offer(primitiveArrayList);
+    primitiveDataListsMap.get(primitiveArrayList.getClazz()).offer(primitiveArrayList);
   }
 
   public static PrimitiveDataListPool getInstance() {
@@ -89,17 +93,17 @@ public class PrimitiveDataListPool {
   public int getPrimitiveDataListSizeByDataType(TSDataType dataType){
     switch (dataType) {
       case BOOLEAN:
-        return primitiveArrayListsMap.get(boolean.class).size();
+        return primitiveDataListsMap.get(boolean.class).size();
       case INT32:
-        return primitiveArrayListsMap.get(int.class).size();
+        return primitiveDataListsMap.get(int.class).size();
       case INT64:
-        return primitiveArrayListsMap.get(long.class).size();
+        return primitiveDataListsMap.get(long.class).size();
       case FLOAT:
-        return primitiveArrayListsMap.get(float.class).size();
+        return primitiveDataListsMap.get(float.class).size();
       case DOUBLE:
-        return primitiveArrayListsMap.get(double.class).size();
+        return primitiveDataListsMap.get(double.class).size();
       case TEXT:
-        return primitiveArrayListsMap.get(Binary.class).size();
+        return primitiveDataListsMap.get(Binary.class).size();
       default:
         throw new UnSupportedDataTypeException("DataType: " + dataType);
     }

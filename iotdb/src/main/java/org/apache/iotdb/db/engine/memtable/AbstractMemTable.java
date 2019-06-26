@@ -95,12 +95,8 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
       String insertValue) {
-    long start = System.currentTimeMillis();
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
-    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.WRITE_1, start);
-    start = System.currentTimeMillis();
     memSeries.write(insertTime, insertValue);
-    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.WRITE_2, start);
   }
 
   @Override
@@ -108,7 +104,7 @@ public abstract class AbstractMemTable implements IMemTable {
       Object value) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
     memSeries.write(insertTime, value);
-    // update memory getTotalDataNumber of current memtable
+    // update memory size of current memtable
   }
 
   @Override
@@ -129,11 +125,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void clear() {
-    for (Map<String, IWritableMemChunk> writableMemChunkMap : memTableMap.values()) {
-      for (IWritableMemChunk memChunk : writableMemChunkMap.values()) {
-        memChunk.releasePrimitiveArrayList();
-      }
-    }
+//    for (Map<String, IWritableMemChunk> writableMemChunkMap : memTableMap.values()) {
+//      for (IWritableMemChunk memChunk : writableMemChunkMap.values()) {
+//        memChunk.releasePrimitiveArrayList();
+//      }
+//    }
     memTableMap.clear();
     modifications.clear();
     memSize = 0;

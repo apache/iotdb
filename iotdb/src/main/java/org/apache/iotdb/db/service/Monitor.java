@@ -43,7 +43,7 @@ public class Monitor implements MonitorMBean, IService {
     try {
       return FileUtils.sizeOfDirectory(new File(config.getDataDir()));
     } catch (Exception e) {
-      LOGGER.error("meet error while trying to get data getTotalDataNumber.", e);
+      LOGGER.error("meet error while trying to get data size.", e);
       return -1;
     }
   }

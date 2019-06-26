@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 public class SingleFileLogReader implements ILogReader {
 
   private static final Logger logger = LoggerFactory.getLogger(SingleFileLogReader.class);
-  public static final int LEAST_LOG_SIZE = 12; // getTotalDataNumber + checksum
+  public static final int LEAST_LOG_SIZE = 12; // size + checksum
 
   private DataInputStream logStream;
   private String filepath;
