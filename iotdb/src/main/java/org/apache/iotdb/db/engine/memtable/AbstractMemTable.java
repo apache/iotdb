@@ -125,11 +125,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void clear() {
-//    for (Map<String, IWritableMemChunk> writableMemChunkMap : memTableMap.values()) {
-//      for (IWritableMemChunk memChunk : writableMemChunkMap.values()) {
-//        memChunk.releasePrimitiveArrayList();
-//      }
-//    }
     memTableMap.clear();
     modifications.clear();
     memSize = 0;

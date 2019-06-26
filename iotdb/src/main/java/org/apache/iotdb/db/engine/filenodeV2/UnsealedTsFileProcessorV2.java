@@ -128,7 +128,7 @@ public class UnsealedTsFileProcessorV2 {
     }
     start1 = System.currentTimeMillis() - start1;
     if (start1 > 1000) {
-      LOGGER.info("UFP get a memtable cost: {}", start1);
+      LOGGER.info("UFP {} get a memtable cost: {}", storageGroupName, start1);
     }
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -147,7 +147,7 @@ public class UnsealedTsFileProcessorV2 {
     workMemTable.insert(insertPlan);
     start2 = System.currentTimeMillis() - start2;
     if (start2 > 1000) {
-      LOGGER.info("UFP insert into memtable cost: {}", start2);
+      LOGGER.info("UFP {} insert into memtable cost: {}", storageGroupName, start2);
     }
 
     return true;

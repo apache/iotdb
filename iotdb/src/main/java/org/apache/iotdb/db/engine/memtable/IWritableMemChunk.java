@@ -39,15 +39,11 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
 
   void write(long insertTime, Object insertValue);
 
-//  void reset();
-
   long count();
 
   TSDataType getType();
 
   void setTimeOffset(long offset);
-
-  void releasePrimitiveArrayList();
 
   DeduplicatedSortedData getDeduplicatedSortedData();
 }

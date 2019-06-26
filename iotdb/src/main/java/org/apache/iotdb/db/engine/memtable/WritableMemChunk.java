@@ -19,14 +19,18 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.utils.PrimitiveArrayListV2;
-import org.apache.iotdb.db.utils.PrimitiveDataListPool;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsBoolean;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsInt;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -34,13 +38,14 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class WritableMemChunk implements IWritableMemChunk {
 
   private TSDataType dataType;
-  private PrimitiveArrayListV2 list;
+  private List<TimeValuePair> data;
+//  private PrimitiveArrayListV2 list;
   private long timeOffset = 0;
 
   public WritableMemChunk(TSDataType dataType) {
     this.dataType = dataType;
-//    this.list = PrimitiveDataListPool.getInstance().getPrimitiveDataListByDataType(dataType);
-    this.list = getPrimitiveDataListByDataType(dataType);
+    this.data = new ArrayList<>();
+//    this.list = getPrimitiveDataListByDataType(dataType);
   }
 
   public PrimitiveArrayListV2 getPrimitiveDataListByDataType(TSDataType dataType) {
@@ -117,70 +122,73 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void putLong(long t, long v) {
-    list.putTimestamp(t, v);
+    data.add(new TimeValuePair(t, new TsLong(v)));
+//    list.putTimestamp(t, v);
   }
 
   @Override
   public void putInt(long t, int v) {
-    list.putTimestamp(t, v);
+    data.add(new TimeValuePair(t, new TsInt(v)));
+//    list.putTimestamp(t, v);
   }
 
   @Override
   public void putFloat(long t, float v) {
-    list.putTimestamp(t, v);
+    data.add(new TimeValuePair(t, new TsFloat(v)));
+//    list.putTimestamp(t, v);
   }
 
   @Override
   public void putDouble(long t, double v) {
-    list.putTimestamp(t, v);
+    data.add(new TimeValuePair(t, new TsDouble(v)));
+//    list.putTimestamp(t, v);
   }
 
   @Override
   public void putBinary(long t, Binary v) {
-    list.putTimestamp(t, v);
+    data.add(new TimeValuePair(t, new TsBinary(v)));
+//    list.putTimestamp(t, v);
   }
 
   @Override
   public void putBoolean(long t, boolean v) {
-    list.putTimestamp(t, v);
+    data.add(new TimeValuePair(t, new TsBoolean(v)));
+//    list.putTimestamp(t, v);
   }
 
   @Override
   // TODO: Consider using arrays to sort and remove duplicates
   public List<TimeValuePair> getSortedTimeValuePairList() {
-    int length = list.getTotalDataNumber();
-    Map<Long, TsPrimitiveType> map = new HashMap<>(length, 1.0f);
-    for (int i = 0; i < length; i++) {
-      if (list.getTimestamp(i) >= timeOffset) {
-        map.put(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i)));
-      }
-    }
-    List<TimeValuePair> ret = new ArrayList<>(map.size());
-    map.forEach((k, v) -> ret.add(new TimeValuePairInMemTable(k, v)));
-    ret.sort(TimeValuePair::compareTo);
-    return ret;
+//    int length = list.getTotalDataNumber();
+//    Map<Long, TsPrimitiveType> map = new HashMap<>(length, 1.0f);
+//    for (int i = 0; i < length; i++) {
+//      if (list.getTimestamp(i) >= timeOffset) {
+//        map.put(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i)));
+//      }
+//    }
+//    List<TimeValuePair> ret = new ArrayList<>(map.size());
+//    map.forEach((k, v) -> ret.add(new TimeValuePairInMemTable(k, v)));
+//    ret.sort(TimeValuePair::compareTo);
+//    return ret;
+    return null;
   }
 
   @Override
   public DeduplicatedSortedData getDeduplicatedSortedData() {
-    int length = list.getTotalDataNumber();
-    List<TimeValuePair> data = new ArrayList<>(length);
-    for (int i = 0; i < length; i++) {
-      if (list.getTimestamp(i) >= timeOffset) {
-        data.add(new TimeValuePairInMemTable(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i))));
-      }
-    }
+//    int length = list.getTotalDataNumber();
+//    List<TimeValuePair> data = new ArrayList<>(length);
+//    for (int i = 0; i < length; i++) {
+//      if (list.getTimestamp(i) >= timeOffset) {
+//        data.add(new TimeValuePairInMemTable(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i))));
+//      }
+//    }
     return new DeduplicatedSortedData(data);
   }
 
-//  @Override
-//  public void reset() {
-//    this.list = PrimitiveDataListPool.getInstance().getPrimitiveDataListByDataType(dataType);
-//  }
-
   @Override
   public long count() {
-    return list.getTotalDataNumber();
+    return data.size();
+//    return list.getTotalDataNumber();
   }
 
   @Override
@@ -192,11 +200,5 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void setTimeOffset(long offset) {
     timeOffset = offset;
   }
-
-  @Override
-  public void releasePrimitiveArrayList(){
-    PrimitiveDataListPool.getInstance().release(list);
-  }
-
 
 }
