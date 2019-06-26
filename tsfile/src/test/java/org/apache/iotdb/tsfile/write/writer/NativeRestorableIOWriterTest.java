@@ -188,8 +188,8 @@ public class NativeRestorableIOWriterTest {
     assertEquals(2, record.getTimestamp());
     assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001f);
     assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001f);
+    assertFalse(dataSet.hasNext());
 
-    assertEquals(271, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
   }
 
@@ -383,7 +383,6 @@ public class NativeRestorableIOWriterTest {
     assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001f);
     assertFalse(dataSet.hasNext());
 
-    assertEquals(271, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
   }
 }
