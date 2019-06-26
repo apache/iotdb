@@ -12,26 +12,24 @@ import org.apache.thrift.TException;
 
 public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
 
-  private long timestamp;
-  private String deviceId;
-  private List<String> measurements;
-  private List<String> values;
   private TSInsertionReq req = new TSInsertionReq();
 
   public IoTDBPreparedInsertionStatement(IoTDBConnection connection,
       Iface client,
-      TS_SessionHandle sessionHandle, ZoneId zoneId) {
+      TS_SessionHandle sessionHandle, ZoneId zoneId) throws SQLException {
     super(connection, client, sessionHandle, zoneId);
+    req.setStmtId(stmtId);
   }
 
   @Override
   public boolean execute() throws SQLException {
-    req.setDeviceId(deviceId);
-    req.setMeasurements(measurements);
-    req.setValues(values);
-    req.setTimestamp(timestamp);
+
     try {
       TSExecuteStatementResp resp = client.executeInsertion(req);
+      req.unsetDeviceId();
+      req.unsetMeasurements();
+      req.unsetTimestamp();
+      req.unsetValues();
       return resp.getStatus().getStatusCode() == TS_StatusCode.SUCCESS_STATUS;
     } catch (TException e) {
       throw new SQLException(e);
@@ -39,19 +37,18 @@ public class IoTDBPreparedInsertionStatement extends IoTDBPreparedStatement {
   }
 
   public void setTimestamp(long timestamp) {
-    this.timestamp = timestamp;
+    req.setTimestamp(timestamp);
   }
 
   public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId;
+    req.setDeviceId(deviceId);
   }
 
   public void setMeasurements(List<String> measurements) {
-    this.measurements = measurements;
+    req.setMeasurements(measurements);
   }
 
   public void setValues(List<String> values) {
-    this.values = values;
+    req.setValues(values);
   }
-
 }

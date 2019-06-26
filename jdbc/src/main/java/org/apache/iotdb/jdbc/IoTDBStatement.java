@@ -88,6 +88,8 @@ public class IoTDBStatement implements Statement {
    */
   private SQLWarning warningChain = null;
 
+  protected long stmtId = -1;
+
   /**
    * Constructor of IoTDBStatement.
    */
@@ -161,6 +163,7 @@ public class IoTDBStatement implements Statement {
     try {
       if (operationHandle != null) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, -1);
+        closeReq.setStmtId(stmtId);
         TSCloseOperationResp closeResp = client.closeOperation(closeReq);
         Utils.verifySuccess(closeResp.getStatus());
       }
@@ -592,4 +595,11 @@ public class IoTDBStatement implements Statement {
     }
   }
 
+  void requestStmtId() throws SQLException {
+    try {
+      this.stmtId = client.requestStatementId();
+    } catch (TException e) {
+      throw new SQLException("Cannot get id for statement", e);
+    }
+  }
 }

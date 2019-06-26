@@ -175,6 +175,7 @@ struct TSCancelOperationResp {
 struct TSCloseOperationReq {
   1: required TSOperationHandle operationHandle
   2: required i64 queryId
+  3: optional i64 stmtId
 }
 
 struct TSCloseOperationResp {
@@ -249,10 +250,11 @@ struct TSSetTimeZoneResp {
 }
 
 struct TSInsertionReq {
-    1: required string deviceId
-    2: required list<string> measurements
-    3: required list<string> values
-    4: required i64 timestamp
+    1: optional string deviceId
+    2: optional list<string> measurements
+    3: optional list<string> values
+    4: optional i64 timestamp
+    5: required i64 stmtId
 }
 
 struct ServerProperties {
@@ -288,4 +290,6 @@ service TSIService {
 	ServerProperties getProperties();
 
 	TSExecuteStatementResp executeInsertion(1:TSInsertionReq req);
+
+	i64 requestStatementId();
 	}

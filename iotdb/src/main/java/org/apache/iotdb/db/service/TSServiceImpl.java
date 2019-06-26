@@ -31,6 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -115,6 +117,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
+  private AtomicLong globalStmtId = new AtomicLong(0L);
+  // (statementId) -> (statement)
+  // TODO: remove unclosed statements
+  private Map<Long, PhysicalPlan> idStmtMap = new ConcurrentHashMap<>();
+
   public TSServiceImpl() throws IOException {
     processor = new QueryProcessor(new OverflowQPExecutor());
   }
@@ -192,8 +199,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
-    LOGGER.info("{}: receive setCloseMark operation", IoTDBConstant.GLOBAL_DB_NAME);
+    LOGGER.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
+
+      if (req != null && req.isSetStmtId()) {
+        long stmtId = req.getStmtId();
+        idStmtMap.remove(stmtId);
+      }
 
       releaseQueryResource(req);
 
@@ -956,17 +968,35 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
     }
-    InsertPlan plan = new InsertPlan();
-    plan.setTime(req.getTimestamp());
-    plan.setDeviceId(req.getDeviceId());
-    plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
-    plan.setValues(req.getValues().toArray(new String[0]));
+
+    long stmtId = req.getStmtId();
+    InsertPlan plan = (InsertPlan) idStmtMap.computeIfAbsent(stmtId, k -> new InsertPlan());
+
+    // the old parameter will be used if new parameter is not set
+    if (req.isSetDeviceId()) {
+      plan.setDeviceId(req.getDeviceId());
+    }
+    if (req.isSetTimestamp()) {
+      plan.setTime(req.getTimestamp());
+    }
+    if (req.isSetMeasurements()) {
+      plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
+    }
+    if (req.isSetValues()) {
+      plan.setValues(req.getValues().toArray(new String[0]));
+    }
+
     try {
       return executeUpdateStatement(plan);
     } catch (Exception e) {
       LOGGER.info("meet error while executing an insertion into {}", req.getDeviceId(), e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
+  }
+
+  @Override
+  public long requestStatementId() {
+    return globalStmtId.incrementAndGet();
   }
 }
 
