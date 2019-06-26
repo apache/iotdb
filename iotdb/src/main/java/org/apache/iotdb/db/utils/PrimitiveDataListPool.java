@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -30,21 +30,21 @@ import org.apache.iotdb.tsfile.utils.Binary;
  */
 public class PrimitiveDataListPool {
 
-  private static final Map<Class, LinkedList<PrimitiveArrayListV2>> primitiveArrayListsMap = new HashMap<>();
+  private static final Map<Class, ConcurrentLinkedQueue<PrimitiveArrayListV2>> primitiveArrayListsMap = new ConcurrentHashMap<>();
 
   static {
-    primitiveArrayListsMap.put(boolean.class, new LinkedList<>());
-    primitiveArrayListsMap.put(int.class, new LinkedList<>());
-    primitiveArrayListsMap.put(long.class, new LinkedList<>());
-    primitiveArrayListsMap.put(float.class, new LinkedList<>());
-    primitiveArrayListsMap.put(double.class, new LinkedList<>());
-    primitiveArrayListsMap.put(Binary.class, new LinkedList<>());
+    primitiveArrayListsMap.put(boolean.class, new ConcurrentLinkedQueue<>());
+    primitiveArrayListsMap.put(int.class, new ConcurrentLinkedQueue<>());
+    primitiveArrayListsMap.put(long.class, new ConcurrentLinkedQueue<>());
+    primitiveArrayListsMap.put(float.class, new ConcurrentLinkedQueue<>());
+    primitiveArrayListsMap.put(double.class, new ConcurrentLinkedQueue<>());
+    primitiveArrayListsMap.put(Binary.class, new ConcurrentLinkedQueue<>());
   }
 
   private PrimitiveDataListPool() {
   }
 
-  public synchronized PrimitiveArrayListV2 getPrimitiveDataListByDataType(TSDataType dataType) {
+  public PrimitiveArrayListV2 getPrimitiveDataListByDataType(TSDataType dataType) {
     switch (dataType) {
       case BOOLEAN:
         return getPrimitiveDataList(boolean.class);
@@ -64,14 +64,14 @@ public class PrimitiveDataListPool {
   }
 
   private PrimitiveArrayListV2 getPrimitiveDataList(Class clazz) {
-    LinkedList<PrimitiveArrayListV2> primitiveArrayList = primitiveArrayListsMap.get(clazz);
-    return primitiveArrayList.isEmpty() ? new PrimitiveArrayListV2(clazz)
-        : primitiveArrayList.pollFirst();
+    ConcurrentLinkedQueue<PrimitiveArrayListV2> primitiveArrayList = primitiveArrayListsMap.get(clazz);
+    PrimitiveArrayListV2 dataList = primitiveArrayList.poll();
+    return dataList == null ? new PrimitiveArrayListV2(clazz) : dataList;
   }
 
-  public synchronized void release(PrimitiveArrayListV2 primitiveArrayList) {
+  public void release(PrimitiveArrayListV2 primitiveArrayList) {
     primitiveArrayList.reset();
-    primitiveArrayListsMap.get(primitiveArrayList.getClazz()).addLast(primitiveArrayList);
+    primitiveArrayListsMap.get(primitiveArrayList.getClazz()).offer(primitiveArrayList);
   }
 
   public static PrimitiveDataListPool getInstance() {
@@ -86,7 +86,7 @@ public class PrimitiveDataListPool {
     private static final PrimitiveDataListPool INSTANCE = new PrimitiveDataListPool();
   }
 
-  public synchronized int getPrimitiveDataListSizeByDataType(TSDataType dataType){
+  public int getPrimitiveDataListSizeByDataType(TSDataType dataType){
     switch (dataType) {
       case BOOLEAN:
         return primitiveArrayListsMap.get(boolean.class).size();

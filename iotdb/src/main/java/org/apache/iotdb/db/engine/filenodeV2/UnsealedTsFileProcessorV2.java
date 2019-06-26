@@ -258,7 +258,9 @@ public class UnsealedTsFileProcessorV2 {
       if (workMemTable == null) {
         return;
       }
-      logNode.notifyStartFlush();
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        logNode.notifyStartFlush();
+      }
       flushingMemTables.addLast(workMemTable);
       workMemTable.setVersion(versionController.nextVersion());
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
@@ -303,8 +305,15 @@ public class UnsealedTsFileProcessorV2 {
       MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(memTableToFlush, fileSchema, writer, storageGroupName,
           this::releaseFlushedMemTableCallback);
       flushTask.flushMemTable();
+      long start = System.currentTimeMillis();
       MemTablePool.getInstance().putBack(memTableToFlush, storageGroupName);
-      logNode.notifyEndFlush();
+      long elapse = System.currentTimeMillis() - start;
+      if (elapse > 1000) {
+        LOGGER.info("release a memtable cost: {}", elapse);
+      }
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        logNode.notifyEndFlush();
+      }
       LOGGER.info("flush a memtable has finished");
     } else {
       LOGGER.info(

@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<ExclusiveWriteLogNode> {
 
   public static final String WAL_FILE_NAME = "wal";
-  private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
   private static int logBufferSize = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
 
   private String identifier;
@@ -74,7 +74,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void write(PhysicalPlan plan) throws IOException {
+    long lockStartTime = System.currentTimeMillis();
     lock.writeLock().lock();
+    long lockElapsed = System.currentTimeMillis() - lockStartTime;
+    if (lockElapsed > 1000) {
+      LOGGER.info("WAL waiting for lock costs {} ms", lockElapsed);
+    }
     try {
       long start = System.currentTimeMillis();
 
@@ -85,7 +90,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
-        logger.info("WAL insert cost {} ms", elapse);
+        LOGGER.info("WAL insert cost {} ms", elapse);
       }
     } catch (BufferOverflowException e) {
       throw new IOException("Log cannot fit into buffer", e);
@@ -99,6 +104,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     try {
       plan.serializeTo(logBuffer);
     } catch (BufferOverflowException e) {
+      LOGGER.info("WAL BufferOverflow !");
       logBuffer.reset();
       sync();
       plan.serializeTo(logBuffer);
@@ -110,22 +116,27 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void close() {
     sync();
     forceWal();
+    long lockStartTime = System.currentTimeMillis();
     lock.writeLock().lock();
+    long lockElapsed = System.currentTimeMillis() - lockStartTime;
+    if (lockElapsed > 1000) {
+      LOGGER.info("WAL waiting for lock costs {} ms", lockElapsed);
+    }
     long start = System.currentTimeMillis();
     try {
       if (this.currentFileWriter != null) {
         this.currentFileWriter.close();
         this.currentFileWriter = null;
       }
-      logger.debug("Log node {} closed successfully", identifier);
+      LOGGER.debug("Log node {} closed successfully", identifier);
     } catch (IOException e) {
-      logger.error("Cannot close log node {} because:", identifier, e);
+      LOGGER.error("Cannot close log node {} because:", identifier, e);
     } finally {
       lock.writeLock().unlock();
     }
     long elapse = System.currentTimeMillis() - start;
     if (elapse > 1000) {
-      logger.info("WAL log node {} close cost {} ms", identifier, elapse);
+      LOGGER.info("WAL log node {} close cost {} ms", identifier, elapse);
     }
   }
 
@@ -138,14 +149,19 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void notifyStartFlush() {
+    long lockStartTime = System.currentTimeMillis();
     lock.writeLock().lock();
+    long lockElapsed = System.currentTimeMillis() - lockStartTime;
+    if (lockElapsed > 1000) {
+      LOGGER.info("WAL waiting for lock costs {} ms", lockElapsed);
+    }
     try {
       long start = System.currentTimeMillis();
       close();
       nextFileWriter();
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
-        logger.info("WAL notifyStartFlush cost {} ms", elapse);
+        LOGGER.info("WAL notifyStartFlush cost {} ms", elapse);
       }
     } finally {
       lock.writeLock().unlock();
@@ -154,14 +170,19 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void notifyEndFlush() {
+    long lockStartTime = System.currentTimeMillis();
     lock.writeLock().lock();
+    long lockElapsed = System.currentTimeMillis() - lockStartTime;
+    if (lockElapsed > 1000) {
+      LOGGER.info("WAL waiting for lock costs {} ms", lockElapsed);
+    }
     try {
       long start = System.currentTimeMillis();
       File logFile = new File(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
       discard(logFile);
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
-        logger.info("WAL notifyEndFlush cost {} ms", elapse);
+        LOGGER.info("WAL notifyEndFlush cost {} ms", elapse);
       }
     } finally {
       lock.writeLock().unlock();
@@ -180,7 +201,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void delete() throws IOException {
+    long lockStartTime = System.currentTimeMillis();
     lock.writeLock().lock();
+    long lockElapsed = System.currentTimeMillis() - lockStartTime;
+    if (lockElapsed > 1000) {
+      LOGGER.info("WAL waiting for lock costs {} ms", lockElapsed);
+    }
     try {
       long start = System.currentTimeMillis();
       logBuffer.clear();
@@ -188,7 +214,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       FileUtils.deleteDirectory(new File(logDirectory));
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
-        logger.info("WAL delete cost {} ms", elapse);
+        LOGGER.info("WAL delete cost {} ms", elapse);
       }
     } finally {
       lock.writeLock().unlock();
@@ -205,33 +231,38 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private void discard(File logFile) {
     if (!logFile.exists()) {
-      logger.info("Log file does not exist");
+      LOGGER.info("Log file does not exist");
     } else {
       try {
         FileUtils.forceDelete(logFile);
-        logger.info("Log node {} cleaned old file", identifier);
+        LOGGER.info("Log node {} cleaned old file", identifier);
       } catch (IOException e) {
-        logger.error("Old log file {} of {} cannot be deleted", logFile.getName(), identifier, e);
+        LOGGER.error("Old log file {} of {} cannot be deleted", logFile.getName(), identifier, e);
       }
     }
   }
 
   private void forceWal() {
+    long lockStartTime = System.currentTimeMillis();
     lock.writeLock().lock();
+    long lockElapsed = System.currentTimeMillis() - lockStartTime;
+    if (lockElapsed > 1000) {
+      LOGGER.info("WAL waiting for lock costs {} ms", lockElapsed);
+    }
     try {
       long start = System.currentTimeMillis();
-      logger.debug("Log node {} starts force, {} logs to be forced", identifier, bufferedLogNum);
+      LOGGER.debug("Log node {} starts force, {} logs to be forced", identifier, bufferedLogNum);
       try {
         if (currentFileWriter != null) {
           currentFileWriter.force();
         }
       } catch (IOException e) {
-        logger.error("Log node {} force failed.", identifier, e);
+        LOGGER.error("Log node {} force failed.", identifier, e);
       }
-      logger.debug("Log node {} ends force.", identifier);
+      LOGGER.debug("Log node {} ends force.", identifier);
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
-        logger.info("WAL forceWal cost {} ms", elapse);
+        LOGGER.info("WAL forceWal cost {} ms", elapse);
       }
     } finally {
       lock.writeLock().unlock();
@@ -239,25 +270,30 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void sync() {
+    long lockStartTime = System.currentTimeMillis();
     lock.writeLock().lock();
+    long lockElapsed = System.currentTimeMillis() - lockStartTime;
+    if (lockElapsed > 1000) {
+      LOGGER.info("WAL waiting for lock costs {} ms", lockElapsed);
+    }
     try {
       long start = System.currentTimeMillis();
-      logger.debug("Log node {} starts sync, {} logs to be synced", identifier, bufferedLogNum);
+      LOGGER.debug("Log node {} starts sync, {} logs to be synced", identifier, bufferedLogNum);
       if (bufferedLogNum == 0) {
         return;
       }
       try {
         getCurrentFileWriter().write(logBuffer);
       } catch (IOException e) {
-        logger.error("Log node {} sync failed", identifier, e);
+        LOGGER.error("Log node {} sync failed", identifier, e);
       }
       logBuffer.clear();
       bufferedLogNum = 0;
 
-      logger.debug("Log node {} ends sync.", identifier);
+      LOGGER.debug("Log node {} ends sync.", identifier);
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
-        logger.info("WAL sync cost {} ms", elapse);
+        LOGGER.info("WAL sync cost {} ms", elapse);
       }
     } finally {
       lock.writeLock().unlock();

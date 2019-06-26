@@ -128,12 +128,8 @@ public class MemTableFlushTaskV2 {
             }
           } else {
             if (task instanceof String) {
-//              LOGGER.info("Storage group {} memtable {}, issues a start flush chunk group task.",
-//                  storageGroup, memTable.getVersion());
               ioTaskQueue.add(task);
             } else if (task instanceof ChunkGroupIoTask) {
-//              LOGGER.info("Storage group {} memtable {}, issues a end flush chunk group task.",
-//                  storageGroup, memTable.getVersion());
               ioTaskQueue.add(task);
             } else {
               long starTime = System.currentTimeMillis();
@@ -150,8 +146,6 @@ public class MemTableFlushTaskV2 {
                     memTable.getVersion(), e);
                 throw new RuntimeException(e);
               }
-//              LOGGER.info("Storage group {} memtable {}, issues a write chunk task.",
-//                  storageGroup, memTable.getVersion());
               memSerializeTime += System.currentTimeMillis() - starTime;
             }
           }
@@ -195,16 +189,10 @@ public class MemTableFlushTaskV2 {
             long starTime = System.currentTimeMillis();
             try {
               if (ioTask instanceof String) {
-//                LOGGER.info("Storage group {} memtable {}, start a chunk group.", storageGroup,
-//                    memTable.getVersion());
                 tsFileIoWriter.startChunkGroup((String) ioTask);
               } else if (ioTask instanceof IChunkWriter) {
-//                LOGGER.info("Storage group {} memtable {}, writing a series to file.", storageGroup,
-//                    memTable.getVersion());
                 ((IChunkWriter) ioTask).writeToFileWriter(tsFileIoWriter);
               } else {
-//                LOGGER.info("Storage group {} memtable {}, end a chunk group.", storageGroup,
-//                    memTable.getVersion());
                 ChunkGroupIoTask endGroupTask = (ChunkGroupIoTask) ioTask;
                 tsFileIoWriter.endChunkGroup(endGroupTask.version);
                 endGroupTask.finished = true;
@@ -217,7 +205,7 @@ public class MemTableFlushTaskV2 {
             ioTime += System.currentTimeMillis() - starTime;
           }
         }
-        LOGGER.info("flushing a memtable {} in storage group {}, cost {}ms", memTable.getVersion(),
+        LOGGER.info("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
             storageGroup, ioTime);
       } catch (RuntimeException e) {
         LOGGER.error("ioflush thread is dead", e);

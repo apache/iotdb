@@ -31,8 +31,12 @@ import org.apache.iotdb.db.qp.physical.transfer.SystemLogOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class InsertPlan extends PhysicalPlan {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PhysicalPlan.class);
 
   private String deviceId;
   private String[] measurements;
@@ -163,6 +167,7 @@ public class InsertPlan extends PhysicalPlan {
 
   @Override
   public void serializeTo(ByteBuffer buffer) {
+    long startTime = System.currentTimeMillis();
     int type = SystemLogOperator.INSERT;
     buffer.put((byte) type);
     buffer.put((byte) insertType);
@@ -178,6 +183,10 @@ public class InsertPlan extends PhysicalPlan {
     buffer.putInt(values.length);
     for (String m : values) {
       putString(buffer, m);
+    }
+    long elapsed = System.currentTimeMillis() - startTime;
+    if (elapsed > 1000) {
+      LOGGER.info("Serialize an insertion costs {}ms", elapsed);
     }
   }
 
