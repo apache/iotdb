@@ -108,7 +108,7 @@ public abstract class AbstractMemTable implements IMemTable {
       Object value) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
     memSeries.write(insertTime, value);
-    // update memory getTotalDataNumber of current memtable
+    // update memory size of current memtable
   }
 
   @Override

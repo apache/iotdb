@@ -33,7 +33,7 @@ public class ForceFLushAllPolicy implements Policy {
   @Override
   public void execute() {
     if (logger.isInfoEnabled()) {
-      logger.info("Memory reaches {}, current memory getTotalDataNumber is {}, JVM memory is {}, flushing.",
+      logger.info("Memory reaches {}, current memory size is {}, JVM memory is {}, flushing.",
               BasicMemController.getInstance().getCurrLevel(),
               MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
               MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()

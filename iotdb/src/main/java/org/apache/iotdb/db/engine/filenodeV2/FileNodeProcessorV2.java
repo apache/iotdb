@@ -233,7 +233,13 @@ public class FileNodeProcessorV2 {
    * @return -1: failed, 1: Overflow, 2:Bufferwrite
    */
   public boolean insert(InsertPlan insertPlan) {
+    long lockStartTime = System.currentTimeMillis();
     lock.writeLock().lock();
+    long lockElapsed = System.currentTimeMillis() - lockStartTime;
+    if (lockElapsed > 1000) {
+      LOGGER.info("FNP insert waiting for lock costs {} ms", lockElapsed);
+    }
+    long start = System.currentTimeMillis();
     try {
       if (toBeClosed) {
         throw new FileNodeProcessorException(
@@ -253,6 +259,10 @@ public class FileNodeProcessorV2 {
       LOGGER.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
       return false;
     } finally {
+      long elapse = System.currentTimeMillis() - start;
+      if (elapse > 5000) {
+        LOGGER.info("long-tail insertion, cost: {}", elapse);
+      }
       lock.writeLock().unlock();
     }
   }
@@ -284,8 +294,13 @@ public class FileNodeProcessorV2 {
       latestTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // check memtable getTotalDataNumber and may asyncFlush the workMemtable
+    // check memtable size and may asyncFlush the workMemtable
     if (unsealedTsFileProcessor.shouldFlush()) {
+
+      LOGGER.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+          unsealedTsFileProcessor.getWorkMemTableMemory(),
+          unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+
       if (unsealedTsFileProcessor.shouldClose()) {
         asyncCloseTsFileProcessor(unsealedTsFileProcessor, sequence);
       } else {
@@ -326,11 +341,7 @@ public class FileNodeProcessorV2 {
   private void asyncCloseTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
       boolean sequence) {
 
-    LOGGER.info("The memtable getTotalDataNumber {} reaches the threshold, async flush it to tsfile: {}",
-        unsealedTsFileProcessor.getWorkMemTableMemory(),
-        unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
-
-    // check file getTotalDataNumber and may setCloseMark the BufferWrite
+    // check file size and may setCloseMark the BufferWrite
     if (sequence) {
       closingSequenceTsFileProcessor.add(unsealedTsFileProcessor);
       workSequenceTsFileProcessor = null;
@@ -342,7 +353,7 @@ public class FileNodeProcessorV2 {
     // async close tsfile
     unsealedTsFileProcessor.asyncClose();
 
-    LOGGER.info("The file getTotalDataNumber {} reaches the threshold, async close tsfile: {}.",
+    LOGGER.info("The file size {} reaches the threshold, async close tsfile: {}.",
         unsealedTsFileProcessor.getTsFileResource().getFileSize(),
         unsealedTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
   }

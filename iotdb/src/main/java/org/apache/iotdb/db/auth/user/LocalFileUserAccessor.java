@@ -39,15 +39,15 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class loads a user's information from the corresponding file.The user file is a sequential
- * file. User file schema: Int32 username bytes getTotalDataNumber Utf-8 username bytes Int32 Password bytes
- * getTotalDataNumber Utf-8 password bytes Int32 seriesPath privilege number n Int32 seriesPath[1] getTotalDataNumber Utf-8
+ * file. User file schema: Int32 username bytes size Utf-8 username bytes Int32 Password bytes
+ * size Utf-8 password bytes Int32 seriesPath privilege number n Int32 seriesPath[1] size Utf-8
  * seriesPath[1] bytes Int32 privilege num k1 Int32 privilege[1][1] Int32 privilege[1][2] ... Int32
- * privilege[1][k1] Int32 seriesPath[2] getTotalDataNumber Utf-8 seriesPath[2] bytes Int32 privilege num k2
+ * privilege[1][k1] Int32 seriesPath[2] size Utf-8 seriesPath[2] bytes Int32 privilege num k2
  * Int32 privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n]
- * getTotalDataNumber Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32
- * privilege[n][2] ... Int32 privilege[n][kn] Int32 user name number m Int32 user name[1] getTotalDataNumber
- * Utf-8 user name[1] bytes Int32 user name[2] getTotalDataNumber Utf-8 user name[2] bytes ... Int32 user
- * name[m] getTotalDataNumber Utf-8 user name[m] bytes
+ * size Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32
+ * privilege[n][2] ... Int32 privilege[n][kn] Int32 user name number m Int32 user name[1] size
+ * Utf-8 user name[1] bytes Int32 user name[2] size Utf-8 user name[2] bytes ... Int32 user
+ * name[m] size Utf-8 user name[m] bytes
  */
 public class LocalFileUserAccessor implements IUserAccessor {
 

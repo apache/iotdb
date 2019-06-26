@@ -34,10 +34,10 @@ public class Utils {
   private Utils(){}
 
   /**
-   * convert query data set by fetch getTotalDataNumber.
+   * convert query data set by fetch size.
    *
    * @param queryDataSet -query dataset
-   * @param fetchsize -fetch getTotalDataNumber
+   * @param fetchsize -fetch size
    * @return -convert query dataset
    */
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,

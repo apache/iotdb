@@ -104,7 +104,7 @@ public class RowGroupBlockMetaDataCache {
   }
 
   /**
-   * the default LRU cache getTotalDataNumber is 100. The singleton pattern.
+   * the default LRU cache size is 100. The singleton pattern.
    */
   private static class RowGroupBlockMetaDataCacheSingleton {
 

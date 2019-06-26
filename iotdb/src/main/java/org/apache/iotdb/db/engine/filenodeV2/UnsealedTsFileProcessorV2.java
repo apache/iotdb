@@ -207,7 +207,9 @@ public class UnsealedTsFileProcessorV2 {
     try {
       IMemTable tmpMemTable = workMemTable == null ? new EmptyMemTable() : workMemTable;
       if (!tmpMemTable.isManagedByMemPool()) {
-        LOGGER.debug("add an empty memtable into flushing memtable list when sync close");
+        LOGGER.info("add an empty memtable into flushing memtable list when async close");
+      } else {
+        LOGGER.info("async flush a memtable when async close");
       }
       flushingMemTables.add(tmpMemTable);
       shouldClose = true;
@@ -283,7 +285,7 @@ public class UnsealedTsFileProcessorV2 {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
       LOGGER.info(
-          "flush finished, remove a memtable from flushing list, flushing memtable list getTotalDataNumber: {}",
+          "flush finished, remove a memtable from flushing list, flushing memtable list size: {}",
           flushingMemTables.size());
     } finally {
       flushQueryLock.writeLock().unlock();

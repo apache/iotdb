@@ -388,7 +388,7 @@ public class SQLParserTest {
   // recursivePrintSon(astTree, rec);
   //
   // int i = 0;
-  // while (i <= rec.getTotalDataNumber() - 1) {
+  // while (i <= rec.size() - 1) {
   // assertEquals(rec.get(i), ans.get(i));
   // i++;
   // }

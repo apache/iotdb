@@ -33,10 +33,10 @@ public class PrimitiveArrayListV2 {
   private List<Object> values;
   private List<long[]> timestamps;
 
-  private int totalDataNumber; // Total getTotalDataNumber of all objects of current ArrayList
+  private int totalDataNumber; // Total data number of all objects of current ArrayList
   private int currentArrayIndex; // current index of array
   private int offsetInCurrentArray; // current index of element in current array
-  private int currentArraySize; // getTotalDataNumber of current array
+  private int currentArraySize; // number of current arrays
 
   public PrimitiveArrayListV2(Class clazz) {
     this.clazz = clazz;

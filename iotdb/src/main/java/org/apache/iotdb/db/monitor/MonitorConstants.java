@@ -36,7 +36,7 @@ public class MonitorConstants {
   private static final String FILENODE_MANAGER_CONST = "FILENODE_MANAGER_CONST";
   static final String FILE_SIZE_CONST = "FILE_SIZE_CONST";
   public static final String MONITOR_PATH_SEPARATOR = ".";
-  // statistic for file getTotalDataNumber statistic module
+  // statistic for file size statistic module
   private static final String FILE_SIZE = "file_size";
   public static final String FILE_SIZE_STORAGE_GROUP_NAME = STAT_STORAGE_GROUP_PREFIX
       + MONITOR_PATH_SEPARATOR + FILE_SIZE;

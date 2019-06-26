@@ -75,9 +75,9 @@ public abstract class TsPrimitiveType implements Serializable {
   }
 
   /**
-   * get the getTotalDataNumber of one instance of current class.
+   * get the size of one instance of current class.
    *
-   * @return getTotalDataNumber of one instance of current class
+   * @return size of one instance of current class
    */
   public abstract int getSize();
 

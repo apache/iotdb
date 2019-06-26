@@ -175,7 +175,7 @@ public class BufferWriteProcessor extends Processor {
    * @param timestamp timestamp of the data point
    * @param dataType the data type of the value
    * @param value data point value
-   * @return true -the getTotalDataNumber of tsfile or metadata reaches to the threshold. false -otherwise
+   * @return true -the size of tsfile or metadata reaches to the threshold. false -otherwise
    * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
    */
   public boolean write(String deviceId, String measurementId, long timestamp, TSDataType dataType,
@@ -442,7 +442,7 @@ public class BufferWriteProcessor extends Processor {
       } else {
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
-              "Begin to submit flush task for bufferwrite processor {}, current Flush Queue is {}, core pool getTotalDataNumber is {}.",
+              "Begin to submit flush task for bufferwrite processor {}, current Flush Queue is {}, core pool size is {}.",
               getProcessorName(), FlushPoolManager.getInstance().getWaitingTasksNumber(),
               FlushPoolManager.getInstance().getCorePoolSize());
         }
@@ -530,9 +530,9 @@ public class BufferWriteProcessor extends Processor {
   }
 
   /**
-   * get metadata getTotalDataNumber.
+   * get metadata size.
    *
-   * @return The sum of all timeseries's metadata getTotalDataNumber within this file.
+   * @return The sum of all timeseries's metadata size within this file.
    */
   public long getMetaSize() {
     // TODO : [MemControl] implement this
@@ -540,9 +540,9 @@ public class BufferWriteProcessor extends Processor {
   }
 
   /**
-   * get file getTotalDataNumber.
+   * get file size.
    *
-   * @return The file getTotalDataNumber of the TsFile corresponding to this processor.
+   * @return The file size of the TsFile corresponding to this processor.
    */
   public long getFileSize() {
     // TODO : save this variable to avoid object creation?

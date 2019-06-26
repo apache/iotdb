@@ -286,8 +286,8 @@
 //
 //    this.parameters = new HashMap<>();
 //    String dirPath = fileNodeDirPath;
-//    if (dirPath.getTotalDataNumber() > 0
-//        && dirPath.charAt(dirPath.getTotalDataNumber() - 1) != File.separatorChar) {
+//    if (dirPath.size() > 0
+//        && dirPath.charAt(dirPath.size() - 1) != File.separatorChar) {
 //      dirPath = dirPath + File.separatorChar;
 //    }
 //
@@ -467,7 +467,7 @@
 //    parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
 //    parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fileNodeFlushAction);
 //
-//    for (int i = 0; i < newFileNodes.getTotalDataNumber(); i++) {
+//    for (int i = 0; i < newFileNodes.size(); i++) {
 //      TsFileResource tsFile = newFileNodes.get(i);
 ////      try {
 ////        String filePath = tsFile.getFilePath();
@@ -722,7 +722,7 @@
 //  private int searchIndexNodeByTimestamp(String deviceId, long timestamp,
 //      List<TsFileResource> fileList) {
 //    int index = 1;
-//    while (index < fileList.getTotalDataNumber()) {
+//    while (index < fileList.size()) {
 //      if (timestamp < fileList.get(index).getStartTime(deviceId)) {
 //        break;
 //      } else {
@@ -813,15 +813,15 @@
 //    // bufferwrite data
 //    UnsealedTsFile unsealedTsFile = null;
 //
-//    if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.getTotalDataNumber() - 1).isClosed()
-//        && !newFileNodes.get(newFileNodes.getTotalDataNumber() - 1).getStartTimeMap().isEmpty()) {
+//    if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()
+//        && !newFileNodes.get(newFileNodes.size() - 1).getStartTimeMap().isEmpty()) {
 //      unsealedTsFile = new UnsealedTsFile();
-//      unsealedTsFile.setFilePath(newFileNodes.get(newFileNodes.getTotalDataNumber() - 1).getFile().getAbsolutePath());
+//      unsealedTsFile.setFilePath(newFileNodes.get(newFileNodes.size() - 1).getFile().getAbsolutePath());
 //      if (bufferWriteProcessor == null) {
 //        throw new FileNodeProcessorException(String.format(
 //            "The last of tsfile %s in filenode processor %s is not closed, "
 //                + "but the bufferwrite processor is null.",
-//            newFileNodes.get(newFileNodes.getTotalDataNumber() - 1).getFile().getAbsolutePath(), getProcessorName()));
+//            newFileNodes.get(newFileNodes.size() - 1).getFile().getAbsolutePath(), getProcessorName()));
 //      }
 //      bufferwritedata = bufferWriteProcessor
 //          .queryBufferWriteData(deviceId, measurementId, dataType, mSchema.getProps());
@@ -975,7 +975,7 @@
 //          .getConfig().getOverflowFileSizeThreshold()) {
 //        if (LOGGER.isInfoEnabled()) {
 //          LOGGER.info(
-//              "Skip this merge taks submission, because the getTotalDataNumber{} of overflow processor {} "
+//              "Skip this merge taks submission, because the size{} of overflow processor {} "
 //                  + "does not reaches the threshold {}.",
 //              MemUtils.bytesCntToStr(overflowProcessor.getFileSize()), getProcessorName(),
 //              MemUtils.bytesCntToStr(
@@ -1118,7 +1118,7 @@
 //
 //    // query tsfile data and overflow data, and merge them
 //    int numOfMergeFiles = 0;
-//    int allNeedMergeFiles = backupIntervalFiles.getTotalDataNumber();
+//    int allNeedMergeFiles = backupIntervalFiles.size();
 //    for (TsFileResource backupIntervalFile : backupIntervalFiles) {
 //      numOfMergeFiles++;
 //      if (backupIntervalFile.getOverflowChangeType() == OverflowChangeType.CHANGED) {
@@ -1234,7 +1234,7 @@
 //      for (String deviceId : tsFileResource.getEndTimeMap().keySet()) {
 //        List<TsFileResource> temp = invertedIndexOfFiles.get(deviceId);
 //        int index = temp.indexOf(tsFileResource);
-//        int getTotalDataNumber = temp.getTotalDataNumber();
+//        int size = temp.size();
 //        // start time
 //        if (index == 0) {
 //          startTimeMap.put(deviceId, 0L);
@@ -1242,7 +1242,7 @@
 //          startTimeMap.put(deviceId, tsFileResource.getStartTime(deviceId));
 //        }
 //        // end time
-//        if (index < getTotalDataNumber - 1) {
+//        if (index < size - 1) {
 //          endTimeMap.put(deviceId, temp.get(index + 1).getStartTime(deviceId) - 1);
 //        } else {
 //          endTimeMap.put(deviceId, tsFileResource.getEndTime(deviceId));
@@ -1276,7 +1276,7 @@
 //      // reconstruct the file index
 //      addAllFileIntoIndex(backupIntervalFiles);
 //      // check the merge changed file
-//      for (int i = beginIndex; i < backupIntervalFiles.getTotalDataNumber(); i++) {
+//      for (int i = beginIndex; i < backupIntervalFiles.size(); i++) {
 //        TsFileResource newFile = newFileNodes.get(i - beginIndex);
 //        TsFileResource temp = backupIntervalFiles.get(i);
 //        if (newFile.getOverflowChangeType() == OverflowChangeType.MERGING_CHANGE) {
@@ -1287,7 +1287,7 @@
 //        }
 //      }
 //      // add new file when merge
-//      for (int i = backupIntervalFiles.getTotalDataNumber() - beginIndex; i < newFileNodes.getTotalDataNumber(); i++) {
+//      for (int i = backupIntervalFiles.size() - beginIndex; i < newFileNodes.size(); i++) {
 //        TsFileResource fileNode = newFileNodes.get(i);
 //        if (fileNode.isClosed()) {
 //          result.add(fileNode.backUp());
@@ -1386,9 +1386,9 @@
 //        collectBufferWriteFiles(bufferFiles);
 //
 //        // add the restore file, if the last file is not closed
-//        if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.getTotalDataNumber() - 1).isClosed()) {
+//        if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
 //          String bufferFileRestorePath =
-//              newFileNodes.get(newFileNodes.getTotalDataNumber() - 1).getFile().getAbsolutePath() + RESTORE_FILE_SUFFIX;
+//              newFileNodes.get(newFileNodes.size() - 1).getFile().getAbsolutePath() + RESTORE_FILE_SUFFIX;
 //          bufferFiles.add(bufferFileRestorePath);
 //        }
 //
@@ -1428,8 +1428,8 @@
 //  private void collectBufferWriteDirs(List<String> bufferwriteDirPathList,
 //      List<File> bufferwriteDirList) {
 //    for (String bufferwriteDirPath : bufferwriteDirPathList) {
-//      if (bufferwriteDirPath.getTotalDataNumber() > 0
-//          && bufferwriteDirPath.charAt(bufferwriteDirPath.getTotalDataNumber() - 1)
+//      if (bufferwriteDirPath.size() > 0
+//          && bufferwriteDirPath.charAt(bufferwriteDirPath.size() - 1)
 //          != File.separatorChar) {
 //        bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
 //      }
@@ -1677,7 +1677,7 @@
 //  private String constructOutputFilePath(String baseDir, String processorName, String fileName) {
 //
 //    String localBaseDir = baseDir;
-//    if (localBaseDir.charAt(localBaseDir.getTotalDataNumber() - 1) != File.separatorChar) {
+//    if (localBaseDir.charAt(localBaseDir.size() - 1) != File.separatorChar) {
 //      localBaseDir = localBaseDir + File.separatorChar + processorName;
 //    }
 //    File dataDir = new File(localBaseDir);
@@ -1877,7 +1877,7 @@
 //
 //    synchronized (fileNodeRestoreLock) {
 //      File restoreFile = new File(fileNodeRestoreFilePath);
-//      if (!restoreFile.exists() || restoreFile.getTotalDataNumber() == 0) {
+//      if (!restoreFile.exists() || restoreFile.size() == 0) {
 //        try {
 //          return new FileNodeProcessorStore(false, new HashMap<>(),
 //              new TsFileResource(null, false),
@@ -2098,7 +2098,7 @@
 //   */
 //  public void waitforAllClosed() throws FileNodeProcessorException {
 //    close();
-//    while (getClosingBufferWriteProcessor().getTotalDataNumber() != 0) {
+//    while (getClosingBufferWriteProcessor().size() != 0) {
 //      checkAllClosingProcessors();
 //      try {
 //        Thread.sleep(10);
