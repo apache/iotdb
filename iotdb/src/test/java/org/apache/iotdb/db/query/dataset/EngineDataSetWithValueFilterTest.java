@@ -33,7 +33,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class EngineDataSetWithTimeGeneratorTest {
+public class EngineDataSetWithValueFilterTest {
 
   private QueryProcessExecutor queryExecutor = new OverflowQPExecutor();
   private QueryProcessor processor = new QueryProcessor(queryExecutor);

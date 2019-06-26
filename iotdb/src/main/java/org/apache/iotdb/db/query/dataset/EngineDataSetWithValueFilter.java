@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -28,26 +28,26 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-public class EngineDataSetWithTimeGenerator extends QueryDataSet {
+public class EngineDataSetWithValueFilter extends QueryDataSet {
 
   private EngineTimeGenerator timeGenerator;
-  private List<EngineReaderByTimeStamp> readers;
+  private List<IReaderByTimeStamp> seriesReaderByTimestampList;
   private boolean hasCachedRowRecord;
   private RowRecord cachedRowRecord;
 
   /**
-   * constructor of EngineDataSetWithTimeGenerator.
+   * constructor of EngineDataSetWithValueFilter.
    *
    * @param paths paths in List structure
    * @param dataTypes time series data type
    * @param timeGenerator EngineTimeGenerator object
-   * @param readers readers in List(EngineReaderByTimeStamp) structure
+   * @param readers readers in List(IReaderByTimeStamp) structure
    */
-  public EngineDataSetWithTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
-      EngineTimeGenerator timeGenerator, List<EngineReaderByTimeStamp> readers) {
+  public EngineDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
+                                      EngineTimeGenerator timeGenerator, List<IReaderByTimeStamp> readers) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
-    this.readers = readers;
+    this.seriesReaderByTimestampList = readers;
   }
 
   @Override
@@ -77,8 +77,8 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
       boolean hasField = false;
       long timestamp = timeGenerator.next();
       RowRecord rowRecord = new RowRecord(timestamp);
-      for (int i = 0; i < readers.size(); i++) {
-        EngineReaderByTimeStamp reader = readers.get(i);
+      for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
+        IReaderByTimeStamp reader = seriesReaderByTimestampList.get(i);
         Object value = reader.getValueInTimestamp(timestamp);
         if (value == null) {
           rowRecord.addField(new Field(null));
@@ -100,7 +100,7 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
     return timeGenerator;
   }
 
-  public List<EngineReaderByTimeStamp> getReaders() {
-    return readers;
+  public List<IReaderByTimeStamp> getReaders() {
+    return seriesReaderByTimestampList;
   }
 }

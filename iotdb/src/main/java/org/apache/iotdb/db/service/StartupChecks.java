@@ -84,7 +84,7 @@ public class StartupChecks {
   }
 
   /**
-   * executeWithOutTimeGenerator every pretests.
+   * executeWithoutValueFilter every pretests.
    */
   public void verify() throws StartupException {
     for (StartupCheck check : preChecks) {

@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
 
 /**
  * A value filter reader for read data source, including sequence data and unsequence data.
  */
-public class AllDataReaderWithValueFilter extends AllDataReaderWithOptGlobalTimeFilter {
+public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter {
 
   private Filter filter;
   private boolean hasCachedValue;
@@ -35,9 +36,9 @@ public class AllDataReaderWithValueFilter extends AllDataReaderWithOptGlobalTime
   /**
    * merge sequence reader, unsequence reader.
    */
-  public AllDataReaderWithValueFilter(IBatchReader batchReader, IPointReader pointReader,
-      Filter filter) {
-    super(batchReader, pointReader);
+  public SeriesReaderWithValueFilter(IBatchReader seqSeriesReader, IPointReader unseqSeriesReader,
+                                     Filter filter) {
+    super(seqSeriesReader, unseqSeriesReader);
     this.filter = filter;
   }
 

@@ -33,7 +33,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-public class UnseqReaderTest extends ReaderTestHelper {
+public class UnsequenceSeriesReaderTest extends ReaderTestHelper {
     @Override
     protected void insertData() {
         for (int j = 1; j <= 10; j++) {
@@ -50,10 +50,10 @@ public class UnseqReaderTest extends ReaderTestHelper {
     }
 
     @Test
-    public void testUnSeqReaderWithGlobalTimeFilter() throws IOException, FileNodeProcessorException {
+    public void testUnseqSeriesReaderWithGlobalTimeFilter() throws IOException, FileNodeProcessorException {
         Path path = new Path(deviceId, measurementId);
         QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
-        IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnSeqReader(path,
+        IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnseqSeriesReader(path,
                 queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, TimeFilter.eq(4));
         int cnt = 0;
         while (reader.hasNext()) {
@@ -66,10 +66,10 @@ public class UnseqReaderTest extends ReaderTestHelper {
     }
 
     @Test
-    public void testUnSeqReaderWithoutFilter() throws IOException, FileNodeProcessorException {
+    public void testUnseqSeriesReaderWithoutFilter() throws IOException, FileNodeProcessorException {
         Path path = new Path(deviceId, measurementId);
         QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
-        IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnSeqReader(path,
+        IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnseqSeriesReader(path,
                 queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, null);
         int cnt = 0;
         while (reader.hasNext()) {

@@ -19,19 +19,20 @@
 
 package org.apache.iotdb.db.query.reader;
 
-import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
 
 /**
  * It used to merge sequence data and unsequence data with <br>only time filter or no
  * filter.</br>
  */
-public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
+public class SeriesReaderWithoutValueFilter implements IPointReader {
 
-  private IBatchReader batchReader;
-  private IPointReader pointReader;
+  private IBatchReader seqSeriesReader;
+  private IPointReader unseqSeriesReader;
 
   private boolean hasCachedBatchData;
   private BatchData batchData;
@@ -39,9 +40,9 @@ public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
   /**
    * merge sequence reader, unsequence reader.
    */
-  public AllDataReaderWithOptGlobalTimeFilter(IBatchReader batchReader, IPointReader pointReader) {
-    this.batchReader = batchReader;
-    this.pointReader = pointReader;
+  public SeriesReaderWithoutValueFilter(IBatchReader seqSeriesReader, IPointReader unseqSeriesReader) {
+    this.seqSeriesReader = seqSeriesReader;
+    this.unseqSeriesReader = unseqSeriesReader;
 
     this.hasCachedBatchData = false;
   }
@@ -52,7 +53,7 @@ public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
       return true;
     }
     // has value in pointReader
-    return pointReader != null && pointReader.hasNext();
+    return unseqSeriesReader != null && unseqSeriesReader.hasNext();
   }
 
   @Override
@@ -60,7 +61,7 @@ public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
 
     // has next in both batch reader and point reader
     if (hasNextInBothReader()) {
-      long timeInPointReader = pointReader.current().getTimestamp();
+      long timeInPointReader = unseqSeriesReader.current().getTimestamp();
       long timeInBatchData = batchData.currentTime();
       if (timeInPointReader > timeInBatchData) {
         TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
@@ -68,9 +69,9 @@ public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
         return timeValuePair;
       } else if (timeInPointReader == timeInBatchData) {
         batchData.next();
-        return pointReader.next();
+        return unseqSeriesReader.next();
       } else {
-        return pointReader.next();
+        return unseqSeriesReader.next();
       }
     }
 
@@ -82,8 +83,8 @@ public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
     }
 
     // only has next in point reader
-    if (pointReader != null && pointReader.hasNext()) {
-      return pointReader.next();
+    if (unseqSeriesReader != null && unseqSeriesReader.hasNext()) {
+      return unseqSeriesReader.next();
     }
     return null;
   }
@@ -95,7 +96,7 @@ public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
     if (!hasNextInBatchDataOrBatchReader()) {
       return false;
     }
-    return pointReader != null && pointReader.hasNext();
+    return unseqSeriesReader != null && unseqSeriesReader.hasNext();
   }
 
   /**
@@ -110,8 +111,8 @@ public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
     }
 
     // has value in batchReader
-    while (batchReader != null && batchReader.hasNext()) {
-      batchData = batchReader.nextBatch();
+    while (seqSeriesReader != null && seqSeriesReader.hasNext()) {
+      batchData = seqSeriesReader.nextBatch();
       if (batchData.hasNext()) {
         hasCachedBatchData = true;
         return true;
@@ -122,12 +123,12 @@ public class AllDataReaderWithOptGlobalTimeFilter implements IPointReader {
 
   @Override
   public TimeValuePair current() throws IOException {
-    throw new IOException("current() in AllDataReaderWithOptGlobalTimeFilter is an empty method.");
+    throw new IOException("current() in SeriesReaderWithoutValueFilter is an empty method.");
   }
 
   @Override
   public void close() throws IOException {
-    batchReader.close();
-    pointReader.close();
+    seqSeriesReader.close();
+    unseqSeriesReader.close();
   }
 }

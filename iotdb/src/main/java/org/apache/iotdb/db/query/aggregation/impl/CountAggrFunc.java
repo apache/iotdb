@@ -23,7 +23,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -134,7 +134,7 @@ public class CountAggrFunc extends AggregateFunction {
 
   @Override
   public void calcAggregationUsingTimestamps(long[] timestamps, int length,
-      EngineReaderByTimeStamp dataReader) throws IOException {
+      IReaderByTimeStamp dataReader) throws IOException {
     int cnt = 0;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);

@@ -19,32 +19,33 @@
 
 package org.apache.iotdb.db.query.reader.sequence;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
+
+import java.io.IOException;
 
 /**
- * include data in one closing bufferWriteProcessfor or working bufferWriteProcessfor: 1) the data
- * in unseal tsfile part which has been flushed to disk 2) the data in flushing memtable list
+ * IReaderByTimeStamp of data in: 1) the data in unseal tsfile part which has been flushed to disk;
+ * 2) the data in flushing memtable list.
  */
-public class UnSealedTsFileReaderByTimestampV2 implements EngineReaderByTimeStamp {
+public class UnSealedTsFileReaderByTimestamp implements IReaderByTimeStamp {
 
   protected Path seriesPath;
   /**
    * reader the data of unseal tsfile part which has been flushed to disk
    */
-  private SeriesReaderByTimestamp unSealedReader;
+  private FileSeriesReaderByTimestamp unSealedReader;
   /**
    * reader of the data in flushing memtable list
    */
-  private EngineReaderByTimeStamp memSeriesReader;
+  private IReaderByTimeStamp memSeriesReader;
   /**
    * whether unSealedReader has been used. True if current reader is memSeriesReader,
    * false if current reader is unSealedReader.
@@ -56,12 +57,12 @@ public class UnSealedTsFileReaderByTimestampV2 implements EngineReaderByTimeStam
    *
    * @param tsFileResource -unclosed tsfile resource
    */
-  public UnSealedTsFileReaderByTimestampV2(TsFileResourceV2 tsFileResource) throws IOException {
+  public UnSealedTsFileReaderByTimestamp(TsFileResourceV2 tsFileResource) throws IOException {
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-        .get(tsFileResource.getFile().getPath(), false);
+            .get(tsFileResource.getFile().getPath(), false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
-    unSealedReader = new SeriesReaderByTimestamp(chunkLoader,
-        tsFileResource.getChunkMetaDatas());
+    unSealedReader = new FileSeriesReaderByTimestamp(chunkLoader,
+            tsFileResource.getChunkMetaDatas());
 
     memSeriesReader = new MemChunkReaderByTimestamp(tsFileResource.getReadOnlyMemChunk());
     unSealedReaderEnded = false;

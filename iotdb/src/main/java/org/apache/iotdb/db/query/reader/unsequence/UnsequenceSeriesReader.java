@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.query.reader.merge;
+package org.apache.iotdb.db.query.reader.unsequence;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,14 +25,14 @@ import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
-/**
- * <p>
- * Usage: (1) merge multiple chunk group readers in the unsequence file.
- * </p>
+ /**
+  * This class is used to read unsequence data in: 1) sealed tsfile resources,
+  * 2) unsealed tsfile resources, which include data on disk and in memtables
+  * that will be flushing to unsealed tsfile resources.
  */
-public class PriorityMergeReader implements IPointReader {
+public class UnsequenceSeriesReader implements IPointReader {
 
-  private List<IPointReader> readerList = new ArrayList<>();
+  private List<IPointReader> unseqResourceSeriesReaderList = new ArrayList<>();
   private List<Integer> priorityList = new ArrayList<>();
   private PriorityQueue<Element> heap = new PriorityQueue<>();
 
@@ -42,9 +41,9 @@ public class PriorityMergeReader implements IPointReader {
    */
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
-      heap.add(new Element(readerList.size(), reader.next(), priority));
+      heap.add(new Element(unseqResourceSeriesReaderList.size(), reader.next(), priority));
     }
-    readerList.add(reader);
+    unseqResourceSeriesReaderList.add(reader);
     priorityList.add(priority);
   }
 
@@ -69,7 +68,7 @@ public class PriorityMergeReader implements IPointReader {
     while (!heap.isEmpty() && heap.peek().timeValuePair.getTimestamp() == top.timeValuePair
         .getTimestamp()) {
       Element e = heap.poll();
-      IPointReader reader = readerList.get(e.index);
+      IPointReader reader = unseqResourceSeriesReaderList.get(e.index);
       if (reader.hasNext()) {
         heap.add(new Element(e.index, reader.next(), priorityList.get(e.index)));
       }
@@ -78,7 +77,7 @@ public class PriorityMergeReader implements IPointReader {
 
   @Override
   public void close() throws IOException {
-    for (IPointReader reader : readerList) {
+    for (IPointReader reader : unseqResourceSeriesReaderList) {
       reader.close();
     }
   }

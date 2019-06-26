@@ -67,6 +67,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
   }
 
+  @Override
   public void write(long insertTime, Object value) {
     switch (dataType) {
       case BOOLEAN:
@@ -140,6 +141,18 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public DeduplicatedSortedData getDeduplicatedSortedData() {
+    int length = list.getTotalDataNumber();
+    List<TimeValuePair> data = new ArrayList<>(length);
+    for (int i = 0; i < length; i++) {
+      if (list.getTimestamp(i) >= timeOffset) {
+        data.add(new TimeValuePairInMemTable(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i))));
+      }
+    }
+    return new DeduplicatedSortedData(data);
+  }
+
+  @Override
   public void reset() {
     this.list = PrimitiveDataListPool.getInstance().getPrimitiveDataListByDataType(dataType);
   }
@@ -163,5 +176,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void releasePrimitiveArrayList(){
     PrimitiveDataListPool.getInstance().release(list);
   }
+
 
 }

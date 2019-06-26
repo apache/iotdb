@@ -48,4 +48,6 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
   void setTimeOffset(long offset);
 
   void releasePrimitiveArrayList();
+
+  DeduplicatedSortedData getDeduplicatedSortedData();
 }

@@ -187,8 +187,8 @@ public class NativeRestorableIOWriterTest {
     assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001);
     assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001);
     readOnlyTsFile.close();
+    assertFalse(dataSet.hasNext());
 
-    assertEquals(271, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
   }
 

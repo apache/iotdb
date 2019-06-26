@@ -61,9 +61,9 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         EngineExecutor engineExecutor =
             new EngineExecutor(queryExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-          return engineExecutor.executeWithOutTimeGenerator(context);
+          return engineExecutor.executeWithoutValueFilter(context);
         } else {
-          return engineExecutor.executeWithTimeGenerator(context);
+          return engineExecutor.executeWithValueFilter(context);
         }
 
       } catch (QueryFilterOptimizationException | IOException e) {
@@ -73,7 +73,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       EngineExecutor engineExecutor = new EngineExecutor(
           queryExpression);
       try {
-        return engineExecutor.executeWithOutTimeGenerator(context);
+        return engineExecutor.executeWithoutValueFilter(context);
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }
