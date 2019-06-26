@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +38,6 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   public WritableMemChunk(TSDataType dataType) {
     this.dataType = dataType;
-//    this.list = PrimitiveDataListPool.getInstance().getPrimitiveDataListByDataType(dataType);
     this.list = getPrimitiveDataListByDataType(dataType);
   }
 
@@ -173,11 +171,6 @@ public class WritableMemChunk implements IWritableMemChunk {
     return new DeduplicatedSortedData(data);
   }
 
-//  @Override
-//  public void reset() {
-//    this.list = PrimitiveDataListPool.getInstance().getPrimitiveDataListByDataType(dataType);
-//  }
-
   @Override
   public long count() {
     return list.getTotalDataNumber();
@@ -197,6 +190,5 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void releasePrimitiveArrayList(){
     PrimitiveDataListPool.getInstance().release(list);
   }
-
 
 }

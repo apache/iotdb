@@ -21,8 +21,6 @@ package org.apache.iotdb.db.utils;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
-import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
 
 public class PrimitiveArrayListV2 {
 
@@ -54,21 +52,16 @@ public class PrimitiveArrayListV2 {
   private void checkCapacity(int aimSize) {
     if (currentArraySize < aimSize) {
       if (currentArraySize < MAX_SIZE_OF_ONE_ARRAY) {
-//        long start = System.currentTimeMillis();
-        // expand current Array
         int newCapacity = Math.min(MAX_SIZE_OF_ONE_ARRAY, currentArraySize * 2);
         values.set(currentArrayIndex,
             expandArray(values.get(currentArrayIndex), currentArraySize, newCapacity));
         timestamps.set(currentArrayIndex,
             (long[]) expandArray(timestamps.get(currentArrayIndex), currentArraySize, newCapacity));
         currentArraySize = newCapacity;
-//        MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.CAPACITY_1, start);
       } else {
-//        if (currentArrayIndex == values.size() - 1) {
-          // add a new Array to the list
-          values.add(Array.newInstance(clazz, INITIAL_SIZE));
-          timestamps.add(new long[INITIAL_SIZE]);
-//        }
+        // add a new Array to the list
+        values.add(Array.newInstance(clazz, INITIAL_SIZE));
+        timestamps.add(new long[INITIAL_SIZE]);
         currentArrayIndex++;
         currentArraySize = timestamps.get(currentArrayIndex).length;
         offsetInCurrentArray = -1;
