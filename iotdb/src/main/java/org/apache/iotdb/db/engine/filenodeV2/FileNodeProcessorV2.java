@@ -260,7 +260,7 @@ public class FileNodeProcessorV2 {
       return false;
     } finally {
       long elapse = System.currentTimeMillis() - start;
-      if (elapse > 5000) {
+      if (elapse > 2000) {
         LOGGER.info("long-tail insertion, cost: {}", elapse);
       }
       lock.writeLock().unlock();
@@ -272,6 +272,7 @@ public class FileNodeProcessorV2 {
     UnsealedTsFileProcessorV2 unsealedTsFileProcessor;
     boolean result;
     // create a new BufferWriteProcessor
+    long start1 = System.currentTimeMillis();
     if (sequence) {
       if (workSequenceTsFileProcessor == null) {
         workSequenceTsFileProcessor = createTsFileProcessor(true);
@@ -285,9 +286,18 @@ public class FileNodeProcessorV2 {
       }
       unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
     }
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("FNP create a new unsealed file processor cost: {}", start1);
+    }
 
     // insert BufferWrite
+    long start2 = System.currentTimeMillis();
     result = unsealedTsFileProcessor.insert(insertPlan);
+    start2 = System.currentTimeMillis() - start2;
+    if (start2 > 1000) {
+      LOGGER.info("FNP insert a record into unsealed file processor cost: {}", start2);
+    }
 
     // try to update the latest time of the device of this tsRecord
     if (result && latestTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
@@ -295,6 +305,7 @@ public class FileNodeProcessorV2 {
     }
 
     // check memtable size and may asyncFlush the workMemtable
+    long time1 = System.currentTimeMillis();
     if (unsealedTsFileProcessor.shouldFlush()) {
 
       LOGGER.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
@@ -306,6 +317,10 @@ public class FileNodeProcessorV2 {
       } else {
         unsealedTsFileProcessor.asyncFlush();
       }
+    }
+    time1 = System.currentTimeMillis() - time1;
+    if (time1 > 1000) {
+      LOGGER.info("FNP check flush and close cost: {}ms", time1);
     }
 
     return result;
