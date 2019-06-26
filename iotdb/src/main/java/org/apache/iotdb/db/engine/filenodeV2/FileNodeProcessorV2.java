@@ -237,7 +237,7 @@ public class FileNodeProcessorV2 {
     lock.writeLock().lock();
     long lockElapsed = System.currentTimeMillis() - lockStartTime;
     if (lockElapsed > 1000) {
-      LOGGER.info("FNP insert waiting for lock costs {} ms", lockElapsed);
+      LOGGER.info("FNP {} insert waiting for lock costs {} ms", storageGroupName, lockElapsed);
     }
     long start = System.currentTimeMillis();
     try {
@@ -288,7 +288,7 @@ public class FileNodeProcessorV2 {
     }
     start1 = System.currentTimeMillis() - start1;
     if (start1 > 1000) {
-      LOGGER.info("FNP create a new unsealed file processor cost: {}", start1);
+      LOGGER.info("FNP {} create a new unsealed file processor cost: {}", storageGroupName, start1);
     }
 
     // insert BufferWrite
@@ -296,7 +296,7 @@ public class FileNodeProcessorV2 {
     result = unsealedTsFileProcessor.insert(insertPlan);
     start2 = System.currentTimeMillis() - start2;
     if (start2 > 1000) {
-      LOGGER.info("FNP insert a record into unsealed file processor cost: {}", start2);
+      LOGGER.info("FNP {} insert a record into unsealed file processor cost: {}", storageGroupName, start2);
     }
 
     // try to update the latest time of the device of this tsRecord
@@ -320,7 +320,7 @@ public class FileNodeProcessorV2 {
     }
     time1 = System.currentTimeMillis() - time1;
     if (time1 > 1000) {
-      LOGGER.info("FNP check flush and close cost: {}ms", time1);
+      LOGGER.info("FNP {} check flush and close cost: {}ms", storageGroupName, time1);
     }
 
     return result;

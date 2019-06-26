@@ -24,11 +24,15 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manage all primitive data list in memory, including get and release operation.
  */
 public class PrimitiveDataListPool {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PrimitiveDataListPool.class);
 
   private static final Map<Class, ConcurrentLinkedQueue<PrimitiveArrayListV2>> primitiveArrayListsMap = new ConcurrentHashMap<>();
 
@@ -65,7 +69,13 @@ public class PrimitiveDataListPool {
 
   private PrimitiveArrayListV2 getPrimitiveDataList(Class clazz) {
     ConcurrentLinkedQueue<PrimitiveArrayListV2> primitiveArrayList = primitiveArrayListsMap.get(clazz);
+
+    long time = System.currentTimeMillis();
     PrimitiveArrayListV2 dataList = primitiveArrayList.poll();
+    time = System.currentTimeMillis() - time;
+    if (time > 10) {
+      LOGGER.info("poll from memtable cost {}ms", time);
+    }
     return dataList == null ? new PrimitiveArrayListV2(clazz) : dataList;
   }
 

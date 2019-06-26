@@ -147,7 +147,7 @@ public class UnsealedTsFileProcessorV2 {
     workMemTable.insert(insertPlan);
     start2 = System.currentTimeMillis() - start2;
     if (start2 > 1000) {
-      LOGGER.info("UFP insert into memotable cost: {}", start2);
+      LOGGER.info("UFP insert into memtable cost: {}", start2);
     }
 
     return true;
