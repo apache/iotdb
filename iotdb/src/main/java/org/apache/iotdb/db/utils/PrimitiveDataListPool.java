@@ -69,13 +69,7 @@ public class PrimitiveDataListPool {
 
   private PrimitiveArrayListV2 getPrimitiveDataList(Class clazz) {
     ConcurrentLinkedQueue<PrimitiveArrayListV2> primitiveArrayList = primitiveDataListsMap.get(clazz);
-
-    long time = System.currentTimeMillis();
     PrimitiveArrayListV2 dataList = primitiveArrayList.poll();
-    time = System.currentTimeMillis() - time;
-    if (time > 10) {
-      LOGGER.info("poll from primitiveDataListsMap cost {}ms", time);
-    }
     return dataList == null ? new PrimitiveArrayListV2(clazz) : dataList;
   }
 

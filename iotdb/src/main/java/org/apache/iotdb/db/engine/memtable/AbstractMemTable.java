@@ -95,12 +95,8 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
       String insertValue) {
-//    long start = System.currentTimeMillis();
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
-//    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.WRITE_1, start);
-//    start = System.currentTimeMillis();
     memSeries.write(insertTime, insertValue);
-//    MemTableWriteTimeCost.getInstance().measure(MemTableWriteTimeCostType.WRITE_2, start);
   }
 
   @Override
