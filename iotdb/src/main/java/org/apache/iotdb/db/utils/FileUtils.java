@@ -41,7 +41,7 @@ public class FileUtils {
     return getLocalFileByte(f, unit);
   }
 
-  public static double getLocalFileByte(File file, Unit unit) {
+  static double getLocalFileByte(File file, Unit unit) {
     return format(transformUnit(file.length(), unit), 2);
   }
 
@@ -54,7 +54,7 @@ public class FileUtils {
    *            - the target unit to be transformed
    * @return - value number in unit of given parameter
    */
-  public static double transformUnit(double value, Unit unit) {
+  static double transformUnit(double value, Unit unit) {
     return value / Math.pow(1024, unit.ordinal());
   }
 
@@ -90,19 +90,16 @@ public class FileUtils {
   }
 
   public static long getUsableSpace(String dir) {
-    long space = new File(dir).getFreeSpace();
-    return space;
+    return new File(dir).getFreeSpace();
   }
 
   public static boolean hasSpace(String dir) {
     return getUsableSpace(dir) > 0;
   }
 
-  public static long getOccupiedSpace(String path) throws IOException {
-    Path folder = Paths.get(path);
-    long size = Files.walk(folder).filter(p -> p.toFile().isFile())
+  public static long getOccupiedSpace(String folderPath) throws IOException {
+    Path folder = Paths.get(folderPath);
+    return Files.walk(folder).filter(p -> p.toFile().isFile())
         .mapToLong(p -> p.toFile().length()).sum();
-
-    return size;
   }
 }

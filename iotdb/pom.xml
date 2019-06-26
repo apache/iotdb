@@ -70,6 +70,7 @@
             <artifactId>commons-lang3</artifactId>
             <version>${common.lang3.version}</version>
         </dependency>
+        <!-- for mocked test-->
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-core</artifactId>
