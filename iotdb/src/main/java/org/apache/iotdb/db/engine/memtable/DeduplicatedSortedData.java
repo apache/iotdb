@@ -32,8 +32,11 @@ public class DeduplicatedSortedData {
 
   private boolean hasCached;
 
-  public DeduplicatedSortedData(List<TimeValuePair> timeValuePairs) {
+  private long timeOffset;
+
+  public DeduplicatedSortedData(List<TimeValuePair> timeValuePairs, long timeOffset) {
     this.timeValuePairs = timeValuePairs;
+    this.timeOffset = timeOffset;
     this.timeValuePairs.sort(TimeValuePair::compareTo);
     this.index = 0;
     this.length = timeValuePairs.size();
@@ -46,6 +49,8 @@ public class DeduplicatedSortedData {
         if (cachedTimeValuePair == null || cachedTimeValuePair.getTimestamp() == timeValuePairs
             .get(index).getTimestamp()) {
           cachedTimeValuePair = timeValuePairs.get(index++);
+          if (cachedTimeValuePair.getTimestamp() < timeOffset)
+            continue;
           hasCached = true;
         } else {
           break;

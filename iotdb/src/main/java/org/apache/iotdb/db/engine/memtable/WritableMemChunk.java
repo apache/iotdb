@@ -182,7 +182,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 //        data.add(new TimeValuePairInMemTable(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i))));
 //      }
 //    }
-    return new DeduplicatedSortedData(data);
+    return new DeduplicatedSortedData(data, timeOffset);
   }
 
   @Override
