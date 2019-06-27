@@ -208,4 +208,9 @@ public class InsertPlan extends PhysicalPlan {
       values[i] = readString(buffer);
     }
   }
+
+  @Override
+  public String toString() {
+    return "deviceId: " + deviceId + ", time: " + time;
+  }
 }
