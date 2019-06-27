@@ -341,7 +341,7 @@ public class FileNodeProcessorV2 {
   private void asyncCloseTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
       boolean sequence) {
 
-    // check file size and may setCloseMark the BufferWrite
+    // check file size and may close the BufferWrite
     if (sequence) {
       closingSequenceTsFileProcessor.add(unsealedTsFileProcessor);
       workSequenceTsFileProcessor = null;

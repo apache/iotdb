@@ -538,7 +538,7 @@
 //        .getConfig().getBufferwriteFileSizeThreshold()) {
 //      if (LOGGER.isInfoEnabled()) {
 //        LOGGER.info(
-//            "The filenode processor {} will setCloseMark the bufferwrite processor, "
+//            "The filenode processor {} will close the bufferwrite processor, "
 //                + "because the size[{}] of tsfile {} reaches the threshold {}",
 //            filenodeName, MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize()),
 //            bufferWriteProcessor.getInsertFilePath(), MemUtils.bytesCntToStr(
@@ -548,7 +548,7 @@
 //      fileNodeProcessor.closeBufferWrite();
 //      start3 = System.currentTimeMillis() - start3;
 //      if (start3 > 1000) {
-//        LOGGER.info("FileNodeManagerV2.insertBufferWrite step-3, setCloseMark buffer insert cost: {}", start3);
+//        LOGGER.info("FileNodeManagerV2.insertBufferWrite step-3, close buffer insert cost: {}", start3);
 //      }
 //    }
 //  }
@@ -821,7 +821,7 @@
 //          return false;
 //        }
 //      }
-//      // setCloseMark bufferwrite file
+//      // close bufferwrite file
 //      fileNodeProcessor.closeBufferWrite();
 //      // append file to storage group.
 //      fileNodeProcessor.appendFile(appendFile, appendFilePath);
@@ -965,7 +965,7 @@
 //    for (String bufferwritePath : bufferwritePathList) {
 //      bufferwritePath = standardizeDir(bufferwritePath) + processorName;
 //      File bufferDir = new File(bufferwritePath);
-//      // free and setCloseMark the streams under this bufferwrite directory
+//      // free and close the streams under this bufferwrite directory
 //      if (!bufferDir.exists()) {
 //        continue;
 //      }
@@ -1042,7 +1042,7 @@
 //
 //
 //  /**
-//   * Force to setCloseMark the filenode processor.
+//   * Force to close the filenode processor.
 //   */
 //  public void closeOneFileNode(String processorName) throws FileNodeManagerException {
 //    if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
@@ -1051,10 +1051,10 @@
 //
 //    fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
 //    try {
-//      LOGGER.info("Force to setCloseMark the filenode processor {}.", processorName);
+//      LOGGER.info("Force to close the filenode processor {}.", processorName);
 //      while (!closeOneProcessor(processorName)) {
 //        try {
-//          LOGGER.info("Can't force to setCloseMark the filenode processor {}, wait 100ms to retry",
+//          LOGGER.info("Can't force to close the filenode processor {}, wait 100ms to retry",
 //              processorName);
 //          TimeUnit.MILLISECONDS.sleep(100);
 //        } catch (InterruptedException e) {
@@ -1070,7 +1070,7 @@
 //
 //
 //  /**
-//   * try to setCloseMark the filenode processor. The name of filenode processor is processorName
+//   * try to close the filenode processor. The name of filenode processor is processorName
 //   * notice: this method has the same function with close()
 //   */
 //  private boolean closeOneProcessor(String processorName) throws FileNodeManagerException {
@@ -1099,7 +1099,7 @@
 //  }
 //
 //  /**
-//   * try to setCloseMark the filenode processor.
+//   * try to close the filenode processor.
 //   * notice: This method has the same function with closeOneProcessor()
 //   */
 //  private void close(String processorName) throws FileNodeManagerException {
@@ -1107,7 +1107,7 @@
 //      LOGGER.warn("The processorMap doesn't contain the filenode processor {}.", processorName);
 //      return;
 //    }
-//    LOGGER.info("Try to setCloseMark the filenode processor {}.", processorName);
+//    LOGGER.info("Try to close the filenode processor {}.", processorName);
 //    FileNodeProcessor processor = processorMap.get(processorName);
 //    if (!processor.tryWriteLock()) {
 //      LOGGER.warn("Can't get the insert lock of the filenode processor {}.", processorName);
@@ -1156,12 +1156,12 @@
 //  }
 //
 //  /**
-//   * Try to setCloseMark All.
+//   * Try to close All.
 //   */
 //  public void closeAll() throws FileNodeManagerException {
 //    LOGGER.info("Start closing all filenode processor");
 //    if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
-//      LOGGER.info("Failed to setCloseMark all filenode processor because of merge operation");
+//      LOGGER.info("Failed to close all filenode processor because of merge operation");
 //      return;
 //    }
 //    fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
@@ -1271,7 +1271,7 @@
 //    try {
 //      closeAll();
 //    } catch (FileNodeManagerException e) {
-//      LOGGER.error("Failed to setCloseMark file node manager because .", e);
+//      LOGGER.error("Failed to close file node manager because .", e);
 //    }
 //
 //    boolean notFinished = true;

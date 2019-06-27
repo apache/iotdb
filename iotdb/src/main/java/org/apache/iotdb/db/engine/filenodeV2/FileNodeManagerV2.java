@@ -120,7 +120,7 @@ public class FileNodeManagerV2 implements IService {
     try {
       syncCloseAllProcessor();
     } catch (FileNodeManagerException e) {
-      LOGGER.error("Failed to setCloseMark file node manager because .", e);
+      LOGGER.error("Failed to close file node manager because .", e);
     }
   }
 
@@ -297,7 +297,7 @@ public class FileNodeManagerV2 implements IService {
   }
 
   /**
-   * try to setCloseMark the filenode processor. The name of filenode processor is processorName
+   * try to close the filenode processor. The name of filenode processor is processorName
    */
   private boolean tryToCloseFileNodeProcessor(String processorName) throws FileNodeManagerException {
     // TODO
@@ -305,7 +305,7 @@ public class FileNodeManagerV2 implements IService {
   }
 
   /**
-   * Force to setCloseMark the filenode processor.
+   * Force to close the filenode processor.
    */
   public void deleteOneFileNode(String processorName) throws FileNodeManagerException {
     if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {

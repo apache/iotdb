@@ -130,7 +130,7 @@ public abstract class BasicMemController implements IService {
   public abstract void clear();
 
   /**
-   * setCloseMark MemController.
+   * close MemController.
    */
   public void close() {
     logger.info("MemController exiting");

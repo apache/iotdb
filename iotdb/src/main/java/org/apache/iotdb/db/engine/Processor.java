@@ -50,7 +50,7 @@ public abstract class Processor {
   }
 
   /**
-   * Release the cloneList lock
+   * Release the read lock
    */
   public void readUnlock() {
     lock.readLock().unlock();
@@ -61,7 +61,7 @@ public abstract class Processor {
   }
 
   /**
-   * Acquire the cloneList lock
+   * Acquire the read lock
    */
   public void readLock() {
     lock.readLock().lock();
@@ -89,7 +89,7 @@ public abstract class Processor {
 
   /**
    * @param isWriteLock
-   *            true acquire insert lock, false acquire cloneList lock
+   *            true acquire insert lock, false acquire read lock
    */
   public void lock(boolean isWriteLock) {
     if (isWriteLock) {
@@ -110,7 +110,7 @@ public abstract class Processor {
 
   /**
    * @param isWriteUnlock
-   *            true putBack insert lock, false putBack cloneList unlock
+   *            true putBack insert lock, false putBack read unlock
    */
   public void unlock(boolean isWriteUnlock) {
 //    start = System.currentTimeMillis() - start;
@@ -147,7 +147,7 @@ public abstract class Processor {
   }
 
   /**
-   * Try to get the cloneList lock
+   * Try to get the read lock
    *
    * @return
    */
