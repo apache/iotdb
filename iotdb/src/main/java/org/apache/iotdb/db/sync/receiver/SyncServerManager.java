@@ -127,7 +127,7 @@ public class SyncServerManager implements IService {
         LOGGER.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       } finally {
         close();
-        LOGGER.info("{}: setCloseMark TThreadPoolServer and TServerSocket for {}",
+        LOGGER.info("{}: close TThreadPoolServer and TServerSocket for {}",
             IoTDBConstant.GLOBAL_DB_NAME, getID().getName());
       }
     }

@@ -74,7 +74,7 @@ public class EnvironmentUtils {
     // clean filenode manager
     try {
       if (!FileNodeManagerV2.getInstance().deleteAll()) {
-        LOGGER.error("Can't setCloseMark the filenode manager in EnvironmentUtils");
+        LOGGER.error("Can't close the filenode manager in EnvironmentUtils");
         Assert.fail();
       }
     } catch (FileNodeManagerException e) {
@@ -87,7 +87,7 @@ public class EnvironmentUtils {
     // clean cache
     TsFileMetaDataCache.getInstance().clear();
     RowGroupBlockMetaDataCache.getInstance().clear();
-    // setCloseMark metadata
+    // close metadata
     MManager.getInstance().clear();
     MManager.getInstance().flushObjectToFile();
     // delete all directory

@@ -73,10 +73,10 @@ public class CodecInstances {
   }
 
   /**
-   * Read a string value from ByteBuffer, first cloneList a int that represents the bytes len of string,
-   * then cloneList bytes len value, finally transfer bytes to string, string may be null
+   * Read a string value from ByteBuffer, first read a int that represents the bytes len of string,
+   * then read bytes len value, finally transfer bytes to string, string may be null
    *
-   * @param buffer ByteBuffer to be cloneList
+   * @param buffer ByteBuffer to be read
    * @return string value
    */
   static String readString(ByteBuffer buffer) {
@@ -122,7 +122,7 @@ public class CodecInstances {
     @Override
     public DeletePlan decode(byte[] bytes) throws IOException {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
-      buffer.get(); // cloneList  and skip an int representing "type".
+      buffer.get(); // read  and skip an int representing "type".
       long time = buffer.getLong();
 
       String path = readString(buffer);
@@ -154,7 +154,7 @@ public class CodecInstances {
     @Override
     public UpdatePlan decode(byte[] bytes) throws IOException {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
-      buffer.get(); // cloneList and skip an int representing "type"
+      buffer.get(); // read and skip an int representing "type"
 
       int timeListBytesLength = buffer.getInt();
       List<Pair<Long, Long>> timeArrayList = new ArrayList<>(timeListBytesLength);
@@ -203,7 +203,7 @@ public class CodecInstances {
     public InsertPlan decode(byte[] bytes) throws IOException {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-      buffer.get(); // cloneList and skip an int representing "type"
+      buffer.get(); // read and skip an int representing "type"
       int insertType = buffer.get();
       long time = buffer.getLong();
 
@@ -295,7 +295,7 @@ public class CodecInstances {
     public MetadataPlan decode(byte[] bytes) throws IOException {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-      buffer.get(); // cloneList and skip an int representing "type"
+      buffer.get(); // read and skip an int representing "type"
 
       byte namespaceTypeByte = buffer.get();
       MetadataOperator.NamespaceType namespaceType = null;
@@ -380,7 +380,7 @@ public class CodecInstances {
     public AuthorPlan decode(byte[] bytes) throws IOException {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-      buffer.get(); // cloneList and skip an int representing "type"
+      buffer.get(); // read and skip an int representing "type"
 
       AuthorOperator.AuthorType authorType = AuthorOperator.AuthorType.deserialize(buffer.get());
       String userName = readString(buffer);
@@ -427,7 +427,7 @@ public class CodecInstances {
     public LoadDataPlan decode(byte[] bytes) throws IOException {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-      buffer.get(); // cloneList and skip an int representing "type"
+      buffer.get(); // read and skip an int representing "type"
 
       String inputFilePath = readString(buffer);
       String measureType = readString(buffer);
@@ -459,7 +459,7 @@ public class CodecInstances {
     public PropertyPlan decode(byte[] bytes) throws IOException {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-      buffer.get(); // cloneList and skip an int representing "type"
+      buffer.get(); // read and skip an int representing "type"
 
       PropertyOperator.PropertyType propertyType = PropertyOperator.PropertyType
           .deserialize(buffer.get());

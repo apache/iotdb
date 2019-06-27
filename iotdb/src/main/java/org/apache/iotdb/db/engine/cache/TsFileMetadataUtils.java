@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 /**
- * This class is used to cloneList metadata(<code>TsFileMetaData</code> and
+ * This class is used to read metadata(<code>TsFileMetaData</code> and
  * <code>TsRowGroupBlockMetaData</code>).
  */
 public class TsFileMetadataUtils {

@@ -119,7 +119,7 @@ public class TsFileRecoverPerformer {
       restorableTsFileIOWriter.endFile(fileSchema);
       tsFileResource.serialize();
     } catch (IOException e) {
-      throw new ProcessorException("Cannot setCloseMark file when recovering", e);
+      throw new ProcessorException("Cannot close file when recovering", e);
     }
 
     // clean logs
