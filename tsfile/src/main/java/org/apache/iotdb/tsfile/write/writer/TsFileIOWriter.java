@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -57,8 +56,6 @@ import org.slf4j.LoggerFactory;
  * @author kangrong
  */
 public class TsFileIOWriter {
-
-  private File file;
 
   public static final byte[] magicStringBytes;
   private static final Logger LOG = LoggerFactory.getLogger(TsFileIOWriter.class);
@@ -107,14 +104,14 @@ public class TsFileIOWriter {
    * data in the TsFileOutput matches the given metadata list
    *
    * @param out the target output
-   * @param ChunkGroupMetaDataList existing chunkgroups' metadata
+   * @param chunkGroupMetaDataList existing chunkgroups' metadata
    * @throws IOException if I/O error occurs
    */
-  public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> ChunkGroupMetaDataList)
+  public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList)
       throws IOException {
     this.out = out;
-    this.chunkGroupMetaDataList = ChunkGroupMetaDataList;
-    if (ChunkGroupMetaDataList.isEmpty()) {
+    this.chunkGroupMetaDataList = chunkGroupMetaDataList;
+    if (chunkGroupMetaDataList.isEmpty()) {
       startFile();
     }
   }
@@ -338,7 +335,8 @@ public class TsFileIOWriter {
   }
 
   /**
-   * close the outputStream or file channel.
+   * close the outputStream or file channel without writing FileMetadata.
+   * This is just used for Testing.
    */
   public void close() throws IOException {
     canWrite = false;
