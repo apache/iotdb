@@ -27,8 +27,6 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost;
-import org.apache.iotdb.db.monitor.collector.MemTableWriteTimeCost.MemTableWriteTimeCostType;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -86,7 +84,6 @@ public abstract class AbstractMemTable implements IMemTable {
     for (int i = 0; i < insertPlan.getValues().length; i++) {
       write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
           insertPlan.getDataTypes()[i], insertPlan.getTime(), insertPlan.getValues()[i]);
-
     }
     long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
     memSize += recordSizeInByte;
