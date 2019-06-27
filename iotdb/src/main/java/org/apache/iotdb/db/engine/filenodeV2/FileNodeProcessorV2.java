@@ -48,6 +48,7 @@ import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -609,9 +610,11 @@ public class FileNodeProcessorV2 {
   // TODO please consider concurrency with query and insert method.
   public void closeUnsealedTsFileProcessorCallback(
       UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
-    // end time with one start time
-    TsFileResourceV2 resource = unsealedTsFileProcessor.getTsFileResource();
-    resource.setClosed(true);
+    try {
+      unsealedTsFileProcessor.close();
+    } catch (IOException e) {
+      LOGGER.error("storage group: {} close unsealedTsFileProcessor failed", storageGroupName, e);
+    }
     if (closingSequenceTsFileProcessor.contains(unsealedTsFileProcessor)) {
       closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
     } else {

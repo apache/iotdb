@@ -95,7 +95,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
         } else {
           crashed = true;
           //remove broken data
-          out.truncate(truncatedPosition + 1);
+          out.truncate(truncatedPosition);
         }
       }
     }
