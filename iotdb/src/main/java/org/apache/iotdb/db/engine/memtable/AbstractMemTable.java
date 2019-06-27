@@ -86,7 +86,6 @@ public abstract class AbstractMemTable implements IMemTable {
     for (int i = 0; i < insertPlan.getValues().length; i++) {
       write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
           insertPlan.getDataTypes()[i], insertPlan.getTime(), insertPlan.getValues()[i]);
-
     }
     long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
     memSize += recordSizeInByte;
