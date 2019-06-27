@@ -100,8 +100,6 @@ public class UnsealedTsFileProcessorV2 {
     this.tsFileResource = new TsFileResourceV2(tsfile, this);
     this.versionController = versionController;
     this.writer = new NativeRestorableIOWriter(tsfile);
-    this.logNode = MultiFileLogNodeManager.getInstance()
-        .getNode(storageGroupName + "-" + tsfile.getName());
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;
     this.flushUpdateLatestFlushTimeCallback = flushUpdateLatestFlushTimeCallback;
     LOGGER.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
@@ -116,6 +114,7 @@ public class UnsealedTsFileProcessorV2 {
    */
   public boolean insert(InsertPlan insertPlan) {
 
+    long start1 = System.currentTimeMillis();
     if (workMemTable == null) {
       // TODO change the impl of getEmptyMemTable to non-blocking
       workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
@@ -125,10 +124,14 @@ public class UnsealedTsFileProcessorV2 {
         return false;
       }
     }
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("UFP get a memtable cost: {}", start1);
+    }
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
-        logNode.write(insertPlan);
+        getLogNode().write(insertPlan);
       } catch (IOException e) {
         LOGGER.error("write WAL failed", e);
         return false;
@@ -137,8 +140,13 @@ public class UnsealedTsFileProcessorV2 {
     // update start time of this memtable
     tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
 
+    long start2 = System.currentTimeMillis();
     // insert tsRecord to work memtable
     workMemTable.insert(insertPlan);
+    start2 = System.currentTimeMillis() - start2;
+    if (start2 > 1000) {
+      LOGGER.info("UFP insert into memtable cost: {}", start2);
+    }
 
     return true;
   }
@@ -261,7 +269,7 @@ public class UnsealedTsFileProcessorV2 {
         return;
       }
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyStartFlush();
+        getLogNode().notifyStartFlush();
       }
       flushingMemTables.addLast(workMemTable);
       workMemTable.setVersion(versionController.nextVersion());
@@ -284,9 +292,8 @@ public class UnsealedTsFileProcessorV2 {
     try {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
-      LOGGER.info(
-          "flush finished, remove a memtable from flushing list, flushing memtable list size: {}",
-          flushingMemTables.size());
+      LOGGER.info("flush finished, remove a memtable from flushing list, "
+              + "flushing memtable list size: {}", flushingMemTables.size());
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -314,7 +321,7 @@ public class UnsealedTsFileProcessorV2 {
         LOGGER.info("release a memtable cost: {}", elapse);
       }
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        logNode.notifyEndFlush();
+        getLogNode().notifyEndFlush();
       }
       LOGGER.info("flush a memtable has finished");
     } else {
@@ -373,8 +380,17 @@ public class UnsealedTsFileProcessorV2 {
     return managedByFlushManager;
   }
 
-  public WriteLogNode getLogNode() {
+  public WriteLogNode getLogNode() throws IOException {
+    if (logNode == null) {
+      logNode = MultiFileLogNodeManager.getInstance()
+          .getNode(storageGroupName + "-" + tsFileResource.getFile().getName());
+    }
     return logNode;
+  }
+
+  public void close() throws IOException {
+    tsFileResource.close();
+    MultiFileLogNodeManager.getInstance().deleteNode(storageGroupName + "-" + tsFileResource.getFile().getName());
   }
 
   public void setManagedByFlushManager(boolean managedByFlushManager) {

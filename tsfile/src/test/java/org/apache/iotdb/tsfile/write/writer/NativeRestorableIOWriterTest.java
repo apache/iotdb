@@ -76,14 +76,12 @@ public class NativeRestorableIOWriterTest {
     NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
+    assertEquals(TsFileCheckStatus.ONLY_MAGIC_HEAD, rWriter.getTruncatedPosition());
 
     rWriter = new NativeRestorableIOWriter(file);
     assertEquals(TsFileCheckStatus.COMPLETE_FILE, rWriter.getTruncatedPosition());
     assertFalse(rWriter.canWrite());
-    rWriter = new NativeRestorableIOWriter(file);
-    assertEquals(TSFileConfig.MAGIC_STRING.length(), rWriter.getTruncatedPosition());
-    writer = new TsFileWriter(rWriter);
-    writer.close();
+    rWriter.close();
     assertTrue(file.delete());
   }
 
@@ -323,16 +321,10 @@ public class NativeRestorableIOWriterTest {
     rWriter.close();
 
     rWriter = new NativeRestorableIOWriter(file);
-    assertTrue(rWriter.canWrite());
-    writer = new TsFileWriter(rWriter);
-    writer.write(new TSRecord(3, "d1").addTuple(new FloatDataPoint("s1", 5))
-        .addTuple(new FloatDataPoint("s2", 4)));
-    writer.write(new TSRecord(4, "d1").addTuple(new FloatDataPoint("s1", 5))
-        .addTuple(new FloatDataPoint("s2", 4)));
-    writer.close();
+    assertFalse(rWriter.canWrite());
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
     TsDeviceMetadataIndex index = reader.readFileMetadata().getDeviceMap().get("d1");
-    assertEquals(2, reader.readTsDeviceMetaData(index).getChunkGroupMetaDataList().size());
+    assertEquals(1, reader.readTsDeviceMetaData(index).getChunkGroupMetaDataList().size());
     reader.close();
     assertTrue(file.delete());
   }

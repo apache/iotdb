@@ -35,7 +35,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.filenode.CopyOnReadLinkedList;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
@@ -66,12 +65,12 @@ public class FileNodeProcessorV2 {
 
   private FileSchema fileSchema;
 
-  // includes sealed and unsealed sequnce tsfiles
+  // includes sealed and unsealed sequence tsfiles
   private List<TsFileResourceV2> sequenceFileList = new ArrayList<>();
   private UnsealedTsFileProcessorV2 workSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<UnsealedTsFileProcessorV2> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
-  // includes sealed and unsealed unsequnce tsfiles
+  // includes sealed and unsealed unSequnce tsfiles
   private List<TsFileResourceV2> unSequenceFileList = new ArrayList<>();
   private UnsealedTsFileProcessorV2 workUnSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<UnsealedTsFileProcessorV2> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
@@ -237,7 +236,7 @@ public class FileNodeProcessorV2 {
     lock.writeLock().lock();
     long lockElapsed = System.currentTimeMillis() - lockStartTime;
     if (lockElapsed > 1000) {
-      LOGGER.info("FNP insert waiting for lock costs {} ms", lockElapsed);
+      LOGGER.info("FNP {} insert waiting for lock costs {} ms", storageGroupName, lockElapsed);
     }
     long start = System.currentTimeMillis();
     try {
@@ -260,7 +259,7 @@ public class FileNodeProcessorV2 {
       return false;
     } finally {
       long elapse = System.currentTimeMillis() - start;
-      if (elapse > 5000) {
+      if (elapse > 2000) {
         LOGGER.info("long-tail insertion, cost: {}", elapse);
       }
       lock.writeLock().unlock();
@@ -272,6 +271,7 @@ public class FileNodeProcessorV2 {
     UnsealedTsFileProcessorV2 unsealedTsFileProcessor;
     boolean result;
     // create a new BufferWriteProcessor
+    long start1 = System.currentTimeMillis();
     if (sequence) {
       if (workSequenceTsFileProcessor == null) {
         workSequenceTsFileProcessor = createTsFileProcessor(true);
@@ -285,9 +285,18 @@ public class FileNodeProcessorV2 {
       }
       unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
     }
+    start1 = System.currentTimeMillis() - start1;
+    if (start1 > 1000) {
+      LOGGER.info("FNP {} create a new unsealed file processor cost: {}", storageGroupName, start1);
+    }
 
     // insert BufferWrite
+    long start2 = System.currentTimeMillis();
     result = unsealedTsFileProcessor.insert(insertPlan);
+    start2 = System.currentTimeMillis() - start2;
+    if (start2 > 1000) {
+      LOGGER.info("FNP {} insert a record into unsealed file processor cost: {}", storageGroupName, start2);
+    }
 
     // try to update the latest time of the device of this tsRecord
     if (result && latestTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
@@ -295,6 +304,7 @@ public class FileNodeProcessorV2 {
     }
 
     // check memtable size and may asyncFlush the workMemtable
+    long time1 = System.currentTimeMillis();
     if (unsealedTsFileProcessor.shouldFlush()) {
 
       LOGGER.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
@@ -306,6 +316,10 @@ public class FileNodeProcessorV2 {
       } else {
         unsealedTsFileProcessor.asyncFlush();
       }
+    }
+    time1 = System.currentTimeMillis() - time1;
+    if (time1 > 1000) {
+      LOGGER.info("FNP {} check flush and close cost: {}ms", storageGroupName, time1);
     }
 
     return result;
@@ -594,9 +608,11 @@ public class FileNodeProcessorV2 {
   // TODO please consider concurrency with query and insert method.
   public void closeUnsealedTsFileProcessorCallback(
       UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
-    // end time with one start time
-    TsFileResourceV2 resource = unsealedTsFileProcessor.getTsFileResource();
-    resource.setClosed(true);
+    try {
+      unsealedTsFileProcessor.close();
+    } catch (IOException e) {
+      LOGGER.error("storage group: {} close unsealedTsFileProcessor failed", storageGroupName, e);
+    }
     if (closingSequenceTsFileProcessor.contains(unsealedTsFileProcessor)) {
       closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);
     } else {
