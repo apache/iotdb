@@ -76,7 +76,7 @@ public class AggregateEngineExecutor {
   }
 
   /**
-   * executeWithoutValueFilter aggregate function with only time filter or no filter.
+   * execute aggregate function with only time filter or no filter.
    *
    * @param context query context
    */
@@ -253,7 +253,7 @@ public class AggregateEngineExecutor {
 
 
   /**
-   * executeWithoutValueFilter aggregate function with value filter.
+   * execute aggregate function with value filter.
    *
    * @param context query context.
    */

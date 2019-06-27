@@ -563,7 +563,7 @@ public class IoTDBAuthorizationIT {
     userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
     userStmt.execute("CREATE TIMESERIES root.a.c WITH DATATYPE=INT32,ENCODING=PLAIN");
     userStmt.execute("INSERT INTO root.a(timestamp,b,c) VALUES (1,100,1000)");
-    // userStmt.executeWithoutValueFilter("DELETE FROM root.a.b WHERE TIME <= 1000000000");
+    // userStmt.execute("DELETE FROM root.a.b WHERE TIME <= 1000000000");
     userStmt.execute("SELECT * FROM root");
     userStmt.getResultSet().close();
 

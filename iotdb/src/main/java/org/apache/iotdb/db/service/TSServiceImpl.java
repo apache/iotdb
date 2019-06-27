@@ -413,7 +413,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * Judge whether the statement is ADMIN COMMAND and if true, executeWithoutValueFilter it.
+   * Judge whether the statement is ADMIN COMMAND and if true, execute it.
    *
    * @param statement command
    * @return true if the statement is ADMIN COMMAND
@@ -481,7 +481,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         } catch (Exception e) {
           String errMessage = String.format(
-              "Fail to generate physcial plan and executeWithoutValueFilter for statement "
+              "Fail to generate physcial plan and execute for statement "
                   + "%s beacuse %s",
               statement, e.getMessage());
           LOGGER.warn("Error occurred when executing {}", statement, e);

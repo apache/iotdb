@@ -90,7 +90,7 @@ public class EngineExecutor {
   }
 
   /**
-   * executeWithoutValueFilter query.
+   * executeWithValueFilter query.
    *
    * @return QueryDataSet object
    * @throws FileNodeManagerException FileNodeManagerException
