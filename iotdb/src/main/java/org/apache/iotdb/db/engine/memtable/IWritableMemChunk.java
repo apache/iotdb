@@ -44,11 +44,25 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
 
   TSDataType getType();
 
+  /**
+   * using offset to mark which data is deleted:
+   * the data whose timestamp is less than offset are deleted.
+   * @param offset
+   */
   void setTimeOffset(long offset);
 
   void releasePrimitiveArrayList();
 
+  /**
+   * be used when flushing data on disk.
+   * this method will remove duplicated data and sort them.
+   * @return
+   */
   default DeduplicatedSortedData getDeduplicatedSortedData(){return null;}
 
+  /**
+   * served for query requests.
+   * @return
+   */
   default TVList getSortedTVList(){return null;}
 }

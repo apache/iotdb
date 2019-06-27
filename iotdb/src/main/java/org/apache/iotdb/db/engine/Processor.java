@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
  *
  * @see BufferWriteProcessor
  */
+@Deprecated
 public abstract class Processor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Processor.class);

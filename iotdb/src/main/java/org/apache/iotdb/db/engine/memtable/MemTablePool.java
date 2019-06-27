@@ -28,7 +28,7 @@ public class MemTablePool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTablePool.class);
 
-  private static final Deque<IMemTable> emptyMemTables = new ArrayDeque<>();
+  private static final Deque<IMemTable> availableMemTables = new ArrayDeque<>();
 
   /**
    * >= number of storage group * 2
@@ -45,30 +45,30 @@ public class MemTablePool {
   }
 
   public IMemTable getEmptyMemTable(Object applier) {
-    synchronized (emptyMemTables) {
-      if (emptyMemTables.isEmpty() && size < capacity) {
+    synchronized (availableMemTables) {
+      if (availableMemTables.isEmpty() && size < capacity) {
         size++;
         LOGGER.info("generated a new memtable for {}, system memtable size: {}, stack size: {}",
-            applier, size, emptyMemTables.size());
+            applier, size, availableMemTables.size());
         return new PrimitiveMemTable();
-      } else if (!emptyMemTables.isEmpty()) {
+      } else if (!availableMemTables.isEmpty()) {
         LOGGER
             .info("system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
-                size, emptyMemTables.size(), applier);
-        return emptyMemTables.pop();
+                size, availableMemTables.size(), applier);
+        return availableMemTables.pop();
       }
 
       // wait until some one has released a memtable
       int waitCount = 1;
       while (true) {
-        if (!emptyMemTables.isEmpty()) {
+        if (!availableMemTables.isEmpty()) {
           LOGGER.info(
               "system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
-              size, emptyMemTables.size(), applier);
-          return emptyMemTables.pop();
+              size, availableMemTables.size(), applier);
+          return availableMemTables.pop();
         }
         try {
-          emptyMemTables.wait(WAIT_TIME);
+          availableMemTables.wait(WAIT_TIME);
         } catch (InterruptedException e) {
           LOGGER.error("{} fails to wait fot memtables {}, continue to wait", applier, e);
         }
@@ -78,20 +78,20 @@ public class MemTablePool {
   }
 
   public void putBack(IMemTable memTable) {
-    synchronized (emptyMemTables) {
+    synchronized (availableMemTables) {
       memTable.clear();
-      emptyMemTables.push(memTable);
-      emptyMemTables.notify();
-      LOGGER.info("a memtable returned, stack size {}", emptyMemTables.size());
+      availableMemTables.push(memTable);
+      availableMemTables.notify();
+      LOGGER.info("a memtable returned, stack size {}", availableMemTables.size());
     }
   }
 
   public void putBack(IMemTable memTable, String storageGroup) {
-    synchronized (emptyMemTables) {
+    synchronized (availableMemTables) {
       memTable.clear();
-      emptyMemTables.push(memTable);
-      emptyMemTables.notify();
-      LOGGER.info("{} return a memtable, stack size {}", storageGroup, emptyMemTables.size());
+      availableMemTables.push(memTable);
+      availableMemTables.notify();
+      LOGGER.info("{} return a memtable, stack size {}", storageGroup, availableMemTables.size());
     }
   }
 
