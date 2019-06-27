@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class TVList {
@@ -33,6 +34,8 @@ public abstract class TVList {
 
   protected long[] sortedTimestamps;
   protected boolean sorted = false;
+
+  private long timeOffset = -1;
 
   public TVList() {
     timestamps = new ArrayList<>();
@@ -112,6 +115,8 @@ public abstract class TVList {
 
   protected abstract void reverseRange(int lo, int hi);
 
+  protected abstract TVList clone();
+
   protected long[] cloneTime(long[] array) {
     long[] cloneArray = new long[array.length];
     System.arraycopy(array, 0, cloneArray, 0, array.length);
@@ -149,5 +154,26 @@ public abstract class TVList {
     }
 
     return runHi - lo;
+  }
+
+  public static TVList newList(TSDataType dataType) {
+    switch (dataType) {
+      case TEXT:
+      case FLOAT:
+      case INT32:
+      case INT64:
+        return new LongTVList();
+      case DOUBLE:
+      case BOOLEAN:
+    }
+    return null;
+  }
+
+  public long getTimeOffset() {
+    return timeOffset;
+  }
+
+  public void setTimeOffset(long timeOffset) {
+    this.timeOffset = timeOffset;
   }
 }
