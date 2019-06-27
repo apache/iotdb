@@ -143,15 +143,15 @@ public class LongTVList extends TVList {
         if (rightIdx == hi) {
           endSide = 2;
         } else {
-          rightFirstT = getTime(leftIdx);
-          rightFirstV = getLong(leftIdx);
+          rightFirstT = getTime(rightIdx);
+          rightFirstV = getLong(rightIdx);
         }
       }
     }
     if (endSide == 1) {
       for (; rightIdx < hi; rightIdx++) {
-        rightFirstT = getTime(leftIdx);
-        rightFirstV = getLong(leftIdx);
+        rightFirstT = getTime(rightIdx);
+        rightFirstV = getLong(rightIdx);
         sortedTimestamps[lo + tmpIdx] = rightFirstT;
         sortedValues[lo + tmpIdx] = rightFirstV;
         tmpIdx ++;
@@ -218,6 +218,10 @@ public class LongTVList extends TVList {
       }
       set(left, pivotT, pivotV);
     }
+    for (int i = lo; i < hi; i++) {
+      sortedTimestamps[i] = getTime(i);
+      sortedValues[i] = getLong(i);
+    }
   }
 
   protected void reverseRange(int lo, int hi) {
@@ -229,7 +233,6 @@ public class LongTVList extends TVList {
       long hiV = getLong(hi);
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
-      lo++;
     }
   }
 }
