@@ -107,7 +107,7 @@ public abstract class IFill {
 
     @Override
     public void close() {
-      // no need to setCloseMark
+      // no need to close
     }
   }
 }

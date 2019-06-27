@@ -51,7 +51,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           return;
         }
         if (logger.isDebugEnabled()) {
-          logger.debug("Timed force starts, {} nodes to be flushed", nodeMap.size());
         }
 
         for (WriteLogNode node : nodeMap.values()) {
@@ -61,7 +60,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
             logger.error("Cannot force {}, because ", node, e);
           }
         }
-        logger.debug("Timed force finished");
         try {
           Thread.sleep(config.getForceWalPeriodInMs());
         } catch (InterruptedException e) {

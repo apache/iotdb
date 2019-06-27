@@ -57,7 +57,7 @@ public class TsFileMetaDataCache {
     synchronized (internPath) {
       cacheRequestNum.incrementAndGet();
       if (!cache.containsKey(path)) {
-        // cloneList value from tsfile
+        // read value from tsfile
         TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(path);
         cache.put(path, fileMetaData);
         if (LOGGER.isDebugEnabled()) {

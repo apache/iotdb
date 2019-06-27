@@ -255,7 +255,7 @@ public class SyncServiceImpl implements SyncService.Iface {
           operation(metadataOperation);
         }
       } catch (FileNotFoundException e) {
-        logger.error("Cannot cloneList the file {}.",
+        logger.error("Cannot read the file {}.",
             schemaFromSenderPath.get(), e);
         return false;
       } catch (IOException e) {
@@ -411,7 +411,7 @@ public class SyncServiceImpl implements SyncService.Iface {
             endTimeMap.put(key, device.getEndTime());
           }
         } catch (IOException e) {
-          logger.error("Unable to cloneList tsfile {}", fileTF.getPath());
+          logger.error("Unable to read tsfile {}", fileTF.getPath());
           throw new IOException(e);
         } finally {
           try {
@@ -419,7 +419,7 @@ public class SyncServiceImpl implements SyncService.Iface {
               reader.close();
             }
           } catch (IOException e) {
-            logger.error("Cannot setCloseMark tsfile stream {}", fileTF.getPath());
+            logger.error("Cannot close tsfile stream {}", fileTF.getPath());
             throw new IOException(e);
           }
         }
@@ -574,7 +574,7 @@ public class SyncServiceImpl implements SyncService.Iface {
           reader.close();
         }
       } catch (IOException e) {
-        logger.error("Cannot setCloseMark file stream {}", filePath, e);
+        logger.error("Cannot close file stream {}", filePath, e);
       }
     }
   }
@@ -659,7 +659,7 @@ public class SyncServiceImpl implements SyncService.Iface {
       try {
         closeReaders(tsfilesReaders);
       } catch (IOException e) {
-        logger.error("Cannot setCloseMark file stream {}", filePath, e);
+        logger.error("Cannot close file stream {}", filePath, e);
       }
     }
   }

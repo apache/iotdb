@@ -207,7 +207,7 @@ public class UnsealedTsFileProcessorV2 {
 
   /**
    * Ensure there must be a flush thread submitted after setCloseMark() is called,
-   * therefore the setCloseMark task will be executed by a flush thread.
+   * therefore the close task will be executed by a flush thread.
    */
   public void asyncClose() {
     flushQueryLock.writeLock().lock();
@@ -389,7 +389,7 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   public void close() throws IOException {
-    tsFileResource.setClosed(true);
+    tsFileResource.close();
     MultiFileLogNodeManager.getInstance().deleteNode(storageGroupName + "-" + tsFileResource.getFile().getName());
   }
 

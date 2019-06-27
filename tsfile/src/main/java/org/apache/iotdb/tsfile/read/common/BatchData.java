@@ -32,8 +32,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class BatchData implements Serializable {
 
   private static final long serialVersionUID = -4620310601188394839L;
-  private int timeCapacity = 1;
-  private int valueCapacity = 1;
+  private int timeCapacity = 16;
+  private int valueCapacity = 16;
   private int emptyTimeCapacity = 1;
   private int capacityThreshold = 1024;
 

@@ -435,7 +435,7 @@ public class BufferWriteProcessor extends Processor {
       // switch
       if (isCloseTaskCalled) {
         LOGGER.info(
-            "flush memtable for bufferwrite processor {} synchronously for setCloseMark task.",
+            "flush memtable for bufferwrite processor {} synchronously for close task.",
             getProcessorName(), FlushPoolManager.getInstance().getWaitingTasksNumber(),
             FlushPoolManager.getInstance().getCorePoolSize());
         flushTask("synchronously", tmpMemTableToFlush, version, flushId);
@@ -477,12 +477,12 @@ public class BufferWriteProcessor extends Processor {
     }
     try {
       // flush data (if there are flushing task, flush() will be blocked) and wait for finishing flush async
-      LOGGER.info("Submit a BufferWrite ({}) setCloseMark task.", getProcessorName());
+      LOGGER.info("Submit a BufferWrite ({}) close task.", getProcessorName());
       closeFuture = new BWCloseFuture(FlushPoolManager.getInstance().submit(() -> closeTask()));
       //now, we omit the future of the closeTask.
     } catch (Exception e) {
       LOGGER
-          .error("Failed to setCloseMark the bufferwrite processor when calling the action function.", e);
+          .error("Failed to close the bufferwrite processor when calling the action function.", e);
       throw new BufferWriteProcessorException(e);
     }
   }
@@ -496,9 +496,9 @@ public class BufferWriteProcessor extends Processor {
       // end file
       writer.endFile(fileSchema);
       //FIXME suppose the flush-thread-pool is 2.
-      // then if a flush task and a setCloseMark task are running in the same time
-      // and the setCloseMark task is faster, then writer == null, and the flush task will throw nullpointer
-      // exception. Add "synchronized" keyword on both flush and setCloseMark may solve the issue.
+      // then if a flush task and a close task are running in the same time
+      // and the close task is faster, then writer == null, and the flush task will throw nullpointer
+      // exception. Add "synchronized" keyword on both flush and close may solve the issue.
       writer = null;
       // update the IntervalFile for interval list
       bufferwriteCloseConsumer.accept(this);
