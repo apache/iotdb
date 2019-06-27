@@ -157,7 +157,7 @@ public class UnsealedTsFileProcessorV2Test {
               String deviceId = startTime.getKey();
               resource.getEndTimeMap().put(deviceId, resource.getStartTimeMap().get(deviceId));
             }
-            resource.setClosed(true);
+            resource.close(true);
           }
         }, ()->true);
 
