@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class TVList {
 
@@ -71,7 +72,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException("DataType not consistent");
   }
 
-  public void putString(long time, String value) {
+  public void putBinary(long time, Binary value) {
     throw new UnsupportedOperationException("DataType not consistent");
   }
 
@@ -95,7 +96,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException("DataType not consistent");
   }
 
-  public String getString(int index) {
+  public Binary getBinary(int index) {
     throw new UnsupportedOperationException("DataType not consistent");
   }
 
@@ -108,8 +109,6 @@ public abstract class TVList {
   protected abstract void binarySort(int lo, int hi, int start);
 
   protected abstract void merge(int lo, int mid, int hi);
-
-  protected abstract void cleanAfterSort();
 
   protected abstract void reverseRange(int lo, int hi);
 
@@ -129,9 +128,6 @@ public abstract class TVList {
     sort(lo, mid);
     sort(mid, hi);
     merge(lo, mid, hi);
-    sorted = true;
-    cleanAfterSort();
-    timestamps = null;
   }
 
   protected int countRunAndMakeAscending(int lo, int hi) {
