@@ -106,6 +106,9 @@ public class LongTVList extends TVList {
     sortedTimestamps = new long[size];
     sortedValues = new long[size];
     sort(0, size);
+    sorted = true;
+    values = null;
+    timestamps = null;
   }
 
   protected void merge(int lo, int mid, int hi) {
@@ -165,11 +168,6 @@ public class LongTVList extends TVList {
     for (int i = lo; i < hi; i++) {
       set(i, sortedTimestamps[i], sortedValues[i]);
     }
-  }
-
-  @Override
-  protected void cleanAfterSort() {
-    values = null;
   }
 
   private void set(int src, int dest) {
