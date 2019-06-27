@@ -95,14 +95,6 @@ public class TsFileResourceV2 {
     this.readOnlyMemChunk = readOnlyMemChunk;
   }
 
-  public TsFileResourceV2(File file, Map<String, Long> startTimeMap, Map<String, Long> endTimeMap) {
-    this.file = file;
-    this.startTimeMap = startTimeMap;
-    this.endTimeMap = endTimeMap;
-    this.closed = true;
-  }
-
-
   public void serialize() throws IOException {
     try (OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file + RESOURCE_SUFFIX))){
       ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
@@ -117,7 +109,6 @@ public class TsFileResourceV2 {
       }
     }
   }
-
 
   public void deSerialize() throws IOException {
     try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file + RESOURCE_SUFFIX))) {
@@ -191,8 +182,8 @@ public class TsFileResourceV2 {
     return closed;
   }
 
-  public void setClosed(boolean closed) {
-    this.closed = closed;
+  public void close() {
+    closed = true;
     processor = null;
   }
 

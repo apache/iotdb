@@ -389,7 +389,7 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   public void close() throws IOException {
-    tsFileResource.setClosed(true);
+    tsFileResource.close();
     MultiFileLogNodeManager.getInstance().deleteNode(storageGroupName + "-" + tsFileResource.getFile().getName());
   }
 
