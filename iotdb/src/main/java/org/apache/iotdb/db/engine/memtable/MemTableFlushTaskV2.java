@@ -15,6 +15,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -80,7 +81,7 @@ public class MemTableFlushTaskV2 {
         // TODO if we can not use TSFileIO writer, then we have to redesign the class of TSFileIO.
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
-        DeduplicatedSortedData sortedTimeValuePairs = series.getDeduplicatedSortedData();
+        List<TimeValuePair> sortedTimeValuePairs = series.getSortedTimeValuePairList();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(sortedTimeValuePairs, desc));
       }
@@ -132,7 +133,7 @@ public class MemTableFlushTaskV2 {
               ioTaskQueue.add(task);
             } else {
               long starTime = System.currentTimeMillis();
-              Pair<DeduplicatedSortedData, MeasurementSchema> encodingMessage = (Pair<DeduplicatedSortedData, MeasurementSchema>) task;
+              Pair<List<TimeValuePair>, MeasurementSchema> encodingMessage = (Pair<List<TimeValuePair>, MeasurementSchema>) task;
               ChunkBuffer chunkBuffer = new ChunkBuffer(encodingMessage.right);
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right, chunkBuffer,
                   PAGE_SIZE_THRESHOLD);
@@ -213,11 +214,10 @@ public class MemTableFlushTaskV2 {
   };
 
 
-  private void writeOneSeries(DeduplicatedSortedData tvPairs, IChunkWriter seriesWriterImpl,
+  private void writeOneSeries(List<TimeValuePair> tvPairs, IChunkWriter seriesWriterImpl,
       TSDataType dataType)
       throws IOException {
-    while (tvPairs.hasNext()) {
-      TimeValuePair timeValuePair = tvPairs.next();
+    for (TimeValuePair timeValuePair: tvPairs) {
       switch (dataType) {
         case BOOLEAN:
           seriesWriterImpl
