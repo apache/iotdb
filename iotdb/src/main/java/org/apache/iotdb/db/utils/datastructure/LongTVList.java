@@ -111,117 +111,20 @@ public class LongTVList extends TVList {
     timestamps = null;
   }
 
-  protected void merge(int lo, int mid, int hi) {
-    int tmpIdx = 0;
-
-    int leftIdx = lo;
-    int rightIdx = mid;
-
-    long leftFirstT = getTime(leftIdx);
-    long leftFirstV = getLong(leftIdx);
-    long rightFirstT = getTime(rightIdx);
-    long rightFirstV = getLong(rightIdx);
-
-    int endSide = 0;
-    while (endSide == 0) {
-      if (leftFirstT <= rightFirstT) {
-        sortedTimestamps[lo + tmpIdx] = leftFirstT;
-        sortedValues[lo + tmpIdx] = leftFirstV;
-        tmpIdx ++;
-        leftIdx ++;
-        if (leftIdx == mid) {
-          endSide = 1;
-        } else {
-          leftFirstT = getTime(leftIdx);
-          leftFirstV = getLong(leftIdx);
-        }
-      } else {
-        sortedTimestamps[lo + tmpIdx] = rightFirstT;
-        sortedValues[lo + tmpIdx] = rightFirstV;
-        tmpIdx ++;
-        rightIdx ++;
-        if (rightIdx == hi) {
-          endSide = 2;
-        } else {
-          rightFirstT = getTime(rightIdx);
-          rightFirstV = getLong(rightIdx);
-        }
-      }
-    }
-    if (endSide == 1) {
-      for (; rightIdx < hi; rightIdx++) {
-        rightFirstT = getTime(rightIdx);
-        rightFirstV = getLong(rightIdx);
-        sortedTimestamps[lo + tmpIdx] = rightFirstT;
-        sortedValues[lo + tmpIdx] = rightFirstV;
-        tmpIdx ++;
-      }
-    } else {
-      for(; leftIdx < mid; leftIdx++) {
-        leftFirstT = getTime(leftIdx);
-        leftFirstV = getLong(leftIdx);
-        sortedTimestamps[lo + tmpIdx] = leftFirstT;
-        sortedValues[lo + tmpIdx] = leftFirstV;
-        tmpIdx ++;
-      }
-    }
-    for (int i = lo; i < hi; i++) {
-      set(i, sortedTimestamps[i], sortedValues[i]);
-    }
+  @Override
+  protected void setFromSorted(int src, int dest) {
+    set(dest, sortedTimestamps[src], sortedValues[src]);
   }
 
-  private void set(int src, int dest) {
+  protected void set(int src, int dest) {
     long srcT = getTime(src);
     long srcV = getLong(src);
     set(dest, srcT, srcV);
   }
 
-  /**
-   * From TimSort.java
-   */
-  protected void binarySort(int lo, int hi, int start) {
-    assert lo <= start && start <= hi;
-    if (start == lo)
-      start++;
-    for ( ; start < hi; start++) {
-      long pivotT = getTime(start);
-      long pivotV = getLong(start);
-
-      // Set left (and right) to the index where a[start] (pivot) belongs
-      int left = lo;
-      int right = start;
-      assert left <= right;
-      /*
-       * Invariants:
-       *   pivot >= all in [lo, left).
-       *   pivot <  all in [right, start).
-       */
-      while (left < right) {
-        int mid = (left + right) >>> 1;
-        if (pivotT < getTime(mid))
-          right = mid;
-        else
-          left = mid + 1;
-      }
-      assert left == right;
-
-      /*
-       * The invariants still hold: pivot >= all in [lo, left) and
-       * pivot < all in [left, start), so pivot belongs at left.  Note
-       * that if there are elements equal to pivot, left points to the
-       * first slot after them -- that's why this sort is stable.
-       * Slide elements over to make room for pivot.
-       */
-      int n = start - left;  // The number of elements to move
-      for (int i = n; i >= 1; i--) {
-        set(left + i - 1, left + i);
-      }
-      set(left, pivotT, pivotV);
-    }
-    for (int i = lo; i < hi; i++) {
-      sortedTimestamps[i] = getTime(i);
-      sortedValues[i] = getLong(i);
-    }
+  protected void setSorted(int src, int dest) {
+    sortedTimestamps[dest] = getTime(src);
+    sortedValues[dest] = getLong(src);
   }
 
   protected void reverseRange(int lo, int hi) {

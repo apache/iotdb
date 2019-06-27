@@ -109,9 +109,11 @@ public abstract class TVList {
 
   public abstract void sort();
 
-  protected abstract void binarySort(int lo, int hi, int start);
+  protected abstract void set(int src, int dest);
 
-  protected abstract void merge(int lo, int mid, int hi);
+  protected abstract void setFromSorted(int src, int dest);
+
+  protected abstract void setSorted(int src, int dest);
 
   protected abstract void reverseRange(int lo, int hi);
 
@@ -175,5 +177,96 @@ public abstract class TVList {
 
   public void setTimeOffset(long timeOffset) {
     this.timeOffset = timeOffset;
+  }
+
+  protected int compare(int idx1, int idx2) {
+    long t1 = getTime(idx1);
+    long t2 = getTime(idx2);
+    return Long.compare(t1, t2);
+  }
+
+  /**
+   * From TimSort.java
+   */
+  protected void binarySort(int lo, int hi, int start) {
+    assert lo <= start && start <= hi;
+    if (start == lo)
+      start++;
+    for ( ; start < hi; start++) {
+
+      // Set left (and right) to the index where a[start] (pivot) belongs
+      int left = lo;
+      int right = start;
+      assert left <= right;
+      /*
+       * Invariants:
+       *   pivot >= all in [lo, left).
+       *   pivot <  all in [right, start).
+       */
+      while (left < right) {
+        int mid = (left + right) >>> 1;
+        if (compare(start, mid) < 0)
+          right = mid;
+        else
+          left = mid + 1;
+      }
+      assert left == right;
+
+      /*
+       * The invariants still hold: pivot >= all in [lo, left) and
+       * pivot < all in [left, start), so pivot belongs at left.  Note
+       * that if there are elements equal to pivot, left points to the
+       * first slot after them -- that's why this sort is stable.
+       * Slide elements over to make room for pivot.
+       */
+      int n = start - left;  // The number of elements to move
+      for (int i = n; i >= 1; i--) {
+        set(left + i - 1, left + i);
+      }
+      set(left, start);
+    }
+    for (int i = lo; i < hi; i++) {
+      setSorted(i, i);
+    }
+  }
+
+  protected void merge(int lo, int mid, int hi) {
+    int tmpIdx = 0;
+
+    int leftIdx = lo;
+    int rightIdx = mid;
+
+    int endSide = 0;
+    while (endSide == 0) {
+      if (compare(leftIdx, rightIdx) <= 0) {
+        setSorted(leftIdx, lo + tmpIdx);
+        tmpIdx ++;
+        leftIdx ++;
+        if (leftIdx == mid) {
+          endSide = 1;
+        }
+      } else {
+        setSorted(rightIdx, lo + tmpIdx);
+        tmpIdx ++;
+        rightIdx ++;
+        if (rightIdx == hi) {
+          endSide = 2;
+        }
+      }
+    }
+    if (endSide == 1) {
+      for (; rightIdx < hi; rightIdx++) {
+        setSorted(rightIdx, lo + tmpIdx);
+        tmpIdx ++;
+      }
+    } else {
+      for(; leftIdx < mid; leftIdx++) {
+        setSorted(leftIdx, lo + tmpIdx);
+        tmpIdx ++;
+      }
+    }
+    for (int i = lo; i < hi; i++) {
+      setFromSorted(i, i);
+    }
   }
 }
