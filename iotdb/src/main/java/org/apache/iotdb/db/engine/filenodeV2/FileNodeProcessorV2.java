@@ -91,6 +91,8 @@ public class FileNodeProcessorV2 {
 
   private final Object closeFileNodeCondition = new Object();
 
+  private final ThreadLocal<Long> timerr = new ThreadLocal<>();
+
   /**
    * Mark whether to close file node
    */
@@ -219,12 +221,12 @@ public class FileNodeProcessorV2 {
    */
   public void addTimeSeries(String measurementId, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) {
-    lock.writeLock().lock();
+    writeLock();
     try {
       fileSchema.registerMeasurement(new MeasurementSchema(measurementId, dataType, encoding,
           compressor, props));
     } finally {
-      lock.writeLock().unlock();
+      writeUnlock();
     }
   }
 
@@ -233,7 +235,7 @@ public class FileNodeProcessorV2 {
    */
   public boolean insert(InsertPlan insertPlan) {
     long lockStartTime = System.currentTimeMillis();
-    lock.writeLock().lock();
+    writeLock();
     long lockElapsed = System.currentTimeMillis() - lockStartTime;
     if (lockElapsed > 1000) {
       LOGGER.info("FNP {} insert waiting for lock costs {} ms", storageGroupName, lockElapsed);
@@ -262,7 +264,7 @@ public class FileNodeProcessorV2 {
       if (elapse > 2000) {
         LOGGER.info("long-tail insertion, cost: {}", elapse);
       }
-      lock.writeLock().unlock();
+      writeUnlock();
     }
   }
 
@@ -388,6 +390,25 @@ public class FileNodeProcessorV2 {
     }
   }
 
+  private void writeLock() {
+    long time = System.currentTimeMillis();
+    lock.writeLock().lock();
+    time = System.currentTimeMillis() - time;
+    if (time > 1000) {
+      LOGGER.info("storage group {} wait for write lock cost: {}", storageGroupName, time, new RuntimeException());
+    }
+    timerr.set(System.currentTimeMillis());
+  }
+
+  private void writeUnlock() {
+    lock.writeLock().unlock();
+    long time = System.currentTimeMillis() - timerr.get();
+    if (time > 1000) {
+      LOGGER.info("storage group {} take lock for {}ms", storageGroupName, time, new RuntimeException());
+    }
+  }
+
+
   /**
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
@@ -435,7 +456,7 @@ public class FileNodeProcessorV2 {
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
-    lock.writeLock().lock();
+    writeLock();
 
     // record what files are updated so we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
@@ -477,7 +498,7 @@ public class FileNodeProcessorV2 {
       }
       throw new IOException(e);
     } finally {
-      lock.writeLock().unlock();
+      writeUnlock();
     }
   }
 
@@ -508,7 +529,7 @@ public class FileNodeProcessorV2 {
 
 
   public void asyncForceClose() {
-    lock.writeLock().lock();
+    writeLock();
     LOGGER.info("async force close all file in storage group: {}", storageGroupName);
     try {
       if (workSequenceTsFileProcessor != null) {
@@ -524,7 +545,7 @@ public class FileNodeProcessorV2 {
         workUnSequenceTsFileProcessor = null;
       }
     } finally {
-      lock.writeLock().unlock();
+      writeUnlock();
     }
   }
 
@@ -590,14 +611,24 @@ public class FileNodeProcessorV2 {
 
 
   public boolean updateLatestFlushTimeCallback() {
-    lock.writeLock().lock();
+    long time = System.currentTimeMillis();
+    writeLock();
     try {
       // update the largest timestamp in the last flushing memtable
+      long time1 = System.currentTimeMillis();
       for (Entry<String, Long> entry : latestTimeForEachDevice.entrySet()) {
         latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
       }
+      time1 = System.currentTimeMillis() - time1;
+      if (time1 > 1000) {
+        LOGGER.info("update latest flush time call back cost {}ms", time1);
+      }
     } finally {
-      lock.writeLock().unlock();
+      writeUnlock();
+    }
+    time = System.currentTimeMillis() - time;
+    if (time > 1000) {
+      LOGGER.info("update latest flush time call back all cost {}ms", time);
     }
     return true;
   }
