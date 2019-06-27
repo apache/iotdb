@@ -1,76 +1,111 @@
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.sql.Time;
 import java.util.List;
 import org.apache.iotdb.db.engine.memtable.DeduplicatedSortedData;
 import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class LongTVListTest {
 
-  @Test
-  public void compareLongTVListInsertTime() {
 
-    long start = System.currentTimeMillis();
+  @Test
+  public void testLongTVList1() {
+
     LongTVList tvList = new LongTVList();
-    for (long i = 0; i < 1000000; i ++) {
+    for (long i = 0; i < 1000; i++) {
       tvList.putLong(i, i);
     }
-    start = System.currentTimeMillis() - start;
-    System.out.println("tvList insert time: " + start);
+    tvList.sort();
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(i, tvList.getLong((int)i));
+      Assert.assertEquals(i, tvList.getTime((int)i));
+    }
+  }
 
-    long time = System.currentTimeMillis();
-    WritableMemChunk writableMemChunk = new WritableMemChunk(TSDataType.INT64);
-    for (long i = 0; i < 1000000; i ++) {
-      writableMemChunk.putLong(i, i);
+  @Test
+  public void testLongTVList2() {
+
+    LongTVList tvList = new LongTVList();
+    for (long i = 10000; i >= 0; i--) {
+      tvList.putLong(i, i);
+    }
+    tvList.sort();
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(i, tvList.getLong((int)i));
+      Assert.assertEquals(i, tvList.getTime((int)i));
     }
 
-    time = System.currentTimeMillis() - time;
-    System.out.println("writable memchunk insert time: " + time);
+
+//    WritableMemChunk writableMemChunk = new WritableMemChunk(TSDataType.INT64);
+//    for (long i = 0; i < 1000; i++) {
+//      writableMemChunk.putLong(i, i);
+//    }
+//    List<TimeValuePair> timeValuePairs = writableMemChunk.getSortedTimeValuePairList();
+//    for (int i = 0; i < timeValuePairs.size(); i++) {
+//      timeValuePairs.get(i);
+//    }
+
   }
+
 
   @Test
   public void compareLongTVListSortTime() {
 
-    LongTVList tvList = new LongTVList();
-    for (long i = 0; i < 1000000; i ++) {
-      tvList.putLong(i, i);
-    }
-
-    WritableMemChunk writableMemChunk = new WritableMemChunk(TSDataType.INT64);
-    for (long i = 0; i < 1000000; i ++) {
-      writableMemChunk.putLong(i, i);
-    }
-
     long start = System.currentTimeMillis();
-    tvList.sort();
-    for (int i = 0; i < tvList.size; i ++) {
-      tvList.getLong(i);
-      tvList.getTime(i);
+
+    for (int j = 0; j < 100; j++) {
+      LongTVList tvList = new LongTVList();
+      for (long i = 0; i < 1000; i++) {
+        tvList.putLong(i, i);
+      }
+      tvList.sort();
+      for (int i = 0; i < tvList.size; i++) {
+        tvList.getLong(i);
+        tvList.getTime(i);
+      }
     }
     start = System.currentTimeMillis() - start;
     System.out.println("tvList sort time: " + start);
 
+  }
 
+
+  @Test
+  public void compareGetSortedTimeValuePairTime() {
     long time1 = System.currentTimeMillis();
-    List<TimeValuePair> timeValuePairs = writableMemChunk.getSortedTimeValuePairList();
-    for (int i = 0; i < timeValuePairs.size(); i++) {
-      timeValuePairs.get(i);
+    for (int j = 0; j < 100; j++) {
+      WritableMemChunk writableMemChunk = new WritableMemChunk(TSDataType.INT64);
+      for (long i = 0; i < 1000; i++) {
+        writableMemChunk.putLong(i, i);
+      }
+      List<TimeValuePair> timeValuePairs = writableMemChunk.getSortedTimeValuePairList();
+      for (int i = 0; i < timeValuePairs.size(); i++) {
+        timeValuePairs.get(i);
+      }
     }
     time1 = System.currentTimeMillis() - time1;
     System.out.println("writable memchunk getSortedTimeValuePairList time: " + time1);
 
+  }
 
+  @Test
+  public void compareGetDeduplicatedDataTime() {
     long time2 = System.currentTimeMillis();
-    DeduplicatedSortedData deduplicatedSortedData = writableMemChunk.getDeduplicatedSortedData();
-    while(deduplicatedSortedData.hasNext()) {
-      deduplicatedSortedData.next();
+    for (int j = 0; j < 100; j++) {
+      WritableMemChunk writableMemChunk = new WritableMemChunk(TSDataType.INT64);
+      for (long i = 0; i < 1000; i++) {
+        writableMemChunk.putLong(i, i);
+      }
+      DeduplicatedSortedData deduplicatedSortedData = writableMemChunk.getDeduplicatedSortedData();
+      while (deduplicatedSortedData.hasNext()) {
+        deduplicatedSortedData.next();
+      }
     }
     time2 = System.currentTimeMillis() - time2;
     System.out.println("writable memchunk getDeduplicatedSortedData time: " + time2);
   }
-
 
 }
