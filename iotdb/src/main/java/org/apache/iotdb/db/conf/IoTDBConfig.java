@@ -132,7 +132,7 @@ public class IoTDBConfig {
   private String indexFileDir = "index";
 
   /**
-   * Temporary directory for temporary files of cloneList (External Sort). TODO: unused field
+   * Temporary directory for temporary files of read(External Sort). TODO: unused field
    */
   private String readTmpFileDir = "readTmp";
 
@@ -148,7 +148,7 @@ public class IoTDBConfig {
   private int maxOpenFolder = 100;
 
   /**
-   * The amount of data that is cloneList every time when IoTDB merges data.
+   * The amount of data that is read every time when IoTDB merges data.
    */
   private int fetchSize = 10000;
 

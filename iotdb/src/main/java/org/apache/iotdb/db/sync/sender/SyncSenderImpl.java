@@ -300,7 +300,7 @@ public class SyncSenderImpl implements SyncSender {
       try (BufferedReader bf = new BufferedReader((new FileReader(uuidPath)))) {
         uuid = bf.readLine();
       } catch (IOException e) {
-        LOGGER.error("Cannot cloneList UUID from file{}", file.getPath());
+        LOGGER.error("Cannot read UUID from file{}", file.getPath());
         throw new IOException(e);
       }
     }

@@ -501,7 +501,7 @@
 //
 //    if (isMerging == FileNodeProcessorStatus.MERGING_WRITE) {
 //      // re-merge all file
-//      // if bufferwrite processor is not null, and setCloseMark
+//      // if bufferwrite processor is not null, and close
 //      LOGGER.info("The filenode processor {} is recovering, the filenode status is {}.",
 //          getProcessorName(), isMerging);
 //      merge();
@@ -736,7 +736,7 @@
 //   * add multiple pass lock.
 //   */
 //  public int addMultiPassCount() {
-//    LOGGER.debug("Add MultiPassCount: cloneList lock newMultiPassCount.");
+//    LOGGER.debug("Add MultiPassCount: read lock newMultiPassCount.");
 //    newMultiPassCount.incrementAndGet();
 //    while (newMultiPassTokenSet.contains(multiPassLockToken)) {
 //      multiPassLockToken++;
@@ -1012,7 +1012,7 @@
 //  }
 //
 //  /**
-//   * Prepare for merge, setCloseMark the bufferwrite and overflow.
+//   * Prepare for merge, close the bufferwrite and overflow.
 //   */
 //  private void prepareForMerge() {
 //    try {
@@ -1024,7 +1024,7 @@
 //          getProcessorName());
 //      // try to get overflow processor
 //      getOverflowProcessor(getProcessorName());
-//      // must setCloseMark the overflow processor
+//      // must close the overflow processor
 //      while (!getOverflowProcessor().canBeClosed()) {
 //        waitForClosing();
 //      }
@@ -1054,7 +1054,7 @@
 //   * Merge this storage group, merge the tsfile data with overflow data.
 //   */
 //  public void merge() throws FileNodeProcessorException {
-//    // setCloseMark bufferwrite and overflow, prepare for merge
+//    // close bufferwrite and overflow, prepare for merge
 //    LOGGER.info("The filenode processor {} begins to merge.", getProcessorName());
 //    writeLock();
 //    prepareForMerge();
@@ -1806,7 +1806,7 @@
 //
 //  @Override
 //  public void close() throws FileNodeProcessorException {
-//    LOGGER.info("Will setCloseMark FileNode Processor {}.", getProcessorName());
+//    LOGGER.info("Will close FileNode Processor {}.", getProcessorName());
 //    Future<Boolean> result = closeBufferWrite();
 //    try {
 //      result.get();
@@ -2016,7 +2016,7 @@
 //  }
 //
 //  public CopyOnReadLinkedList<BufferWriteProcessor> getClosingBufferWriteProcessor() {
-//    for (BufferWriteProcessor processor: closingBufferWriteProcessor.cloneList()) {
+//    for (BufferWriteProcessor processor: closingBufferWriteProcessor.read()) {
 //      if (processor.isClosed()) {
 //        closingBufferWriteProcessor.remove(processor);
 //      }
