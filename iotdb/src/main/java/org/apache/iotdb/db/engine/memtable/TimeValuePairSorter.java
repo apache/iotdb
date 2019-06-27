@@ -23,7 +23,6 @@ import java.util.List;
 
 import org.apache.iotdb.db.utils.TimeValuePair;
 
-@FunctionalInterface
 public interface TimeValuePairSorter {
 
   /**

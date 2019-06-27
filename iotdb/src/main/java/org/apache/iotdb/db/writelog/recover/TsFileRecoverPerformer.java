@@ -26,6 +26,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
+import org.apache.iotdb.db.engine.memtable.MemTableFlushTaskV2;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -110,9 +111,9 @@ public class TsFileRecoverPerformer {
     }
 
     // flush logs
-    MemTableFlushTask tableFlushTask = new MemTableFlushTask(restorableTsFileIOWriter,
-        logNodePrefix, 0, (a,b) -> {});
-    tableFlushTask.flushMemTable(fileSchema, recoverMemTable, versionController.nextVersion());
+    MemTableFlushTaskV2 tableFlushTask = new MemTableFlushTaskV2(recoverMemTable, fileSchema, restorableTsFileIOWriter,
+        logNodePrefix, (a) -> {});
+    tableFlushTask.flushMemTable();
 
     // close file
     try {

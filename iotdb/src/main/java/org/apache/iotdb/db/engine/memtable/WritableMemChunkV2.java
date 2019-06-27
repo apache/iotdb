@@ -19,49 +19,33 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.db.utils.PrimitiveArrayListV2;
-import org.apache.iotdb.db.utils.PrimitiveDataListPool;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
-import org.apache.iotdb.db.utils.datastructure.LongTVList;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsBoolean;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsInt;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class WritableMemChunkV2 {
+public class WritableMemChunkV2 implements IWritableMemChunk {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunkV2.class);
   private TSDataType dataType;
   private TVList list;
-  private long timeOffset = 0;
 
   public WritableMemChunkV2(TSDataType dataType) {
     this.dataType = dataType;
-    this.list = getTVList(dataType);
+    this.list = TVList.newList(dataType);
   }
 
-  public TVList getTVList(TSDataType dataType) {
-    switch (dataType) {
-      case BOOLEAN:
-        return null;
-      case INT32:
-        return null;
-      case INT64:
-        return new LongTVList();
-      case FLOAT:
-        return null;
-      case DOUBLE:
-        return null;
-      case TEXT:
-        return null;
-      default:
-        throw new UnSupportedDataTypeException("DataType: " + dataType);
-    }
-  }
-
+  @Override
   public void write(long insertTime, String insertValue) {
     switch (dataType) {
       case BOOLEAN:
@@ -87,6 +71,7 @@ public class WritableMemChunkV2 {
     }
   }
 
+  @Override
   public void write(long insertTime, Object value) {
     switch (dataType) {
       case BOOLEAN:
@@ -112,40 +97,98 @@ public class WritableMemChunkV2 {
     }
   }
 
+
+  @Override
   public void putLong(long t, long v) {
     list.putLong(t, v);
   }
 
+  @Override
   public void putInt(long t, int v) {
     list.putInt(t, v);
   }
 
+  @Override
   public void putFloat(long t, float v) {
     list.putFloat(t, v);
   }
 
+  @Override
   public void putDouble(long t, double v) {
     list.putDouble(t, v);
   }
 
+  @Override
   public void putBinary(long t, Binary v) {
     list.putBinary(t, v);
   }
 
+  @Override
   public void putBoolean(long t, boolean v) {
     list.putBoolean(t, v);
   }
 
+  @Override
+  public TVList getSortedTVList() {
+    list.sort();
+    return list;
+  }
+
+  @Override
+  public long count() {
+    return list.size();
+  }
+
+  @Override
   public TSDataType getType() {
     return dataType;
   }
 
+  @Override
   public void setTimeOffset(long offset) {
-    timeOffset = offset;
+    list.setTimeOffset(offset);
   }
 
-  public TVList getSortedList() {
-    list.sort();
-    return list;
+  @Override
+  public List<TimeValuePair> getSortedTimeValuePairList() {
+   List<TimeValuePair> result = new ArrayList<>();
+   TVList cloneList = list.clone();
+   cloneList.sort();
+   for (int i = 0; i < cloneList.size(); i++) {
+     long time = cloneList.getTime(i);
+     if (time < cloneList.getTimeOffset() ||
+         (i+1 < cloneList.size() && (time == cloneList.getTime(i+1)))) {
+       continue;
+     }
+
+     switch (dataType) {
+       case BOOLEAN:
+         result.add(new TimeValuePair(time, new TsBoolean(cloneList.getBoolean(i))));
+         break;
+       case INT32:
+         result.add(new TimeValuePair(time, new TsInt(cloneList.getInt(i))));
+         break;
+       case INT64:
+         result.add(new TimeValuePair(time, new TsLong(cloneList.getLong(i))));
+         break;
+       case FLOAT:
+         result.add(new TimeValuePair(time, new TsFloat(cloneList.getFloat(i))));
+         break;
+       case DOUBLE:
+         result.add(new TimeValuePair(time, new TsDouble(cloneList.getDouble(i))));
+         break;
+       case TEXT:
+         result.add(new TimeValuePair(time, new TsBinary(cloneList.getBinary(i))));
+         break;
+       default:
+         LOGGER.error("don't support data type: {}", dataType);
+         break;
+     }
+   }
+   return result;
   }
+
+  @Override
+  public void releasePrimitiveArrayList(){}
+
 }

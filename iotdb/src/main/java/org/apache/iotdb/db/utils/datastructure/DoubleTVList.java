@@ -21,21 +21,21 @@ package org.apache.iotdb.db.utils.datastructure;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LongTVList extends TVList {
+public class DoubleTVList extends TVList {
 
-  private List<long[]> values;
+  private List<double[]> values;
 
-  private long[] sortedValues;
+  private double[] sortedValues;
 
-  public LongTVList() {
+  public DoubleTVList() {
     super();
     values = new ArrayList<>();
   }
 
   @Override
-  public void putLong(long timestamp, long value) {
+  public void putDouble(long timestamp, double value) {
     if ((size % SINGLE_ARRAY_SIZE) == 0) {
-      values.add(new long[SINGLE_ARRAY_SIZE]);
+      values.add(new double[SINGLE_ARRAY_SIZE]);
       timestamps.add(new long[SINGLE_ARRAY_SIZE]);
     }
     int arrayIndex = size / SINGLE_ARRAY_SIZE;
@@ -46,7 +46,7 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  public long getLong(int index) {
+  public double getDouble(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
@@ -59,7 +59,7 @@ public class LongTVList extends TVList {
     }
   }
 
-  public void set(int index, long timestamp, long value) {
+  public void set(int index, long timestamp, double value) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
@@ -70,10 +70,10 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  public LongTVList clone() {
-    LongTVList cloneList = new LongTVList();
+  public DoubleTVList clone() {
+    DoubleTVList cloneList = new DoubleTVList();
     if (!sorted) {
-      for (long[] valueArray : values) {
+      for (double[] valueArray : values) {
         cloneList.values.add(cloneValue(valueArray));
       }
       for (long[] timestampArray : timestamps) {
@@ -81,7 +81,7 @@ public class LongTVList extends TVList {
       }
     } else {
       cloneList.sortedTimestamps = new long[size];
-      cloneList.sortedValues = new long[size];
+      cloneList.sortedValues = new double[size];
       System.arraycopy(sortedTimestamps, 0, cloneList.sortedTimestamps, 0, size);
       System.arraycopy(sortedValues, 0, cloneList.sortedValues, 0, size);
     }
@@ -91,8 +91,8 @@ public class LongTVList extends TVList {
     return cloneList;
   }
 
-  private long[] cloneValue(long[] array) {
-    long[] cloneArray = new long[array.length];
+  private double[] cloneValue(double[] array) {
+    double[] cloneArray = new double[array.length];
     System.arraycopy(array, 0, cloneArray, 0, array.length);
     return cloneArray;
   }
@@ -103,7 +103,7 @@ public class LongTVList extends TVList {
 
   public void sort() {
     sortedTimestamps = new long[size];
-    sortedValues = new long[size];
+    sortedValues = new double[size];
     sort(0, size);
     sorted = true;
     values = null;
@@ -117,22 +117,22 @@ public class LongTVList extends TVList {
 
   protected void set(int src, int dest) {
     long srcT = getTime(src);
-    long srcV = getLong(src);
+    double srcV = getDouble(src);
     set(dest, srcT, srcV);
   }
 
   protected void setSorted(int src, int dest) {
     sortedTimestamps[dest] = getTime(src);
-    sortedValues[dest] = getLong(src);
+    sortedValues[dest] = getDouble(src);
   }
 
   protected void reverseRange(int lo, int hi) {
     hi--;
     while (lo < hi) {
       long loT = getTime(lo);
-      long loV = getLong(lo);
+      double loV = getDouble(lo);
       long hiT = getTime(hi);
-      long hiV = getLong(hi);
+      double hiV = getDouble(hi);
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }

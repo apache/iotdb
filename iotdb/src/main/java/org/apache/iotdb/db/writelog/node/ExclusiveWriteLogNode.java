@@ -251,7 +251,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
     try {
       long start = System.currentTimeMillis();
-      LOGGER.debug("Log node {} starts force, {} logs to be forced", identifier, bufferedLogNum);
       try {
         if (currentFileWriter != null) {
           currentFileWriter.force();
@@ -259,7 +258,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       } catch (IOException e) {
         LOGGER.error("Log node {} force failed.", identifier, e);
       }
-      LOGGER.debug("Log node {} ends force.", identifier);
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
         LOGGER.info("WAL forceWal cost {} ms", elapse);
@@ -278,7 +276,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
     try {
       long start = System.currentTimeMillis();
-      LOGGER.debug("Log node {} starts sync, {} logs to be synced", identifier, bufferedLogNum);
       if (bufferedLogNum == 0) {
         return;
       }

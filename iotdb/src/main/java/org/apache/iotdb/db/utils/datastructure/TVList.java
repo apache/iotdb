@@ -117,7 +117,7 @@ public abstract class TVList {
 
   protected abstract void reverseRange(int lo, int hi);
 
-  protected abstract TVList clone();
+  public abstract TVList clone();
 
   protected long[] cloneTime(long[] array) {
     long[] cloneArray = new long[array.length];
@@ -166,6 +166,7 @@ public abstract class TVList {
       case INT64:
         return new LongTVList();
       case DOUBLE:
+        return new DoubleTVList();
       case BOOLEAN:
     }
     return null;
