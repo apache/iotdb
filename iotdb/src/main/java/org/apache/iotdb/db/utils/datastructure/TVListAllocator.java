@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TVListAllocator {
+
   private Map<String, ConcurrentLinkedQueue<TVList>> tvListCache = new ConcurrentHashMap<>();
 
   public TVList allocate(String identifier, TSDataType dataType) {

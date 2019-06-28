@@ -199,13 +199,17 @@ public abstract class TVList {
   public static TVList newList(TSDataType dataType) {
     switch (dataType) {
       case TEXT:
+        return new BinaryTVList();
       case FLOAT:
+        return new FloatTVList();
       case INT32:
+        return new IntTVList();
       case INT64:
         return new LongTVList();
       case DOUBLE:
         return new DoubleTVList();
       case BOOLEAN:
+        return new BooleanTVList();
     }
     return null;
   }

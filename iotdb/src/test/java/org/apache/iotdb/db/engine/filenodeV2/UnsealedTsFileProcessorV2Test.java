@@ -66,6 +66,7 @@ public class UnsealedTsFileProcessorV2Test {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.cleanDir("data");
   }
 
   @Test
@@ -111,6 +112,7 @@ public class UnsealedTsFileProcessorV2Test {
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).getTsDataType());
+    processor.syncClose();
   }
 
 
@@ -145,6 +147,7 @@ public class UnsealedTsFileProcessorV2Test {
     assertEquals(10, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).getTsDataType());
+    processor.syncClose();
   }
 
 
