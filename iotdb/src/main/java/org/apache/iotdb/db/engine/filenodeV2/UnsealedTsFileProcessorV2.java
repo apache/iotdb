@@ -120,7 +120,7 @@ public class UnsealedTsFileProcessorV2 {
    */
   public boolean insert(InsertPlan insertPlan, boolean sequence) {
 
-    long start1 = System.currentTimeMillis();
+//    long start1 = System.currentTimeMillis();
     if (workMemTable == null) {
       // TODO change the impl of getEmptyMemTable to non-blocking
       workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
@@ -131,10 +131,10 @@ public class UnsealedTsFileProcessorV2 {
         return false;
       }
     }
-    start1 = System.currentTimeMillis() - start1;
-    if (start1 > 1000) {
-      LOGGER.info("UFP get a memtable cost: {}", start1);
-    }
+//    start1 = System.currentTimeMillis() - start1;
+//    if (start1 > 1000) {
+//      LOGGER.info("UFP get a memtable cost: {}", start1);
+//    }
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -150,15 +150,15 @@ public class UnsealedTsFileProcessorV2 {
       tsFileResource.updateEndTime(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    long start2 = System.currentTimeMillis();
+//    long start2 = System.currentTimeMillis();
     // insert tsRecord to work memtable
     workMemTable.insert(insertPlan);
-    start2 = System.currentTimeMillis() - start2;
-    if (start2 > 1000) {
-      LOGGER.info(
-          "UFP {} insert into memtable cost: {}, insertPlan: {}, current data points in memtable: {}",
-          storageGroupName, start2, insertPlan, workMemTable.size());
-    }
+//    start2 = System.currentTimeMillis() - start2;
+//    if (start2 > 1000) {
+//      LOGGER.info(
+//          "UFP {} insert into memtable cost: {}, insertPlan: {}, current data points in memtable: {}",
+//          storageGroupName, start2, insertPlan, workMemTable.size());
+//    }
 
     return true;
   }
@@ -204,7 +204,7 @@ public class UnsealedTsFileProcessorV2 {
   }
 
   public void syncClose() {
-    LOGGER.info("Synch close file: {}, first async close it",
+    LOGGER.info("Sync close file: {}, first async close it",
         tsFileResource.getFile().getAbsolutePath());
     asyncClose();
     synchronized (flushingMemTables) {
@@ -307,8 +307,8 @@ public class UnsealedTsFileProcessorV2 {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
       memTable.release();
-      LOGGER.info("flush finished, remove a memtable from flushing list, "
-          + "flushing memtable list size: {}", flushingMemTables.size());
+      LOGGER.info("storage group {} flush finished, remove a memtable from flushing list, "
+          + "flushing memtable list size: {}", storageGroupName, flushingMemTables.size());
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -330,12 +330,12 @@ public class UnsealedTsFileProcessorV2 {
           storageGroupName,
           this::releaseFlushedMemTableCallback);
       flushTask.flushMemTable();
-      long start = System.currentTimeMillis();
+//      long start = System.currentTimeMillis();
       MemTablePool.getInstance().putBack(memTableToFlush, storageGroupName);
-      long elapse = System.currentTimeMillis() - start;
-      if (elapse > 1000) {
-        LOGGER.info("release a memtable cost: {}", elapse);
-      }
+//      long elapse = System.currentTimeMillis() - start;
+//      if (elapse > 1000) {
+//        LOGGER.info("release a memtable cost: {}", elapse);
+//      }
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         getLogNode().notifyEndFlush();
       }

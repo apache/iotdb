@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByWithOnlyTimeFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -91,14 +91,14 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
           selectedSeries, aggres, optimizedExpression);
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-        return engineExecutor.executeWithOutTimeGenerator(context);
+        return engineExecutor.executeWithoutValueFilter(context);
       } else {
-        return engineExecutor.executeWithTimeGenerator(context);
+        return engineExecutor.executeWithValueFilter(context);
       }
     } else {
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
           selectedSeries, aggres, null);
-      return engineExecutor.executeWithOutTimeGenerator(context);
+      return engineExecutor.executeWithoutValueFilter(context);
     }
   }
 
@@ -149,7 +149,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      GroupByWithOnlyTimeFilterDataSet groupByEngine = new GroupByWithOnlyTimeFilterDataSet(
+      GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
           nextJobId, selectedSeries, unit, origin, mergedIntervalList);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;

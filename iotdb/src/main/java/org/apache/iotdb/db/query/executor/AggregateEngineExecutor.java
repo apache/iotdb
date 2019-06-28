@@ -80,7 +80,7 @@ public class AggregateEngineExecutor {
    *
    * @param context query context
    */
-  public QueryDataSet executeWithOutTimeGenerator(QueryContext context)
+  public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws FileNodeManagerException, IOException, PathErrorException, ProcessorException {
     Filter timeFilter = null;
     if (expression != null) {
@@ -124,7 +124,7 @@ public class AggregateEngineExecutor {
     List<AggreResultData> aggreResultDataList = new ArrayList<>();
     //TODO use multi-thread
     for (int i = 0; i < selectedSeries.size(); i++) {
-      AggreResultData aggreResultData = aggregateWithOutTimeGenerator(aggregateFunctions.get(i),
+      AggreResultData aggreResultData = aggregateWithoutValueFilter(aggregateFunctions.get(i),
           readersOfSequenceData.get(i), readersOfUnSequenceData.get(i), timeFilter);
       aggreResultDataList.add(aggreResultData);
     }
@@ -140,7 +140,7 @@ public class AggregateEngineExecutor {
    * @param filter time filter or null
    * @return one series aggregate result data
    */
-  private AggreResultData aggregateWithOutTimeGenerator(AggregateFunction function,
+  private AggreResultData aggregateWithoutValueFilter(AggregateFunction function,
       IAggregateReader sequenceReader, IPointReader unSequenceReader, Filter filter)
       throws IOException, ProcessorException {
     if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
@@ -257,7 +257,7 @@ public class AggregateEngineExecutor {
    *
    * @param context query context.
    */
-  public QueryDataSet executeWithTimeGenerator(QueryContext context)
+  public QueryDataSet executeWithValueFilter(QueryContext context)
       throws FileNodeManagerException, PathErrorException, IOException, ProcessorException {
     QueryResourceManager
         .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
@@ -274,7 +274,7 @@ public class AggregateEngineExecutor {
       function.init();
       aggregateFunctions.add(function);
     }
-    List<AggreResultData> batchDataList = aggregateWithTimeGenerator(aggregateFunctions,
+    List<AggreResultData> batchDataList = aggregateWithValueFilter(aggregateFunctions,
         timestampGenerator,
         readersOfSelectedSeries);
     return constructDataSet(batchDataList);
@@ -283,7 +283,7 @@ public class AggregateEngineExecutor {
   /**
    * calculation aggregate result with value filter.
    */
-  private List<AggreResultData> aggregateWithTimeGenerator(
+  private List<AggreResultData> aggregateWithValueFilter(
       List<AggregateFunction> aggregateFunctions,
       EngineTimeGenerator timestampGenerator,
       List<IReaderByTimeStamp> readersOfSelectedSeries)

@@ -45,7 +45,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
+public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private List<IPointReader> unSequenceReaderList;
   private List<IAggregateReader> sequenceReaderList;
@@ -56,8 +56,8 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
   /**
    * constructor.
    */
-  public GroupByWithOnlyTimeFilterDataSet(long jobId, List<Path> paths, long unit,
-      long origin, List<Pair<Long, Long>> mergedIntervals) {
+  public GroupByWithoutValueFilterDataSet(long jobId, List<Path> paths, long unit,
+                                          long origin, List<Pair<Long, Long>> mergedIntervals) {
     super(jobId, paths, unit, origin, mergedIntervals);
     this.unSequenceReaderList = new ArrayList<>();
     this.sequenceReaderList = new ArrayList<>();
@@ -105,7 +105,7 @@ public class GroupByWithOnlyTimeFilterDataSet extends GroupByEngineDataSet {
   public RowRecord next() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next() "
-          + "in GroupByWithOnlyTimeFilterDataSet.");
+          + "in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
     RowRecord record = new RowRecord(startTime);

@@ -54,13 +54,13 @@ public class ChunkBufferPool {
     synchronized (availableChunkBuffer) {
       if (availableChunkBuffer.isEmpty() && size < capacity) {
         size++;
-        LOGGER.info("For fask, generated a new ChunkBuffer for {}, system ChunkBuffer size: {}, stack size: {}",
-            applier, size, availableChunkBuffer.size());
+//        LOGGER.info("For fask, generated a new ChunkBuffer for {}, system ChunkBuffer size: {}, stack size: {}",
+//            applier, size, availableChunkBuffer.size());
         return new ChunkBuffer(schema);
       } else if (!availableChunkBuffer.isEmpty()) {
-        LOGGER
-            .info("ReusableChunkBuffer size: {}, stack size: {}, then get a ChunkBuffer from stack for {}",
-                size, availableChunkBuffer.size(), applier);
+//        LOGGER
+//            .info("ReusableChunkBuffer size: {}, stack size: {}, then get a ChunkBuffer from stack for {}",
+//                size, availableChunkBuffer.size(), applier);
         ChunkBuffer chunkBuffer =  availableChunkBuffer.pop();
         chunkBuffer.reInit(schema);
         return chunkBuffer;
@@ -70,9 +70,9 @@ public class ChunkBufferPool {
       int waitCount = 1;
       while (true) {
         if (!availableChunkBuffer.isEmpty()) {
-          LOGGER.info(
-              "ReusableChunkBuffer size: {}, stack size: {}, then get a ChunkBuffer from stack for {}",
-              size, availableChunkBuffer.size(), applier);
+//          LOGGER.info(
+//              "ReusableChunkBuffer size: {}, stack size: {}, then get a ChunkBuffer from stack for {}",
+//              size, availableChunkBuffer.size(), applier);
           return availableChunkBuffer.pop();
         }
         try {
@@ -80,7 +80,7 @@ public class ChunkBufferPool {
         } catch (InterruptedException e) {
           LOGGER.error("{} fails to wait fot ReusableChunkBuffer {}, continue to wait", applier, e);
         }
-        LOGGER.info("{} has waited for a ReusableChunkBuffer for {}ms", applier, waitCount++ * WAIT_TIME);
+//        LOGGER.info("{} has waited for a ReusableChunkBuffer for {}ms", applier, waitCount++ * WAIT_TIME);
       }
     }
   }
@@ -90,7 +90,7 @@ public class ChunkBufferPool {
       chunkBuffer.reset();
       availableChunkBuffer.push(chunkBuffer);
       availableChunkBuffer.notify();
-      LOGGER.info("a chunk buffer returned, stack size {}", availableChunkBuffer.size());
+//      LOGGER.info("a chunk buffer returned, stack size {}", availableChunkBuffer.size());
     }
   }
 
@@ -99,7 +99,7 @@ public class ChunkBufferPool {
       chunkBuffer.reset();
       availableChunkBuffer.push(chunkBuffer);
       availableChunkBuffer.notify();
-      LOGGER.info("{} return a chunk buffer, stack size {}", storageGroup, availableChunkBuffer.size());
+//      LOGGER.info("{} return a chunk buffer, stack size {}", storageGroup, availableChunkBuffer.size());
     }
   }
 
