@@ -86,6 +86,7 @@ public class DoubleTVList extends TVList {
     }
     cloneList.size = size;
     cloneList.sorted = sorted;
+    cloneList.limit = limit;
 
     return cloneList;
   }

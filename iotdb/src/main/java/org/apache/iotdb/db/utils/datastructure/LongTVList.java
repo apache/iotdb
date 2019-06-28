@@ -36,10 +36,7 @@ public class LongTVList extends TVList {
 
   @Override
   public void putLong(long timestamp, long value) {
-    if ((size % SINGLE_ARRAY_SIZE) == 0) {
-      values.add(new long[SINGLE_ARRAY_SIZE]);
-      timestamps.add(new long[SINGLE_ARRAY_SIZE]);
-    }
+    checkExpansion();
     int arrayIndex = size / SINGLE_ARRAY_SIZE;
     int elementIndex = size % SINGLE_ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
@@ -89,6 +86,7 @@ public class LongTVList extends TVList {
     }
     cloneList.size = size;
     cloneList.sorted = sorted;
+    cloneList.limit = limit;
 
     return cloneList;
   }
@@ -142,7 +140,7 @@ public class LongTVList extends TVList {
 
   @Override
   protected void expandValues() {
-
+    values.add(new long[SINGLE_ARRAY_SIZE]);
   }
 
   @Override
