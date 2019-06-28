@@ -31,15 +31,19 @@ public abstract class TVList {
 
   protected List<long[]> timestamps;
   protected int size;
+  protected int limit;
 
   protected long[] sortedTimestamps;
   protected boolean sorted = false;
 
   private long timeOffset = -1;
 
+  protected long pivotTime;
+
   public TVList() {
     timestamps = new ArrayList<>();
     size = 0;
+    limit = 0;
   }
 
   public int size() {
@@ -117,7 +121,22 @@ public abstract class TVList {
 
   protected abstract void reverseRange(int lo, int hi);
 
+  protected abstract void expandValues();
+
   public abstract TVList clone();
+
+  public void reset() {
+    size = 0;
+    limit = 0;
+  }
+
+  protected void checkExpansion() {
+    if ((size == limit) && (size % SINGLE_ARRAY_SIZE) == 0) {
+      expandValues();
+      timestamps.add(new long[SINGLE_ARRAY_SIZE]);
+      limit += SINGLE_ARRAY_SIZE;
+    }
+  }
 
   protected long[] cloneTime(long[] array) {
     long[] cloneArray = new long[array.length];
@@ -186,6 +205,10 @@ public abstract class TVList {
     return Long.compare(t1, t2);
   }
 
+  protected abstract void saveAsPivot(int pos);
+
+  protected abstract void setPivotTo(int pos);
+
   /**
    * From TimSort.java
    */
@@ -195,6 +218,7 @@ public abstract class TVList {
       start++;
     for ( ; start < hi; start++) {
 
+      saveAsPivot(start);
       // Set left (and right) to the index where a[start] (pivot) belongs
       int left = lo;
       int right = start;
@@ -224,7 +248,7 @@ public abstract class TVList {
       for (int i = n; i >= 1; i--) {
         set(left + i - 1, left + i);
       }
-      set(left, start);
+      setPivotTo(left);
     }
     for (int i = lo; i < hi; i++) {
       setSorted(i, i);

@@ -27,6 +27,8 @@ public class LongTVList extends TVList {
 
   private long[] sortedValues;
 
+  private long pivotValue;
+
   public LongTVList() {
     super();
     values = new ArrayList<>();
@@ -136,5 +138,21 @@ public class LongTVList extends TVList {
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }
+  }
+
+  @Override
+  protected void expandValues() {
+
+  }
+
+  @Override
+  protected void saveAsPivot(int pos) {
+    pivotTime = getTime(pos);
+    pivotValue = getLong(pos);
+  }
+
+  @Override
+  protected void setPivotTo(int pos) {
+    set(pos, pivotTime, pivotValue);
   }
 }

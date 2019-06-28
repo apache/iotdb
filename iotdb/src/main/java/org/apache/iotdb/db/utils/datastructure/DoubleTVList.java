@@ -27,6 +27,8 @@ public class DoubleTVList extends TVList {
 
   private double[] sortedValues;
 
+  private double pivotValue;
+
   public DoubleTVList() {
     super();
     values = new ArrayList<>();
@@ -34,10 +36,7 @@ public class DoubleTVList extends TVList {
 
   @Override
   public void putDouble(long timestamp, double value) {
-    if ((size % SINGLE_ARRAY_SIZE) == 0) {
-      values.add(new double[SINGLE_ARRAY_SIZE]);
-      timestamps.add(new long[SINGLE_ARRAY_SIZE]);
-    }
+    checkExpansion();
     int arrayIndex = size / SINGLE_ARRAY_SIZE;
     int elementIndex = size % SINGLE_ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
@@ -97,10 +96,6 @@ public class DoubleTVList extends TVList {
     return cloneArray;
   }
 
-  public void reset() {
-    size = 0;
-  }
-
   public void sort() {
     sortedTimestamps = new long[size];
     sortedValues = new double[size];
@@ -136,5 +131,21 @@ public class DoubleTVList extends TVList {
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }
+  }
+
+  @Override
+  protected void expandValues() {
+    values.add(new double[SINGLE_ARRAY_SIZE]);
+  }
+
+  @Override
+  protected void saveAsPivot(int pos) {
+    pivotTime = getTime(pos);
+    pivotValue = getDouble(pos);
+  }
+
+  @Override
+  protected void setPivotTo(int pos) {
+    set(pos, pivotTime, pivotValue);
   }
 }
