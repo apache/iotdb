@@ -24,16 +24,16 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Each flush task allocates new {@linkplain ChunkBuffer} which might be very large and lead to
- * high-cost GC. In new design, we try to reuse ChunkBuffer objects by FlushTaskPool, referring to
+ * high-cost GC. In new design, we try to reuse ChunkBuffer objects by ChunkBufferPool, referring to
  * {@linkplain MemTablePool}.
  *
  * Only for TEST up to now.
  *
  * @author kangrong
  */
-public class FlushTaskPool {
+public class ChunkBufferPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FlushTaskPool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ChunkBufferPool.class);
 
   private static final Deque<ChunkBuffer> availableChunkBuffer = new ArrayDeque<>();
 
@@ -47,7 +47,7 @@ public class FlushTaskPool {
 
   private static final int WAIT_TIME = 2000;
 
-  private FlushTaskPool() {
+  private ChunkBufferPool() {
   }
 
   public ChunkBuffer getEmptyChunkBuffer(Object applier, MeasurementSchema schema) {
@@ -90,7 +90,7 @@ public class FlushTaskPool {
       chunkBuffer.reset();
       availableChunkBuffer.push(chunkBuffer);
       availableChunkBuffer.notify();
-      LOGGER.info("a memtable returned, stack size {}", availableChunkBuffer.size());
+      LOGGER.info("a chunk buffer returned, stack size {}", availableChunkBuffer.size());
     }
   }
 
@@ -99,11 +99,11 @@ public class FlushTaskPool {
       chunkBuffer.reset();
       availableChunkBuffer.push(chunkBuffer);
       availableChunkBuffer.notify();
-      LOGGER.info("{} return a memtable, stack size {}", storageGroup, availableChunkBuffer.size());
+      LOGGER.info("{} return a chunk buffer, stack size {}", storageGroup, availableChunkBuffer.size());
     }
   }
 
-  public static FlushTaskPool getInstance() {
+  public static ChunkBufferPool getInstance() {
     return InstanceHolder.INSTANCE;
   }
 
@@ -112,6 +112,6 @@ public class FlushTaskPool {
     private InstanceHolder() {
     }
 
-    private static final FlushTaskPool INSTANCE = new FlushTaskPool();
+    private static final ChunkBufferPool INSTANCE = new ChunkBufferPool();
   }
 }

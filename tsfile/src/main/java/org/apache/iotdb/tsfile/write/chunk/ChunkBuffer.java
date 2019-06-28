@@ -99,7 +99,7 @@ public class ChunkBuffer {
     }
     this.maxTimestamp = maxTimestamp;
     int uncompressedSize = data.remaining();
-    int compressedSize = 0;
+    int compressedSize;
     int compressedPosition = 0;
     byte[] compressedBytes = null;
 
@@ -117,7 +117,7 @@ public class ChunkBuffer {
       }
     }
 
-    int headerSize = 0;
+    int headerSize;
 
     // write the page header to IOWriter
     try {

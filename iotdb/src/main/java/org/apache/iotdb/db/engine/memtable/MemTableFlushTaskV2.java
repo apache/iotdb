@@ -15,14 +15,12 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.pool.FlushSubTaskPoolManager;
-import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -138,8 +136,8 @@ public class MemTableFlushTaskV2 {
             } else {
               long starTime = System.currentTimeMillis();
               Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
-              ChunkBuffer chunkBuffer = FlushTaskPool.getInstance().getEmptyChunkBuffer(this, encodingMessage.right);
-
+              ChunkBuffer chunkBuffer = ChunkBufferPool
+                  .getInstance().getEmptyChunkBuffer(this, encodingMessage.right);
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right, chunkBuffer,
                   PAGE_SIZE_THRESHOLD);
               try {
@@ -200,7 +198,7 @@ public class MemTableFlushTaskV2 {
               } else if (ioMessage instanceof IChunkWriter) {
                 ChunkWriterImpl writer = (ChunkWriterImpl) ioMessage;
                 writer.writeToFileWriter(tsFileIoWriter);
-                FlushTaskPool.getInstance().putBack(writer.getChunkBuffer());
+                ChunkBufferPool.getInstance().putBack(writer.getChunkBuffer());
               } else {
                 ChunkGroupIoTask endGroupTask = (ChunkGroupIoTask) ioMessage;
                 tsFileIoWriter.endChunkGroup(endGroupTask.version);
