@@ -60,7 +60,7 @@ public class TsFileResourceV2 {
 
   private transient ModificationFile modFile;
 
-  private boolean closed = false;
+  private volatile boolean closed = false;
 
   /**
    * Chunk metadata list of unsealed tsfile

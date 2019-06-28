@@ -209,10 +209,10 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
               queryDataSource.getSeqResources(), context);
       mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
 
-      // reader for unsequence data
-      SeriesReaderByTimestamp unseqMergeReader = createUnseqSeriesReaderByTimestamp(path,
+      // reader for unSequence data
+      SeriesReaderByTimestamp unSeqMergeReader = createUnseqSeriesReaderByTimestamp(path,
               queryDataSource.getUnseqResources(), context);
-      mergeReaderByTimestamp.addReaderWithPriority(unseqMergeReader, 2);
+      mergeReaderByTimestamp.addReaderWithPriority(unSeqMergeReader, 2);
 
       readersOfSelectedSeries.add(mergeReaderByTimestamp);
     }

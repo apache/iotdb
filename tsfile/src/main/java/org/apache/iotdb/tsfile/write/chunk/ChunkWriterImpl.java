@@ -289,4 +289,8 @@ public class ChunkWriterImpl implements IChunkWriter {
   public int getNumOfPages() {
     return chunkBuffer.getNumOfPages();
   }
+
+  public ChunkBuffer getChunkBuffer() {
+    return chunkBuffer;
+  }
 }

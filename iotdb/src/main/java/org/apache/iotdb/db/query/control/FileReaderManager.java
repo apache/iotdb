@@ -101,9 +101,9 @@ public class FileReaderManager implements IService {
       Map<String, AtomicInteger> refMap) {
     for (Map.Entry<String, TsFileSequenceReader> entry : readerMap.entrySet()) {
       TsFileSequenceReader reader = entry.getValue();
-      int referenceNum = refMap.get(entry.getKey()).get();
+      AtomicInteger refAtom = refMap.get(entry.getKey());
 
-      if (referenceNum == 0) {
+      if (refAtom != null && refAtom.get() == 0) {
         try {
           reader.close();
         } catch (IOException e) {
@@ -151,6 +151,7 @@ public class FileReaderManager implements IService {
    * of a reader equals zero, the reader can be closed and removed.
    */
   public synchronized void increaseFileReaderReference(String filePath, boolean isClosed) {
+    // TODO : this should be called in get()
     if (!isClosed) {
       unclosedReferenceMap.computeIfAbsent(filePath, k -> new AtomicInteger()).getAndIncrement();
     } else {

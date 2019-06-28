@@ -74,15 +74,15 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
     }
-    fileNodeProcessorV2.getWorkSequenceTsFileProcessor().asyncFlush();
+    fileNodeProcessorV2.getWorkSequenceTsFileProcessor().syncFlush();
     for (int j = 1010; j <= 1019; j++) {
       insertOneRecord(j, j);
     }
-    fileNodeProcessorV2.getWorkSequenceTsFileProcessor().asyncFlush();
+    fileNodeProcessorV2.getWorkSequenceTsFileProcessor().syncFlush();
     for (int j = 1020; j <= 3019; j++) {
       insertOneRecord(j, j);
     }
-    fileNodeProcessorV2.getWorkSequenceTsFileProcessor().asyncFlush();
+    fileNodeProcessorV2.getWorkSequenceTsFileProcessor().syncFlush();
     for (int j = 3020; j <= 3029; j++) {
       insertOneRecord(j, j);
     }

@@ -65,16 +65,16 @@ public class UnseqSeriesReaderByTimestampTest {
             FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
         }
 
-        for (int j = 10; j >= 1; j--) {
-            TSRecord record = new TSRecord(j, deviceId);
-            record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-            FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
-            FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
-        }
+//        for (int j = 10; j >= 1; j--) {
+//            TSRecord record = new TSRecord(j, deviceId);
+//            record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+//            FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
+//            FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
+//        }
         TSRecord record = new TSRecord(2, deviceId);
         record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
         FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
-        FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
+//        FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
 
         // query
         List<Path> paths = new ArrayList<>();
@@ -86,11 +86,11 @@ public class UnseqSeriesReaderByTimestampTest {
 
         for (long time = 1; time <= 10; time++) {
             // NOTE that the timestamps should be in be in strictly increasing order.
-            int value = (Integer) reader.getValueInTimestamp(time);
+            Integer value = (Integer) reader.getValueInTimestamp(time);
             if (time == 2) {
-                Assert.assertEquals(100, value);
+                Assert.assertEquals(100, (int) value);
             } else {
-                Assert.assertEquals(time, value);
+                Assert.assertEquals(time, (int) value);
             }
         }
     }

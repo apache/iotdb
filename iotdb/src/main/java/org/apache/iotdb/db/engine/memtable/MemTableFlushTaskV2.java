@@ -152,8 +152,6 @@ public class MemTableFlushTaskV2 {
                 LOGGER.error("Storage group {} memtable {}, encoding task error.", storageGroup,
                     memTable.getVersion(), e);
                 throw new RuntimeException(e);
-              } finally {
-                FlushTaskPool.getInstance().putBack(chunkBuffer);
               }
               memSerializeTime += System.currentTimeMillis() - starTime;
             }
@@ -200,7 +198,9 @@ public class MemTableFlushTaskV2 {
               if (ioMessage instanceof String) {
                 tsFileIoWriter.startChunkGroup((String) ioMessage);
               } else if (ioMessage instanceof IChunkWriter) {
-                ((IChunkWriter) ioMessage).writeToFileWriter(tsFileIoWriter);
+                ChunkWriterImpl writer = (ChunkWriterImpl) ioMessage;
+                writer.writeToFileWriter(tsFileIoWriter);
+                FlushTaskPool.getInstance().putBack(writer.getChunkBuffer());
               } else {
                 ChunkGroupIoTask endGroupTask = (ChunkGroupIoTask) ioMessage;
                 tsFileIoWriter.endChunkGroup(endGroupTask.version);

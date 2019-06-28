@@ -39,7 +39,7 @@ public abstract class TVList {
   protected long[] sortedTimestamps;
   protected boolean sorted = false;
 
-  private long timeOffset = -1;
+  private long timeOffset = Long.MIN_VALUE;
 
   protected long pivotTime;
 
@@ -164,6 +164,9 @@ public abstract class TVList {
   }
 
   protected void sort(int lo, int hi) {
+    if (lo == hi) {
+      return;
+    }
     if (hi - lo <= SMALL_ARRAY_LENGTH) {
       int initRunLen = countRunAndMakeAscending(lo, hi);
       binarySort(lo, hi, lo + initRunLen);

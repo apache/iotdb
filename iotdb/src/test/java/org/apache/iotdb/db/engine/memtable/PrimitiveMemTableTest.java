@@ -91,7 +91,6 @@ public class PrimitiveMemTableTest {
 
   private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,
       int size) {
-    int dataSize = 100;
     TimeValuePair[] ret = genTimeValuePair(size, dataType);
 
     for (int i = 0; i < ret.length; i++) {
@@ -133,7 +132,7 @@ public class PrimitiveMemTableTest {
     IMemTable memTable = new PrimitiveMemTable();
     memTable.setTVListAllocator(new TVListAllocator());
     String deviceId = "d1";
-    int size = 1000000;
+    int size = 100;
     write(memTable, deviceId, "s1", TSDataType.FLOAT, size);
   }
 

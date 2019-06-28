@@ -358,14 +358,15 @@ public class UnsealedTsFileProcessorV2 {
     tsFileResource.serialize();
 
     writer.endFile(fileSchema);
-    //FIXME suppose the flush-thread-pool is 2.
-    // then if a flush task and a endFile task are running in the same time
-    // and the endFile task is faster, then writer == null, and the flush task will throw nullpointer
-    // exception. Add "synchronized" keyword on both flush and endFile may solve the issue.
-    writer = null;
 
-    // remove this processor from Closing list in FileNodeProcessor
-    closeUnsealedFileCallback.accept(this);
+    flushQueryLock.writeLock().lock();
+    try {
+      // remove this processor from Closing list in FileNodeProcessor, mark the TsFileResource closed, no need writer anymore
+      closeUnsealedFileCallback.accept(this);
+      writer = null;
+    } finally {
+      flushQueryLock.writeLock().unlock();
+    }
 
     // delete the restore for this bufferwrite processor
     if (LOGGER.isInfoEnabled()) {
