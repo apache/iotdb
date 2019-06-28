@@ -215,9 +215,9 @@ public class UnsealedTsFileProcessorV2 {
     try {
       IMemTable tmpMemTable = workMemTable == null ? new EmptyMemTable() : workMemTable;
       if (!tmpMemTable.isManagedByMemPool()) {
-        LOGGER.info("add an empty memtable into flushing memtable list when async close");
+        LOGGER.info("storage group {} add an empty memtable into flushing memtable list when async close", storageGroupName);
       } else {
-        LOGGER.info("async flush a memtable when async close");
+        LOGGER.info("storage group {} async flush a memtable when async close", storageGroupName);
       }
       flushingMemTables.add(tmpMemTable);
       shouldClose = true;
@@ -307,7 +307,7 @@ public class UnsealedTsFileProcessorV2 {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
 
-    LOGGER.info("start to flush a memtable in a flush thread");
+    LOGGER.info("storage group {} start to flush a memtable in a flush thread", storageGroupName);
 
     // null memtable only appears when calling asyncClose()
     if (memTableToFlush.isManagedByMemPool()) {
@@ -407,6 +407,10 @@ public class UnsealedTsFileProcessorV2 {
 
   public VersionController getVersionController() {
     return versionController;
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
   }
 
   /**
