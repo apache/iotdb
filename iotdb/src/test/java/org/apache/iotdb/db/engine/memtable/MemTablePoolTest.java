@@ -27,15 +27,17 @@ import org.junit.Test;
 public class MemTablePoolTest {
 
   private ConcurrentLinkedQueue<IMemTable> memTables;
+  private Thread thread = new ReturnThread();
 
   @Before
   public void setUp() throws Exception {
     memTables = new ConcurrentLinkedQueue();
-    new ReturnThread().start();
+    thread.start();
   }
 
   @After
   public void tearDown() throws Exception {
+    thread.interrupt();
   }
 
   @Test
@@ -66,6 +68,9 @@ public class MemTablePoolTest {
     @Override
     public void run() {
       while (true) {
+        if(isInterrupted()){
+          break;
+        }
         IMemTable memTable = memTables.poll();
         if (memTable == null) {
           try {

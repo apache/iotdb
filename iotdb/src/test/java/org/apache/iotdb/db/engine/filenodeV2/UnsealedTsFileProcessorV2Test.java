@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.engine.filenodeV2;
 
 import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.io.File;
 import java.io.IOException;
@@ -86,7 +87,7 @@ public class UnsealedTsFileProcessorV2Test {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(new InsertPlan(record));
+      processor.insert(new InsertPlan(record), true);
     }
 
     // query data in memory
@@ -134,7 +135,7 @@ public class UnsealedTsFileProcessorV2Test {
       for (int i = 1; i <= 10; i++) {
         TSRecord record = new TSRecord(i, deviceId);
         record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-        processor.insert(new InsertPlan(record));
+        processor.insert(new InsertPlan(record), true);
       }
       processor.asyncFlush();
     }
@@ -177,7 +178,7 @@ public class UnsealedTsFileProcessorV2Test {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(new InsertPlan(record));
+      processor.insert(new InsertPlan(record), true);
     }
 
     // query data in memory

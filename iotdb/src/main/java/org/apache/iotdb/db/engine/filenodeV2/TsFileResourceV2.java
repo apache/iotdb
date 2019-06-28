@@ -22,18 +22,14 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
-import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -51,8 +47,7 @@ public class TsFileResourceV2 {
   private Map<String, Long> startTimeMap;
 
   /**
-   * device -> end time
-   * null if it's an unsealed tsfile
+   * device -> end time null if it's an unsealed tsfile
    */
   private Map<String, Long> endTimeMap;
 
@@ -100,7 +95,8 @@ public class TsFileResourceV2 {
   }
 
   public void serialize() throws IOException {
-    try (OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file + RESOURCE_SUFFIX))){
+    try (OutputStream outputStream = new BufferedOutputStream(
+        new FileOutputStream(file + RESOURCE_SUFFIX))) {
       ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
       for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
@@ -115,7 +111,8 @@ public class TsFileResourceV2 {
   }
 
   public void deSerialize() throws IOException {
-    try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file + RESOURCE_SUFFIX))) {
+    try (InputStream inputStream = new BufferedInputStream(
+        new FileInputStream(file + RESOURCE_SUFFIX))) {
       int size = ReadWriteIOUtils.readInt(inputStream);
       Map<String, Long> startTimes = new HashMap<>();
       for (int i = 0; i < size; i++) {
@@ -136,10 +133,16 @@ public class TsFileResourceV2 {
   }
 
   public void updateStartTime(String device, long time) {
-    startTimeMap.putIfAbsent(device, time);
-    long startTime = startTimeMap.get(device);
-    if (time < startTimeMap.get(device)) {
-      startTimeMap.put(device, startTime);
+    long startTime = startTimeMap.getOrDefault(device, Long.MAX_VALUE);
+    if (time < startTime) {
+      startTimeMap.put(device, time);
+    }
+  }
+
+  public void updateEndTime(String device, long time) {
+    long endTime = endTimeMap.getOrDefault(device, Long.MIN_VALUE);
+    if (time > endTime) {
+      endTimeMap.put(device, time);
     }
   }
 
