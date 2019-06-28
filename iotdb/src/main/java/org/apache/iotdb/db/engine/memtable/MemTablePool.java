@@ -86,6 +86,9 @@ public class MemTablePool {
     }
   }
 
+  /**
+   * Only for test
+   */
   public void putBack(IMemTable memTable, String storageGroup) {
     synchronized (availableMemTables) {
       memTable.clear();

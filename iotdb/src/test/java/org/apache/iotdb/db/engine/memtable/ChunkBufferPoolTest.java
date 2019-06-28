@@ -18,19 +18,23 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class MemTablePoolTest {
+public class ChunkBufferPoolTest {
 
-  private ConcurrentLinkedQueue<IMemTable> memTables;
+  private ConcurrentLinkedQueue<ChunkBuffer> chunkBuffers;
 
   @Before
   public void setUp() throws Exception {
-    memTables = new ConcurrentLinkedQueue();
+    chunkBuffers = new ConcurrentLinkedQueue();
     new ReturnThread().start();
   }
 
@@ -40,34 +44,21 @@ public class MemTablePoolTest {
 
   @Test
   public void testGetAndRelease() {
-    long time = System.currentTimeMillis();
     for (int i = 0; i < 50; i++) {
-      IMemTable memTable = MemTablePool.getInstance().getEmptyMemTable("test case");
-      memTables.add(memTable);
+      ChunkBuffer chunk = ChunkBufferPool.getInstance().getEmptyChunkBuffer("test case",
+          new MeasurementSchema("node", TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.SNAPPY));
+      chunkBuffers.add(chunk);
     }
-    time -= System.currentTimeMillis();
-    System.out.println("memtable pool use deque and synchronized consume:" + time);
   }
 
-  @Test
-  public void testSort() {
-    long start = System.currentTimeMillis();
-    TreeMap<Long, Long> treeMap = new TreeMap<>();
-    for (int i = 0; i < 1000000; i++) {
-      treeMap.put((long)i, (long)i);
-    }
-    start = System.currentTimeMillis() - start;
-    System.out.println("time cost: " + start);
-  }
-
-
-  class ReturnThread extends Thread{
+  class ReturnThread extends Thread {
 
     @Override
     public void run() {
       while (true) {
-        IMemTable memTable = memTables.poll();
-        if (memTable == null) {
+        ChunkBuffer chunkBuffer = chunkBuffers.poll();
+        if (chunkBuffer == null) {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
@@ -80,10 +71,11 @@ public class MemTablePoolTest {
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
-        memTables.remove(memTable);
-        MemTablePool.getInstance().putBack(memTable, "test case");
+        chunkBuffers.remove(chunkBuffer);
+        ChunkBufferPool.getInstance().putBack(chunkBuffer, "test case");
       }
     }
   }
+
 
 }
