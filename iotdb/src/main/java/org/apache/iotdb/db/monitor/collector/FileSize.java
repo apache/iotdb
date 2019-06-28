@@ -81,7 +81,7 @@ public class FileSize implements IStatistic {
         fileNodeManager.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
             TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
             Collections.emptyMap());
-      } catch (FileNodeManagerException | ProcessorException e) {
+      } catch (FileNodeManagerException e) {
         LOGGER.error("Register File Size Stats into fileNodeManager Failed.", e);
       }
     }

@@ -429,21 +429,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     statement = statement.toLowerCase();
     switch (statement) {
       case "flush":
-        try {
-          FileNodeManagerV2.getInstance().syncCloseAllProcessor();
-        } catch (FileNodeManagerException e) {
-          LOGGER.error("meet error while FileNodeManager closing all!", e);
-          throw new IOException(e);
-        }
+        FileNodeManagerV2.getInstance().syncCloseAllProcessor();
         return true;
       case "merge":
-        try {
           // TODO change to merge!!!
-          FileNodeManagerV2.getInstance().syncCloseAllProcessor();
-        } catch (FileNodeManagerException e) {
-          LOGGER.error("meet error while FileNodeManager merging all!", e);
-          throw new IOException(e);
-        }
+        FileNodeManagerV2.getInstance().syncCloseAllProcessor();
         return true;
       default:
         return false;
