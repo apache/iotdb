@@ -125,6 +125,20 @@ public abstract class TVList {
 
   public abstract TVList clone();
 
+  protected void cloneAs(TVList cloneList) {
+    if (!sorted) {
+      for (long[] timestampArray : timestamps) {
+        cloneList.timestamps.add(cloneTime(timestampArray));
+      }
+    } else {
+      cloneList.sortedTimestamps = new long[size];
+      System.arraycopy(sortedTimestamps, 0, cloneList.sortedTimestamps, 0, size);
+    }
+    cloneList.size = size;
+    cloneList.sorted = sorted;
+    cloneList.limit = limit;
+  }
+
   public void reset() {
     size = 0;
     limit = 0;

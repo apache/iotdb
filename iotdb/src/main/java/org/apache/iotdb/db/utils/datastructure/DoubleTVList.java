@@ -71,26 +71,18 @@ public class DoubleTVList extends TVList {
   @Override
   public DoubleTVList clone() {
     DoubleTVList cloneList = new DoubleTVList();
+    cloneAs(cloneList);
     if (!sorted) {
       for (double[] valueArray : values) {
         cloneList.values.add(cloneValue(valueArray));
       }
-      for (long[] timestampArray : timestamps) {
-        cloneList.timestamps.add(cloneTime(timestampArray));
-      }
     } else {
-      cloneList.sortedTimestamps = new long[size];
       cloneList.sortedValues = new double[size];
-      System.arraycopy(sortedTimestamps, 0, cloneList.sortedTimestamps, 0, size);
       System.arraycopy(sortedValues, 0, cloneList.sortedValues, 0, size);
     }
-    cloneList.size = size;
-    cloneList.sorted = sorted;
-    cloneList.limit = limit;
-
     return cloneList;
   }
-
+  
   private double[] cloneValue(double[] array) {
     double[] cloneArray = new double[array.length];
     System.arraycopy(array, 0, cloneArray, 0, array.length);
