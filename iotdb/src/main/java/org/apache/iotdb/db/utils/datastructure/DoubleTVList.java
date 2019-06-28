@@ -27,6 +27,8 @@ public class DoubleTVList extends TVList {
 
   private double[] sortedValues;
 
+  private double pivotValue;
+
   public DoubleTVList() {
     super();
     values = new ArrayList<>();
@@ -34,10 +36,7 @@ public class DoubleTVList extends TVList {
 
   @Override
   public void putDouble(long timestamp, double value) {
-    if ((size % SINGLE_ARRAY_SIZE) == 0) {
-      values.add(new double[SINGLE_ARRAY_SIZE]);
-      timestamps.add(new long[SINGLE_ARRAY_SIZE]);
-    }
+    checkExpansion();
     int arrayIndex = size / SINGLE_ARRAY_SIZE;
     int elementIndex = size % SINGLE_ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
@@ -72,33 +71,22 @@ public class DoubleTVList extends TVList {
   @Override
   public DoubleTVList clone() {
     DoubleTVList cloneList = new DoubleTVList();
+    cloneAs(cloneList);
     if (!sorted) {
       for (double[] valueArray : values) {
         cloneList.values.add(cloneValue(valueArray));
       }
-      for (long[] timestampArray : timestamps) {
-        cloneList.timestamps.add(cloneTime(timestampArray));
-      }
     } else {
-      cloneList.sortedTimestamps = new long[size];
       cloneList.sortedValues = new double[size];
-      System.arraycopy(sortedTimestamps, 0, cloneList.sortedTimestamps, 0, size);
       System.arraycopy(sortedValues, 0, cloneList.sortedValues, 0, size);
     }
-    cloneList.size = size;
-    cloneList.sorted = sorted;
-
     return cloneList;
   }
-
+  
   private double[] cloneValue(double[] array) {
     double[] cloneArray = new double[array.length];
     System.arraycopy(array, 0, cloneArray, 0, array.length);
     return cloneArray;
-  }
-
-  public void reset() {
-    size = 0;
   }
 
   public void sort() {
@@ -136,5 +124,21 @@ public class DoubleTVList extends TVList {
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }
+  }
+
+  @Override
+  protected void expandValues() {
+    values.add(new double[SINGLE_ARRAY_SIZE]);
+  }
+
+  @Override
+  protected void saveAsPivot(int pos) {
+    pivotTime = getTime(pos);
+    pivotValue = getDouble(pos);
+  }
+
+  @Override
+  protected void setPivotTo(int pos) {
+    set(pos, pivotTime, pivotValue);
   }
 }

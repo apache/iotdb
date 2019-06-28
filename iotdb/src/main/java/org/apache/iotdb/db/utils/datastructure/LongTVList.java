@@ -27,6 +27,8 @@ public class LongTVList extends TVList {
 
   private long[] sortedValues;
 
+  private long pivotValue;
+
   public LongTVList() {
     super();
     values = new ArrayList<>();
@@ -34,10 +36,7 @@ public class LongTVList extends TVList {
 
   @Override
   public void putLong(long timestamp, long value) {
-    if ((size % SINGLE_ARRAY_SIZE) == 0) {
-      values.add(new long[SINGLE_ARRAY_SIZE]);
-      timestamps.add(new long[SINGLE_ARRAY_SIZE]);
-    }
+    checkExpansion();
     int arrayIndex = size / SINGLE_ARRAY_SIZE;
     int elementIndex = size % SINGLE_ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
@@ -72,22 +71,15 @@ public class LongTVList extends TVList {
   @Override
   public LongTVList clone() {
     LongTVList cloneList = new LongTVList();
+    cloneAs(cloneList);
     if (!sorted) {
       for (long[] valueArray : values) {
         cloneList.values.add(cloneValue(valueArray));
       }
-      for (long[] timestampArray : timestamps) {
-        cloneList.timestamps.add(cloneTime(timestampArray));
-      }
     } else {
-      cloneList.sortedTimestamps = new long[size];
       cloneList.sortedValues = new long[size];
-      System.arraycopy(sortedTimestamps, 0, cloneList.sortedTimestamps, 0, size);
       System.arraycopy(sortedValues, 0, cloneList.sortedValues, 0, size);
     }
-    cloneList.size = size;
-    cloneList.sorted = sorted;
-
     return cloneList;
   }
 
@@ -136,5 +128,21 @@ public class LongTVList extends TVList {
       set(lo++, hiT, hiV);
       set(hi--, loT, loV);
     }
+  }
+
+  @Override
+  protected void expandValues() {
+    values.add(new long[SINGLE_ARRAY_SIZE]);
+  }
+
+  @Override
+  protected void saveAsPivot(int pos) {
+    pivotTime = getTime(pos);
+    pivotValue = getLong(pos);
+  }
+
+  @Override
+  protected void setPivotTo(int pos) {
+    set(pos, pivotTime, pivotValue);
   }
 }
