@@ -89,17 +89,15 @@ public class LongTVList extends TVList {
     return cloneArray;
   }
 
-  public void reset() {
-    size = 0;
-  }
-
   public void sort() {
-    sortedTimestamps = new long[size];
-    sortedValues = new long[size];
+    if (sortedTimestamps == null || sortedTimestamps.length < size) {
+      sortedTimestamps = new long[size];
+    }
+    if (sortedValues == null || sortedValues.length < size) {
+      sortedValues = new long[size];
+    }
     sort(0, size);
     sorted = true;
-    values = null;
-    timestamps = null;
   }
 
   @Override
@@ -145,4 +143,5 @@ public class LongTVList extends TVList {
   protected void setPivotTo(int pos) {
     set(pos, pivotTime, pivotValue);
   }
+
 }

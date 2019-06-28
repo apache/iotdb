@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -85,6 +86,8 @@ public class UnsealedTsFileProcessorV2 {
 
   private WriteLogNode logNode;
 
+  private TVListAllocator allocator;
+
   /**
    * sync this object in query() and asyncFlush()
    */
@@ -93,7 +96,7 @@ public class UnsealedTsFileProcessorV2 {
   public UnsealedTsFileProcessorV2(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,
       Consumer<UnsealedTsFileProcessorV2> closeUnsealedFileCallback,
-      Supplier flushUpdateLatestFlushTimeCallback)
+      Supplier flushUpdateLatestFlushTimeCallback, TVListAllocator allocator)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
@@ -102,6 +105,7 @@ public class UnsealedTsFileProcessorV2 {
     this.writer = new NativeRestorableIOWriter(tsfile);
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;
     this.flushUpdateLatestFlushTimeCallback = flushUpdateLatestFlushTimeCallback;
+    this.allocator = allocator;
     LOGGER.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
   }
 
@@ -118,6 +122,7 @@ public class UnsealedTsFileProcessorV2 {
     if (workMemTable == null) {
       // TODO change the impl of getEmptyMemTable to non-blocking
       workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
+      workMemTable.setTVListAllocator(allocator);
 
       // no empty memtable, return failure
       if (workMemTable == null) {

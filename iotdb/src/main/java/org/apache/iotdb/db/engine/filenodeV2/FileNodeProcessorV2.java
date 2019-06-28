@@ -47,6 +47,8 @@ import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -106,6 +108,8 @@ public class FileNodeProcessorV2 {
    * This is the modification file of the result of the current merge.
    */
   private ModificationFile mergingModification;
+
+  private TVListAllocator allocator = new TVListAllocator();
 
   public FileNodeProcessorV2(String baseDir, String storageGroupName) throws ProcessorException {
     this.storageGroupName = storageGroupName;
@@ -343,11 +347,11 @@ public class FileNodeProcessorV2 {
     if (sequence) {
       return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
-          this::updateLatestFlushTimeCallback);
+          this::updateLatestFlushTimeCallback, allocator);
     } else {
       return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
-          () -> true);
+          () -> true, allocator);
     }
   }
 

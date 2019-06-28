@@ -40,9 +40,9 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
   private TSDataType dataType;
   private TVList list;
 
-  public WritableMemChunkV2(TSDataType dataType) {
+  public WritableMemChunkV2(TSDataType dataType, TVList list) {
     this.dataType = dataType;
-    this.list = TVList.newList(dataType);
+    this.list = list;
   }
 
   @Override
@@ -131,6 +131,11 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
   @Override
   public TVList getSortedTVList() {
     list.sort();
+    return list;
+  }
+
+  @Override
+  public TVList getTVList() {
     return list;
   }
 

@@ -40,6 +40,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -70,6 +71,7 @@ public class LogReplayerTest {
     };
     TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
+    memTable.setTVListAllocator(new TVListAllocator());
     FileSchema schema = new FileSchema();
 
     try {

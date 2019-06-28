@@ -22,6 +22,7 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -97,4 +98,8 @@ public interface IMemTable {
   long getVersion();
 
   void setVersion(long version);
+
+  void setTVListAllocator(TVListAllocator allocator);
+
+  TVListAllocator getTVListAllocator();
 }

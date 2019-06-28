@@ -36,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileSchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -71,7 +72,8 @@ public class UnsealedTsFileProcessorV2Test {
   public void testWriteAndFlush()
       throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{}, ()-> true);
+        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
+        ()-> true, new TVListAllocator());
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -116,7 +118,8 @@ public class UnsealedTsFileProcessorV2Test {
   public void testMultiFlush()
       throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
-        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{}, ()->true);
+        FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
+        ()->true, new TVListAllocator());
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -159,7 +162,7 @@ public class UnsealedTsFileProcessorV2Test {
             }
             resource.close();
           }
-        }, ()->true);
+        }, ()->true, new TVListAllocator());
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);

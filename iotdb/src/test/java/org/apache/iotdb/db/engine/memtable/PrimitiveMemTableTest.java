@@ -25,6 +25,7 @@ import java.util.Random;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -62,6 +63,7 @@ public class PrimitiveMemTableTest {
   @Test
   public void simpleTest() {
     IMemTable memTable = new PrimitiveMemTable();
+    memTable.setTVListAllocator(new TVListAllocator());
     int count = 10;
     String deviceId = "d1";
     String measurementId[] = new String[count];
@@ -129,6 +131,7 @@ public class PrimitiveMemTableTest {
   @Test
   public void testFloatType() {
     IMemTable memTable = new PrimitiveMemTable();
+    memTable.setTVListAllocator(new TVListAllocator());
     String deviceId = "d1";
     int size = 1000000;
     write(memTable, deviceId, "s1", TSDataType.FLOAT, size);
@@ -137,6 +140,7 @@ public class PrimitiveMemTableTest {
   @Test
   public void testAllType() {
     IMemTable memTable = new PrimitiveMemTable();
+    memTable.setTVListAllocator(new TVListAllocator());
     int count = 10;
     String deviceId = "d1";
     String measurementId[] = new String[count];

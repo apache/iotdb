@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -40,6 +41,7 @@ public class MemtableBenchmark {
 
   public static void main(String[] args) {
     IMemTable memTable = new PrimitiveMemTable();
+    memTable.setTVListAllocator(new TVListAllocator());
     final long startTime = System.currentTimeMillis();
     // cpu not locality
     for (int i = 0; i < numOfPoint; i++) {

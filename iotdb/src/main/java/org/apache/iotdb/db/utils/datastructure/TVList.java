@@ -142,6 +142,8 @@ public abstract class TVList {
   public void reset() {
     size = 0;
     limit = 0;
+    timeOffset = -1;
+    sorted = false;
   }
 
   protected void checkExpansion() {

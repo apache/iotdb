@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -107,6 +108,7 @@ public class MemTableFlushTaskV2 {
   private Runnable EncodingTask = new Runnable() {
     @Override
     public void run() {
+      String currDevice = null;
       try {
         long memSerializeTime = 0;
         boolean noMoreMessages = false;
@@ -129,6 +131,7 @@ public class MemTableFlushTaskV2 {
             }
           } else {
             if (task instanceof String) {
+              currDevice = (String) task;
               ioTaskQueue.add(task);
             } else if (task instanceof ChunkGroupIoTask) {
               ioTaskQueue.add(task);
@@ -141,6 +144,8 @@ public class MemTableFlushTaskV2 {
               try {
                 writeOneSeries(encodingMessage.left, seriesWriter,
                     encodingMessage.right.getType());
+                memTable.getTVListAllocator().release(currDevice + IoTDBConstant.PATH_SEPARATOR
+                    + encodingMessage.right.getMeasurementId(), encodingMessage.left);
                 ioTaskQueue.add(seriesWriter);
               } catch (IOException e) {
                 LOGGER.error("Storage group {} memtable {}, encoding task error.", storageGroup,
@@ -218,7 +223,6 @@ public class MemTableFlushTaskV2 {
   private void writeOneSeries(TVList tvPairs, IChunkWriter seriesWriterImpl,
       TSDataType dataType)
       throws IOException {
-
     for (int i = 0; i < tvPairs.size(); i++) {
       long time = tvPairs.getTime(i);
       if (time < tvPairs.getTimeOffset() ||

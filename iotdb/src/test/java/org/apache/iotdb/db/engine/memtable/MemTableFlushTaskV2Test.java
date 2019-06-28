@@ -24,6 +24,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 import org.junit.After;
@@ -46,6 +47,7 @@ public class MemTableFlushTaskV2Test {
 
     writer = new NativeRestorableIOWriter(new File(filePath));
     memTable = new PrimitiveMemTable();
+    memTable.setTVListAllocator(new TVListAllocator());
   }
 
   @After

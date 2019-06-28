@@ -82,7 +82,7 @@ public class DoubleTVList extends TVList {
     }
     return cloneList;
   }
-  
+
   private double[] cloneValue(double[] array) {
     double[] cloneArray = new double[array.length];
     System.arraycopy(array, 0, cloneArray, 0, array.length);
@@ -90,12 +90,14 @@ public class DoubleTVList extends TVList {
   }
 
   public void sort() {
-    sortedTimestamps = new long[size];
-    sortedValues = new double[size];
+    if (sortedTimestamps == null || sortedTimestamps.length < size) {
+      sortedTimestamps = new long[size];
+    }
+    if (sortedValues == null || sortedValues.length < size) {
+      sortedValues = new double[size];
+    }
     sort(0, size);
     sorted = true;
-    values = null;
-    timestamps = null;
   }
 
   @Override
@@ -141,4 +143,5 @@ public class DoubleTVList extends TVList {
   protected void setPivotTo(int pos) {
     set(pos, pivotTime, pivotValue);
   }
+
 }

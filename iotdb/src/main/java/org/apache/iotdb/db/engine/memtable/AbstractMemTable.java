@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class AbstractMemTable implements IMemTable {
@@ -41,6 +42,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
 
   private long memSize = 0;
+
+  protected TVListAllocator allocator;
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -71,12 +74,12 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     if (!memSeries.containsKey(measurement)) {
-      memSeries.put(measurement, genMemSeries(dataType));
+      memSeries.put(measurement, genMemSeries(dataType, deviceId + PATH_SEPARATOR + measurement));
     }
     return memSeries.get(measurement);
   }
 
-  protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
+  protected abstract IWritableMemChunk genMemSeries(TSDataType dataType, String path);
 
 
   @Override
@@ -177,7 +180,7 @@ public abstract class AbstractMemTable implements IMemTable {
       if (chunk == null) {
         return true;
       }
-      IWritableMemChunk newChunk = filterChunk(chunk, timestamp);
+      IWritableMemChunk newChunk = filterChunk(chunk, timestamp, deviceId + PATH_SEPARATOR + measurementId);
       if (newChunk != null) {
         deviceMap.put(measurementId, newChunk);
         return newChunk.count() != chunk.count();
@@ -200,11 +203,11 @@ public abstract class AbstractMemTable implements IMemTable {
    * @return A reduced copy of chunk if chunk contains data with timestamp less than 'timestamp', of
    * null.
    */
-  private IWritableMemChunk filterChunk(IWritableMemChunk chunk, long timestamp) {
+  private IWritableMemChunk filterChunk(IWritableMemChunk chunk, long timestamp, String path) {
     List<TimeValuePair> timeValuePairs = chunk.getSortedTimeValuePairList();
     if (!timeValuePairs.isEmpty() && timeValuePairs.get(0).getTimestamp() <= timestamp) {
       TSDataType dataType = chunk.getType();
-      IWritableMemChunk newChunk = genMemSeries(dataType);
+      IWritableMemChunk newChunk = genMemSeries(dataType, path);
       for (TimeValuePair pair : timeValuePairs) {
         if (pair.getTimestamp() > timestamp) {
           switch (dataType) {
@@ -231,6 +234,7 @@ public abstract class AbstractMemTable implements IMemTable {
           }
         }
       }
+      allocator.release(path, chunk.getTVList());
       return newChunk;
     }
     return null;
@@ -248,5 +252,15 @@ public abstract class AbstractMemTable implements IMemTable {
 
   public long getVersion() {
     return version;
+  }
+
+  @Override
+  public void setTVListAllocator(TVListAllocator allocator) {
+    this.allocator = allocator;
+  }
+
+  @Override
+  public TVListAllocator getTVListAllocator() {
+    return allocator;
   }
 }

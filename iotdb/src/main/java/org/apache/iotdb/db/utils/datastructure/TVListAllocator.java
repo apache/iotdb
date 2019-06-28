@@ -17,42 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.memtable;
+package org.apache.iotdb.db.utils.datastructure;
 
-import java.util.HashMap;
 import java.util.Map;
-
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class PrimitiveMemTable extends AbstractMemTable {
+public class TVListAllocator {
+  private Map<String, ConcurrentLinkedQueue<TVList>> tvListCache = new ConcurrentHashMap<>();
 
-  public PrimitiveMemTable() {
+  public TVList allocate(String identifier, TSDataType dataType) {
+    ConcurrentLinkedQueue<TVList> tvLists = tvListCache.computeIfAbsent(identifier,
+        k -> new ConcurrentLinkedQueue<>());
+    TVList list = tvLists.poll();
+    return list != null ? list : TVList.newList(dataType);
   }
 
-  public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
-    super(memTableMap);
+  public void release(String identifier, TVList list) {
+    list.reset();
+    tvListCache.get(identifier).add(list);
   }
-
-  @Override
-  protected IWritableMemChunk genMemSeries(TSDataType dataType, String path) {
-    return new WritableMemChunkV2(dataType, allocator.allocate(path, dataType));
-  }
-
-  @Override
-  public IMemTable copy() {
-    Map<String, Map<String, IWritableMemChunk>> newMap = new HashMap<>(getMemTableMap());
-
-    return new PrimitiveMemTable(newMap);
-  }
-
-  @Override
-  public boolean isManagedByMemPool() {
-    return true;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return this == obj;
-  }
-
 }
