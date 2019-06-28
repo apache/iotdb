@@ -47,7 +47,6 @@ import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -288,10 +287,11 @@ public class FileNodeProcessorV2 {
 
     // insert BufferWrite
     long start2 = System.currentTimeMillis();
-    result = unsealedTsFileProcessor.insert(insertPlan);
+    result = unsealedTsFileProcessor.insert(insertPlan, sequence);
     start2 = System.currentTimeMillis() - start2;
     if (start2 > 1000) {
-      LOGGER.info("FNP {} insert a record into unsealed file processor cost: {}", storageGroupName, start2);
+      LOGGER.info("FNP {} insert a record into unsealed file processor cost: {}", storageGroupName,
+          start2);
     }
 
     // try to update the latest time of the device of this tsRecord
@@ -355,6 +355,7 @@ public class FileNodeProcessorV2 {
     if (sequence) {
       closingSequenceTsFileProcessor.add(unsealedTsFileProcessor);
       workSequenceTsFileProcessor = null;
+      updateEndTimeMap(unsealedTsFileProcessor);
     } else {
       closingUnSequenceTsFileProcessor.add(unsealedTsFileProcessor);
       workUnSequenceTsFileProcessor = null;
@@ -389,7 +390,8 @@ public class FileNodeProcessorV2 {
     lock.writeLock().lock();
     time = System.currentTimeMillis() - time;
     if (time > 1000) {
-      LOGGER.info("storage group {} wait for write lock cost: {}", storageGroupName, time, new RuntimeException());
+      LOGGER.info("storage group {} wait for write lock cost: {}", storageGroupName, time,
+          new RuntimeException());
     }
     timerr.set(System.currentTimeMillis());
   }
@@ -398,7 +400,8 @@ public class FileNodeProcessorV2 {
     lock.writeLock().unlock();
     long time = System.currentTimeMillis() - timerr.get();
     if (time > 1000) {
-      LOGGER.info("storage group {} take lock for {}ms", storageGroupName, time, new RuntimeException());
+      LOGGER.info("storage group {} take lock for {}ms", storageGroupName, time,
+          new RuntimeException());
     }
   }
 
@@ -535,7 +538,6 @@ public class FileNodeProcessorV2 {
       if (workUnSequenceTsFileProcessor != null) {
         closingUnSequenceTsFileProcessor.add(workUnSequenceTsFileProcessor);
         workUnSequenceTsFileProcessor.asyncClose();
-        updateEndTimeMap(workUnSequenceTsFileProcessor);
         workUnSequenceTsFileProcessor = null;
       }
     } finally {
