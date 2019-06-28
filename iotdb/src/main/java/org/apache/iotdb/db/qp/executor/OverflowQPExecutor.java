@@ -503,10 +503,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 }
               }
             }
-            fileNodeManager.syncCloseAllProcessor();
             for (String deleteFileNode : deleteFielNodes) {
               // close processor
-//              fileNodeManager.deleteOneFileNode(deleteFileNode);
+              fileNodeManager.deleteOneFileNode(deleteFileNode);
             }
           }
           break;
@@ -516,7 +515,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);
       }
-    } catch (PathErrorException | IOException e) {
+    } catch (PathErrorException | IOException | FileNodeManagerException e) {
       throw new ProcessorException(e);
     }
     return true;
