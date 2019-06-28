@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
@@ -325,9 +326,17 @@ public class FileNodeManagerV2 implements IService {
     LOGGER.info("Forced to delete the filenode processor {}", processorName);
     FileNodeProcessorV2 processor = processorMap.get(processorName);
     processor.syncCloseAndStopFileNode(() -> {
-      String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getFileNodeDir();
-      fileNodePath = FilePathUtils.regularizePath(fileNodePath) + processorName;
       try {
+        // delete storage group data file
+        for (String tsfilePath: DirectoryManager.getInstance().getAllTsFileFolders()) {
+          File storageGroupFolder = new File(tsfilePath, processorName);
+          if (storageGroupFolder.exists()) {
+            FileUtils.deleteDirectory(storageGroupFolder);
+          }
+        }
+        // delete storage group info file
+        String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getFileNodeDir();
+        fileNodePath = FilePathUtils.regularizePath(fileNodePath) + processorName;
         FileUtils.deleteDirectory(new File(fileNodePath));
       } catch (IOException e) {
         LOGGER.error("Delete tsfiles failed", e);

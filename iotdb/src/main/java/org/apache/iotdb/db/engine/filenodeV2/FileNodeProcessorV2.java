@@ -608,6 +608,7 @@ public class FileNodeProcessorV2 {
             .error("CloseFileNodeCondition occurs error while waiting for closing the file node {}",
                 storageGroupName, e);
       }
+      System.out.println("aaa");
     }
   }
 

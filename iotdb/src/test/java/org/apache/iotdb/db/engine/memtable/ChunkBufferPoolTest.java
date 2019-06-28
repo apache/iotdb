@@ -46,7 +46,7 @@ public class ChunkBufferPoolTest {
 
   @Test
   public void testGetAndRelease() {
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 10; i++) {
       ChunkBuffer chunk = ChunkBufferPool.getInstance().getEmptyChunkBuffer("test case",
           new MeasurementSchema("node", TSDataType.INT32, TSEncoding.PLAIN,
               CompressionType.SNAPPY));
@@ -71,7 +71,7 @@ public class ChunkBufferPoolTest {
           continue;
         }
         try {
-          Thread.sleep(100);
+          Thread.sleep(10);
         } catch (InterruptedException e) {
         }
         chunkBuffers.remove(chunkBuffer);

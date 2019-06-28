@@ -43,7 +43,7 @@ public class MemTablePoolTest {
   @Test
   public void testGetAndRelease() {
     long time = System.currentTimeMillis();
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 10; i++) {
       IMemTable memTable = MemTablePool.getInstance().getEmptyMemTable("test case");
       memTables.add(memTable);
     }
@@ -81,7 +81,7 @@ public class MemTablePoolTest {
           continue;
         }
         try {
-          Thread.sleep(100);
+          Thread.sleep(10);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }

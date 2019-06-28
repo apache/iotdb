@@ -169,7 +169,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long findUndeletedTime(String deviceId, String measurement) {
     String path = deviceId + PATH_SEPARATOR + measurement;
-    long undeletedTime = 0;
+    long undeletedTime = Long.MIN_VALUE;
     for (Modification modification : modifications) {
       if (modification instanceof  Deletion) {
         Deletion deletion = (Deletion) modification;

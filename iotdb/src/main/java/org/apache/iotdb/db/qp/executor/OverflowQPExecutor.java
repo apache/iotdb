@@ -439,6 +439,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           }
           break;
         case DELETE_PATH:
+
           if (deletePathList != null && !deletePathList.isEmpty()) {
             Set<String> pathSet = new HashSet<>();
             // Attention: Monitor storage group seriesPath is not allowed to be deleted
@@ -472,7 +473,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             } catch (ProcessorException e) {
               throw new ProcessorException(e);
             }
-            Set<String> closeFileNodes = new HashSet<>();
+
             Set<String> deleteFielNodes = new HashSet<>();
             for (String p : fullPath) {
               String nameSpacePath = null;
@@ -481,7 +482,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               } catch (PathErrorException e) {
                 throw new ProcessorException(e);
               }
-              closeFileNodes.add(nameSpacePath);
               // the two map is stored in the storage group node
               schemaMap = mManager.getSchemaMapForOneFileNode(nameSpacePath);
               numSchemaMap = mManager.getNumSchemaMapForOneFileNode(nameSpacePath);
@@ -503,14 +503,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 }
               }
             }
-            closeFileNodes.removeAll(deleteFielNodes);
+            fileNodeManager.syncCloseAllProcessor();
             for (String deleteFileNode : deleteFielNodes) {
               // close processor
-              fileNodeManager.deleteOneFileNode(deleteFileNode);
-            }
-            for (String closeFileNode : closeFileNodes) {
-              // TODO add close file node method in FileNodeManager
-//              fileNodeManager.(closeFileNode);
+//              fileNodeManager.deleteOneFileNode(deleteFileNode);
             }
           }
           break;
@@ -520,7 +516,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);
       }
-    } catch (PathErrorException | IOException | FileNodeManagerException e) {
+    } catch (PathErrorException | IOException e) {
       throw new ProcessorException(e);
     }
     return true;

@@ -55,7 +55,7 @@ public class FileNodeProcessorV2Test {
 
   @Test
   public void testSequenceSyncClose() {
-    for (int j = 1; j <= 100; j++) {
+    for (int j = 1; j <= 10; j++) {
       System.out.println(j);
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -70,7 +70,7 @@ public class FileNodeProcessorV2Test {
     } catch (FileNodeProcessorException e) {
       e.printStackTrace();
     }
-    Assert.assertEquals(queryDataSource.getSeqResources().size(), 100);
+    Assert.assertEquals(queryDataSource.getSeqResources().size(), 10);
     for (TsFileResourceV2 resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
