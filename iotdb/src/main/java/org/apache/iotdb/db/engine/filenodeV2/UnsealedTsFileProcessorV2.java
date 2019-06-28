@@ -23,11 +23,13 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.EmptyMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -298,6 +300,7 @@ public class UnsealedTsFileProcessorV2 {
     try {
       writer.makeMetadataVisible();
       flushingMemTables.remove(memTable);
+      memTable.release();
       LOGGER.info("flush finished, remove a memtable from flushing list, "
               + "flushing memtable list size: {}", flushingMemTables.size());
     } finally {
@@ -359,14 +362,10 @@ public class UnsealedTsFileProcessorV2 {
 
     writer.endFile(fileSchema);
 
-    flushQueryLock.writeLock().lock();
-    try {
       // remove this processor from Closing list in FileNodeProcessor, mark the TsFileResource closed, no need writer anymore
-      closeUnsealedFileCallback.accept(this);
-      writer = null;
-    } finally {
-      flushQueryLock.writeLock().unlock();
-    }
+    closeUnsealedFileCallback.accept(this);
+
+    writer = null;
 
     // delete the restore for this bufferwrite processor
     if (LOGGER.isInfoEnabled()) {
@@ -440,12 +439,12 @@ public class UnsealedTsFileProcessorV2 {
         if (!flushingMemTable.isManagedByMemPool()) {
           continue;
         }
-        memSeriesLazyMerger
-            .addMemSeries(flushingMemTable.query(deviceId, measurementId, dataType, props));
+        ReadOnlyMemChunk memChunk = flushingMemTable.query(deviceId, measurementId, dataType, props);
+        memSeriesLazyMerger.addMemSeries(memChunk);
       }
       if (workMemTable != null) {
-        memSeriesLazyMerger
-            .addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
+        ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props);
+        memSeriesLazyMerger.addMemSeries(memChunk);
       }
       // memSeriesLazyMerger has handled the props,
       // so we do not need to handle it again in the following readOnlyMemChunk

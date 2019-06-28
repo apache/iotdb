@@ -74,7 +74,7 @@ public class UnseqSeriesReaderByTimestampTest {
         TSRecord record = new TSRecord(2, deviceId);
         record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
         FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
-//        FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
+ //       FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
 
         // query
         List<Path> paths = new ArrayList<>();

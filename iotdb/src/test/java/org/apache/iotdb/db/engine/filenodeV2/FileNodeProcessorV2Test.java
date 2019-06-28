@@ -55,6 +55,7 @@ public class FileNodeProcessorV2Test {
   @Test
   public void testSequenceSyncClose() {
     for (int j = 1; j <= 100; j++) {
+      System.out.println(j);
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));

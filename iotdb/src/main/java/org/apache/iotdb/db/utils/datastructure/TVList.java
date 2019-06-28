@@ -144,7 +144,6 @@ public abstract class TVList {
 
   public void reset() {
     size = 0;
-    limit = 0;
     timeOffset = -1;
     sorted = false;
   }
@@ -164,6 +163,9 @@ public abstract class TVList {
   }
 
   protected void sort(int lo, int hi) {
+    if (sorted) {
+      return;
+    }
     if (lo == hi) {
       return;
     }

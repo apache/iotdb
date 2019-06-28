@@ -39,6 +39,7 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunkV2.class);
   private TSDataType dataType;
   private TVList list;
+  private List<TimeValuePair> sortedList;
 
   public WritableMemChunkV2(TSDataType dataType, TVList list) {
     this.dataType = dataType;
@@ -129,7 +130,7 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getSortedTVList() {
+  public synchronized TVList getSortedTVList() {
     list.sort();
     return list;
   }
@@ -155,42 +156,43 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
   }
 
   @Override
-  public List<TimeValuePair> getSortedTimeValuePairList() {
-   List<TimeValuePair> result = new ArrayList<>();
-   TVList cloneList = list.clone();
-   cloneList.sort();
-   for (int i = 0; i < cloneList.size(); i++) {
-     long time = cloneList.getTime(i);
-     if (time < cloneList.getTimeOffset() ||
-         (i+1 < cloneList.size() && (time == cloneList.getTime(i+1)))) {
-       continue;
-     }
-
-     switch (dataType) {
-       case BOOLEAN:
-         result.add(new TimeValuePair(time, new TsBoolean(cloneList.getBoolean(i))));
-         break;
-       case INT32:
-         result.add(new TimeValuePair(time, new TsInt(cloneList.getInt(i))));
-         break;
-       case INT64:
-         result.add(new TimeValuePair(time, new TsLong(cloneList.getLong(i))));
-         break;
-       case FLOAT:
-         result.add(new TimeValuePair(time, new TsFloat(cloneList.getFloat(i))));
-         break;
-       case DOUBLE:
-         result.add(new TimeValuePair(time, new TsDouble(cloneList.getDouble(i))));
-         break;
-       case TEXT:
-         result.add(new TimeValuePair(time, new TsBinary(cloneList.getBinary(i))));
-         break;
-       default:
-         LOGGER.error("don't support data type: {}", dataType);
-         break;
-     }
-   }
-   return result;
+  public synchronized List<TimeValuePair> getSortedTimeValuePairList() {
+    if (sortedList != null) {
+      return sortedList;
+    }
+    sortedList = new ArrayList<>();
+    list.sort();
+    for (int i = 0; i < list.size(); i++) {
+      long time = list.getTime(i);
+      if (time < list.getTimeOffset() ||
+          (i + 1 < list.size() && (time == list.getTime(i + 1)))) {
+        continue;
+      }
+      switch (dataType) {
+        case BOOLEAN:
+          sortedList.add(new TimeValuePair(time, new TsBoolean(list.getBoolean(i))));
+          break;
+        case INT32:
+          sortedList.add(new TimeValuePair(time, new TsInt(list.getInt(i))));
+          break;
+        case INT64:
+          sortedList.add(new TimeValuePair(time, new TsLong(list.getLong(i))));
+          break;
+        case FLOAT:
+          sortedList.add(new TimeValuePair(time, new TsFloat(list.getFloat(i))));
+          break;
+        case DOUBLE:
+          sortedList.add(new TimeValuePair(time, new TsDouble(list.getDouble(i))));
+          break;
+        case TEXT:
+          sortedList.add(new TimeValuePair(time, new TsBinary(list.getBinary(i))));
+          break;
+        default:
+          LOGGER.error("don't support data type: {}", dataType);
+          break;
+      }
+    }
+    return this.sortedList;
   }
 
   @Override

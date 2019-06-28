@@ -24,13 +24,23 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsBoolean;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsInt;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsLong;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class AbstractMemTable implements IMemTable {
@@ -143,10 +153,19 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       Map<String, String> props) {
-
-    return new ReadOnlyMemChunk(dataType, getSeriesData(deviceId,
-        measurement, dataType), props);
+    TimeValuePairSorter sorter;
+    if (!checkPath(deviceId, measurement)) {
+      sorter = new WritableMemChunk(dataType);
+    } else {
+      long undeletedTime = findUndeletedTime(deviceId, measurement);
+      IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
+      IWritableMemChunk chunkCopy = new WritableMemChunkV2(dataType, memChunk.getTVList().clone());
+      chunkCopy.setTimeOffset(undeletedTime);
+      sorter = chunkCopy;
+    }
+    return new ReadOnlyMemChunk(dataType, sorter, props);
   }
+
 
   private long findUndeletedTime(String deviceId, String measurement) {
     String path = deviceId + PATH_SEPARATOR + measurement;
@@ -160,16 +179,6 @@ public abstract class AbstractMemTable implements IMemTable {
       }
     }
     return undeletedTime + 1;
-  }
-
-  private TimeValuePairSorter getSeriesData(String deviceId, String measurement, TSDataType dataType) {
-    if (!checkPath(deviceId, measurement)) {
-      return new WritableMemChunk(dataType);
-    }
-    long undeletedTime = findUndeletedTime(deviceId, measurement);
-    IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-    memChunk.setTimeOffset(undeletedTime);
-    return memChunk;
   }
 
   @Override
@@ -262,5 +271,14 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public TVListAllocator getTVListAllocator() {
     return allocator;
+  }
+
+  @Override
+  public void release() {
+    for (Entry<String, Map<String, IWritableMemChunk>> entry: memTableMap.entrySet()) {
+      for (Entry<String, IWritableMemChunk> subEntry: entry.getValue().entrySet()) {
+        allocator.release(entry.getKey() + IoTDBConstant.PATH_SEPARATOR + subEntry.getKey(), subEntry.getValue().getTVList());
+      }
+    }
   }
 }

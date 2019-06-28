@@ -89,12 +89,13 @@ public class FileNodeProcessorV2 {
 
   private String storageGroupName;
 
-  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
 
   private final Object closeFileNodeCondition = new Object();
 
   private final ThreadLocal<Long> timerr = new ThreadLocal<>();
 
+  private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
   /**
    * Mark whether to close file node
    */
@@ -372,7 +373,7 @@ public class FileNodeProcessorV2 {
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSourceV2 query(String deviceId, String measurementId)
       throws FileNodeProcessorException {
-    lock.readLock().lock();
+    insertLock.readLock().lock();
     try {
       List<TsFileResourceV2> seqResources = getFileReSourceListForQuery(sequenceFileList,
           deviceId, measurementId);
@@ -380,13 +381,13 @@ public class FileNodeProcessorV2 {
           deviceId, measurementId);
       return new QueryDataSourceV2(new Path(deviceId, measurementId), seqResources, unseqResources);
     } finally {
-      lock.readLock().unlock();
+      insertLock.readLock().unlock();
     }
   }
 
   private void writeLock() {
     long time = System.currentTimeMillis();
-    lock.writeLock().lock();
+    insertLock.writeLock().lock();
     time = System.currentTimeMillis() - time;
     if (time > 1000) {
       LOGGER.info("storage group {} wait for write lock cost: {}", storageGroupName, time, new RuntimeException());
@@ -395,7 +396,7 @@ public class FileNodeProcessorV2 {
   }
 
   private void writeUnlock() {
-    lock.writeLock().unlock();
+    insertLock.writeLock().unlock();
     long time = System.currentTimeMillis() - timerr.get();
     if (time > 1000) {
       LOGGER.info("storage group {} take lock for {}ms", storageGroupName, time, new RuntimeException());
@@ -418,8 +419,9 @@ public class FileNodeProcessorV2 {
       if (!tsFileResource.containsDevice(deviceId)) {
         continue;
       }
-      synchronized (tsFileResource) {
-        if (!tsFileResource.getStartTimeMap().isEmpty()) {
+      if (!tsFileResource.getStartTimeMap().isEmpty()) {
+        closeQueryLock.readLock().lock();
+        try {
           if (tsFileResource.isClosed()) {
             tsfileResourcesForQuery.add(tsFileResource);
           } else {
@@ -432,8 +434,12 @@ public class FileNodeProcessorV2 {
               throw new FileNodeProcessorException(e);
             }
             tsfileResourcesForQuery
-                .add(new TsFileResourceV2(tsFileResource.getFile(), pair.left, pair.right));
+                .add(new TsFileResourceV2(tsFileResource.getFile(),
+                    tsFileResource.getStartTimeMap(),
+                    tsFileResource.getEndTimeMap(), pair.left, pair.right));
           }
+        } finally {
+          closeQueryLock.readLock().unlock();
         }
       }
     }
@@ -633,10 +639,13 @@ public class FileNodeProcessorV2 {
   // TODO please consider concurrency with query and insert method.
   public void closeUnsealedTsFileProcessorCallback(
       UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
+    closeQueryLock.writeLock().lock();
     try {
       unsealedTsFileProcessor.close();
     } catch (IOException e) {
       LOGGER.error("storage group: {} close unsealedTsFileProcessor failed", storageGroupName, e);
+    } finally {
+      closeQueryLock.writeLock().unlock();
     }
     if (closingSequenceTsFileProcessor.contains(unsealedTsFileProcessor)) {
       closingSequenceTsFileProcessor.remove(unsealedTsFileProcessor);

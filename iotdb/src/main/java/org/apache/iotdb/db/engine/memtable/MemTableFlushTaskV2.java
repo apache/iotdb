@@ -143,8 +143,6 @@ public class MemTableFlushTaskV2 {
               try {
                 writeOneSeries(encodingMessage.left, seriesWriter,
                     encodingMessage.right.getType());
-                memTable.getTVListAllocator().release(currDevice + IoTDBConstant.PATH_SEPARATOR
-                    + encodingMessage.right.getMeasurementId(), encodingMessage.left);
                 ioTaskQueue.add(seriesWriter);
               } catch (IOException e) {
                 LOGGER.error("Storage group {} memtable {}, encoding task error.", storageGroup,
