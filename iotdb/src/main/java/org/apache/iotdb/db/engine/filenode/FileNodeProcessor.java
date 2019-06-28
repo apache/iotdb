@@ -456,7 +456,7 @@
 //  }
 //
 //  /**
-//   * executeWithoutValueFilter filenode recovery.
+//   * execute filenode recovery.
 //   */
 //  public void recover() throws FileNodeProcessorException {
 //    // restore sequential files

@@ -84,7 +84,7 @@ public class StartupChecks {
   }
 
   /**
-   * executeWithoutValueFilter every pretests.
+   * execute every pretests.
    */
   public void verify() throws StartupException {
     for (StartupCheck check : preChecks) {
