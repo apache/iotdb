@@ -24,7 +24,10 @@ import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+@SuppressWarnings("unused")
 public abstract class TVList {
+
+  private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
   protected static final int SINGLE_ARRAY_SIZE = 512;
@@ -64,51 +67,51 @@ public abstract class TVList {
   }
 
   public void putLong(long time, long value) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public void putInt(long time, int value) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public void putFloat(long time, float value) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public void putDouble(long time, double value) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public void putBinary(long time, Binary value) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public void putBoolean(long time, boolean value) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public long getLong(int index) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public int getInt(int index) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public float getFloat(int index) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public double getDouble(int index) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public Binary getBinary(int index) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public boolean getBoolean(int index) {
-    throw new UnsupportedOperationException("DataType not consistent");
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   public abstract void sort();
@@ -117,7 +120,7 @@ public abstract class TVList {
 
   protected abstract void setFromSorted(int src, int dest);
 
-  protected abstract void setSorted(int src, int dest);
+  protected abstract void setToSorted(int src, int dest);
 
   protected abstract void reverseRange(int lo, int hi);
 
@@ -267,27 +270,30 @@ public abstract class TVList {
       setPivotTo(left);
     }
     for (int i = lo; i < hi; i++) {
-      setSorted(i, i);
+      setToSorted(i, i);
     }
   }
 
   protected void merge(int lo, int mid, int hi) {
+    // end of sorting buffer
     int tmpIdx = 0;
 
+    // start of unmerged parts of each sequence
     int leftIdx = lo;
     int rightIdx = mid;
 
+    // copy the minimum elements to sorting buffer until one sequence is exhausted
     int endSide = 0;
     while (endSide == 0) {
       if (compare(leftIdx, rightIdx) <= 0) {
-        setSorted(leftIdx, lo + tmpIdx);
+        setToSorted(leftIdx, lo + tmpIdx);
         tmpIdx ++;
         leftIdx ++;
         if (leftIdx == mid) {
           endSide = 1;
         }
       } else {
-        setSorted(rightIdx, lo + tmpIdx);
+        setToSorted(rightIdx, lo + tmpIdx);
         tmpIdx ++;
         rightIdx ++;
         if (rightIdx == hi) {
@@ -295,17 +301,25 @@ public abstract class TVList {
         }
       }
     }
+
+    // copy the remaining elements of another sequence
+    int start;
+    int end;
     if (endSide == 1) {
-      for (; rightIdx < hi; rightIdx++) {
-        setSorted(rightIdx, lo + tmpIdx);
-        tmpIdx ++;
-      }
+      start = rightIdx;
+      end = hi;
     } else {
-      for(; leftIdx < mid; leftIdx++) {
-        setSorted(leftIdx, lo + tmpIdx);
-        tmpIdx ++;
-      }
+      start = leftIdx;
+      end = mid;
     }
+    for (; start < end; start++) {
+      setToSorted(start, lo + tmpIdx);
+      tmpIdx ++;
+    }
+
+    // copy from sorting buffer to the original arrays so that they can be further sorted
+    // potential speed up: change the place of sorting buffer and origin data between merge
+    // iterations
     for (int i = lo; i < hi; i++) {
       setFromSorted(i, i);
     }

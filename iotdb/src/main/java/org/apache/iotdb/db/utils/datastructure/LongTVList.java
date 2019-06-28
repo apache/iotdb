@@ -111,7 +111,7 @@ public class LongTVList extends TVList {
     set(dest, srcT, srcV);
   }
 
-  protected void setSorted(int src, int dest) {
+  protected void setToSorted(int src, int dest) {
     sortedTimestamps[dest] = getTime(src);
     sortedValues[dest] = getLong(src);
   }
