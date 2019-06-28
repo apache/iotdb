@@ -213,8 +213,9 @@ public abstract class AbstractMemTable implements IMemTable {
    * null.
    */
   private IWritableMemChunk filterChunk(IWritableMemChunk chunk, long timestamp, String path) {
-    List<TimeValuePair> timeValuePairs = chunk.getSortedTimeValuePairList();
-    if (!timeValuePairs.isEmpty() && timeValuePairs.get(0).getTimestamp() <= timestamp) {
+
+    if (!chunk.isEmpty() && chunk.getMinTime() <= timestamp) {
+      List<TimeValuePair> timeValuePairs = chunk.getSortedTimeValuePairList();
       TSDataType dataType = chunk.getType();
       IWritableMemChunk newChunk = genMemSeries(dataType, path);
       for (TimeValuePair pair : timeValuePairs) {

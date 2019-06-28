@@ -43,10 +43,13 @@ public abstract class TVList {
 
   protected long pivotTime;
 
+  protected long minTime;
+
   public TVList() {
     timestamps = new ArrayList<>();
     size = 0;
     limit = 0;
+    minTime = Long.MIN_VALUE;
   }
 
   public int size() {
@@ -116,6 +119,10 @@ public abstract class TVList {
 
   public abstract void sort();
 
+  public long getMinTime() {
+    return minTime;
+  }
+
   protected abstract void set(int src, int dest);
 
   protected abstract void setFromSorted(int src, int dest);
@@ -140,12 +147,14 @@ public abstract class TVList {
     cloneList.size = size;
     cloneList.sorted = sorted;
     cloneList.limit = limit;
+    cloneList.minTime = minTime;
   }
 
   public void reset() {
     size = 0;
     timeOffset = -1;
     sorted = false;
+    minTime = Long.MIN_VALUE;
   }
 
   protected void checkExpansion() {

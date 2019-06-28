@@ -70,6 +70,7 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
+    sortedList = null;
   }
 
   @Override
@@ -96,6 +97,7 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
+    sortedList = null;
   }
 
 
@@ -198,4 +200,13 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
   @Override
   public void releasePrimitiveArrayList(){}
 
+  @Override
+  public boolean isEmpty() {
+    return list.size() == 0;
+  }
+
+  @Override
+  public long getMinTime() {
+    return list.getMinTime();
+  }
 }
