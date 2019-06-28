@@ -85,7 +85,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   public RowRecord next() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next()"
-          + " in GroupByWithOnlyTimeFilterDataSet.");
+          + " in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
     for (AggregateFunction function : functions) {
