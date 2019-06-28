@@ -138,7 +138,8 @@ public class MemTableFlushTaskV2 {
             } else {
               long starTime = System.currentTimeMillis();
               Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
-              ChunkBuffer chunkBuffer = new ChunkBuffer(encodingMessage.right);
+              ChunkBuffer chunkBuffer = FlushTaskPool.getInstance().getEmptyChunkBuffer(this, encodingMessage.right);
+
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right, chunkBuffer,
                   PAGE_SIZE_THRESHOLD);
               try {
@@ -151,6 +152,8 @@ public class MemTableFlushTaskV2 {
                 LOGGER.error("Storage group {} memtable {}, encoding task error.", storageGroup,
                     memTable.getVersion(), e);
                 throw new RuntimeException(e);
+              } finally {
+                FlushTaskPool.getInstance().putBack(chunkBuffer);
               }
               memSerializeTime += System.currentTimeMillis() - starTime;
             }

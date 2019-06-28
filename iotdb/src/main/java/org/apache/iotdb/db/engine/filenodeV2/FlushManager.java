@@ -43,11 +43,13 @@ public class FlushManager {
       try {
         unsealedTsFileProcessor.flushOneMemTable();
       } catch (IOException e) {
-        LOGGER.error("flush one memtable meet error", e);
+        LOGGER.error("storage group {} flush one memtable meet error",
+            unsealedTsFileProcessor.getStorageGroupName(), e);
         // TODO do sth
       }
       unsealedTsFileProcessor.setManagedByFlushManager(false);
-      LOGGER.info("flush process consume {} ms", System.currentTimeMillis() - startTime);
+      LOGGER.info("storage group {} flush process consume {} ms",
+          unsealedTsFileProcessor.getStorageGroupName(), System.currentTimeMillis() - startTime);
       registerUnsealedTsFileProcessor(unsealedTsFileProcessor);
     }
   }
@@ -58,7 +60,8 @@ public class FlushManager {
   public Future registerUnsealedTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
     synchronized (unsealedTsFileProcessor) {
       if (!unsealedTsFileProcessor.isManagedByFlushManager() && unsealedTsFileProcessor.getFlushingMemTableSize() > 0) {
-        LOGGER.info("begin to submit a flush thread, flushing memtable size: {}", unsealedTsFileProcessor.getFlushingMemTableSize());
+        LOGGER.info("storage group {} begin to submit a flush thread, flushing memtable size: {}",
+            unsealedTsFileProcessor.getStorageGroupName(), unsealedTsFileProcessor.getFlushingMemTableSize());
         unsealedTsFileProcessorQueue.add(unsealedTsFileProcessor);
         unsealedTsFileProcessor.setManagedByFlushManager(true);
         return flushPool.submit(new FlushThread());

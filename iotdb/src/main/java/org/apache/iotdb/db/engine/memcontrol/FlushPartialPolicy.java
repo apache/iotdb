@@ -61,11 +61,7 @@ public class FlushPartialPolicy implements Policy {
 
   private Thread createWorkerThread() {
     return new Thread(() -> {
-      try {
-        FileNodeManagerV2.getInstance().syncCloseAllProcessor();
-      } catch (FileNodeManagerException e) {
-        LOGGER.error("sync close all file node processor failed", e);
-      }
+      FileNodeManagerV2.getInstance().syncCloseAllProcessor();
       try {
         Thread.sleep(sleepInterval);
       } catch (InterruptedException e) {

@@ -238,13 +238,7 @@ public class FileNodeProcessorV2 {
    * @return -1: failed, 1: Overflow, 2:Bufferwrite
    */
   public boolean insert(InsertPlan insertPlan) {
-    long lockStartTime = System.currentTimeMillis();
     writeLock();
-    long lockElapsed = System.currentTimeMillis() - lockStartTime;
-    if (lockElapsed > 1000) {
-      LOGGER.info("FNP {} insert waiting for lock costs {} ms", storageGroupName, lockElapsed);
-    }
-    long start = System.currentTimeMillis();
     try {
       if (toBeClosed) {
         throw new FileNodeProcessorException(
@@ -264,10 +258,6 @@ public class FileNodeProcessorV2 {
       LOGGER.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
       return false;
     } finally {
-      long elapse = System.currentTimeMillis() - start;
-      if (elapse > 2000) {
-        LOGGER.info("long-tail insertion, cost: {}", elapse);
-      }
       writeUnlock();
     }
   }

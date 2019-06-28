@@ -56,13 +56,7 @@ public class ForceFLushAllPolicy implements Policy {
 
   private Thread createWorkerThread() {
     return new Thread(() ->
-    {
-      try {
-        FileNodeManagerV2.getInstance().syncCloseAllProcessor();
-      } catch (FileNodeManagerException e) {
-        logger.error("sync close all file node processor failed", e);
-      }
-    },
+        FileNodeManagerV2.getInstance().syncCloseAllProcessor(),
             ThreadName.FORCE_FLUSH_ALL_POLICY.getName());
   }
 }
