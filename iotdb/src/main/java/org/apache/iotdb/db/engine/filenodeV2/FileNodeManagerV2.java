@@ -117,11 +117,7 @@ public class FileNodeManagerV2 implements IService {
 
   @Override
   public void stop() {
-    try {
-      syncCloseAllProcessor();
-    } catch (FileNodeManagerException e) {
-      LOGGER.error("Failed to close file node manager because .", e);
-    }
+    syncCloseAllProcessor();
   }
 
   @Override
@@ -349,7 +345,7 @@ public class FileNodeManagerV2 implements IService {
    */
   public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor,
-      Map<String, String> props) throws FileNodeManagerException, ProcessorException {
+      Map<String, String> props) throws FileNodeManagerException {
     FileNodeProcessorV2 fileNodeProcessor = getProcessor(path.getFullPath());
     fileNodeProcessor.addTimeSeries(path.getMeasurement(), dataType, encoding, compressor, props);
   }
@@ -358,7 +354,7 @@ public class FileNodeManagerV2 implements IService {
   /**
    * delete all filenode.
    */
-  public synchronized boolean deleteAll() throws FileNodeManagerException {
+  public synchronized boolean deleteAll() {
     LOGGER.info("Start deleting all filenode");
     // TODO
     return true;
@@ -368,7 +364,7 @@ public class FileNodeManagerV2 implements IService {
    * flush command
    * Sync asyncCloseOneProcessor all file node processors.
    */
-  public void syncCloseAllProcessor() throws FileNodeManagerException {
+  public void syncCloseAllProcessor() {
     LOGGER.info("Start closing all filenode processor");
     synchronized (processorMap){
       for(FileNodeProcessorV2 processor: processorMap.values()){
