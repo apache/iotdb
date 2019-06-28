@@ -31,15 +31,17 @@ import org.junit.Test;
 public class ChunkBufferPoolTest {
 
   private ConcurrentLinkedQueue<ChunkBuffer> chunkBuffers;
+  private Thread thread = new ReturnThread();
 
   @Before
   public void setUp() throws Exception {
     chunkBuffers = new ConcurrentLinkedQueue();
-    new ReturnThread().start();
+    thread.start();
   }
 
   @After
   public void tearDown() throws Exception {
+    thread.interrupt();
   }
 
   @Test
@@ -57,19 +59,20 @@ public class ChunkBufferPoolTest {
     @Override
     public void run() {
       while (true) {
+        if(isInterrupted()){
+          break;
+        }
         ChunkBuffer chunkBuffer = chunkBuffers.poll();
         if (chunkBuffer == null) {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
-            e.printStackTrace();
           }
           continue;
         }
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {
-          e.printStackTrace();
         }
         chunkBuffers.remove(chunkBuffer);
         ChunkBufferPool.getInstance().putBack(chunkBuffer, "test case");

@@ -35,7 +35,7 @@ public class MemTableFlushTaskV2Test {
 
   private NativeRestorableIOWriter writer;
   private String storageGroup = "storage_group1";
-  private String filePath = "testUnsealedTsFileProcessor.tsfile";
+  private String filePath = "data/testUnsealedTsFileProcessor.tsfile";
   private IMemTable memTable;
   private long startTime = 1;
   private long endTime = 100;
@@ -53,7 +53,7 @@ public class MemTableFlushTaskV2Test {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir(filePath);
+    EnvironmentUtils.cleanDir("data");
   }
 
   @Test
