@@ -67,4 +67,8 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
   default TVList getSortedTVList(){return null;}
 
   default TVList getTVList(){return null;}
+
+  default long getMinTime() {
+    return Long.MIN_VALUE;
+  }
 }
