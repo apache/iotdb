@@ -267,7 +267,7 @@ public class FileNodeProcessorV2 {
     UnsealedTsFileProcessorV2 unsealedTsFileProcessor;
     boolean result;
     // create a new BufferWriteProcessor
-    long start1 = System.currentTimeMillis();
+//    long start1 = System.currentTimeMillis();
     if (sequence) {
       if (workSequenceTsFileProcessor == null) {
         workSequenceTsFileProcessor = createTsFileProcessor(true);
@@ -281,19 +281,19 @@ public class FileNodeProcessorV2 {
       }
       unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
     }
-    start1 = System.currentTimeMillis() - start1;
-    if (start1 > 1000) {
-      LOGGER.info("FNP {} create a new unsealed file processor cost: {}", storageGroupName, start1);
-    }
+//    start1 = System.currentTimeMillis() - start1;
+//    if (start1 > 1000) {
+//      LOGGER.info("FNP {} create a new unsealed file processor cost: {}", storageGroupName, start1);
+//    }
 
     // insert BufferWrite
-    long start2 = System.currentTimeMillis();
+//    long start2 = System.currentTimeMillis();
     result = unsealedTsFileProcessor.insert(insertPlan, sequence);
-    start2 = System.currentTimeMillis() - start2;
-    if (start2 > 1000) {
-      LOGGER.info("FNP {} insert a record into unsealed file processor cost: {}", storageGroupName,
-          start2);
-    }
+//    start2 = System.currentTimeMillis() - start2;
+//    if (start2 > 1000) {
+//      LOGGER.info("FNP {} insert a record into unsealed file processor cost: {}", storageGroupName,
+//          start2);
+//    }
 
     // try to update the latest time of the device of this tsRecord
     if (result && latestTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
@@ -301,7 +301,7 @@ public class FileNodeProcessorV2 {
     }
 
     // check memtable size and may asyncFlush the workMemtable
-    long time1 = System.currentTimeMillis();
+//    long time1 = System.currentTimeMillis();
     if (unsealedTsFileProcessor.shouldFlush()) {
 
       LOGGER.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
@@ -314,10 +314,10 @@ public class FileNodeProcessorV2 {
         unsealedTsFileProcessor.asyncFlush();
       }
     }
-    time1 = System.currentTimeMillis() - time1;
-    if (time1 > 1000) {
-      LOGGER.info("FNP {} check flush and close cost: {}ms", storageGroupName, time1);
-    }
+//    time1 = System.currentTimeMillis() - time1;
+//    if (time1 > 1000) {
+//      LOGGER.info("FNP {} check flush and close cost: {}ms", storageGroupName, time1);
+//    }
 
     return result;
   }
@@ -387,23 +387,23 @@ public class FileNodeProcessorV2 {
   }
 
   private void writeLock() {
-    long time = System.currentTimeMillis();
+//    long time = System.currentTimeMillis();
     insertLock.writeLock().lock();
-    time = System.currentTimeMillis() - time;
-    if (time > 1000) {
-      LOGGER.info("storage group {} wait for write lock cost: {}", storageGroupName, time,
-          new RuntimeException());
-    }
-    timerr.set(System.currentTimeMillis());
+//    time = System.currentTimeMillis() - time;
+//    if (time > 1000) {
+//      LOGGER.info("storage group {} wait for write lock cost: {}", storageGroupName, time,
+//          new RuntimeException());
+//    }
+//    timerr.set(System.currentTimeMillis());
   }
 
   private void writeUnlock() {
     insertLock.writeLock().unlock();
-    long time = System.currentTimeMillis() - timerr.get();
-    if (time > 1000) {
-      LOGGER.info("storage group {} take lock for {}ms", storageGroupName, time,
-          new RuntimeException());
-    }
+//    long time = System.currentTimeMillis() - timerr.get();
+//    if (time > 1000) {
+//      LOGGER.info("storage group {} take lock for {}ms", storageGroupName, time,
+//          new RuntimeException());
+//    }
   }
 
 
@@ -608,31 +608,30 @@ public class FileNodeProcessorV2 {
             .error("CloseFileNodeCondition occurs error while waiting for closing the file node {}",
                 storageGroupName, e);
       }
-      System.out.println("aaa");
     }
   }
 
 
   public boolean updateLatestFlushTimeCallback() {
-    long time = System.currentTimeMillis();
+//    long time = System.currentTimeMillis();
     writeLock();
     try {
       // update the largest timestamp in the last flushing memtable
-      long time1 = System.currentTimeMillis();
+//      long time1 = System.currentTimeMillis();
       for (Entry<String, Long> entry : latestTimeForEachDevice.entrySet()) {
         latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
       }
-      time1 = System.currentTimeMillis() - time1;
-      if (time1 > 1000) {
-        LOGGER.info("update latest flush time call back cost {}ms", time1);
-      }
+//      time1 = System.currentTimeMillis() - time1;
+//      if (time1 > 1000) {
+//        LOGGER.info("update latest flush time call back cost {}ms", time1);
+//      }
     } finally {
       writeUnlock();
     }
-    time = System.currentTimeMillis() - time;
-    if (time > 1000) {
-      LOGGER.info("update latest flush time call back all cost {}ms", time);
-    }
+//    time = System.currentTimeMillis() - time;
+//    if (time > 1000) {
+//      LOGGER.info("update latest flush time call back all cost {}ms", time);
+//    }
     return true;
   }
 
