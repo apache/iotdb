@@ -25,22 +25,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.filenodeV2.FileNodeProcessorV2;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsBoolean;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsInt;
-import org.apache.iotdb.db.utils.TsPrimitiveType.TsLong;
-import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class AbstractMemTable implements IMemTable {
@@ -52,8 +44,6 @@ public abstract class AbstractMemTable implements IMemTable {
   private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
 
   private long memSize = 0;
-
-  protected TVListAllocator allocator;
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -135,11 +125,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void clear() {
-//    for (Map<String, IWritableMemChunk> writableMemChunkMap : memTableMap.values()) {
-//      for (IWritableMemChunk memChunk : writableMemChunkMap.values()) {
-//        memChunk.releasePrimitiveArrayList();
-//      }
-//    }
     memTableMap.clear();
     modifications.clear();
     memSize = 0;
@@ -244,7 +229,7 @@ public abstract class AbstractMemTable implements IMemTable {
           }
         }
       }
-      allocator.release(dataType, chunk.getTVList());
+      TVListAllocator.getInstance().release(dataType, chunk.getTVList());
       return newChunk;
     }
     return null;
@@ -265,20 +250,10 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void setTVListAllocator(TVListAllocator allocator) {
-    this.allocator = allocator;
-  }
-
-  @Override
-  public TVListAllocator getTVListAllocator() {
-    return allocator;
-  }
-
-  @Override
   public void release() {
     for (Entry<String, Map<String, IWritableMemChunk>> entry: memTableMap.entrySet()) {
       for (Entry<String, IWritableMemChunk> subEntry: entry.getValue().entrySet()) {
-        allocator.release(subEntry.getValue().getTVList());
+        TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
       }
     }
   }

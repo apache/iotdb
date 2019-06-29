@@ -71,7 +71,6 @@ public class LogReplayerTest {
     };
     TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
-    memTable.setTVListAllocator(new TVListAllocator());
     FileSchema schema = new FileSchema();
 
     try {

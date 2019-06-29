@@ -47,7 +47,6 @@ public class MemTableFlushTaskV2Test {
 
     writer = new NativeRestorableIOWriter(new File(filePath));
     memTable = new PrimitiveMemTable();
-    memTable.setTVListAllocator(new TVListAllocator());
   }
 
   @After

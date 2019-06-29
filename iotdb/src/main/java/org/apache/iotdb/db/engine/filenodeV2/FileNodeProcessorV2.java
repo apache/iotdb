@@ -109,7 +109,6 @@ public class FileNodeProcessorV2 {
    */
   private ModificationFile mergingModification;
 
-  private TVListAllocator allocator = new TVListAllocator();
 
   public FileNodeProcessorV2(String baseDir, String storageGroupName) throws ProcessorException {
     this.storageGroupName = storageGroupName;
@@ -338,11 +337,11 @@ public class FileNodeProcessorV2 {
     if (sequence) {
       return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
-          this::updateLatestFlushTimeCallback, allocator);
+          this::updateLatestFlushTimeCallback);
     } else {
       return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
-          () -> true, allocator);
+          () -> true);
     }
   }
 

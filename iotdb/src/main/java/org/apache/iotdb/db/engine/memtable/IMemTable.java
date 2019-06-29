@@ -99,9 +99,5 @@ public interface IMemTable {
 
   void setVersion(long version);
 
-  void setTVListAllocator(TVListAllocator allocator);
-
-  TVListAllocator getTVListAllocator();
-
   void release();
 }

@@ -75,7 +75,7 @@ public class UnsealedTsFileProcessorV2Test {
       throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
-        ()-> true, new TVListAllocator());
+        ()-> true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -122,7 +122,7 @@ public class UnsealedTsFileProcessorV2Test {
       throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
     processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
-        ()->true, new TVListAllocator());
+        ()->true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -166,7 +166,7 @@ public class UnsealedTsFileProcessorV2Test {
             }
             resource.close();
           }
-        }, ()->true, new TVListAllocator());
+        }, ()->true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);

@@ -29,6 +29,12 @@ public class TVListAllocator {
 
   private Map<TSDataType, Queue<TVList>> tvListCache = new EnumMap<>(TSDataType.class);
 
+  private static final TVListAllocator INSTANCE = new TVListAllocator();
+
+  public static TVListAllocator getInstance() {
+    return INSTANCE;
+  }
+
   public synchronized TVList allocate(TSDataType dataType) {
     Queue<TVList> tvLists = tvListCache.computeIfAbsent(dataType,
         k -> new ArrayDeque<>());
