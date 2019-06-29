@@ -40,8 +40,7 @@ public class ChunkBufferPool {
   /**
    * the number of required FlushTasks is no more than {@linkplain MemTablePool}.
    */
-  private static final int capacity = IoTDBDescriptor.getInstance().getConfig()
-      .getMemtableNumber();
+  private static final int capacity = 2208000;
 
   private int size = 0;
 
