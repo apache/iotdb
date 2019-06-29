@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.rescon.PrimitiveDataListPool.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.rescon.PrimitiveDataListPool;
+import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -99,10 +99,12 @@ public class BinaryTVList extends TVList {
 
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
-      sortedTimestamps = (long[][]) PrimitiveDataListPool.getInstance().getDataListsByType(TSDataType.INT64, size);
+      sortedTimestamps = (long[][]) PrimitiveArrayPool
+          .getInstance().getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
-      sortedValues = (Binary[][]) PrimitiveDataListPool.getInstance().getDataListsByType(TSDataType.TEXT, size);
+      sortedValues = (Binary[][]) PrimitiveArrayPool
+          .getInstance().getDataListsByType(TSDataType.TEXT, size);
     }
     sort(0, size);
     clearTime();
@@ -114,7 +116,7 @@ public class BinaryTVList extends TVList {
   void clearValue() {
     if (values != null) {
       for (Binary[] dataArray : values) {
-        PrimitiveDataListPool.getInstance().release(dataArray);
+        PrimitiveArrayPool.getInstance().release(dataArray);
       }
       values.clear();
     }
@@ -124,7 +126,7 @@ public class BinaryTVList extends TVList {
   void clearSortedValue() {
     if (sortedValues != null) {
       for (Binary[] dataArray : sortedValues) {
-        PrimitiveDataListPool.getInstance().release(dataArray);
+        PrimitiveArrayPool.getInstance().release(dataArray);
       }
       sortedValues = null;
     }
@@ -160,7 +162,7 @@ public class BinaryTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((Binary[]) PrimitiveDataListPool
+    values.add((Binary[]) PrimitiveArrayPool
         .getInstance().getPrimitiveDataListByType(TSDataType.TEXT));
   }
 

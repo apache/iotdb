@@ -20,10 +20,6 @@ package org.apache.iotdb.db.rescon;
 
 import java.util.ArrayDeque;
 import java.util.EnumMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import org.apache.iotdb.db.utils.PrimitiveArrayListV2;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -33,34 +29,37 @@ import org.slf4j.LoggerFactory;
 /**
  * Manage all primitive data list in memory, including get and release operation.
  */
-public class PrimitiveDataListPool {
+public class PrimitiveArrayPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PrimitiveDataListPool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PrimitiveArrayPool.class);
 
-  private static final EnumMap<TSDataType, ArrayDeque> primitiveDataListsMap = new EnumMap<>(TSDataType.class);
+  /**
+   * data type -> Array<PrimitiveArray>
+   */
+  private static final EnumMap<TSDataType, ArrayDeque> primitiveArraysMap = new EnumMap<>(TSDataType.class);
 
   public static final int ARRAY_SIZE = 128;
 
   static {
-    primitiveDataListsMap.put(TSDataType.BOOLEAN, new ArrayDeque());
-    primitiveDataListsMap.put(TSDataType.INT32, new ArrayDeque());
-    primitiveDataListsMap.put(TSDataType.INT64, new ArrayDeque());
-    primitiveDataListsMap.put(TSDataType.FLOAT, new ArrayDeque());
-    primitiveDataListsMap.put(TSDataType.DOUBLE, new ArrayDeque());
-    primitiveDataListsMap.put(TSDataType.TEXT, new ArrayDeque());
+    primitiveArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque());
+    primitiveArraysMap.put(TSDataType.INT32, new ArrayDeque());
+    primitiveArraysMap.put(TSDataType.INT64, new ArrayDeque());
+    primitiveArraysMap.put(TSDataType.FLOAT, new ArrayDeque());
+    primitiveArraysMap.put(TSDataType.DOUBLE, new ArrayDeque());
+    primitiveArraysMap.put(TSDataType.TEXT, new ArrayDeque());
   }
 
-  public static PrimitiveDataListPool getInstance() {
+  public static PrimitiveArrayPool getInstance() {
     return INSTANCE;
   }
 
-  private static final PrimitiveDataListPool INSTANCE = new PrimitiveDataListPool();
+  private static final PrimitiveArrayPool INSTANCE = new PrimitiveArrayPool();
 
 
-  private PrimitiveDataListPool() {}
+  private PrimitiveArrayPool() {}
 
   public synchronized Object getPrimitiveDataListByType(TSDataType dataType) {
-    ArrayDeque dataListQueue = primitiveDataListsMap.computeIfAbsent(dataType, (k)->new ArrayDeque<>());
+    ArrayDeque dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, (k)->new ArrayDeque<>());
     Object dataArray = dataListQueue.poll();
     switch (dataType) {
       case BOOLEAN:
@@ -102,17 +101,17 @@ public class PrimitiveDataListPool {
 
   public synchronized void release(Object dataArray) {
     if (dataArray instanceof boolean[]) {
-      primitiveDataListsMap.get(TSDataType.BOOLEAN).add(dataArray);
+      primitiveArraysMap.get(TSDataType.BOOLEAN).add(dataArray);
     } else if (dataArray instanceof int[]) {
-      primitiveDataListsMap.get(TSDataType.INT32).add(dataArray);
+      primitiveArraysMap.get(TSDataType.INT32).add(dataArray);
     } else if (dataArray instanceof long[]){
-      primitiveDataListsMap.get(TSDataType.INT64).add(dataArray);
+      primitiveArraysMap.get(TSDataType.INT64).add(dataArray);
     } else if (dataArray instanceof float[]) {
-      primitiveDataListsMap.get(TSDataType.FLOAT).add(dataArray);
+      primitiveArraysMap.get(TSDataType.FLOAT).add(dataArray);
     } else if (dataArray instanceof double[]) {
-      primitiveDataListsMap.get(TSDataType.DOUBLE).add(dataArray);
+      primitiveArraysMap.get(TSDataType.DOUBLE).add(dataArray);
     } else if (dataArray instanceof Binary[]) {
-      primitiveDataListsMap.get(TSDataType.TEXT).add(dataArray);
+      primitiveArraysMap.get(TSDataType.TEXT).add(dataArray);
     }
   }
 

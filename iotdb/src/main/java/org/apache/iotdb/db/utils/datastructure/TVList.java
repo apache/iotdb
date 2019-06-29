@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.rescon.PrimitiveDataListPool.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.rescon.PrimitiveDataListPool;
+import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -166,7 +166,7 @@ public abstract class TVList {
   protected void clearTime() {
     if (timestamps != null) {
       for (long[] dataArray : timestamps) {
-        PrimitiveDataListPool.getInstance().release(dataArray);
+        PrimitiveArrayPool.getInstance().release(dataArray);
       }
       timestamps.clear();
     }
@@ -175,7 +175,7 @@ public abstract class TVList {
   protected void clearSortedTime() {
     if (sortedTimestamps != null) {
       for (long[] dataArray : sortedTimestamps) {
-        PrimitiveDataListPool.getInstance().release(dataArray);
+        PrimitiveArrayPool.getInstance().release(dataArray);
       }
       sortedTimestamps = null;
     }
@@ -188,7 +188,7 @@ public abstract class TVList {
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
       expandValues();
-      timestamps.add((long[]) PrimitiveDataListPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64));
+      timestamps.add((long[]) PrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64));
     }
   }
 
