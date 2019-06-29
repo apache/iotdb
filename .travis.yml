@@ -121,6 +121,17 @@ matrix:
       name: linux-oraclejdk8
       dist: trusty
       jdk: oraclejdk8
+      before_install:
+        - wget https://www-eu.apache.org/dist/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.tar.gz -O mvn361.tar.gz
+        - tar -xzf mvn361.tar.gz
+      before_script:
+        - export MAVEN_HOME=$PWD/apache-maven-3.6.1/
+        - export PATH=$MAVEN_HOME/bin:$PATH
+      script:
+        - java -version
+        - mvn -version
+        - mvn -B -ntp apache-rat:check
+        - mvn -B -ntp clean integration-test
 #    - os: linux
 #      name: linux-oraclejdk11
 #      dist: trusty
