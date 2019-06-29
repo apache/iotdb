@@ -80,7 +80,7 @@ public class ChunkBufferPool {
         } catch (InterruptedException e) {
           LOGGER.error("{} fails to wait fot ReusableChunkBuffer {}, continue to wait", applier, e);
         }
-//        LOGGER.info("{} has waited for a ReusableChunkBuffer for {}ms", applier, waitCount++ * WAIT_TIME);
+        LOGGER.info("{} has waited for a ReusableChunkBuffer for {}ms", applier, waitCount++ * WAIT_TIME);
       }
     }
   }
