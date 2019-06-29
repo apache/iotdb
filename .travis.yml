@@ -146,8 +146,8 @@ install: true
 
 script:
   - java -version
-  - mvn -B -ntp apache-rat:check
-  - mvn -B -ntp clean integration-test
+  - mvn -B apache-rat:check
+  - mvn -B clean integration-test
 
 after_success:
 
