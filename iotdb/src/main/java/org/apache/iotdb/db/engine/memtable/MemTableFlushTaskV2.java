@@ -82,9 +82,6 @@ public class MemTableFlushTaskV2 {
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
         TVList tvList = series.getSortedTVList();
-        if (tvList.size() > 500) {
-          LOGGER.info("TVList size: {}", tvList.size());
-        }
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
       }
