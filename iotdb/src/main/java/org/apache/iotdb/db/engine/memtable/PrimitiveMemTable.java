@@ -34,8 +34,8 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
-  protected IWritableMemChunk genMemSeries(TSDataType dataType, String path) {
-    return new WritableMemChunkV2(dataType, allocator.allocate(path, dataType));
+  protected IWritableMemChunk genMemSeries(TSDataType dataType) {
+    return new WritableMemChunkV2(dataType, allocator.allocate(dataType));
   }
 
   @Override
