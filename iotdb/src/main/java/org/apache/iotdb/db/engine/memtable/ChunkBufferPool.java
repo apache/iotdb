@@ -17,6 +17,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -37,11 +38,18 @@ public class ChunkBufferPool {
 
   private static final Deque<ChunkBuffer> availableChunkBuffer = new ArrayDeque<>();
 
+//  /**
+//   * the number of required FlushTasks is no more than {@linkplain MemTablePool}.
+//   */
+//  private static final int capacity = IoTDBDescriptor.getInstance().getConfig()
+//      .getMemtableNumber();
+
   /**
-   * the number of required FlushTasks is no more than {@linkplain MemTablePool}.
+   * The number of chunkBuffer in the pool is less than the memtable number by default.
+   * Once the maximal number of time series is greater than the capacity, the capacity will be updated
+   * to the maximal number.
    */
-  private static final int capacity = IoTDBDescriptor.getInstance().getConfig()
-      .getMemtableNumber();
+ //private volatile int capacity = IoTDBDescriptor.getInstance().getConfig().getMemtableNumber();
 
   private int size = 0;
 
@@ -52,6 +60,10 @@ public class ChunkBufferPool {
 
   public ChunkBuffer getEmptyChunkBuffer(Object applier, MeasurementSchema schema) {
     synchronized (availableChunkBuffer) {
+      //we use the memtable number * maximal series number in one StroageGroup * 2 as the capacity
+      int capacity  =
+          2 * MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() * IoTDBDescriptor
+              .getInstance().getConfig().getMemtableNumber();
       if (availableChunkBuffer.isEmpty() && size < capacity) {
         size++;
 //        LOGGER.info("For fask, generated a new ChunkBuffer for {}, system ChunkBuffer size: {}, stack size: {}",
@@ -61,7 +73,7 @@ public class ChunkBufferPool {
 //        LOGGER
 //            .info("ReusableChunkBuffer size: {}, stack size: {}, then get a ChunkBuffer from stack for {}",
 //                size, availableChunkBuffer.size(), applier);
-        ChunkBuffer chunkBuffer =  availableChunkBuffer.pop();
+        ChunkBuffer chunkBuffer = availableChunkBuffer.pop();
         chunkBuffer.reInit(schema);
         return chunkBuffer;
       }
@@ -80,7 +92,8 @@ public class ChunkBufferPool {
         } catch (InterruptedException e) {
           LOGGER.error("{} fails to wait fot ReusableChunkBuffer {}, continue to wait", applier, e);
         }
-        LOGGER.info("{} has waited for a ReusableChunkBuffer for {}ms", applier, waitCount++ * WAIT_TIME);
+        LOGGER.info("{} has waited for a ReusableChunkBuffer for {}ms", applier,
+            waitCount++ * WAIT_TIME);
       }
     }
   }
@@ -88,19 +101,22 @@ public class ChunkBufferPool {
   public void putBack(ChunkBuffer chunkBuffer) {
     synchronized (availableChunkBuffer) {
       chunkBuffer.reset();
-      availableChunkBuffer.push(chunkBuffer);
+      //we use the memtable number * maximal series number in one StroageGroup as the capacity
+      int capacity  =
+          MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() * IoTDBDescriptor
+              .getInstance().getConfig().getMemtableNumber();
+      if (size > capacity) {
+        size --;
+      } else {
+        availableChunkBuffer.push(chunkBuffer);
+      }
       availableChunkBuffer.notify();
 //      LOGGER.info("a chunk buffer returned, stack size {}", availableChunkBuffer.size());
     }
   }
 
   public void putBack(ChunkBuffer chunkBuffer, String storageGroup) {
-    synchronized (availableChunkBuffer) {
-      chunkBuffer.reset();
-      availableChunkBuffer.push(chunkBuffer);
-      availableChunkBuffer.notify();
-//      LOGGER.info("{} return a chunk buffer, stack size {}", storageGroup, availableChunkBuffer.size());
-    }
+    putBack(chunkBuffer);
   }
 
   public static ChunkBufferPool getInstance() {

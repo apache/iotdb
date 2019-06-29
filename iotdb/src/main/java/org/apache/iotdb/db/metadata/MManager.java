@@ -76,6 +76,9 @@ public class MManager {
   private RandomDeleteCache<String, PathCheckRet> checkAndGetDataTypeCache;
   private RandomDeleteCache<String, MNode> mNodeCache;
 
+  private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
+  private int maxSeriesNumberAmongStorageGroup;
+
   private MManager() {
     metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
     if (metadataDirPath.length() > 0
@@ -133,14 +136,23 @@ public class MManager {
     lock.writeLock().lock();
     File dataFile = new File(datafilePath);
     File logFile = new File(logFilePath);
+
     try {
       if (dataFile.exists()) {
         initFromDataFile(dataFile);
       } else {
         initFromLog(logFile);
       }
+      seriesNumberInStorageGroups = mgraph.countSeriesNumberInEachStorageGroup();
+      if (seriesNumberInStorageGroups.isEmpty()) {
+        maxSeriesNumberAmongStorageGroup = 0;
+      } else {
+        maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
+            .max(Integer::compareTo).get();
+      }
       logWriter = new BufferedWriter(new FileWriter(logFile, true));
       writeToLog = true;
+
     } catch (PathErrorException | MetadataArgsErrorException
         | ClassNotFoundException | IOException e) {
       mgraph = new MGraph(ROOT_NAME);
@@ -266,6 +278,13 @@ public class MManager {
     lock.writeLock().lock();
     try {
       mgraph.addPathToMTree(path, dataType, encoding, compressor, props);
+      String storageName = mgraph.getFileNameByPath(path);
+      int size = seriesNumberInStorageGroups.get(mgraph.getFileNameByPath(path));
+      seriesNumberInStorageGroups
+          .put(storageName, size + 1);
+      if (size + 1 > maxSeriesNumberAmongStorageGroup) {
+        maxSeriesNumberAmongStorageGroup = size + 1;
+      }
       if (writeToLog) {
         initLogStream();
         logWriter.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.ADD_PATH_TO_MTREE,
@@ -316,6 +335,20 @@ public class MManager {
         logWriter.newLine();
         logWriter.flush();
       }
+      String storageGroup = getFileNameByPath(path);
+      int size = seriesNumberInStorageGroups.get(storageGroup);
+      seriesNumberInStorageGroups.put(storageGroup, size - 1);
+      if (size == maxSeriesNumberAmongStorageGroup) {
+        //recalculate
+        if (seriesNumberInStorageGroups.isEmpty()) {
+          maxSeriesNumberAmongStorageGroup = 0;
+        } else {
+          maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
+              .max(Integer::compareTo).get();
+        }
+      } else {
+        maxSeriesNumberAmongStorageGroup--;
+      }
       return dataFileName;
     } finally {
       lock.writeLock().unlock();
@@ -332,6 +365,7 @@ public class MManager {
       checkAndGetDataTypeCache.clear();
       mNodeCache.clear();
       mgraph.setStorageLevel(path);
+      seriesNumberInStorageGroups.put(path, 0);
       if (writeToLog) {
         initLogStream();
         logWriter.write(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE + "," + path);
@@ -1023,6 +1057,10 @@ public class MManager {
     } catch (PathErrorException e) {
       throw new CacheException(e);
     }
+  }
+
+  public int getMaximalSeriesNumberAmongStorageGroups() {
+    return maxSeriesNumberAmongStorageGroup;
   }
 
   private static class MManagerHolder {

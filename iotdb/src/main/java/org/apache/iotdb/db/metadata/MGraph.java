@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -377,5 +378,20 @@ public class MGraph implements Serializable {
    */
   public static String combineMetadataInStrings(String[] metadatas) {
     return MTree.combineMetadataInStrings(metadatas);
+  }
+
+  /**
+   *
+   * @return storage group name -> the series number
+   */
+  public Map<String, Integer> countSeriesNumberInEachStorageGroup() throws PathErrorException {
+    Map<String, Integer> res = new HashMap<>();
+    Set<String> storageGroups = this.getAllStorageGroup();
+    for (String sg : storageGroups) {
+      this.getNumSchemaMapForOneFileNode(sg);
+      MNode node = mtree.getNodeByPath(sg);
+      res.put(sg, node.getLeafCount());
+    }
+    return res;
   }
 }

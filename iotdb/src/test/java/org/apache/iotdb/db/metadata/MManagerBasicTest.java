@@ -344,4 +344,28 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testMaximalSeriesNumberAmongStorageGroup() throws IOException, PathErrorException {
+    MManager manager = MManager.getInstance();
+    assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
+    manager.setStorageLevelToMTree("root.laptop");
+    assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
+    manager.addPathToMTree("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+        CompressionType.GZIP, null);
+    manager.addPathToMTree("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
+        CompressionType.GZIP, null);
+    assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
+    manager.setStorageLevelToMTree("root.vehicle");
+    manager.addPathToMTree("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+        CompressionType.GZIP, null);
+    assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
+
+    manager.deletePathFromMTree("root.laptop.d1.s1");
+    assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
+    manager.deletePathFromMTree("root.laptop.d1.s2");
+    assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
+
+
+  }
 }
