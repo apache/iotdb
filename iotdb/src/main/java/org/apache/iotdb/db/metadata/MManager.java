@@ -359,11 +359,16 @@ public class MManager {
    * function for setting storage level of the given path to mTree.
    */
   public void setStorageLevelToMTree(String path) throws PathErrorException, IOException {
-
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
       mNodeCache.clear();
+      // if (current storage groups + the new storage group + the statistic storage group) * 2 > total memtable number
+      if ((seriesNumberInStorageGroups.size() + 2) * 2 > IoTDBDescriptor.getInstance().getConfig()
+          .getMemtableNumber()) {
+        throw new PathErrorException(
+            "too many storage groups, please increase the number of memtable");
+      }
       mgraph.setStorageLevel(path);
       seriesNumberInStorageGroups.put(path, 0);
       if (writeToLog) {

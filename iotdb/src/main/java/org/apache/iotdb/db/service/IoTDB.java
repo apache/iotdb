@@ -27,8 +27,8 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
+import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,6 +96,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(BasicMemController.getInstance());
     registerManager.register(SyncServerManager.getInstance());
+    registerManager.register(TVListAllocator.getInstance());
 
     JMXService.registerMBean(getInstance(), mbeanName);
 

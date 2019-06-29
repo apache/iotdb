@@ -23,11 +23,19 @@ import java.util.ArrayDeque;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Queue;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.JMXService;
+import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class TVListAllocator {
+public class TVListAllocator implements TVListAllocatorMBean, IService {
 
   private Map<TSDataType, Queue<TVList>> tvListCache = new EnumMap<>(TSDataType.class);
+  private String mbeanName = String
+      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
+          getID().getJmxName());
 
   private static final TVListAllocator INSTANCE = new TVListAllocator();
 
@@ -62,5 +70,37 @@ public class TVListAllocator {
     } else if (list instanceof  LongTVList) {
       tvListCache.get(TSDataType.INT64).add(list);
     }
+  }
+
+  @Override
+  public int getNumberOfTVLists() {
+    int number = 0;
+    for (Queue<TVList> queue : tvListCache.values()) {
+      number += queue.size();
+    }
+    return number;
+  }
+
+  @Override
+  public void start() throws StartupException {
+    try {
+      JMXService.registerMBean(INSTANCE, mbeanName);
+    } catch (Exception e) {
+      String errorMessage = String
+          .format("Failed to start %s because of %s", this.getID().getName(),
+              e.getMessage());
+      throw new StartupException(errorMessage, e);
+    }
+  }
+
+  @Override
+  public void stop() {
+    JMXService.deregisterMBean(mbeanName);
+    tvListCache.clear();
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.TVLIST_ALLOCATOR_SERVICE;
   }
 }
