@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 public class EmptyMemTable extends AbstractMemTable {
 
   @Override
-  protected IWritableMemChunk genMemSeries(TSDataType dataType, String path) {
+  protected IWritableMemChunk genMemSeries(TSDataType dataType) {
     return null;
   }
 

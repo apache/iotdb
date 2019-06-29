@@ -37,20 +37,7 @@ public class ChunkBufferPool {
   private static final Logger LOGGER = LoggerFactory.getLogger(ChunkBufferPool.class);
 
   private static final Deque<ChunkBuffer> availableChunkBuffer = new ArrayDeque<>();
-
-//  /**
-//   * the number of required FlushTasks is no more than {@linkplain MemTablePool}.
-//   */
-//  private static final int capacity = IoTDBDescriptor.getInstance().getConfig()
-//      .getMemtableNumber();
-
-  /**
-   * The number of chunkBuffer in the pool is less than the memtable number by default.
-   * Once the maximal number of time series is greater than the capacity, the capacity will be updated
-   * to the maximal number.
-   */
- //private volatile int capacity = IoTDBDescriptor.getInstance().getConfig().getMemtableNumber();
-
+  
   private int size = 0;
 
   private static final int WAIT_TIME = 2000;

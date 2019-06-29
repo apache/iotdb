@@ -19,24 +19,42 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import java.util.ArrayDeque;
+import java.util.EnumMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Queue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TVListAllocator {
 
-  private Map<String, ConcurrentLinkedQueue<TVList>> tvListCache = new ConcurrentHashMap<>();
+  private Map<TSDataType, Queue<TVList>> tvListCache = new EnumMap<>(TSDataType.class);
 
-  public TVList allocate(String identifier, TSDataType dataType) {
-    ConcurrentLinkedQueue<TVList> tvLists = tvListCache.computeIfAbsent(identifier,
-        k -> new ConcurrentLinkedQueue<>());
+  public synchronized TVList allocate(TSDataType dataType) {
+    Queue<TVList> tvLists = tvListCache.computeIfAbsent(dataType,
+        k -> new ArrayDeque<>());
     TVList list = tvLists.poll();
     return list != null ? list : TVList.newList(dataType);
   }
 
-  public void release(String identifier, TVList list) {
+  public synchronized void release(TSDataType dataType, TVList list) {
     list.reset();
-    tvListCache.get(identifier).add(list);
+    tvListCache.get(dataType).add(list);
+  }
+
+  public synchronized void release(TVList list) {
+    list.reset();
+    if (list instanceof BinaryTVList) {
+      tvListCache.get(TSDataType.TEXT).add(list);
+    } else if (list instanceof  BooleanTVList) {
+      tvListCache.get(TSDataType.BOOLEAN).add(list);
+    } else if (list instanceof  DoubleTVList) {
+      tvListCache.get(TSDataType.DOUBLE).add(list);
+    } else if (list instanceof FloatTVList) {
+      tvListCache.get(TSDataType.FLOAT).add(list);
+    } else if (list instanceof  IntTVList) {
+      tvListCache.get(TSDataType.INT32).add(list);
+    } else if (list instanceof  LongTVList) {
+      tvListCache.get(TSDataType.INT64).add(list);
+    }
   }
 }

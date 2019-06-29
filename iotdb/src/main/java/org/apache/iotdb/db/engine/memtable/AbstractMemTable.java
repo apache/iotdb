@@ -84,12 +84,12 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     if (!memSeries.containsKey(measurement)) {
-      memSeries.put(measurement, genMemSeries(dataType, deviceId + PATH_SEPARATOR + measurement));
+      memSeries.put(measurement, genMemSeries(dataType));
     }
     return memSeries.get(measurement);
   }
 
-  protected abstract IWritableMemChunk genMemSeries(TSDataType dataType, String path);
+  protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
 
 
   @Override
@@ -189,7 +189,7 @@ public abstract class AbstractMemTable implements IMemTable {
       if (chunk == null) {
         return true;
       }
-      IWritableMemChunk newChunk = filterChunk(chunk, timestamp, deviceId + PATH_SEPARATOR + measurementId);
+      IWritableMemChunk newChunk = filterChunk(chunk, timestamp);
       if (newChunk != null) {
         deviceMap.put(measurementId, newChunk);
         return newChunk.count() != chunk.count();
@@ -212,12 +212,12 @@ public abstract class AbstractMemTable implements IMemTable {
    * @return A reduced copy of chunk if chunk contains data with timestamp less than 'timestamp', of
    * null.
    */
-  private IWritableMemChunk filterChunk(IWritableMemChunk chunk, long timestamp, String path) {
+  private IWritableMemChunk filterChunk(IWritableMemChunk chunk, long timestamp) {
 
     if (!chunk.isEmpty() && chunk.getMinTime() <= timestamp) {
       List<TimeValuePair> timeValuePairs = chunk.getSortedTimeValuePairList();
       TSDataType dataType = chunk.getType();
-      IWritableMemChunk newChunk = genMemSeries(dataType, path);
+      IWritableMemChunk newChunk = genMemSeries(dataType);
       for (TimeValuePair pair : timeValuePairs) {
         if (pair.getTimestamp() > timestamp) {
           switch (dataType) {
@@ -244,7 +244,7 @@ public abstract class AbstractMemTable implements IMemTable {
           }
         }
       }
-      allocator.release(path, chunk.getTVList());
+      allocator.release(dataType, chunk.getTVList());
       return newChunk;
     }
     return null;
@@ -278,7 +278,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void release() {
     for (Entry<String, Map<String, IWritableMemChunk>> entry: memTableMap.entrySet()) {
       for (Entry<String, IWritableMemChunk> subEntry: entry.getValue().entrySet()) {
-        allocator.release(entry.getKey() + IoTDBConstant.PATH_SEPARATOR + subEntry.getKey(), subEntry.getValue().getTVList());
+        allocator.release(subEntry.getValue().getTVList());
       }
     }
   }
