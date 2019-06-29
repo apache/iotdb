@@ -64,12 +64,8 @@ public class FileNodeProcessorV2Test {
     }
 
     processor.syncCloseFileNode();
-    QueryDataSourceV2 queryDataSource = null;
-    try {
-      queryDataSource = processor.query(deviceId, measurementId);
-    } catch (FileNodeProcessorException e) {
-      e.printStackTrace();
-    }
+    QueryDataSourceV2 queryDataSource = processor.query(deviceId, measurementId);
+
     Assert.assertEquals(queryDataSource.getSeqResources().size(), 10);
     for (TsFileResourceV2 resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());

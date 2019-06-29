@@ -158,7 +158,7 @@ public class QueryResourceManager {
 
   public QueryDataSourceV2 getQueryDataSource(Path selectedPath,
       QueryContext context)
-      throws FileNodeManagerException, ProcessorException {
+      throws FileNodeManagerException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
     QueryDataSourceV2 queryDataSource = FileNodeManagerV2.getInstance()
@@ -171,8 +171,7 @@ public class QueryResourceManager {
   }
 
   public QueryDataSourceV2 getQueryDataSourceV2(Path selectedPath,
-      QueryContext context)
-      throws FileNodeManagerException, ProcessorException {
+      QueryContext context) throws FileNodeManagerException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
     QueryDataSourceV2 queryDataSource = FileNodeManagerV2.getInstance().query(singleSeriesExpression, context);

@@ -193,14 +193,9 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
     for (Path path : paths) {
 
-      QueryDataSourceV2 queryDataSource = null;
-      try {
-        queryDataSource = QueryResourceManager.getInstance()
-                .getQueryDataSourceV2(path,
-                        context);
-      } catch (ProcessorException e) {
-        throw new FileNodeManagerException(e);
-      }
+      QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSourceV2(path,
+              context);
 
       SeriesReaderByTimestamp mergeReaderByTimestamp = new SeriesReaderByTimestamp();
 
@@ -224,13 +219,8 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   public IPointReader createSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
                                                            QueryContext context)
           throws FileNodeManagerException, IOException {
-    QueryDataSourceV2 queryDataSource = null;
-    try {
-      queryDataSource = QueryResourceManager.getInstance()
+    QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
               .getQueryDataSourceV2(path, context);
-    } catch (ProcessorException e) {
-      throw new FileNodeManagerException(e);
-    }
 
     // sequence reader for one sealed tsfile
     SequenceSeriesReader tsFilesReader;
@@ -256,13 +246,8 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   @Override
   public IPointReader createSeriesReaderWithValueFilter(Path path, Filter filter, QueryContext context)
           throws FileNodeManagerException, IOException {
-    QueryDataSourceV2 queryDataSource = null;
-    try {
-      queryDataSource = QueryResourceManager.getInstance()
+    QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
               .getQueryDataSourceV2(path, context);
-    } catch (ProcessorException e) {
-      throw new FileNodeManagerException(e);
-    }
 
     // sequence reader for one sealed tsfile
     SequenceSeriesReader tsFilesReader;

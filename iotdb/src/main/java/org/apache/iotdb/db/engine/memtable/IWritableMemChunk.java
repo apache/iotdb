@@ -51,8 +51,6 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
    */
   void setTimeOffset(long offset);
 
-  void releasePrimitiveArrayList();
-
   /**
    * served for query requests.
    * @return

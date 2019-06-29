@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.modification.io;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -56,19 +57,17 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   public LocalTextModificationAccessor(String filePath) {
     this.filePath = filePath;
   }
+
   @Override
-  public Collection<Modification> read() throws IOException {
-    BufferedReader reader;
-    try {
-      reader = new BufferedReader(new FileReader(filePath));
-    } catch (FileNotFoundException e) {
-      logger.debug("No modification has been written to this file", e);
+  public Collection<Modification> read() {
+    if (!new File(filePath).exists()) {
+      logger.debug("No modification has been written to this file");
       return new ArrayList<>();
     }
-    String line;
 
+    String line;
     List<Modification> modificationList = new ArrayList<>();
-    try {
+    try (BufferedReader reader = new BufferedReader(new FileReader(filePath))){
       while ((line = reader.readLine()) != null) {
         if (line.equals(ABORT_MARK) && !modificationList.isEmpty()) {
           modificationList.remove(modificationList.size() - 1);
@@ -79,8 +78,6 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     } catch (IOException e) {
       logger.error("An error occurred when reading modifications, and the remaining modifications "
               + "were ignored.", e);
-    } finally {
-      reader.close();
     }
     return modificationList;
   }

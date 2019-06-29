@@ -247,7 +247,7 @@ public class FileNodeManagerV2 implements IService {
    * query data.
    */
   public QueryDataSourceV2 query(SingleSeriesExpression seriesExpression, QueryContext context)
-      throws FileNodeManagerException, ProcessorException {
+      throws FileNodeManagerException {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     FileNodeProcessorV2 fileNodeProcessor = getProcessor(deviceId);

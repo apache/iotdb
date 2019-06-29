@@ -53,13 +53,8 @@ public class ChunkBufferPool {
               .getInstance().getConfig().getMemtableNumber();
       if (availableChunkBuffer.isEmpty() && size < capacity) {
         size++;
-//        LOGGER.info("For fask, generated a new ChunkBuffer for {}, system ChunkBuffer size: {}, stack size: {}",
-//            applier, size, availableChunkBuffer.size());
         return new ChunkBuffer(schema);
       } else if (!availableChunkBuffer.isEmpty()) {
-//        LOGGER
-//            .info("ReusableChunkBuffer size: {}, stack size: {}, then get a ChunkBuffer from stack for {}",
-//                size, availableChunkBuffer.size(), applier);
         ChunkBuffer chunkBuffer = availableChunkBuffer.pop();
         chunkBuffer.reInit(schema);
         return chunkBuffer;
@@ -69,9 +64,6 @@ public class ChunkBufferPool {
       int waitCount = 1;
       while (true) {
         if (!availableChunkBuffer.isEmpty()) {
-//          LOGGER.info(
-//              "ReusableChunkBuffer size: {}, stack size: {}, then get a ChunkBuffer from stack for {}",
-//              size, availableChunkBuffer.size(), applier);
           return availableChunkBuffer.pop();
         }
         try {
@@ -98,7 +90,6 @@ public class ChunkBufferPool {
         availableChunkBuffer.push(chunkBuffer);
       }
       availableChunkBuffer.notify();
-//      LOGGER.info("a chunk buffer returned, stack size {}", availableChunkBuffer.size());
     }
   }
 

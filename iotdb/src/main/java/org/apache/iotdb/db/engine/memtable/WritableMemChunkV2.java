@@ -198,9 +198,6 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
   }
 
   @Override
-  public void releasePrimitiveArrayList(){}
-
-  @Override
   public boolean isEmpty() {
     return list.size() == 0;
   }

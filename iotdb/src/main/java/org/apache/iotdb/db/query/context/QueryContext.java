@@ -57,8 +57,7 @@ public class QueryContext {
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<Modification> getPathModifications(ModificationFile modFile, String path)
-      throws IOException {
+  public List<Modification> getPathModifications(ModificationFile modFile, String path) {
 
     Map<String, List<Modification>> fileModifications =
         filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new HashMap<>());

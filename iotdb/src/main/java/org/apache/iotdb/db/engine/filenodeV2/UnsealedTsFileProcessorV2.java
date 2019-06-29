@@ -434,8 +434,7 @@ public class UnsealedTsFileProcessorV2 {
    * @return corresponding chunk data and chunk metadata in memory
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> query(String deviceId,
-      String measurementId, TSDataType dataType, Map<String, String> props)
-      throws UnsealedTsFileProcessorException {
+      String measurementId, TSDataType dataType, Map<String, String> props) {
     flushQueryLock.readLock().lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -467,8 +466,6 @@ public class UnsealedTsFileProcessorV2 {
           (List<Modification>) modificationFile.getModifications());
 
       return new Pair<>(timeValuePairSorter, chunkMetaDataList);
-    } catch (IOException e) {
-      throw new UnsealedTsFileProcessorException(e);
     } finally {
       flushQueryLock.readLock().unlock();
     }
