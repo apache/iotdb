@@ -88,8 +88,8 @@ public class EnvironmentUtils {
     MManager.getInstance().flushObjectToFile();
     // delete all directory
     cleanAllDir();
-    // FileNodeManagerV2.getInstance().reset();
-    // reset MemController
+    // FileNodeManagerV2.getInstance().clear();
+    // clear MemController
     BasicMemController.getInstance().close();
   }
 

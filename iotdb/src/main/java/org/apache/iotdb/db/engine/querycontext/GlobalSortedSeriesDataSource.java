@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import java.util.List;
-import org.apache.iotdb.db.engine.filenode.TsFileResource;
+import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class GlobalSortedSeriesDataSource {
@@ -27,7 +27,7 @@ public class GlobalSortedSeriesDataSource {
   private Path seriesPath;
 
   // sealed tsfile
-  private List<TsFileResource> sealedTsFiles;
+  private List<TsFileResourceV2> sealedTsFiles;
 
   // unsealed tsfile
   private UnsealedTsFile unsealedTsFile;
@@ -35,7 +35,7 @@ public class GlobalSortedSeriesDataSource {
   // seq mem-table
   private ReadOnlyMemChunk readableChunk;
 
-  public GlobalSortedSeriesDataSource(Path seriesPath, List<TsFileResource> sealedTsFiles,
+  public GlobalSortedSeriesDataSource(Path seriesPath, List<TsFileResourceV2> sealedTsFiles,
       UnsealedTsFile unsealedTsFile,
       ReadOnlyMemChunk readableChunk) {
     this.seriesPath = seriesPath;
@@ -49,11 +49,11 @@ public class GlobalSortedSeriesDataSource {
     return sealedTsFiles != null && !sealedTsFiles.isEmpty();
   }
 
-  public List<TsFileResource> getSealedTsFiles() {
+  public List<TsFileResourceV2> getSealedTsFiles() {
     return sealedTsFiles;
   }
 
-  public void setSealedTsFiles(List<TsFileResource> sealedTsFiles) {
+  public void setSealedTsFiles(List<TsFileResourceV2> sealedTsFiles) {
     this.sealedTsFiles = sealedTsFiles;
   }
 

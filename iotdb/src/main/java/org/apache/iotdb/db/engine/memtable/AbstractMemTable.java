@@ -140,7 +140,7 @@ public abstract class AbstractMemTable implements IMemTable {
       Map<String, String> props) {
     TimeValuePairSorter sorter;
     if (!checkPath(deviceId, measurement)) {
-      sorter = new WritableMemChunk(dataType);
+      return null;
     } else {
       long undeletedTime = findUndeletedTime(deviceId, measurement);
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);

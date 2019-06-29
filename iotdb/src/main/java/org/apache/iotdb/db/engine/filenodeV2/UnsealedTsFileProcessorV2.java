@@ -444,11 +444,15 @@ public class UnsealedTsFileProcessorV2 {
           continue;
         }
         ReadOnlyMemChunk memChunk = flushingMemTable.query(deviceId, measurementId, dataType, props);
-        memSeriesLazyMerger.addMemSeries(memChunk);
+        if (memChunk != null) {
+          memSeriesLazyMerger.addMemSeries(memChunk);
+        }
       }
       if (workMemTable != null) {
         ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, props);
-        memSeriesLazyMerger.addMemSeries(memChunk);
+        if (memChunk != null) {
+          memSeriesLazyMerger.addMemSeries(memChunk);
+        }
       }
       // memSeriesLazyMerger has handled the props,
       // so we do not need to handle it again in the following readOnlyMemChunk

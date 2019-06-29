@@ -43,9 +43,8 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
-import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
+import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -469,9 +468,9 @@ public class SyncServiceImpl implements SyncService.Iface {
         // create a new fileNode
         String header = syncDataPath;
         String relativePath = path.substring(header.length());
-        TsFileResource fileNode = new TsFileResource(startTimeMap, endTimeMap,
-            OverflowChangeType.NO_CHANGE, new File(
-            DirectoryManager.getInstance().getNextFolderIndexForTsFile() + File.separator + relativePath)
+        TsFileResourceV2 fileNode = new TsFileResourceV2(
+            new File(DirectoryManager.getInstance().getNextFolderIndexForTsFile() +
+                File.separator + relativePath), startTimeMap, endTimeMap
         );
         // call interface of load external file
         try {

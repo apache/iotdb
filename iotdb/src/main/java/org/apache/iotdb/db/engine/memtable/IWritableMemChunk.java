@@ -54,13 +54,6 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
   void releasePrimitiveArrayList();
 
   /**
-   * be used when flushing data on disk.
-   * this method will remove duplicated data and sort them.
-   * @return
-   */
-  default DeduplicatedSortedData getDeduplicatedSortedData(){return null;}
-
-  /**
    * served for query requests.
    * @return
    */

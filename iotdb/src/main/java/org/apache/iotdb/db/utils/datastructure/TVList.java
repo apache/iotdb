@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import static org.apache.iotdb.db.rescon.PrimitiveDataListPool.ARRAY_SIZE;
+
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.rescon.PrimitiveDataListPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -30,13 +33,11 @@ public abstract class TVList {
   private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
-  protected static final int SINGLE_ARRAY_SIZE = 512;
 
   protected List<long[]> timestamps;
   protected int size;
-  protected int limit;
 
-  protected long[] sortedTimestamps;
+  protected long[][] sortedTimestamps;
   protected boolean sorted = false;
 
   private long timeOffset = Long.MIN_VALUE;
@@ -48,7 +49,6 @@ public abstract class TVList {
   public TVList() {
     timestamps = new ArrayList<>();
     size = 0;
-    limit = 0;
     minTime = Long.MIN_VALUE;
   }
 
@@ -61,11 +61,11 @@ public abstract class TVList {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     if (!sorted) {
-      int arrayIndex = index / SINGLE_ARRAY_SIZE;
-      int elementIndex = index % SINGLE_ARRAY_SIZE;
+      int arrayIndex = index / ARRAY_SIZE;
+      int elementIndex = index % ARRAY_SIZE;
       return timestamps.get(arrayIndex)[elementIndex];
     } else {
-      return sortedTimestamps[index];
+      return sortedTimestamps[index/ARRAY_SIZE][index%ARRAY_SIZE];
     }
   }
 
@@ -141,27 +141,54 @@ public abstract class TVList {
         cloneList.timestamps.add(cloneTime(timestampArray));
       }
     } else {
-      cloneList.sortedTimestamps = new long[size];
-      System.arraycopy(sortedTimestamps, 0, cloneList.sortedTimestamps, 0, size);
+      cloneList.sortedTimestamps = new long[sortedTimestamps.length][ARRAY_SIZE];
+      for (int i = 0; i < sortedTimestamps.length; i++) {
+        System.arraycopy(sortedTimestamps[i], 0, cloneList.sortedTimestamps[i], 0, ARRAY_SIZE);
+      }
     }
     cloneList.size = size;
     cloneList.sorted = sorted;
-    cloneList.limit = limit;
     cloneList.minTime = minTime;
   }
 
-  public void reset() {
+  public void clear() {
     size = 0;
-    timeOffset = -1;
+    timeOffset = Long.MIN_VALUE;
     sorted = false;
     minTime = Long.MIN_VALUE;
+    clearTime();
+    clearSortedTime();
+
+    clearValue();
+    clearSortedValue();
   }
 
+  protected void clearTime() {
+    if (timestamps != null) {
+      for (long[] dataArray : timestamps) {
+        PrimitiveDataListPool.getInstance().release(dataArray);
+      }
+      timestamps.clear();
+    }
+  }
+
+  protected void clearSortedTime() {
+    if (sortedTimestamps != null) {
+      for (long[] dataArray : sortedTimestamps) {
+        PrimitiveDataListPool.getInstance().release(dataArray);
+      }
+      sortedTimestamps = null;
+    }
+  }
+
+  abstract void clearValue();
+
+  abstract void clearSortedValue();
+
   protected void checkExpansion() {
-    if ((size == limit) && (size % SINGLE_ARRAY_SIZE) == 0) {
+    if ((size % ARRAY_SIZE) == 0) {
       expandValues();
-      timestamps.add(new long[SINGLE_ARRAY_SIZE]);
-      limit += SINGLE_ARRAY_SIZE;
+      timestamps.add((long[]) PrimitiveDataListPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64));
     }
   }
 

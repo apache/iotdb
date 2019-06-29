@@ -43,12 +43,12 @@ public class TVListAllocator {
   }
 
   public synchronized void release(TSDataType dataType, TVList list) {
-    list.reset();
+    list.clear();
     tvListCache.get(dataType).add(list);
   }
 
   public synchronized void release(TVList list) {
-    list.reset();
+    list.clear();
     if (list instanceof BinaryTVList) {
       tvListCache.get(TSDataType.TEXT).add(list);
     } else if (list instanceof  BooleanTVList) {

@@ -21,11 +21,8 @@ package org.apache.iotdb.db.utils.datastructure;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.db.engine.memtable.DeduplicatedSortedData;
-import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsLong;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -97,42 +94,6 @@ public class LongTVListTest {
     start = System.currentTimeMillis() - start;
     System.out.println("tvList sort time: " + start);
 
-  }
-
-
-  @Test
-  public void compareGetSortedTimeValuePairTime() {
-    long time1 = System.currentTimeMillis();
-    for (int j = 0; j < 100; j++) {
-      WritableMemChunk writableMemChunk = new WritableMemChunk(TSDataType.INT64);
-      for (long i = 0; i < 1000; i++) {
-        writableMemChunk.putLong(i, i);
-      }
-      List<TimeValuePair> timeValuePairs = writableMemChunk.getSortedTimeValuePairList();
-      for (int i = 0; i < timeValuePairs.size(); i++) {
-        timeValuePairs.get(i);
-      }
-    }
-    time1 = System.currentTimeMillis() - time1;
-    System.out.println("writable memchunk getSortedTimeValuePairList time: " + time1);
-
-  }
-
-  @Test
-  public void compareGetDeduplicatedDataTime() {
-    long time2 = System.currentTimeMillis();
-    for (int j = 0; j < 100; j++) {
-      WritableMemChunk writableMemChunk = new WritableMemChunk(TSDataType.INT64);
-      for (long i = 0; i < 1000; i++) {
-        writableMemChunk.putLong(i, i);
-      }
-      DeduplicatedSortedData deduplicatedSortedData = writableMemChunk.getDeduplicatedSortedData();
-      while (deduplicatedSortedData.hasNext()) {
-        deduplicatedSortedData.next();
-      }
-    }
-    time2 = System.currentTimeMillis() - time2;
-    System.out.println("writable memchunk getDeduplicatedSortedData time: " + time2);
   }
 
 }

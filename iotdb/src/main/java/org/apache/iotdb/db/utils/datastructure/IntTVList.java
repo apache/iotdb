@@ -18,18 +18,22 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import static org.apache.iotdb.db.rescon.PrimitiveDataListPool.ARRAY_SIZE;
+
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.rescon.PrimitiveDataListPool;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class IntTVList extends TVList {
 
   private List<int[]> values;
 
-  private int[] sortedValues;
+  private int[][] sortedValues;
 
   private int pivotValue;
 
-  public IntTVList() {
+  IntTVList() {
     super();
     values = new ArrayList<>();
   }
@@ -37,8 +41,8 @@ public class IntTVList extends TVList {
   @Override
   public void putInt(long timestamp, int value) {
     checkExpansion();
-    int arrayIndex = size / SINGLE_ARRAY_SIZE;
-    int elementIndex = size % SINGLE_ARRAY_SIZE;
+    int arrayIndex = size / ARRAY_SIZE;
+    int elementIndex = size % ARRAY_SIZE;
     minTime = minTime <= timestamp ? minTime : timestamp;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
@@ -51,11 +55,11 @@ public class IntTVList extends TVList {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     if (!sorted) {
-      int arrayIndex = index / SINGLE_ARRAY_SIZE;
-      int elementIndex = index % SINGLE_ARRAY_SIZE;
+      int arrayIndex = index / ARRAY_SIZE;
+      int elementIndex = index % ARRAY_SIZE;
       return values.get(arrayIndex)[elementIndex];
     } else {
-      return sortedValues[index];
+      return sortedValues[index/ARRAY_SIZE][index%ARRAY_SIZE];
     }
   }
 
@@ -63,8 +67,8 @@ public class IntTVList extends TVList {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    int arrayIndex = index / SINGLE_ARRAY_SIZE;
-    int elementIndex = index % SINGLE_ARRAY_SIZE;
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
   }
@@ -78,8 +82,10 @@ public class IntTVList extends TVList {
         cloneList.values.add(cloneValue(valueArray));
       }
     } else {
-      cloneList.sortedValues = new int[size];
-      System.arraycopy(sortedValues, 0, cloneList.sortedValues, 0, size);
+      cloneList.sortedValues = new int[sortedValues.length][ARRAY_SIZE];
+      for (int i = 0; i < sortedValues.length; i++) {
+        System.arraycopy(sortedValues[i], 0, cloneList.sortedValues[i], 0, ARRAY_SIZE);
+      }
     }
     return cloneList;
   }
@@ -92,18 +98,40 @@ public class IntTVList extends TVList {
 
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
-      sortedTimestamps = new long[size];
+      sortedTimestamps = (long[][]) PrimitiveDataListPool.getInstance().getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
-      sortedValues = new int[size];
+      sortedValues = (int[][]) PrimitiveDataListPool.getInstance().getDataListsByType(TSDataType.INT32, size);
     }
     sort(0, size);
+    clearTime();
+    clearValue();
     sorted = true;
   }
 
   @Override
+  void clearValue() {
+    if (values != null) {
+      for (int[] dataArray : values) {
+        PrimitiveDataListPool.getInstance().release(dataArray);
+      }
+      values.clear();
+    }
+  }
+
+  @Override
+  void clearSortedValue() {
+    if (sortedValues != null) {
+      for (int[] dataArray : sortedValues) {
+        PrimitiveDataListPool.getInstance().release(dataArray);
+      }
+      sortedValues = null;
+    }
+  }
+
+  @Override
   protected void setFromSorted(int src, int dest) {
-    set(dest, sortedTimestamps[src], sortedValues[src]);
+    set(dest, sortedTimestamps[src/ARRAY_SIZE][src%ARRAY_SIZE], sortedValues[src/ARRAY_SIZE][src%ARRAY_SIZE]);
   }
 
   protected void set(int src, int dest) {
@@ -113,8 +141,8 @@ public class IntTVList extends TVList {
   }
 
   protected void setToSorted(int src, int dest) {
-    sortedTimestamps[dest] = getTime(src);
-    sortedValues[dest] = getInt(src);
+    sortedTimestamps[dest/ARRAY_SIZE][dest% ARRAY_SIZE] = getTime(src);
+    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getInt(src);
   }
 
   protected void reverseRange(int lo, int hi) {
@@ -131,7 +159,8 @@ public class IntTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add(new int[SINGLE_ARRAY_SIZE]);
+    values.add((int[]) PrimitiveDataListPool
+        .getInstance().getPrimitiveDataListByType(TSDataType.INT32));
   }
 
   @Override

@@ -84,6 +84,15 @@ public class TsFileResourceV2 {
 
   public TsFileResourceV2(File file,
       Map<String, Long> startTimeMap,
+      Map<String, Long> endTimeMap) {
+    this.file = file;
+    this.startTimeMap = startTimeMap;
+    this.endTimeMap = endTimeMap;
+    this.closed = true;
+  }
+
+  public TsFileResourceV2(File file,
+      Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
       ReadOnlyMemChunk readOnlyMemChunk,
       List<ChunkMetaData> chunkMetaDatas) {

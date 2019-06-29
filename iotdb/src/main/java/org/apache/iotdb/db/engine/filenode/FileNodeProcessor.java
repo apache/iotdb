@@ -2021,7 +2021,7 @@
 //        closingBufferWriteProcessor.remove(processor);
 //      }
 //    }
-//    closingBufferWriteProcessor.reset();
+//    closingBufferWriteProcessor.clear();
 //    return closingBufferWriteProcessor;
 //  }
 //
@@ -2125,6 +2125,6 @@
 //        //do nothing.
 //      }
 //    }
-//    this.getClosingBufferWriteProcessor().reset();
+//    this.getClosingBufferWriteProcessor().clear();
 //  }
 //}
