@@ -37,7 +37,7 @@ public class ChunkBufferPool {
   private static final Logger LOGGER = LoggerFactory.getLogger(ChunkBufferPool.class);
 
   private static final Deque<ChunkBuffer> availableChunkBuffer = new ArrayDeque<>();
-  
+
   private int size = 0;
 
   private static final int WAIT_TIME = 2000;

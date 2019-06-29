@@ -290,6 +290,11 @@ public class IoTDBConfig {
    */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
+  /**
+   * whether use chunkBufferPool.
+   */
+  private boolean chunkBufferPoolEnable = false;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -861,5 +866,13 @@ public class IoTDBConfig {
 
   public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
+  }
+
+  public boolean isChunkBufferPoolEnable() {
+    return chunkBufferPoolEnable;
+  }
+
+  public void setChunkBufferPoolEnable(boolean chunkBufferPoolEnable) {
+    this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 }

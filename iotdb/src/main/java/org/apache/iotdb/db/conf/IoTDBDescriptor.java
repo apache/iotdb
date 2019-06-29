@@ -250,6 +250,10 @@ public class IoTDBDescriptor {
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());
 
+      if (properties.containsKey("chunk_buffer_pool_enable")) {
+        conf.setChunkBufferPoolEnable(Boolean
+            .parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
+      }
       String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
       try {
         conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));

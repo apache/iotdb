@@ -19,7 +19,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -136,8 +138,13 @@ public class MemTableFlushTaskV2 {
             } else {
               long starTime = System.currentTimeMillis();
               Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
-              ChunkBuffer chunkBuffer = ChunkBufferPool
-                  .getInstance().getEmptyChunkBuffer(this, encodingMessage.right);
+              ChunkBuffer chunkBuffer;
+              if (IoTDBDescriptor.getInstance().getConfig().isChunkBufferPoolEnable()) {//chunk buffer enable
+                chunkBuffer = ChunkBufferPool.getInstance()
+                    .getEmptyChunkBuffer(this, encodingMessage.right);
+              } else {
+                chunkBuffer = new ChunkBuffer(encodingMessage.right);
+              }
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right, chunkBuffer,
                   PAGE_SIZE_THRESHOLD);
               try {
@@ -194,9 +201,13 @@ public class MemTableFlushTaskV2 {
               if (ioMessage instanceof String) {
                 tsFileIoWriter.startChunkGroup((String) ioMessage);
               } else if (ioMessage instanceof IChunkWriter) {
-                ChunkWriterImpl writer = (ChunkWriterImpl) ioMessage;
-                writer.writeToFileWriter(tsFileIoWriter);
-                ChunkBufferPool.getInstance().putBack(writer.getChunkBuffer());
+                if (IoTDBDescriptor.getInstance().getConfig().isChunkBufferPoolEnable()) {//chunk buffer pool enable
+                  ChunkWriterImpl writer = (ChunkWriterImpl) ioMessage;
+                  writer.writeToFileWriter(tsFileIoWriter);
+                  ChunkBufferPool.getInstance().putBack(writer.getChunkBuffer());
+                } else {
+                  ((IChunkWriter) ioMessage).writeToFileWriter(tsFileIoWriter);
+                }
               } else {
                 ChunkGroupIoTask endGroupTask = (ChunkGroupIoTask) ioMessage;
                 tsFileIoWriter.endChunkGroup(endGroupTask.version);
