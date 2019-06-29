@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
-import org.apache.iotdb.db.query.reader.sequence.adapter.SeriesReaderByTimestampAdapter;
+import org.apache.iotdb.db.query.reader.sequence.adapter.FileSeriesReaderByTimestampAdapter;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -150,7 +150,7 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
     }
     ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
-    seriesReader = new SeriesReaderByTimestampAdapter(
+    seriesReader = new FileSeriesReaderByTimestampAdapter(
             new FileSeriesReaderByTimestamp(chunkLoader, metaDataList));
   }
 }
