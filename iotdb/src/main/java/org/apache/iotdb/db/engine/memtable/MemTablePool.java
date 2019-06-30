@@ -45,7 +45,7 @@ public class MemTablePool {
   private MemTablePool() {
   }
 
-  public IMemTable getEmptyMemTable(Object applier) {
+  public IMemTable getAvailableMemTable(Object applier) {
     synchronized (availableMemTables) {
       if (availableMemTables.isEmpty() && size < capacity) {
         size++;

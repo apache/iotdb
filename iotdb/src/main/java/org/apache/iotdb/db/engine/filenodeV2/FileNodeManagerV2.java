@@ -56,6 +56,11 @@ public class FileNodeManagerV2 implements IService {
       .getLogger(org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  /*
+   * whether reject all writes (insert, update, delete)
+   */
+  private boolean rejectWrite = false;
+
   /**
    * a folder (system/info/ by default) that persist FileNodeProcessorStore classes. Ends with
    * File.separator Each FileNodeManager will have a subfolder.
@@ -78,6 +83,14 @@ public class FileNodeManagerV2 implements IService {
    * This set is used to store overflowed filenode name.<br> The overflowed filenode will be merge.
    */
   private volatile FileNodeManagerStatus fileNodeManagerStatus = FileNodeManagerStatus.NONE;
+
+  public boolean isRejectWrite() {
+    return rejectWrite;
+  }
+
+  public void setRejectWrite(boolean rejectWrite) {
+    this.rejectWrite = rejectWrite;
+  }
 
   private enum FileNodeManagerStatus {
     NONE, MERGE, CLOSE
@@ -168,7 +181,9 @@ public class FileNodeManagerV2 implements IService {
    * @return an int value represents the insert type, 0: failed; 1: overflow; 2: bufferwrite
    */
   public boolean insert(InsertPlan insertPlan) throws FileNodeManagerException {
-
+    if (rejectWrite) {
+      return false;
+    }
     FileNodeProcessorV2 fileNodeProcessor;
     try {
       fileNodeProcessor = getProcessor(insertPlan.getDeviceId());
@@ -200,22 +215,30 @@ public class FileNodeManagerV2 implements IService {
   /**
    * update data.
    */
-  public void update(String deviceId, String measurementId, long startTime, long endTime,
+  public boolean update(String deviceId, String measurementId, long startTime, long endTime,
       TSDataType type, String v) {
+    if (rejectWrite) {
+      return false;
+    }
     // TODO
+    return false;
   }
 
   /**
    * delete data.
    */
-  public void delete(String deviceId, String measurementId, long timestamp)
+  public boolean delete(String deviceId, String measurementId, long timestamp)
       throws FileNodeManagerException {
+    if (rejectWrite) {
+      return false;
+    }
     FileNodeProcessorV2 fileNodeProcessor = getProcessor(deviceId);
     try {
       fileNodeProcessor.delete(deviceId, measurementId, timestamp);
     } catch (IOException e) {
       throw new FileNodeManagerException(e);
     }
+    return true;
   }
 
   private void delete(String processorName,

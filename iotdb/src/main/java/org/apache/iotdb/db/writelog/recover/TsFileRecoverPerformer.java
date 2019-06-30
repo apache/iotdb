@@ -112,7 +112,7 @@ public class TsFileRecoverPerformer {
     // flush logs
     MemTableFlushTaskV2 tableFlushTask = new MemTableFlushTaskV2(recoverMemTable, fileSchema, restorableTsFileIOWriter,
         logNodePrefix, (a) -> {});
-    tableFlushTask.flushMemTable();
+    boolean success = tableFlushTask.flushMemTable();
 
     // close file
     try {

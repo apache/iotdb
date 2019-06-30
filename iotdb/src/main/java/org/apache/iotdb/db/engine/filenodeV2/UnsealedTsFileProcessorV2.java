@@ -23,13 +23,11 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.EmptyMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -41,11 +39,9 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -119,10 +115,10 @@ public class UnsealedTsFileProcessorV2 {
 
 //    long start1 = System.currentTimeMillis();
     if (workMemTable == null) {
-      // TODO change the impl of getEmptyMemTable to non-blocking
-      workMemTable = MemTablePool.getInstance().getEmptyMemTable(this);
+      // TODO change the impl of getAvailableMemTable to non-blocking
+      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
 
-      // no empty memtable, return failure
+      // no available memtable, return failure
       if (workMemTable == null) {
         return false;
       }
@@ -184,6 +180,9 @@ public class UnsealedTsFileProcessorV2 {
 
 
   public boolean shouldFlush() {
+    if (workMemTable == null) {
+      return false;
+    }
     return workMemTable.memSize() > TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
   }
 
@@ -314,48 +313,55 @@ public class UnsealedTsFileProcessorV2 {
    * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
    * the flush manager pool
    */
-  void flushOneMemTable() throws IOException {
+  boolean flushOneMemTable() throws IOException {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
 
     LOGGER.info("storage group {} start to flush a memtable in a flush thread", storageGroupName);
 
-    // null memtable only appears when calling asyncClose()
+    boolean flushSuccessed = false;
+    //if the memtable is not an EmptyMemTable (i.e., the memtable is actually a memtable).
     if (memTableToFlush.isManagedByMemPool()) {
       MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(memTableToFlush, fileSchema, writer,
           storageGroupName,
           this::releaseFlushedMemTableCallback);
-      flushTask.flushMemTable();
+      flushSuccessed = flushTask.flushMemTable();
+      if (flushSuccessed) {
 //      long start = System.currentTimeMillis();
-      MemTablePool.getInstance().putBack(memTableToFlush, storageGroupName);
+        MemTablePool.getInstance().putBack(memTableToFlush, storageGroupName);
 //      long elapse = System.currentTimeMillis() - start;
 //      if (elapse > 1000) {
 //        LOGGER.info("release a memtable cost: {}", elapse);
 //      }
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        getLogNode().notifyEndFlush();
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+          getLogNode().notifyEndFlush();
+        }
       }
       LOGGER.info("flush a memtable has finished");
     } else {
+      // the memtable is an EmptyMemTable. it is a signal for indicating asyncClose()
       LOGGER.info(
           "release an empty memtable from flushing memtable list, which is submitted in force flush");
       releaseFlushedMemTableCallback(memTableToFlush);
+      flushSuccessed = true;
     }
 
-    // for sync flush
+    // for notifying syncFlush()
     synchronized (memTableToFlush) {
       memTableToFlush.notify();
     }
 
     if (shouldClose && flushingMemTables.isEmpty()) {
-      endFile();
-
-      // for sync close
+      if (flushSuccessed) {
+        //if !flushSuccessed, then the file may be broken, we do not seal the file.
+        endFile();
+      }
+      // for notifying syncClose()
       synchronized (flushingMemTables) {
         flushingMemTables.notify();
       }
     }
-
+    return flushSuccessed;
   }
 
   private void endFile() throws IOException {

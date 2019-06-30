@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.IOException;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Future;
@@ -34,14 +35,15 @@ public class FlushManager {
 
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 
-  class FlushThread implements Runnable {
+  class FlushThread implements Callable<Boolean> {
 
     @Override
-    public void run() {
+    public Boolean call() {
       UnsealedTsFileProcessorV2 unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
       long startTime = System.currentTimeMillis();
+      boolean flushSuccessed = false;
       try {
-        unsealedTsFileProcessor.flushOneMemTable();
+        flushSuccessed = unsealedTsFileProcessor.flushOneMemTable();
       } catch (IOException e) {
         LOGGER.error("storage group {} flush one memtable meet error",
             unsealedTsFileProcessor.getStorageGroupName(), e);
@@ -51,6 +53,10 @@ public class FlushManager {
       LOGGER.info("storage group {} flush process consume {} ms",
           unsealedTsFileProcessor.getStorageGroupName(), System.currentTimeMillis() - startTime);
       registerUnsealedTsFileProcessor(unsealedTsFileProcessor);
+      if (!flushSuccessed) {
+        FileNodeManagerV2.getInstance().setRejectWrite(true);
+      }
+      return flushSuccessed;
     }
   }
 
