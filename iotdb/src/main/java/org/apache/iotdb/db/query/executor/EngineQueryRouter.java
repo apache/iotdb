@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -51,7 +51,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
 
   @Override
   public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
 
     if (queryExpression.hasQueryFilter()) {
       try {
@@ -67,7 +67,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
         }
 
       } catch (QueryFilterOptimizationException | IOException e) {
-        throw new FileNodeManagerException(e);
+        throw new StorageEngineException(e);
       }
     } else {
       EngineExecutor engineExecutor = new EngineExecutor(
@@ -75,7 +75,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
       try {
         return engineExecutor.executeWithoutValueFilter(context);
       } catch (IOException e) {
-        throw new FileNodeManagerException(e);
+        throw new StorageEngineException(e);
       }
     }
   }
@@ -83,7 +83,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context) throws QueryFilterOptimizationException,
-      FileNodeManagerException, IOException, PathErrorException, ProcessorException {
+      StorageEngineException, IOException, PathErrorException, ProcessorException {
 
     if (expression != null) {
       IExpression optimizedExpression = ExpressionOptimizer.getInstance()
@@ -106,7 +106,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
       QueryContext context)
-      throws ProcessorException, QueryFilterOptimizationException, FileNodeManagerException,
+      throws ProcessorException, QueryFilterOptimizationException, StorageEngineException,
       PathErrorException, IOException {
 
     long nextJobId = context.getJobId();
@@ -165,7 +165,7 @@ public class EngineQueryRouter implements IEngineQueryRouter {
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context)
-      throws FileNodeManagerException, PathErrorException, IOException {
+      throws StorageEngineException, PathErrorException, IOException {
 
     long nextJobId = context.getJobId();
 

@@ -93,7 +93,7 @@ public interface IMemTable {
 
   boolean containSeries(String deviceId, String measurementId);
 
-  boolean isManagedByMemPool();
+  boolean isSignalMemTable();
 
   long getVersion();
 

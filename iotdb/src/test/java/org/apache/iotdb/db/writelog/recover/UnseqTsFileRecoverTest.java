@@ -25,7 +25,6 @@ import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -136,13 +135,10 @@ public class UnseqTsFileRecoverTest {
 
     Path path = new Path("device1", "sensor1");
 
-    OverflowInsertFile overflowInsertFile = new OverflowInsertFile(tsF.getPath(),
-        metadataQuerier.getChunkMetaDataList(path));
-
     UnsequenceSeriesReader unSeqMergeReader = new UnsequenceSeriesReader();
     int priorityValue = 1;
 
-    for (ChunkMetaData chunkMetaData : overflowInsertFile.getChunkMetaDataList()) {
+    for (ChunkMetaData chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
 

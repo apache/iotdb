@@ -146,7 +146,7 @@ public class OpenFileNumUtil {
    * return statistic Map, whose key belongs to enum OpenFileNumStatistics: TOTAL_OPEN_FILE_NUM is
    * the current total open file number of IoTDB service process; DATA_OPEN_FILE_NUM is the current
    * open file number under data directory; DELTA_OPEN_FILE_NUM is the current open file number of
-   * TsFile; OVERFLOW_OPEN_FILE_NUM is the current open file number of overflow file;
+   * TsFile; OVERFLOW_OPEN_FILE_NUM is the current open file number of unsequence file;
    * WAL_OPEN_FILE_NUM is the current open file number of WAL file; METADATA_OPEN_FILE_NUM is the
    * current open file number of metadata; DIGEST_OPEN_FILE_NUM is the current open file number of
    * fileNodeDir; SOCKET_OPEN_FILE_NUM is the current open socket connection of IoTDB service
@@ -260,7 +260,7 @@ public class OpenFileNumUtil {
     OVERFLOW_OPEN_FILE_NUM(directoryManager.getAllOverflowFileFolders()),
     WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalFolder())),
     METADATA_OPEN_FILE_NUM(Collections.singletonList(config.getMetadataDir())),
-    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getFileNodeDir())),
+    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getSystemInfoDir())),
     SOCKET_OPEN_FILE_NUM(null);
 
     // path is a list of directory corresponding to the OpenFileNumStatistics enum element,

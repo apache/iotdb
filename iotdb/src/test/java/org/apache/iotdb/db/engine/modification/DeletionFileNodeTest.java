@@ -32,8 +32,8 @@ import java.util.Iterator;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -71,7 +71,7 @@ public class DeletionFileNodeTest {
 
   @Before
   public void setup() throws MetadataErrorException,
-      PathErrorException, IOException, FileNodeManagerException, StartupException {
+      PathErrorException, IOException, StorageEngineException, StartupException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageLevelToMTree(processorName);
@@ -86,13 +86,13 @@ public class DeletionFileNodeTest {
   }
 
   @After
-  public void teardown() throws IOException, FileNodeManagerException {
+  public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-      FileNodeManagerException, ProcessorException {
+      StorageEngineException, ProcessorException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -110,7 +110,7 @@ public class DeletionFileNodeTest {
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(TEST_QUERY_JOB_ID, expression);
-    QueryDataSourceV2 dataSource = QueryResourceManager.getInstance()
+    QueryDataSource dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
 
     Iterator<TimeValuePair> timeValuePairs =
@@ -125,7 +125,7 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInBufferWriteFile() throws FileNodeManagerException, IOException {
+  public void testDeleteInBufferWriteFile() throws StorageEngineException, IOException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -165,7 +165,7 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInOverflowCache() throws FileNodeManagerException, ProcessorException {
+  public void testDeleteInOverflowCache() throws StorageEngineException, ProcessorException {
     // insert sequence data
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -194,7 +194,7 @@ public class DeletionFileNodeTest {
         measurements[5]), null);
 
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(TEST_QUERY_JOB_ID, expression);
-    QueryDataSourceV2 dataSource = QueryResourceManager.getInstance()
+    QueryDataSource dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT);
 
     Iterator<TimeValuePair> timeValuePairs =
@@ -210,7 +210,7 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInOverflowFile() throws FileNodeManagerException, IOException {
+  public void testDeleteInOverflowFile() throws StorageEngineException, IOException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);

@@ -32,7 +32,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
-import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileSchemaUtils;
@@ -47,9 +47,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class UnsealedTsFileProcessorTest {
+public class TsFileProcessorTest {
 
-  private UnsealedTsFileProcessor processor;
+  private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
   private String filePath = "data/testUnsealedTsFileProcessor.tsfile";
   private String deviceId = "root.vehicle.d0";
@@ -71,8 +71,8 @@ public class UnsealedTsFileProcessorTest {
 
   @Test
   public void testWriteAndFlush()
-      throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
-    processor = new UnsealedTsFileProcessor(storageGroup, new File(filePath),
+      throws WriteProcessException, IOException, TsFileProcessorException {
+    processor = new TsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
         ()-> true);
 
@@ -118,8 +118,8 @@ public class UnsealedTsFileProcessorTest {
 
   @Test
   public void testMultiFlush()
-      throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
-    processor = new UnsealedTsFileProcessor(storageGroup, new File(filePath),
+      throws WriteProcessException, IOException, TsFileProcessorException {
+    processor = new TsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
         ()->true);
 
@@ -153,8 +153,8 @@ public class UnsealedTsFileProcessorTest {
 
   @Test
   public void testWriteAndClose()
-      throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
-    processor = new UnsealedTsFileProcessor(storageGroup, new File(filePath),
+      throws WriteProcessException, IOException, TsFileProcessorException {
+    processor = new TsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE,
         unsealedTsFileProcessorV2 -> {
           TsFileResource resource = unsealedTsFileProcessorV2.getTsFileResource();

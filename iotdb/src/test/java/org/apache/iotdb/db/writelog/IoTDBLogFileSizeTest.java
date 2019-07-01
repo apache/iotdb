@@ -170,7 +170,7 @@ public class IoTDBLogFileSizeTest {
                   ++cnt, cnt);
           statement.execute(sql);
           WriteLogNode logNode = MultiFileLogNodeManager.getInstance()
-              .getNode("root.logFileTest.overflow" + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
+              .getNode("root.logFileTest.overflow" + IoTDBConstant.UNSEQFILE_LOG_NODE_SUFFIX);
           File WALFile = new File(
               logNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
           if (WALFile.exists() && WALFile.length() > maxLength[0]) {

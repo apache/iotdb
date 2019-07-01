@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.executor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -54,7 +54,7 @@ public class EngineExecutor {
    * without filter or with global time filter.
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws FileNodeManagerException, IOException {
+      throws StorageEngineException, IOException {
 
     Filter timeFilter = null;
     if (queryExpression.hasQueryFilter()) {
@@ -73,7 +73,7 @@ public class EngineExecutor {
       try {
         dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
       } catch (PathErrorException e) {
-        throw new FileNodeManagerException(e);
+        throw new StorageEngineException(e);
       }
 
       IPointReader reader = SeriesReaderFactoryImpl.getInstance()
@@ -85,7 +85,7 @@ public class EngineExecutor {
       return new EngineDataSetWithoutValueFilter(queryExpression.getSelectedSeries(), dataTypes,
           readersOfSelectedSeries);
     } catch (IOException e) {
-      throw new FileNodeManagerException(e);
+      throw new StorageEngineException(e);
     }
   }
 
@@ -93,9 +93,9 @@ public class EngineExecutor {
    * executeWithValueFilter query.
    *
    * @return QueryDataSet object
-   * @throws FileNodeManagerException FileNodeManagerException
+   * @throws StorageEngineException StorageEngineException
    */
-  public QueryDataSet executeWithValueFilter(QueryContext context) throws FileNodeManagerException, IOException {
+  public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException, IOException {
 
     QueryResourceManager.getInstance()
         .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
@@ -115,7 +115,7 @@ public class EngineExecutor {
       try {
         dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
       } catch (PathErrorException e) {
-        throw new FileNodeManagerException(e);
+        throw new StorageEngineException(e);
       }
 
     }

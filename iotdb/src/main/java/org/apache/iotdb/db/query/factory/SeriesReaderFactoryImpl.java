@@ -20,8 +20,8 @@ package org.apache.iotdb.db.query.factory;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -187,12 +187,12 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
   @Override
   public List<IReaderByTimeStamp> createSeriesReadersByTimestamp(List<Path> paths,
-                                                                 QueryContext context) throws FileNodeManagerException, IOException {
+                                                                 QueryContext context) throws StorageEngineException, IOException {
     List<IReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
     for (Path path : paths) {
 
-      QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSourceV2(path,
               context);
 
@@ -217,8 +217,8 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   @Override
   public IPointReader createSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
                                                            QueryContext context)
-          throws FileNodeManagerException, IOException {
-    QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
+          throws StorageEngineException, IOException {
+    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
               .getQueryDataSourceV2(path, context);
 
     // sequence reader for one sealed tsfile
@@ -244,8 +244,8 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
   @Override
   public IPointReader createSeriesReaderWithValueFilter(Path path, Filter filter, QueryContext context)
-          throws FileNodeManagerException, IOException {
-    QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
+          throws StorageEngineException, IOException {
+    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
               .getQueryDataSourceV2(path, context);
 
     // sequence reader for one sealed tsfile

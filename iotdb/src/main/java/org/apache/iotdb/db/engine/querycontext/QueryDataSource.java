@@ -16,29 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
 
-public class FileNodeProcessorException extends ProcessorException {
+package org.apache.iotdb.db.engine.querycontext;
 
-  private static final long serialVersionUID = 7373978140952977661L;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  public FileNodeProcessorException() {
-    super();
+import java.util.List;
+
+public class QueryDataSource {
+  private Path seriesPath;
+  private List<TsFileResource> seqResources;
+  private List<TsFileResource> unseqResources;
+
+  public QueryDataSource(Path seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
+    this.seriesPath = seriesPath;
+    this.seqResources = seqResources;
+    this.unseqResources = unseqResources;
   }
 
-  public FileNodeProcessorException(PathErrorException pathExcp) {
-    super(pathExcp.getMessage());
+  public Path getSeriesPath() {
+    return seriesPath;
   }
 
-  public FileNodeProcessorException(String msg) {
-    super(msg);
+  public List<TsFileResource> getSeqResources() {
+    return seqResources;
   }
 
-  public FileNodeProcessorException(Throwable throwable) {
-    super(throwable);
-  }
-
-  public FileNodeProcessorException(String msg, Throwable e) {
-    super(msg, e);
+  public List<TsFileResource> getUnseqResources() {
+    return unseqResources;
   }
 }

@@ -29,7 +29,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.RowGroupBlockMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -59,7 +59,7 @@ public class EnvironmentUtils {
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  public static void cleanEnv() throws IOException, FileNodeManagerException {
+  public static void cleanEnv() throws IOException, StorageEngineException {
 
     QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
 
@@ -92,12 +92,12 @@ public class EnvironmentUtils {
     for (String path : directoryManager.getAllTsFileFolders()) {
       cleanDir(path);
     }
-    // delete overflow
+    // delete unsequence files
     for (String path : directoryManager.getAllOverflowFileFolders()) {
       cleanDir(path);
     }
     // delete filenode
-    cleanDir(config.getFileNodeDir());
+    cleanDir(config.getSystemInfoDir());
     // delete metadata
     cleanDir(config.getMetadataDir());
     // delete wal
@@ -172,7 +172,7 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // create storage group
-    createDir(config.getFileNodeDir());
+    createDir(config.getSystemInfoDir());
     // create metadata
     createDir(config.getMetadataDir());
     // create wal

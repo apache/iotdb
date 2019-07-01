@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
@@ -70,7 +70,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * init reader and aggregate function.
    */
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
-      throws FileNodeManagerException, PathErrorException, ProcessorException, IOException {
+      throws StorageEngineException, PathErrorException, ProcessorException, IOException {
     initAggreFuction(aggres);
 
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);

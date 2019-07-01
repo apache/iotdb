@@ -70,12 +70,12 @@ public class IoTDBConfig {
   /**
    * Data directory.
    */
-  private String dataDir = null;
+  private String dataDir = "data";
 
   /**
-   * System directory.
+   * System info directory, including version file for each storage group
    */
-  private String sysDir = null;
+  private String systemInfoDir = "info";
 
   /**
    * Wal directory.
@@ -86,11 +86,6 @@ public class IoTDBConfig {
    * Data directory of non-sequential data.
    */
   private String[] unseqDataDirs = {DEFAULT_UNSEQ_DATA_DIR};
-
-  /**
-   * Data directory of fileNode data.
-   */
-  private String fileNodeDir = "info";
 
   /**
    * Data directory of sequential data.
@@ -116,7 +111,7 @@ public class IoTDBConfig {
   private String indexFileDir = "index";
 
   /**
-   * The maximum concurrent thread number for merging overflow. When the value <=0 or > CPU core
+   * The maximum concurrent thread number for merging. When the value <=0 or > CPU core
    * number, use the CPU core number.
    */
   private int mergeConcurrentThreads = Runtime.getRuntime().availableProcessors();
@@ -235,12 +230,12 @@ public class IoTDBConfig {
       getSeqDataDirs()[i] = getDataDir() + getSeqDataDirs()[i];
     }
 
-    // update the paths of subdirectories in the sysDir
-    if (getSysDir().length() > 0 && !getSysDir().endsWith(File.separator)) {
-      setSysDir(getSysDir() + File.separatorChar);
+    // update the paths of subdirectories in the systemInfoDir
+    if (getSystemInfoDir().length() > 0 && !getSystemInfoDir().endsWith(File.separator)) {
+      setSystemInfoDir(getSystemInfoDir() + File.separatorChar);
     }
-    setFileNodeDir(getSysDir() + getFileNodeDir());
-    setMetadataDir(getSysDir() + getMetadataDir());
+    setSystemInfoDir(getSystemInfoDir() + getSystemInfoDir());
+    setMetadataDir(getSystemInfoDir() + getMetadataDir());
 
     // update the paths of subdirectories in the walFolder
     if (getWalFolder().length() > 0 && !getWalFolder().endsWith(File.separator)) {
@@ -263,15 +258,15 @@ public class IoTDBConfig {
    * | D:\\iotdb\iotdb |
    * C:\\dataDir | C:\\dataDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
    *
-   * First, if sysDir is null, sysDir will be assigned the default
+   * First, if systemInfoDir is null, systemInfoDir will be assigned the default
    * value(i.e.,"data"+File.separatorChar+"system".
-   * Then, if sysDir is absolute, leave sysDir as it is. If sysDir is relative,
-   * sysDir will be converted to the complete version using non-empty %IOTDB_HOME%.
-   * e.g. for windows platform, | IOTDB_HOME | sysDir before | sysDir
+   * Then, if systemInfoDir is absolute, leave systemInfoDir as it is. If systemInfoDir is relative,
+   * systemInfoDir will be converted to the complete version using non-empty %IOTDB_HOME%.
+   * e.g. for windows platform, | IOTDB_HOME | systemInfoDir before | systemInfoDir
    * after | |-----------------|--------------------|-----------------------------|
-   * | D:\\iotdb\iotdb | null |D:\\iotdb\iotdb\data\system | | D:\\iotdb\iotdb | sysDir
-   * | D:\\iotdb\iotdb\sysDir | | D:\\iotdb\iotdb |
-   * C:\\sysDir | C:\\sysDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
+   * | D:\\iotdb\iotdb | null |D:\\iotdb\iotdb\data\system | | D:\\iotdb\iotdb | systemInfoDir
+   * | D:\\iotdb\iotdb\systemInfoDir | | D:\\iotdb\iotdb |
+   * C:\\systemInfoDir | C:\\systemInfoDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
    *
    * First, if walFolder is null, walFolder will be assigned the default
    * value(i.e.,"data"+File.separatorChar+"data". Then,
@@ -291,8 +286,8 @@ public class IoTDBConfig {
     if (getDataDir() == null) {
       setDataDir(DEFAULT_DATA_DIR + File.separatorChar + DEFAULT_DATA_DIR);
     }
-    if (getSysDir() == null) {
-      setSysDir(DEFAULT_DATA_DIR + File.separatorChar + DEFAULT_SYS_DIR);
+    if (getSystemInfoDir() == null) {
+      setSystemInfoDir(DEFAULT_DATA_DIR + File.separatorChar + DEFAULT_SYS_DIR);
     }
     if (getWalFolder() == null) {
       setWalFolder(DEFAULT_DATA_DIR);
@@ -300,7 +295,7 @@ public class IoTDBConfig {
 
     List<String> dirs = new ArrayList<>();
     dirs.add(getDataDir());
-    dirs.add(getSysDir());
+    dirs.add(getSystemInfoDir());
     dirs.add(getWalFolder());
     String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
     for (int i = 0; i < 3; i++) {
@@ -315,7 +310,7 @@ public class IoTDBConfig {
       }
     }
     setDataDir(dirs.get(0));
-    setSysDir(dirs.get(1));
+    setSystemInfoDir(dirs.get(1));
     setWalFolder(dirs.get(2));
   }
 
@@ -388,12 +383,12 @@ public class IoTDBConfig {
     this.dataDir = dataDir;
   }
 
-  String getSysDir() {
-    return sysDir;
+  public String getSystemInfoDir() {
+    return systemInfoDir;
   }
 
-  void setSysDir(String sysDir) {
-    this.sysDir = sysDir;
+  void setSystemInfoDir(String systemInfoDir) {
+    this.systemInfoDir = systemInfoDir;
   }
 
   public String getWalFolder() {
@@ -410,14 +405,6 @@ public class IoTDBConfig {
 
   void setUnseqDataDirs(String[] unseqDataDirs) {
     this.unseqDataDirs = unseqDataDirs;
-  }
-
-  public String getFileNodeDir() {
-    return fileNodeDir;
-  }
-
-  private void setFileNodeDir(String fileNodeDir) {
-    this.fileNodeDir = fileNodeDir;
   }
 
   void setSeqDataDirs(String[] seqDataDirs) {

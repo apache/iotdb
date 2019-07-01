@@ -37,29 +37,29 @@ public class DirectoryManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DirectoryManager.class);
 
-  private List<String> tsfileFolders;
-  private List<String> overflowFolders;
-  private DirectoryStrategy tsfileStrategy;
-  private DirectoryStrategy overflowStrategy;
+  private List<String> sequenceFileFolders;
+  private List<String> unsequenceFileFolders;
+  private DirectoryStrategy sequenceStrategy;
+  private DirectoryStrategy unsequenceStrategy;
 
   private DirectoryManager() {
-    tsfileFolders = new ArrayList<>(
+    sequenceFileFolders = new ArrayList<>(
         Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getSeqDataDirs()));
-    initFolders(tsfileFolders);
-    overflowFolders = new ArrayList<>(
+    initFolders(sequenceFileFolders);
+    unsequenceFileFolders = new ArrayList<>(
     Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getUnseqDataDirs()));
-    initFolders(overflowFolders);
+    initFolders(unsequenceFileFolders);
 
     String strategyName = "";
     try {
       strategyName = IoTDBDescriptor.getInstance().getConfig().getMultiDirStrategyClassName();
       Class<?> clazz = Class.forName(strategyName);
-      tsfileStrategy = (DirectoryStrategy) clazz.newInstance();
-      tsfileStrategy.init(tsfileFolders);
-      overflowStrategy = (DirectoryStrategy) clazz.newInstance();
-      overflowStrategy.init(overflowFolders);
+      sequenceStrategy = (DirectoryStrategy) clazz.newInstance();
+      sequenceStrategy.init(sequenceFileFolders);
+      unsequenceStrategy = (DirectoryStrategy) clazz.newInstance();
+      unsequenceStrategy.init(unsequenceFileFolders);
     } catch (Exception e) {
-      LOGGER.error("can't find tsfileStrategy {} for mult-directories.", strategyName, e);
+      LOGGER.error("can't find sequenceStrategy {} for mult-directories.", strategyName, e);
     }
   }
 
@@ -78,12 +78,12 @@ public class DirectoryManager {
 
   // only used by test
   public String getTsFolderForTest() {
-    return tsfileFolders.get(0);
+    return sequenceFileFolders.get(0);
   }
 
   // only used by test
   public void setTsFolderForTest(String path) {
-    tsfileFolders.set(0, path);
+    sequenceFileFolders.set(0, path);
   }
 
   public String getNextFolderForSequenceFile() throws DiskSpaceInsufficientException {
@@ -96,19 +96,19 @@ public class DirectoryManager {
    * @return next folder index
    */
   public int getNextFolderIndexForTsFile() throws DiskSpaceInsufficientException {
-    return tsfileStrategy.nextFolderIndex();
+    return sequenceStrategy.nextFolderIndex();
   }
 
   public String getTsFileFolder(int index) {
-    return tsfileFolders.get(index);
+    return sequenceFileFolders.get(index);
   }
 
   public int getTsFileFolderIndex(String folder) {
-    return tsfileFolders.indexOf(folder);
+    return sequenceFileFolders.indexOf(folder);
   }
 
   public List<String> getAllTsFileFolders() {
-    return tsfileFolders;
+    return sequenceFileFolders;
   }
 
   private static class DirectoriesHolder {
@@ -129,23 +129,23 @@ public class DirectoryManager {
    * @return next folder index
    */
   public int getNextFolderIndexForOverflowFile() throws DiskSpaceInsufficientException {
-    return overflowStrategy.nextFolderIndex();
+    return unsequenceStrategy.nextFolderIndex();
   }
 
   public String getOverflowFileFolder(int index) {
-    return overflowFolders.get(index);
+    return unsequenceFileFolders.get(index);
   }
 
   public int getOverflowFileFolderIndex(String folder) {
-    return overflowFolders.indexOf(folder);
+    return unsequenceFileFolders.indexOf(folder);
   }
 
   public List<String> getAllOverflowFileFolders() {
-    return overflowFolders;
+    return unsequenceFileFolders;
   }
 
   // only used by test
   public String getOverflowFolderForTest() {
-    return overflowFolders.get(0);
+    return unsequenceFileFolders.get(0);
   }
 }

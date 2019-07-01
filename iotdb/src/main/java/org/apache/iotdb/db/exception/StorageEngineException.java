@@ -16,36 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.querycontext;
+package org.apache.iotdb.db.exception;
 
-import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+public class StorageEngineException extends Exception {
 
-public class OverflowInsertFile {
+  private static final long serialVersionUID = 9001649171768311032L;
 
-  private String filePath;
-
-  // seriesChunkMetadata of selected series
-  private List<ChunkMetaData> timeSeriesChunkMetaData;
-
-  public OverflowInsertFile() {
-    //allowed to do nothing
+  public StorageEngineException() {
+    super();
   }
 
-  public OverflowInsertFile(String path, List<ChunkMetaData> timeSeriesChunkMetaData) {
-    this.filePath = path;
-    this.timeSeriesChunkMetaData = timeSeriesChunkMetaData;
+  public StorageEngineException(String message, Throwable cause) {
+    super(message, cause);
   }
 
-  public String getFilePath() {
-    return filePath;
+  public StorageEngineException(String message) {
+    super(message);
   }
 
-  public List<ChunkMetaData> getChunkMetaDataList() {
-    return timeSeriesChunkMetaData;
+  public StorageEngineException(Throwable cause) {
+    super(cause);
   }
 
-  public void setTimeSeriesChunkMetaData(List<ChunkMetaData> timeSeriesChunkMetaData) {
-    this.timeSeriesChunkMetaData = timeSeriesChunkMetaData;
-  }
 }

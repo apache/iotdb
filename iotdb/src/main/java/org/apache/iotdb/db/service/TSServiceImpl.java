@@ -43,7 +43,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -749,7 +749,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   protected QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
-      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
+      throws PathErrorException, QueryFilterOptimizationException, StorageEngineException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
     processor.getExecutor().setFetchSize(fetchSize);

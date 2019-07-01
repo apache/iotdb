@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.timegenerator;
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -41,11 +41,11 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
    *
    * @param expression expression
    * @return Node object
-   * @throws FileNodeManagerException FileNodeManagerException
+   * @throws StorageEngineException StorageEngineException
    */
   @Override
   public Node construct(IExpression expression, QueryContext context)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
     if (expression.getType() == SERIES) {
       try {
         Filter filter = ((SingleSeriesExpression) expression).getFilter();
@@ -54,7 +54,7 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
             SeriesReaderFactoryImpl.getInstance()
                 .createSeriesReaderWithValueFilter(path, filter, context));
       } catch (IOException e) {
-        throw new FileNodeManagerException(e);
+        throw new StorageEngineException(e);
       }
 
     } else {

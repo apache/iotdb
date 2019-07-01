@@ -31,7 +31,7 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -359,7 +359,7 @@ public class StatMonitor implements IService {
                 }
               }
             }
-          } catch (FileNodeManagerException e) {
+          } catch (StorageEngineException e) {
             LOGGER
                 .error("Error occurred when deleting statistics information periodically, because",
                     e);
@@ -382,7 +382,7 @@ public class StatMonitor implements IService {
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);
-        } catch (FileNodeManagerException e) {
+        } catch (StorageEngineException e) {
           numInsertError.incrementAndGet();
           LOGGER.error("Inserting stat points error.", e);
         }

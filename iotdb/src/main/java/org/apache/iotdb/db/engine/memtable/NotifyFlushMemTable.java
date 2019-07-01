@@ -16,26 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.engine.memtable;
 
-public class FileNodeManagerException extends Exception {
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-  private static final long serialVersionUID = 9001649171768311032L;
+/**
+ * Only used in sync flush and async close to start a flush task
+ * This memtable is not managed by MemTablePool and does not store any data.
+ */
+public class NotifyFlushMemTable extends AbstractMemTable {
 
-  public FileNodeManagerException() {
-    super();
+  @Override
+  protected IWritableMemChunk genMemSeries(TSDataType dataType) {
+    return null;
   }
 
-  public FileNodeManagerException(String message, Throwable cause) {
-    super(message, cause);
+  @Override
+  public IMemTable copy() {
+    return null;
   }
 
-  public FileNodeManagerException(String message) {
-    super(message);
+  @Override
+  public boolean isSignalMemTable() {
+    return true;
   }
-
-  public FileNodeManagerException(Throwable cause) {
-    super(cause);
-  }
-
 }

@@ -33,13 +33,13 @@ import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MemTableFlushTaskV2 {
+public class MemTableFlushTask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTaskV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final int PAGE_SIZE_THRESHOLD = TSFileConfig.pageSizeInByte;
   private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
       .getInstance();
-  private Future ioFlushTaskFuture;
+  private Future ioTaskFuture;
   private NativeRestorableIOWriter writer;
 
   private ConcurrentLinkedQueue ioTaskQueue = new ConcurrentLinkedQueue();
@@ -52,13 +52,13 @@ public class MemTableFlushTaskV2 {
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
 
-  public MemTableFlushTaskV2(IMemTable memTable, FileSchema fileSchema, NativeRestorableIOWriter writer, String storageGroup) {
+  public MemTableFlushTask(IMemTable memTable, FileSchema fileSchema, NativeRestorableIOWriter writer, String storageGroup) {
     this.memTable = memTable;
     this.fileSchema = fileSchema;
     this.writer = writer;
     this.storageGroup = storageGroup;
     subTaskPoolManager.submit(EncodingTask);
-    this.ioFlushTaskFuture = subTaskPoolManager.submit(IOTask);
+    this.ioTaskFuture = subTaskPoolManager.submit(IOTask);
     LOGGER.info("flush task of Storage group {} memtable {} is created ",
         storageGroup, memTable.getVersion());
   }
@@ -89,7 +89,7 @@ public class MemTableFlushTaskV2 {
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);
 
-    ioFlushTaskFuture.get();
+    ioTaskFuture.get();
 
     LOGGER.info("Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms", storageGroup, memTable, System.currentTimeMillis() - start);
   }
@@ -149,7 +149,7 @@ public class MemTableFlushTaskV2 {
   };
 
 
-  //TODO a better way is: for each TsFile, assign it a Executors.singleThreadPool,
+  // TODO a better way is: for each TsFile, assign it a Executors.singleThreadPool,
   // rather than per each memtable.
   private Runnable IOTask = new Runnable() {
     @Override
@@ -178,10 +178,12 @@ public class MemTableFlushTaskV2 {
             if (ioMessage instanceof String) {
               writer.startChunkGroup((String) ioMessage);
             } else if (ioMessage instanceof IChunkWriter) {
+
               if (IoTDBDescriptor.getInstance().getConfig()
-                  .isChunkBufferPoolEnable()) {//chunk buffer pool enable
+                  .isChunkBufferPoolEnable()) {
+                //chunk buffer pool enable
                 ChunkWriterImpl writer = (ChunkWriterImpl) ioMessage;
-                writer.writeToFileWriter(MemTableFlushTaskV2.this.writer);
+                writer.writeToFileWriter(MemTableFlushTask.this.writer);
                 ChunkBufferPool.getInstance().putBack(writer.getChunkBuffer());
               } else {
                 ((IChunkWriter) ioMessage).writeToFileWriter(writer);

@@ -134,10 +134,10 @@ public class IoTDBDescriptor {
       conf.setDataDir(properties.getProperty("data_dir", conf.getDataDir()));
       conf.setSeqDataDirs(properties.getProperty("tsfile_dir", IoTDBConfig.DEFAULT_SEQ_DATA_DIR)
           .split(","));
-      conf.setUnseqDataDirs(properties.getProperty("overflow_dir",
+      conf.setUnseqDataDirs(properties.getProperty("unseq_data_dir",
           IoTDBConfig.DEFAULT_UNSEQ_DATA_DIR)
                     .split(","));
-      conf.setSysDir(properties.getProperty("sys_dir", conf.getSysDir()));
+      conf.setSystemInfoDir(properties.getProperty("sys_dir", conf.getSystemInfoDir()));
       conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
 
       conf.setMultiDirStrategyClassName(properties.getProperty("mult_dir_strategy",

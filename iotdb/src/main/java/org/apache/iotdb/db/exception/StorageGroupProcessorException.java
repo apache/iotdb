@@ -18,16 +18,27 @@
  */
 package org.apache.iotdb.db.exception;
 
-/**
- * Throw this exception when the file node processor is not exists.
- *
- * @author kangrong
- */
-public class FileNodeNotExistException extends RuntimeException {
+public class StorageGroupProcessorException extends ProcessorException {
 
-  private static final long serialVersionUID = -4334041411884083545L;
+  private static final long serialVersionUID = 7373978140952977661L;
 
-  public FileNodeNotExistException(String msg) {
+  public StorageGroupProcessorException() {
+    super();
+  }
+
+  public StorageGroupProcessorException(PathErrorException pathExcp) {
+    super(pathExcp.getMessage());
+  }
+
+  public StorageGroupProcessorException(String msg) {
     super(msg);
+  }
+
+  public StorageGroupProcessorException(Throwable throwable) {
+    super(throwable);
+  }
+
+  public StorageGroupProcessorException(String msg, Throwable e) {
+    super(msg, e);
   }
 }

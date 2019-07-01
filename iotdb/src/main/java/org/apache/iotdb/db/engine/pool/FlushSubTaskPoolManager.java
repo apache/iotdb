@@ -20,14 +20,11 @@ package org.apache.iotdb.db.engine.pool;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ProcessorException;
 
 public class FlushSubTaskPoolManager {
@@ -43,40 +40,6 @@ public class FlushSubTaskPoolManager {
 
   public static FlushSubTaskPoolManager getInstance() {
     return FlushSubTaskPoolManager.InstanceHolder.instance;
-  }
-
-  /**
-   * @throws ProcessorException if the pool is not terminated.
-   */
-  public void reopen() throws ProcessorException {
-    if (!pool.isTerminated()) {
-      throw new ProcessorException("Flush Pool is not terminated!");
-    }
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    pool = Executors.newFixedThreadPool(config.getConcurrentFlushThread());
-  }
-
-  /**
-   * Refuse new flush submits and exit when all RUNNING THREAD in the pool end.
-   *
-   * @param block if set to true, this method will wait for timeOut milliseconds.
-   * @param timeOut block time out in milliseconds.
-   * @throws ProcessorException if timeOut is reached or being interrupted while waiting to exit.
-   */
-  public void forceClose(boolean block, long timeOut) throws ProcessorException {
-    pool.shutdownNow();
-    if (block) {
-      try {
-        if (!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS)) {
-          throw new ProcessorException("Flush thread pool doesn't exit after "
-              + EXIT_WAIT_TIME + " ms");
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new ProcessorException("Interrupted while waiting flush thread pool to exit. "
-            , e);
-      }
-    }
   }
 
   /**

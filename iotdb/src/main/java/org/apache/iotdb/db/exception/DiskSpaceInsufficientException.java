@@ -20,7 +20,7 @@ package org.apache.iotdb.db.exception;
 
 import java.util.List;
 
-public class DiskSpaceInsufficientException extends FileNodeManagerException {
+public class DiskSpaceInsufficientException extends StorageEngineException {
 
   private static final long serialVersionUID = 9001643829368311032L;
 

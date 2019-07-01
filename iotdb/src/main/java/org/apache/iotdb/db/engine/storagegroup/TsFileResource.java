@@ -51,7 +51,7 @@ public class TsFileResource {
    */
   private Map<String, Long> endTimeMap;
 
-  private UnsealedTsFileProcessor processor;
+  private TsFileProcessor processor;
 
   private transient ModificationFile modFile;
 
@@ -75,7 +75,7 @@ public class TsFileResource {
     this.closed = true;
   }
 
-  public TsFileResource(File file, UnsealedTsFileProcessor processor) {
+  public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.startTimeMap = new HashMap<>();
     this.endTimeMap = new HashMap<>();
@@ -203,7 +203,7 @@ public class TsFileResource {
     processor = null;
   }
 
-  public UnsealedTsFileProcessor getUnsealedFileProcessor() {
+  public TsFileProcessor getUnsealedFileProcessor() {
     return processor;
   }
 

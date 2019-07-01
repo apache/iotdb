@@ -40,13 +40,10 @@ public class IoTDBConstant {
   public static final long MB = 1024 * 1024L;
   public static final long KB = 1024L;
 
-  public static final long MEM_THRESHOLD_WARNING_DEFAULT = 8 * GB;
-  public static final long MEM_THRESHOLD_DANGEROUS_DEFAULT = 16 * GB;
-
   public static final String IOTDB_HOME = "IOTDB_HOME";
 
   public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
-  public static final String OVERFLOW_LOG_NODE_SUFFIX = "-overflow";
+  public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
 
   public static final String PATH_ROOT = "root";
   public static final char PATH_SEPARATOR = '.';

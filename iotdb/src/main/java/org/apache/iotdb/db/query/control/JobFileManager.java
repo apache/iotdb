@@ -22,7 +22,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 
 /**
  * <p>
@@ -55,7 +55,7 @@ public class JobFileManager {
   /**
    * Add the unique file paths to sealedFilePathsMap and unsealedFilePathsMap.
    */
-  public void addUsedFilesForGivenJob(long jobId, QueryDataSourceV2 dataSource) {
+  public void addUsedFilesForGivenJob(long jobId, QueryDataSource dataSource) {
 
     //sequence data
     for(TsFileResource tsFileResource : dataSource.getSeqResources()){
@@ -68,7 +68,7 @@ public class JobFileManager {
       }
     }
 
-    //overflow data
+    //unsequence data
     for(TsFileResource tsFileResource : dataSource.getUnseqResources()){
       String path = tsFileResource.getFile().getPath();
       if(tsFileResource.isClosed()){

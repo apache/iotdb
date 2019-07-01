@@ -26,8 +26,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -114,7 +114,7 @@ public class QueryResourceManager {
    * calculation.
    */
   public void beginQueryOfGivenQueryPaths(long jobId, List<Path> queryPaths)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
     Set<String> deviceIdSet = new HashSet<>();
     queryPaths.forEach(path -> deviceIdSet.add(path.getDevice()));
 
@@ -129,7 +129,7 @@ public class QueryResourceManager {
    * calculation.
    */
   public void beginQueryOfGivenExpression(long jobId, IExpression expression)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
     Set<String> deviceIdSet = new HashSet<>();
     getUniquePaths(expression, deviceIdSet);
     for (String deviceId : deviceIdSet) {
@@ -145,7 +145,7 @@ public class QueryResourceManager {
    * Note : the method is for cluster
    */
   public void beginQueryOfGivenExpression(long jobId, IExpression expression,
-      Set<String> remoteDeviceIdSet) throws FileNodeManagerException {
+      Set<String> remoteDeviceIdSet) throws StorageEngineException {
     Set<String> deviceIdSet = new HashSet<>();
     getUniquePaths(expression, deviceIdSet);
     deviceIdSet.removeAll(remoteDeviceIdSet);
@@ -155,12 +155,12 @@ public class QueryResourceManager {
     }
   }
 
-  public QueryDataSourceV2 getQueryDataSource(Path selectedPath,
+  public QueryDataSource getQueryDataSource(Path selectedPath,
       QueryContext context)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
-    QueryDataSourceV2 queryDataSource = StorageEngine.getInstance()
+    QueryDataSource queryDataSource = StorageEngine.getInstance()
         .query(singleSeriesExpression, context);
 
     // add used files to current thread request cached map
@@ -169,11 +169,11 @@ public class QueryResourceManager {
     return queryDataSource;
   }
 
-  public QueryDataSourceV2 getQueryDataSourceV2(Path selectedPath,
-      QueryContext context) throws FileNodeManagerException {
+  public QueryDataSource getQueryDataSourceV2(Path selectedPath,
+      QueryContext context) throws StorageEngineException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
-    QueryDataSourceV2 queryDataSource = StorageEngine
+    QueryDataSource queryDataSource = StorageEngine
         .getInstance().query(singleSeriesExpression, context);
 
     // add used files to current thread request cached map
@@ -186,7 +186,7 @@ public class QueryResourceManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All
    * query tokens created by this jdbc request must be cleared.
    */
-  public void endQueryForGivenJob(long jobId) throws FileNodeManagerException {
+  public void endQueryForGivenJob(long jobId) throws StorageEngineException {
     if (queryTokensMap.get(jobId) == null) {
       // no resource need to be released.
       return;

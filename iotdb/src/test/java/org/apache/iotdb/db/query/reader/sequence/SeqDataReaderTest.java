@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.FileNodeProcessorException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -31,8 +31,8 @@ import org.junit.Test;
 public class SeqDataReaderTest extends ReaderTestHelper {
 
   @Test
-  public void testSeqReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+  public void testSeqReader() throws IOException, StorageGroupProcessorException {
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
     SequenceSeriesReader readerV2 = new SequenceSeriesReader(path,
         queryDataSource.getSeqResources(), null,
@@ -50,8 +50,8 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testSeqByTimestampReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+  public void testSeqByTimestampReader() throws IOException, StorageGroupProcessorException {
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
     SequenceSeriesReaderByTimestamp readerV2 = new SequenceSeriesReaderByTimestamp(path,
         queryDataSource.getSeqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);

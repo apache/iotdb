@@ -29,7 +29,7 @@
 //import org.apache.iotdb.db.conf.IoTDBConfig;
 //import org.apache.iotdb.db.conf.IoTDBDescriptor;
 //import org.apache.iotdb.db.engine.filenodeV2.StorageEngine;
-//import org.apache.iotdb.db.exception.FileNodeManagerException;
+//import org.apache.iotdb.db.exception.StorageEngineException;
 //import org.apache.iotdb.db.metadata.MManager;
 //import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
 //import org.apache.iotdb.db.monitor.collector.FileSize;
@@ -139,7 +139,7 @@
 //
 //    try {
 //      fManager.deleteAll();
-//    } catch (FileNodeManagerException e) {
+//    } catch (StorageEngineException e) {
 //      e.printStackTrace();
 //      fail(e.getMessage());
 //    }

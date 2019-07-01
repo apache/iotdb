@@ -47,8 +47,8 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
-  public boolean isManagedByMemPool() {
-    return true;
+  public boolean isSignalMemTable() {
+    return false;
   }
 
   @Override

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
@@ -74,7 +74,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * init reader and aggregate function.
    */
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
-      throws FileNodeManagerException, PathErrorException, ProcessorException, IOException {
+      throws StorageEngineException, PathErrorException, ProcessorException, IOException {
     initAggreFuction(aggres);
     // init reader
     QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
@@ -82,7 +82,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
     for (Path path : selectedSeries) {
-      QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSourceV2(path, context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory

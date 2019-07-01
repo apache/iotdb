@@ -45,7 +45,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -439,7 +439,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    * directly. If data in the tsfile is old, it has two strategy to merge.It depends on the
    * possibility of updating historical data.
    */
-  public void loadData() throws FileNodeManagerException {
+  public void loadData() throws StorageEngineException {
     syncDataPath = FilePathUtils.regularizePath(syncDataPath);
     int processedNum = 0;
     for (String storageGroup : fileNodeMap.get().keySet()) {
@@ -475,11 +475,11 @@ public class SyncServiceImpl implements SyncService.Iface {
         // call interface of load external file
         try {
           if (!STORAGE_GROUP_MANAGER.appendFileToFileNode(storageGroup, fileNode, path)) {
-            // it is a file with overflow data
+            // it is a file with unsequence data
             if (config.isUpdateHistoricalDataPossibility()) {
               loadOldData(path);
             } else {
-              List<String> overlapFiles = STORAGE_GROUP_MANAGER.getOverlapFilesFromFileNode(
+              List<String> overlapFiles = STORAGE_GROUP_MANAGER.getOverlapFiles(
                   storageGroup,
                   fileNode, uuid.get());
               if (overlapFiles.isEmpty()) {
@@ -489,9 +489,9 @@ public class SyncServiceImpl implements SyncService.Iface {
               }
             }
           }
-        } catch (FileNodeManagerException | IOException | ProcessorException e) {
+        } catch (StorageEngineException | IOException | ProcessorException e) {
           logger.error("Can not load external file {}", path);
-          throw new FileNodeManagerException(e);
+          throw new StorageEngineException(e);
         }
         processedNum++;
         logger.info(String
