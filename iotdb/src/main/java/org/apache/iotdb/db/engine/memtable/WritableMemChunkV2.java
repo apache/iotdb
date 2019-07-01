@@ -190,7 +190,7 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
           sortedList.add(new TimeValuePair(time, new TsBinary(list.getBinary(i))));
           break;
         default:
-          LOGGER.error("don't support data type: {}", dataType);
+          LOGGER.error("Unsupported data type: {}", dataType);
           break;
       }
     }
