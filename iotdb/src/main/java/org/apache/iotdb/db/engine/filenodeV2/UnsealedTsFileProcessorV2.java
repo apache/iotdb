@@ -336,8 +336,9 @@ public class UnsealedTsFileProcessorV2 {
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           getLogNode().notifyEndFlush();
         }
+        LOGGER.info("flush a memtable has finished");
       }
-      LOGGER.info("flush a memtable has finished");
+
     } else {
       // the memtable is an EmptyMemTable. it is a signal for indicating asyncClose()
       LOGGER.info(
