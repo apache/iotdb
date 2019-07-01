@@ -67,9 +67,9 @@ public class EnvironmentUtils {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
     // tsFileConfig.duplicateIncompletedPage = false;
-    // clean filenode manager
+    // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
-      LOGGER.error("Can't close the filenode manager in EnvironmentUtils");
+      LOGGER.error("Can't close the storage group manager in EnvironmentUtils");
       Assert.fail();
     }
     StatMonitor.getInstance().close();
@@ -96,7 +96,7 @@ public class EnvironmentUtils {
     for (String path : directoryManager.getAllOverflowFileFolders()) {
       cleanDir(path);
     }
-    // delete filenode
+    // delete system info
     cleanDir(config.getSystemInfoDir());
     // delete metadata
     cleanDir(config.getMetadataDir());

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -52,9 +50,6 @@ public class IoTDBFlushQueryMergeTest {
       "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
 
   };
-
-  private static IoTDBConfig iotDBConfig = IoTDBDescriptor.getInstance().getConfig();
-  private static long overflowFileSizeThreshold;
 
   @BeforeClass
   public static void setUp() throws Exception {

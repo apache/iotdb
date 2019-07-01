@@ -206,9 +206,6 @@ public class IoTDBLargeDataIT {
         statement.execute(sql);
       }
 
-      // overflow delete
-      // statement.execute("DELETE FROM root.vehicle.d0.s1 WHERE time < 3200");
-
       statement.close();
     } catch (Exception e) {
       e.printStackTrace();

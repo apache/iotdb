@@ -187,7 +187,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      // overflow insert, time < 3000
+      // unsequence insert, time < 3000
       for (int time = 2000; time < 2500; time++) {
 
         String sql = String
@@ -204,7 +204,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      // overflow insert, time > 200000
+      // unsequence insert, time > 200000
       for (int time = 200900; time < 201000; time++) {
 
         String sql = String
@@ -223,9 +223,6 @@ public class IoTDBSeriesReaderIT {
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
         statement.execute(sql);
       }
-
-      // overflow update
-      // statement.execute("UPDATE root.vehicle SET d0.s1 = 11111111 WHERE time > 23000 and time < 100100");
 
       statement.close();
     } catch (Exception e) {

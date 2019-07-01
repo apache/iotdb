@@ -168,7 +168,7 @@ public class IoTDBDescriptor {
       conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
           properties.getProperty("update_historical_data_possibility",
                   Boolean.toString(conf.isSyncEnable()))));
-      conf.setIpWhiteList(properties.getProperty("IP_white_list", conf.getIpWhiteList()));
+      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       conf.setConcurrentFlushThread(Integer
           .parseInt(properties.getProperty("concurrent_flush_thread",

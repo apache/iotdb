@@ -263,17 +263,17 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Get all ColumnSchemas for the filenode seriesPath.
+   * Get all ColumnSchemas for the storage group seriesPath.
    *
-   * @param path the filenode seriesPath
+   * @param path the Path in a storage group
    * @return ArrayList<'   ColumnSchema   '> The list of the schema
    */
-  ArrayList<MeasurementSchema> getSchemaForOneFileNode(String path) {
-    return mtree.getSchemaForOneFileNode(path);
+  ArrayList<MeasurementSchema> getSchemaInOneStorageGroup(String path) {
+    return mtree.getSchemaForOneStorageGroup(path);
   }
 
   Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
-    return mtree.getSchemaMapForOneFileNode(path);
+    return mtree.getSchemaMapForOneStorageGroup(path);
   }
 
   Map<String, Integer> getNumSchemaMapForOneFileNode(String path) {

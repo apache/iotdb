@@ -298,7 +298,7 @@ public class MManager {
       throw new MetadataErrorException(e);
     }
     // the two map is stored in the storage group node
-    Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneFileNode(fileNodePath);
+    Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneStorageGroup(fileNodePath);
     Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(fileNodePath);
     String lastNode = path.getMeasurement();
     boolean isNewMeasurement = true;
@@ -401,14 +401,14 @@ public class MManager {
       }
       List<String> newSubPaths = new ArrayList<>();
       for (String eachSubPath : subPaths) {
-        String filenodeName;
+        String storageGroupName;
         try {
-          filenodeName = getStorageGroupNameByPath(eachSubPath);
+          storageGroupName = getStorageGroupNameByPath(eachSubPath);
         } catch (PathErrorException e) {
           throw new MetadataErrorException(e);
         }
 
-        if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(filenodeName)) {
+        if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(storageGroupName)) {
           continue;
         }
         newSubPaths.add(eachSubPath);
@@ -441,16 +441,16 @@ public class MManager {
       Set<String> closeFileNodes = new HashSet<>();
       Set<String> deleteFielNodes = new HashSet<>();
       for (String p : fullPath) {
-        String filenode;
+        String storageGroupName;
         try {
-          filenode = getStorageGroupNameByPath(p);
+          storageGroupName = getStorageGroupNameByPath(p);
         } catch (PathErrorException e) {
           throw new MetadataErrorException(e);
         }
-        closeFileNodes.add(filenode);
+        closeFileNodes.add(storageGroupName);
         // the two map is stored in the storage group node
-        Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneFileNode(filenode);
-        Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(filenode);
+        Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneStorageGroup(storageGroupName);
+        Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(storageGroupName);
         // Thread safety: just one thread can access/modify the schemaMap
         synchronized (schemaMap) {
           // TODO: don't delete the storage group seriesPath recursively
@@ -778,12 +778,12 @@ public class MManager {
   }
 
   /**
-   * Get all MeasurementSchemas for the filenode seriesPath.
+   * Get all MeasurementSchemas for the storage group seriesPath.
    */
-  public List<MeasurementSchema> getSchemaForFileName(String path) {
+  public List<MeasurementSchema> getSchemaForStorageGroup(String path) {
     lock.readLock().lock();
     try {
-      return mgraph.getSchemaForOneFileNode(path);
+      return mgraph.getSchemaInOneStorageGroup(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -792,7 +792,7 @@ public class MManager {
   /**
    * function for getting schema map for one file node.
    */
-  private Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
+  private Map<String, MeasurementSchema> getSchemaMapForOneStorageGroup(String path) {
 
     lock.readLock().lock();
     try {

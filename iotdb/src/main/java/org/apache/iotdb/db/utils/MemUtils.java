@@ -69,9 +69,9 @@ public class MemUtils {
   }
 
   /**
-   * Calculate how much memory will be used if the given record is written to Bufferwrite.
+   * Calculate how much memory will be used if the given record is written to sequence file.
    */
-  public static long getTsRecordMemBufferwrite(TSRecord record) {
+  public static long getTsRecordMem(TSRecord record) {
     long memUsed = 8; // time
     memUsed += 8; // deviceId reference
     memUsed += getStringMem(record.deviceId);

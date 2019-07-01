@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 
 /**
- * Bench The filenode manager with mul-thread and get its performance.
+ * Bench The storage group manager with mul-thread and get its performance.
  */
 public class FileNodeManagerBenchmark {
 

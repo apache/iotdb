@@ -207,7 +207,7 @@ public class StorageGroupProcessor {
 
   private FileSchema constructFileSchema(String storageGroupName) {
     List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForFileName(storageGroupName);
+    columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(storageGroupName);
 
     FileSchema schema = new FileSchema();
     for (MeasurementSchema measurementSchema : columnSchemaList) {
@@ -232,9 +232,6 @@ public class StorageGroupProcessor {
     }
   }
 
-  /**
-   * @return -1: failed, 1: Overflow, 2:Bufferwrite
-   */
   public boolean insert(InsertPlan insertPlan) {
     writeLock();
     try {

@@ -175,6 +175,7 @@ public class IoTDBConfig {
    * exactly, choose "false".
    */
   private boolean updateHistoricalDataPossibility = false;
+
   private String ipWhiteList = "0.0.0.0/0";
   /**
    * Examining period of cache file reader : 100 seconds.
