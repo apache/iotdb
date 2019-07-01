@@ -57,6 +57,8 @@ public class MemTableFlushTaskV2 {
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
 
+  private long startPossition;
+
   public MemTableFlushTaskV2(IMemTable memTable, FileSchema fileSchema, NativeRestorableIOWriter writer, String storageGroup,
       Consumer<IMemTable> callBack) {
     this.memTable = memTable;
@@ -76,6 +78,13 @@ public class MemTableFlushTaskV2 {
    * this is a synchronized function.
    */
   public boolean flushMemTable() {
+    Boolean flushSuccessfully = false;
+    try {
+      this.startPossition = tsFileIoWriter.getPos();
+    } catch (IOException e) {
+      LOGGER.error("flush task error when getting the start position of the file", e);
+      return flushSuccessfully;
+    }
     long sortTime = 0;
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.add(deviceId);
@@ -96,18 +105,24 @@ public class MemTableFlushTaskV2 {
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);
 
-    Boolean success = false;
     try {
-      success = ioFlushTaskFuture.get();
+      flushSuccessfully = ioFlushTaskFuture.get();
     } catch (InterruptedException | ExecutionException e) {
       LOGGER.error("Waiting for IO flush task end meets error", e);
     }
     LOGGER.info("Storage group {} memtable {} flushing a memtable finished!", storageGroup, memTable);
-    if (success) {
+    if (flushSuccessfully) {
       //only if successed, we use the callback to release the memtable.
       flushCallBack.accept(memTable);
+    } else {
+      //remove all broken data.
+      try {
+        tsFileIoWriter.truncate(startPossition);
+      } catch (IOException e) {
+        LOGGER.error("truncate broken data failed", e);
+      }
     }
-    return success;
+    return flushSuccessfully;
   }
 
 

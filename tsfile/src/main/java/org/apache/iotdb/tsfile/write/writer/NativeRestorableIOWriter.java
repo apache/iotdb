@@ -178,5 +178,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
     return append;
   }
 
-
+  public void truncate(long position) throws IOException {
+    out.truncate(position);
+  }
 }

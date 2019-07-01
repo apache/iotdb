@@ -319,14 +319,14 @@ public class UnsealedTsFileProcessorV2 {
 
     LOGGER.info("storage group {} start to flush a memtable in a flush thread", storageGroupName);
 
-    boolean flushSuccessed = false;
+    boolean flushSuccessfully = false;
     //if the memtable is not an EmptyMemTable (i.e., the memtable is actually a memtable).
     if (memTableToFlush.isManagedByMemPool()) {
       MemTableFlushTaskV2 flushTask = new MemTableFlushTaskV2(memTableToFlush, fileSchema, writer,
           storageGroupName,
           this::releaseFlushedMemTableCallback);
-      flushSuccessed = flushTask.flushMemTable();
-      if (flushSuccessed) {
+      flushSuccessfully = flushTask.flushMemTable();
+      if (flushSuccessfully) {
 //      long start = System.currentTimeMillis();
         MemTablePool.getInstance().putBack(memTableToFlush, storageGroupName);
 //      long elapse = System.currentTimeMillis() - start;
@@ -343,7 +343,7 @@ public class UnsealedTsFileProcessorV2 {
       LOGGER.info(
           "release an empty memtable from flushing memtable list, which is submitted in force flush");
       releaseFlushedMemTableCallback(memTableToFlush);
-      flushSuccessed = true;
+      flushSuccessfully = true;
     }
 
     // for notifying syncFlush()
@@ -352,7 +352,7 @@ public class UnsealedTsFileProcessorV2 {
     }
 
     if (shouldClose && flushingMemTables.isEmpty()) {
-      if (flushSuccessed) {
+      if (flushSuccessfully) {
         //if !flushSuccessed, then the file may be broken, we do not seal the file.
         endFile();
       }
@@ -361,7 +361,7 @@ public class UnsealedTsFileProcessorV2 {
         flushingMemTables.notify();
       }
     }
-    return flushSuccessed;
+    return flushSuccessfully;
   }
 
   private void endFile() throws IOException {

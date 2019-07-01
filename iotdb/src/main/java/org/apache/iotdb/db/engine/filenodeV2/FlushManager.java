@@ -41,9 +41,9 @@ public class FlushManager {
     public Boolean call() {
       UnsealedTsFileProcessorV2 unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
       long startTime = System.currentTimeMillis();
-      boolean flushSuccessed = false;
+      boolean flushSuccessfully = false;
       try {
-        flushSuccessed = unsealedTsFileProcessor.flushOneMemTable();
+        flushSuccessfully = unsealedTsFileProcessor.flushOneMemTable();
       } catch (IOException e) {
         LOGGER.error("storage group {} flush one memtable meet error",
             unsealedTsFileProcessor.getStorageGroupName(), e);
@@ -53,10 +53,10 @@ public class FlushManager {
       LOGGER.info("storage group {} flush process consume {} ms",
           unsealedTsFileProcessor.getStorageGroupName(), System.currentTimeMillis() - startTime);
       registerUnsealedTsFileProcessor(unsealedTsFileProcessor);
-      if (!flushSuccessed) {
+      if (!flushSuccessfully) {
         FileNodeManagerV2.getInstance().setRejectWrite(true);
       }
-      return flushSuccessed;
+      return flushSuccessfully;
     }
   }
 
