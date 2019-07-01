@@ -307,11 +307,14 @@ public class FileNodeProcessorV2 {
 
   private UnsealedTsFileProcessorV2 createTsFileProcessor(boolean sequence) throws IOException {
     String baseDir;
+    long start = System.currentTimeMillis();
     if (sequence) {
       baseDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
     } else {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
+    start = System.currentTimeMillis() - start;
+    LOGGER.info("getNextFolder in Directory manager cost: {}", start);
     new File(baseDir, storageGroupName).mkdirs();
 
     String filePath = Paths.get(baseDir, storageGroupName,
