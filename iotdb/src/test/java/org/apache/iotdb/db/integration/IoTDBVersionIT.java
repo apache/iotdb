@@ -36,7 +36,6 @@ public class IoTDBVersionIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeMemControl();
     deamon = IoTDB.getInstance();
     deamon.active();
     EnvironmentUtils.envSetUp();

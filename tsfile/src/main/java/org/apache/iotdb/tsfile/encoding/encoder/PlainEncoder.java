@@ -31,9 +31,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author Zhang Jinrui
- */
 public class PlainEncoder extends Encoder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PlainEncoder.class);
@@ -172,7 +169,7 @@ public class PlainEncoder extends Encoder {
   }
 
   @Override
-  public void encode(BigDecimal value, ByteArrayOutputStream out) throws IOException {
+  public void encode(BigDecimal value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException(
         "tsfile-encoding PlainEncoder: current version does not support BigDecimal value encoding");
   }

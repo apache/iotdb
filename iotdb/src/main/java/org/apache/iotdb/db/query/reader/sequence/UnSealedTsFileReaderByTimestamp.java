@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.reader.sequence;
 
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderByTimestamp;
@@ -57,7 +57,7 @@ public class UnSealedTsFileReaderByTimestamp implements IReaderByTimeStamp {
    *
    * @param tsFileResource -unclosed tsfile resource
    */
-  public UnSealedTsFileReaderByTimestamp(TsFileResourceV2 tsFileResource) throws IOException {
+  public UnSealedTsFileReaderByTimestamp(TsFileResource tsFileResource) throws IOException {
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
             .get(tsFileResource.getFile().getPath(), false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);

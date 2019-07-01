@@ -33,7 +33,7 @@ public interface WriteLogNodeManager {
    * @param identifier -identifier, the format: "{storageGroupName}-{BufferWrite/Overflow}-{
    * nameOfTsFile}"
    */
-  WriteLogNode getNode(String identifier) throws IOException;
+  WriteLogNode getNode(String identifier);
 
   /**
    * Delete a log node. If the log node does not exist, this will be an empty operation.

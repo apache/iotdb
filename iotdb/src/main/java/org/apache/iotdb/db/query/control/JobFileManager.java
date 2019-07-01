@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.control;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 
 /**
@@ -58,7 +58,7 @@ public class JobFileManager {
   public void addUsedFilesForGivenJob(long jobId, QueryDataSourceV2 dataSource) {
 
     //sequence data
-    for(TsFileResourceV2 tsFileResource : dataSource.getSeqResources()){
+    for(TsFileResource tsFileResource : dataSource.getSeqResources()){
       String path = tsFileResource.getFile().getPath();
       if(tsFileResource.isClosed()){
         addFilePathToMap(jobId, path, true);
@@ -69,7 +69,7 @@ public class JobFileManager {
     }
 
     //overflow data
-    for(TsFileResourceV2 tsFileResource : dataSource.getUnseqResources()){
+    for(TsFileResource tsFileResource : dataSource.getUnseqResources()){
       String path = tsFileResource.getFile().getPath();
       if(tsFileResource.isClosed()){
         addFilePathToMap(jobId, path, true);

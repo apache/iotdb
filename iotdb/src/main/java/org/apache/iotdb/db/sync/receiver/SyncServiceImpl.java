@@ -43,8 +43,8 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -80,7 +80,7 @@ public class SyncServiceImpl implements SyncService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncServiceImpl.class);
 
-  private static final FileNodeManagerV2 fileNodeManager = FileNodeManagerV2.getInstance();
+  private static final StorageEngine STORAGE_GROUP_MANAGER = StorageEngine.getInstance();
   /**
    * Metadata manager
    **/
@@ -121,7 +121,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   /**
    * IoTDB  multiple bufferWrite directory
    **/
-  private String[] bufferWritePaths = config.getBufferWriteDirs();
+  private String[] bufferWritePaths = config.getSeqDataDirs();
 
   /**
    * The path to store metadata file of sender
@@ -468,18 +468,18 @@ public class SyncServiceImpl implements SyncService.Iface {
         // create a new fileNode
         String header = syncDataPath;
         String relativePath = path.substring(header.length());
-        TsFileResourceV2 fileNode = new TsFileResourceV2(
+        TsFileResource fileNode = new TsFileResource(
             new File(DirectoryManager.getInstance().getNextFolderIndexForTsFile() +
                 File.separator + relativePath), startTimeMap, endTimeMap
         );
         // call interface of load external file
         try {
-          if (!fileNodeManager.appendFileToFileNode(storageGroup, fileNode, path)) {
+          if (!STORAGE_GROUP_MANAGER.appendFileToFileNode(storageGroup, fileNode, path)) {
             // it is a file with overflow data
             if (config.isUpdateHistoricalDataPossibility()) {
               loadOldData(path);
             } else {
-              List<String> overlapFiles = fileNodeManager.getOverlapFilesFromFileNode(
+              List<String> overlapFiles = STORAGE_GROUP_MANAGER.getOverlapFilesFromFileNode(
                   storageGroup,
                   fileNode, uuid.get());
               if (overlapFiles.isEmpty()) {

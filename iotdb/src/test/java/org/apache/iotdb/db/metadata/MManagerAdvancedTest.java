@@ -80,7 +80,7 @@ public class MManagerAdvancedTest {
         assertEquals(fileNames.get(1), "root.vehicle.d0");
       }
       // test filename by seriesPath
-      assertEquals("root.vehicle.d0", mmanager.getFileNameByPath("root.vehicle.d0.s1"));
+      assertEquals("root.vehicle.d0", mmanager.getStorageGroupNameByPath("root.vehicle.d0.s1"));
       Map<String, ArrayList<String>> map = mmanager
           .getAllPathGroupByFileName("root.vehicle.d1.*");
       assertEquals(1, map.keySet().size());

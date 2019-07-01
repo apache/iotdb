@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenodeV2;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -114,7 +114,7 @@ public class FileNodeManagerBenchmark {
           long time = RandomNum.getRandomLong(1, seed);
           String deltaObject = devices[(int) (time % numOfDevice)];
           TSRecord tsRecord = getRecord(deltaObject, time);
-          FileNodeManagerV2.getInstance().insert(new InsertPlan(tsRecord));
+          StorageEngine.getInstance().insert(new InsertPlan(tsRecord));
         }
       } catch (FileNodeManagerException e) {
         e.printStackTrace();

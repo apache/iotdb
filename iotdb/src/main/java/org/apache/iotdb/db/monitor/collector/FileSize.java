@@ -30,9 +30,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
@@ -55,7 +54,7 @@ public class FileSize implements IStatistic {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileSize.class);
   private static final long ABNORMAL_VALUE = -1L;
   private static final long INIT_VALUE_IF_FILE_NOT_EXIST = 0L;
-  private FileNodeManagerV2 fileNodeManager;
+  private StorageEngine storageEngine;
 
   @Override
   public Map<String, TSRecord> getAllStatisticsValue() {
@@ -78,11 +77,11 @@ public class FileSize implements IStatistic {
       hashMap.put(seriesPath, MonitorConstants.DATA_TYPE_INT64);
       Path path = new Path(seriesPath);
       try {
-        fileNodeManager.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
+        storageEngine.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
             TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
             Collections.emptyMap());
       } catch (FileNodeManagerException e) {
-        LOGGER.error("Register File Size Stats into fileNodeManager Failed.", e);
+        LOGGER.error("Register File Size Stats into storageEngine Failed.", e);
       }
     }
     StatMonitor.getInstance().registerStatStorageGroup(hashMap);
@@ -115,7 +114,7 @@ public class FileSize implements IStatistic {
   }
 
   private FileSize() {
-    fileNodeManager = FileNodeManagerV2.getInstance();
+    storageEngine = StorageEngine.getInstance();
     if (config.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();
@@ -139,7 +138,7 @@ public class FileSize implements IStatistic {
       if (kinds.equals(MonitorConstants.FileSizeConstants.SETTLED)) {
         //sum bufferWriteDirs size
         long settledSize = INIT_VALUE_IF_FILE_NOT_EXIST;
-        for (String bufferWriteDir : config.getBufferWriteDirs()) {
+        for (String bufferWriteDir : config.getSeqDataDirs()) {
           File settledFile = new File(bufferWriteDir);
           if (settledFile.exists()) {
             try {

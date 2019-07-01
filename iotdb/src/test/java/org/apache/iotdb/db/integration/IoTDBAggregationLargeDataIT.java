@@ -114,7 +114,6 @@ public class IoTDBAggregationLargeDataIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();

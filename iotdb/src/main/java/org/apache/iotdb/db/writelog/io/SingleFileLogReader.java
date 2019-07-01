@@ -51,46 +51,56 @@ public class SingleFileLogReader implements ILogReader {
 
   private BatchLogReader batchLogReader;
 
+  private boolean fileCorrupted = false;
+
   public SingleFileLogReader(File logFile) throws FileNotFoundException {
     open(logFile);
   }
 
   @Override
-  public boolean hasNext() throws IOException{
-    if (batchLogReader != null && batchLogReader.hasNext()) {
-      return true;
-    }
+  public boolean hasNext() {
+    try {
+      if (batchLogReader != null && batchLogReader.hasNext()) {
+        return true;
+      }
 
-    if (logStream.available() < LEAST_LOG_SIZE) {
+      if (logStream.available() < LEAST_LOG_SIZE) {
+        return false;
+      }
+
+      int logSize = logStream.readInt();
+      if (logSize <= 0) {
+        return false;
+      }
+      buffer = new byte[logSize];
+
+      int readLen = logStream.read(buffer, 0, logSize);
+      if (readLen < logSize) {
+        throw new IOException("Reach eof");
+      }
+
+      final long checkSum = logStream.readLong();
+      checkSummer.reset();
+      checkSummer.update(buffer, 0, logSize);
+      if (checkSummer.getValue() != checkSum) {
+        throw new IOException(String.format("The check sum of the No.%d log batch is incorrect! In "
+            + "file: "
+            + "%d Calculated: %d.", idx, checkSum, checkSummer.getValue()));
+      }
+    } catch (IOException e) {
+      logger.error("Cannot read more PhysicalPlans from {} because", filepath, e);
+      fileCorrupted = true;
       return false;
-    }
-
-    int logSize = logStream.readInt();
-    if (logSize <= 0) {
-      return false;
-    }
-    buffer = new byte[logSize];
-
-    int readLen = logStream.read(buffer, 0, logSize);
-    if (readLen < logSize) {
-      throw new IOException("Reach eof");
-    }
-
-    final long checkSum = logStream.readLong();
-    checkSummer.reset();
-    checkSummer.update(buffer, 0, logSize);
-    if (checkSummer.getValue() != checkSum) {
-      throw new IOException(String.format("The check sum of the No.%d log batch is incorrect! In "
-          + "file: "
-          + "%d Calculated: %d.", idx, checkSum, checkSummer.getValue()));
     }
 
     batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
+    fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
+
     return true;
   }
 
   @Override
-  public PhysicalPlan next() throws IOException {
+  public PhysicalPlan next() {
     if (!hasNext()){
       throw new NoSuchElementException();
     }
@@ -114,5 +124,9 @@ public class SingleFileLogReader implements ILogReader {
     logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
     this.filepath = logFile.getPath();
     idx = 0;
+  }
+
+  public boolean isFileCorrupted() {
+    return fileCorrupted;
   }
 }

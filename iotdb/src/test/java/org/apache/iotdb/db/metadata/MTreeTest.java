@@ -23,9 +23,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -179,10 +176,10 @@ public class MTreeTest {
       root.setStorageGroup("root.laptop.d1");
       assertEquals(true, root.isPathExist("root.laptop.d1"));
       assertEquals(true, root.checkFileNameByPath("root.laptop.d1"));
-      assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1"));
+      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1"));
       assertEquals(false, root.isPathExist("root.laptop.d1.s1"));
       assertEquals(true, root.checkFileNameByPath("root.laptop.d1.s1"));
-      assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1.s1"));
+      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s1"));
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -206,13 +203,13 @@ public class MTreeTest {
     assertEquals(root.isPathExist("root.laptop.d2.s1"), false);
 
     try {
-      assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1.s0"));
+      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s0"));
       root.addTimeseriesPath("root.laptop.d1.s0", "INT32", "RLE");
-      assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1.s1"));
+      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s1"));
       root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE");
-      assertEquals("root.laptop.d2", root.getFileNameByPath("root.laptop.d2.s0"));
+      assertEquals("root.laptop.d2", root.getStorageGroupNameByPath("root.laptop.d2.s0"));
       root.addTimeseriesPath("root.laptop.d2.s0", "INT32", "RLE");
-      assertEquals("root.laptop.d2", root.getFileNameByPath("root.laptop.d2.s1"));
+      assertEquals("root.laptop.d2", root.getStorageGroupNameByPath("root.laptop.d2.s1"));
       root.addTimeseriesPath("root.laptop.d2.s1", "INT32", "RLE");
     } catch (PathErrorException e) {
       e.printStackTrace();

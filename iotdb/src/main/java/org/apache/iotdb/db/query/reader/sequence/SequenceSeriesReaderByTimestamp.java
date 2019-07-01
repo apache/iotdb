@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.reader.sequence;
 
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -44,7 +44,7 @@ import java.util.List;
 public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
 
   protected Path seriesPath;
-  private List<TsFileResourceV2> tsFileResourceV2List;
+  private List<TsFileResource> tsFileResourceV2List;
   private int nextIntervalFileIndex;
   protected IReaderByTimeStamp seriesReader;
   private QueryContext context;
@@ -53,10 +53,10 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
    * init with seriesPath and tsfile list which include sealed tsfile and unseadled tsfile.
    */
   public SequenceSeriesReaderByTimestamp(Path seriesPath,
-                                         List<TsFileResourceV2> tsFileResourceV2List,
+                                         List<TsFileResource> tsFileResourceList,
                                          QueryContext context) {
     this.seriesPath = seriesPath;
-    this.tsFileResourceV2List = tsFileResourceV2List;
+    this.tsFileResourceV2List = tsFileResourceList;
     this.nextIntervalFileIndex = 0;
     this.seriesReader = null;
     this.context = context;
@@ -103,7 +103,7 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
    */
   private void constructReader(long timestamp) throws IOException {
     while (nextIntervalFileIndex < tsFileResourceV2List.size()) {
-      TsFileResourceV2 tsFile = tsFileResourceV2List.get(nextIntervalFileIndex);
+      TsFileResource tsFile = tsFileResourceV2List.get(nextIntervalFileIndex);
       nextIntervalFileIndex++;
       // init unsealed tsfile.
       if (!tsFile.isClosed()) {
@@ -121,19 +121,19 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
   /**
    * Judge whether the file should be skipped.
    */
-  private boolean singleTsFileSatisfied(TsFileResourceV2 fileNode, long timestamp) {
+  private boolean singleTsFileSatisfied(TsFileResource fileNode, long timestamp) {
     if (fileNode.isClosed()) {
       return fileNode.getEndTimeMap().get(seriesPath.getDevice()) >= timestamp;
     }
     return true;
   }
 
-  private void initUnSealedTsFileReader(TsFileResourceV2 tsFile)
+  private void initUnSealedTsFileReader(TsFileResource tsFile)
           throws IOException {
     seriesReader = new UnSealedTsFileReaderByTimestamp(tsFile);
   }
 
-  private void initSealedTsFileReader(TsFileResourceV2 fileNode, QueryContext context)
+  private void initSealedTsFileReader(TsFileResource fileNode, QueryContext context)
           throws IOException {
 
     // to avoid too many opened files

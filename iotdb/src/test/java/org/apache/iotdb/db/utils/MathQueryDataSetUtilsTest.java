@@ -23,7 +23,7 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
-public class MathUtilsTest {
+public class MathQueryDataSetUtilsTest {
 
   @Test
   public void roundFloatWithGivenPrecision() {

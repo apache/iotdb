@@ -35,7 +35,7 @@ public class SinglePrecisionEncoder extends GorillaEncoder {
   }
 
   @Override
-  public void encode(float value, ByteArrayOutputStream out) throws IOException {
+  public void encode(float value, ByteArrayOutputStream out) {
     if (!flag) {
       flag = true;
       preValue = Float.floatToIntBits(value);

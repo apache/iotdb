@@ -79,7 +79,7 @@ public class BitmapEncoder extends Encoder {
    * @see Encoder#encode(int, java.io.ByteArrayOutputStream)
    */
   @Override
-  public void encode(int value, ByteArrayOutputStream out) throws IOException {
+  public void encode(int value, ByteArrayOutputStream out) {
     values.add(value);
   }
 

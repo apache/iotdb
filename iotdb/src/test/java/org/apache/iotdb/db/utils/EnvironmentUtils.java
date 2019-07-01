@@ -26,10 +26,9 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.RowGroupBlockMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
-import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -38,8 +37,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +55,6 @@ public class EnvironmentUtils {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
-  private static TSFileConfig tsfileConfig = TSFileDescriptor.getInstance().getConfig();
 
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
@@ -72,12 +68,12 @@ public class EnvironmentUtils {
 
     // tsFileConfig.duplicateIncompletedPage = false;
     // clean filenode manager
-    if (!FileNodeManagerV2.getInstance().deleteAll()) {
+    if (!StorageEngine.getInstance().deleteAll()) {
       LOGGER.error("Can't close the filenode manager in EnvironmentUtils");
       Assert.fail();
     }
     StatMonitor.getInstance().close();
-    FileNodeManagerV2.getInstance().resetFileNodeManager();
+    StorageEngine.getInstance().resetFileNodeManager();
     // clean wal
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
@@ -88,13 +84,11 @@ public class EnvironmentUtils {
     MManager.getInstance().flushObjectToFile();
     // delete all directory
     cleanAllDir();
-    // FileNodeManagerV2.getInstance().clear();
-    // clear MemController
-    BasicMemController.getInstance().close();
+    // StorageEngine.getInstance().clear();
   }
 
   private static void cleanAllDir() throws IOException {
-    // delete bufferwrite
+    // delete sequential files
     for (String path : directoryManager.getAllTsFileFolders()) {
       cleanDir(path);
     }
@@ -108,8 +102,6 @@ public class EnvironmentUtils {
     cleanDir(config.getMetadataDir());
     // delete wal
     cleanDir(config.getWalFolder());
-    // delete derby
-    cleanDir(config.getDerbyHome());
     // delete index
     cleanDir(config.getIndexFileDir());
     // delete data
@@ -148,14 +140,9 @@ public class EnvironmentUtils {
    * disable memory control</br>
    * this function should be called before all code in the setup
    */
-  public static void closeMemControl() {
-    config.setEnableMemMonitor(false);
-  }
 
   public static void envSetUp() throws StartupException, IOException {
     createAllDir();
-    // disable the memory control
-    config.setEnableMemMonitor(false);
     // disable the system monitor
     config.setEnableStatMonitor(false);
     IAuthorizer authorizer;
@@ -169,43 +156,34 @@ public class EnvironmentUtils {
     } catch (AuthException e) {
       throw new StartupException(e.getMessage());
     }
-    FileNodeManagerV2.getInstance().resetFileNodeManager();
+    StorageEngine.getInstance().resetFileNodeManager();
     MultiFileLogNodeManager.getInstance().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    try {
-      BasicMemController.getInstance().start();
-    } catch (StartupException e) {
-      LOGGER.error("", e);
-    }
   }
 
   private static void createAllDir() throws IOException {
-    // create bufferwrite
+    // create sequential files
     for (String path : directoryManager.getAllTsFileFolders()) {
       createDir(path);
     }
-    // create overflow
+    // create unsequential files
     for (String path : directoryManager.getAllOverflowFileFolders()) {
       cleanDir(path);
     }
-    // create filenode
+    // create storage group
     createDir(config.getFileNodeDir());
     // create metadata
     createDir(config.getMetadataDir());
     // create wal
     createDir(config.getWalFolder());
-    // create derby
-    createDir(config.getDerbyHome());
     // create index
     createDir(config.getIndexFileDir());
     // create data
     createDir("data");
-    // delte derby log
-    // cleanDir("derby.log");
   }
 
-  public static void createDir(String dir) throws IOException {
+  private static void createDir(String dir) {
     File file = new File(dir);
     file.mkdirs();
   }

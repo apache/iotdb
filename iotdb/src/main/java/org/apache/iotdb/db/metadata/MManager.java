@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -63,7 +64,7 @@ public class MManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MManager.class);
   private static final String ROOT_NAME = MetadataConstant.ROOT;
-  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
+  private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
   // the lock for read/insert
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -99,7 +100,7 @@ public class MManager {
     int cacheSize = IoTDBDescriptor.getInstance().getConfig().getmManagerCacheSize();
     checkAndGetDataTypeCache = new RandomDeleteCache<String, PathCheckRet>(cacheSize) {
       @Override
-      public void beforeRemove(PathCheckRet object) throws CacheException {
+      public void beforeRemove(PathCheckRet object) {
         //allowed to do nothing
       }
 
@@ -111,7 +112,7 @@ public class MManager {
 
     mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize) {
       @Override
-      public void beforeRemove(MNode object) throws CacheException {
+      public void beforeRemove(MNode object) {
         //allowed to do nothing
       }
 
@@ -133,7 +134,6 @@ public class MManager {
   }
 
   //Because the writer will be used later and should not be closed here.
-  @SuppressWarnings("squid:S2093")
   private void init() {
 
     lock.writeLock().lock();
@@ -157,7 +157,7 @@ public class MManager {
       writeToLog = true;
     } catch (PathErrorException | ClassNotFoundException | IOException | MetadataErrorException e) {
       mgraph = new MGraph(ROOT_NAME);
-      LOGGER.error("Cannot read MGraph from file, using an empty new one");
+      LOGGER.error("Cannot read MGraph from file, using an empty new one", e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -188,7 +188,7 @@ public class MManager {
   }
 
   /**
-   * function for clearing mgraph.
+   * function for clearing MGraph.
    */
   public void clear() {
     lock.writeLock().lock();
@@ -277,8 +277,9 @@ public class MManager {
    * @param encoding the encoding function {@code Encoding} for the timeseries
    * @param compressor the compressor function {@code Compressor} for the time series
    * @return whether the measurement occurs for the first time in this storage group (if true,
-   * the measurement should be registered to the StorageGroupManager too)
+   * the measurement should be registered to the StorageEngine too)
    */
+  @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
   public boolean addPathToMTree(Path path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props)
       throws MetadataErrorException {
@@ -292,7 +293,7 @@ public class MManager {
     // optimize the speed of adding timeseries
     String fileNodePath;
     try {
-      fileNodePath = getFileNameByPath(path.getFullPath());
+      fileNodePath = getStorageGroupNameByPath(path.getFullPath());
     } catch (PathErrorException e) {
       throw new MetadataErrorException(e);
     }
@@ -345,8 +346,8 @@ public class MManager {
     lock.writeLock().lock();
     try {
       mgraph.addPathToMTree(path, dataType, encoding, compressor, props);
-      String storageName = mgraph.getFileNameByPath(path);
-      int size = seriesNumberInStorageGroups.get(mgraph.getFileNameByPath(path));
+      String storageName = mgraph.getStorageGroupNameByPath(path);
+      int size = seriesNumberInStorageGroups.get(mgraph.getStorageGroupNameByPath(path));
       seriesNumberInStorageGroups
           .put(storageName, size + 1);
       if (size + 1 > maxSeriesNumberAmongStorageGroup) {
@@ -371,7 +372,7 @@ public class MManager {
 
   /**
    * <p> Add one timeseries to metadata. Must invoke the<code>pathExist</code> and
-   * <code>getFileNameByPath</code> method first to check timeseries. </p>
+   * <code>getStorageGroupNameByPath</code> method first to check timeseries. </p>
    *
    * this is just for compatibility  TEST ONLY
    *
@@ -402,7 +403,7 @@ public class MManager {
       for (String eachSubPath : subPaths) {
         String filenodeName;
         try {
-          filenodeName = getFileNameByPath(eachSubPath);
+          filenodeName = getStorageGroupNameByPath(eachSubPath);
         } catch (PathErrorException e) {
           throw new MetadataErrorException(e);
         }
@@ -421,16 +422,6 @@ public class MManager {
       }
     }
     return new ArrayList<>(pathSet);
-  }
-
-  public Pair<Set<String>, Set<String>> deletePathFromMTree(String deletePath)
-      throws MetadataErrorException {
-    return deletePathFromMTree(new Path(deletePath));
-  }
-
-  public Pair<Set<String>, Set<String>> deletePathFromMTree(Path deletePath)
-      throws MetadataErrorException {
-    return deletePathsFromMTree(Collections.singletonList(deletePath));
   }
 
   /**
@@ -452,7 +443,7 @@ public class MManager {
       for (String p : fullPath) {
         String filenode;
         try {
-          filenode = getFileNameByPath(p);
+          filenode = getStorageGroupNameByPath(p);
         } catch (PathErrorException e) {
           throw new MetadataErrorException(e);
         }
@@ -506,7 +497,7 @@ public class MManager {
         logWriter.newLine();
         logWriter.flush();
       }
-      String storageGroup = getFileNameByPath(path);
+      String storageGroup = getStorageGroupNameByPath(path);
       int size = seriesNumberInStorageGroups.get(storageGroup);
       seriesNumberInStorageGroups.put(storageGroup, size - 1);
       if (size == maxSeriesNumberAmongStorageGroup) {
@@ -530,6 +521,10 @@ public class MManager {
    * function for setting storage level of the given path to mTree.
    */
   public void setStorageLevelToMTree(String path) throws MetadataErrorException {
+    if (StorageEngine.getInstance().isReadOnly()) {
+      throw new MetadataErrorException("Current system mode is read only, does not support creating Storage Group");
+    }
+
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
@@ -559,7 +554,7 @@ public class MManager {
    * function for checking if the given path is storage level of mTree or not.
    * @apiNote :for cluster
    */
-  public boolean checkStorageLevelOfMTree(String path) {
+  boolean checkStorageLevelOfMTree(String path) {
     lock.readLock().lock();
     try {
       return mgraph.checkStorageLevel(path);
@@ -696,7 +691,7 @@ public class MManager {
   /**
    * function for getting series type with check.
    */
-  public TSDataType getSeriesTypeWithCheck(MNode node, String fullPath) throws PathErrorException {
+  TSDataType getSeriesTypeWithCheck(MNode node, String fullPath) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -709,7 +704,7 @@ public class MManager {
   /**
    * unction for getting series type with check.
    */
-  public TSDataType getSeriesTypeWithCheck(String fullPath) throws PathErrorException {
+  TSDataType getSeriesTypeWithCheck(String fullPath) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -797,7 +792,7 @@ public class MManager {
   /**
    * function for getting schema map for one file node.
    */
-  public Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
+  private Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
 
     lock.readLock().lock();
     try {
@@ -810,7 +805,7 @@ public class MManager {
   /**
    * function for getting num schema map for one file node.
    */
-  public Map<String, Integer> getNumSchemaMapForOneFileNode(String path) {
+  private Map<String, Integer> getNumSchemaMapForOneFileNode(String path) {
 
     lock.readLock().lock();
     try {
@@ -843,11 +838,11 @@ public class MManager {
    *
    * @return A String represented the file name
    */
-  public String getFileNameByPath(String path) throws PathErrorException {
+  public String getStorageGroupNameByPath(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
-      return mgraph.getFileNameByPath(path);
+      return mgraph.getStorageGroupNameByPath(path);
     } catch (PathErrorException e) {
       throw new PathErrorException(e);
     } finally {
@@ -858,11 +853,11 @@ public class MManager {
   /**
    * function for getting file name by path.
    */
-  public String getFileNameByPath(MNode node, String path) throws PathErrorException {
+  private String getStorageGroupNameByPath(MNode node, String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
-      return mgraph.getFileNameByPath(node, path);
+      return mgraph.getStorageGroupNameByPath(node, path);
     } catch (PathErrorException e) {
       throw new PathErrorException(e);
     } finally {
@@ -873,7 +868,7 @@ public class MManager {
   /**
    * function for checking file name by path.
    */
-  public boolean checkFileNameByPath(String path) {
+  boolean checkFileNameByPath(String path) {
 
     lock.readLock().lock();
     try {
@@ -902,7 +897,7 @@ public class MManager {
    *
    * @return List of String represented all file names
    */
-  public List<String> getAllFileNamesByPath(String path) throws MetadataErrorException {
+  List<String> getAllFileNamesByPath(String path) throws MetadataErrorException {
 
     lock.readLock().lock();
     try {
@@ -917,7 +912,7 @@ public class MManager {
   /**
    * return a HashMap contains all the paths separated by File Name.
    */
-  public Map<String, ArrayList<String>> getAllPathGroupByFileName(String path)
+  Map<String, ArrayList<String>> getAllPathGroupByFileName(String path)
       throws MetadataErrorException {
     lock.readLock().lock();
     try {
@@ -963,7 +958,7 @@ public class MManager {
   /**
    * function for getting leaf node path in the next level of given seriesPath.
    */
-  public List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {
+  List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {
     lock.readLock().lock();
     try {
       return mgraph.getLeafNodePathInNextLevel(path);
@@ -988,7 +983,7 @@ public class MManager {
   /**
    * function for checking whether the path exists.
    */
-  public boolean pathExist(MNode node, String path) {
+  boolean pathExist(MNode node, String path) {
 
     lock.readLock().lock();
     try {
@@ -1001,7 +996,7 @@ public class MManager {
   /**
    * function for getting node by path.
    */
-  public MNode getNodeByPath(String path) throws PathErrorException {
+  MNode getNodeByPath(String path) throws PathErrorException {
     lock.readLock().lock();
     try {
       return mgraph.getNodeByPath(path);
@@ -1027,7 +1022,7 @@ public class MManager {
   /**
    * function for getting node by path with check.
    */
-  public MNode getNodeByPathWithCheck(String path) throws PathErrorException {
+  MNode getNodeByPathWithCheck(String path) throws PathErrorException {
     lock.readLock().lock();
     try {
       return mgraph.getNodeByPathWithCheck(path);
@@ -1040,7 +1035,7 @@ public class MManager {
    * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
    * node.
    */
-  public MeasurementSchema getSchemaForOnePath(String path) throws PathErrorException {
+  private MeasurementSchema getSchemaForOnePath(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -1053,7 +1048,7 @@ public class MManager {
   /**
    * function for getting schema for one path.
    */
-  public MeasurementSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
+  private MeasurementSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -1066,7 +1061,7 @@ public class MManager {
   /**
    * function for getting schema for one path with check.
    */
-  public MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
+  private MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
       throws PathErrorException {
 
     lock.readLock().lock();
@@ -1080,7 +1075,7 @@ public class MManager {
   /**
    * function for getting schema for one path with check.
    */
-  public MeasurementSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
+  private MeasurementSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -1098,7 +1093,7 @@ public class MManager {
     lock.readLock().lock();
     try {
       for (Path p : path) {
-        getFileNameByPath(p.getFullPath());
+        getStorageGroupNameByPath(p.getFullPath());
       }
       return true;
     } finally {
@@ -1109,12 +1104,12 @@ public class MManager {
   /**
    * function for checking file level.
    */
-  public boolean checkFileLevel(MNode node, List<Path> path) throws PathErrorException {
+  boolean checkFileLevel(MNode node, List<Path> path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
       for (Path p : path) {
-        getFileNameByPath(node, p.getFullPath());
+        getStorageGroupNameByPath(node, p.getFullPath());
       }
       return true;
     } finally {
@@ -1125,11 +1120,11 @@ public class MManager {
   /**
    * function for checking file level.
    */
-  public boolean checkFileLevel(String path) throws PathErrorException {
+  boolean checkFileLevel(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
-      getFileNameByPath(path);
+      getStorageGroupNameByPath(path);
       return true;
     } finally {
       lock.readLock().unlock();
@@ -1139,11 +1134,11 @@ public class MManager {
   /**
    * function for checking file level with check.
    */
-  public boolean checkFileLevelWithCheck(MNode node, String path) throws PathErrorException {
+  boolean checkFileLevelWithCheck(MNode node, String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
-      getFileNameByPath(node, path);
+      getStorageGroupNameByPath(node, path);
       return true;
     } finally {
       lock.readLock().unlock();
@@ -1215,7 +1210,7 @@ public class MManager {
    *
    * @return {@link PathCheckRet}
    */
-  public PathCheckRet checkPathStorageLevelAndGetDataType(String path) throws PathErrorException {
+  PathCheckRet checkPathStorageLevelAndGetDataType(String path) throws PathErrorException {
     try {
       return checkAndGetDataTypeCache.get(path);
     } catch (CacheException e) {
@@ -1255,7 +1250,7 @@ public class MManager {
     private boolean successfully;
     private TSDataType dataType;
 
-    public PathCheckRet(boolean successfully, TSDataType dataType) {
+    PathCheckRet(boolean successfully, TSDataType dataType) {
       this.successfully = successfully;
       this.dataType = dataType;
     }

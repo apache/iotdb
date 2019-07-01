@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
@@ -56,15 +57,11 @@ public class MemTableFlushTaskV2Test {
   }
 
   @Test
-  public void testFlushMemTable() {
+  public void testFlushMemTable() throws ExecutionException, InterruptedException {
     MemTableTestUtils.produceData(memTable, startTime, endTime, MemTableTestUtils.deviceId0,
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
-    MemTableFlushTaskV2 memTableFlushTask = new MemTableFlushTaskV2(memTable, MemTableTestUtils.getFileSchema(), writer, storageGroup,
-        memtable -> {
-          writer.makeMetadataVisible();
-          MemTablePool.getInstance().putBack(memtable, storageGroup);
-        });
+    MemTableFlushTaskV2 memTableFlushTask = new MemTableFlushTaskV2(memTable, MemTableTestUtils.getFileSchema(), writer, storageGroup);
     assertTrue(writer
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).isEmpty());

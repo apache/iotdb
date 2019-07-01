@@ -26,6 +26,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
@@ -268,12 +269,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void sync() {
-    long lockStartTime = System.currentTimeMillis();
     lock.writeLock().lock();
-    long lockElapsed = System.currentTimeMillis() - lockStartTime;
-    if (lockElapsed > 1000) {
-      LOGGER.info("WAL waiting for lock costs {} ms", lockElapsed);
-    }
     try {
       long start = System.currentTimeMillis();
       if (bufferedLogNum == 0) {
@@ -282,11 +278,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       try {
         getCurrentFileWriter().write(logBuffer);
       } catch (IOException e) {
+        StorageEngine.getInstance().setReadOnly(true);
         LOGGER.error("Log node {} sync failed", identifier, e);
+        return;
       }
       logBuffer.clear();
       bufferedLogNum = 0;
-
       LOGGER.debug("Log node {} ends sync.", identifier);
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {

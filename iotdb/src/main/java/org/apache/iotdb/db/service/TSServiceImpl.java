@@ -41,7 +41,7 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
@@ -60,6 +60,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationResp;
@@ -430,11 +431,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     statement = statement.toLowerCase();
     switch (statement) {
       case "flush":
-        FileNodeManagerV2.getInstance().syncCloseAllProcessor();
+        StorageEngine.getInstance().syncCloseAllProcessor();
         return true;
       case "merge":
           // TODO change to merge!!!
-        FileNodeManagerV2.getInstance().syncCloseAllProcessor();
+        StorageEngine.getInstance().syncCloseAllProcessor();
         return true;
       default:
         return false;
@@ -730,7 +731,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         queryDataSet = queryRet.get().get(statement);
       }
-      TSQueryDataSet result = Utils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
+      TSQueryDataSet result = QueryDataSetUtils
+          .convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       boolean hasResultSet = !result.getRecords().isEmpty();
       if (!hasResultSet && queryRet.get() != null) {
         queryRet.get().remove(statement);

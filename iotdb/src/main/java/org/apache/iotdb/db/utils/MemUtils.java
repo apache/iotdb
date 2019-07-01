@@ -83,13 +83,6 @@ public class MemUtils {
   }
 
   /**
-   * Calculate how much memory will be used if the given record is written to Bufferwrite.
-   */
-  public static long getTsRecordMemOverflow(TSRecord record) {
-    return getTsRecordMemBufferwrite(record);
-  }
-
-  /**
    * function for getting the memory size of the given string.
    */
   public static long getStringMem(String str) {

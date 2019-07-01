@@ -30,7 +30,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class DatetimeUtilsTest {
+public class DatetimeQueryDataSetUtilsTest {
 
   private ZoneOffset zoneOffset;
   private ZoneId zoneId;

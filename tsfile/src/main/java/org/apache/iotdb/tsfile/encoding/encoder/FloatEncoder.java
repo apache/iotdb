@@ -87,14 +87,14 @@ public class FloatEncoder extends Encoder {
   }
 
   @Override
-  public void encode(float value, ByteArrayOutputStream out) throws IOException {
+  public void encode(float value, ByteArrayOutputStream out) {
     saveMaxPointNumber(out);
     int valueInt = convertFloatToInt(value);
     encoder.encode(valueInt, out);
   }
 
   @Override
-  public void encode(double value, ByteArrayOutputStream out) throws IOException {
+  public void encode(double value, ByteArrayOutputStream out) {
     saveMaxPointNumber(out);
     long valueLong = convertDoubleToLong(value);
     encoder.encode(valueLong, out);
@@ -127,7 +127,7 @@ public class FloatEncoder extends Encoder {
     isMaxPointNumberSaved = false;
   }
 
-  private void saveMaxPointNumber(ByteArrayOutputStream out) throws IOException {
+  private void saveMaxPointNumber(ByteArrayOutputStream out) {
     if (!isMaxPointNumberSaved) {
       ReadWriteForEncodingUtils.writeUnsignedVarInt(maxPointNumber, out);
       isMaxPointNumberSaved = true;

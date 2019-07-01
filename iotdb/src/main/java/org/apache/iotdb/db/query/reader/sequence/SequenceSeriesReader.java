@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.sequence;
 
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -62,7 +62,7 @@ public class SequenceSeriesReader extends IterateReader {
    * @param isReverse    true-traverse chunks from behind forward, false-traverse chunks from front to
    *                     back.
    */
-  public SequenceSeriesReader(Path seriesPath, List<TsFileResourceV2> seqResources,
+  public SequenceSeriesReader(Path seriesPath, List<TsFileResource> seqResources,
                               Filter timeFilter, QueryContext context, boolean isReverse) throws IOException {
     super();
     this.seriesPath = seriesPath;
@@ -70,7 +70,7 @@ public class SequenceSeriesReader extends IterateReader {
     if (isReverse) {
       Collections.reverse(seqResources);
     }
-    for (TsFileResourceV2 tsFileResource : seqResources) {
+    for (TsFileResource tsFileResource : seqResources) {
       if (tsFileResource.isClosed()) {
         constructSealedTsFileReader(tsFileResource, timeFilter, context, seqResourceSeriesReaderList);
       } else {
@@ -83,12 +83,12 @@ public class SequenceSeriesReader extends IterateReader {
   /**
    * traverse chunks from front to back.
    */
-  public SequenceSeriesReader(Path seriesPath, List<TsFileResourceV2> seqResources,
+  public SequenceSeriesReader(Path seriesPath, List<TsFileResource> seqResources,
                               Filter timeFilter, QueryContext context) throws IOException {
     this(seriesPath, seqResources, timeFilter, context, false);
   }
 
-  private void constructSealedTsFileReader(TsFileResourceV2 tsFileResource, Filter filter,
+  private void constructSealedTsFileReader(TsFileResource tsFileResource, Filter filter,
                                            QueryContext context, List<IAggregateReader> seqResourceSeriesReaderList)
           throws IOException {
     if (singleTsFileSatisfied(tsFileResource, filter)) {
@@ -104,7 +104,7 @@ public class SequenceSeriesReader extends IterateReader {
    * @param tsfile tsfile resource.
    * @param filter filter condition. If no filter, the filed is null.
    */
-  private boolean singleTsFileSatisfied(TsFileResourceV2 tsfile, Filter filter) {
+  private boolean singleTsFileSatisfied(TsFileResource tsfile, Filter filter) {
 
     if (filter == null) {
       return true;
@@ -115,7 +115,7 @@ public class SequenceSeriesReader extends IterateReader {
     return filter.satisfyStartEndTime(startTime, endTime);
   }
 
-  private FileSeriesReader initSealedTsFileReader(TsFileResourceV2 tsfile, Filter filter,
+  private FileSeriesReader initSealedTsFileReader(TsFileResource tsfile, Filter filter,
                                                   QueryContext context)
           throws IOException {
 

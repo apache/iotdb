@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.writelog.io;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -37,13 +38,12 @@ public interface ILogReader {
    * @return whether there exists next log to be read.
    * @throws IOException
    */
-  boolean hasNext() throws IOException;
+  boolean hasNext() throws FileNotFoundException;
 
   /**
    * return the next log read from media like a WAL file and covert it to a PhysicalPlan.
    * @return the next log as a PhysicalPlan
-   * @throws IOException
    * @throws java.util.NoSuchElementException when there are no more logs
    */
-  PhysicalPlan next() throws IOException;
+  PhysicalPlan next() throws FileNotFoundException;
 }

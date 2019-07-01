@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write.writer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,6 +70,8 @@ public class TsFileIOWriter {
   private ChunkGroupMetaData currentChunkGroupMetaData;
   private ChunkMetaData currentChunkMetaData;
   protected boolean canWrite = true;
+
+  private long markedPosition;
 
   /**
    * empty construct function.
@@ -321,6 +324,8 @@ public class TsFileIOWriter {
     return out.getPosition();
   }
 
+
+
   /**
    * get chunkGroupMetaDataList.
    *
@@ -332,6 +337,14 @@ public class TsFileIOWriter {
 
   public boolean canWrite() {
     return canWrite;
+  }
+
+  public void mark() throws IOException {
+    markedPosition = getPos();
+  }
+
+  public void reset() throws IOException {
+    out.truncate(markedPosition);
   }
 
   /**

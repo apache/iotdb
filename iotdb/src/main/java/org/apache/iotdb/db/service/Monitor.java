@@ -131,16 +131,6 @@ public class Monitor implements MonitorMBean, IService {
   }
 
   @Override
-  public long getMergePeriodInSecond() {
-    return config.getPeriodTimeForMerge();
-  }
-
-  @Override
-  public long getClosePeriodInSecond() {
-    return config.getPeriodTimeForFlush();
-  }
-
-  @Override
   public void start() throws StartupException {
     try {
       JMXService.registerMBean(INSTANCE, mbeanName);

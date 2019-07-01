@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenodeV2;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
@@ -31,19 +31,19 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class FileNodeProcessorV2Test {
+public class StorageGroupProcessorTest {
 
   private String storageGroup = "storage_group1";
   private String systemDir = "data/info";
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
-  private FileNodeProcessorV2 processor;
+  private StorageGroupProcessor processor;
 
   @Before
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-    processor = new FileNodeProcessorV2(systemDir, storageGroup);
+    processor = new StorageGroupProcessor(systemDir, storageGroup);
   }
 
   @After
@@ -67,7 +67,7 @@ public class FileNodeProcessorV2Test {
     QueryDataSourceV2 queryDataSource = processor.query(deviceId, measurementId);
 
     Assert.assertEquals(queryDataSource.getSeqResources().size(), 10);
-    for (TsFileResourceV2 resource : queryDataSource.getSeqResources()) {
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
   }
@@ -96,10 +96,10 @@ public class FileNodeProcessorV2Test {
     QueryDataSourceV2 queryDataSource = processor.query(deviceId, measurementId);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
-    for (TsFileResourceV2 resource : queryDataSource.getSeqResources()) {
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
-    for (TsFileResourceV2 resource : queryDataSource.getUnseqResources()) {
+    for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
   }

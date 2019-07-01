@@ -24,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -62,7 +62,7 @@ public class UnseqTsFileRecoverTest {
   private WriteLogNode node;
   private String logNodePrefix = "testNode";
   private FileSchema schema;
-  private TsFileResourceV2 resource;
+  private TsFileResource resource;
   private VersionController versionController = new VersionController() {
     private int i;
     @Override
@@ -115,7 +115,7 @@ public class UnseqTsFileRecoverTest {
       }
       node.notifyStartFlush();
     }
-    resource = new TsFileResourceV2(tsF);
+    resource = new TsFileResource(tsF);
   }
 
   @After

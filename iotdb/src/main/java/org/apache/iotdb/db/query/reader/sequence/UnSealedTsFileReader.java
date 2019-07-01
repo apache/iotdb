@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.reader.sequence;
 
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
 import org.apache.iotdb.db.query.reader.sequence.adapter.FileSeriesReaderAdapter;
@@ -50,7 +50,7 @@ public class UnSealedTsFileReader extends IterateReader {
    * @param isReverse      true-traverse chunks from behind forward; false-traverse chunks from front to
    *                       back;
    */
-  public UnSealedTsFileReader(TsFileResourceV2 unsealedTsFile, Filter filter, boolean isReverse)
+  public UnSealedTsFileReader(TsFileResource unsealedTsFile, Filter filter, boolean isReverse)
           throws IOException {
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
             .get(unsealedTsFile.getFile().getPath(), false);

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.reader;
 
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeProcessorV2;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,14 +33,14 @@ public abstract class ReaderTestHelper {
   protected String storageGroup = "storage_group1";
   protected String deviceId = "root.vehicle.d0";
   protected String measurementId = "s0";
-  protected FileNodeProcessorV2 fileNodeProcessorV2;
+  protected StorageGroupProcessor storageGroupProcessor;
   private String systemDir = "data/info";
 
   @Before
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-    fileNodeProcessorV2 = new FileNodeProcessorV2(systemDir, storageGroup);
+    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup);
     insertData();
   }
 
@@ -55,7 +55,7 @@ public abstract class ReaderTestHelper {
   protected void insertOneRecord(long time, int num) {
     TSRecord record = new TSRecord(time, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(num)));
-    fileNodeProcessorV2.insert(new InsertPlan(record));
+    storageGroupProcessor.insert(new InsertPlan(record));
   }
 
 }

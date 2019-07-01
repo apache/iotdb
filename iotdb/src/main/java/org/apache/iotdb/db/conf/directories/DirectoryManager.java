@@ -44,15 +44,15 @@ public class DirectoryManager {
 
   private DirectoryManager() {
     tsfileFolders = new ArrayList<>(
-        Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
+        Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getSeqDataDirs()));
     initFolders(tsfileFolders);
     overflowFolders = new ArrayList<>(
-    Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getOverflowDataDirs()));
+    Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getUnseqDataDirs()));
     initFolders(overflowFolders);
 
     String strategyName = "";
     try {
-      strategyName = IoTDBDescriptor.getInstance().getConfig().getMultDirStrategyClassName();
+      strategyName = IoTDBDescriptor.getInstance().getConfig().getMultiDirStrategyClassName();
       Class<?> clazz = Class.forName(strategyName);
       tsfileStrategy = (DirectoryStrategy) clazz.newInstance();
       tsfileStrategy.init(tsfileFolders);

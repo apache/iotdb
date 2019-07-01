@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenodeV2;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -35,7 +35,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class TsFileResourceV2 {
+public class TsFileResource {
 
   private File file;
 
@@ -51,7 +51,7 @@ public class TsFileResourceV2 {
    */
   private Map<String, Long> endTimeMap;
 
-  private UnsealedTsFileProcessorV2 processor;
+  private UnsealedTsFileProcessor processor;
 
   private transient ModificationFile modFile;
 
@@ -68,21 +68,21 @@ public class TsFileResourceV2 {
    */
   private ReadOnlyMemChunk readOnlyMemChunk;
 
-  public TsFileResourceV2(File file) {
+  public TsFileResource(File file) {
     this.file = file;
     this.startTimeMap = new HashMap<>();
     this.endTimeMap = new HashMap<>();
     this.closed = true;
   }
 
-  public TsFileResourceV2(File file, UnsealedTsFileProcessorV2 processor) {
+  public TsFileResource(File file, UnsealedTsFileProcessor processor) {
     this.file = file;
     this.startTimeMap = new HashMap<>();
     this.endTimeMap = new HashMap<>();
     this.processor = processor;
   }
 
-  public TsFileResourceV2(File file,
+  public TsFileResource(File file,
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap) {
     this.file = file;
@@ -91,7 +91,7 @@ public class TsFileResourceV2 {
     this.closed = true;
   }
 
-  public TsFileResourceV2(File file,
+  public TsFileResource(File file,
       Map<String, Long> startTimeMap,
       Map<String, Long> endTimeMap,
       ReadOnlyMemChunk readOnlyMemChunk,
@@ -203,7 +203,7 @@ public class TsFileResourceV2 {
     processor = null;
   }
 
-  public UnsealedTsFileProcessorV2 getUnsealedFileProcessor() {
+  public UnsealedTsFileProcessor getUnsealedFileProcessor() {
     return processor;
   }
 

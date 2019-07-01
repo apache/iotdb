@@ -162,9 +162,9 @@ public class SingleClientSyncTest {
         config.getDataDirectory() + SYNC_CLIENT + File.separator + Constans.UUID_FILE_NAME);
     config.setLastFileInfo(
         config.getDataDirectory() + SYNC_CLIENT + File.separator + Constans.LAST_LOCAL_FILE_NAME);
-    String[] iotdbBufferwriteDirectory = config.getBufferwriteDirectory();
-    String[] snapshots = new String[config.getBufferwriteDirectory().length];
-    for (int i = 0; i < config.getBufferwriteDirectory().length; i++) {
+    String[] iotdbBufferwriteDirectory = config.getSeqFileDirectory();
+    String[] snapshots = new String[config.getSeqFileDirectory().length];
+    for (int i = 0; i < config.getSeqFileDirectory().length; i++) {
       iotdbBufferwriteDirectory[i] = new File(iotdbBufferwriteDirectory[i]).getAbsolutePath();
       if (!iotdbBufferwriteDirectory[i].endsWith(File.separator)) {
         iotdbBufferwriteDirectory[i] = iotdbBufferwriteDirectory[i] + File.separator;
@@ -174,7 +174,7 @@ public class SingleClientSyncTest {
               + File.separator;
     }
     config.setSnapshotPaths(snapshots);
-    config.setBufferwriteDirectory(iotdbBufferwriteDirectory);
+    config.setSeqFileDirectory(iotdbBufferwriteDirectory);
     config.setServerIp(serverIpTest);
     fileSenderImpl.setConfig(config);
   }
@@ -182,11 +182,9 @@ public class SingleClientSyncTest {
   public void setUp() throws StartupException, IOException {
     if (testFlag) {
       EnvironmentUtils.closeStatMonitor();
-      EnvironmentUtils.closeMemControl();
       deamon = IoTDB.getInstance();
       deamon.active();
       EnvironmentUtils.envSetUp();
-      conf.setOverflowFileSizeThreshold(0);
     }
     setConfig();
   }

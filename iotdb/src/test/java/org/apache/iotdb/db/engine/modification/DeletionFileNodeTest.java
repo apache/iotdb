@@ -30,7 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -78,7 +78,7 @@ public class DeletionFileNodeTest {
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
           encoding);
-      FileNodeManagerV2.getInstance()
+      StorageEngine.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
               TSEncoding.valueOf(encoding), CompressionType.valueOf(TSFileConfig.compressor),
               Collections.emptyMap());
@@ -99,13 +99,13 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
+      StorageEngine.getInstance().insert(new InsertPlan(record));
     }
 
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 50);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[4], 50);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 30);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
@@ -131,13 +131,13 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
+      StorageEngine.getInstance().insert(new InsertPlan(record));
     }
-    FileNodeManagerV2.getInstance().syncCloseAllProcessor();
+    StorageEngine.getInstance().syncCloseAllProcessor();
 
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 50);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[4], 40);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 40);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
         new Deletion(new Path(processorName, measurements[5]), 103, 50),
@@ -172,9 +172,9 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
+      StorageEngine.getInstance().insert(new InsertPlan(record));
     }
-    FileNodeManagerV2.getInstance().syncCloseAllProcessor();
+    StorageEngine.getInstance().syncCloseAllProcessor();
 
     // insert unsequence data
     for (int i = 1; i <= 100; i++) {
@@ -182,13 +182,13 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
+      StorageEngine.getInstance().insert(new InsertPlan(record));
     }
 
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 50);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[4], 50);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 30);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
@@ -217,9 +217,9 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
+      StorageEngine.getInstance().insert(new InsertPlan(record));
     }
-    FileNodeManagerV2.getInstance().syncCloseAllProcessor();
+    StorageEngine.getInstance().syncCloseAllProcessor();
 
     // insert into Overflow
     for (int i = 1; i <= 100; i++) {
@@ -227,13 +227,13 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
+      StorageEngine.getInstance().insert(new InsertPlan(record));
     }
-    FileNodeManagerV2.getInstance().syncCloseAllProcessor();
+    StorageEngine.getInstance().syncCloseAllProcessor();
 
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[5], 50);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[4], 40);
-    FileNodeManagerV2.getInstance().delete(processorName, measurements[3], 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 40);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
         new Deletion(new Path(processorName, measurements[5]), 105, 50),

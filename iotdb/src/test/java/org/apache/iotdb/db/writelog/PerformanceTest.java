@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.writelog;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -32,7 +30,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -40,7 +37,6 @@ import org.apache.iotdb.tsfile.exception.metadata.MetadataArgsErrorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -170,61 +166,5 @@ public class PerformanceTest {
       tempProcessorStore.delete();
       tempRestore.getParentFile().delete();
     }
-  }
-
-  @Test
-  public void encodeDecodeTest() throws IOException {
-    if (skip) {
-      return;
-    }
-    long time = System.currentTimeMillis();
-    byte[] bytes3 = null;
-    byte[] bytes2 = null;
-    byte[] bytes1 = null;
-
-    InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-        new String[]{"s1", "s2", "s3", "s4"},
-    new String[]{"1.0", "15", "str", "false"});
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
-        new Path("root.logTestDevice.s1"));
-    for (int i = 0; i < 20; i++) {
-      updatePlan.addInterval(new Pair<>(200L, 300L));
-    }
-
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
-    for (int i = 0; i < 1000000; i++) {
-      bytes1 = PhysicalPlanLogTransfer.planToLog(bwInsertPlan);
-      bytes2 = PhysicalPlanLogTransfer.planToLog(updatePlan);
-      bytes3 = PhysicalPlanLogTransfer.planToLog(deletePlan);
-    }
-    System.out.println("3000000 logs encoding use " + (System.currentTimeMillis() - time) + "ms");
-
-    time = System.currentTimeMillis();
-    for (int i = 0; i < 1000000; i++) {
-      assertTrue(PhysicalPlanLogTransfer.logToPlan(bytes1) instanceof InsertPlan);
-      assertTrue(PhysicalPlanLogTransfer.logToPlan(bytes2) instanceof UpdatePlan);
-      assertTrue(PhysicalPlanLogTransfer.logToPlan(bytes3) instanceof DeletePlan);
-    }
-    System.out.println("3000000 logs decoding use " + (System.currentTimeMillis() - time) + "ms");
-  }
-
-  @Test
-  public void SQLEncodingComparisonTest() throws IOException {
-    String sql = "INSERT INTO root.logTestDevice(time,s1,s2,s3,s4) "
-        + "VALUES (100,1.0,15,\"str\",false)";
-    InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-        new String[]{"s1", "s2", "s3", "s4"},
-        new String[]{"1.0", "15", "str", "false"});
-    long time = System.currentTimeMillis();
-    for (int i = 0; i < 1000000; i++) {
-      PhysicalPlanLogTransfer.planToLog(bwInsertPlan);
-    }
-    System.out.println("1000000 logs encoding use " + (System.currentTimeMillis() - time) + "ms");
-
-    time = System.currentTimeMillis();
-    for (int i = 0; i < 1000000; i++) {
-      sql.getBytes();
-    }
-    System.out.println("1000000 sqls encoding use " + (System.currentTimeMillis() - time) + "ms");
   }
 }

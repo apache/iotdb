@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.writelog.io;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -46,7 +47,7 @@ public class MultiFileLogReader implements ILogReader {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() throws FileNotFoundException {
     if (files == null || files.length == 0) {
       return false;
     }
@@ -66,7 +67,7 @@ public class MultiFileLogReader implements ILogReader {
   }
 
   @Override
-  public PhysicalPlan next() throws IOException {
+  public PhysicalPlan next() throws FileNotFoundException {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }

@@ -25,8 +25,8 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 
 public class SyncSenderConfig {
 
-  private String[] bufferwriteDirectory = IoTDBDescriptor.getInstance().getConfig()
-      .getBufferWriteDirs();
+  private String[] seqFileDirectory = IoTDBDescriptor.getInstance().getConfig()
+      .getSeqDataDirs();
 
   private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getDataDir();
 
@@ -62,23 +62,23 @@ public class SyncSenderConfig {
     uuidPath = dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.UUID_FILE_NAME;
     lastFileInfo =
         dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
-    snapshotPaths = new String[bufferwriteDirectory.length];
-    for (int i = 0; i < bufferwriteDirectory.length; i++) {
-      bufferwriteDirectory[i] = new File(bufferwriteDirectory[i]).getAbsolutePath();
-      bufferwriteDirectory[i] = FilePathUtils.regularizePath(bufferwriteDirectory[i]);
-      snapshotPaths[i] = bufferwriteDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
+    snapshotPaths = new String[seqFileDirectory.length];
+    for (int i = 0; i < seqFileDirectory.length; i++) {
+      seqFileDirectory[i] = new File(seqFileDirectory[i]).getAbsolutePath();
+      seqFileDirectory[i] = FilePathUtils.regularizePath(seqFileDirectory[i]);
+      snapshotPaths[i] = seqFileDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
           + Constans.DATA_SNAPSHOT_NAME
           + File.separatorChar;
     }
 
   }
 
-  public String[] getBufferwriteDirectory() {
-    return bufferwriteDirectory;
+  public String[] getSeqFileDirectory() {
+    return seqFileDirectory;
   }
 
-  public void setBufferwriteDirectory(String[] bufferwriteDirectory) {
-    this.bufferwriteDirectory = bufferwriteDirectory;
+  public void setSeqFileDirectory(String[] seqFileDirectory) {
+    this.seqFileDirectory = seqFileDirectory;
   }
 
   public String getDataDirectory() {

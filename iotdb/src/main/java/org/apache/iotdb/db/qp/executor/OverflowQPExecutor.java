@@ -24,7 +24,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,15 +34,13 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
-import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
-import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -54,14 +51,12 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AuthDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
-import org.apache.iotdb.db.utils.LoadDataUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -80,11 +75,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
   private static final Logger LOG = LoggerFactory.getLogger(OverflowQPExecutor.class);
 
-  private FileNodeManagerV2 fileNodeManager;
+  private StorageEngine storageEngine;
   private MManager mManager = MManager.getInstance();
 
   public OverflowQPExecutor() {
-    fileNodeManager = FileNodeManagerV2.getInstance();
+    storageEngine = StorageEngine.getInstance();
   }
 
   public static String checkValue(TSDataType dataType, String value) throws ProcessorException {
@@ -144,12 +139,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       case LIST_USER_ROLES:
         throw new ProcessorException(String.format("Author query %s is now allowed"
             + " in processNonQuery", plan.getOperatorType()));
-      case LOADDATA:
-        LoadDataPlan loadData = (LoadDataPlan) plan;
-        LoadDataUtils load = new LoadDataUtils();
-        load.loadLocalDataMultiPass(loadData.getInputFilePath(), loadData.getMeasureType(),
-            MManager.getInstance());
-        return true;
       case DELETE_TIMESERIES:
       case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
@@ -217,10 +206,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       if (!mManager.pathExist(fullPath)) {
         throw new ProcessorException(String.format("Time series %s does not exist.", fullPath));
       }
-      mManager.getFileNameByPath(fullPath);
+      mManager.getStorageGroupNameByPath(fullPath);
       TSDataType dataType = mManager.getSeriesType(fullPath);
       value = checkValue(dataType, value);
-      fileNodeManager.update(deviceId, measurementId, startTime, endTime, dataType, value);
+      storageEngine.update(deviceId, measurementId, startTime, endTime, dataType, value);
       return true;
     } catch (PathErrorException e) {
       throw new ProcessorException(e);
@@ -236,8 +225,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         throw new ProcessorException(
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
-      mManager.getFileNameByPath(path.getFullPath());
-      fileNodeManager.delete(deviceId, measurementId, timestamp);
+      mManager.getStorageGroupNameByPath(path.getFullPath());
+      storageEngine.delete(deviceId, measurementId, timestamp);
       return true;
     } catch (PathErrorException | FileNodeManagerException e) {
       throw new ProcessorException(e);
@@ -273,7 +262,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         values[i] = checkValue(dataTypes[i], values[i]);
       }
       insertPlan.setDataTypes(dataTypes);
-      return fileNodeManager.insert(insertPlan);
+      return storageEngine.insert(insertPlan);
 
     } catch (PathErrorException | FileNodeManagerException e) {
       throw new ProcessorException(e.getMessage());
@@ -394,7 +383,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           boolean isNewMeasurement = mManager.addPathToMTree(path, dataType, encoding, compressor
               , props);
           if (isNewMeasurement) {
-            fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, props);
+            storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
           }
           break;
         case DELETE_PATH:
@@ -402,7 +391,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           Pair<Set<String>, Set<String>> closeDeletedStorageGroupPair =
               mManager.deletePathsFromMTree(deletePathList);
           for (String deleteStorageGroup : closeDeletedStorageGroupPair.right) {
-            fileNodeManager.deleteOneFileNode(deleteStorageGroup);
+            storageEngine.deleteOneFileNode(deleteStorageGroup);
           }
           break;
         case SET_FILE_LEVEL:

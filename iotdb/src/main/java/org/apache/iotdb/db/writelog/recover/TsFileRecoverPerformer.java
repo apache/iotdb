@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import static org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2.RESOURCE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import java.util.concurrent.ExecutionException;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTaskV2;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -46,12 +47,12 @@ public class TsFileRecoverPerformer {
   private FileSchema fileSchema;
   private VersionController versionController;
   private LogReplayer logReplayer;
-  private TsFileResourceV2 tsFileResource;
+  private TsFileResource tsFileResource;
   private boolean acceptUnseq;
 
   public TsFileRecoverPerformer(String logNodePrefix,
       FileSchema fileSchema, VersionController versionController,
-      TsFileResourceV2 currentTsFileResource, boolean acceptUnseq) {
+      TsFileResource currentTsFileResource, boolean acceptUnseq) {
     this.insertFilePath = currentTsFileResource.getFile().getPath();
     this.logNodePrefix = logNodePrefix;
     this.fileSchema = fileSchema;
@@ -112,8 +113,13 @@ public class TsFileRecoverPerformer {
 
     // flush logs
     MemTableFlushTaskV2 tableFlushTask = new MemTableFlushTaskV2(recoverMemTable, fileSchema, restorableTsFileIOWriter,
-        logNodePrefix, (a) -> {});
-    tableFlushTask.flushMemTable();
+        logNodePrefix);
+
+    try {
+      tableFlushTask.flushMemTable();
+    } catch (ExecutionException | InterruptedException e) {
+      throw new ProcessorException(e);
+    }
 
     // close file
     try {

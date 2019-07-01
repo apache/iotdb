@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
@@ -31,8 +31,8 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
 
   @Test
   public void testUnSealedReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
-    TsFileResourceV2 resourceV2 = queryDataSource.getSeqResources().get(0);
+    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+    TsFileResource resourceV2 = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resourceV2.isClosed());
     UnSealedTsFileReader readerV2 = new UnSealedTsFileReader(resourceV2, null, false);
     long time = 999;
@@ -49,8 +49,8 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
 
   @Test
   public void testUnSealedByTimestampReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
-    TsFileResourceV2 resourceV2 = queryDataSource.getSeqResources().get(0);
+    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+    TsFileResource resourceV2 = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resourceV2.isClosed());
     UnSealedTsFileReaderByTimestamp readerV2 = new UnSealedTsFileReaderByTimestamp(
         resourceV2);
@@ -74,15 +74,15 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
     }
-    fileNodeProcessorV2.getWorkSequenceTsFileProcessor().syncFlush();
+    storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
     for (int j = 1010; j <= 1019; j++) {
       insertOneRecord(j, j);
     }
-    fileNodeProcessorV2.getWorkSequenceTsFileProcessor().syncFlush();
+    storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
     for (int j = 1020; j <= 3019; j++) {
       insertOneRecord(j, j);
     }
-    fileNodeProcessorV2.getWorkSequenceTsFileProcessor().syncFlush();
+    storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
     for (int j = 3020; j <= 3029; j++) {
       insertOneRecord(j, j);
     }

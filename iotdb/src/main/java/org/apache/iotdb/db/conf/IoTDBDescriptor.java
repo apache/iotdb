@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.ZoneId;
 import java.util.Properties;
-import org.apache.iotdb.db.engine.memcontrol.BasicMemController.ControllerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,9 +124,7 @@ public class IoTDBDescriptor {
       conf.setFlushWalThreshold(Integer
           .parseInt(properties.getProperty("flush_wal_threshold",
                   Integer.toString(conf.getFlushWalThreshold()))));
-      conf.setFlushWalPeriodInMs(Long
-          .parseLong(properties.getProperty("flush_wal_period_in_ms",
-                  Long.toString(conf.getFlushWalPeriodInMs()))));
+
       conf.setForceWalPeriodInMs(Long
           .parseLong(properties.getProperty("force_wal_period_in_ms",
                   Long.toString(conf.getForceWalPeriodInMs()))));
@@ -135,18 +132,17 @@ public class IoTDBDescriptor {
           Integer.toString(conf.getWalBufferSize()))));
 
       conf.setDataDir(properties.getProperty("data_dir", conf.getDataDir()));
-      conf.setBufferWriteDirs(properties.getProperty("tsfile_dir", conf.DEFAULT_TSFILE_DIR)
+      conf.setSeqDataDirs(properties.getProperty("tsfile_dir", IoTDBConfig.DEFAULT_SEQ_DATA_DIR)
           .split(","));
-      conf.setOverflowDataDirs(properties.getProperty("overflow_dir", conf.DEFAULT_OVERFLOW_DIR)
+      conf.setUnseqDataDirs(properties.getProperty("overflow_dir",
+          IoTDBConfig.DEFAULT_UNSEQ_DATA_DIR)
                     .split(","));
       conf.setSysDir(properties.getProperty("sys_dir", conf.getSysDir()));
-      conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
+      conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
 
-      conf.setMultDirStrategyClassName(properties.getProperty("mult_dir_strategy",
-          conf.getMultDirStrategyClassName()));
+      conf.setMultiDirStrategyClassName(properties.getProperty("mult_dir_strategy",
+          conf.getMultiDirStrategyClassName()));
 
-      conf.setMaxOpenFolder(Integer.parseInt(properties.getProperty("max_opened_folder",
-              Integer.toString(conf.getMaxOpenFolder()))));
       conf.setMergeConcurrentThreads(Integer
           .parseInt(properties.getProperty("merge_concurrent_threads",
                   Integer.toString(conf.getMergeConcurrentThreads()))));
@@ -158,46 +154,10 @@ public class IoTDBDescriptor {
       conf.setFetchSize(Integer.parseInt(properties.getProperty("fetch_size",
           Integer.toString(conf.getFetchSize()))));
 
-      conf.setPeriodTimeForFlush(Long.parseLong(
-          properties.getProperty("period_time_for_flush_in_second",
-                  Long.toString(conf.getPeriodTimeForFlush())).trim()));
-      conf.setPeriodTimeForMerge(Long.parseLong(
-          properties.getProperty("period_time_for_merge_in_second",
-              Long.toString(conf.getPeriodTimeForMerge())).trim()));
-      conf.setEnableTimingCloseAndMerge(Boolean.parseBoolean(properties
-          .getProperty("enable_timing_close_and_merge",
-                  Boolean.toString(conf.isEnableTimingCloseAndMerge())).trim()));
 
-      conf.setMemThresholdWarning((long) (Runtime.getRuntime().maxMemory() * Double.parseDouble(
-          properties.getProperty("mem_threshold_warning",
-                  Long.toString(conf.getMemThresholdWarning())).trim())));
-      conf.setMemThresholdDangerous((long) (Runtime.getRuntime().maxMemory() * Double.parseDouble(
-          properties.getProperty("mem_threshold_dangerous",
-                  Long.toString(conf.getMemThresholdDangerous())).trim())));
-
-      conf.setMemMonitorInterval(Long
-          .parseLong(properties.getProperty("mem_monitor_interval_in_ms",
-                  Long.toString(conf.getMemMonitorInterval())).trim()));
-
-      conf.setMemControllerType(Integer
-          .parseInt(properties.getProperty("mem_controller_type",
-                  Integer.toString(conf.getMemControllerType())).trim()));
-      conf.setMemControllerType(conf.getMemControllerType() >= ControllerType.values().length ? 0
-          : conf.getMemControllerType());
-
-      conf.setBufferwriteMetaSizeThreshold(Long.parseLong(properties
-          .getProperty("bufferwrite_meta_size_threshold",
-                  Long.toString(conf.getBufferwriteMetaSizeThreshold())).trim()));
-      conf.setBufferwriteFileSizeThreshold(Long.parseLong(properties
-          .getProperty("bufferwrite_file_size_threshold",
-                  Long.toString(conf.getBufferwriteFileSizeThreshold())).trim()));
-
-      conf.setOverflowMetaSizeThreshold(Long.parseLong(
-          properties.getProperty("overflow_meta_size_threshold",
-                  Long.toString(conf.getOverflowMetaSizeThreshold())).trim()));
-      conf.setOverflowFileSizeThreshold(Long.parseLong(
-          properties.getProperty("overflow_file_size_threshold",
-              Long.toString(conf.getOverflowFileSizeThreshold())).trim()));
+      conf.setTsFileSizeThreshold(Long.parseLong(properties
+          .getProperty("tsfile_size_threshold",
+                  Long.toString(conf.getTsFileSizeThreshold())).trim()));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -210,14 +170,6 @@ public class IoTDBDescriptor {
                   Boolean.toString(conf.isSyncEnable()))));
       conf.setIpWhiteList(properties.getProperty("IP_white_list", conf.getIpWhiteList()));
 
-      if (conf.getMemThresholdWarning() <= 0) {
-        conf.setMemThresholdWarning(IoTDBConstant.MEM_THRESHOLD_WARNING_DEFAULT);
-      }
-      if (conf.getMemThresholdDangerous() < conf.getMemThresholdWarning()) {
-        conf.setMemThresholdDangerous(Math.max(conf.getMemThresholdWarning(),
-            IoTDBConstant.MEM_THRESHOLD_DANGEROUS_DEFAULT));
-      }
-
       conf.setConcurrentFlushThread(Integer
           .parseInt(properties.getProperty("concurrent_flush_thread",
                   Integer.toString(conf.getConcurrentFlushThread()))));
@@ -225,27 +177,9 @@ public class IoTDBDescriptor {
         conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
       }
 
-      conf.setEnableMemMonitor(Boolean
-          .parseBoolean(properties.getProperty("enable_mem_monitor",
-                  Boolean.toString(conf.isEnableMemMonitor())).trim()));
-      conf.setEnableSmallFlush(Boolean
-          .parseBoolean(properties.getProperty("enable_small_flush",
-                  Boolean.toString(conf.isEnableSmallFlush())).trim()));
-      conf.setSmallFlushInterval(Long
-          .parseLong(properties.getProperty("small_flush_interval",
-                  Long.toString(conf.getSmallFlushInterval())).trim()));
-      conf.setExternalSortThreshold(Integer.parseInt(
-          properties.getProperty("external_sort_threshold",
-                  Integer.toString(conf.getExternalSortThreshold())).trim()));
       conf.setmManagerCacheSize(Integer
           .parseInt(properties.getProperty("schema_manager_cache_size",
                   Integer.toString(conf.getmManagerCacheSize())).trim()));
-
-      int maxLogEntrySize = Integer
-          .parseInt(properties.getProperty("max_log_entry_size",
-                  Integer.toString(conf.getMaxLogEntrySize())).trim());
-      conf.setMaxLogEntrySize(maxLogEntrySize > 0 ? maxLogEntrySize :
-          conf.getMaxLogEntrySize());
 
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.factory;
 
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -47,7 +47,7 @@ public interface ISeriesReaderFactory {
    * @param filter It can a combination of time and value filter or null.
    * @return unsequence series reader
    */
-  IPointReader createUnseqSeriesReader(Path seriesPath, List<TsFileResourceV2> unseqResources,
+  IPointReader createUnseqSeriesReader(Path seriesPath, List<TsFileResource> unseqResources,
                                        QueryContext context,
                                        Filter filter) throws IOException;
 

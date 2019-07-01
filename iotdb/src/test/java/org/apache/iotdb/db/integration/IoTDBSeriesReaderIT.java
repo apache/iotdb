@@ -68,7 +68,6 @@ public class IoTDBSeriesReaderIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
 
     // use small page setting
     // origin value
@@ -174,7 +173,7 @@ public class IoTDBSeriesReaderIT {
 
       statement.execute("flush");
 
-      // bufferwrite data, memory data
+      // sequential data, memory data
       for (int time = 200000; time < 201000; time++) {
 
         String sql = String

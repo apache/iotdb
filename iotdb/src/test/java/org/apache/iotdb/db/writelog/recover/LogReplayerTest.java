@@ -27,7 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -67,7 +67,7 @@ public class LogReplayerTest {
         return 5;
       }
     };
-    TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsFile);
+    TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
     FileSchema schema = new FileSchema();
 

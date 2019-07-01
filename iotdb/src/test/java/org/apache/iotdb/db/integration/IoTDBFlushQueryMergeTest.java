@@ -59,19 +59,15 @@ public class IoTDBFlushQueryMergeTest {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
-    overflowFileSizeThreshold = iotDBConfig.getOverflowFileSizeThreshold();
-    iotDBConfig.setOverflowFileSizeThreshold(0);
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     daemon.stop();
-    iotDBConfig.setOverflowFileSizeThreshold(overflowFileSizeThreshold);
     EnvironmentUtils.cleanEnv();
   }
 

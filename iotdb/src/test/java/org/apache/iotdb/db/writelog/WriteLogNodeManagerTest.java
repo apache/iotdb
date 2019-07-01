@@ -76,7 +76,7 @@ public class WriteLogNodeManagerTest {
   public void testAutoSync() throws IOException, InterruptedException {
     // this test check that nodes in a manager will sync periodically.
     int flushWalPeriod = config.getFlushWalThreshold();
-    config.setFlushWalPeriodInMs(10000);
+    config.setForceWalPeriodInMs(10000);
     File tempRestore = File.createTempFile("managerTest", "restore");
     File tempProcessorStore = File.createTempFile("managerTest", "processorStore");
 
@@ -95,11 +95,11 @@ public class WriteLogNodeManagerTest {
     File walFile = new File(logNode.getLogDirectory() + File.separator + "wal1");
     assertTrue(!walFile.exists());
 
-    Thread.sleep(config.getFlushWalPeriodInMs() + 1000);
+    Thread.sleep(config.getForceWalPeriodInMs() + 1000);
     assertTrue(walFile.exists());
 
     logNode.delete();
-    config.setFlushWalPeriodInMs(flushWalPeriod);
+    config.setForceWalPeriodInMs(flushWalPeriod);
     tempRestore.delete();
     tempProcessorStore.delete();
     tempRestore.getParentFile().delete();

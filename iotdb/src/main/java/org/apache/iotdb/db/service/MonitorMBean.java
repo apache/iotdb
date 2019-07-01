@@ -28,10 +28,6 @@ public interface MonitorMBean {
 
   long getBufferWriteCacheSize();
 
-  long getMergePeriodInSecond();
-
-  long getClosePeriodInSecond();
-
   String getBaseDirectory();
 
   boolean getWriteAheadLogStatus();

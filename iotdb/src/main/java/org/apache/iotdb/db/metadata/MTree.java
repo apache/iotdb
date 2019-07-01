@@ -530,7 +530,7 @@ public class MTree implements Serializable {
    *
    * @return String storage group seriesPath
    */
-  public String getFileNameByPath(String path) throws PathErrorException {
+  public String getStorageGroupNameByPath(String path) throws PathErrorException {
 
     String[] nodes = path.split(DOUB_SEPARATOR);
     MNode cur = getRoot();
@@ -594,24 +594,12 @@ public class MTree implements Serializable {
         findFileName(child, nodes, idx + 1, parent + node.getName() + ".", paths);
       }
     }
-    return;
-  }
-
-  private void getAllStorageGroupsOfNode(MNode node, String path, List<String> sgList) {
-    if (node.isStorageLevel()) {
-      sgList.add(path);
-      return;
-    }
-
-    for (MNode child : node.getChildren().values()) {
-      getAllStorageGroupsOfNode(child, path + SEPARATOR + child.getName(), sgList);
-    }
   }
 
   /**
    * function for getting file name by path.
    */
-  public String getFileNameByPath(MNode node, String path) throws PathErrorException {
+  public String getStorageGroupNameByPath(MNode node, String path) throws PathErrorException {
 
     String[] nodes = path.split(DOUB_SEPARATOR);
     MNode cur = node.getChild(nodes[0]);
@@ -623,43 +611,6 @@ public class MTree implements Serializable {
       } else if (cur.isStorageLevel()) {
         return cur.getDataFileName();
       } else {
-        cur = cur.getChild(nodes[i]);
-      }
-    }
-    if (cur.isStorageLevel()) {
-      return cur.getDataFileName();
-    }
-    throw new PathErrorException(
-        String.format(NOT_SERIES_PATH, path));
-  }
-
-  /**
-   * function for getting file name by path with check.
-   */
-  public String getFileNameByPathWithCheck(MNode node, String path) throws PathErrorException {
-
-    String[] nodes = path.split(DOUB_SEPARATOR);
-    if (nodes.length < 1 || !node.hasChild(nodes[0])) {
-      throw new PathErrorException(
-          String
-              .format(NOT_SERIES_PATH,
-                  path));
-    }
-
-    MNode cur = node.getChild(nodes[0]);
-    for (int i = 1; i < nodes.length; i++) {
-      if (cur == null) {
-        throw new PathErrorException(
-            String.format(NOT_SERIES_PATH,
-                path));
-      } else if (cur.isStorageLevel()) {
-        return cur.getDataFileName();
-      } else {
-        if (!cur.hasChild(nodes[i])) {
-          throw new PathErrorException(
-              String.format(NOT_SERIES_PATH,
-                  path));
-        }
         cur = cur.getChild(nodes[i]);
       }
     }

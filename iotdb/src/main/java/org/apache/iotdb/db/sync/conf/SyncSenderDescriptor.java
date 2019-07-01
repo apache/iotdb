@@ -103,14 +103,14 @@ public class SyncSenderDescriptor {
       conf.setLastFileInfo(
           dataDirectory + Constans.SYNC_CLIENT + File.separatorChar
               + Constans.LAST_LOCAL_FILE_NAME);
-      String[] iotdbBufferwriteDirectory = conf.getBufferwriteDirectory();
-      String[] snapshots = new String[conf.getBufferwriteDirectory().length];
-      for (int i = 0; i < conf.getBufferwriteDirectory().length; i++) {
+      String[] iotdbBufferwriteDirectory = conf.getSeqFileDirectory();
+      String[] snapshots = new String[conf.getSeqFileDirectory().length];
+      for (int i = 0; i < conf.getSeqFileDirectory().length; i++) {
         iotdbBufferwriteDirectory[i] = FilePathUtils.regularizePath(iotdbBufferwriteDirectory[i]);
         snapshots[i] = iotdbBufferwriteDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
             + Constans.DATA_SNAPSHOT_NAME + File.separatorChar;
       }
-      conf.setBufferwriteDirectory(iotdbBufferwriteDirectory);
+      conf.setSeqFileDirectory(iotdbBufferwriteDirectory);
       conf.setSnapshotPaths(snapshots);
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because {}, use default configuration", e);

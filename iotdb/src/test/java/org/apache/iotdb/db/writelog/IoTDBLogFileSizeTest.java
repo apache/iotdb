@@ -46,9 +46,9 @@ public class IoTDBLogFileSizeTest {
   private int groupSize;
   private long runtime = 600000;
 
-  private String[] setUpSqls = new String[]{"SET STORAGE GROUP TO root.logFileTest.bufferwrite",
+  private String[] setUpSqls = new String[]{"SET STORAGE GROUP TO root.logFileTest.seq",
       "SET STORAGE GROUP TO root.logFileTest.overflow",
-      "CREATE TIMESERIES root.logFileTest.bufferwrite.val WITH DATATYPE=INT32, ENCODING=PLAIN",
+      "CREATE TIMESERIES root.logFileTest.seq.val WITH DATATYPE=INT32, ENCODING=PLAIN",
       "CREATE TIMESERIES root.logFileTest.overflow.val WITH DATATYPE=INT32, ENCODING=PLAIN",
       // overflow baseline
       "INSERT INTO root.logFileTest.overflow(timestamp,val) VALUES (1000000000, 0)"};
@@ -82,7 +82,7 @@ public class IoTDBLogFileSizeTest {
   }
 
   @Test
-  public void testBufferwrite() throws InterruptedException {
+  public void testSeqFile() throws InterruptedException {
     if (skip) {
       return;
     }
@@ -106,11 +106,11 @@ public class IoTDBLogFileSizeTest {
             break;
           }
           String sql = String.format(
-              "INSERT INTO root.logFileTest.bufferwrite(timestamp,val) VALUES (%d, %d)", ++cnt,
+              "INSERT INTO root.logFileTest.seq(timestamp,val) VALUES (%d, %d)", ++cnt,
               cnt);
           statement.execute(sql);
           WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
-              "root.logFileTest.bufferwrite" + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX);
+              "root.logFileTest.seq" + IoTDBConstant.SEQFILE_LOG_NODE_SUFFIX);
           File bufferWriteWALFile = new File(
               logNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
           if (bufferWriteWALFile.exists() && bufferWriteWALFile.length() > maxLength[0]) {
@@ -137,7 +137,7 @@ public class IoTDBLogFileSizeTest {
 
     }
     System.out.println(
-        "Max size of bufferwrite wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after "
+        "Max size of seq wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after "
             + runtime + "ms continuous writing");
   }
 

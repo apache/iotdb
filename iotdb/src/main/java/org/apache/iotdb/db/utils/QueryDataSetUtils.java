@@ -12,7 +12,7 @@
  * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.utils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,23 +29,23 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 /**
  * TimeValuePairUtils to convert between thrift format and TsFile format.
  */
-public class Utils {
+public class QueryDataSetUtils {
 
-  private Utils(){}
+  private QueryDataSetUtils(){}
 
   /**
    * convert query data set by fetch size.
    *
    * @param queryDataSet -query dataset
-   * @param fetchsize -fetch size
+   * @param fetchSize -fetch size
    * @return -convert query dataset
    */
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
-      int fetchsize)
+      int fetchSize)
       throws IOException {
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     tsQueryDataSet.setRecords(new ArrayList<>());
-    for (int i = 0; i < fetchsize; i++) {
+    for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
         tsQueryDataSet.getRecords().add(convertToTSRecord(rowRecord));
@@ -61,7 +61,7 @@ public class Utils {
    *
    * @param rowRecord -row record
    */
-  public static TSRowRecord convertToTSRecord(RowRecord rowRecord) {
+  private static TSRowRecord convertToTSRecord(RowRecord rowRecord) {
     TSRowRecord tsRowRecord = new TSRowRecord();
     tsRowRecord.setTimestamp(rowRecord.getTimestamp());
     tsRowRecord.setValues(new ArrayList<>());

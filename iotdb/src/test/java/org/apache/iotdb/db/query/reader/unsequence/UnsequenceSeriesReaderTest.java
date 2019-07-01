@@ -39,12 +39,12 @@ public class UnsequenceSeriesReaderTest extends ReaderTestHelper {
         for (int j = 1; j <= 10; j++) {
             insertOneRecord(j, j);
         }
-        fileNodeProcessorV2.getWorkSequenceTsFileProcessor().asyncFlush();
+        storageGroupProcessor.getWorkSequenceTsFileProcessor().asyncFlush();
 
         for (int j = 10; j >= 1; j--) {
             insertOneRecord(j, j);
         }
-        fileNodeProcessorV2.getWorkSequenceTsFileProcessor().asyncFlush();
+        storageGroupProcessor.getWorkSequenceTsFileProcessor().asyncFlush();
 
         insertOneRecord(2, 100);
     }
@@ -52,7 +52,7 @@ public class UnsequenceSeriesReaderTest extends ReaderTestHelper {
     @Test
     public void testUnseqSeriesReaderWithGlobalTimeFilter() throws IOException, FileNodeProcessorException {
         Path path = new Path(deviceId, measurementId);
-        QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
+        QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
         IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnseqSeriesReader(path,
                 queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, TimeFilter.eq(4));
         int cnt = 0;
@@ -68,7 +68,7 @@ public class UnsequenceSeriesReaderTest extends ReaderTestHelper {
     @Test
     public void testUnseqSeriesReaderWithoutFilter() throws IOException, FileNodeProcessorException {
         Path path = new Path(deviceId, measurementId);
-        QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
+        QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
         IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnseqSeriesReader(path,
                 queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, null);
         int cnt = 0;

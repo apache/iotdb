@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenodeV2;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.tsfile.common.constant.SystemConstant.TSFILE_SUFFIX;
 
@@ -44,11 +44,10 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
+import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -61,21 +60,21 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FileNodeProcessorV2 {
+public class StorageGroupProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessorV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(StorageGroupProcessor.class);
 
   private FileSchema fileSchema;
 
   // includes sealed and unsealed sequence tsfiles
-  private List<TsFileResourceV2> sequenceFileList = new ArrayList<>();
-  private UnsealedTsFileProcessorV2 workSequenceTsFileProcessor = null;
-  private CopyOnReadLinkedList<UnsealedTsFileProcessorV2> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
+  private List<TsFileResource> sequenceFileList = new ArrayList<>();
+  private UnsealedTsFileProcessor workSequenceTsFileProcessor = null;
+  private CopyOnReadLinkedList<UnsealedTsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
   // includes sealed and unsealed unSequnce tsfiles
-  private List<TsFileResourceV2> unSequenceFileList = new ArrayList<>();
-  private UnsealedTsFileProcessorV2 workUnSequenceTsFileProcessor = null;
-  private CopyOnReadLinkedList<UnsealedTsFileProcessorV2> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
+  private List<TsFileResource> unSequenceFileList = new ArrayList<>();
+  private UnsealedTsFileProcessor workUnSequenceTsFileProcessor = null;
+  private CopyOnReadLinkedList<UnsealedTsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
   /**
    * device -> global latest timestamp of each device
@@ -111,7 +110,7 @@ public class FileNodeProcessorV2 {
   private ModificationFile mergingModification;
 
 
-  public FileNodeProcessorV2(String baseDir, String storageGroupName) throws ProcessorException {
+  public StorageGroupProcessor(String baseDir, String storageGroupName) throws ProcessorException {
     this.storageGroupName = storageGroupName;
 
     // construct the file schema
@@ -137,7 +136,7 @@ public class FileNodeProcessorV2 {
   }
 
   private void recover() throws ProcessorException {
-    LOGGER.info("recover FileNodeProcessor {}", storageGroupName);
+    LOGGER.info("recover StorageGroupProcessor {}", storageGroupName);
     List<File> tsFiles = new ArrayList<>();
     List<String> seqFileFolders = DirectoryManager.getInstance().getAllTsFileFolders();
     for (String baseDir : seqFileFolders) {
@@ -164,7 +163,7 @@ public class FileNodeProcessorV2 {
     }
     recoverUnseqFiles(tsFiles);
 
-    for (TsFileResourceV2 resource : sequenceFileList) {
+    for (TsFileResource resource : sequenceFileList) {
       latestTimeForEachDevice.putAll(resource.getEndTimeMap());
       latestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
     }
@@ -173,7 +172,7 @@ public class FileNodeProcessorV2 {
   private void recoverSeqFiles(List<File> tsfiles) throws ProcessorException {
     tsfiles.sort(new CompareFileName());
     for (File tsfile : tsfiles) {
-      TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsfile);
+      TsFileResource tsFileResource = new TsFileResource(tsfile);
       sequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
           , fileSchema, versionController, tsFileResource, false);
@@ -184,7 +183,7 @@ public class FileNodeProcessorV2 {
   private void recoverUnseqFiles(List<File> tsfiles) throws ProcessorException {
     tsfiles.sort(new CompareFileName());
     for (File tsfile : tsfiles) {
-      TsFileResourceV2 tsFileResource = new TsFileResourceV2(tsfile);
+      TsFileResource tsFileResource = new TsFileResource(tsfile);
       unSequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           fileSchema,
@@ -264,7 +263,7 @@ public class FileNodeProcessorV2 {
 
   private boolean insertUnsealedDataFile(InsertPlan insertPlan, boolean sequence)
       throws IOException {
-    UnsealedTsFileProcessorV2 unsealedTsFileProcessor = null;
+    UnsealedTsFileProcessor unsealedTsFileProcessor = null;
     boolean result;
 
     // create a new BufferWriteProcessor
@@ -311,7 +310,7 @@ public class FileNodeProcessorV2 {
     return result;
   }
 
-  private UnsealedTsFileProcessorV2 createTsFileProcessor(boolean sequence)
+  private UnsealedTsFileProcessor createTsFileProcessor(boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
     String baseDir;
     long start = System.currentTimeMillis();
@@ -329,11 +328,11 @@ public class FileNodeProcessorV2 {
         + TSFILE_SUFFIX;
 
     if (sequence) {
-      return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
+      return new UnsealedTsFileProcessor(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
           this::updateLatestFlushTimeCallback);
     } else {
-      return new UnsealedTsFileProcessorV2(storageGroupName, new File(filePath),
+      return new UnsealedTsFileProcessor(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessorCallback,
           () -> true);
     }
@@ -342,7 +341,7 @@ public class FileNodeProcessorV2 {
   /**
    * only called by insert(), thread-safety should be ensured by caller
    */
-  private void asyncCloseTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor,
+  private void asyncCloseTsFileProcessor(UnsealedTsFileProcessor unsealedTsFileProcessor,
       boolean sequence) {
 
     // check file size and may close the BufferWrite
@@ -368,9 +367,9 @@ public class FileNodeProcessorV2 {
   public QueryDataSourceV2 query(String deviceId, String measurementId) {
     insertLock.readLock().lock();
     try {
-      List<TsFileResourceV2> seqResources = getFileReSourceListForQuery(sequenceFileList,
+      List<TsFileResource> seqResources = getFileReSourceListForQuery(sequenceFileList,
           deviceId, measurementId);
-      List<TsFileResourceV2> unseqResources = getFileReSourceListForQuery(unSequenceFileList,
+      List<TsFileResource> unseqResources = getFileReSourceListForQuery(unSequenceFileList,
           deviceId, measurementId);
       return new QueryDataSourceV2(new Path(deviceId, measurementId), seqResources, unseqResources);
     } finally {
@@ -391,14 +390,14 @@ public class FileNodeProcessorV2 {
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
-  private List<TsFileResourceV2> getFileReSourceListForQuery(List<TsFileResourceV2> tsFileResources,
+  private List<TsFileResource> getFileReSourceListForQuery(List<TsFileResource> tsFileResources,
       String deviceId, String measurementId) {
 
     MeasurementSchema mSchema = fileSchema.getMeasurementSchema(measurementId);
     TSDataType dataType = mSchema.getType();
 
-    List<TsFileResourceV2> tsfileResourcesForQuery = new ArrayList<>();
-    for (TsFileResourceV2 tsFileResource : tsFileResources) {
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.containsDevice(deviceId)) {
         continue;
       }
@@ -413,7 +412,7 @@ public class FileNodeProcessorV2 {
                   .getUnsealedFileProcessor()
                   .query(deviceId, measurementId, dataType, mSchema.getProps());
             tsfileResourcesForQuery
-                .add(new TsFileResourceV2(tsFileResource.getFile(),
+                .add(new TsFileResource(tsFileResource.getFile(),
                     tsFileResource.getStartTimeMap(),
                     tsFileResource.getEndTimeMap(), pair.left, pair.right));
           }
@@ -482,11 +481,11 @@ public class FileNodeProcessorV2 {
   }
 
 
-  private void deleteFiles(List<TsFileResourceV2> tsFileResourceList, Deletion deletion,
+  private void deleteFiles(List<TsFileResource> tsFileResourceList, Deletion deletion,
       List<ModificationFile> updatedModFiles)
       throws IOException {
     String deviceId = deletion.getDevice();
-    for (TsFileResourceV2 tsFileResource : tsFileResourceList) {
+    for (TsFileResource tsFileResource : tsFileResourceList) {
       if (!tsFileResource.containsDevice(deviceId) ||
           deletion.getTimestamp() < tsFileResource.getStartTimeMap().get(deviceId)) {
         continue;
@@ -497,7 +496,7 @@ public class FileNodeProcessorV2 {
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
-        UnsealedTsFileProcessorV2 tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
+        UnsealedTsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
         tsfileProcessor.delete(deletion);
       }
 
@@ -532,8 +531,8 @@ public class FileNodeProcessorV2 {
    *
    * @param tsFileProcessor processor to be closed
    */
-  private void updateEndTimeMap(UnsealedTsFileProcessorV2 tsFileProcessor) {
-    TsFileResourceV2 resource = tsFileProcessor.getTsFileResource();
+  private void updateEndTimeMap(UnsealedTsFileProcessor tsFileProcessor) {
+    TsFileResource resource = tsFileProcessor.getTsFileResource();
     for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
       String deviceId = startTime.getKey();
       resource.getEndTimeMap().put(deviceId, latestTimeForEachDevice.get(deviceId));
@@ -606,7 +605,7 @@ public class FileNodeProcessorV2 {
    */
   // TODO please consider concurrency with query and insert method.
   public void closeUnsealedTsFileProcessorCallback(
-      UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
+      UnsealedTsFileProcessor unsealedTsFileProcessor) {
     closeQueryLock.writeLock().lock();
     try {
       unsealedTsFileProcessor.close();
@@ -627,11 +626,11 @@ public class FileNodeProcessorV2 {
   }
 
 
-  public UnsealedTsFileProcessorV2 getWorkSequenceTsFileProcessor() {
+  public UnsealedTsFileProcessor getWorkSequenceTsFileProcessor() {
     return workSequenceTsFileProcessor;
   }
 
-  public UnsealedTsFileProcessorV2 getWorkUnSequenceTsFileProcessor() {
+  public UnsealedTsFileProcessor getWorkUnSequenceTsFileProcessor() {
     return workUnSequenceTsFileProcessor;
   }
 

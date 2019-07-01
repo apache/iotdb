@@ -80,7 +80,7 @@ public class SyncFileManager {
     lastLocalFiles.clear();
     currentLocalFiles.clear();
     getLastLocalFileList(syncConfig.getLastFileInfo());
-    getCurrentLocalFileList(systemConfig.getBufferWriteDirs());
+    getCurrentLocalFileList(systemConfig.getSeqDataDirs());
     getValidFileList();
   }
 

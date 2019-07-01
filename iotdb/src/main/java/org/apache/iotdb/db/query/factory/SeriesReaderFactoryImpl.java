@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.query.factory;
 
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -71,33 +70,33 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   }
 
   @Override
-  public IPointReader createUnseqSeriesReader(Path seriesPath, List<TsFileResourceV2> unseqResources,
+  public IPointReader createUnseqSeriesReader(Path seriesPath, List<TsFileResource> unseqResources,
                                               QueryContext context,
                                               Filter filter) throws IOException {
     UnsequenceSeriesReader unseqMergeReader = new UnsequenceSeriesReader();
 
     int priorityValue = 1;
 
-    for (TsFileResourceV2 tsFileResourceV2 : unseqResources) {
+    for (TsFileResource tsFileResource : unseqResources) {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-              .get(tsFileResourceV2.getFile().getPath(), tsFileResourceV2.isClosed());
+              .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
 
       // get modified chunk metadatas
       List<ChunkMetaData> metaDataList;
-      if (tsFileResourceV2.isClosed()) {
+      if (tsFileResource.isClosed()) {
         MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
         metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
         // mod
         List<Modification> pathModifications = context
-                .getPathModifications(tsFileResourceV2.getModFile(),
+                .getPathModifications(tsFileResource.getModFile(),
                         seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
       } else {
-        metaDataList = tsFileResourceV2.getChunkMetaDatas();
+        metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
       // add readers for chunks
@@ -125,9 +124,9 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
       }
 
       // add reader for MemTable
-      if (!tsFileResourceV2.isClosed()) {
+      if (!tsFileResource.isClosed()) {
         unseqMergeReader.addReaderWithPriority(
-                new MemChunkReader(tsFileResourceV2.getReadOnlyMemChunk(), filter), priorityValue++);
+                new MemChunkReader(tsFileResource.getReadOnlyMemChunk(), filter), priorityValue++);
       }
     }
 
@@ -136,30 +135,30 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   }
 
   private SeriesReaderByTimestamp createUnseqSeriesReaderByTimestamp(Path seriesPath,
-                                                                     List<TsFileResourceV2> unseqResources, QueryContext context) throws IOException {
+                                                                     List<TsFileResource> unseqResources, QueryContext context) throws IOException {
     SeriesReaderByTimestamp unseqMergeReader = new SeriesReaderByTimestamp();
 
     int priorityValue = 1;
 
-    for (TsFileResourceV2 tsFileResourceV2 : unseqResources) {
+    for (TsFileResource tsFileResource : unseqResources) {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-              .get(tsFileResourceV2.getFile().getPath(), tsFileResourceV2.isClosed());
+              .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
 
       List<ChunkMetaData> metaDataList;
-      if (tsFileResourceV2.isClosed()) {
+      if (tsFileResource.isClosed()) {
         MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
         metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
         // mod
         List<Modification> pathModifications = context
-                .getPathModifications(tsFileResourceV2.getModFile(),
+                .getPathModifications(tsFileResource.getModFile(),
                         seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
       } else {
-        metaDataList = tsFileResourceV2.getChunkMetaDatas();
+        metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
       // add reader for chunk
@@ -176,9 +175,9 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
       }
 
       // add reader for MemTable
-      if (!tsFileResourceV2.isClosed()) {
+      if (!tsFileResource.isClosed()) {
         unseqMergeReader.addReaderWithPriority(
-                new MemChunkReaderByTimestamp(tsFileResourceV2.getReadOnlyMemChunk()), priorityValue++);
+                new MemChunkReaderByTimestamp(tsFileResource.getReadOnlyMemChunk()), priorityValue++);
       }
     }
 

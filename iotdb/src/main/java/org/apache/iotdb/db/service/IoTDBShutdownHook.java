@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +30,6 @@ public class IoTDBShutdownHook extends Thread{
   public void run() {
     if(LOGGER.isInfoEnabled()) {
       LOGGER.info("Recorded memory usage: {}, actual jvm memory usage: {}",
-          MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
           MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory() -
               Runtime.getRuntime().freeMemory()));
     }

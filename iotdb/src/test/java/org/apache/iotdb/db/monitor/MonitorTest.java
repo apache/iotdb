@@ -28,7 +28,7 @@
 //import java.util.concurrent.atomic.AtomicLong;
 //import org.apache.iotdb.db.conf.IoTDBConfig;
 //import org.apache.iotdb.db.conf.IoTDBDescriptor;
-//import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
+//import org.apache.iotdb.db.engine.filenodeV2.StorageEngine;
 //import org.apache.iotdb.db.exception.FileNodeManagerException;
 //import org.apache.iotdb.db.metadata.MManager;
 //import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
@@ -64,7 +64,7 @@
 //
 //  @Test
 //  public void testFileNodeManagerMonitorAndAddMetadata() {
-//    FileNodeManagerV2 fManager = FileNodeManagerV2.getInstance();
+//    StorageEngine fManager = StorageEngine.getInstance();
 //    FileSize fileSize = FileSize.getInstance();
 //    statMonitor = StatMonitor.getInstance();
 //    statMonitor.registerStatStorageGroup();

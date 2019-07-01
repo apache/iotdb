@@ -21,9 +21,7 @@ package org.apache.iotdb.db.service;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
-import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -40,7 +38,7 @@ public class IoTDB implements IoTDBMBean {
       IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
 
-  public static final IoTDB getInstance() {
+  public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
   }
 
@@ -87,14 +85,12 @@ public class IoTDB implements IoTDBMBean {
       StatMonitor.getInstance().recovery();
     }
 
-    registerManager.register(FileNodeManagerV2.getInstance());
+    registerManager.register(StorageEngine.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(JMXService.getInstance());
     registerManager.register(JDBCService.getInstance());
     registerManager.register(Monitor.INSTANCE);
-    registerManager.register(CloseMergeService.getInstance());
     registerManager.register(StatMonitor.getInstance());
-    registerManager.register(BasicMemController.getInstance());
     registerManager.register(SyncServerManager.getInstance());
     registerManager.register(TVListAllocator.getInstance());
 
@@ -105,7 +101,7 @@ public class IoTDB implements IoTDBMBean {
     LOGGER.info("IoTDB is set up.");
   }
 
-  public void deactivate() {
+  private void deactivate() {
     LOGGER.info("Deactivating IoTDB...");
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
@@ -113,7 +109,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   @Override
-  public void stop() throws FileNodeManagerException {
+  public void stop() {
     deactivate();
   }
 

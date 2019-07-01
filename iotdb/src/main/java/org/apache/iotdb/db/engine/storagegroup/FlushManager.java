@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenodeV2;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Future;
 import org.apache.iotdb.db.engine.pool.FlushPoolManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +28,7 @@ public class FlushManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
 
-  private ConcurrentLinkedDeque<UnsealedTsFileProcessorV2> unsealedTsFileProcessorQueue = new ConcurrentLinkedDeque<>();
+  private ConcurrentLinkedDeque<UnsealedTsFileProcessor> unsealedTsFileProcessorQueue = new ConcurrentLinkedDeque<>();
 
   private FlushPoolManager flushPool = FlushPoolManager.getInstance();
 
@@ -38,8 +36,7 @@ public class FlushManager {
 
     @Override
     public void run() {
-      UnsealedTsFileProcessorV2 unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
-      long startTime = System.currentTimeMillis();
+      UnsealedTsFileProcessor unsealedTsFileProcessor = unsealedTsFileProcessorQueue.poll();
       try {
         unsealedTsFileProcessor.flushOneMemTable();
       } catch (IOException e) {
@@ -48,8 +45,6 @@ public class FlushManager {
         // TODO do sth
       }
       unsealedTsFileProcessor.setManagedByFlushManager(false);
-      LOGGER.info("storage group {} flush process consume {} ms",
-          unsealedTsFileProcessor.getStorageGroupName(), System.currentTimeMillis() - startTime);
       registerUnsealedTsFileProcessor(unsealedTsFileProcessor);
     }
   }
@@ -57,16 +52,15 @@ public class FlushManager {
   /**
    * Add BufferWriteProcessor to asyncFlush manager
    */
-  public Future registerUnsealedTsFileProcessor(UnsealedTsFileProcessorV2 unsealedTsFileProcessor) {
+  void registerUnsealedTsFileProcessor(UnsealedTsFileProcessor unsealedTsFileProcessor) {
     synchronized (unsealedTsFileProcessor) {
       if (!unsealedTsFileProcessor.isManagedByFlushManager() && unsealedTsFileProcessor.getFlushingMemTableSize() > 0) {
         LOGGER.info("storage group {} begin to submit a flush thread, flushing memtable size: {}",
             unsealedTsFileProcessor.getStorageGroupName(), unsealedTsFileProcessor.getFlushingMemTableSize());
         unsealedTsFileProcessorQueue.add(unsealedTsFileProcessor);
         unsealedTsFileProcessor.setManagedByFlushManager(true);
-        return flushPool.submit(new FlushThread());
+        flushPool.submit(new FlushThread());
       }
-      return null;
     }
   }
 

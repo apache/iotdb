@@ -16,20 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenodeV2;
+package org.apache.iotdb.db.engine;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -51,15 +51,17 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FileNodeManagerV2 implements IService {
+public class StorageEngine implements IService {
 
   private static final Logger LOGGER = LoggerFactory
-      .getLogger(org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2.class);
+      .getLogger(StorageEngine.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private boolean readOnly = false;
 
   /**
    * a folder (system/info/ by default) that persist FileNodeProcessorStore classes. Ends with
-   * File.separator Each FileNodeManager will have a subfolder.
+   * File.separator Each StorageEngine will have a subfolder.
    */
   private final String baseDir;
 
@@ -67,11 +69,11 @@ public class FileNodeManagerV2 implements IService {
    * This map is used to manage all filenode processor,<br> the key is filenode name which is
    * storage group seriesPath.
    */
-  private final ConcurrentHashMap<String, FileNodeProcessorV2> processorMap = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, StorageGroupProcessor> processorMap = new ConcurrentHashMap<>();
 
-  private static final FileNodeManagerV2 INSTANCE = new FileNodeManagerV2();
+  private static final StorageEngine INSTANCE = new StorageEngine();
 
-  public static FileNodeManagerV2 getInstance() {
+  public static StorageEngine getInstance() {
     return INSTANCE;
   }
 
@@ -85,7 +87,7 @@ public class FileNodeManagerV2 implements IService {
   }
 
 
-  private FileNodeManagerV2() {
+  private StorageEngine() {
     baseDir = FilePathUtils.regularizePath(config.getFileNodeDir());
     // create baseDir
     File dir = new File(baseDir);
@@ -99,8 +101,8 @@ public class FileNodeManagerV2 implements IService {
     try {
       List<String> storageGroups = MManager.getInstance().getAllFileNames();
       for (String storageGroup: storageGroups) {
-        FileNodeProcessorV2 processor = new FileNodeProcessorV2(baseDir, storageGroup);
-        LOGGER.info("FileNodeProcessor {} is recovered successfully", storageGroup);
+        StorageGroupProcessor processor = new StorageGroupProcessor(baseDir, storageGroup);
+        LOGGER.info("StorageGroupProcessor {} is recovered successfully", storageGroup);
         processorMap.put(storageGroup, processor);
       }
     } catch (ProcessorException | MetadataErrorException e) {
@@ -124,13 +126,13 @@ public class FileNodeManagerV2 implements IService {
   }
 
 
-  private FileNodeProcessorV2 getProcessor(String devicePath)
+  private StorageGroupProcessor getProcessor(String devicePath)
       throws FileNodeManagerException {
     String storageGroup = "";
     try {
       // return the storage group name
-      storageGroup = MManager.getInstance().getFileNameByPath(devicePath);
-      FileNodeProcessorV2 processor;
+      storageGroup = MManager.getInstance().getStorageGroupNameByPath(devicePath);
+      StorageGroupProcessor processor;
       processor = processorMap.get(storageGroup);
       if (processor == null) {
         storageGroup = storageGroup.intern();
@@ -139,7 +141,7 @@ public class FileNodeManagerV2 implements IService {
           if (processor == null) {
             LOGGER.debug("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroup, Thread.currentThread().getId());
-            processor = new FileNodeProcessorV2(baseDir, storageGroup);
+            processor = new StorageGroupProcessor(baseDir, storageGroup);
             synchronized (processorMap) {
               processorMap.put(storageGroup, processor);
             }
@@ -148,7 +150,7 @@ public class FileNodeManagerV2 implements IService {
       }
       return processor;
     } catch (PathErrorException | ProcessorException e) {
-      LOGGER.error("Fail to get FileNodeProcessor {}", storageGroup,  e);
+      LOGGER.error("Fail to get StorageGroupProcessor {}", storageGroup,  e);
       throw new FileNodeManagerException(e);
     }
   }
@@ -166,28 +168,32 @@ public class FileNodeManagerV2 implements IService {
    * insert TsRecord into storage group.
    *
    * @param insertPlan physical plan of insertion
-   * @return an int value represents the insert type, 0: failed; 1: overflow; 2: bufferwrite
+   * @return true if and only if this insertion succeeds
    */
   public boolean insert(InsertPlan insertPlan) throws FileNodeManagerException {
 
-    FileNodeProcessorV2 fileNodeProcessor;
+    if (readOnly) {
+      throw new FileNodeManagerException("Current system mode is read only, does not support insertion");
+    }
+
+    StorageGroupProcessor storageGroupProcessor;
     try {
-      fileNodeProcessor = getProcessor(insertPlan.getDeviceId());
+      storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
     } catch (Exception e) {
-      LOGGER.warn("get FileNodeProcessor of device {} failed, because {}", insertPlan.getDeviceId(),
+      LOGGER.warn("get StorageGroupProcessor of device {} failed, because {}", insertPlan.getDeviceId(),
           e.getMessage(), e);
       throw new FileNodeManagerException(e);
     }
 
     // TODO monitor: update statistics
-    return fileNodeProcessor.insert(insertPlan);
+    return storageGroupProcessor.insert(insertPlan);
   }
 
 
   public void asyncFlushAndSealAllFiles() {
     synchronized (processorMap) {
-      for (FileNodeProcessorV2 fileNodeProcessor: processorMap.values()) {
-        fileNodeProcessor.asyncForceClose();
+      for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+        storageGroupProcessor.asyncForceClose();
       }
     }
   }
@@ -211,18 +217,17 @@ public class FileNodeManagerV2 implements IService {
    */
   public void delete(String deviceId, String measurementId, long timestamp)
       throws FileNodeManagerException {
-    FileNodeProcessorV2 fileNodeProcessor = getProcessor(deviceId);
+
+    if (readOnly) {
+      throw new FileNodeManagerException("Current system mode is read only, does not support deletion");
+    }
+
+    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
-      fileNodeProcessor.delete(deviceId, measurementId, timestamp);
+      storageGroupProcessor.delete(deviceId, measurementId, timestamp);
     } catch (IOException e) {
       throw new FileNodeManagerException(e);
     }
-  }
-
-  private void delete(String processorName,
-      Iterator<Entry<String, FileNodeProcessorV2>> processorIterator)
-      throws FileNodeManagerException {
-    // TODO
   }
 
 
@@ -251,8 +256,8 @@ public class FileNodeManagerV2 implements IService {
       throws FileNodeManagerException {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
-    FileNodeProcessorV2 fileNodeProcessor = getProcessor(deviceId);
-    return fileNodeProcessor.query(deviceId, measurementId);
+    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    return storageGroupProcessor.query(deviceId, measurementId);
   }
 
   /**
@@ -262,7 +267,7 @@ public class FileNodeManagerV2 implements IService {
    * @param fileNodeName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
-  public boolean appendFileToFileNode(String fileNodeName, TsFileResourceV2 appendFile,
+  public boolean appendFileToFileNode(String fileNodeName, TsFileResource appendFile,
       String appendFilePath) throws FileNodeManagerException {
     // TODO
     return true;
@@ -274,12 +279,19 @@ public class FileNodeManagerV2 implements IService {
    * @param fileNodeName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
-  public List<String> getOverlapFilesFromFileNode(String fileNodeName, TsFileResourceV2 appendFile,
+  public List<String> getOverlapFilesFromFileNode(String fileNodeName, TsFileResource appendFile,
       String uuid) throws FileNodeManagerException {
     // TODO
     return null;
   }
 
+  public boolean isReadOnly() {
+    return readOnly;
+  }
+
+  public void setReadOnly(boolean readOnly) {
+    this.readOnly = readOnly;
+  }
 
   /**
    * merge all overflowed filenode.
@@ -287,6 +299,9 @@ public class FileNodeManagerV2 implements IService {
    * @throws FileNodeManagerException FileNodeManagerException
    */
   public void mergeAll() throws FileNodeManagerException {
+    if (readOnly) {
+      throw new FileNodeManagerException("Current system mode is read only, does not support merge");
+    }
     // TODO
   }
 
@@ -321,7 +336,7 @@ public class FileNodeManagerV2 implements IService {
 
   private void deleteFileNodeBlocked(String processorName) throws IOException {
     LOGGER.info("Forced to delete the filenode processor {}", processorName);
-    FileNodeProcessorV2 processor = processorMap.get(processorName);
+    StorageGroupProcessor processor = processorMap.get(processorName);
     processor.syncCloseAndStopFileNode(() -> {
       try {
         // delete storage group data file
@@ -352,8 +367,8 @@ public class FileNodeManagerV2 implements IService {
   public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor,
       Map<String, String> props) throws FileNodeManagerException {
-    FileNodeProcessorV2 fileNodeProcessor = getProcessor(path.getFullPath());
-    fileNodeProcessor.addTimeSeries(path.getMeasurement(), dataType, encoding, compressor, props);
+    StorageGroupProcessor storageGroupProcessor = getProcessor(path.getFullPath());
+    storageGroupProcessor.addTimeSeries(path.getMeasurement(), dataType, encoding, compressor, props);
   }
 
 
@@ -373,7 +388,7 @@ public class FileNodeManagerV2 implements IService {
   public void syncCloseAllProcessor() {
     LOGGER.info("Start closing all filenode processor");
     synchronized (processorMap){
-      for(FileNodeProcessorV2 processor: processorMap.values()){
+      for(StorageGroupProcessor processor: processorMap.values()){
         processor.syncCloseFileNode();
       }
     }

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.reader.unsequence;
 
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
@@ -61,20 +61,20 @@ public class UnseqSeriesReaderByTimestampTest {
         for (int j = 1; j <= 10; j++) {
             TSRecord record = new TSRecord(j, deviceId);
             record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-            FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
-            FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
+            StorageEngine.getInstance().insert(new InsertPlan(record));
+            StorageEngine.getInstance().asyncFlushAndSealAllFiles();
         }
 
 //        for (int j = 10; j >= 1; j--) {
 //            TSRecord record = new TSRecord(j, deviceId);
 //            record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-//            FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
-//            FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
+//            StorageEngine.getInstance().insert(new InsertPlan(record));
+//            StorageEngine.getInstance().asyncFlushAndSealAllFiles();
 //        }
         TSRecord record = new TSRecord(2, deviceId);
         record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(100)));
-        FileNodeManagerV2.getInstance().insert(new InsertPlan(record));
- //       FileNodeManagerV2.getInstance().asyncFlushAndSealAllFiles();
+        StorageEngine.getInstance().insert(new InsertPlan(record));
+ //       StorageEngine.getInstance().asyncFlushAndSealAllFiles();
 
         // query
         List<Path> paths = new ArrayList<>();

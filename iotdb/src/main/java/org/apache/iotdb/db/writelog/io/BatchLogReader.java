@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * BatchedLogReader reads logs from a binary batch of log in the format of ByteBuffer. The
@@ -32,17 +34,27 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
  */
 public class BatchLogReader implements ILogReader{
 
+  private static Logger LOGGER = LoggerFactory.getLogger(BatchLogReader.class);
+
   private Iterator<PhysicalPlan> planIterator;
 
-  public BatchLogReader(ByteBuffer buffer) throws IOException {
+  private boolean fileCorrupted = false;
+
+  BatchLogReader(ByteBuffer buffer) {
     List<PhysicalPlan> logs = readLogs(buffer);
     this.planIterator = logs.iterator();
   }
 
-  private List<PhysicalPlan> readLogs(ByteBuffer buffer) throws IOException {
+  private List<PhysicalPlan> readLogs(ByteBuffer buffer) {
     List<PhysicalPlan> plans = new ArrayList<>();
     while (buffer.position() != buffer.limit()) {
-      plans.add(PhysicalPlan.Factory.create(buffer));
+      try {
+        plans.add(PhysicalPlan.Factory.create(buffer));
+      } catch (IOException e) {
+        LOGGER.error("Cannot deserialize PhysicalPlans from ByteBuffer, ignore remaining logs", e);
+        fileCorrupted = true;
+        break;
+      }
     }
     return plans;
   }
@@ -53,12 +65,16 @@ public class BatchLogReader implements ILogReader{
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  public boolean hasNext() {
     return planIterator.hasNext();
   }
 
   @Override
-  public PhysicalPlan next() throws IOException {
+  public PhysicalPlan next() {
     return planIterator.next();
+  }
+
+  public boolean isFileCorrupted() {
+    return fileCorrupted;
   }
 }

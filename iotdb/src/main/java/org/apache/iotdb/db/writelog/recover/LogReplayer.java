@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.filenodeV2.TsFileResourceV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -51,7 +51,7 @@ public class LogReplayer {
   private String insertFilePath;
   private ModificationFile modFile;
   private VersionController versionController;
-  private TsFileResourceV2 currentTsFileResource;
+  private TsFileResource currentTsFileResource;
   // fileSchema is used to get the measurement data type
   private FileSchema fileSchema;
   private IMemTable recoverMemTable;
@@ -65,7 +65,7 @@ public class LogReplayer {
   public LogReplayer(String logNodePrefix, String insertFilePath,
       ModificationFile modFile,
       VersionController versionController,
-      TsFileResourceV2 currentTsFileResource,
+      TsFileResource currentTsFileResource,
       FileSchema fileSchema, IMemTable memTable, boolean acceptDuplication) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
@@ -83,13 +83,9 @@ public class LogReplayer {
    * @throws ProcessorException
    */
   public void replayLogs() throws ProcessorException {
-    WriteLogNode logNode;
-    try {
-      logNode = MultiFileLogNodeManager.getInstance().getNode(
-          logNodePrefix + new File(insertFilePath).getName());
-    } catch (IOException e) {
-      throw new ProcessorException(e);
-    }
+    WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
+        logNodePrefix + new File(insertFilePath).getName());
+
     ILogReader logReader = logNode.getLogReader();
     try {
       while (logReader.hasNext()) {

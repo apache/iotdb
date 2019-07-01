@@ -32,7 +32,7 @@ public class SeqDataReaderTest extends ReaderTestHelper {
 
   @Test
   public void testSeqReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
+    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
     SequenceSeriesReader readerV2 = new SequenceSeriesReader(path,
         queryDataSource.getSeqResources(), null,
@@ -51,7 +51,7 @@ public class SeqDataReaderTest extends ReaderTestHelper {
 
   @Test
   public void testSeqByTimestampReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = fileNodeProcessorV2.query(deviceId, measurementId);
+    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
     SequenceSeriesReaderByTimestamp readerV2 = new SequenceSeriesReaderByTimestamp(path,
         queryDataSource.getSeqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -74,20 +74,20 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   protected void insertData() {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
-      fileNodeProcessorV2.asyncForceClose();
+      storageGroupProcessor.asyncForceClose();
     }
     for (int j = 1010; j <= 1019; j++) {
       insertOneRecord(j, j);
-      fileNodeProcessorV2.getWorkSequenceTsFileProcessor().syncFlush();
+      storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
     }
-    fileNodeProcessorV2.syncCloseFileNode();
+    storageGroupProcessor.syncCloseFileNode();
 
     for (int j = 1020; j <= 3019; j++) {
       insertOneRecord(j, j);
     }
-    fileNodeProcessorV2.syncCloseFileNode();
+    storageGroupProcessor.syncCloseFileNode();
 
-    assert fileNodeProcessorV2.getWorkSequenceTsFileProcessor() == null;
+    assert storageGroupProcessor.getWorkSequenceTsFileProcessor() == null;
 
     for (int j = 3020; j <= 3029; j++) {
       insertOneRecord(j, j);

@@ -89,6 +89,9 @@ public class WalChecker {
         while (logReader.hasNext()) {
           logReader.next();
         }
+        if (logReader.isFileCorrupted()) {
+          failedFiles.add(walFile);
+        }
       } catch (IOException e) {
         failedFiles.add(walFile);
         LOGGER.error("{} fails the check because", walFile.getAbsoluteFile(), e);

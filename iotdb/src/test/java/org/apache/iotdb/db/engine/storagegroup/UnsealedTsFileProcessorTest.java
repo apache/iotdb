@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenodeV2;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
@@ -37,7 +37,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileSchemaUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -48,9 +47,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class UnsealedTsFileProcessorV2Test {
+public class UnsealedTsFileProcessorTest {
 
-  private UnsealedTsFileProcessorV2 processor;
+  private UnsealedTsFileProcessor processor;
   private String storageGroup = "storage_group1";
   private String filePath = "data/testUnsealedTsFileProcessor.tsfile";
   private String deviceId = "root.vehicle.d0";
@@ -73,7 +72,7 @@ public class UnsealedTsFileProcessorV2Test {
   @Test
   public void testWriteAndFlush()
       throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
-    processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
+    processor = new UnsealedTsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
         ()-> true);
 
@@ -120,7 +119,7 @@ public class UnsealedTsFileProcessorV2Test {
   @Test
   public void testMultiFlush()
       throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
-    processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
+    processor = new UnsealedTsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
         ()->true);
 
@@ -155,10 +154,10 @@ public class UnsealedTsFileProcessorV2Test {
   @Test
   public void testWriteAndClose()
       throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
-    processor = new UnsealedTsFileProcessorV2(storageGroup, new File(filePath),
+    processor = new UnsealedTsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE,
         unsealedTsFileProcessorV2 -> {
-          TsFileResourceV2 resource = unsealedTsFileProcessorV2.getTsFileResource();
+          TsFileResource resource = unsealedTsFileProcessorV2.getTsFileResource();
           synchronized (resource) {
             for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
               String deviceId = startTime.getKey();
