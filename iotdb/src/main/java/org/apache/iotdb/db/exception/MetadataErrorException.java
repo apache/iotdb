@@ -16,36 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf.directories.strategy;
+package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+/**
+ * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
+ * DataTypeConvertor,this exception will be threw.
+ *
+ * @author kangrong
+ */
+public class MetadataErrorException extends Exception {
 
-public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
+  private static final long serialVersionUID = 3415275599091623570L;
 
-  @Override
-  public int nextFolderIndex() throws DiskSpaceInsufficientException {
-    return getMaxSpaceFolder();
+  public MetadataErrorException(String msg) {
+    super(msg);
   }
 
-  /**
-   * get max space folder.
-   */
-  public int getMaxSpaceFolder() throws DiskSpaceInsufficientException {
-    int maxIndex = -1;
-    long maxSpace = 0;
+  public MetadataErrorException(String message, Throwable cause) {
+    super(message, cause);
+  }
 
-    for (int i = 0; i < folders.size(); i++) {
-      long space = getUsableSpace(folders.get(i));
-      if (space > maxSpace) {
-        maxSpace = space;
-        maxIndex = i;
-      }
-    }
-
-    if (maxIndex == -1) {
-      throw new DiskSpaceInsufficientException(folders);
-    }
-
-    return maxIndex;
+  public MetadataErrorException(Throwable cause) {
+    super(cause);
   }
 }

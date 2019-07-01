@@ -41,6 +41,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
@@ -263,22 +264,27 @@ public class FileNodeProcessorV2 {
 
   private boolean insertUnsealedDataFile(InsertPlan insertPlan, boolean sequence)
       throws IOException {
-    UnsealedTsFileProcessorV2 unsealedTsFileProcessor;
+    UnsealedTsFileProcessorV2 unsealedTsFileProcessor = null;
     boolean result;
 
     // create a new BufferWriteProcessor
-    if (sequence) {
-      if (workSequenceTsFileProcessor == null) {
-        workSequenceTsFileProcessor = createTsFileProcessor(true);
-        sequenceFileList.add(workSequenceTsFileProcessor.getTsFileResource());
+    try {
+      if (sequence) {
+        if (workSequenceTsFileProcessor == null) {
+          workSequenceTsFileProcessor = createTsFileProcessor(true);
+          sequenceFileList.add(workSequenceTsFileProcessor.getTsFileResource());
+        }
+        unsealedTsFileProcessor = workSequenceTsFileProcessor;
+      } else {
+        if (workUnSequenceTsFileProcessor == null) {
+          workUnSequenceTsFileProcessor = createTsFileProcessor(false);
+          unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
+        }
+        unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
       }
-      unsealedTsFileProcessor = workSequenceTsFileProcessor;
-    } else {
-      if (workUnSequenceTsFileProcessor == null) {
-        workUnSequenceTsFileProcessor = createTsFileProcessor(false);
-        unSequenceFileList.add(workUnSequenceTsFileProcessor.getTsFileResource());
-      }
-      unsealedTsFileProcessor = workUnSequenceTsFileProcessor;
+    } catch (DiskSpaceInsufficientException e) {
+      //TODO handle disk full exception
+      LOGGER.error("dis space is insufficient", e);
     }
 
     // insert BufferWrite
@@ -305,7 +311,8 @@ public class FileNodeProcessorV2 {
     return result;
   }
 
-  private UnsealedTsFileProcessorV2 createTsFileProcessor(boolean sequence) throws IOException {
+  private UnsealedTsFileProcessorV2 createTsFileProcessor(boolean sequence)
+      throws IOException, DiskSpaceInsufficientException {
     String baseDir;
     long start = System.currentTimeMillis();
     if (sequence) {

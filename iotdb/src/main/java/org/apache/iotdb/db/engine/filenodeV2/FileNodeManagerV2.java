@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -102,7 +103,7 @@ public class FileNodeManagerV2 implements IService {
         LOGGER.info("FileNodeProcessor {} is recovered successfully", storageGroup);
         processorMap.put(storageGroup, processor);
       }
-    } catch (PathErrorException | ProcessorException e) {
+    } catch (ProcessorException | MetadataErrorException e) {
       e.printStackTrace();
     }
   }

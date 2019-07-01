@@ -118,7 +118,6 @@ public class WalCheckerTest {
         if (i > 2) {
           binaryPlans.put("not a wal".getBytes());
         }
-        binaryPlans.flip();
         logWriter.write(binaryPlans);
         logWriter.force();
 

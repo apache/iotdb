@@ -24,6 +24,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -50,7 +51,8 @@ public class PhysicalPlanLogTransferTest {
 
   @Test
   public void operatorToLog()
-      throws IOException, ArgsErrorException, ProcessorException, QueryProcessorException {
+      throws IOException, ArgsErrorException, ProcessorException, QueryProcessorException,
+      MetadataErrorException {
     /** Insert Plan test **/
     byte[] insertPlanBytesTest = PhysicalPlanLogTransfer.planToLog(insertPlan);
     Codec<InsertPlan> insertPlanCodec = CodecInstances.multiInsertPlanCodec;
@@ -103,7 +105,8 @@ public class PhysicalPlanLogTransferTest {
 
   @Test
   public void logToOperator()
-      throws IOException, ArgsErrorException, ProcessorException, QueryProcessorException, AuthException {
+      throws IOException, ArgsErrorException, ProcessorException, QueryProcessorException,
+      AuthException, MetadataErrorException {
 
     /** Insert Plan test **/
     byte[] insertPlanBytesTest = PhysicalPlanLogTransfer.planToLog(insertPlan);
@@ -132,7 +135,8 @@ public class PhysicalPlanLogTransferTest {
     assertEquals(metadataPlanTest, metadataPlan);
 
     /** Author Plan test **/
-    String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.device.sensor";
+    String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' "
+        + "on root.vehicle.device.sensor";
     AuthorPlan authorPlan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
     byte[] authorPlanBytesTest = PhysicalPlanLogTransfer.planToLog(authorPlan);
     AuthorPlan authorPlanTest = (AuthorPlan) PhysicalPlanLogTransfer

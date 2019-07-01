@@ -86,6 +86,7 @@ public class TsFileRecoverPerformer {
 
     if (!restorableTsFileIOWriter.hasCrashed()) {
       try {
+        // recover two maps of time
         tsFileResource.deSerialize();
         return;
       } catch (IOException e) {

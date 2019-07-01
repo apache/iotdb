@@ -85,7 +85,7 @@ public class IoTDBSeriesReaderIT {
     daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(5000);
+    Thread.sleep(1000);
     insertData();
     connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");

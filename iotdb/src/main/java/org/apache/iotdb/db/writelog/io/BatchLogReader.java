@@ -34,12 +34,12 @@ public class BatchLogReader implements ILogReader{
 
   private Iterator<PhysicalPlan> planIterator;
 
-  public BatchLogReader(ByteBuffer buffer) {
+  public BatchLogReader(ByteBuffer buffer) throws IOException {
     List<PhysicalPlan> logs = readLogs(buffer);
     this.planIterator = logs.iterator();
   }
 
-  private List<PhysicalPlan> readLogs(ByteBuffer buffer) {
+  private List<PhysicalPlan> readLogs(ByteBuffer buffer) throws IOException {
     List<PhysicalPlan> plans = new ArrayList<>();
     while (buffer.position() != buffer.limit()) {
       plans.add(PhysicalPlan.Factory.create(buffer));

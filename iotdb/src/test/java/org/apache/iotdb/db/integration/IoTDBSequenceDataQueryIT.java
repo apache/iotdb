@@ -84,7 +84,6 @@ public class IoTDBSequenceDataQueryIT {
     daemon.active();
     EnvironmentUtils.envSetUp();
 
-//    Thread.sleep(5000);
     insertData();
   }
 

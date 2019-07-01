@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -123,7 +124,7 @@ public abstract class QueryProcessExecutor implements IQueryProcessExecutor {
         result &= delete(new Path(path), deletePlan.getDeleteTime());
       }
       return result;
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException e) {
       throw new ProcessorException(e);
     }
   }

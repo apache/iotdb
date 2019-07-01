@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -78,7 +79,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testMetadata()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String metadata = "create timeseries root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     MetadataPlan plan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadata);
@@ -87,7 +88,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testAuthor() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  public void testAuthor()
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
@@ -100,7 +102,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testProperty()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sql = "add label label1021 to property propropro";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(sql);
@@ -114,7 +116,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testAggregation()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr = "select sum(d1.s1) " + "from root.vehicle "
         + "where time <= 51 or !(time != 100 and time < 460)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -127,7 +129,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testGroupBy1()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
             + "group by(10m, 44, [1,3], [4,5])";
@@ -141,7 +143,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testGroupBy2()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr =
         "select count(s1) " + "from root.vehicle.d1 " + "where s1 < 20 and time <= now() "
             + "group by(111ms, [123,2017-6-2T12:00:12+07:00], [55555, now()])";
@@ -154,7 +156,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testFill1() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  public void testFill1()
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
@@ -171,7 +174,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testFill2() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  public void testFill2()
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear], boolean[previous])";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
@@ -206,7 +210,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery1() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  public void testQuery1()
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -215,7 +220,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery2() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  public void testQuery2()
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -226,7 +232,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery3() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  public void testQuery3()
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 or s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -238,7 +245,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery4() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  public void testQuery4()
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 and s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -254,7 +262,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery5() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  public void testQuery5()
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20 or s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();
@@ -265,7 +274,8 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testQuery6() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+  public void testQuery6()
+      throws QueryProcessorException, ArgsErrorException, ProcessorException, MetadataErrorException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 20 or time < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((QueryPlan) plan).getExpression();

@@ -29,7 +29,7 @@ import java.util.List;
 import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -66,8 +66,8 @@ public class DeletionQueryTest {
   }
 
   @Before
-  public void setup() throws MetadataArgsErrorException,
-      PathErrorException, IOException, FileNodeManagerException, StartupException, ProcessorException {
+  public void setup() throws MetadataErrorException,
+      PathErrorException, IOException, FileNodeManagerException, StartupException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageLevelToMTree(processorName);

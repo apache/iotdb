@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.db.exception;
 
-/**
- * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
- * DataTypeConvertor,this exception will be threw.
- *
- * @author kangrong
- */
-public class MetadataArgsErrorException extends ArgsErrorException {
+import java.util.List;
 
-  private static final long serialVersionUID = 3415275599091623570L;
+public class DiskSpaceInsufficientException extends FileNodeManagerException {
 
-  public MetadataArgsErrorException(String msg) {
-    super(msg);
+  private static final long serialVersionUID = 9001643829368311032L;
+
+  public DiskSpaceInsufficientException(String message) {
+    super(message);
   }
 
+  public DiskSpaceInsufficientException(List<String> folders) {
+    super(String.format("Can't get next folder from %s, because they are all full.", folders));
+  }
 }

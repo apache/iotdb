@@ -25,7 +25,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -36,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.exception.metadata.MetadataArgsErrorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -132,7 +133,7 @@ public class PerformanceTest {
 
     try {
       MManager.getInstance().setStorageLevelToMTree("root.logTestDevice");
-    } catch (PathErrorException ignored) {
+    } catch (MetadataErrorException ignored) {
     }
     MManager.getInstance().addPathToMTree("root.logTestDevice.s1",
         TSDataType.DOUBLE.name(),

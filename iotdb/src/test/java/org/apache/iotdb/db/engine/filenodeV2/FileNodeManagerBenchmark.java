@@ -23,7 +23,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.filenodeV2.FileNodeManagerV2;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -62,7 +62,7 @@ public class FileNodeManagerBenchmark {
     }
   }
 
-  private static void prepare() throws MetadataArgsErrorException, PathErrorException, IOException {
+  private static void prepare() throws MetadataErrorException, PathErrorException, IOException {
     MManager manager = MManager.getInstance();
     manager.setStorageLevelToMTree(prefix);
     for (String device : devices) {
@@ -78,7 +78,7 @@ public class FileNodeManagerBenchmark {
   }
 
   public static void main(String[] args)
-      throws InterruptedException, IOException, MetadataArgsErrorException,
+      throws InterruptedException, IOException, MetadataErrorException,
       PathErrorException, FileNodeManagerException {
     tearDown();
     prepare();

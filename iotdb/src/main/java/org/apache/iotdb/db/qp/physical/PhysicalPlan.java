@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -129,7 +130,7 @@ public abstract class PhysicalPlan {
       // hidden initializer
     }
 
-    public static PhysicalPlan create(ByteBuffer buffer) {
+    public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
       byte type = buffer.get();
       PhysicalPlan plan;
       switch (type) {
@@ -142,7 +143,7 @@ public abstract class PhysicalPlan {
           plan.deserializeFrom(buffer);
           break;
         default:
-          throw new UnsupportedOperationException("unrecognized log type " + type);
+          throw new IOException("unrecognized log type " + type);
       }
       return plan;
     }

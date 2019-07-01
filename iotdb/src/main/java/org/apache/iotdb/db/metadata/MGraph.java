@@ -26,7 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -53,9 +53,9 @@ public class MGraph implements Serializable {
   /**
    * Add a {@code PTree} to current {@code MGraph}.
    */
-  public void addAPTree(String ptreeRootName) throws MetadataArgsErrorException {
+  public void addAPTree(String ptreeRootName) throws MetadataErrorException {
     if (MetadataConstant.ROOT.equalsIgnoreCase(ptreeRootName)) {
-      throw new MetadataArgsErrorException("Property Tree's root name should not be 'root'");
+      throw new MetadataErrorException("Property Tree's root name should not be 'root'");
     }
     PTree ptree = new PTree(ptreeRootName, mtree);
     ptreeMap.put(ptreeRootName, ptree);
@@ -90,7 +90,7 @@ public class MGraph implements Serializable {
   /**
    * Add a seriesPath to {@code PTree}.
    */
-  public void addPathToPTree(String path) throws PathErrorException, MetadataArgsErrorException {
+  public void addPathToPTree(String path) throws PathErrorException {
     String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null.");

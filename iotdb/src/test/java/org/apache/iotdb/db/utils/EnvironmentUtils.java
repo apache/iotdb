@@ -153,7 +153,6 @@ public class EnvironmentUtils {
   }
 
   public static void envSetUp() throws StartupException, IOException {
-
     createAllDir();
     // disable the memory control
     config.setEnableMemMonitor(false);

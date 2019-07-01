@@ -50,7 +50,7 @@ public class ChunkBufferPool {
       //we use the memtable number * maximal series number in one StroageGroup * 2 as the capacity
       int capacity  =
           2 * MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() * IoTDBDescriptor
-              .getInstance().getConfig().getMemtableNumber();
+              .getInstance().getConfig().getMemtableNumber() + 100000;
       if (availableChunkBuffer.isEmpty() && size < capacity) {
         size++;
         return new ChunkBuffer(schema);
