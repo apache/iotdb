@@ -28,7 +28,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
@@ -65,7 +64,7 @@ public class WriteLogNodeTest {
 
     WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
 
-    InsertPlan bwInsertPlan = new InsertPlan(1, identifier, 100,
+    InsertPlan bwInsertPlan = new InsertPlan(identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
@@ -94,7 +93,7 @@ public class WriteLogNodeTest {
 
     WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
 
-    InsertPlan bwInsertPlan = new InsertPlan(1, identifier, 100,
+    InsertPlan bwInsertPlan = new InsertPlan(identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
@@ -127,7 +126,7 @@ public class WriteLogNodeTest {
 
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
-    InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
+    InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
@@ -152,7 +151,7 @@ public class WriteLogNodeTest {
 
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
-    InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
+    InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
@@ -176,7 +175,7 @@ public class WriteLogNodeTest {
     // this test uses a dummy insert log node to insert an over-sized log and assert exception caught
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
 
-    InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice.oversize", 100,
+    InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice.oversize", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", new String(new char[65 * 1024 * 1024]), "false"});
 

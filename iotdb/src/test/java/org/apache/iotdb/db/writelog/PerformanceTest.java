@@ -85,7 +85,7 @@ public class PerformanceTest {
 
         long time = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
-          InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
+          InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
               new String[]{"s1", "s2", "s3", "s4"},
               new String[]{"1.0", "15", "str", "false"});
           UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
@@ -115,8 +115,7 @@ public class PerformanceTest {
 
   @Test
   public void recoverTest()
-      throws IOException, RecoverException, FileNodeManagerException, PathErrorException,
-      MetadataArgsErrorException {
+      throws IOException, PathErrorException{
     // this test insert 1000000 * 3 logs , recover from them and report elapsed time
     if (skip) {
       return;
@@ -145,7 +144,7 @@ public class PerformanceTest {
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     for (int i = 0; i < 1000000; i++) {
-      InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
+      InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice", 100,
       new String[]{"s1", "s2", "s3", "s4"}, new String[]{"1.0", "15", "str", "false"});
       UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
           new Path("root.logTestDevice.s1"));

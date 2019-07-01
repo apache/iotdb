@@ -84,7 +84,7 @@ public class WriteLogNodeManagerTest {
     WriteLogNode logNode = manager
         .getNode("root.managerTest");
 
-    InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
+    InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));

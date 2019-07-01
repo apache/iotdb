@@ -20,12 +20,10 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.transfer.SystemLogOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DeletePlan extends PhysicalPlan {
@@ -96,7 +94,7 @@ public class DeletePlan extends PhysicalPlan {
 
   @Override
   public void serializeTo(ByteBuffer buffer) {
-    int type = SystemLogOperator.DELETE;
+    int type = PhysicalPlanType.DELETE.ordinal();
     buffer.put((byte) type);
     buffer.putLong(deleteTime);
     putString(buffer, paths.get(0).getFullPath());

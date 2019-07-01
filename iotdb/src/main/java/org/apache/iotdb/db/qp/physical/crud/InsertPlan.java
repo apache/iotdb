@@ -21,13 +21,11 @@ package org.apache.iotdb.db.qp.physical.crud;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.transfer.SystemLogOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -43,10 +41,6 @@ public class InsertPlan extends PhysicalPlan {
   private TSDataType[] dataTypes;
   private String[] values;
   private long time;
-
-  // insertType
-  // 1 : BufferWrite Insert 2 : Overflow Insert
-  private int insertType;
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
@@ -83,16 +77,6 @@ public class InsertPlan extends PhysicalPlan {
     this.values = insertValues;
   }
 
-  public InsertPlan(int insertType, String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) {
-    super(false, Operator.OperatorType.INSERT);
-    this.insertType = insertType;
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = measurementList;
-    this.values = insertValues;
-  }
-
   public long getTime() {
     return time;
   }
@@ -117,14 +101,6 @@ public class InsertPlan extends PhysicalPlan {
       ret.add(new Path(deviceId, m));
     }
     return ret;
-  }
-
-  public int getInsertType() {
-    return insertType;
-  }
-
-  public void setInsertType(int insertType) {
-    this.insertType = insertType;
   }
 
   public String getDeviceId() {
@@ -168,9 +144,8 @@ public class InsertPlan extends PhysicalPlan {
   @Override
   public void serializeTo(ByteBuffer buffer) {
     long startTime = System.currentTimeMillis();
-    int type = SystemLogOperator.INSERT;
+    int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
-    buffer.put((byte) insertType);
     buffer.putLong(time);
 
     putString(buffer, deviceId);
@@ -192,7 +167,6 @@ public class InsertPlan extends PhysicalPlan {
 
   @Override
   public void deserializeFrom(ByteBuffer buffer) {
-    this.insertType = buffer.get();
     this.time = buffer.getLong();
     this.deviceId = readString(buffer);
 

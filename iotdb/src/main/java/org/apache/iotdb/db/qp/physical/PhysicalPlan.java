@@ -19,13 +19,11 @@
 package org.apache.iotdb.db.qp.physical;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.transfer.SystemLogOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -131,14 +129,15 @@ public abstract class PhysicalPlan {
     }
 
     public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
-      byte type = buffer.get();
+      int typeNum = buffer.get();
+      PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       PhysicalPlan plan;
       switch (type) {
-        case SystemLogOperator.INSERT:
+        case INSERT:
           plan = new InsertPlan();
           plan.deserializeFrom(buffer);
           break;
-        case SystemLogOperator.DELETE:
+        case DELETE:
           plan = new DeletePlan();
           plan.deserializeFrom(buffer);
           break;
@@ -148,4 +147,10 @@ public abstract class PhysicalPlan {
       return plan;
     }
   }
+
+  public enum PhysicalPlanType {
+    INSERT, DELETE
+  }
+
+
 }
