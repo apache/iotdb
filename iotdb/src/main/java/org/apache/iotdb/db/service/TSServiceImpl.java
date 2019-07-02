@@ -90,6 +90,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_Status;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -303,18 +304,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                   String.format("Unsupported fetch metadata operation %s", req.getType()));
           break;
       }
-    } catch (PathErrorException | MetadataErrorException e) {
+    } catch (PathErrorException | MetadataErrorException | OutOfMemoryError e) {
+      logger
+          .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
+              e);
       Thread.currentThread().interrupt();
       status = getErrorStatus(
           String.format("Failed to fetch metadata because: %s", e));
-      resp.setStatus(status);
-      return resp;
-    } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-      logger
-          .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
-              outOfMemoryError);
-      status = getErrorStatus(
-          String.format("Failed to fetch metadata because: %s", outOfMemoryError));
       resp.setStatus(status);
       return resp;
     }
@@ -342,6 +338,39 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   protected TSDataType getSeriesType(String path)
       throws PathErrorException {
+    switch (path.toLowerCase()) {
+      // authorization queries
+      case "role":
+      case "user":
+      case "privilege":
+        return TSDataType.TEXT;
+      default:
+          // do nothing
+    }
+
+    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
+      // aggregation
+      int leftBracketIndex = path.indexOf('(');
+      String aggrType = path.substring(0, leftBracketIndex);
+      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
+      switch (aggrType.toLowerCase()) {
+        case StatisticConstant.MIN_TIME:
+        case StatisticConstant.MAX_TIME:
+        case StatisticConstant.COUNT:
+          return TSDataType.INT64;
+        case StatisticConstant.LAST:
+        case StatisticConstant.FIRST:
+        case StatisticConstant.MIN_VALUE:
+        case StatisticConstant.MAX_VALUE:
+          return getSeriesType(innerPath);
+        case StatisticConstant.MEAN:
+        case StatisticConstant.SUM:
+          return TSDataType.DOUBLE;
+        default:
+          throw new PathErrorException(
+              "aggregate does not support " + aggrType + " function.");
+      }
+    }
     return MManager.getInstance().getSeriesType(path);
   }
 
@@ -416,7 +445,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       List<Integer> result) throws QueryInBatchStmtException {
     try {
       PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-      physicalPlan.setProposer(username.get());
       if (physicalPlan.isQuery()) {
         throw new QueryInBatchStmtException();
       }
@@ -463,7 +491,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-      physicalPlan.setProposer(username.get());
       if (physicalPlan.isQuery()) {
         return executeQueryStatement(req);
       } else {
@@ -506,7 +533,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       String statement = req.getStatement();
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-      plan.setProposer(username.get());
 
       TSExecuteStatementResp resp;
       List<String> columns = new ArrayList<>();
@@ -691,9 +717,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       String statement = req.getStatement();
       return executeUpdateStatement(statement);
-    } catch (ProcessorException e) {
-      logger.error("meet error while executing update statement.", e);
-      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -739,13 +762,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return processor.getExecutor().processNonQuery(plan);
   }
 
-  private TSExecuteStatementResp executeUpdateStatement(String statement)
-      throws ProcessorException {
+  private TSExecuteStatementResp executeUpdateStatement(String statement) {
 
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-      physicalPlan.setProposer(username.get());
     } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
       logger.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -766,9 +787,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * Check whether current user has logined.
+   * Check whether current user has logged in.
    *
-   * @return true: If logined; false: If not logined
+   * @return true: If logged in; false: If not logged in
    */
   protected boolean checkLogin() {
     return username.get() != null;
