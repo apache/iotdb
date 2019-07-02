@@ -633,6 +633,6 @@ public class StorageGroupProcessor {
 
   @FunctionalInterface
   public interface CloseTsFileCallBack {
-    void call(TsFileProcessor caller) throws TsFileProcessorException;
+    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
 }
