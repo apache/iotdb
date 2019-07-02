@@ -213,7 +213,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * deleteDataInMemory data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
+   * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
    */
   public void delete(String deviceId, String measurementId, long timestamp)
       throws StorageEngineException {
@@ -310,7 +310,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * deleteDataInMemory all data files (both memory data and file on disk) in a storage group.
+   * delete all data files (both memory data and file on disk) in a storage group.
    * It is used when there is no timeseries (which are all deleted) in this storage group)
    */
   public void deleteAllDataFilesInOneStorageGroup(String storageGroupName) {
@@ -346,7 +346,7 @@ public class StorageEngine implements IService {
         this.deleteAllDataFilesInOneStorageGroup(storageGroup);
       }
     } catch (MetadataErrorException e) {
-      logger.error("deleteDataInMemory storage groups failed.", e);
+      logger.error("delete storage groups failed.", e);
       return false;
     }
     return true;

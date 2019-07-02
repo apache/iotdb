@@ -427,7 +427,7 @@ public class MManager {
   }
 
   /**
-   * deleteDataInMemory given paths from metadata and data.
+   * delete given paths from metadata and data.
    * @param deletePathList list of paths to be deleted
    * @return the first set contains StorageGroups that are affected by this deletion but
    * still have remaining timeseries, so these StorageGroups should be closed to make sure the data
@@ -456,7 +456,7 @@ public class MManager {
         Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(storageGroupName);
         // Thread safety: just one thread can access/modify the schemaMap
         synchronized (schemaMap) {
-          // TODO: don't deleteDataInMemory the storage group seriesPath recursively
+          // TODO: don't delete the storage group seriesPath recursively
           Path path = new Path(p);
           String measurementId = path.getMeasurement();
           if (numSchemaMap.get(measurementId) == 1) {
@@ -1155,7 +1155,7 @@ public class MManager {
 
     lock.writeLock().lock();
     File dataFile = new File(datafilePath);
-    // deleteDataInMemory old metadata data file
+    // delete old metadata data file
     if (dataFile.exists()) {
       dataFile.delete();
     }

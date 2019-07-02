@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.auth;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
@@ -51,54 +53,49 @@ public class LocalFileAuthorizerTest {
     /*
      * login
      */
-    boolean status = false;
     try {
-      status = authorizer.login("root", "root");
-      assertEquals(true, status);
+      authorizer.login("root", "root");
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     try {
-      status = authorizer.login("root", "error");
+      authorizer.login("root", "error");
     } catch (AuthException e) {
       assertEquals("The username or the password is not correct", e.getMessage());
     }
     /*
-     * create user,deleteDataInMemory user
+     * create user,delete user
      */
     User user = new User("user", "password");
     try {
-      status = authorizer.createUser(user.getName(), user.getPassword());
-      assertEquals(true, status);
+      authorizer.createUser(user.getName(), user.getPassword());
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.createUser(user.getName(), user.getPassword());
+      authorizer.createUser(user.getName(), user.getPassword());
     } catch (AuthException e) {
-      assertEquals("The user is exist", e.getMessage());
+      assertEquals("User user already exists", e.getMessage());
     }
     try {
-      status = authorizer.login(user.getName(), user.getPassword());
-      assertEquals(true, status);
+      authorizer.login(user.getName(), user.getPassword());
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.deleteUser(user.getName());
-      assertEquals(true, status);
+      authorizer.deleteUser(user.getName());
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.deleteUser(user.getName());
+      authorizer.deleteUser(user.getName());
     } catch (AuthException e) {
-      assertEquals("The user is not exist", e.getMessage());
+      assertEquals("User user does not exist", e.getMessage());
     }
 
     /*
@@ -107,8 +104,7 @@ public class LocalFileAuthorizerTest {
     String nodeName = "root.laptop.d1";
     try {
       authorizer.createUser(user.getName(), user.getPassword());
-      status = authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
-      assertEquals(true, status);
+      authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -116,7 +112,7 @@ public class LocalFileAuthorizerTest {
     try {
       authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
-      assertEquals("The permission is exist", e.getMessage());
+      assertEquals("User user already has INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
     }
     try {
       authorizer.grantPrivilegeToUser("error", nodeName, 1);
@@ -124,16 +120,15 @@ public class LocalFileAuthorizerTest {
       assertEquals("No such user error", e.getMessage());
     }
     try {
-      status = authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
-      assertEquals(true, status);
+      authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
+      authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
-      assertEquals("The permission is not exist", e.getMessage());
+      assertEquals("User user does not have INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
     }
     try {
       authorizer.deleteUser(user.getName());
@@ -146,58 +141,54 @@ public class LocalFileAuthorizerTest {
      */
     String roleName = "role";
     try {
-      status = authorizer.createRole(roleName);
-      assertEquals(true, status);
+      authorizer.createRole(roleName);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.createRole(roleName);
+      authorizer.createRole(roleName);
     } catch (AuthException e) {
-      assertEquals("The role is exist", e.getMessage());
+      assertEquals("Role role already exists", e.getMessage());
     }
 
     try {
-      status = authorizer.deleteRole(roleName);
-      assertEquals(true, status);
+      authorizer.deleteRole(roleName);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.deleteRole(roleName);
+      authorizer.deleteRole(roleName);
     } catch (AuthException e) {
-      assertEquals("The role is not exist", e.getMessage());
+      assertEquals("Role role does not exist", e.getMessage());
     }
     /*
      * role permission
      */
     try {
-      status = authorizer.createRole(roleName);
-      status = authorizer.grantPrivilegeToRole(roleName, nodeName, 1);
-      assertEquals(true, status);
+      authorizer.createRole(roleName);
+      authorizer.grantPrivilegeToRole(roleName, nodeName, 1);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
     try {
-      status = authorizer.grantPrivilegeToRole(roleName, nodeName, 1);
+      authorizer.grantPrivilegeToRole(roleName, nodeName, 1);
     } catch (AuthException e) {
-      assertEquals("The permission is exist", e.getMessage());
+      assertEquals("Role role already has INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
     }
 
     try {
-      status = authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
-      assertEquals(true, status);
+      authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
     } catch (AuthException e1) {
       fail(e1.getMessage());
     }
     try {
       authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
     } catch (AuthException e) {
-      assertEquals("The permission is not exist", e.getMessage());
+      assertEquals("Role role does not have INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
     }
 
     try {
@@ -224,8 +215,7 @@ public class LocalFileAuthorizerTest {
     try {
       authorizer.createUser(user.getName(), user.getPassword());
       authorizer.createRole(roleName);
-      status = authorizer.grantRoleToUser(roleName, user.getName());
-      assertEquals(true, status);
+      authorizer.grantRoleToUser(roleName, user.getName());
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -241,42 +231,37 @@ public class LocalFileAuthorizerTest {
     try {
       Set<Integer> permisssions = authorizer.getPrivileges(user.getName(), nodeName);
       assertEquals(3, permisssions.size());
-      assertEquals(true, permisssions.contains(1));
-      assertEquals(true, permisssions.contains(2));
-      assertEquals(true, permisssions.contains(3));
-      assertEquals(false, permisssions.contains(4));
+      assertTrue(permisssions.contains(1));
+      assertTrue(permisssions.contains(2));
+      assertTrue(permisssions.contains(3));
+      assertFalse(permisssions.contains(4));
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.revokeRoleFromUser(roleName, user.getName());
-      assertEquals(true, status);
+      authorizer.revokeRoleFromUser(roleName, user.getName());
       Set<Integer> permisssions = authorizer.getPrivileges(user.getName(), nodeName);
       assertEquals(1, permisssions.size());
-      assertEquals(true, permisssions.contains(1));
-      assertEquals(false, permisssions.contains(2));
+      assertTrue(permisssions.contains(1));
+      assertFalse(permisssions.contains(2));
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.checkUserPrivileges(user.getName(), nodeName, 1);
+      authorizer.checkUserPrivileges(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       fail(e.getMessage());
     }
-    assertEquals(true, status);
     try {
-      status = authorizer.checkUserPrivileges(user.getName(), nodeName, 2);
+      authorizer.checkUserPrivileges(user.getName(), nodeName, 2);
     } catch (AuthException e) {
       fail(e.getMessage());
     }
-    assertEquals(false, status);
     try {
-      status = authorizer.updateUserPassword(user.getName(), "newPassword");
-      assertEquals(true, status);
-      status = authorizer.login(user.getName(), "newPassword");
-      assertEquals(true, status);
+      authorizer.updateUserPassword(user.getName(), "newPassword");
+      authorizer.login(user.getName(), "newPassword");
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());

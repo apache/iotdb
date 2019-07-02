@@ -138,7 +138,7 @@ public class QPUpdateTest {
   private void testDeletePaths()
       throws QueryProcessorException, ProcessorException, ArgsErrorException, IOException,
       StorageEngineException, QueryFilterOptimizationException, MetadataErrorException {
-    String sqlStr = "deleteDataInMemory from root.qp_update_test.device_1 where time < 15";
+    String sqlStr = "delete from root.qp_update_test.device_1 where time < 15";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
     boolean upRet = processor.getExecutor().processNonQuery(plan1);
 
@@ -162,7 +162,7 @@ public class QPUpdateTest {
   private void testDelete()
       throws QueryProcessorException, ProcessorException, ArgsErrorException, IOException,
       StorageEngineException, QueryFilterOptimizationException, MetadataErrorException {
-    String sqlStr = "deleteDataInMemory from root.qp_update_test.device_1.sensor_1 where time < 15";
+    String sqlStr = "delete from root.qp_update_test.device_1.sensor_1 where time < 15";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
     boolean upRet = processor.getExecutor().processNonQuery(plan1);
 

@@ -82,30 +82,30 @@ public class EnvironmentUtils {
     // close metadata
     MManager.getInstance().clear();
     MManager.getInstance().flushObjectToFile();
-    // deleteDataInMemory all directory
+    // delete all directory
     cleanAllDir();
     StorageEngine.getInstance().setReadOnly(false);
     StorageEngine.getInstance().reset();
   }
 
   private static void cleanAllDir() throws IOException {
-    // deleteDataInMemory sequential files
+    // delete sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {
       cleanDir(path);
     }
-    // deleteDataInMemory unsequence files
+    // delete unsequence files
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       cleanDir(path);
     }
-    // deleteDataInMemory system info
+    // delete system info
     cleanDir(config.getSystemInfoDir());
-    // deleteDataInMemory metadata
+    // delete metadata
     cleanDir(config.getMetadataDir());
-    // deleteDataInMemory wal
+    // delete wal
     cleanDir(config.getWalFolder());
-    // deleteDataInMemory index
+    // delete index
     cleanDir(config.getIndexFileDir());
-    // deleteDataInMemory data
+    // delete data
     cleanDir(config.getDataDir());
   }
 

@@ -449,7 +449,7 @@ public class StorageGroupProcessor {
    *
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the deleteDataInMemory range is (0, timestamp].
+   * @param timestamp the delete range is (0, timestamp].
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
@@ -460,7 +460,7 @@ public class StorageGroupProcessor {
 
     try {
       Long lastUpdateTime = latestTimeForEachDevice.get(deviceId);
-      // no tsfile data, the deleteDataInMemory operation is invalid
+      // no tsfile data, the delete operation is invalid
       if (lastUpdateTime == null) {
         logger.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
         return;
@@ -514,7 +514,7 @@ public class StorageGroupProcessor {
       // write deletion into modification file
       tsFileResource.getModFile().write(deletion);
 
-      // deleteDataInMemory data in memory of unsealed file
+      // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
         TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
         tsfileProcessor.deleteDataInMemory(deletion);

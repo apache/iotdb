@@ -177,7 +177,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
     }
     if ((userProfile.exists() && !userProfile.delete()) || (backFile.exists() && !backFile
         .delete())) {
-      throw new IOException(String.format("Cannot deleteDataInMemory user file of %s", username));
+      throw new IOException(String.format("Cannot delete user file of %s", username));
     }
     return true;
   }

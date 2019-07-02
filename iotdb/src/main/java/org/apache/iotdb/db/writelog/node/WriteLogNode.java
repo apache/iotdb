@@ -73,7 +73,7 @@ public interface WriteLogNode {
   String getLogDirectory();
 
   /**
-   * Abandon all logs in this node and deleteDataInMemory the log directory. Calling insert() after calling
+   * Abandon all logs in this node and delete the log directory. Calling insert() after calling
    * this method is undefined.
    */
   void delete() throws IOException;
