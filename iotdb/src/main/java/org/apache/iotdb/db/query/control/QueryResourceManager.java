@@ -155,21 +155,8 @@ public class QueryResourceManager {
     }
   }
 
+
   public QueryDataSource getQueryDataSource(Path selectedPath,
-      QueryContext context)
-      throws StorageEngineException {
-
-    SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
-    QueryDataSource queryDataSource = StorageEngine.getInstance()
-        .query(singleSeriesExpression, context);
-
-    // add used files to current thread request cached map
-    filePathsManager.addUsedFilesForGivenJob(context.getJobId(), queryDataSource);
-
-    return queryDataSource;
-  }
-
-  public QueryDataSource getQueryDataSourceV2(Path selectedPath,
       QueryContext context) throws StorageEngineException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);

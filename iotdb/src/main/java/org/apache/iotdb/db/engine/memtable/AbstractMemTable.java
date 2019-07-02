@@ -75,7 +75,8 @@ public abstract class AbstractMemTable implements IMemTable {
     if (!memSeries.containsKey(measurement)) {
       memSeries.put(measurement, genMemSeries(dataType));
     }
-    return memSeries.get(measurement);
+    IWritableMemChunk ret = memSeries.get(measurement);
+    return ret;
   }
 
   protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
@@ -143,7 +144,7 @@ public abstract class AbstractMemTable implements IMemTable {
     } else {
       long undeletedTime = findUndeletedTime(deviceId, measurement);
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      IWritableMemChunk chunkCopy = new WritableMemChunkV2(dataType, memChunk.getTVList().clone());
+      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType, memChunk.getTVList().clone());
       chunkCopy.setTimeOffset(undeletedTime);
       sorter = chunkCopy;
     }

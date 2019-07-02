@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
  */
 public class EnvironmentUtils {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
@@ -69,11 +69,11 @@ public class EnvironmentUtils {
     // tsFileConfig.duplicateIncompletedPage = false;
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
-      LOGGER.error("Can't close the storage group manager in EnvironmentUtils");
+      logger.error("Can't close the storage group manager in EnvironmentUtils");
       Assert.fail();
     }
     StatMonitor.getInstance().close();
-    StorageEngine.getInstance().resetFileNodeManager();
+    StorageEngine.getInstance().reset();
     // clean wal
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
@@ -84,7 +84,8 @@ public class EnvironmentUtils {
     MManager.getInstance().flushObjectToFile();
     // delete all directory
     cleanAllDir();
-    // StorageEngine.getInstance().clear();
+    StorageEngine.getInstance().setReadOnly(false);
+    StorageEngine.getInstance().reset();
   }
 
   private static void cleanAllDir() throws IOException {
@@ -156,7 +157,7 @@ public class EnvironmentUtils {
     } catch (AuthException e) {
       throw new StartupException(e.getMessage());
     }
-    StorageEngine.getInstance().resetFileNodeManager();
+    StorageEngine.getInstance().reset();
     MultiFileLogNodeManager.getInstance().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);

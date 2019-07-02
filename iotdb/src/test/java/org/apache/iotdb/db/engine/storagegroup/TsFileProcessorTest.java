@@ -156,8 +156,8 @@ public class TsFileProcessorTest {
       throws WriteProcessException, IOException, TsFileProcessorException {
     processor = new TsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE,
-        unsealedTsFileProcessorV2 -> {
-          TsFileResource resource = unsealedTsFileProcessorV2.getTsFileResource();
+        unsealedTsFileProcessor -> {
+          TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
           synchronized (resource) {
             for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
               String deviceId = startTime.getKey();

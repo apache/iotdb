@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 public class FlushManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(FlushManager.class);
 
   private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue = new ConcurrentLinkedDeque<>();
 
@@ -49,7 +49,7 @@ public class FlushManager {
   void registerUnsealedTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
       if (!tsFileProcessor.isManagedByFlushManager() && tsFileProcessor.getFlushingMemTableSize() > 0) {
-        LOGGER.info("storage group {} begin to submit a flush thread, flushing memtable size: {}",
+        logger.info("storage group {} begin to submit a flush thread, flushing memtable size: {}",
             tsFileProcessor.getStorageGroupName(), tsFileProcessor.getFlushingMemTableSize());
         tsFileProcessorQueue.add(tsFileProcessor);
         tsFileProcessor.setManagedByFlushManager(true);

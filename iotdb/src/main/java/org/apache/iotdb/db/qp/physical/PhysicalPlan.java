@@ -130,6 +130,9 @@ public abstract class PhysicalPlan {
 
     public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
       int typeNum = buffer.get();
+      if (typeNum >= PhysicalPlanType.values().length) {
+        throw new IOException("unrecognized log type " + typeNum);
+      }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       PhysicalPlan plan;
       switch (type) {

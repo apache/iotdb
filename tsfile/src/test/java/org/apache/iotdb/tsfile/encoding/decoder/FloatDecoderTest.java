@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 
 public class FloatDecoderTest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FloatDecoderTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(FloatDecoderTest.class);
   private final double delta = 0.0000001;
   private final int floatMaxPointValue = 10000;
   private final int floatMaxPointNumber = 4;
@@ -136,8 +136,8 @@ public class FloatDecoderTest {
     float value2_ = decoder2.readFloat(buffer);
     assertEquals(value, value1_, delta);
     assertEquals(value + 2, value2_, delta);
-    LOGGER.debug("{} // {}", value, value1_);
-    LOGGER.debug("{} // {}", value + 2, value2_);
+    logger.debug("{} // {}", value, value1_);
+    logger.debug("{} // {}", value + 2, value2_);
   }
 
   private void testFloatLength(TSEncoding encoding, List<Float> valueList, int maxPointValue,
@@ -159,7 +159,7 @@ public class FloatDecoderTest {
       for (float value : valueList) {
         float value_ = decoder.readFloat(buffer);
         if (isDebug) {
-          LOGGER.debug("{} // {}", value_, value);
+          logger.debug("{} // {}", value_, value);
         }
         assertEquals(value, value_, delta);
       }
@@ -185,7 +185,7 @@ public class FloatDecoderTest {
       for (double value : valueList) {
         double value_ = decoder.readDouble(buffer);
         if (isDebug) {
-          LOGGER.debug("{} // {}", value_, value);
+          logger.debug("{} // {}", value_, value);
         }
         assertEquals(value, value_, delta);
       }
@@ -202,7 +202,7 @@ public class FloatDecoderTest {
   // }
   // encoder.flush(baos);
   // }
-  // LOGGER.debug("Repeated {} encoding done ", repeatCount);
+  // logger.debug("Repeated {} encoding done ", repeatCount);
   // ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
   //
   // for (int i = 0; i < repeatCount; i++) {
@@ -210,11 +210,11 @@ public class FloatDecoderTest {
   // for (double value : valueList) {
   // double value_ = decoder.readBigDecimal(bais).doubleValue();
   // if (isDebug) {
-  // LOGGER.debug("{} // {}", value_, value);
+  // logger.debug("{} // {}", value_, value);
   // }
   // assertEquals(value, value_, delta);
   // }
-  // LOGGER.debug("Repeated {} turn ", repeatCount, i);
+  // logger.debug("Repeated {} turn ", repeatCount, i);
   // }
   // }
 }

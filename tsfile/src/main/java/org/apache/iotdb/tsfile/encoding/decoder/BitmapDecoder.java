@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 @Deprecated
 public class BitmapDecoder extends Decoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BitmapDecoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(BitmapDecoder.class);
 
   /**
    * how many bytes for all encoded data in input stream.
@@ -77,7 +77,7 @@ public class BitmapDecoder extends Decoder {
   public BitmapDecoder() {
     super(TSEncoding.BITMAP);
     this.reset();
-    LOGGER.debug("tsfile-encoding BitmapDecoder: init bitmap decoder");
+    logger.debug("tsfile-encoding BitmapDecoder: init bitmap decoder");
   }
 
   @Override
@@ -88,7 +88,7 @@ public class BitmapDecoder extends Decoder {
         getLengthAndNumber(buffer);
         readNext();
       } catch (IOException e) {
-        LOGGER.error(
+        logger.error(
             "tsfile-encoding BitmapDecoder: error occurs when reading next number. lenght {}, "
                 + "number {}, current number {}, result buffer {}",
             length, number, currentCount, this.buffer, e);
@@ -172,7 +172,7 @@ public class BitmapDecoder extends Decoder {
       }
 
       resultList.add(new Pair<>(this.number, tmp));
-      LOGGER.debug("tsfile-encoding BitmapDecoder: number {} in current page, byte length {}",
+      logger.debug("tsfile-encoding BitmapDecoder: number {} in current page, byte length {}",
           this.number,
           byteArrayLength);
     }

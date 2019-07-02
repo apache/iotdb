@@ -34,14 +34,14 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class WritableMemChunkV2 implements IWritableMemChunk {
+public class WritableMemChunk implements IWritableMemChunk {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunkV2.class);
+  private static final Logger logger = LoggerFactory.getLogger(WritableMemChunk.class);
   private TSDataType dataType;
   private TVList list;
   private List<TimeValuePair> sortedList;
 
-  public WritableMemChunkV2(TSDataType dataType, TVList list) {
+  public WritableMemChunk(TSDataType dataType, TVList list) {
     this.dataType = dataType;
     this.list = list;
   }
@@ -190,7 +190,7 @@ public class WritableMemChunkV2 implements IWritableMemChunk {
           sortedList.add(new TimeValuePair(time, new TsBinary(list.getBinary(i))));
           break;
         default:
-          LOGGER.error("don't support data type: {}", dataType);
+          logger.error("don't support data type: {}", dataType);
           break;
       }
     }

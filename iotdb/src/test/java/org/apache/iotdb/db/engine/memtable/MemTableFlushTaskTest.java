@@ -26,14 +26,14 @@ import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public class MemTableFlushTaskTest {
 
-  private NativeRestorableIOWriter writer;
+  private RestorableTsFileIOWriter writer;
   private String storageGroup = "storage_group1";
   private String filePath = "data/testUnsealedTsFileProcessor.tsfile";
   private IMemTable memTable;
@@ -44,8 +44,7 @@ public class MemTableFlushTaskTest {
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-
-    writer = new NativeRestorableIOWriter(new File(filePath));
+    writer = new RestorableTsFileIOWriter(new File(filePath));
     memTable = new PrimitiveMemTable();
   }
 
@@ -65,6 +64,7 @@ public class MemTableFlushTaskTest {
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).isEmpty());
     memTableFlushTask.flushMemTable();
+    writer.makeMetadataVisible();
     assertEquals(1, writer
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());

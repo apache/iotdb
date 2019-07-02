@@ -38,7 +38,7 @@ public class RocketMQProducer {
   private DefaultMQProducer producer;
   private String producerGroup;
   private String serverAddresses;
-  private static final Logger LOGGER = LoggerFactory.getLogger(RocketMQProducer.class);
+  private static final Logger logger = LoggerFactory.getLogger(RocketMQProducer.class);
 
   public RocketMQProducer(String producerGroup, String serverAddresses) {
     this.producerGroup = producerGroup;
@@ -65,7 +65,7 @@ public class RocketMQProducer {
         return mqs.get(index);
       }, Utils
           .ConvertStringToInteger(Utils.getTimeSeries(sql)));
-      LOGGER.info(sendResult.toString());
+      logger.info(sendResult.toString());
     }
   }
 

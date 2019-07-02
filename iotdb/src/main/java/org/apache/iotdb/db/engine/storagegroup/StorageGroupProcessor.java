@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
 
 public class StorageGroupProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StorageGroupProcessor.class);
+  private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
 
   private FileSchema fileSchema;
 
@@ -121,7 +121,7 @@ public class StorageGroupProcessor {
     try {
       File storageGroupInfoDir = new File(baseDir, storageGroupName);
       if (storageGroupInfoDir.mkdirs()) {
-        LOGGER.info("Storage Group Info Directory {} doesn't exist, create it",
+        logger.info("Storage Group Info Directory {} doesn't exist, create it",
             storageGroupInfoDir.getPath());
       }
 
@@ -135,7 +135,7 @@ public class StorageGroupProcessor {
   }
 
   private void recover() throws ProcessorException {
-    LOGGER.info("recover StorageGroupProcessor {}", storageGroupName);
+    logger.info("recover StorageGroupProcessor {}", storageGroupName);
     List<File> tsFiles = new ArrayList<>();
     List<String> seqFileFolders = DirectoryManager.getInstance().getAllTsFileFolders();
     for (String baseDir : seqFileFolders) {
@@ -250,7 +250,7 @@ public class StorageGroupProcessor {
         return insertUnsealedDataFile(insertPlan, false);
       }
     } catch (StorageGroupProcessorException | IOException e) {
-      LOGGER.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
+      logger.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
       return false;
     } finally {
       writeUnlock();
@@ -279,7 +279,7 @@ public class StorageGroupProcessor {
       }
     } catch (DiskSpaceInsufficientException e) {
       //TODO handle disk full exception
-      LOGGER.error("dis space is insufficient", e);
+      logger.error("dis space is insufficient", e);
     }
 
     // insert BufferWrite
@@ -293,7 +293,7 @@ public class StorageGroupProcessor {
     // check memtable size and may asyncFlush the workMemtable
     if (tsFileProcessor.shouldFlush()) {
 
-      LOGGER.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+      logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
           tsFileProcessor.getWorkMemTableMemory(),
           tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
@@ -316,7 +316,7 @@ public class StorageGroupProcessor {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
     start = System.currentTimeMillis() - start;
-    LOGGER.info("getNextFolder in Directory manager cost: {}", start);
+    logger.info("getNextFolder in Directory manager cost: {}", start);
     new File(baseDir, storageGroupName).mkdirs();
 
     String filePath = Paths.get(baseDir, storageGroupName,
@@ -353,7 +353,7 @@ public class StorageGroupProcessor {
     // async close tsfile
     tsFileProcessor.asyncClose();
 
-    LOGGER.info("The file size {} reaches the threshold, async close tsfile: {}.",
+    logger.info("The file size {} reaches the threshold, async close tsfile: {}.",
         tsFileProcessor.getTsFileResource().getFileSize(),
         tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
   }
@@ -439,7 +439,7 @@ public class StorageGroupProcessor {
       Long lastUpdateTime = latestTimeForEachDevice.get(deviceId);
       // no tsfile data, the delete operation is invalid
       if (lastUpdateTime == null || lastUpdateTime == Long.MIN_VALUE) {
-        LOGGER.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
+        logger.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
         return;
       }
 
@@ -504,7 +504,7 @@ public class StorageGroupProcessor {
 
   public void asyncForceClose() {
     writeLock();
-    LOGGER.info("async force close all file in storage group: {}", storageGroupName);
+    logger.info("async force close all file in storage group: {}", storageGroupName);
     try {
       if (workSequenceTsFileProcessor != null) {
         closingSequenceTsFileProcessor.add(workSequenceTsFileProcessor);
@@ -550,7 +550,7 @@ public class StorageGroupProcessor {
           closeFileNodeCondition.wait();
         }
       } catch (InterruptedException e) {
-        LOGGER
+        logger
             .error("CloseFileNodeCondition occurs error while waiting for closing the file node {}",
                 storageGroupName, e);
       }
@@ -575,7 +575,7 @@ public class StorageGroupProcessor {
           closeFileNodeCondition.wait();
         }
       } catch (InterruptedException e) {
-        LOGGER
+        logger
             .error("CloseFileNodeCondition occurs error while waiting for closing the file node {}",
                 storageGroupName, e);
       }
@@ -608,7 +608,7 @@ public class StorageGroupProcessor {
     } else {
       closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
     }
-    LOGGER.info("signal closing file node condition");
+    logger.info("signal closing file node condition");
     synchronized (closeFileNodeCondition) {
       closeFileNodeCondition.notify();
     }

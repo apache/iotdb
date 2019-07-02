@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  */
 public class PrimitiveArrayPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PrimitiveArrayPool.class);
+  private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayPool.class);
 
   /**
    * data type -> Array<PrimitiveArray>

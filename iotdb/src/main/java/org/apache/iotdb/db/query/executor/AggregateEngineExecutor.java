@@ -101,7 +101,7 @@ public class AggregateEngineExecutor {
       aggregateFunctions.add(function);
 
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSourceV2(selectedSeries.get(i), context);
+          .getQueryDataSource(selectedSeries.get(i), context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       SequenceSeriesReader sequenceReader;

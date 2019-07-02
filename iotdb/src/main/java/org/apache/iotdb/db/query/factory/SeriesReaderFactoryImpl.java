@@ -193,7 +193,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     for (Path path : paths) {
 
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSourceV2(path,
+          .getQueryDataSource(path,
               context);
 
       SeriesReaderByTimestamp mergeReaderByTimestamp = new SeriesReaderByTimestamp();
@@ -219,7 +219,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
                                                            QueryContext context)
           throws StorageEngineException, IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-              .getQueryDataSourceV2(path, context);
+              .getQueryDataSource(path, context);
 
     // sequence reader for one sealed tsfile
     SequenceSeriesReader tsFilesReader;
@@ -246,7 +246,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
   public IPointReader createSeriesReaderWithValueFilter(Path path, Filter filter, QueryContext context)
           throws StorageEngineException, IOException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-              .getQueryDataSourceV2(path, context);
+              .getQueryDataSource(path, context);
 
     // sequence reader for one sealed tsfile
     SequenceSeriesReader tsFilesReader;

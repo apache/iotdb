@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ChunkBufferPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ChunkBufferPool.class);
+  private static final Logger logger = LoggerFactory.getLogger(ChunkBufferPool.class);
 
   private static final Deque<ChunkBuffer> availableChunkBuffer = new ArrayDeque<>();
 
@@ -69,9 +69,9 @@ public class ChunkBufferPool {
         try {
           availableChunkBuffer.wait(WAIT_TIME);
         } catch (InterruptedException e) {
-          LOGGER.error("{} fails to wait fot ReusableChunkBuffer {}, continue to wait", applier, e);
+          logger.error("{} fails to wait fot ReusableChunkBuffer {}, continue to wait", applier, e);
         }
-        LOGGER.info("{} has waited for a ReusableChunkBuffer for {}ms", applier,
+        logger.info("{} has waited for a ReusableChunkBuffer for {}ms", applier,
             waitCount++ * WAIT_TIME);
       }
     }

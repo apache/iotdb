@@ -45,7 +45,7 @@ public class ExceptionBuilder {
   public static final String CONFIG_NAME = "error_info_";
   public static final String FILE_SUFFIX = ".properties";
   public static final String DEFAULT_FILEPATH = "error_info_en.properties";
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   private static final ExceptionBuilder INSTANCE = new ExceptionBuilder();
   private Properties properties = new Properties();
 
@@ -62,7 +62,7 @@ public class ExceptionBuilder {
     try(InputStream in = new BufferedInputStream(new FileInputStream(filePath))){
       properties.load(new InputStreamReader(in, "utf-8"));
     } catch (IOException e) {
-      LOGGER.error(
+      logger.error(
           "Read file error. File does not exist or file is broken. "
               + "File seriesPath: {}.Because: {}.",
           filePath, e);
@@ -83,7 +83,7 @@ public class ExceptionBuilder {
             + language
             + FILE_SUFFIX;
       } else {
-        LOGGER.warn(
+        logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}"
                 + ", use default configuration",
             IoTDBConfig.CONFIG_NAME);

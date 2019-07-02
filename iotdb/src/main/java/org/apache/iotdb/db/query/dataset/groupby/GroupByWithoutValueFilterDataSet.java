@@ -83,7 +83,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
     for (Path path : selectedSeries) {
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSourceV2(path, context);
+          .getQueryDataSource(path, context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       SequenceSeriesReader sequenceReader = new SequenceSeriesReader(

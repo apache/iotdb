@@ -36,7 +36,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   private IoTDBConnection connection;
   private TSIService.Iface client;
-  private static final Logger LOGGER = LoggerFactory
+  private static final Logger logger = LoggerFactory
           .getLogger(IoTDBDatabaseMetadata.class);
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
 
@@ -1199,7 +1199,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     try {
       return getMetadataInJsonFunc();
     } catch (IoTDBSQLException e) {
-      LOGGER.error("Failed to fetch metadata in json because: ", e);
+      logger.error("Failed to fetch metadata in json because: ", e);
       System.out.println("Failed to fetch metadata in json because: " + e);
     } catch (TException e) {
       boolean flag = connection.reconnect();
@@ -1208,7 +1208,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         try {
           return getMetadataInJsonFunc();
         } catch (TException e2) {
-          LOGGER.error("Fail to get all timeseries " + "info after reconnecting."
+          logger.error("Fail to get all timeseries " + "info after reconnecting."
                   + " please check server status", e2);
           System.out.println(
               "Fail to get all timeseries " + "info after reconnecting."
@@ -1217,7 +1217,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           // ignored
         }
       } else {
-        LOGGER.error("Fail to reconnect to server "
+        logger.error("Fail to reconnect to server "
                 + "when getting all timeseries info. please check server status");
         System.out.println("Fail to reconnect to server "
             + "when getting all timeseries info. please check server status");

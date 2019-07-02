@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
  */
 public class WalChecker {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WalChecker.class);
+  private static final Logger logger = LoggerFactory.getLogger(WalChecker.class);
 
   /**
    * the root dir of wals, which should have wal directories of storage groups as its children.
@@ -54,30 +54,30 @@ public class WalChecker {
    */
   public List<File> doCheck() throws SysCheckException {
     File walFolderFile = new File(walFolder);
-    LOGGER.info("Checking folder: {}", walFolderFile.getAbsolutePath());
+    logger.info("Checking folder: {}", walFolderFile.getAbsolutePath());
     if(!walFolderFile.exists() || !walFolderFile.isDirectory()) {
       throw new SysCheckException(String.format("%s is not a directory", walFolder));
     }
 
     File[] storageWalFolders = walFolderFile.listFiles();
     if (storageWalFolders == null || storageWalFolders.length == 0) {
-      LOGGER.info("No sub-directories under the given directory, check ends");
+      logger.info("No sub-directories under the given directory, check ends");
       return Collections.emptyList();
     }
 
     List<File> failedFiles = new ArrayList<>();
     for (int dirIndex = 0; dirIndex < storageWalFolders.length; dirIndex++) {
       File storageWalFolder = storageWalFolders[dirIndex];
-      LOGGER.info("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
+      logger.info("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
       File walFile = new File(storageWalFolder, WAL_FILE_NAME);
       if (!walFile.exists()) {
-        LOGGER.debug("No wal file in this dir, skipping");
+        logger.debug("No wal file in this dir, skipping");
         continue;
       }
 
       if (walFile.length() > 0 && walFile.length() < SingleFileLogReader.LEAST_LOG_SIZE) {
         // contains only one damaged log
-        LOGGER.error("{} fails the check because it is non-empty but does not contain enough bytes "
+        logger.error("{} fails the check because it is non-empty but does not contain enough bytes "
             + "even for one log.", walFile.getAbsoluteFile());
         failedFiles.add(walFile);
         continue;
@@ -94,7 +94,7 @@ public class WalChecker {
         }
       } catch (IOException e) {
         failedFiles.add(walFile);
-        LOGGER.error("{} fails the check because", walFile.getAbsoluteFile(), e);
+        logger.error("{} fails the check because", walFile.getAbsoluteFile(), e);
       } finally {
         if( logReader != null) {
           logReader.close();
@@ -107,9 +107,9 @@ public class WalChecker {
   // a temporary method which should be in the integrated self-check module in the future
   public static void report(List<File> failedFiles) {
     if (failedFiles.isEmpty()) {
-      LOGGER.info("Check finished. There is no damaged file");
+      logger.info("Check finished. There is no damaged file");
     } else {
-      LOGGER.error("There are {} failed files. They are {}", failedFiles.size(), failedFiles);
+      logger.error("There are {} failed files. They are {}", failedFiles.size(), failedFiles);
     }
   }
 
@@ -119,7 +119,7 @@ public class WalChecker {
    */
   public static void main(String[] args) throws SysCheckException {
     if (args.length < 1) {
-      LOGGER.error("No enough args: require the walRootDirectory");
+      logger.error("No enough args: require the walRootDirectory");
       return;
     }
 

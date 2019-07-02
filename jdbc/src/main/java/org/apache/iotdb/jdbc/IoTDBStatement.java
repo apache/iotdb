@@ -54,7 +54,7 @@ public class IoTDBStatement implements Statement {
   private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
   private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
-  private static final Logger LOGGER = LoggerFactory
+  private static final Logger logger = LoggerFactory
           .getLogger(IoTDBStatement.class);
   ZoneId zoneId;
   private ResultSet resultSet = null;

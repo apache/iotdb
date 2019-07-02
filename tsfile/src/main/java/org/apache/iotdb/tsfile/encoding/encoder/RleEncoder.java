@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RleEncoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(RleEncoder.class);
 
   private EndianType endianType;
 
@@ -163,7 +163,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
       try {
         writeRleRun();
       } catch (IOException e) {
-        LOGGER.error(
+        logger.error(
             "tsfile-encoding RleEncoder : error occurs when writing nums to OutputStram "
                 + "when flushing left nums. "
                 + "numBufferedValues {}, repeatCount {}, bitPackedGroupCount{}, "
@@ -262,9 +262,9 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
         repeatCount = TSFileConfig.RLE_MAX_REPEATED_NUM;
         try {
           writeRleRun();
-          LOGGER.debug("tsfile-encoding RleEncoder : write full rle run to stream");
+          logger.debug("tsfile-encoding RleEncoder : write full rle run to stream");
         } catch (IOException e) {
-          LOGGER
+          logger
               .error(" error occurs when writing full rle run to OutputStram when repeatCount = {}."
                       + "numBufferedValues {}, repeatCount {}, bitPackedGroupCount{}, "
                       + "isBitPackRun {}, isBitWidthSaved {}",
@@ -282,7 +282,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
         try {
           writeRleRun();
         } catch (IOException e) {
-          LOGGER.error(
+          logger.error(
               "tsfile-encoding RleEncoder : error occurs when writing num to OutputStram "
                   + "when repeatCount > {}."
                   + "numBufferedValues {}, repeatCount {}, bitPackedGroupCount{}, isBitPackRun {}, "

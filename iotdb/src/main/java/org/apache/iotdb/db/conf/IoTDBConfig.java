@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBConfig {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfig.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   public static final String CONFIG_NAME = "iotdb-engine.properties";
   private static final String DEFAULT_DATA_DIR = "data";
   private static final String DEFAULT_SYS_DIR = "system";
@@ -326,7 +326,7 @@ public class IoTDBConfig {
     try {
       Class.forName(getMultiDirStrategyClassName());
     } catch (ClassNotFoundException e) {
-      LOGGER.warn("Cannot find given directory strategy {}, using the default value",
+      logger.warn("Cannot find given directory strategy {}, using the default value",
           getMultiDirStrategyClassName(), e);
       setMultiDirStrategyClassName(MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY);
     }

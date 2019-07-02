@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DirectoryStrategy {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(DirectoryStrategy.class);
+  protected static final Logger logger = LoggerFactory.getLogger(DirectoryStrategy.class);
 
   /**
    * All the folders of data files, should be init once the subclass is created.
@@ -81,7 +81,7 @@ public abstract class DirectoryStrategy {
       return 0;
     }
     long space = file.getFreeSpace();
-    LOGGER.trace("Folder {} has {} available bytes.", dir, space);
+    logger.trace("Folder {} has {} available bytes.", dir, space);
     return space;
   }
 

@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 public class SyncSenderDescriptor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderDescriptor.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncSenderDescriptor.class);
   private SyncSenderConfig conf = new SyncSenderConfig();
 
   private SyncSenderDescriptor() {
@@ -63,7 +63,7 @@ public class SyncSenderDescriptor {
         url = url + File.separatorChar + "conf" + File.separatorChar
             + Constans.CONFIG_NAME;
       } else {
-        LOGGER.warn(
+        logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration",
             Constans.CONFIG_NAME);
         return;
@@ -75,11 +75,11 @@ public class SyncSenderDescriptor {
     try {
       inputStream = new FileInputStream(new File(url));
     } catch (FileNotFoundException e) {
-      LOGGER.warn("Fail to find sync config file {}", url, e);
+      logger.warn("Fail to find sync config file {}", url, e);
       return;
     }
 
-    LOGGER.info("Start to read sync config file {}", url);
+    logger.info("Start to read sync config file {}", url);
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
@@ -113,14 +113,14 @@ public class SyncSenderDescriptor {
       conf.setSeqFileDirectory(sequenceFileDirectory);
       conf.setSnapshotPaths(snapshots);
     } catch (IOException e) {
-      LOGGER.warn("Cannot load config file because {}, use default configuration", e);
+      logger.warn("Cannot load config file because {}, use default configuration", e);
     } catch (Exception e) {
-      LOGGER.warn("Error format in config file because {}, use default configuration", e);
+      logger.warn("Error format in config file because {}, use default configuration", e);
     } finally {
       try {
         inputStream.close();
       } catch (IOException e) {
-        LOGGER.error("Fail to close sync config file input stream because ", e);
+        logger.error("Fail to close sync config file input stream because ", e);
       }
     }
   }

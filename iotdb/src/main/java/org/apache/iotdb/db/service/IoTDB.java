@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDB implements IoTDBMBean {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDB.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
       IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
@@ -53,23 +53,23 @@ public class IoTDB implements IoTDBMBean {
       checks.verify();
     } catch (StartupException e) {
       // TODO: what are some checks
-      LOGGER.error("{}: failed to start because some checks failed. ",
+      logger.error("{}: failed to start because some checks failed. ",
           IoTDBConstant.GLOBAL_DB_NAME, e);
       return;
     }
     try {
       setUp();
     } catch (StartupException e) {
-      LOGGER.error("meet error while starting up.", e);
+      logger.error("meet error while starting up.", e);
       deactivate();
-      LOGGER.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
+      logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
-    LOGGER.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
+    logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
   private void setUp() throws StartupException {
-    LOGGER.info("Setting up IoTDB...");
+    logger.info("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
@@ -98,14 +98,14 @@ public class IoTDB implements IoTDBMBean {
 
     initErrorInformation();
 
-    LOGGER.info("IoTDB is set up.");
+    logger.info("IoTDB is set up.");
   }
 
   private void deactivate() {
-    LOGGER.info("Deactivating IoTDB...");
+    logger.info("Deactivating IoTDB...");
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    LOGGER.info("IoTDB is deactivated.");
+    logger.info("IoTDB is deactivated.");
   }
 
   @Override

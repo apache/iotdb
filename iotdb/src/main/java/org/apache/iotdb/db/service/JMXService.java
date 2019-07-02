@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 
 public class JMXService implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(JMXService.class);
+  private static final Logger logger = LoggerFactory.getLogger(JMXService.class);
 
   private JMXConnectorServer jmxConnectorServer;
 
@@ -64,7 +64,7 @@ public class JMXService implements IService {
     } catch (MalformedObjectNameException | InstanceAlreadyExistsException
         | MBeanRegistrationException
         | NotCompliantMBeanException e) {
-      LOGGER.error("Failed to registerMBean {}", name, e);
+      logger.error("Failed to registerMBean {}", name, e);
     }
   }
 
@@ -80,7 +80,7 @@ public class JMXService implements IService {
       }
     } catch (MalformedObjectNameException | MBeanRegistrationException
         | InstanceNotFoundException e) {
-      LOGGER.error("Failed to unregisterMBean {}", name, e);
+      logger.error("Failed to unregisterMBean {}", name, e);
     }
   }
 
@@ -106,7 +106,7 @@ public class JMXService implements IService {
   @Override
   public void start() throws StartupException {
     if (System.getProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME) != null) {
-      LOGGER.warn(
+      logger.warn(
           "JMX settings in conf/{}.sh(Unix or OS X, if you use Windows, check conf/{}.bat) have "
               + "been bypassed as the JMX connector server is "
               + "already initialized. Please refer to {}.sh/bat for JMX configuration info",
@@ -123,7 +123,7 @@ public class JMXService implements IService {
     }
 
     if (jmxPort == null) {
-      LOGGER.warn("Failed to start {} because JMX port is undefined", this.getID().getName());
+      logger.warn("Failed to start {} because JMX port is undefined", this.getID().getName());
       return;
     }
     try {
@@ -132,7 +132,7 @@ public class JMXService implements IService {
         return;
       }
       jmxConnectorServer.start();
-      LOGGER
+      logger
           .info("{}: start {} successfully.", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (IOException e) {
       String errorMessage = String
@@ -147,10 +147,10 @@ public class JMXService implements IService {
     if (jmxConnectorServer != null) {
       try {
         jmxConnectorServer.stop();
-        LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME,
+        logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME,
             this.getID().getName());
       } catch (IOException e) {
-        LOGGER.error("Failed to stop {} because of: ", this.getID().getName(), e);
+        logger.error("Failed to stop {} because of: ", this.getID().getName(), e);
       }
     }
   }

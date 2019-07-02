@@ -29,18 +29,18 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MemTableFlushTask {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final int PAGE_SIZE_THRESHOLD = TSFileConfig.pageSizeInByte;
   private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
       .getInstance();
   private Future ioTaskFuture;
-  private NativeRestorableIOWriter writer;
+  private RestorableTsFileIOWriter writer;
 
   private ConcurrentLinkedQueue ioTaskQueue = new ConcurrentLinkedQueue();
   private ConcurrentLinkedQueue encodingTaskQueue = new ConcurrentLinkedQueue();
@@ -52,14 +52,14 @@ public class MemTableFlushTask {
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
 
-  public MemTableFlushTask(IMemTable memTable, FileSchema fileSchema, NativeRestorableIOWriter writer, String storageGroup) {
+  public MemTableFlushTask(IMemTable memTable, FileSchema fileSchema, RestorableTsFileIOWriter writer, String storageGroup) {
     this.memTable = memTable;
     this.fileSchema = fileSchema;
     this.writer = writer;
     this.storageGroup = storageGroup;
     subTaskPoolManager.submit(EncodingTask);
     this.ioTaskFuture = subTaskPoolManager.submit(IOTask);
-    LOGGER.info("flush task of Storage group {} memtable {} is created ",
+    logger.info("flush task of Storage group {} memtable {} is created ",
         storageGroup, memTable.getVersion());
   }
 
@@ -85,13 +85,13 @@ public class MemTableFlushTask {
       encodingTaskQueue.add(new ChunkGroupIoTask(seriesNumber, deviceId, memTable.getVersion()));
     }
     noMoreEncodingTask = true;
-    LOGGER.info(
+    logger.info(
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);
 
     ioTaskFuture.get();
 
-    LOGGER.info("Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms", storageGroup, memTable, System.currentTimeMillis() - start);
+    logger.info("Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms", storageGroup, memTable, System.currentTimeMillis() - start);
   }
 
 
@@ -100,7 +100,7 @@ public class MemTableFlushTask {
     public void run() {
       long memSerializeTime = 0;
       boolean noMoreMessages = false;
-      LOGGER.info("Storage group {} memtable {}, starts to encoding data.", storageGroup,
+      logger.info("Storage group {} memtable {}, starts to encoding data.", storageGroup,
           memTable.getVersion());
       while (true) {
         if (noMoreEncodingTask) {
@@ -114,7 +114,7 @@ public class MemTableFlushTask {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
-            LOGGER.error("Storage group {} memtable {}, encoding task is interrupted.",
+            logger.error("Storage group {} memtable {}, encoding task is interrupted.",
                 storageGroup, memTable.getVersion(), e);
           }
         } else {
@@ -142,7 +142,7 @@ public class MemTableFlushTask {
         }
       }
       noMoreIOTask = true;
-      LOGGER.info("Storage group {}, flushing memtable {} into disk: Encoding data cost "
+      logger.info("Storage group {}, flushing memtable {} into disk: Encoding data cost "
               + "{} ms.",
           storageGroup, memTable.getVersion(), memSerializeTime);
     }
@@ -156,7 +156,7 @@ public class MemTableFlushTask {
     public void run() {
       long ioTime = 0;
       boolean returnWhenNoTask = false;
-      LOGGER.info("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
+      logger.info("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
       while (true) {
         if (noMoreIOTask) {
           returnWhenNoTask = true;
@@ -169,7 +169,7 @@ public class MemTableFlushTask {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
-            LOGGER.error("Storage group {} memtable, io flush task is interrupted.", storageGroup
+            logger.error("Storage group {} memtable, io flush task is interrupted.", storageGroup
                 , memTable.getVersion(), e);
           }
         } else {
@@ -194,14 +194,14 @@ public class MemTableFlushTask {
               endGroupTask.finished = true;
             }
           } catch (IOException e) {
-            LOGGER.error("Storage group {} memtable {}, io error.", storageGroup,
+            logger.error("Storage group {} memtable {}, io error.", storageGroup,
                 memTable.getVersion(), e);
             throw new RuntimeException(e);
           }
           ioTime += System.currentTimeMillis() - starTime;
         }
       }
-      LOGGER.info("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
+      logger.info("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
           storageGroup, ioTime);
     }
   };
@@ -236,7 +236,7 @@ public class MemTableFlushTask {
           seriesWriterImpl.write(time, tvPairs.getBinary(i));
           break;
         default:
-          LOGGER.error("Storage group {}, don't support data type: {}", storageGroup,
+          logger.error("Storage group {}, don't support data type: {}", storageGroup,
               dataType);
           break;
       }

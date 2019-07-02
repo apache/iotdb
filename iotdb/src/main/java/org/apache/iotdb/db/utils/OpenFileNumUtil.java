@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 // Notice : statistics in this class may not be accurate because of limited user authority.
 public class OpenFileNumUtil {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpenFileNumUtil.class);
+  private static final Logger logger = LoggerFactory.getLogger(OpenFileNumUtil.class);
   private static final int PID_ERROR_CODE = -1;
   private static final int UNSUPPORTED_OS_ERROR_CODE = -2;
   private static final int UNKNOWN_STATISTICS_ERROR_CODE = -3;
@@ -125,10 +125,10 @@ public class OpenFileNumUtil {
         in1.close();
         pro1.destroy();
       } catch (IOException e) {
-        LOGGER.error("Cannot get PID of IoTDB process because ", e);
+        logger.error("Cannot get PID of IoTDB process because ", e);
       }
     } else {
-      LOGGER.warn("Unsupported OS {} for OpenFileNumUtil to get the PID of IoTDB.", os);
+      logger.warn("Unsupported OS {} for OpenFileNumUtil to get the PID of IoTDB.", os);
     }
     return iotdbPid;
   }
@@ -204,7 +204,7 @@ public class OpenFileNumUtil {
       in.close();
       pro.destroy();
     } catch (Exception e) {
-      LOGGER.error("Cannot get open file number of IoTDB process because ", e);
+      logger.error("Cannot get open file number of IoTDB process because ", e);
     }
     return resultMap;
   }

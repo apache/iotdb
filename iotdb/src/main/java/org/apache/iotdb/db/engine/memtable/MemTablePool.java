@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 public class MemTablePool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemTablePool.class);
+  private static final Logger logger = LoggerFactory.getLogger(MemTablePool.class);
 
   private static final Deque<IMemTable> availableMemTables = new ArrayDeque<>();
 
@@ -49,11 +49,11 @@ public class MemTablePool {
     synchronized (availableMemTables) {
       if (availableMemTables.isEmpty() && size < capacity) {
         size++;
-        LOGGER.info("generated a new memtable for {}, system memtable size: {}, stack size: {}",
+        logger.info("generated a new memtable for {}, system memtable size: {}, stack size: {}",
             applier, size, availableMemTables.size());
         return new PrimitiveMemTable();
       } else if (!availableMemTables.isEmpty()) {
-        LOGGER
+        logger
             .info("system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
                 size, availableMemTables.size(), applier);
         return availableMemTables.pop();
@@ -63,7 +63,7 @@ public class MemTablePool {
       int waitCount = 1;
       while (true) {
         if (!availableMemTables.isEmpty()) {
-          LOGGER.info(
+          logger.info(
               "system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
               size, availableMemTables.size(), applier);
           return availableMemTables.pop();
@@ -71,31 +71,22 @@ public class MemTablePool {
         try {
           availableMemTables.wait(WAIT_TIME);
         } catch (InterruptedException e) {
-          LOGGER.error("{} fails to wait fot memtables {}, continue to wait", applier, e);
+          logger.error("{} fails to wait fot memtables {}, continue to wait", applier, e);
         }
-        LOGGER.info("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
+        logger.info("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
       }
     }
   }
 
-  public void putBack(IMemTable memTable) {
-    synchronized (availableMemTables) {
-      memTable.clear();
-      availableMemTables.push(memTable);
-      availableMemTables.notify();
-      LOGGER.info("a memtable returned, stack size {}", availableMemTables.size());
-    }
-  }
-
-  /**
-   * Only for test
-   */
   public void putBack(IMemTable memTable, String storageGroup) {
+    if (memTable.isSignalMemTable()) {
+      return;
+    }
     synchronized (availableMemTables) {
       memTable.clear();
       availableMemTables.push(memTable);
       availableMemTables.notify();
-      LOGGER.info("{} return a memtable, stack size {}", storageGroup, availableMemTables.size());
+      logger.info("{} return a memtable, stack size {}", storageGroup, availableMemTables.size());
     }
   }
 

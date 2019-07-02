@@ -64,7 +64,7 @@ public class PhysicalGenerator {
   }
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator)
-      throws QueryProcessorException, ProcessorException {
+      throws QueryProcessorException {
     List<Path> paths;
     switch (operator.getType()) {
       case AUTHOR:
@@ -229,12 +229,12 @@ public class PhysicalGenerator {
   // } else if (queryOperator.hasAggregation()) { //old aggregation
   // return multiQueryPlan;
   // } else { //ordinary query
-  // return transformQueryV2(queryOperator);
+  // return transformQuery(queryOperator);
   // }
   // }
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
-      throws QueryProcessorException, ProcessorException {
+      throws QueryProcessorException {
 
     QueryPlan queryPlan;
 

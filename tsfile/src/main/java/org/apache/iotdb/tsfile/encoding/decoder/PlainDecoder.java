@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public class PlainDecoder extends Decoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PlainDecoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(PlainDecoder.class);
   private EndianType endianType;
 
   public EndianType getEndianType() {
@@ -64,7 +64,7 @@ public class PlainDecoder extends Decoder {
     if (this.endianType == EndianType.LITTLE_ENDIAN) {
       return (short) ((ch2 << 8) + ch1);
     } else {
-      LOGGER.error(
+      logger.error(
           "tsfile-encoding PlainEncoder: current version does not support short value decoding");
     }
     return -1;
@@ -79,7 +79,7 @@ public class PlainDecoder extends Decoder {
     if (this.endianType == EndianType.LITTLE_ENDIAN) {
       return ch1 + (ch2 << 8) + (ch3 << 16) + (ch4 << 24);
     } else {
-      LOGGER.error(
+      logger.error(
           "tsfile-encoding PlainEncoder: current version does not support int value encoding");
     }
     return -1;

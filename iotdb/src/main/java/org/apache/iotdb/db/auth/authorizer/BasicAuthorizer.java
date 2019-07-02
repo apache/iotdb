@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BasicAuthorizer.class);
+  private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
   private static final Set<Integer> ADMIN_PRIVILEGES;
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
 
@@ -60,7 +60,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   protected void init() throws AuthException {
     userManager.reset();
     roleManager.reset();
-    LOGGER.info("Initialization of Authorizer completes");
+    logger.info("Initialization of Authorizer completes");
   }
 
   @Override
@@ -125,7 +125,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         try {
           userManager.revokeRoleFromUser(roleName, user);
         } catch (AuthException e) {
-          LOGGER.warn(
+          logger.warn(
               "Error encountered when revoking a role {} from user {} after deletion, because {}",
               roleName, user, e);
         }

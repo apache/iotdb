@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DirectoryManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DirectoryManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(DirectoryManager.class);
 
   private List<String> sequenceFileFolders;
   private List<String> unsequenceFileFolders;
@@ -59,7 +59,7 @@ public class DirectoryManager {
       unsequenceStrategy = (DirectoryStrategy) clazz.newInstance();
       unsequenceStrategy.init(unsequenceFileFolders);
     } catch (Exception e) {
-      LOGGER.error("can't find sequenceStrategy {} for mult-directories.", strategyName, e);
+      logger.error("can't find sequenceStrategy {} for mult-directories.", strategyName, e);
     }
   }
 
@@ -71,7 +71,7 @@ public class DirectoryManager {
     for (String folder : folders) {
       File file = new File(folder);
       if (file.mkdirs()) {
-        LOGGER.info("folder {} doesn't exist, create it", file.getPath());
+        logger.info("folder {} doesn't exist, create it", file.getPath());
       }
     }
   }

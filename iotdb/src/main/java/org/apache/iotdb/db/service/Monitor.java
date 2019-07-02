@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public class Monitor implements MonitorMBean, IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Monitor.class);
+  private static final Logger logger = LoggerFactory.getLogger(Monitor.class);
 
   public static final Monitor INSTANCE = new Monitor();
   private final String mbeanName = String
@@ -43,7 +43,7 @@ public class Monitor implements MonitorMBean, IService {
     try {
       return FileUtils.sizeOfDirectory(new File(config.getDataDir()));
     } catch (Exception e) {
-      LOGGER.error("meet error while trying to get data size.", e);
+      logger.error("meet error while trying to get data size.", e);
       return -1;
     }
   }
@@ -72,7 +72,7 @@ public class Monitor implements MonitorMBean, IService {
       File file = new File(config.getDataDir());
       return file.getAbsolutePath();
     } catch (Exception e) {
-      LOGGER.error("meet error while trying to get base dir.", e);
+      logger.error("meet error while trying to get base dir.", e);
       return "Unavailable";
     }
   }

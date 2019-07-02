@@ -38,10 +38,10 @@ import org.slf4j.LoggerFactory;
 /**
  * a restorable tsfile which do not depend on a restore file.
  */
-public class NativeRestorableIOWriter extends TsFileIOWriter {
+public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
-  private static final Logger LOGGER = LoggerFactory
-      .getLogger(NativeRestorableIOWriter.class);
+  private static final Logger logger = LoggerFactory
+      .getLogger(RestorableTsFileIOWriter.class);
 
   private long truncatedPosition = -1;
   private Map<String, MeasurementSchema> knownSchemas = new HashMap<>();
@@ -64,7 +64,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
    * @param file a given tsfile path you want to (continue to) write
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
-  public NativeRestorableIOWriter(File file) throws IOException {
+  public RestorableTsFileIOWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file, true);
 
     // file doesn't exist

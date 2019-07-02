@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  */
 public class FileReaderManager implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileReaderManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
 
   /**
    * max number of file streams being cached, must be lower than 65535.
@@ -107,7 +107,7 @@ public class FileReaderManager implements IService {
         try {
           reader.close();
         } catch (IOException e) {
-          LOGGER.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+          logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
         }
         readerMap.remove(entry.getKey());
         refMap.remove(entry.getKey());
@@ -133,7 +133,7 @@ public class FileReaderManager implements IService {
     if (!readerMap.containsKey(filePath)) {
 
       if (readerMap.size() >= MAX_CACHED_FILE_SIZE) {
-        LOGGER.warn("Query has opened {} files !", readerMap.size());
+        logger.warn("Query has opened {} files !", readerMap.size());
       }
 
       TsFileSequenceReader tsFileReader = !isClosed ? new UnClosedTsFileReader(filePath)
@@ -228,7 +228,7 @@ public class FileReaderManager implements IService {
     try {
       executorService.awaitTermination(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      LOGGER.error("StatMonitor timing service could not be shutdown.", e);
+      logger.error("StatMonitor timing service could not be shutdown.", e);
       Thread.currentThread().interrupt();
     }
   }

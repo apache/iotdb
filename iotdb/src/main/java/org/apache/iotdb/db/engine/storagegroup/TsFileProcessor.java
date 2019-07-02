@@ -52,15 +52,15 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TsFileProcessor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileProcessor.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
 
-  private NativeRestorableIOWriter writer;
+  private RestorableTsFileIOWriter writer;
 
   private FileSchema fileSchema;
 
@@ -101,10 +101,10 @@ public class TsFileProcessor {
     this.fileSchema = fileSchema;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.versionController = versionController;
-    this.writer = new NativeRestorableIOWriter(tsfile);
+    this.writer = new RestorableTsFileIOWriter(tsfile);
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;
     this.flushUpdateLatestFlushTimeCallback = flushUpdateLatestFlushTimeCallback;
-    LOGGER.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
+    logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
   }
 
   /**
@@ -130,7 +130,7 @@ public class TsFileProcessor {
       try {
         getLogNode().write(insertPlan);
       } catch (IOException e) {
-        LOGGER.error("write WAL failed", e);
+        logger.error("write WAL failed", e);
         return false;
       }
     }
@@ -183,17 +183,17 @@ public class TsFileProcessor {
   }
 
   void syncClose() {
-    LOGGER.info("Sync close file: {}, first async close it",
+    logger.info("Sync close file: {}, first async close it",
         tsFileResource.getFile().getAbsolutePath());
     asyncClose();
     synchronized (flushingMemTables) {
       try {
         flushingMemTables.wait();
       } catch (InterruptedException e) {
-        LOGGER.error("wait close interrupted", e);
+        logger.error("wait close interrupted", e);
       }
     }
-    LOGGER.info("File {} is closed synchronously", tsFileResource.getFile().getAbsolutePath());
+    logger.info("File {} is closed synchronously", tsFileResource.getFile().getAbsolutePath());
   }
 
   /**
@@ -202,15 +202,15 @@ public class TsFileProcessor {
    */
   void asyncClose() {
     flushQueryLock.writeLock().lock();
-    LOGGER.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
+    logger.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
     try {
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
       if (tmpMemTable.isSignalMemTable()) {
-        LOGGER.info(
+        logger.info(
             "storage group {} add a signal memtable into flushing memtable list when async close",
             storageGroupName);
       } else {
-        LOGGER.info("storage group {} async flush a memtable when async close", storageGroupName);
+        logger.info("storage group {} async flush a memtable when async close", storageGroupName);
       }
       flushingMemTables.add(tmpMemTable);
       shouldClose = true;
@@ -232,7 +232,7 @@ public class TsFileProcessor {
     try {
       tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
       if (tmpMemTable.isSignalMemTable()) {
-        LOGGER.debug("add a signal memtable into flushing memtable list when sync flush");
+        logger.debug("add a signal memtable into flushing memtable list when sync flush");
       }
       flushingMemTables.addLast(tmpMemTable);
       tmpMemTable.setVersion(versionController.nextVersion());
@@ -247,7 +247,7 @@ public class TsFileProcessor {
       try {
         tmpMemTable.wait();
       } catch (InterruptedException e) {
-        LOGGER.error("wait flush finished meets error", e);
+        logger.error("wait flush finished meets error", e);
       }
     }
   }
@@ -270,7 +270,7 @@ public class TsFileProcessor {
       flushUpdateLatestFlushTimeCallback.get();
       workMemTable = null;
     } catch (IOException e) {
-      LOGGER.error("WAL notify start flush failed", e);
+      logger.error("WAL notify start flush failed", e);
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -287,7 +287,7 @@ public class TsFileProcessor {
       flushingMemTables.remove(memTable);
       memTable.release();
       MemTablePool.getInstance().putBack(memTable, storageGroupName);
-      LOGGER.info("storage group {} flush finished, remove a memtable from flushing list, "
+      logger.info("storage group {} flush finished, remove a memtable from flushing list, "
           + "flushing memtable list size: {}", storageGroupName, flushingMemTables.size());
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -302,7 +302,7 @@ public class TsFileProcessor {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
 
-    LOGGER.info("storage group {} start to flush a memtable in a flush thread", storageGroupName);
+    logger.info("storage group {} start to flush a memtable in a flush thread", storageGroupName);
 
     // null memtable only appears when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
@@ -314,10 +314,10 @@ public class TsFileProcessor {
       } catch (ExecutionException | InterruptedException | IOException e) {
         StorageEngine.getInstance().setReadOnly(true);
         try {
-          LOGGER.error("IOTask meets error, truncate the corrupted data", e);
+          logger.error("IOTask meets error, truncate the corrupted data", e);
           writer.reset();
         } catch (IOException e1) {
-          LOGGER.error("Truncate corrupted data meets error", e1);
+          logger.error("Truncate corrupted data meets error", e1);
         }
       }
 
@@ -342,9 +342,9 @@ public class TsFileProcessor {
         try {
           writer.reset();
         } catch (IOException e1) {
-          LOGGER.error("truncate corrupted data meets error", e1);
+          logger.error("truncate corrupted data meets error", e1);
         }
-        LOGGER.error("marking or ending file meet error", e);
+        logger.error("marking or ending file meet error", e);
       }
 
       // for sync close
@@ -365,11 +365,11 @@ public class TsFileProcessor {
 
     writer = null;
 
-    if (LOGGER.isInfoEnabled()) {
+    if (logger.isInfoEnabled()) {
 
       long closeEndTime = System.currentTimeMillis();
 
-      LOGGER.info("Storage group {} close the file {}, start time is {}, end time is {}, "
+      logger.info("Storage group {} close the file {}, start time is {}, end time is {}, "
               + "time consumption of flushing metadata is {}ms",
           storageGroupName, tsFileResource.getFile().getAbsoluteFile(),
           DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),

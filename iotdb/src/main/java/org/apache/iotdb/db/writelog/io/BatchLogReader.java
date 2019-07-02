@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public class BatchLogReader implements ILogReader{
 
-  private static Logger LOGGER = LoggerFactory.getLogger(BatchLogReader.class);
+  private static Logger logger = LoggerFactory.getLogger(BatchLogReader.class);
 
   private Iterator<PhysicalPlan> planIterator;
 
@@ -51,7 +51,7 @@ public class BatchLogReader implements ILogReader{
       try {
         plans.add(PhysicalPlan.Factory.create(buffer));
       } catch (IOException e) {
-        LOGGER.error("Cannot deserialize PhysicalPlans from ByteBuffer, ignore remaining logs", e);
+        logger.error("Cannot deserialize PhysicalPlans from ByteBuffer, ignore remaining logs", e);
         fileCorrupted = true;
         break;
       }

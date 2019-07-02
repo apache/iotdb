@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBDescriptor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   private IoTDBConfig conf = new IoTDBConfig();
 
   private IoTDBDescriptor() {
@@ -57,7 +57,7 @@ public class IoTDBDescriptor {
       if (url != null) {
         url = url + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
       } else {
-        LOGGER.warn(
+        logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
             IoTDBConfig.CONFIG_NAME);
@@ -72,13 +72,13 @@ public class IoTDBDescriptor {
     try {
       inputStream = new FileInputStream(new File(url));
     } catch (FileNotFoundException e) {
-      LOGGER.warn("Fail to find config file {}", url, e);
+      logger.warn("Fail to find config file {}", url, e);
       // update all data seriesPath
       conf.updatePath();
       return;
     }
 
-    LOGGER.info("Start to read config file {}", url);
+    logger.info("Start to read config file {}", url);
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
@@ -98,14 +98,14 @@ public class IoTDBDescriptor {
       if (conf.getStatMonitorDetectFreqSec() < statMonitorDetectFreqSec) {
         conf.setStatMonitorDetectFreqSec(statMonitorDetectFreqSec);
       } else {
-        LOGGER.info("The stat_monitor_detect_freq_sec value is smaller than default,"
+        logger.info("The stat_monitor_detect_freq_sec value is smaller than default,"
             + " use default value");
       }
 
       if (conf.getStatMonitorRetainIntervalSec() < statMonitorRetainIntervalSec) {
         conf.setStatMonitorRetainIntervalSec(statMonitorRetainIntervalSec);
       } else {
-        LOGGER.info("The stat_monitor_retain_interval_sec value is smaller than default,"
+        logger.info("The stat_monitor_retain_interval_sec value is smaller than default,"
             + " use default value");
       }
 
@@ -191,23 +191,23 @@ public class IoTDBDescriptor {
       String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
       try {
         conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
-        LOGGER.info("Time zone has been set to {}", conf.getZoneID());
+        logger.info("Time zone has been set to {}", conf.getZoneID());
       } catch (Exception e) {
-        LOGGER.error("Time zone format error {}, use default configuration {}", tmpTimeZone,
+        logger.error("Time zone format error {}, use default configuration {}", tmpTimeZone,
             conf.getZoneID(), e);
       }
 
     } catch (IOException e) {
-      LOGGER.warn("Cannot load config file because, use default configuration", e);
+      logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {
-      LOGGER.warn("Incorrect format in config file, use default configuration", e);
+      logger.warn("Incorrect format in config file, use default configuration", e);
     } finally {
       // update all data seriesPath
       conf.updatePath();
       try {
         inputStream.close();
       } catch (IOException e) {
-        LOGGER.error("Fail to close config file input stream because ", e);
+        logger.error("Fail to close config file input stream because ", e);
       }
     }
   }

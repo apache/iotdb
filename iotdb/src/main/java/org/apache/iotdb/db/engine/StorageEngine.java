@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 
 public class StorageEngine implements IService {
 
-  private static final Logger LOGGER = LoggerFactory
+  private static final Logger logger = LoggerFactory
       .getLogger(StorageEngine.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -85,7 +85,7 @@ public class StorageEngine implements IService {
     // create baseDir
     File dir = new File(baseDir);
     if (dir.mkdirs()) {
-      LOGGER.info("Base directory {} of all storage groups doesn't exist, create it", dir.getPath());
+      logger.info("Base directory {} of all storage groups doesn't exist, create it", dir.getPath());
     }
 
     /**
@@ -95,7 +95,7 @@ public class StorageEngine implements IService {
       List<String> storageGroups = MManager.getInstance().getAllFileNames();
       for (String storageGroup: storageGroups) {
         StorageGroupProcessor processor = new StorageGroupProcessor(baseDir, storageGroup);
-        LOGGER.info("Storage Group Processor {} is recovered successfully", storageGroup);
+        logger.info("Storage Group Processor {} is recovered successfully", storageGroup);
         processorMap.put(storageGroup, processor);
       }
     } catch (ProcessorException | MetadataErrorException e) {
@@ -132,7 +132,7 @@ public class StorageEngine implements IService {
         synchronized (storageGroupName) {
           processor = processorMap.get(storageGroupName);
           if (processor == null) {
-            LOGGER.debug("construct a processor instance, the storage group is {}, Thread is {}",
+            logger.debug("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(baseDir, storageGroupName);
             synchronized (processorMap) {
@@ -143,7 +143,7 @@ public class StorageEngine implements IService {
       }
       return processor;
     } catch (PathErrorException | ProcessorException e) {
-      LOGGER.error("Fail to get StorageGroupProcessor {}", storageGroupName,  e);
+      logger.error("Fail to get StorageGroupProcessor {}", storageGroupName,  e);
       throw new StorageEngineException(e);
     }
   }
@@ -152,7 +152,7 @@ public class StorageEngine implements IService {
   /**
    * This function is just for unit test.
    */
-  public synchronized void resetFileNodeManager() {
+  public synchronized void reset() {
     processorMap.clear();
   }
 
@@ -173,7 +173,7 @@ public class StorageEngine implements IService {
     try {
       storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
     } catch (Exception e) {
-      LOGGER.warn("get StorageGroupProcessor of device {} failed, because {}", insertPlan.getDeviceId(),
+      logger.warn("get StorageGroupProcessor of device {} failed, because {}", insertPlan.getDeviceId(),
           e.getMessage(), e);
       throw new StorageEngineException(e);
     }
@@ -307,7 +307,7 @@ public class StorageEngine implements IService {
   }
 
   private void deleteFileNodeBlocked(String processorName) {
-    LOGGER.info("Force to delete the storage group processor {}", processorName);
+    logger.info("Force to delete the storage group processor {}", processorName);
     StorageGroupProcessor processor = processorMap.get(processorName);
     processor.syncCloseAndStopFileNode(() -> {
       try {
@@ -323,7 +323,7 @@ public class StorageEngine implements IService {
         fileNodePath = FilePathUtils.regularizePath(fileNodePath) + processorName;
         FileUtils.deleteDirectory(new File(fileNodePath));
       } catch (IOException e) {
-        LOGGER.error("Delete tsfiles failed", e);
+        logger.error("Delete tsfiles failed", e);
       }
       synchronized (processorMap) {
         processorMap.remove(processorName);
@@ -331,7 +331,6 @@ public class StorageEngine implements IService {
       return true;
     });
   }
-
 
   /**
    * add time series.
@@ -348,7 +347,7 @@ public class StorageEngine implements IService {
    * delete all storage groups' timeseries.
    */
   public synchronized boolean deleteAll() {
-    LOGGER.info("Start deleting all storage groups' timeseries");
+    logger.info("Start deleting all storage groups' timeseries");
     // TODO
     return true;
   }
@@ -358,7 +357,7 @@ public class StorageEngine implements IService {
    * Sync asyncCloseOneProcessor all file node processors.
    */
   public void syncCloseAllProcessor() {
-    LOGGER.info("Start closing all storage group processor");
+    logger.info("Start closing all storage group processor");
     synchronized (processorMap){
       for(StorageGroupProcessor processor: processorMap.values()){
         processor.syncCloseFileNode();

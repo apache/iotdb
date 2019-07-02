@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(MManager.class);
   private static final String ROOT_NAME = MetadataConstant.ROOT;
   private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
@@ -82,6 +82,7 @@ public class MManager {
 
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private int maxSeriesNumberAmongStorageGroup;
+  private boolean initialized = false;
 
   private MManager() {
     metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
@@ -127,6 +128,7 @@ public class MManager {
     };
 
     init();
+    initialized = true;
   }
 
   public static MManager getInstance() {
@@ -157,7 +159,7 @@ public class MManager {
       writeToLog = true;
     } catch (PathErrorException | ClassNotFoundException | IOException | MetadataErrorException e) {
       mgraph = new MGraph(ROOT_NAME);
-      LOGGER.error("Cannot read MGraph from file, using an empty new one", e);
+      logger.error("Cannot read MGraph from file, using an empty new one", e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -246,7 +248,7 @@ public class MManager {
         unlinkMNodeFromPTree(args[1], args[2]);
         break;
       default:
-        LOGGER.error("Unrecognizable command {}", cmd);
+        logger.error("Unrecognizable command {}", cmd);
     }
   }
 
@@ -521,7 +523,7 @@ public class MManager {
    * function for setting storage level of the given path to mTree.
    */
   public void setStorageLevelToMTree(String path) throws MetadataErrorException {
-    if (StorageEngine.getInstance().isReadOnly()) {
+    if (initialized && StorageEngine.getInstance().isReadOnly()) {
       throw new MetadataErrorException("Current system mode is read only, does not support creating Storage Group");
     }
 

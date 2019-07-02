@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SyncServerManager implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncServerManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncServerManager.class);
   private Thread syncServerThread;
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
@@ -63,7 +63,7 @@ public class SyncServerManager implements IService {
       return;
     }
     if (conf.getIpWhiteList() == null) {
-      LOGGER.error(
+      logger.error(
           "Sync server failed to start because IP white list is null, please set IP white list.");
       return;
     }
@@ -71,7 +71,7 @@ public class SyncServerManager implements IService {
     syncServerThread = new SyncServiceThread();
     syncServerThread.setName(ThreadName.SYNC_SERVER.getName());
     syncServerThread.start();
-    LOGGER.info("Sync server has started.");
+    logger.info("Sync server has started.");
   }
 
   /**
@@ -121,13 +121,13 @@ public class SyncServerManager implements IService {
         poolServer = new TThreadPoolServer(poolArgs);
         poolServer.serve();
       } catch (TTransportException e) {
-        LOGGER.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,
+        logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,
             getID().getName(), e);
       } catch (Exception e) {
-        LOGGER.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
+        logger.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       } finally {
         close();
-        LOGGER.info("{}: close TThreadPoolServer and TServerSocket for {}",
+        logger.info("{}: close TThreadPoolServer and TServerSocket for {}",
             IoTDBConstant.GLOBAL_DB_NAME, getID().getName());
       }
     }
