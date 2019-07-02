@@ -27,7 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.RowGroupBlockMetaDataCache;
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -78,7 +78,7 @@ public class EnvironmentUtils {
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
     TsFileMetaDataCache.getInstance().clear();
-    RowGroupBlockMetaDataCache.getInstance().clear();
+    DeviceMetaDataCache.getInstance().clear();
     // close metadata
     MManager.getInstance().clear();
     MManager.getInstance().flushObjectToFile();
