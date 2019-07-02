@@ -144,9 +144,9 @@ public class OpenFileNumUtil {
 
   /**
    * return statistic Map, whose key belongs to enum OpenFileNumStatistics: TOTAL_OPEN_FILE_NUM is
-   * the current total open file number of IoTDB service process; DATA_OPEN_FILE_NUM is the current
+   * the current total open file number of IoTDB service process; SEQUENCE_FILE_OPEN_NUM is the current
    * open file number under data directory; DELTA_OPEN_FILE_NUM is the current open file number of
-   * TsFile; OVERFLOW_OPEN_FILE_NUM is the current open file number of unsequence file;
+   * TsFile; UNSEQUENCE_FILE_OPEN_NUM is the current open file number of unsequence file;
    * WAL_OPEN_FILE_NUM is the current open file number of WAL file; METADATA_OPEN_FILE_NUM is the
    * current open file number of metadata; DIGEST_OPEN_FILE_NUM is the current open file number of
    * fileNodeDir; SOCKET_OPEN_FILE_NUM is the current open socket connection of IoTDB service
@@ -255,16 +255,14 @@ public class OpenFileNumUtil {
 
   public enum OpenFileNumStatistics {
     TOTAL_OPEN_FILE_NUM(null),
-    DATA_OPEN_FILE_NUM(Collections.singletonList(config.getDataDir())),
-    DELTA_OPEN_FILE_NUM(directoryManager.getAllSequenceFileFolders()),
-    OVERFLOW_OPEN_FILE_NUM(directoryManager.getAllUnSequenceFileFolders()),
+    SEQUENCE_FILE_OPEN_NUM(directoryManager.getAllSequenceFileFolders()),
+    UNSEQUENCE_FILE_OPEN_NUM(directoryManager.getAllUnSequenceFileFolders()),
     WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalFolder())),
-    METADATA_OPEN_FILE_NUM(Collections.singletonList(config.getMetadataDir())),
-    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getSystemInfoDir())),
+    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getSystemDir())),
     SOCKET_OPEN_FILE_NUM(null);
 
     // path is a list of directory corresponding to the OpenFileNumStatistics enum element,
-    // e.g. data/data/ for DATA_OPEN_FILE_NUM
+    // e.g. data/data/ for SEQUENCE_FILE_OPEN_NUM
     private List<String> path;
 
     OpenFileNumStatistics(List<String> path) {

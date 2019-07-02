@@ -93,13 +93,9 @@ public class MonitorConstants {
   }
 
   public enum FileSizeConstants {
-    DATA(Monitor.INSTANCE.getBaseDirectory()),
-    //TODO FIXME this is absolutely wrong!
-    OVERFLOW(Monitor.INSTANCE.getBaseDirectory() + File.separatorChar + "unsequence"),
-    SETTLED(Monitor.INSTANCE.getBaseDirectory() + File.separatorChar + "sequence"),
+    // TODO add multi data dir monitor
     WAL(new File(config.getWalFolder()).getAbsolutePath()),
-    INFO(new File(config.getSystemInfoDir()).getAbsolutePath()),
-    SCHEMA(new File(config.getMetadataDir()).getAbsolutePath());
+    SYS(new File(config.getSystemDir()).getAbsolutePath());
 
     public String getPath() {
       return path;

@@ -43,12 +43,19 @@ public class DirectoryManager {
   private DirectoryStrategy unsequenceStrategy;
 
   private DirectoryManager() {
-    sequenceFileFolders = new ArrayList<>(
-        Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getSeqDataDirs()));
-    initFolders(sequenceFileFolders);
-    unsequenceFileFolders = new ArrayList<>(
-    Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getUnseqDataDirs()));
-    initFolders(unsequenceFileFolders);
+    sequenceFileFolders =
+        new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    for (int i = 0; i < sequenceFileFolders.size(); i++) {
+      sequenceFileFolders.set(i, sequenceFileFolders.get(i) + File.separator + "sequence");
+    }
+    mkDirs(sequenceFileFolders);
+
+    unsequenceFileFolders =
+        new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    for (int i = 0; i < unsequenceFileFolders.size(); i++) {
+      unsequenceFileFolders.set(i, unsequenceFileFolders.get(i) + File.separator + "unsequence");
+    }
+    mkDirs(unsequenceFileFolders);
 
     String strategyName = "";
     try {
@@ -67,7 +74,7 @@ public class DirectoryManager {
     return DirectoriesHolder.INSTANCE;
   }
 
-  private void initFolders(List<String> folders) {
+  private void mkDirs(List<String> folders) {
     for (String folder : folders) {
       File file = new File(folder);
       if (file.mkdirs()) {

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import java.io.File;
 import java.io.IOException;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -66,7 +67,6 @@ public class EnvironmentUtils {
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
-    // tsFileConfig.duplicateIncompletedPage = false;
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
@@ -81,7 +81,6 @@ public class EnvironmentUtils {
     DeviceMetaDataCache.getInstance().clear();
     // close metadata
     MManager.getInstance().clear();
-    MManager.getInstance().flushObjectToFile();
     // delete all directory
     cleanAllDir();
     StorageEngine.getInstance().setReadOnly(false);
@@ -98,35 +97,20 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // delete system info
-    cleanDir(config.getSystemInfoDir());
-    // delete metadata
-    cleanDir(config.getMetadataDir());
+    cleanDir(config.getSystemDir());
     // delete wal
     cleanDir(config.getWalFolder());
     // delete index
     cleanDir(config.getIndexFileDir());
-    // delete data
-    cleanDir(config.getDataDir());
+    cleanDir(config.getBaseDir());
+    // delete data files
+    for (String dataDir : config.getDataDirs()) {
+      cleanDir(dataDir);
+    }
   }
 
   public static void cleanDir(String dir) throws IOException {
-    File file = new File(dir);
-    if (file.exists()) {
-      if (file.isDirectory()) {
-        for (File subFile : file.listFiles()) {
-          cleanDir(subFile.getAbsolutePath());
-        }
-        if(file.listFiles().length != 0){
-          System.out.println(String.format("The file %s has file.", dir));
-          for (File f: file.listFiles()) {
-            System.out.println(f.getAbsolutePath());
-          }
-        }
-      }
-      if (!file.delete()) {
-        throw new IOException(String.format("The file %s can't be deleted", dir));
-      }
-    }
+    FileUtils.deleteDirectory(new File(dir));
   }
 
   /**
@@ -141,7 +125,6 @@ public class EnvironmentUtils {
    * disable memory control</br>
    * this function should be called before all code in the setup
    */
-
   public static void envSetUp() throws StartupException, IOException {
     createAllDir();
     // disable the system monitor
@@ -150,12 +133,12 @@ public class EnvironmentUtils {
     try {
       authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {
-      throw new StartupException(e.getMessage());
+      throw new StartupException(e);
     }
     try {
       authorizer.reset();
     } catch (AuthException e) {
-      throw new StartupException(e.getMessage());
+      throw new StartupException(e);
     }
     StorageEngine.getInstance().reset();
     MultiFileLogNodeManager.getInstance().start();
@@ -173,15 +156,15 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // create storage group
-    createDir(config.getSystemInfoDir());
-    // create metadata
-    createDir(config.getMetadataDir());
+    createDir(config.getSystemDir());
     // create wal
     createDir(config.getWalFolder());
     // create index
     createDir(config.getIndexFileDir());
     // create data
-    createDir("data");
+    for (String dataDir: config.getDataDirs()) {
+      createDir(dataDir);
+    }
   }
 
   private static void createDir(String dir) {

@@ -24,10 +24,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -58,10 +56,10 @@ public class StorageEngine implements IService {
   private volatile boolean readOnly = false;
 
   /**
-   * a folder (system/info/ by default) that persist system info. Each Storage Processor will have a
-   * subfolder under the infoDir.
+   * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor will have a
+   * subfolder under the systemDir.
    */
-  private final String infoDir;
+  private final String systemDir;
 
   /**
    * storage group name -> storage group processor
@@ -75,9 +73,9 @@ public class StorageEngine implements IService {
   }
 
   private StorageEngine() {
-    infoDir = FilePathUtils.regularizePath(config.getSystemInfoDir());
-    // create infoDir
-    File dir = new File(infoDir);
+    systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+    // create systemDir
+    File dir = new File(systemDir);
     if (dir.mkdirs()) {
 
       logger.info("Information directory {} of all storage groups doesn't exist, create it",
@@ -90,7 +88,7 @@ public class StorageEngine implements IService {
     try {
       List<String> storageGroups = MManager.getInstance().getAllStorageGroupNames();
       for (String storageGroup: storageGroups) {
-        StorageGroupProcessor processor = new StorageGroupProcessor(infoDir, storageGroup);
+        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir, storageGroup);
         logger.info("Storage Group Processor {} is recovered successfully", storageGroup);
         processorMap.put(storageGroup, processor);
       }
@@ -129,7 +127,7 @@ public class StorageEngine implements IService {
           if (processor == null) {
             logger.debug("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
-            processor = new StorageGroupProcessor(infoDir, storageGroupName);
+            processor = new StorageGroupProcessor(systemDir, storageGroupName);
             synchronized (processorMap) {
               processorMap.put(storageGroupName, processor);
             }

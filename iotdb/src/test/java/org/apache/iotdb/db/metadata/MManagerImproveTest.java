@@ -52,7 +52,6 @@ public class MManagerImproveTest {
       }
     }
 
-    mManager.flushObjectToFile();
   }
 
   @After

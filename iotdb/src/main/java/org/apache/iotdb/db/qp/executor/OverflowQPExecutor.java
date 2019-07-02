@@ -354,9 +354,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           break;
         case DELETE_PATH:
           deleteDataOfTimeSeries(deletePathList);
-          Pair<Set<String>, Set<String>> closeDeletedStorageGroupPair =
+          Set<String> emptyStorageGroups =
               mManager.deletePathsFromMTree(deletePathList);
-          for (String deleteStorageGroup : closeDeletedStorageGroupPair.right) {
+          for (String deleteStorageGroup : emptyStorageGroups) {
             storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
           }
           break;

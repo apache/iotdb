@@ -125,6 +125,15 @@ public class IoTDBDescriptor {
       conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
           Boolean.toString(conf.isEnableWal()))));
 
+      conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
+
+      conf.setDataDirs(properties.getProperty("data_dir", IoTDBConfig.DEFAULT_SEQ_DATA_DIR)
+          .split(","));
+
+      conf.setSystemDir(properties.getProperty("sys_dir", conf.getSystemDir()));
+
+      conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
+
       conf.setMemtableNumber(Integer
           .parseInt(properties.getProperty("memtable_number",
               Integer.toString(conf.getMemtableNumber()))));
@@ -138,15 +147,6 @@ public class IoTDBDescriptor {
                   Long.toString(conf.getForceWalPeriodInMs()))));
       conf.setWalBufferSize(Integer.parseInt(properties.getProperty("wal_buffer_size",
           Integer.toString(conf.getWalBufferSize()))));
-
-      conf.setDataDir(properties.getProperty("data_dir", conf.getDataDir()));
-      conf.setSeqDataDirs(properties.getProperty("tsfile_dir", IoTDBConfig.DEFAULT_SEQ_DATA_DIR)
-          .split(","));
-      conf.setUnseqDataDirs(properties.getProperty("unseq_data_dir",
-          IoTDBConfig.DEFAULT_UNSEQ_DATA_DIR)
-                    .split(","));
-      conf.setSystemInfoDir(properties.getProperty("sys_dir", conf.getSystemInfoDir()));
-      conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
 
       conf.setMultiDirStrategyClassName(properties.getProperty("mult_dir_strategy",
           conf.getMultiDirStrategyClassName()));

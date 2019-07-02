@@ -21,13 +21,9 @@ package org.apache.iotdb.db.metadata;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,7 +44,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,8 +52,6 @@ import org.slf4j.LoggerFactory;
  * This class takes the responsibility of serialization of all the metadata info and persistent it
  * into files. This class contains all the interfaces to modify the metadata for delta system. All
  * the operations will be insert into the logs temporary in case the downtime of the delta system.
- *
- * @author Jinrui Zhang
  */
 public class MManager {
 
@@ -68,34 +61,29 @@ public class MManager {
 
   // the lock for read/insert
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-  // The file storing the serialize info for metadata
-  private String datafilePath;
   // the log file seriesPath
   private String logFilePath;
   private MGraph mgraph;
   private BufferedWriter logWriter;
   private boolean writeToLog;
-  private String metadataDirPath;
+  private String schemaDir;
 
   private RandomDeleteCache<String, PathCheckRet> checkAndGetDataTypeCache;
   private RandomDeleteCache<String, MNode> mNodeCache;
 
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private int maxSeriesNumberAmongStorageGroup;
-  private boolean initialized = false;
+  private boolean initialized;
 
   private MManager() {
-    metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
-    if (metadataDirPath.length() > 0
-        && metadataDirPath.charAt(metadataDirPath.length() - 1) != File.separatorChar) {
-      metadataDirPath = metadataDirPath + File.separatorChar;
+
+    schemaDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "schema";
+
+    File systemFolder = new File(schemaDir);
+    if (!systemFolder.exists()) {
+      systemFolder.mkdirs();
     }
-    File metadataDir = new File(metadataDirPath);
-    if (!metadataDir.exists()) {
-      metadataDir.mkdirs();
-    }
-    datafilePath = metadataDirPath + MetadataConstant.METADATA_OBJ;
-    logFilePath = metadataDirPath + MetadataConstant.METADATA_LOG;
+    logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
     writeToLog = false;
 
     int cacheSize = IoTDBDescriptor.getInstance().getConfig().getmManagerCacheSize();
@@ -139,15 +127,10 @@ public class MManager {
   private void init() {
 
     lock.writeLock().lock();
-    File dataFile = new File(datafilePath);
     File logFile = new File(logFilePath);
 
     try {
-      if (dataFile.exists()) {
-        initFromDataFile(dataFile);
-      } else {
-        initFromLog(logFile);
-      }
+      initFromLog(logFile);
       seriesNumberInStorageGroups = mgraph.countSeriesNumberInEachStorageGroup();
       if (seriesNumberInStorageGroups.isEmpty()) {
         maxSeriesNumberAmongStorageGroup = 0;
@@ -157,7 +140,7 @@ public class MManager {
       }
       logWriter = new BufferedWriter(new FileWriter(logFile, true));
       writeToLog = true;
-    } catch (PathErrorException | ClassNotFoundException | IOException | MetadataErrorException e) {
+    } catch (PathErrorException | IOException | MetadataErrorException e) {
       mgraph = new MGraph(ROOT_NAME);
       logger.error("Cannot read MGraph from file, using an empty new one", e);
     } finally {
@@ -165,14 +148,6 @@ public class MManager {
     }
   }
 
-  private void initFromDataFile(File dataFile) throws IOException, ClassNotFoundException {
-    // init the metadata from the serialized file
-    try(FileInputStream fis = new FileInputStream(dataFile);
-    ObjectInputStream ois = new ObjectInputStream(fis)) {
-      mgraph = (MGraph) ois.readObject();
-      dataFile.delete();
-    }
-  }
 
   private void initFromLog(File logFile)
       throws IOException, PathErrorException, MetadataErrorException {
@@ -255,7 +230,7 @@ public class MManager {
   private void initLogStream() throws IOException {
     if (logWriter == null) {
       File logFile = new File(logFilePath);
-      File metadataDir = new File(metadataDirPath);
+      File metadataDir = new File(schemaDir);
       if (!metadataDir.exists()) {
         metadataDir.mkdirs();
       }
@@ -436,13 +411,13 @@ public class MManager {
    * after this deletion and files of such StorageGroups should be deleted to reclaim disk space.
    * @throws MetadataErrorException
    */
-  public Pair<Set<String>, Set<String>> deletePathsFromMTree(List<Path> deletePathList)
+  public Set<String> deletePathsFromMTree(List<Path> deletePathList)
       throws MetadataErrorException {
     if (deletePathList != null && !deletePathList.isEmpty()) {
       List<String> fullPath = collectPaths(deletePathList);
 
-      Set<String> closeFileNodes = new HashSet<>();
-      Set<String> deleteFielNodes = new HashSet<>();
+
+      Set<String> emptyStorageGroups = new HashSet<>();
       for (String p : fullPath) {
         String storageGroupName;
         try {
@@ -450,7 +425,6 @@ public class MManager {
         } catch (PathErrorException e) {
           throw new MetadataErrorException(e);
         }
-        closeFileNodes.add(storageGroupName);
         // the two map is stored in the storage group node
         Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneStorageGroup(storageGroupName);
         Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(storageGroupName);
@@ -472,14 +446,13 @@ public class MManager {
             throw new MetadataErrorException(e);
           }
           if (deleteNameSpacePath != null) {
-            deleteFielNodes.add(deleteNameSpacePath);
+            emptyStorageGroups.add(deleteNameSpacePath);
           }
         }
       }
-      closeFileNodes.removeAll(deleteFielNodes);
-      return new Pair<>(closeFileNodes, deleteFielNodes);
+      return emptyStorageGroups;
     }
-    return new Pair<>(Collections.emptySet(), Collections.emptySet());
+    return Collections.emptySet();
   }
 
   /**
@@ -857,7 +830,6 @@ public class MManager {
    * function for getting file name by path.
    */
   private String getStorageGroupNameByPath(MNode node, String path) throws PathErrorException {
-
     lock.readLock().lock();
     try {
       return mgraph.getStorageGroupNameByPath(node, path);
@@ -1138,7 +1110,6 @@ public class MManager {
    * function for checking file level with check.
    */
   boolean checkFileLevelWithCheck(MNode node, String path) throws PathErrorException {
-
     lock.readLock().lock();
     try {
       getStorageGroupNameByPath(node, path);
@@ -1149,62 +1120,15 @@ public class MManager {
   }
 
   /**
-   * function for flushing object to file.
-   */
-  public void flushObjectToFile() throws IOException {
-
-    lock.writeLock().lock();
-    File dataFile = new File(datafilePath);
-    // delete old metadata data file
-    if (dataFile.exists()) {
-      dataFile.delete();
-    }
-    File metadataDir = new File(metadataDirPath);
-    if (!metadataDir.exists()) {
-      metadataDir.mkdirs();
-    }
-    File tempFile = new File(datafilePath + MetadataConstant.METADATA_TEMP);
-    try(FileOutputStream fos = new FileOutputStream(tempFile);
-        ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-      oos.writeObject(mgraph);
-      // close the logFile stream
-      if (logWriter != null) {
-        logWriter.close();
-        logWriter = null;
-      }
-      // rename temp file to data file
-      tempFile.renameTo(dataFile);
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  /**
    * function for getting metadata in string.
    */
   public String getMetadataInString() {
-
     lock.readLock().lock();
     try {
-      StringBuilder builder = new StringBuilder();
-      builder.append(TIME_SERIES_TREE_HEADER).append(mgraph.toString());
-      return builder.toString();
+      return TIME_SERIES_TREE_HEADER + mgraph.toString();
     } finally {
       lock.readLock().unlock();
     }
-  }
-
-  /**
-   * combine multiple metadata in string format
-   */
-  public static String combineMetadataInStrings(String[] metadatas) {
-    for (int i = 0; i < metadatas.length; i++) {
-      metadatas[i] = metadatas[i].replace(TIME_SERIES_TREE_HEADER, "");
-    }
-    String res = MGraph.combineMetadataInStrings(metadatas);
-    StringBuilder builder = new StringBuilder();
-    builder.append(TIME_SERIES_TREE_HEADER).append(res);
-    return builder.toString();
   }
 
   /**

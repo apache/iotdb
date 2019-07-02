@@ -135,7 +135,8 @@ public class FileSize implements IStatistic {
   public Map<FileSizeConstants, Long> getFileSizesInByte() {
     EnumMap<FileSizeConstants, Long> fileSizes = new EnumMap<>(FileSizeConstants.class);
     for (FileSizeConstants kinds : MonitorConstants.FileSizeConstants.values()) {
-      if (kinds.equals(MonitorConstants.FileSizeConstants.SETTLED)) {
+
+      if (kinds.equals(FileSizeConstants.SYS)) {
         fileSizes.put(kinds, collectSeqFileSize(fileSizes, kinds));
       } else {
         File file = new File(kinds.getPath());
@@ -157,14 +158,17 @@ public class FileSize implements IStatistic {
 
   private long collectSeqFileSize(EnumMap<FileSizeConstants, Long> fileSizes, FileSizeConstants kinds) {
     long fileSize = INIT_VALUE_IF_FILE_NOT_EXIST;
-    for (String bufferWriteDir : config.getSeqDataDirs()) {
-      File settledFile = new File(bufferWriteDir);
+    for (String sequenceDir : config.getDataDirs()) {
+      if (sequenceDir.contains("unsequence")) {
+        continue;
+      }
+      File settledFile = new File(sequenceDir);
       if (settledFile.exists()) {
         try {
           fileSize += FileUtils.sizeOfDirectory(settledFile);
         } catch (Exception e) {
           logger.error("Meet error while trying to get {} size with dir {} .", kinds,
-              bufferWriteDir, e);
+              sequenceDir, e);
           fileSizes.put(kinds, ABNORMAL_VALUE);
         }
       }
