@@ -50,6 +50,7 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -369,13 +370,13 @@ public class StorageGroupProcessor {
 
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
-  public QueryDataSource query(String deviceId, String measurementId) {
+  public QueryDataSource query(String deviceId, String measurementId, QueryContext context) {
     insertLock.readLock().lock();
     try {
       List<TsFileResource> seqResources = getFileReSourceListForQuery(sequenceFileList,
-          deviceId, measurementId);
+          deviceId, measurementId, context);
       List<TsFileResource> unseqResources = getFileReSourceListForQuery(unSequenceFileList,
-          deviceId, measurementId);
+          deviceId, measurementId, context);
       return new QueryDataSource(new Path(deviceId, measurementId), seqResources, unseqResources);
     } finally {
       insertLock.readLock().unlock();
@@ -396,7 +397,7 @@ public class StorageGroupProcessor {
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
   private List<TsFileResource> getFileReSourceListForQuery(List<TsFileResource> tsFileResources,
-      String deviceId, String measurementId) {
+      String deviceId, String measurementId, QueryContext context) {
 
     MeasurementSchema mSchema = fileSchema.getMeasurementSchema(measurementId);
     TSDataType dataType = mSchema.getType();
@@ -417,7 +418,7 @@ public class StorageGroupProcessor {
             Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair;
             pair = tsFileResource
                   .getUnsealedFileProcessor()
-                  .query(deviceId, measurementId, dataType, mSchema.getProps());
+                  .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
             tsfileResourcesForQuery
                 .add(new TsFileResource(tsFileResource.getFile(),
                     tsFileResource.getStartTimeMap(),
