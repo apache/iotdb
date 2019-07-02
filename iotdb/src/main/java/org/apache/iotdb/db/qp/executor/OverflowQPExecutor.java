@@ -422,151 +422,200 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     AuthorType authorType = plan.getAuthorType();
     String userName = plan.getUserName();
     String roleName = plan.getRoleName();
-    Path nodeName = plan.getNodeName();
+    Path path = plan.getNodeName();
     IAuthorizer authorizer;
     try {
       authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new ProcessorException(e);
     }
-    List<Path> headerList = new ArrayList<>();
-    List<TSDataType> typeList = new ArrayList<>();
-    List<String> roleList;
-    List<String> userList;
+
     AuthDataSet dataSet;
-    int index = 0;
+
     try {
       switch (authorType) {
         case LIST_ROLE:
-          headerList.add(new Path(ROLE));
-          typeList.add(TSDataType.TEXT);
-          dataSet = new AuthDataSet(headerList, typeList);
-          roleList = authorizer.listAllRoles();
-          for (String role : roleList) {
-            RowRecord record = new RowRecord(index++);
-            Field field = new Field(TSDataType.TEXT);
-            field.setBinaryV(new Binary(role));
-            record.addField(field);
-            dataSet.putRecord(record);
-          }
+          dataSet = executeListRole(authorizer);
           break;
         case LIST_USER:
-          userList = authorizer.listAllUsers();
-          headerList.add(new Path(USER));
-          typeList.add(TSDataType.TEXT);
-          dataSet = new AuthDataSet(headerList, typeList);
-          for (String user : userList) {
-            RowRecord record = new RowRecord(index++);
-            Field field = new Field(TSDataType.TEXT);
-            field.setBinaryV(new Binary(user));
-            record.addField(field);
-            dataSet.putRecord(record);
-          }
+          dataSet = executeListUser(authorizer);
           break;
         case LIST_ROLE_USERS:
-          Role role = authorizer.getRole(roleName);
-          if (role == null) {
-            throw new ProcessorException("No such role : " + roleName);
-          }
-          headerList.add(new Path(USER));
-          typeList.add(TSDataType.TEXT);
-          dataSet = new AuthDataSet(headerList, typeList);
-          userList = authorizer.listAllUsers();
-          for (String userN : userList) {
-            User userObj = authorizer.getUser(userN);
-            if (userObj != null && userObj.hasRole(roleName)) {
-              RowRecord record = new RowRecord(index++);
-              Field field = new Field(TSDataType.TEXT);
-              field.setBinaryV(new Binary(userN));
-              record.addField(field);
-              dataSet.putRecord(record);
-            }
-          }
+          dataSet = executeListRoleUsers(authorizer, roleName);
           break;
         case LIST_USER_ROLES:
-          User user = authorizer.getUser(userName);
-          if (user != null) {
-            headerList.add(new Path(ROLE));
-            typeList.add(TSDataType.TEXT);
-            dataSet = new AuthDataSet(headerList, typeList);
-            for (String roleN : user.getRoleList()) {
-              RowRecord record = new RowRecord(index++);
-              Field field = new Field(TSDataType.TEXT);
-              field.setBinaryV(new Binary(roleN));
-              record.addField(field);
-              dataSet.putRecord(record);
-            }
-          } else {
-            throw new ProcessorException("No such user : " + userName);
-          }
+          dataSet = executeListUserRoles(authorizer, userName);
           break;
         case LIST_ROLE_PRIVILEGE:
-          role = authorizer.getRole(roleName);
-          if (role != null) {
-            headerList.add(new Path(PRIVILEGE));
-            typeList.add(TSDataType.TEXT);
-            dataSet = new AuthDataSet(headerList, typeList);
-            for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-              if (nodeName == null || AuthUtils
-                  .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
-                RowRecord record = new RowRecord(index++);
-                Field field = new Field(TSDataType.TEXT);
-                field.setBinaryV(new Binary(pathPrivilege.toString()));
-                record.addField(field);
-                dataSet.putRecord(record);
-              }
-            }
-          } else {
-            throw new ProcessorException("No such role : " + roleName);
-          }
+          dataSet = executeListRolePrivileges(authorizer, roleName, path);
           break;
         case LIST_USER_PRIVILEGE:
-          user = authorizer.getUser(userName);
-          if (user == null) {
-            throw new ProcessorException("No such user : " + userName);
-          }
-          headerList.add(new Path(ROLE));
-          headerList.add(new Path(PRIVILEGE));
-          typeList.add(TSDataType.TEXT);
-          typeList.add(TSDataType.TEXT);
-          dataSet = new AuthDataSet(headerList, typeList);
-          for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-            if (nodeName == null || AuthUtils
-                .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
-              RowRecord record = new RowRecord(index++);
-              Field roleF = new Field(TSDataType.TEXT);
-              roleF.setBinaryV(new Binary(""));
-              record.addField(roleF);
-              Field privilegeF = new Field(TSDataType.TEXT);
-              privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
-              record.addField(privilegeF);
-              dataSet.putRecord(record);
-            }
-          }
-          for (String roleN : user.getRoleList()) {
-            role = authorizer.getRole(roleN);
-            if (role != null) {
-              for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-                if (nodeName == null
-                    || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
-                  RowRecord record = new RowRecord(index++);
-                  Field roleF = new Field(TSDataType.TEXT);
-                  roleF.setBinaryV(new Binary(roleN));
-                  record.addField(roleF);
-                  Field privilegeF = new Field(TSDataType.TEXT);
-                  privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
-                  record.addField(privilegeF);
-                  dataSet.putRecord(record);
-                }
-              }
-            }
-          }
+          dataSet = executeListUserPrivileges(authorizer, userName, path);
           break;
         default:
           throw new ProcessorException("Unsupported operation " + authorType);
       }
     } catch (AuthException e) {
       throw new ProcessorException(e);
+    }
+    return dataSet;
+  }
+
+  private AuthDataSet executeListRole(IAuthorizer authorizer) {
+    int index = 0;
+    List<Path> headerList = new ArrayList<>();
+    List<TSDataType> typeList = new ArrayList<>();
+    headerList.add(new Path(ROLE));
+    typeList.add(TSDataType.TEXT);
+    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    List<String> roleList = authorizer.listAllRoles();
+    for (String role : roleList) {
+      RowRecord record = new RowRecord(index++);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(role));
+      record.addField(field);
+      dataSet.putRecord(record);
+    }
+    return dataSet;
+  }
+
+  private AuthDataSet executeListUser(IAuthorizer authorizer) {
+    List<String> userList = authorizer.listAllUsers();
+    List<Path> headerList = new ArrayList<>();
+    List<TSDataType> typeList = new ArrayList<>();
+    headerList.add(new Path(USER));
+    typeList.add(TSDataType.TEXT);
+    int index = 0;
+    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    for (String user : userList) {
+      RowRecord record = new RowRecord(index++);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(user));
+      record.addField(field);
+      dataSet.putRecord(record);
+    }
+    return dataSet;
+  }
+
+  private AuthDataSet executeListRoleUsers(IAuthorizer authorizer, String roleName)
+      throws AuthException {
+    Role role = authorizer.getRole(roleName);
+    if (role == null) {
+      throw new AuthException("No such role : " + roleName);
+    }
+    List<Path> headerList = new ArrayList<>();
+    List<TSDataType> typeList = new ArrayList<>();
+    headerList.add(new Path(USER));
+    typeList.add(TSDataType.TEXT);
+    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    List<String> userList = authorizer.listAllUsers();
+    int index = 0;
+    for (String userN : userList) {
+      User userObj = authorizer.getUser(userN);
+      if (userObj != null && userObj.hasRole(roleName)) {
+        RowRecord record = new RowRecord(index++);
+        Field field = new Field(TSDataType.TEXT);
+        field.setBinaryV(new Binary(userN));
+        record.addField(field);
+        dataSet.putRecord(record);
+      }
+    }
+    return dataSet;
+  }
+
+  private AuthDataSet executeListUserRoles(IAuthorizer authorizer, String userName)
+      throws AuthException {
+    User user = authorizer.getUser(userName);
+    if (user != null) {
+      List<Path> headerList = new ArrayList<>();
+      List<TSDataType> typeList = new ArrayList<>();
+      headerList.add(new Path(ROLE));
+      typeList.add(TSDataType.TEXT);
+      AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+      int index = 0;
+      for (String roleN : user.getRoleList()) {
+        RowRecord record = new RowRecord(index++);
+        Field field = new Field(TSDataType.TEXT);
+        field.setBinaryV(new Binary(roleN));
+        record.addField(field);
+        dataSet.putRecord(record);
+      }
+      return dataSet;
+    } else {
+      throw new AuthException("No such user : " + userName);
+    }
+  }
+
+  private AuthDataSet executeListRolePrivileges(IAuthorizer authorizer, String roleName, Path path)
+      throws AuthException {
+    Role role = authorizer.getRole(roleName);
+    if (role != null) {
+      List<Path> headerList = new ArrayList<>();
+      List<TSDataType> typeList = new ArrayList<>();
+      headerList.add(new Path(PRIVILEGE));
+      typeList.add(TSDataType.TEXT);
+      AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+      int index = 0;
+      for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+        if (path == null || AuthUtils
+            .pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+          RowRecord record = new RowRecord(index++);
+          Field field = new Field(TSDataType.TEXT);
+          field.setBinaryV(new Binary(pathPrivilege.toString()));
+          record.addField(field);
+          dataSet.putRecord(record);
+        }
+      }
+      return dataSet;
+    } else {
+      throw new AuthException("No such role : " + roleName);
+    }
+  }
+
+  private AuthDataSet executeListUserPrivileges(IAuthorizer authorizer, String userName, Path path)
+      throws AuthException {
+    User user = authorizer.getUser(userName);
+    if (user == null) {
+      throw new AuthException("No such user : " + userName);
+    }
+    List<Path> headerList = new ArrayList<>();
+    List<TSDataType> typeList = new ArrayList<>();
+    headerList.add(new Path(ROLE));
+    headerList.add(new Path(PRIVILEGE));
+    typeList.add(TSDataType.TEXT);
+    typeList.add(TSDataType.TEXT);
+    AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
+    int index = 0;
+    for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+      if (path == null || AuthUtils
+          .pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        RowRecord record = new RowRecord(index++);
+        Field roleF = new Field(TSDataType.TEXT);
+        roleF.setBinaryV(new Binary(""));
+        record.addField(roleF);
+        Field privilegeF = new Field(TSDataType.TEXT);
+        privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
+        record.addField(privilegeF);
+        dataSet.putRecord(record);
+      }
+    }
+    for (String roleN : user.getRoleList()) {
+      Role role = authorizer.getRole(roleN);
+      if (role != null) {
+        for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+          if (path == null
+              || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+            RowRecord record = new RowRecord(index++);
+            Field roleF = new Field(TSDataType.TEXT);
+            roleF.setBinaryV(new Binary(roleN));
+            record.addField(roleF);
+            Field privilegeF = new Field(TSDataType.TEXT);
+            privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
+            record.addField(privilegeF);
+            dataSet.putRecord(record);
+          }
+        }
+      }
     }
     return dataSet;
   }

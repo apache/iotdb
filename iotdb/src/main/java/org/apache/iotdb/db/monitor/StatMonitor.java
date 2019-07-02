@@ -348,7 +348,7 @@ public class StatMonitor implements IService {
         long seconds = (currentTimeMillis - runningTimeMillis) / 1000;
         if (seconds >= statMonitorDetectFreqSec) {
           runningTimeMillis = currentTimeMillis;
-          // deleteDataInMemory time-series data
+          // delete time-series data
           StorageEngine fManager = StorageEngine.getInstance();
           try {
             for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {

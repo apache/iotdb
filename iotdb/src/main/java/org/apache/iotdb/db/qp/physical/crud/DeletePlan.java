@@ -38,7 +38,7 @@ public class DeletePlan extends PhysicalPlan {
   /**
    * constructor of DeletePlan with single path.
    *
-   * @param deleteTime deleteDataInMemory time
+   * @param deleteTime delete time
    * @param path time series path
    */
   public DeletePlan(long deleteTime, Path path) {
@@ -50,7 +50,7 @@ public class DeletePlan extends PhysicalPlan {
   /**
    * constructor of DeletePlan with multiple paths.
    *
-   * @param deleteTime deleteDataInMemory time
+   * @param deleteTime delete time
    * @param paths time series paths in List structure
    */
   public DeletePlan(long deleteTime, List<Path> paths) {

@@ -87,7 +87,7 @@ public class OpenFileNumUtilTest {
       }
     }
 
-    // deleteDataInMemory test files
+    // delete test files
     for (File file : fileList) {
       if (file.exists()) {
         try {

@@ -203,7 +203,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       FileUtils.deleteDirectory(new File(logDirectory));
       long elapse = System.currentTimeMillis() - start;
       if (elapse > 1000) {
-        logger.info("WAL deleteDataInMemory cost {} ms", elapse);
+        logger.info("WAL delete cost {} ms", elapse);
       }
     } finally {
       lock.writeLock().unlock();

@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.auth;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
@@ -64,7 +66,7 @@ public class LocalFileAuthorizerTest {
       assertEquals("The username or the password is not correct", e.getMessage());
     }
     /*
-     * create user,deleteDataInMemory user
+     * create user,delete user
      */
     User user = new User("user", "password");
     try {
@@ -229,10 +231,10 @@ public class LocalFileAuthorizerTest {
     try {
       Set<Integer> permisssions = authorizer.getPrivileges(user.getName(), nodeName);
       assertEquals(3, permisssions.size());
-      assertEquals(true, permisssions.contains(1));
-      assertEquals(true, permisssions.contains(2));
-      assertEquals(true, permisssions.contains(3));
-      assertEquals(false, permisssions.contains(4));
+      assertTrue(permisssions.contains(1));
+      assertTrue(permisssions.contains(2));
+      assertTrue(permisssions.contains(3));
+      assertFalse(permisssions.contains(4));
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -241,8 +243,8 @@ public class LocalFileAuthorizerTest {
       authorizer.revokeRoleFromUser(roleName, user.getName());
       Set<Integer> permisssions = authorizer.getPrivileges(user.getName(), nodeName);
       assertEquals(1, permisssions.size());
-      assertEquals(true, permisssions.contains(1));
-      assertEquals(false, permisssions.contains(2));
+      assertTrue(permisssions.contains(1));
+      assertFalse(permisssions.contains(2));
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());

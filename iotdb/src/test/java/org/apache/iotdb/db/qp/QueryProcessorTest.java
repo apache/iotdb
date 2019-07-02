@@ -98,7 +98,7 @@ public class QueryProcessorTest {
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(createTSStatement);
     assertEquals(OperatorType.CREATE_TIMESERIES, plan2.getOperatorType());
 
-    String deleteTSStatement = "deleteDataInMemory timeseries root.vehicle.d1.s1";
+    String deleteTSStatement = "delete timeseries root.vehicle.d1.s1";
     PhysicalPlan plan3 = processor.parseSQLToPhysicalPlan(deleteTSStatement);
     assertEquals(OperatorType.DELETE_TIMESERIES, plan3.getOperatorType());
 

@@ -82,7 +82,7 @@ public class LocalFileRoleManagerTest {
     }
     assertEquals(true, caught);
 
-    // deleteDataInMemory
+    // delete
     assertEquals(false, manager.deleteRole("not a role"));
     assertEquals(true, manager.deleteRole(roles[roles.length - 1].getName()));
     assertEquals(null, manager.getRole(roles[roles.length - 1].getName()));
