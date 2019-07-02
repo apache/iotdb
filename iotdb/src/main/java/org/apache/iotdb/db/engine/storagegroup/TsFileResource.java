@@ -53,7 +53,7 @@ public class TsFileResource {
 
   private TsFileProcessor processor;
 
-  private transient ModificationFile modFile;
+  private ModificationFile modFile;
 
   private volatile boolean closed = false;
 

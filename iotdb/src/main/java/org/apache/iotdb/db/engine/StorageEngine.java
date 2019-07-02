@@ -60,7 +60,7 @@ public class StorageEngine implements IService {
    * a folder (system/info/ by default) that persist system info. Ends with
    * File.separator Each StorageEngine will have a subfolder.
    */
-  private final String baseDir;
+  private final String infoDir;
 
   /**
    * storage group name -> storage group processor
@@ -81,9 +81,9 @@ public class StorageEngine implements IService {
 
 
   private StorageEngine() {
-    baseDir = FilePathUtils.regularizePath(config.getSystemInfoDir());
-    // create baseDir
-    File dir = new File(baseDir);
+    infoDir = FilePathUtils.regularizePath(config.getSystemInfoDir());
+    // create infoDir
+    File dir = new File(infoDir);
     if (dir.mkdirs()) {
       logger.info("Base directory {} of all storage groups doesn't exist, create it", dir.getPath());
     }
@@ -94,7 +94,7 @@ public class StorageEngine implements IService {
     try {
       List<String> storageGroups = MManager.getInstance().getAllFileNames();
       for (String storageGroup: storageGroups) {
-        StorageGroupProcessor processor = new StorageGroupProcessor(baseDir, storageGroup);
+        StorageGroupProcessor processor = new StorageGroupProcessor(infoDir, storageGroup);
         logger.info("Storage Group Processor {} is recovered successfully", storageGroup);
         processorMap.put(storageGroup, processor);
       }
@@ -134,7 +134,7 @@ public class StorageEngine implements IService {
           if (processor == null) {
             logger.debug("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
-            processor = new StorageGroupProcessor(baseDir, storageGroupName);
+            processor = new StorageGroupProcessor(infoDir, storageGroupName);
             synchronized (processorMap) {
               processorMap.put(storageGroupName, processor);
             }
