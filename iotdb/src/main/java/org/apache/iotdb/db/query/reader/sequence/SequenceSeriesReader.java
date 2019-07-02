@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.query.reader.sequence;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.sequence.adapter.FileSeriesReaderAdapter;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -35,10 +37,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * batch reader of data in: 1) sealed tsfile. 2) unsealed tsfile, which include data on disk of
@@ -53,49 +51,57 @@ public class SequenceSeriesReader extends IterateReader {
    */
   private boolean enableReverse;
 
+  private List<TsFileResource> seqResources;
+  private Filter filter;
+  private QueryContext context;
+
+
   /**
    * init with globalSortedSeriesDataSource, filter, context and isReverse.
    *
-   * @param seriesPath   data source
-   * @param seqResources null if no filter
-   * @param context      query context
-   * @param isReverse    true-traverse chunks from behind forward, false-traverse chunks from front to
-   *                     back.
+   * @param seriesPath data source
+   * @param seqResources sealed and unsealed tsfile resources
+   * @param filter null if no filter
+   * @param context query context
+   * @param isReverse true-traverse chunks from behind forward, false-traverse chunks from front to
+   * back.
    */
   public SequenceSeriesReader(Path seriesPath, List<TsFileResource> seqResources,
-                              Filter timeFilter, QueryContext context, boolean isReverse) throws IOException {
-    super();
-    this.seriesPath = seriesPath;
-    this.enableReverse = isReverse;
+      Filter filter, QueryContext context, boolean isReverse) {
+    super(seqResources.size());
     if (isReverse) {
       Collections.reverse(seqResources);
     }
-    for (TsFileResource tsFileResource : seqResources) {
-      if (tsFileResource.isClosed()) {
-        constructSealedTsFileReader(tsFileResource, timeFilter, context, seqResourceSeriesReaderList);
-      } else {
-        seqResourceSeriesReaderList.add(
-                new UnSealedTsFileReader(tsFileResource, timeFilter, enableReverse));
-      }
-    }
+    this.seqResources = seqResources;
+    this.seriesPath = seriesPath;
+    this.enableReverse = isReverse;
+    this.context = context;
+    this.filter = filter;
   }
 
   /**
    * traverse chunks from front to back.
    */
   public SequenceSeriesReader(Path seriesPath, List<TsFileResource> seqResources,
-                              Filter timeFilter, QueryContext context) throws IOException {
+      Filter timeFilter, QueryContext context) {
     this(seriesPath, seqResources, timeFilter, context, false);
   }
 
-  private void constructSealedTsFileReader(TsFileResource tsFileResource, Filter filter,
-                                           QueryContext context, List<IAggregateReader> seqResourceSeriesReaderList)
-          throws IOException {
-    if (singleTsFileSatisfied(tsFileResource, filter)) {
-      seqResourceSeriesReaderList.add(
-              new FileSeriesReaderAdapter(initSealedTsFileReader(tsFileResource, filter, context)));
+  @Override
+  public boolean constructNextReader(int idx) throws IOException {
+    TsFileResource tsFileResource = seqResources.get(idx);
+    if (tsFileResource.isClosed()) {
+      if (singleTsFileSatisfied(tsFileResource, filter)) {
+        currentSeriesReader = new FileSeriesReaderAdapter(
+            initSealedTsFileReader(tsFileResource, filter, context));
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      currentSeriesReader = new UnSealedTsFileReader(tsFileResource, filter, enableReverse);
+      return true;
     }
-
   }
 
   /**
@@ -116,18 +122,18 @@ public class SequenceSeriesReader extends IterateReader {
   }
 
   private FileSeriesReader initSealedTsFileReader(TsFileResource tsfile, Filter filter,
-                                                  QueryContext context)
-          throws IOException {
+      QueryContext context)
+      throws IOException {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-            .get(tsfile.getFile().getPath(), true);
+        .get(tsfile.getFile().getPath(), true);
 
     MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
     List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
 
     List<Modification> pathModifications = context.getPathModifications(tsfile.getModFile(),
-            seriesPath.getFullPath());
+        seriesPath.getFullPath());
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
     }

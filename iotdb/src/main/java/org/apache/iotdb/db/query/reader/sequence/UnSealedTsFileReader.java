@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.query.reader.sequence;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
 import org.apache.iotdb.db.query.reader.sequence.adapter.FileSeriesReaderAdapter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -32,28 +37,27 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-
 /**
- * batch reader of data in: 1) the data in unseal tsfile part which has been flushed to disk;
- * 2) the data in flushing memtable list.
+ * batch reader of data in: 1) the data in unseal tsfile part which has been flushed to disk; 2) the
+ * data in flushing memtable list.
  */
 public class UnSealedTsFileReader extends IterateReader {
+
+  List<IAggregateReader> unSealedResources;
 
   /**
    * Construct funtion for UnSealedTsFileReader.
    *
    * @param unsealedTsFile -param to initial
-   * @param filter         -filter
-   * @param isReverse      true-traverse chunks from behind forward; false-traverse chunks from front to
-   *                       back;
+   * @param filter -filter
+   * @param isReverse true-traverse chunks from behind forward; false-traverse chunks from front to
+   * back;
    */
   public UnSealedTsFileReader(TsFileResource unsealedTsFile, Filter filter, boolean isReverse)
-          throws IOException {
+      throws IOException {
+    super(2);
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-            .get(unsealedTsFile.getFile().getPath(), false);
+        .get(unsealedTsFile.getFile().getPath(), false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
     List<ChunkMetaData> metaDataList = unsealedTsFile.getChunkMetaDatas();
@@ -69,16 +73,24 @@ public class UnSealedTsFileReader extends IterateReader {
     } else {
       unSealedReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
     }
-
+    unSealedResources = new ArrayList<>();
     // data in flushing memtable
-    MemChunkReader memChunkReader = new MemChunkReader(unsealedTsFile.getReadOnlyMemChunk(), filter);
+    MemChunkReader memChunkReader = new MemChunkReader(unsealedTsFile.getReadOnlyMemChunk(),
+        filter);
     if (isReverse) {
-      seqResourceSeriesReaderList.add(memChunkReader);
-      seqResourceSeriesReaderList.add(new FileSeriesReaderAdapter(unSealedReader));
+      unSealedResources.add(memChunkReader);
+      unSealedResources.add(new FileSeriesReaderAdapter(unSealedReader));
     } else {
-      seqResourceSeriesReaderList.add(new FileSeriesReaderAdapter(unSealedReader));
-      seqResourceSeriesReaderList.add(memChunkReader);
+
+      unSealedResources.add(new FileSeriesReaderAdapter(unSealedReader));
+      unSealedResources.add(memChunkReader);
 
     }
+  }
+
+  @Override
+  public boolean constructNextReader(int idx) {
+    currentSeriesReader = unSealedResources.get(idx);
+    return true;
   }
 }
