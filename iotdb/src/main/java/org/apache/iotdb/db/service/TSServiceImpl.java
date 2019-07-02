@@ -43,7 +43,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -105,7 +105,7 @@ import org.slf4j.LoggerFactory;
 
 public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   protected static final String INFO_NOT_LOGIN = "{}: Not login.";
   protected static final String ERROR_NOT_LOGIN = "Not login";
 
@@ -130,7 +130,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
-    LOGGER.info("{}: receive open session request from username {}", IoTDBConstant.GLOBAL_DB_NAME,
+    logger.info("{}: receive open session request from username {}", IoTDBConstant.GLOBAL_DB_NAME,
         req.getUsername());
 
     boolean status;
@@ -143,7 +143,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       status = authorizer.login(req.getUsername(), req.getPassword());
     } catch (AuthException e) {
-      LOGGER.error("meet error while logging in.", e);
+      logger.error("meet error while logging in.", e);
       status = false;
     }
     TS_Status tsStatus;
@@ -162,7 +162,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     resp.setSessionHandle(
         new TS_SessionHandle(new TSHandleIdentifier(ByteBuffer.wrap(req.getUsername().getBytes()),
             ByteBuffer.wrap(req.getPassword().getBytes()))));
-    LOGGER.info("{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME,
+    logger.info("{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME,
         tsStatus.getErrorMessage(),
         req.getUsername());
 
@@ -176,7 +176,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSCloseSessionResp closeSession(TSCloseSessionReq req) throws TException {
-    LOGGER.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
+    logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
     TS_Status tsStatus;
     if (username.get() == null) {
       tsStatus = new TS_Status(TS_StatusCode.ERROR_STATUS);
@@ -201,7 +201,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
-    LOGGER.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
+    logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
 
       if (req != null && req.isSetStmtId()) {
@@ -213,7 +213,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       clearAllStatusForCurrentRequest();
     } catch (Exception e) {
-      LOGGER.error("Error in closeOperation : ", e);
+      logger.error("Error in closeOperation : ", e);
     }
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
   }
@@ -254,7 +254,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) throws TException {
     TS_Status status;
     if (!checkLogin()) {
-      LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       status = getErrorStatus(ERROR_NOT_LOGIN);
       return new TSFetchMetadataResp(status);
     }
@@ -272,7 +272,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setStatus(status);
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          LOGGER
+          logger
               .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
                   outOfMemoryError);
           status = getErrorStatus(
@@ -293,7 +293,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setStatus(status);
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          LOGGER.error("Failed to fetch storage groups' metadata", outOfMemoryError);
+          logger.error("Failed to fetch storage groups' metadata", outOfMemoryError);
           status = getErrorStatus(
               String.format("Failed to fetch storage groups' metadata because: %s",
                   outOfMemoryError));
@@ -312,7 +312,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setStatus(status);
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          LOGGER.error("Failed to fetch all metadata in json", outOfMemoryError);
+          logger.error("Failed to fetch all metadata in json", outOfMemoryError);
           status = getErrorStatus(
               String.format("Failed to fetch all metadata in json because: %s", outOfMemoryError));
           resp.setStatus(status);
@@ -333,12 +333,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             resp.setColumnsList(deviceMap.get(column));
           }
         } catch (PathErrorException | InterruptedException | ProcessorException e) {
-          LOGGER.error("cannot get delta object map", e);
+          logger.error("cannot get delta object map", e);
           status = getErrorStatus(String.format("Failed to fetch delta object map because: %s", e));
           resp.setStatus(status);
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          LOGGER.error("Failed to get delta object map", outOfMemoryError);
+          logger.error("Failed to get delta object map", outOfMemoryError);
           status = getErrorStatus(
               String.format("Failed to get delta object map because: %s", outOfMemoryError));
           break;
@@ -367,7 +367,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setStatus(status);
           return resp;
         } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          LOGGER.error("Failed to fetch seriesPath {}'s all columns", req.getColumnPath(),
+          logger.error("Failed to fetch seriesPath {}'s all columns", req.getColumnPath(),
               outOfMemoryError);
           status = getErrorStatus(String.format("Failed to fetch %s's all columns because: %s",
               req.getColumnPath(), outOfMemoryError));
@@ -447,7 +447,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throws TException {
     try {
       if (!checkLogin()) {
-        LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN, null);
       }
       List<String> statements = req.getStatements();
@@ -476,7 +476,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               "Fail to generate physcial plan and execute for statement "
                   + "%s beacuse %s",
               statement, e.getMessage());
-          LOGGER.warn("Error occurred when executing {}", statement, e);
+          logger.warn("Error occurred when executing {}", statement, e);
           result.add(Statement.EXECUTE_FAILED);
           isAllSuccessful = false;
           batchErrorMessage = errMessage;
@@ -489,7 +489,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, batchErrorMessage, result);
       }
     } catch (Exception e) {
-      LOGGER.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
     }
   }
@@ -498,7 +498,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) throws TException {
     try {
       if (!checkLogin()) {
-        LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
       }
       String statement = req.getStatement();
@@ -508,7 +508,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS");
         }
       } catch (Exception e) {
-        LOGGER.error("meet error while executing admin command!", e);
+        logger.error("meet error while executing admin command!", e);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
       }
 
@@ -518,7 +518,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               "Execute set consistency level successfully");
         }
       } catch (Exception e) {
-        LOGGER.error("Error occurred when executing statement {}", statement, e);
+        logger.error("Error occurred when executing statement {}", statement, e);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
       }
 
@@ -527,11 +527,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
         physicalPlan.setProposer(username.get());
       } catch (IllegalASTFormatException e) {
-        LOGGER.debug("meet error while parsing SQL to physical plan: ", e);
+        logger.debug("meet error while parsing SQL to physical plan: ", e);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
             "Statement format is not right:" + e.getMessage());
       } catch (NullPointerException e) {
-        LOGGER.error("meet error while parsing SQL to physical plan: ", e);
+        logger.error("meet error while parsing SQL to physical plan: ", e);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Statement is not allowed");
       }
       if (physicalPlan.isQuery()) {
@@ -540,7 +540,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeUpdateStatement(physicalPlan);
       }
     } catch (Exception e) {
-      LOGGER.info("meet error while executing statement: {}", req.getStatement(), e);
+      logger.info("meet error while executing statement: {}", req.getStatement(), e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
@@ -566,7 +566,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     try {
       if (!checkLogin()) {
-        LOGGER.info("{}: Not login.", IoTDBConstant.GLOBAL_DB_NAME);
+        logger.info("{}: Not login.", IoTDBConstant.GLOBAL_DB_NAME);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
       }
 
@@ -593,7 +593,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       recordANewQuery(statement, plan);
       return resp;
     } catch (Exception e) {
-      LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
@@ -644,7 +644,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       checkFileLevelSet(paths);
     } catch (PathErrorException e) {
-      LOGGER.error("meet error while checking file level.", e);
+      logger.error("meet error while checking file level.", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
 
@@ -743,13 +743,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       resp.setQueryDataSet(result);
       return resp;
     } catch (Exception e) {
-      LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
 
   protected QueryDataSet createNewDataSet(String statement, int fetchSize, TSFetchResultsReq req)
-      throws PathErrorException, QueryFilterOptimizationException, FileNodeManagerException,
+      throws PathErrorException, QueryFilterOptimizationException, StorageEngineException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
     processor.getExecutor().setFetchSize(fetchSize);
@@ -785,10 +785,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       String statement = req.getStatement();
       return executeUpdateStatement(statement);
     } catch (ProcessorException e) {
-      LOGGER.error("meet error while executing update statement.", e);
+      logger.error("meet error while executing update statement.", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     } catch (Exception e) {
-      LOGGER.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
@@ -802,7 +802,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             "No permissions for this operation " + plan.getOperatorType());
       }
     } catch (AuthException e) {
-      LOGGER.error("meet error while checking authorization.", e);
+      logger.error("meet error while checking authorization.", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
           "Uninitialized authorizer " + e.getMessage());
     }
@@ -813,7 +813,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       execRet = executeNonQuery(plan);
     } catch (ProcessorException e) {
-      LOGGER.debug("meet error while processing non-query. ", e);
+      logger.debug("meet error while processing non-query. ", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
     TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
@@ -840,7 +840,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       physicalPlan.setProposer(username.get());
     } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
-      LOGGER.error("meet error while parsing SQL to physical plan!", e);
+      logger.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
 
@@ -922,7 +922,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
       resp = new TSGetTimeZoneResp(tsStatus, zoneIds.get().toString());
     } catch (Exception e) {
-      LOGGER.error("meet error while generating time zone.", e);
+      logger.error("meet error while generating time zone.", e);
       tsStatus = new TS_Status(TS_StatusCode.ERROR_STATUS);
       tsStatus.setErrorMessage(e.getMessage());
       resp = new TSGetTimeZoneResp(tsStatus, "Unknown time zone");
@@ -938,7 +938,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       zoneIds.set(ZoneId.of(timeZoneID));
       tsStatus = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
-      LOGGER.error("meet error while setting time zone.", e);
+      logger.error("meet error while setting time zone.", e);
       tsStatus = new TS_Status(TS_StatusCode.ERROR_STATUS);
       tsStatus.setErrorMessage(e.getMessage());
     }
@@ -958,7 +958,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteStatementResp executeInsertion(TSInsertionReq req) {
     if (!checkLogin()) {
-      LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
     }
 
@@ -982,7 +982,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       return executeUpdateStatement(plan);
     } catch (Exception e) {
-      LOGGER.info("meet error while executing an insertion into {}", req.getDeviceId(), e);
+      logger.info("meet error while executing an insertion into {}", req.getDeviceId(), e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }

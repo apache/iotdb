@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TsFileMetaDataCache {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileMetaDataCache.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileMetaDataCache.class);
   /**
    * key: The file seriesPath of tsfile.
    */
@@ -60,15 +60,15 @@ public class TsFileMetaDataCache {
         // read value from tsfile
         TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(path);
         cache.put(path, fileMetaData);
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Cache didn't hint: the number of requests for cache is {}",
+        if (logger.isDebugEnabled()) {
+          logger.debug("Cache didn't hint: the number of requests for cache is {}",
               cacheRequestNum.get());
         }
         return cache.get(path);
       } else {
         cacheHintNum.incrementAndGet();
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(
+        if (logger.isDebugEnabled()) {
+          logger.debug(
               "Cache hint: the number of requests for cache is {}, the number of hints for cache "
                   + "is {}",
               cacheRequestNum.get(), cacheHintNum.get());

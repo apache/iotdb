@@ -20,8 +20,7 @@ package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.FileNodeProcessorException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
@@ -30,14 +29,14 @@ import org.junit.Test;
 public class UnsealedSeqReaderTest extends ReaderTestHelper {
 
   @Test
-  public void testUnSealedReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
-    TsFileResource resourceV2 = queryDataSource.getSeqResources().get(0);
-    Assert.assertEquals(false, resourceV2.isClosed());
-    UnSealedTsFileReader readerV2 = new UnSealedTsFileReader(resourceV2, null, false);
+  public void testUnSealedReader() throws IOException {
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+    TsFileResource resource = queryDataSource.getSeqResources().get(0);
+    Assert.assertEquals(false, resource.isClosed());
+    UnSealedTsFileReader reader = new UnSealedTsFileReader(resource, null, false);
     long time = 999;
-    while (readerV2.hasNext()) {
-      BatchData batchData = readerV2.nextBatch();
+    while (reader.hasNext()) {
+      BatchData batchData = reader.nextBatch();
       while (batchData.hasNext()) {
         time++;
         Assert.assertEquals(time, batchData.currentTime());
@@ -48,24 +47,24 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testUnSealedByTimestampReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
-    TsFileResource resourceV2 = queryDataSource.getSeqResources().get(0);
-    Assert.assertEquals(false, resourceV2.isClosed());
-    UnSealedTsFileReaderByTimestamp readerV2 = new UnSealedTsFileReaderByTimestamp(
-        resourceV2);
+  public void testUnSealedByTimestampReader() throws IOException {
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+    TsFileResource resource = queryDataSource.getSeqResources().get(0);
+    Assert.assertEquals(false, resource.isClosed());
+    UnSealedTsFileReaderByTimestamp reader = new UnSealedTsFileReaderByTimestamp(
+        resource);
 
     for (int time = 1000; time <= 3020; time += 10) {
-      int value = (int) readerV2.getValueInTimestamp(time);
+      int value = (int) reader.getValueInTimestamp(time);
       Assert.assertEquals(time, value);
     }
 
-    Assert.assertEquals(true, readerV2.hasNext());
+    Assert.assertEquals(true, reader.hasNext());
     for (int time = 3050; time <= 3080; time += 10) {
-      Integer value = (Integer) readerV2.getValueInTimestamp(time);
+      Integer value = (Integer) reader.getValueInTimestamp(time);
       Assert.assertEquals(null, value);
     }
-    Assert.assertEquals(false, readerV2.hasNext());
+    Assert.assertEquals(false, reader.hasNext());
   }
 
 

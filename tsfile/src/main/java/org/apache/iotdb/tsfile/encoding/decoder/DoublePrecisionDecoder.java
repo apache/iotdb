@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DoublePrecisionDecoder extends GorillaDecoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DoublePrecisionDecoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(DoublePrecisionDecoder.class);
   private long preValue;
 
   public DoublePrecisionDecoder() {
@@ -59,7 +59,7 @@ public class DoublePrecisionDecoder extends GorillaDecoder {
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        LOGGER.error("DoublePrecisionDecoder cannot read first double number", e);
+        logger.error("DoublePrecisionDecoder cannot read first double number", e);
       }
     } else {
       try {
@@ -67,7 +67,7 @@ public class DoublePrecisionDecoder extends GorillaDecoder {
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        LOGGER.error("DoublePrecisionDecoder cannot read following double number", e);
+        logger.error("DoublePrecisionDecoder cannot read following double number", e);
       }
     }
     return Double.NaN;

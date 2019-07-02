@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.executor;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -54,7 +54,7 @@ public interface IQueryProcessExecutor {
    * @return QueryDataSet
    */
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, FileNodeManagerException, PathErrorException,
+      throws IOException, StorageEngineException, PathErrorException,
       QueryFilterOptimizationException, ProcessorException;
 
   /**
@@ -62,21 +62,21 @@ public interface IQueryProcessExecutor {
    */
   QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException, QueryFilterOptimizationException;
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process group by plan of qp layer, construct queryDataSet.
    */
   QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
       long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException, QueryFilterOptimizationException;
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process fill plan of qp layer, construct queryDataSet.
    */
   QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException;
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException;
 
   /**
    * execute update command and return whether the operator is successful.

@@ -34,19 +34,19 @@ import org.slf4j.LoggerFactory;
 public class TSFOutputFormat extends FileOutputFormat<NullWritable, TSRow> {
 
   public static final String FILE_SCHEMA = "tsfile.schema";
-  private static final Logger LOGGER = LoggerFactory.getLogger(TSFOutputFormat.class);
+  private static final Logger logger = LoggerFactory.getLogger(TSFOutputFormat.class);
   private static final String extension = "tsfile";
 
   public static void setWriterSchema(Job job, JSONObject schema) {
 
-    LOGGER.info("Set the write schema - {}", schema.toString());
+    logger.info("Set the write schema - {}", schema.toString());
 
     job.getConfiguration().set(FILE_SCHEMA, schema.toString());
   }
 
   public static void setWriterSchema(Job job, String schema) {
 
-    LOGGER.info("Set the write schema - {}", schema);
+    logger.info("Set the write schema - {}", schema);
 
     job.getConfiguration().set(FILE_SCHEMA, schema);
   }
@@ -67,7 +67,7 @@ public class TSFOutputFormat extends FileOutputFormat<NullWritable, TSRow> {
       throws IOException, InterruptedException {
 
     Path outputPath = getDefaultWorkFile(job, extension);
-    LOGGER.info("The task attempt id is {}, the output path is {}", job.getTaskAttemptID(),
+    logger.info("The task attempt id is {}, the output path is {}", job.getTaskAttemptID(),
         outputPath);
     JSONObject schema = getWriterSchema(job);
     return new TSFRecordWriter(outputPath, schema);

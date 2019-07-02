@@ -27,9 +27,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.RowGroupBlockMetaDataCache;
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
  */
 public class EnvironmentUtils {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
@@ -59,7 +59,7 @@ public class EnvironmentUtils {
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  public static void cleanEnv() throws IOException, FileNodeManagerException {
+  public static void cleanEnv() throws IOException, StorageEngineException {
 
     QueryResourceManager.getInstance().endQueryForGivenJob(TEST_QUERY_JOB_ID);
 
@@ -67,24 +67,25 @@ public class EnvironmentUtils {
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
     // tsFileConfig.duplicateIncompletedPage = false;
-    // clean filenode manager
+    // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
-      LOGGER.error("Can't close the filenode manager in EnvironmentUtils");
+      logger.error("Can't close the storage group manager in EnvironmentUtils");
       Assert.fail();
     }
     StatMonitor.getInstance().close();
-    StorageEngine.getInstance().resetFileNodeManager();
+    StorageEngine.getInstance().reset();
     // clean wal
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
     TsFileMetaDataCache.getInstance().clear();
-    RowGroupBlockMetaDataCache.getInstance().clear();
+    DeviceMetaDataCache.getInstance().clear();
     // close metadata
     MManager.getInstance().clear();
     MManager.getInstance().flushObjectToFile();
     // delete all directory
     cleanAllDir();
-    // StorageEngine.getInstance().clear();
+    StorageEngine.getInstance().setReadOnly(false);
+    StorageEngine.getInstance().reset();
   }
 
   private static void cleanAllDir() throws IOException {
@@ -92,12 +93,12 @@ public class EnvironmentUtils {
     for (String path : directoryManager.getAllTsFileFolders()) {
       cleanDir(path);
     }
-    // delete overflow
+    // delete unsequence files
     for (String path : directoryManager.getAllOverflowFileFolders()) {
       cleanDir(path);
     }
-    // delete filenode
-    cleanDir(config.getFileNodeDir());
+    // delete system info
+    cleanDir(config.getSystemInfoDir());
     // delete metadata
     cleanDir(config.getMetadataDir());
     // delete wal
@@ -156,7 +157,7 @@ public class EnvironmentUtils {
     } catch (AuthException e) {
       throw new StartupException(e.getMessage());
     }
-    StorageEngine.getInstance().resetFileNodeManager();
+    StorageEngine.getInstance().reset();
     MultiFileLogNodeManager.getInstance().start();
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
@@ -172,7 +173,7 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // create storage group
-    createDir(config.getFileNodeDir());
+    createDir(config.getSystemInfoDir());
     // create metadata
     createDir(config.getMetadataDir());
     // create wal

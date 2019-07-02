@@ -23,12 +23,12 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBDefaultThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
 
-  private static final Logger LOGGER = LoggerFactory
+  private static final Logger logger = LoggerFactory
       .getLogger(IoTDBDefaultThreadExceptionHandler.class);
 
   @Override
   public void uncaughtException(Thread t, Throwable e) {
-    LOGGER.error("Exception in thread {}-{}", t.getName(), t.getId(), e);
+    logger.error("Exception in thread {}-{}", t.getName(), t.getId(), e);
   }
 
 }

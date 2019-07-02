@@ -819,11 +819,11 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all ColumnSchemas for the filenode seriesPath.
+   * Get all ColumnSchemas for the storage group seriesPath.
    *
    * @return ArrayList<  ColumnSchema  > The list of the schema
    */
-  public ArrayList<MeasurementSchema> getSchemaForOneFileNode(String path) {
+  public ArrayList<MeasurementSchema> getSchemaForOneStorageGroup(String path) {
 
     String[] nodes = path.split(DOUB_SEPARATOR);
     HashMap<String, MeasurementSchema> leafMap = new HashMap<>();
@@ -839,9 +839,9 @@ public class MTree implements Serializable {
   }
 
   /**
-   * function for getting schema map for one file node.
+   * function for getting schema map for one storage group.
    */
-  public Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
+  public Map<String, MeasurementSchema> getSchemaMapForOneStorageGroup(String path) {
     String[] nodes = path.split(DOUB_SEPARATOR);
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {

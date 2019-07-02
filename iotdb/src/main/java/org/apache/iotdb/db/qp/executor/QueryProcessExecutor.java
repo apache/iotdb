@@ -19,11 +19,9 @@
 package org.apache.iotdb.db.qp.executor;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -50,7 +48,7 @@ public abstract class QueryProcessExecutor implements IQueryProcessExecutor {
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, FileNodeManagerException, PathErrorException,
+      throws IOException, StorageEngineException, PathErrorException,
       QueryFilterOptimizationException, ProcessorException {
 
     if (queryPlan instanceof QueryPlan) {
@@ -66,7 +64,7 @@ public abstract class QueryProcessExecutor implements IQueryProcessExecutor {
       throws ProcessorException;
 
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
-      throws FileNodeManagerException, QueryFilterOptimizationException, PathErrorException, ProcessorException, IOException {
+      throws StorageEngineException, QueryFilterOptimizationException, PathErrorException, ProcessorException, IOException {
     QueryExpression queryExpression = QueryExpression.create().setSelectSeries(queryPlan.getPaths())
         .setExpression(queryPlan.getExpression());
     if (queryPlan instanceof GroupByPlan) {

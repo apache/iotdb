@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.reader.unsequence;
 
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
@@ -56,7 +56,7 @@ public class UnseqSeriesReaderByTimestampTest {
     }
 
     @Test
-    public void testUnseqSeriesReaderByTimestamp() throws IOException, FileNodeManagerException {
+    public void testUnseqSeriesReaderByTimestamp() throws IOException, StorageEngineException {
         // write
         for (int j = 1; j <= 10; j++) {
             TSRecord record = new TSRecord(j, deviceId);

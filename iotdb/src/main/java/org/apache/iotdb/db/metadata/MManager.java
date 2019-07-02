@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(MManager.class);
   private static final String ROOT_NAME = MetadataConstant.ROOT;
   private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
@@ -82,6 +82,7 @@ public class MManager {
 
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private int maxSeriesNumberAmongStorageGroup;
+  private boolean initialized = false;
 
   private MManager() {
     metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
@@ -127,6 +128,7 @@ public class MManager {
     };
 
     init();
+    initialized = true;
   }
 
   public static MManager getInstance() {
@@ -157,7 +159,7 @@ public class MManager {
       writeToLog = true;
     } catch (PathErrorException | ClassNotFoundException | IOException | MetadataErrorException e) {
       mgraph = new MGraph(ROOT_NAME);
-      LOGGER.error("Cannot read MGraph from file, using an empty new one", e);
+      logger.error("Cannot read MGraph from file, using an empty new one", e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -246,7 +248,7 @@ public class MManager {
         unlinkMNodeFromPTree(args[1], args[2]);
         break;
       default:
-        LOGGER.error("Unrecognizable command {}", cmd);
+        logger.error("Unrecognizable command {}", cmd);
     }
   }
 
@@ -298,7 +300,7 @@ public class MManager {
       throw new MetadataErrorException(e);
     }
     // the two map is stored in the storage group node
-    Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneFileNode(fileNodePath);
+    Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneStorageGroup(fileNodePath);
     Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(fileNodePath);
     String lastNode = path.getMeasurement();
     boolean isNewMeasurement = true;
@@ -401,14 +403,14 @@ public class MManager {
       }
       List<String> newSubPaths = new ArrayList<>();
       for (String eachSubPath : subPaths) {
-        String filenodeName;
+        String storageGroupName;
         try {
-          filenodeName = getStorageGroupNameByPath(eachSubPath);
+          storageGroupName = getStorageGroupNameByPath(eachSubPath);
         } catch (PathErrorException e) {
           throw new MetadataErrorException(e);
         }
 
-        if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(filenodeName)) {
+        if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(storageGroupName)) {
           continue;
         }
         newSubPaths.add(eachSubPath);
@@ -429,7 +431,8 @@ public class MManager {
    * @param deletePathList list of paths to be deleted
    * @return the first set contains StorageGroups that are affected by this deletion but
    * still have remaining timeseries, so these StorageGroups should be closed to make sure the data
-   * deletion is persisted; the second set contains StorageGroups that contain no more timeseries
+   * deletion is persisted;
+   * <br/> the second set contains StorageGroups that contain no more timeseries
    * after this deletion and files of such StorageGroups should be deleted to reclaim disk space.
    * @throws MetadataErrorException
    */
@@ -441,16 +444,16 @@ public class MManager {
       Set<String> closeFileNodes = new HashSet<>();
       Set<String> deleteFielNodes = new HashSet<>();
       for (String p : fullPath) {
-        String filenode;
+        String storageGroupName;
         try {
-          filenode = getStorageGroupNameByPath(p);
+          storageGroupName = getStorageGroupNameByPath(p);
         } catch (PathErrorException e) {
           throw new MetadataErrorException(e);
         }
-        closeFileNodes.add(filenode);
+        closeFileNodes.add(storageGroupName);
         // the two map is stored in the storage group node
-        Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneFileNode(filenode);
-        Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(filenode);
+        Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneStorageGroup(storageGroupName);
+        Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(storageGroupName);
         // Thread safety: just one thread can access/modify the schemaMap
         synchronized (schemaMap) {
           // TODO: don't delete the storage group seriesPath recursively
@@ -521,7 +524,7 @@ public class MManager {
    * function for setting storage level of the given path to mTree.
    */
   public void setStorageLevelToMTree(String path) throws MetadataErrorException {
-    if (StorageEngine.getInstance().isReadOnly()) {
+    if (initialized && StorageEngine.getInstance().isReadOnly()) {
       throw new MetadataErrorException("Current system mode is read only, does not support creating Storage Group");
     }
 
@@ -778,12 +781,12 @@ public class MManager {
   }
 
   /**
-   * Get all MeasurementSchemas for the filenode seriesPath.
+   * Get all MeasurementSchemas for the storage group seriesPath.
    */
-  public List<MeasurementSchema> getSchemaForFileName(String path) {
+  public List<MeasurementSchema> getSchemaForStorageGroup(String path) {
     lock.readLock().lock();
     try {
-      return mgraph.getSchemaForOneFileNode(path);
+      return mgraph.getSchemaInOneStorageGroup(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -792,7 +795,7 @@ public class MManager {
   /**
    * function for getting schema map for one file node.
    */
-  private Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
+  private Map<String, MeasurementSchema> getSchemaMapForOneStorageGroup(String path) {
 
     lock.readLock().lock();
     try {
@@ -881,7 +884,7 @@ public class MManager {
   /**
    * function for getting all file names.
    */
-  public List<String> getAllFileNames() throws MetadataErrorException {
+  public List<String> getAllStorageGroupNames() throws MetadataErrorException {
 
     lock.readLock().lock();
     try {

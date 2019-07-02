@@ -16,18 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception;
 
-/**
- * Throw this exception when the file node processor is not exists.
- *
- * @author kangrong
- */
-public class FileNodeNotExistException extends RuntimeException {
+package org.apache.iotdb.db.engine.querycontext;
 
-  private static final long serialVersionUID = -4334041411884083545L;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  public FileNodeNotExistException(String msg) {
-    super(msg);
+import java.util.List;
+
+public class QueryDataSource {
+  private Path seriesPath;
+  private List<TsFileResource> seqResources;
+  private List<TsFileResource> unseqResources;
+
+  public QueryDataSource(Path seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
+    this.seriesPath = seriesPath;
+    this.seqResources = seqResources;
+    this.unseqResources = unseqResources;
+  }
+
+  public Path getSeriesPath() {
+    return seriesPath;
+  }
+
+  public List<TsFileResource> getSeqResources() {
+    return seqResources;
+  }
+
+  public List<TsFileResource> getUnseqResources() {
+    return unseqResources;
   }
 }

@@ -35,7 +35,7 @@ import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -176,7 +176,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   @Override
   public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
       QueryContext context)
-      throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
+      throws ProcessorException, StorageEngineException, QueryFilterOptimizationException,
       PathErrorException, IOException {
     return queryRouter.aggregate(paths, aggres, expression, context);
   }
@@ -184,14 +184,14 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException {
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException {
     return queryRouter.fill(fillPaths, queryTime, fillTypes, context);
   }
 
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
       long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
-      throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException,
+      throws ProcessorException, StorageEngineException, QueryFilterOptimizationException,
       PathErrorException, IOException {
     return queryRouter.groupBy(paths, aggres, expression, unit, origin, intervals, context);
   }
@@ -228,7 +228,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       mManager.getStorageGroupNameByPath(path.getFullPath());
       storageEngine.delete(deviceId, measurementId, timestamp);
       return true;
-    } catch (PathErrorException | FileNodeManagerException e) {
+    } catch (PathErrorException | StorageEngineException e) {
       throw new ProcessorException(e);
     }
   }
@@ -264,7 +264,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       insertPlan.setDataTypes(dataTypes);
       return storageEngine.insert(insertPlan);
 
-    } catch (PathErrorException | FileNodeManagerException e) {
+    } catch (PathErrorException | StorageEngineException e) {
       throw new ProcessorException(e.getMessage());
     }
   }
@@ -391,7 +391,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           Pair<Set<String>, Set<String>> closeDeletedStorageGroupPair =
               mManager.deletePathsFromMTree(deletePathList);
           for (String deleteStorageGroup : closeDeletedStorageGroupPair.right) {
-            storageEngine.deleteOneFileNode(deleteStorageGroup);
+            storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
           }
           break;
         case SET_FILE_LEVEL:
@@ -400,7 +400,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         default:
           throw new ProcessorException("unknown namespace type:" + namespaceType);
       }
-    } catch (FileNodeManagerException | MetadataErrorException e) {
+    } catch (StorageEngineException | MetadataErrorException e) {
       throw new ProcessorException(e);
     }
     return true;

@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -81,7 +81,7 @@ public class AggregateEngineExecutor {
    * @param context query context
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws FileNodeManagerException, IOException, PathErrorException, ProcessorException {
+      throws StorageEngineException, IOException, PathErrorException, ProcessorException {
     Filter timeFilter = null;
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
@@ -100,8 +100,8 @@ public class AggregateEngineExecutor {
       function.init();
       aggregateFunctions.add(function);
 
-      QueryDataSourceV2 queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSourceV2(selectedSeries.get(i), context);
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(selectedSeries.get(i), context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
       SequenceSeriesReader sequenceReader;
@@ -258,7 +258,7 @@ public class AggregateEngineExecutor {
    * @param context query context.
    */
   public QueryDataSet executeWithValueFilter(QueryContext context)
-      throws FileNodeManagerException, PathErrorException, IOException, ProcessorException {
+      throws StorageEngineException, PathErrorException, IOException, ProcessorException {
     QueryResourceManager
         .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);

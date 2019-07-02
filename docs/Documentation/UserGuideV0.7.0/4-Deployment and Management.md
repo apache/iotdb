@@ -211,7 +211,7 @@ In total, we provide users three kinds of configurations module:
 * environment configuration file (iotdb-env.bat, iotdb-env.sh). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
 * system configuration file (tsfile-format.properties, iotdb-engine.properties). 
 	* tsfile-format.properties: The default configuration file for the IoTDB file layer configuration item. Users can configure the information about the TsFile, such as the data size written to the disk per time(group\_size\_in_byte). 
-	* iotdb-engine.properties: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (rpc\_port), overflow data storage directory (overflow\_data\_dir), etc.
+	* iotdb-engine.properties: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (rpc\_port), unsequence data storage directory (unsequence\_data\_dir), etc.
 * log configuration file (logback.xml)
 
 The configuration files of the three configuration items are located in the IoTDB installation directory: $IOTDB_HOME/conf folder.
@@ -404,7 +404,7 @@ The detail of each variables are as follows:
 
 |Name| merge\_concurrent\_threads |
 |:---:|:---|
-|Description| THe max threads which can be used when overflow data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the overflow data is too large, the reading will be slower. |
+|Description| THe max threads which can be used when unsequence data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the unsequence data is too large, the reading will be slower. |
 |Type|Int32|
 |Default| 10 |
 |Effective|After restart system|
@@ -431,7 +431,7 @@ The detail of each variables are as follows:
 
 |Name| period\_time\_for\_merge\_in\_second |
 |:---:|:---|
-|Description| IoTDB has two parts of data in memory at runtime: overflow and bufferwrite. The system will automatically merge the two parts of data at regular intervals. This is the merge interval(in seconds).|
+|Description| IoTDB has two parts of data in memory at runtime: unsequence and sequence file. The system will automatically merge the two parts of data at regular intervals. This is the merge interval(in seconds).|
 |Type|Int32|
 |Default| 7200 |
 |Effective|After restart system|
@@ -500,67 +500,11 @@ The detail of each variables are as follows:
 |Effective|After restart system|
 
 
-* mem\_threshold\_warning
+* tsfile\_size\_threshold
 
-|Name| mem\_threshold\_warning |
-|:---:|:---|
-|Description| A percentage value, which is multiplied by the maximum heap memory assigned by the IoTDB runtime to get a threshold. When the IoTDB uses memory beyond the threshold, it will trigger the operation of writing the current in-memory data to the disk and releasing the corresponding memory. By default, IoTDB runtime can use 80% of the maximum heap memory. If the value is configured to exceed 1, the configuration item will not take effect. If the value is less than or equal to 0, then the default value is used.|
-|Type| Float |
-|Default| 0.8 |
-|Effective|After restart system|
-
-
-* mem\_threshold\_dangerous
-
-|Name| mem\_threshold\_dangerous |
-|:---:|:---|
-|Description| A percentage value, which is multiplied by the maximum heap memory allocated by the IoTDB runtime to get a threshold. When the IoTDB uses memory beyond the threshold, it will trigger the operation of writing the current in-memory data to the disk and releasing the corresponding memory. At the same time, the write operation will be blocked. By default, the IoTDB runtime can use 90% of the maximum heap memory. If the value is configured to exceed 1, the configuration item will not take effect. If the value is less than or equal to 0, then the default value is used.|
-|Type| Float |
-|Default| 0.9 |
-|Effective|After restart system|
-
-* mem\_monitor\_interval
-
-|Name| mem\_monitor\_interval |
-|:---:|:---|
-|Description| The time interval IoTDB system checks the current memory usage. If the threshold calculated according to mem_threshold_warning or mem_threshold_dangerous is exceeded, the corresponding operation will be triggered. The unit is milliseconds and the default is 1000 milliseconds.|
-|Type| Int64 |
-|Default| 1000 |
-|Effective|After restart system|
-
-* bufferwrite\_meta\_size\_threshold
-
-|Name| bufferwrite\_meta\_size\_threshold |
-|:---:|:---|
-|Description| When the metadata size of the TsFile saved in the memory exceeds the threshold, the metadata is saved at the end of the TsFile, and then the file is closed and the memory space occupied by the metadata is released. The unit is byte and the default value is 200M.|
-|Type| Int64 |
-|Default| 209715200 |
-|Effective|After restart system|
-
-* bufferwrite\_file\_size\_threshold
-
-|Name| bufferwrite\_meta\_size\_threshold |
+|Name| tsfile\_size\_threshold |
 |:---:|:---|
 |Description| When a TsFile size on the disk exceeds this threshold, the TsFile is closed and open a new TsFile to accept data writes. The unit is byte and the default value is 2G.|
-|Type| Int64 |
-|Default| 2147483648 |
-|Effective|After restart system|
-
-
-* overflow\_meta\_size\_threshold
-
-|Name| overflow\_meta\_size\_threshold |
-|:---:|:---|
-|Description| When the size of the Overflow metadata stored in the memory exceeds the threshold, the metadata is saved at the end of the TsFile, then the file is closed and the memory space occupied by the metadata is released. The unit is byte and the default value is 200M.|
-|Type| Int64 |
-|Default| 209715200 |
-|Effective|After restart system|
-
-* overflow\_file\_size\_threshold
-
-|Name| overflow\_file\_size\_threshold |
-|:---:|:---|
-|Description| When an Overflow file size on the disk exceeds this threshold, the Overflow file is closed. And open a new Overflow file to accept data writes. The unit is byte, the default value is 2G|
 |Type| Int64 |
 |Default| 2147483648 |
 |Effective|After restart system|
@@ -670,14 +614,6 @@ There are several attributes under Monitor, including the numbers of files opene
 |:---:|:---|
 |Description| The opened TsFile file number of IoTDB server process. |
 |Default Directory| /data/data/settled |
-|Type| Int |
-
-* OverflowOpenFileNum
-
-|Name| OverflowOpenFileNum |
-|:---:|:---|
-|Description| The opened out-of-order data file number of IoTDB server process. |
-|Default Directory| /data/data/overflow |
 |Type| Int |
 
 * WalOpenFileNum
@@ -901,7 +837,7 @@ Here are the file size statistics:
 
 |Name| OVERFLOW |
 |:---:|:---|
-|Description| Calculate the sum of all the ```out-of-order data file``` size (under ```data/data/overflow``` by default) in byte.|
+|Description| Calculate the sum of all the ```out-of-order data file``` size (under ```data/data/unsequence``` by default) in byte.|
 |Type| File size statistics |
 |Timeseries Name| root.stats.file\_size.OVERFLOW |
 |Reset After Restarting System| No |

@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 @Deprecated
 public class BitmapDecoderTest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BitmapDecoderTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(BitmapDecoderTest.class);
 
   private List<Integer> intList;
   private List<Boolean> booleanList;
@@ -87,7 +87,7 @@ public class BitmapDecoderTest {
       for (int value : list) {
         int value_ = decoder.readInt(bais);
         if (isDebug) {
-          LOGGER.debug("{} // {}", value_, value);
+          logger.debug("{} // {}", value_, value);
         }
         assertEquals(value, value_);
       }

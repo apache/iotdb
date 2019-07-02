@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -46,7 +46,7 @@ public class PreviousFill extends IFill {
 
   @Override
   public void constructReaders(Path path, QueryContext context)
-      throws IOException, FileNodeManagerException {
+      throws IOException, StorageEngineException {
     super.constructReaders(path, context, beforeRange);
   }
 

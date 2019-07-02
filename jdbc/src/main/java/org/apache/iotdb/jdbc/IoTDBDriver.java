@@ -31,7 +31,7 @@ import org.apache.thrift.transport.TTransportException;
 
 public class IoTDBDriver implements Driver {
 
-  private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory
       .getLogger(IoTDBDriver.class);
   /**
    * Is this driver JDBC compliant.
@@ -42,7 +42,7 @@ public class IoTDBDriver implements Driver {
     try {
       DriverManager.registerDriver(new IoTDBDriver());
     } catch (SQLException e) {
-      LOGGER.error("Error occurs when registering TsFile driver", e);
+      logger.error("Error occurs when registering TsFile driver", e);
     }
   }
 

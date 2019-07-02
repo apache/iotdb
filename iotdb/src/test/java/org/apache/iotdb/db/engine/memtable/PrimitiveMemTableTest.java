@@ -26,7 +26,6 @@ import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -47,7 +46,7 @@ public class PrimitiveMemTableTest {
   @Test
   public void memSeriesCloneTest() {
     TSDataType dataType = TSDataType.INT32;
-    WritableMemChunkV2 series = new WritableMemChunkV2(dataType, TVList.newList(dataType));
+    WritableMemChunk series = new WritableMemChunk(dataType, TVList.newList(dataType));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, String.valueOf(i));

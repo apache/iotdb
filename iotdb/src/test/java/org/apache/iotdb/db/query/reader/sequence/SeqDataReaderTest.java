@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.FileNodeProcessorException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -31,15 +31,15 @@ import org.junit.Test;
 public class SeqDataReaderTest extends ReaderTestHelper {
 
   @Test
-  public void testSeqReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+  public void testSeqReader() throws IOException, StorageGroupProcessorException {
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
-    SequenceSeriesReader readerV2 = new SequenceSeriesReader(path,
+    SequenceSeriesReader reader = new SequenceSeriesReader(path,
         queryDataSource.getSeqResources(), null,
         EnvironmentUtils.TEST_QUERY_CONTEXT);
     long time = 999;
-    while (readerV2.hasNext()) {
-      BatchData batchData = readerV2.nextBatch();
+    while (reader.hasNext()) {
+      BatchData batchData = reader.nextBatch();
       while (batchData.hasNext()) {
         time++;
         Assert.assertEquals(time, batchData.currentTime());
@@ -50,23 +50,23 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testSeqByTimestampReader() throws IOException, FileNodeProcessorException {
-    QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+  public void testSeqByTimestampReader() throws IOException, StorageGroupProcessorException {
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
     Path path = new Path(deviceId, measurementId);
-    SequenceSeriesReaderByTimestamp readerV2 = new SequenceSeriesReaderByTimestamp(path,
+    SequenceSeriesReaderByTimestamp reader = new SequenceSeriesReaderByTimestamp(path,
         queryDataSource.getSeqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     for (int time = 1000; time <= 3020; time += 10) {
-      int value = (int) readerV2.getValueInTimestamp(time);
+      int value = (int) reader.getValueInTimestamp(time);
       Assert.assertEquals(time, value);
     }
 
-    Assert.assertEquals(true, readerV2.hasNext());
+    Assert.assertEquals(true, reader.hasNext());
     for (int time = 3050; time <= 3080; time += 10) {
-      Integer value = (Integer) readerV2.getValueInTimestamp(time);
+      Integer value = (Integer) reader.getValueInTimestamp(time);
       Assert.assertEquals(null, value);
     }
-    Assert.assertEquals(false, readerV2.hasNext());
+    Assert.assertEquals(false, reader.hasNext());
   }
 
 

@@ -40,7 +40,7 @@ public class KafkaConsumerThread implements Runnable {
   private String createStorageGroupSqlTemplate = "SET STORAGE GROUP TO %s";
   private String createTimeseriesSqlTemplate = "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
   private String insertDataSqlTemplate = "INSERT INTO root.vehicle.device(timestamp,%s) VALUES (%s,'%s')";
-  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaConsumerThread.class);
+  private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerThread.class);
 
   public KafkaConsumerThread(KafkaStream<String, String> stream) {
     this.stream = stream;
@@ -73,7 +73,7 @@ public class KafkaConsumerThread implements Runnable {
         createTimeSeries = false;
       }
     } catch (ClassNotFoundException | SQLException e) {
-      LOGGER.error(e.getMessage());
+      logger.error(e.getMessage());
     }
   }
 
@@ -88,14 +88,14 @@ public class KafkaConsumerThread implements Runnable {
       String sql = String.format(insertDataSqlTemplate, items[0], items[1], items[2]);
       statement.execute(sql);
     } catch (SQLException e) {
-      LOGGER.error(e.getMessage());
+      logger.error(e.getMessage());
     }
   }
 
   public void run() {
     for (MessageAndMetadata<String, String> consumerIterator : stream) {
       String uploadMessage = consumerIterator.message();
-      LOGGER.info(String.format("%s from partiton[%d]: %s", Thread.currentThread().getName(),
+      logger.info(String.format("%s from partiton[%d]: %s", Thread.currentThread().getName(),
           consumerIterator.partition(), uploadMessage));
       writeData(uploadMessage);
     }

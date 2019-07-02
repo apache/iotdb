@@ -53,7 +53,7 @@ import org.slf4j.LoggerFactory;
 
 public class TsFileSequenceReader implements AutoCloseable{
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSequenceReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
 
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -583,14 +583,14 @@ public class TsFileSequenceReader implements AutoCloseable{
             // the disk file is corrupted, using this file may be dangerous
             MetaMarker.handleUnexpectedMarker(marker);
             goon = false;
-            LOGGER.error("Unrecognized marker detected, this file may be corrupted");
+            logger.error("Unrecognized marker detected, this file may be corrupted");
         }
       }
       // now we read the tail of the data section, so we are sure that the last ChunkGroupFooter is
       // complete.
       truncatedPosition = this.position() - 1;
     } catch (IOException e2) {
-      LOGGER.info("TsFile self-check cannot proceed at position {} after {} chunk groups "
+      logger.info("TsFile self-check cannot proceed at position {} after {} chunk groups "
           + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());
     }
     // Despite the completeness of the data section, we will discard current FileMetadata

@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class AuthUtils {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AuthUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(AuthUtils.class);
 
   private static final int MIN_PASSWORD_LENGTH = 4;
   private static final int MIN_USERNAME_LENGTH = 4;
@@ -163,7 +163,7 @@ public class AuthUtils {
       messageDigest.update(password.getBytes(STRING_ENCODING));
       return new String(messageDigest.digest(), STRING_ENCODING);
     } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-      LOGGER.error("meet error while encrypting password.", e);
+      logger.error("meet error while encrypting password.", e);
       return password;
     }
   }

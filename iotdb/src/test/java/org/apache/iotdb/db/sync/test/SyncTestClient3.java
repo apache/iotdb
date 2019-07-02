@@ -54,7 +54,7 @@ public class SyncTestClient3 {
   private static final int MAX_FLOAT = 30;
   private static final int STRING_LENGTH = 5;
   private static final int BATCH_SQL = 10000;
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncTestClient3.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncTestClient3.class);
 
   /**
    * generate time series map from file.
@@ -123,7 +123,7 @@ public class SyncTestClient3 {
       statement1.executeBatch();
       statement1.clearBatch();
     } catch (Exception e) {
-      LOGGER.error("", e);
+      logger.error("", e);
     }
   }
 
@@ -145,7 +145,7 @@ public class SyncTestClient3 {
         statement1.execute(sql);
       }
     } catch (Exception e) {
-      LOGGER.error("", e);
+      logger.error("", e);
     }
   }
 
@@ -261,15 +261,15 @@ public class SyncTestClient3 {
         statement1 = connection1.createStatement();
 
         setStorageGroup(statement, statement1, storageGroupList);
-        LOGGER.debug("Finish set storage group.");
+        logger.debug("Finish set storage group.");
         createTimeseries(statement, statement1, timeseriesMap);
-        LOGGER.debug("Finish create timeseries.");
+        logger.debug("Finish create timeseries.");
         while (true) {
           randomInsertData(statement, statement1, timeseriesMap);
         }
       }
     } catch (Exception e) {
-      LOGGER.error("", e);
+      logger.error("", e);
     } finally {
       if (statement != null) {
         statement.close();

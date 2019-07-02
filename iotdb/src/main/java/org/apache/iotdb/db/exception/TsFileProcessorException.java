@@ -16,18 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.querycontext;
+package org.apache.iotdb.db.exception;
 
-public class MergeSeriesDataSource {
+public class TsFileProcessorException extends ProcessorException {
 
-  private OverflowInsertFile insertFile;
+  private static final long serialVersionUID = 3749107630243950925L;
 
-  public MergeSeriesDataSource(OverflowInsertFile insertFile) {
-    this.insertFile = insertFile;
+  public TsFileProcessorException() {
+    super();
   }
 
-  public OverflowInsertFile getInsertFile() {
-    return insertFile;
+  public TsFileProcessorException(Exception pathExcp) {
+    super(pathExcp.getMessage());
   }
 
+  public TsFileProcessorException(String msg) {
+    super(msg);
+  }
+
+  public TsFileProcessorException(Throwable throwable) {
+    super(throwable);
+  }
+
+  public TsFileProcessorException(String msg, Throwable e) {
+    super(msg, e);
+  }
 }

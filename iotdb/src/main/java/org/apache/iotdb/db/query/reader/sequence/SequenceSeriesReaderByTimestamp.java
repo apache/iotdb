@@ -44,7 +44,7 @@ import java.util.List;
 public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
 
   protected Path seriesPath;
-  private List<TsFileResource> tsFileResourceV2List;
+  private List<TsFileResource> tsFileResourceList;
   private int nextIntervalFileIndex;
   protected IReaderByTimeStamp seriesReader;
   private QueryContext context;
@@ -56,7 +56,7 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
                                          List<TsFileResource> tsFileResourceList,
                                          QueryContext context) {
     this.seriesPath = seriesPath;
-    this.tsFileResourceV2List = tsFileResourceList;
+    this.tsFileResourceList = tsFileResourceList;
     this.nextIntervalFileIndex = 0;
     this.seriesReader = null;
     this.context = context;
@@ -88,8 +88,8 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
     if (seriesReader != null && seriesReader.hasNext()) {
       return true;
     }
-    while (nextIntervalFileIndex < tsFileResourceV2List.size()) {
-      initSealedTsFileReader(tsFileResourceV2List.get(nextIntervalFileIndex), context);
+    while (nextIntervalFileIndex < tsFileResourceList.size()) {
+      initSealedTsFileReader(tsFileResourceList.get(nextIntervalFileIndex), context);
       nextIntervalFileIndex++;
       if (seriesReader.hasNext()) {
         return true;
@@ -102,8 +102,8 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
    * construct reader with the file that might overlap this timestamp.
    */
   private void constructReader(long timestamp) throws IOException {
-    while (nextIntervalFileIndex < tsFileResourceV2List.size()) {
-      TsFileResource tsFile = tsFileResourceV2List.get(nextIntervalFileIndex);
+    while (nextIntervalFileIndex < tsFileResourceList.size()) {
+      TsFileResource tsFile = tsFileResourceList.get(nextIntervalFileIndex);
       nextIntervalFileIndex++;
       // init unsealed tsfile.
       if (!tsFile.isClosed()) {

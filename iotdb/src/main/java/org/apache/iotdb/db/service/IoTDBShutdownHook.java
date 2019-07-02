@@ -24,12 +24,12 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBShutdownHook extends Thread{
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBShutdownHook.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBShutdownHook.class);
 
   @Override
   public void run() {
-    if(LOGGER.isInfoEnabled()) {
-      LOGGER.info("Recorded memory usage: {}, actual jvm memory usage: {}",
+    if(logger.isInfoEnabled()) {
+      logger.info("Recorded memory usage: {}, actual jvm memory usage: {}",
           MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory() -
               Runtime.getRuntime().freeMemory()));
     }

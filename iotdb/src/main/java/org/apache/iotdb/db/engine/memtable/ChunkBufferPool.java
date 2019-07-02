@@ -28,13 +28,11 @@ import org.slf4j.LoggerFactory;
  * high-cost GC. In new design, we try to reuse ChunkBuffer objects by ChunkBufferPool, referring to
  * {@linkplain MemTablePool}.
  *
- * Only for TEST up to now.
- *
  * @author kangrong
  */
 public class ChunkBufferPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ChunkBufferPool.class);
+  private static final Logger logger = LoggerFactory.getLogger(ChunkBufferPool.class);
 
   private static final Deque<ChunkBuffer> availableChunkBuffer = new ArrayDeque<>();
 
@@ -46,6 +44,11 @@ public class ChunkBufferPool {
   }
 
   public ChunkBuffer getEmptyChunkBuffer(Object applier, MeasurementSchema schema) {
+    if (!IoTDBDescriptor.getInstance().getConfig()
+        .isChunkBufferPoolEnable()) {
+     return new ChunkBuffer(schema);
+    }
+
     synchronized (availableChunkBuffer) {
       //we use the memtable number * maximal series number in one StroageGroup * 2 as the capacity
       int capacity  =
@@ -69,15 +72,21 @@ public class ChunkBufferPool {
         try {
           availableChunkBuffer.wait(WAIT_TIME);
         } catch (InterruptedException e) {
-          LOGGER.error("{} fails to wait fot ReusableChunkBuffer {}, continue to wait", applier, e);
+          logger.error("{} fails to wait fot ReusableChunkBuffer {}, continue to wait", applier, e);
+          Thread.currentThread().interrupt();
         }
-        LOGGER.info("{} has waited for a ReusableChunkBuffer for {}ms", applier,
+        logger.info("{} has waited for a ReusableChunkBuffer for {}ms", applier,
             waitCount++ * WAIT_TIME);
       }
     }
   }
 
   public void putBack(ChunkBuffer chunkBuffer) {
+    if (!IoTDBDescriptor.getInstance().getConfig()
+        .isChunkBufferPoolEnable()) {
+      return;
+    }
+
     synchronized (availableChunkBuffer) {
       chunkBuffer.reset();
       //we use the memtable number * maximal series number in one StroageGroup as the capacity
@@ -91,10 +100,6 @@ public class ChunkBufferPool {
       }
       availableChunkBuffer.notify();
     }
-  }
-
-  public void putBack(ChunkBuffer chunkBuffer, String storageGroup) {
-    putBack(chunkBuffer);
   }
 
   public static ChunkBufferPool getInstance() {

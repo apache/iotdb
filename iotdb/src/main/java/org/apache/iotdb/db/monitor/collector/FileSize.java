@@ -31,7 +31,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
 public class FileSize implements IStatistic {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileSize.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileSize.class);
   private static final long ABNORMAL_VALUE = -1L;
   private static final long INIT_VALUE_IF_FILE_NOT_EXIST = 0L;
   private StorageEngine storageEngine;
@@ -80,8 +80,8 @@ public class FileSize implements IStatistic {
         storageEngine.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
             TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
             Collections.emptyMap());
-      } catch (FileNodeManagerException e) {
-        LOGGER.error("Register File Size Stats into storageEngine Failed.", e);
+      } catch (StorageEngineException e) {
+        logger.error("Register File Size Stats into storageEngine Failed.", e);
       }
     }
     StatMonitor.getInstance().registerStatStorageGroup(hashMap);
@@ -144,7 +144,7 @@ public class FileSize implements IStatistic {
             try {
               settledSize += FileUtils.sizeOfDirectory(settledFile);
             } catch (Exception e) {
-              LOGGER.error("Meet error while trying to get {} size with dir {} .", kinds,
+              logger.error("Meet error while trying to get {} size with dir {} .", kinds,
                   bufferWriteDir, e);
               fileSizes.put(kinds, ABNORMAL_VALUE);
             }
@@ -157,7 +157,7 @@ public class FileSize implements IStatistic {
           try {
             fileSizes.put(kinds, FileUtils.sizeOfDirectory(file));
           } catch (Exception e) {
-            LOGGER
+            logger
                 .error("Meet error while trying to get {} size with dir {} .", kinds,
                     kinds.getPath(),
                     e);

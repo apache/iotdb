@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.factory;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
@@ -60,7 +60,7 @@ public interface ISeriesReaderFactory {
    * @return a list of IReaderByTimeStamp
    */
   List<IReaderByTimeStamp> createSeriesReadersByTimestamp(List<Path> paths,
-                                                          QueryContext context) throws FileNodeManagerException, IOException;
+                                                          QueryContext context) throws StorageEngineException, IOException;
 
   /**
    * construct IPointReader with <b>only time filter or no filter</b>, including sequence data
@@ -73,7 +73,7 @@ public interface ISeriesReaderFactory {
    * @return data reader including seq and unseq data source.
    */
   IPointReader createSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
-                                                    QueryContext context) throws FileNodeManagerException, IOException;
+                                                    QueryContext context) throws StorageEngineException, IOException;
 
   /**
    * construct IPointReader with <b>value filter</b>, include sequence data and unsequence
@@ -86,5 +86,5 @@ public interface ISeriesReaderFactory {
    * @return data reader including sequence and unsequence data source.
    */
   IPointReader createSeriesReaderWithValueFilter(Path path, Filter filter, QueryContext context)
-          throws FileNodeManagerException, IOException;
+          throws StorageEngineException, IOException;
 }

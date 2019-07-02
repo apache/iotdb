@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SinglePrecisionDecoder extends GorillaDecoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SinglePrecisionDecoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(SinglePrecisionDecoder.class);
   private int preValue;
 
   public SinglePrecisionDecoder() {
@@ -55,7 +55,7 @@ public class SinglePrecisionDecoder extends GorillaDecoder {
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        LOGGER.error("SinglePrecisionDecoder cannot read first float number", e);
+        logger.error("SinglePrecisionDecoder cannot read first float number", e);
       }
     } else {
       try {
@@ -63,7 +63,7 @@ public class SinglePrecisionDecoder extends GorillaDecoder {
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        LOGGER.error("SinglePrecisionDecoder cannot read following float number", e);
+        logger.error("SinglePrecisionDecoder cannot read following float number", e);
       }
     }
     return Float.NaN;

@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 public class InsertPlan extends PhysicalPlan {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PhysicalPlan.class);
+  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
 
   private String deviceId;
   private String[] measurements;
@@ -143,7 +143,6 @@ public class InsertPlan extends PhysicalPlan {
 
   @Override
   public void serializeTo(ByteBuffer buffer) {
-    long startTime = System.currentTimeMillis();
     int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
     buffer.putLong(time);
@@ -158,10 +157,6 @@ public class InsertPlan extends PhysicalPlan {
     buffer.putInt(values.length);
     for (String m : values) {
       putString(buffer, m);
-    }
-    long elapsed = System.currentTimeMillis() - startTime;
-    if (elapsed > 1000) {
-      LOGGER.info("Serialize an insertion costs {}ms", elapsed);
     }
   }
 

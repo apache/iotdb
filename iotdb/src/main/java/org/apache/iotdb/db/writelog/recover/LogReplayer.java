@@ -56,7 +56,7 @@ public class LogReplayer {
   private FileSchema fileSchema;
   private IMemTable recoverMemTable;
 
-  // overflow file tolerates duplicated data
+  // unsequence file tolerates duplicated data
   private boolean acceptDuplication;
 
   private Map<String, Long> tempStartTimeMap = new HashMap<>();

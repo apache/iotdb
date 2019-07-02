@@ -37,7 +37,7 @@ public class FileSchemaUtils {
    */
   public static FileSchema constructFileSchema(String processorName) throws WriteProcessException {
     List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForFileName(processorName);
+    columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(processorName);
     return getFileSchemaFromColumnSchema(columnSchemaList);
   }
 

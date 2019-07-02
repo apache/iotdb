@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class TSEncodingBuilder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TSEncodingBuilder.class);
+  private static final Logger logger = LoggerFactory.getLogger(TSEncodingBuilder.class);
   protected final TSFileConfig conf;
 
   public TSEncodingBuilder() {
@@ -111,7 +111,7 @@ public abstract class TSEncodingBuilder {
         maxStringLength = Integer.valueOf(props.get(Encoder.MAX_STRING_LENGTH));
         if (maxStringLength < 0) {
           maxStringLength = TSFileConfig.maxStringLength;
-          LOGGER.warn(
+          logger.warn(
               "cannot set max string length to negative value, replaced with default value:{}",
               maxStringLength);
         }
@@ -155,7 +155,7 @@ public abstract class TSEncodingBuilder {
         maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
         if (maxPointNumber < 0) {
           maxPointNumber = TSFileConfig.floatPrecision;
-          LOGGER
+          logger
               .warn("cannot set max point number to negative value, replaced with default value:{}",
                   maxPointNumber);
         }
@@ -203,7 +203,7 @@ public abstract class TSEncodingBuilder {
         maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
         if (maxPointNumber < 0) {
           maxPointNumber = TSFileConfig.floatPrecision;
-          LOGGER
+          logger
               .warn("cannot set max point number to negative value, replaced with default value:{}",
                   maxPointNumber);
         }

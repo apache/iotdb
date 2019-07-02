@@ -36,7 +36,7 @@ public class PrimitiveMemTable extends AbstractMemTable {
 
   @Override
   protected IWritableMemChunk genMemSeries(TSDataType dataType) {
-    return new WritableMemChunkV2(dataType, TVListAllocator.getInstance().allocate(dataType));
+    return new WritableMemChunk(dataType, TVListAllocator.getInstance().allocate(dataType));
   }
 
   @Override
@@ -47,9 +47,12 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
-  public boolean isManagedByMemPool() {
-    return true;
+  public boolean isSignalMemTable() {
+    return false;
   }
+
+  @Override
+  public int hashCode() {return (int) getVersion();}
 
   @Override
   public boolean equals(Object obj) {

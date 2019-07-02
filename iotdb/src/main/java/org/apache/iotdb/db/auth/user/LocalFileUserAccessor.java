@@ -53,7 +53,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
 
   private static final String TEMP_SUFFIX = ".temp";
   private static final String STRING_ENCODING = "utf-8";
-  private static final Logger LOGGER = LoggerFactory.getLogger(LocalFileUserAccessor.class);
+  private static final Logger logger = LoggerFactory.getLogger(LocalFileUserAccessor.class);
 
   private String userDirPath;
   /**
@@ -83,7 +83,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
           userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
       if (newProfile.exists() && newProfile.isFile()) {
         if(!newProfile.renameTo(userProfile)) {
-          LOGGER.error("New profile renaming not succeed.");
+          logger.error("New profile renaming not succeed.");
         }
         userProfile = newProfile;
       } else {

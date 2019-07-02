@@ -47,11 +47,11 @@ public class IoTDBLogFileSizeTest {
   private long runtime = 600000;
 
   private String[] setUpSqls = new String[]{"SET STORAGE GROUP TO root.logFileTest.seq",
-      "SET STORAGE GROUP TO root.logFileTest.overflow",
+      "SET STORAGE GROUP TO root.logFileTest.unsequence",
       "CREATE TIMESERIES root.logFileTest.seq.val WITH DATATYPE=INT32, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.logFileTest.overflow.val WITH DATATYPE=INT32, ENCODING=PLAIN",
-      // overflow baseline
-      "INSERT INTO root.logFileTest.overflow(timestamp,val) VALUES (1000000000, 0)"};
+      "CREATE TIMESERIES root.logFileTest.unsequence.val WITH DATATYPE=INT32, ENCODING=PLAIN",
+      // unsequence baseline
+      "INSERT INTO root.logFileTest.unsequence(timestamp,val) VALUES (1000000000, 0)"};
 
   private String[] tearDownSqls = new String[]{"DELETE TIMESERIES root.logFileTest.*"};
 
@@ -142,7 +142,7 @@ public class IoTDBLogFileSizeTest {
   }
 
   @Test
-  public void testOverflow() throws InterruptedException {
+  public void testUnsequence() throws InterruptedException {
     if (skip) {
       return;
     }
@@ -166,11 +166,11 @@ public class IoTDBLogFileSizeTest {
             break;
           }
           String sql = String
-              .format("INSERT INTO root.logFileTest.overflow(timestamp,val) VALUES (%d, %d)",
+              .format("INSERT INTO root.logFileTest.unsequence(timestamp,val) VALUES (%d, %d)",
                   ++cnt, cnt);
           statement.execute(sql);
           WriteLogNode logNode = MultiFileLogNodeManager.getInstance()
-              .getNode("root.logFileTest.overflow" + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
+              .getNode("root.logFileTest.unsequence" + IoTDBConstant.UNSEQFILE_LOG_NODE_SUFFIX);
           File WALFile = new File(
               logNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
           if (WALFile.exists() && WALFile.length() > maxLength[0]) {
@@ -197,7 +197,7 @@ public class IoTDBLogFileSizeTest {
 
     }
     System.out.println(
-        "Max size of overflow wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after " + runtime
+        "Max size of unsequence wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after " + runtime
             + "ms continuous writing");
   }
 

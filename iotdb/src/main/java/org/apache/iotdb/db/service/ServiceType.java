@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.service;
 
 public enum ServiceType {
-  FILE_NODE_SERVICE("File Node ServerService", ""),
+  STORAGE_ENGINE_SERVICE("Storage Engine ServerService", ""),
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
   JDBC_SERVICE("JDBC ServerService", "JDBCService"),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),

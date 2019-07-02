@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 public abstract class DeltaBinaryEncoder extends Encoder {
 
   protected static final int BLOCK_DEFAULT_SIZE = 128;
-  private static final Logger LOGGER = LoggerFactory.getLogger(DeltaBinaryEncoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(DeltaBinaryEncoder.class);
   protected ByteArrayOutputStream out;
   protected int blockSize;
   // input value is stored in deltaBlackBuffer temporarily
@@ -116,7 +116,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
     try {
       flushBlockBuffer(out);
     } catch (IOException e) {
-      LOGGER.error("flush data to stream failed!", e);
+      logger.error("flush data to stream failed!", e);
     }
   }
 

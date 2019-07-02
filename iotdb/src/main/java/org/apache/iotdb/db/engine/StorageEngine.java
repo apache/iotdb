@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,47 +28,42 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class StorageEngine implements IService {
 
-  private static final Logger LOGGER = LoggerFactory
-      .getLogger(StorageEngine.class);
+  private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private boolean readOnly = false;
+  private volatile boolean readOnly = false;
 
   /**
-   * a folder (system/info/ by default) that persist FileNodeProcessorStore classes. Ends with
-   * File.separator Each StorageEngine will have a subfolder.
+   * a folder (system/info/ by default) that persist system info. Each Storage Processor will have a
+   * subfolder under the infoDir.
    */
-  private final String baseDir;
+  private final String infoDir;
 
   /**
-   * This map is used to manage all filenode processor,<br> the key is filenode name which is
-   * storage group seriesPath.
+   * storage group name -> storage group processor
    */
   private final ConcurrentHashMap<String, StorageGroupProcessor> processorMap = new ConcurrentHashMap<>();
 
@@ -77,41 +73,37 @@ public class StorageEngine implements IService {
     return INSTANCE;
   }
 
-  /**
-   * This set is used to store overflowed filenode name.<br> The overflowed filenode will be merge.
-   */
-  private volatile FileNodeManagerStatus fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 
-  private enum FileNodeManagerStatus {
-    NONE, MERGE, CLOSE
-  }
 
 
   private StorageEngine() {
-    baseDir = FilePathUtils.regularizePath(config.getFileNodeDir());
-    // create baseDir
-    File dir = new File(baseDir);
+    infoDir = FilePathUtils.regularizePath(config.getSystemInfoDir());
+    // create infoDir
+    File dir = new File(infoDir);
     if (dir.mkdirs()) {
-      LOGGER.info("Base directory {} of all storage groups doesn't exist, create it", dir.getPath());
+
+      logger.info("Information directory {} of all storage groups doesn't exist, create it",
+          dir.getPath());
     }
 
     /**
-     * recovery all file node processors.
+     * recover all storage group processors.
      */
     try {
-      List<String> storageGroups = MManager.getInstance().getAllFileNames();
+      List<String> storageGroups = MManager.getInstance().getAllStorageGroupNames();
       for (String storageGroup: storageGroups) {
-        StorageGroupProcessor processor = new StorageGroupProcessor(baseDir, storageGroup);
-        LOGGER.info("StorageGroupProcessor {} is recovered successfully", storageGroup);
+        StorageGroupProcessor processor = new StorageGroupProcessor(infoDir, storageGroup);
+        logger.info("Storage Group Processor {} is recovered successfully", storageGroup);
         processorMap.put(storageGroup, processor);
       }
     } catch (ProcessorException | MetadataErrorException e) {
-      e.printStackTrace();
+      logger.error("init a storage group processor failed. ", e);
+      throw new RuntimeException(e);
     }
   }
 
   @Override
-  public void start() throws StartupException {
+  public void start() {
 
   }
 
@@ -122,36 +114,34 @@ public class StorageEngine implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.FILE_NODE_SERVICE;
+    return ServiceType.STORAGE_ENGINE_SERVICE;
   }
 
 
-  private StorageGroupProcessor getProcessor(String devicePath)
-      throws FileNodeManagerException {
-    String storageGroup = "";
+  private StorageGroupProcessor getProcessor(String path) throws StorageEngineException {
+    String storageGroupName = "";
     try {
-      // return the storage group name
-      storageGroup = MManager.getInstance().getStorageGroupNameByPath(devicePath);
+      storageGroupName = MManager.getInstance().getStorageGroupNameByPath(path);
       StorageGroupProcessor processor;
-      processor = processorMap.get(storageGroup);
+      processor = processorMap.get(storageGroupName);
       if (processor == null) {
-        storageGroup = storageGroup.intern();
-        synchronized (storageGroup) {
-          processor = processorMap.get(storageGroup);
+        storageGroupName = storageGroupName.intern();
+        synchronized (storageGroupName) {
+          processor = processorMap.get(storageGroupName);
           if (processor == null) {
-            LOGGER.debug("construct a processor instance, the storage group is {}, Thread is {}",
-                storageGroup, Thread.currentThread().getId());
-            processor = new StorageGroupProcessor(baseDir, storageGroup);
+            logger.debug("construct a processor instance, the storage group is {}, Thread is {}",
+                storageGroupName, Thread.currentThread().getId());
+            processor = new StorageGroupProcessor(infoDir, storageGroupName);
             synchronized (processorMap) {
-              processorMap.put(storageGroup, processor);
+              processorMap.put(storageGroupName, processor);
             }
           }
         }
       }
       return processor;
     } catch (PathErrorException | ProcessorException e) {
-      LOGGER.error("Fail to get StorageGroupProcessor {}", storageGroup,  e);
-      throw new FileNodeManagerException(e);
+      logger.error("Fail to get StorageGroupProcessor {}", storageGroupName,  e);
+      throw new StorageEngineException(e);
     }
   }
 
@@ -159,37 +149,41 @@ public class StorageEngine implements IService {
   /**
    * This function is just for unit test.
    */
-  public synchronized void resetFileNodeManager() {
+  public synchronized void reset() {
     processorMap.clear();
   }
 
 
   /**
-   * insert TsRecord into storage group.
+   * execute an InsertPlan on a storage group.
    *
    * @param insertPlan physical plan of insertion
    * @return true if and only if this insertion succeeds
    */
-  public boolean insert(InsertPlan insertPlan) throws FileNodeManagerException {
+  public boolean insert(InsertPlan insertPlan) throws StorageEngineException {
 
     if (readOnly) {
-      throw new FileNodeManagerException("Current system mode is read only, does not support insertion");
+      throw new StorageEngineException(
+          "Current system mode is read only, does not support insertion");
     }
 
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
     } catch (Exception e) {
-      LOGGER.warn("get StorageGroupProcessor of device {} failed, because {}", insertPlan.getDeviceId(),
+      logger.warn("get StorageGroupProcessor of device {} failed, because {}",
+          insertPlan.getDeviceId(),
           e.getMessage(), e);
-      throw new FileNodeManagerException(e);
+      throw new StorageEngineException(e);
     }
 
     // TODO monitor: update statistics
     return storageGroupProcessor.insert(insertPlan);
   }
 
-
+  /**
+   * only for unit test
+   */
   public void asyncFlushAndSealAllFiles() {
     synchronized (processorMap) {
       for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
@@ -198,11 +192,19 @@ public class StorageEngine implements IService {
     }
   }
 
-  private void writeLog(TSRecord tsRecord, boolean isMonitor, WriteLogNode logNode)
-      throws FileNodeManagerException {
-    // TODO
-  }
 
+  /**
+   * flush command
+   * Sync asyncCloseOneProcessor all file node processors.
+   */
+  public void syncCloseAllProcessor() {
+    logger.info("Start closing all storage group processor");
+    synchronized (processorMap){
+      for(StorageGroupProcessor processor: processorMap.values()){
+        processor.syncCloseFileNode();
+      }
+    }
+  }
 
   /**
    * update data.
@@ -213,62 +215,66 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * delete data.
+   * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
    */
   public void delete(String deviceId, String measurementId, long timestamp)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
 
     if (readOnly) {
-      throw new FileNodeManagerException("Current system mode is read only, does not support deletion");
+      throw new StorageEngineException(
+          "Current system mode is read only, does not support deletion");
     }
 
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
       storageGroupProcessor.delete(deviceId, measurementId, timestamp);
     } catch (IOException e) {
-      throw new FileNodeManagerException(e);
+      throw new StorageEngineException(e);
     }
   }
 
 
   /**
-   * begin query.
+   * begin a query on a given deviceId. Any TsFile contains such device should not be deleted at
+   * once after merge.
    *
    * @param deviceId queried deviceId
-   * @return a query token for the device.
+   * @return a token for the query.
    */
-  public int beginQuery(String deviceId) throws FileNodeManagerException {
-    // TODO
+  public int beginQuery(String deviceId) throws StorageEngineException {
+    // TODO implement it when developing the merge function
     return -1;
   }
 
   /**
-   * end query.
+   * end query on a given deviceId. If some TsFile has been merged and this query is the
+   * last query using it, the TsFile can be deleted safely.
    */
-  public void endQuery(String deviceId, int token) throws FileNodeManagerException {
-    // TODO
+  public void endQuery(String deviceId, int token) throws StorageEngineException {
+    // TODO  implement it when developing the merge function
   }
 
   /**
    * query data.
    */
-  public QueryDataSourceV2 query(SingleSeriesExpression seriesExpression, QueryContext context)
-      throws FileNodeManagerException {
+  public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context)
+      throws StorageEngineException {
+    //TODO use context.
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(deviceId, measurementId);
+    return storageGroupProcessor.query(deviceId, measurementId, context);
   }
 
   /**
    * Append one specified tsfile to the storage group. <b>This method is only provided for
    * transmission module</b>
    *
-   * @param fileNodeName the seriesPath of storage group
+   * @param storageGroupName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
-  public boolean appendFileToFileNode(String fileNodeName, TsFileResource appendFile,
-      String appendFilePath) throws FileNodeManagerException {
+  public boolean appendFileToStorageGroupProcessor(String storageGroupName, TsFileResource appendFile,
+      String appendFilePath) throws StorageEngineException {
     // TODO
     return true;
   }
@@ -276,13 +282,13 @@ public class StorageEngine implements IService {
   /**
    * get all overlap tsfiles which are conflict with the appendFile.
    *
-   * @param fileNodeName the seriesPath of storage group
+   * @param storageGroupName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
-  public List<String> getOverlapFilesFromFileNode(String fileNodeName, TsFileResource appendFile,
-      String uuid) throws FileNodeManagerException {
+  public List<String> getOverlapFiles(String storageGroupName, TsFileResource appendFile,
+      String uuid) throws StorageEngineException {
     // TODO
-    return null;
+    return Collections.emptyList();
   }
 
   public boolean isReadOnly() {
@@ -294,104 +300,77 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * merge all overflowed filenode.
+   * merge all storage groups.
    *
-   * @throws FileNodeManagerException FileNodeManagerException
+   * @throws StorageEngineException StorageEngineException
    */
-  public void mergeAll() throws FileNodeManagerException {
+  public void mergeAll() throws StorageEngineException {
     if (readOnly) {
-      throw new FileNodeManagerException("Current system mode is read only, does not support merge");
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
     // TODO
   }
 
   /**
-   * try to close the filenode processor. The name of filenode processor is processorName
+   * delete all data files (both memory data and file on disk) in a storage group.
+   * It is used when there is no timeseries (which are all deleted) in this storage group)
    */
-  private boolean tryToCloseFileNodeProcessor(String processorName) throws FileNodeManagerException {
-    // TODO
-    return false;
-  }
-
-  /**
-   * Force to close the filenode processor.
-   */
-  public void deleteOneFileNode(String processorName) throws FileNodeManagerException {
-    if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
-      return;
-    }
-
-    fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
-    try {
-      if (processorMap.containsKey(processorName)) {
-        deleteFileNodeBlocked(processorName);
-      }
-    } catch (IOException e) {
-      LOGGER.error("Delete the filenode processor {} error.", processorName, e);
-      throw new FileNodeManagerException(e);
-    } finally {
-      fileNodeManagerStatus = FileNodeManagerStatus.NONE;
+  public void deleteAllDataFilesInOneStorageGroup(String storageGroupName) {
+    if (processorMap.containsKey(storageGroupName)) {
+      syncDeleteDataFiles(storageGroupName);
     }
   }
 
-  private void deleteFileNodeBlocked(String processorName) throws IOException {
-    LOGGER.info("Forced to delete the filenode processor {}", processorName);
-    StorageGroupProcessor processor = processorMap.get(processorName);
-    processor.syncCloseAndStopFileNode(() -> {
+  private void syncDeleteDataFiles(String storageGroupName) {
+    logger.info("Force to delete the data in storage group processor {}", storageGroupName);
+    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    processor.syncCloseTsFileProcessorsAndStop(() -> {
       try {
         // delete storage group data file
         for (String tsfilePath: DirectoryManager.getInstance().getAllTsFileFolders()) {
-          File storageGroupFolder = new File(tsfilePath, processorName);
+          File storageGroupFolder = new File(tsfilePath, storageGroupName);
           if (storageGroupFolder.exists()) {
             FileUtils.deleteDirectory(storageGroupFolder);
           }
         }
         // delete storage group info file
-        String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getFileNodeDir();
-        fileNodePath = FilePathUtils.regularizePath(fileNodePath) + processorName;
-        FileUtils.deleteDirectory(new File(fileNodePath));
+        String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getSystemInfoDir();
+        FileUtils.deleteDirectory(new File(fileNodePath, storageGroupName));
       } catch (IOException e) {
-        LOGGER.error("Delete tsfiles failed", e);
+        logger.error("Delete tsfiles failed", e);
       }
       synchronized (processorMap) {
-        processorMap.remove(processorName);
+        processorMap.remove(storageGroupName);
       }
       return true;
     });
   }
 
-
   /**
    * add time series.
    */
   public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props) throws FileNodeManagerException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(path.getFullPath());
-    storageGroupProcessor.addTimeSeries(path.getMeasurement(), dataType, encoding, compressor, props);
+      CompressionType compressor, Map<String, String> props) throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(path.getDevice());
+    storageGroupProcessor
+        .addTimeSeries(path.getMeasurement(), dataType, encoding, compressor, props);
   }
 
 
   /**
-   * delete all filenode.
+   * delete all storage groups' timeseries.
    */
   public synchronized boolean deleteAll() {
-    LOGGER.info("Start deleting all filenode");
-    // TODO
-    return true;
-  }
-
-  /**
-   * flush command
-   * Sync asyncCloseOneProcessor all file node processors.
-   */
-  public void syncCloseAllProcessor() {
-    LOGGER.info("Start closing all filenode processor");
-    synchronized (processorMap){
-      for(StorageGroupProcessor processor: processorMap.values()){
-        processor.syncCloseFileNode();
+    logger.info("Start deleting all storage groups' timeseries");
+    try {
+      for (String storageGroup : MManager.getInstance().getAllStorageGroupNames()) {
+        this.deleteAllDataFilesInOneStorageGroup(storageGroup);
       }
+    } catch (MetadataErrorException e) {
+      logger.error("delete storage groups failed.", e);
+      return false;
     }
+    return true;
   }
 
 }

@@ -31,7 +31,7 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -53,7 +53,7 @@ import org.slf4j.LoggerFactory;
 
 public class StatMonitor implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StatMonitor.class);
+  private static final Logger logger = LoggerFactory.getLogger(StatMonitor.class);
   private final int backLoopPeriod;
   private final int statMonitorDetectFreqSec;
   private final int statMonitorRetainIntervalSec;
@@ -89,7 +89,7 @@ public class StatMonitor implements IService {
           mmanager.setStorageLevelToMTree(prefix);
         }
       } catch (MetadataErrorException e) {
-        LOGGER.error("MManager cannot set storage level to MTree.", e);
+        logger.error("MManager cannot set storage level to MTree.", e);
       }
     }
   }
@@ -146,7 +146,7 @@ public class StatMonitor implements IService {
         mManager.setStorageLevelToMTree(prefix);
       }
     } catch (Exception e) {
-      LOGGER.error("MManager cannot set storage level to MTree.", e);
+      logger.error("MManager cannot set storage level to MTree.", e);
     }
   }
 
@@ -160,7 +160,7 @@ public class StatMonitor implements IService {
     try {
       for (Map.Entry<String, String> entry : hashMap.entrySet()) {
         if (entry.getValue() == null) {
-          LOGGER.error("Registering metadata but data type of {} is null", entry.getKey());
+          logger.error("Registering metadata but data type of {} is null", entry.getKey());
         }
 
         if (!mManager.pathExist(entry.getKey())) {
@@ -170,7 +170,7 @@ public class StatMonitor implements IService {
         }
       }
     } catch (MetadataErrorException e) {
-      LOGGER.error("Initialize the metadata error.", e);
+      logger.error("Initialize the metadata error.", e);
     }
   }
 
@@ -201,7 +201,7 @@ public class StatMonitor implements IService {
    */
   public void registerStatistics(String path, IStatistic iStatistic) {
     synchronized (statisticMap) {
-      LOGGER.debug("Register {} to StatMonitor for statistics service", path);
+      logger.debug("Register {} to StatMonitor for statistics service", path);
       this.statisticMap.put(path, iStatistic);
     }
   }
@@ -210,7 +210,7 @@ public class StatMonitor implements IService {
    * deregister statistics.
    */
   public void deregisterStatistics(String path) {
-    LOGGER.debug("Deregister {} in StatMonitor for stopping statistics service", path);
+    logger.debug("Deregister {} in StatMonitor for stopping statistics service", path);
     synchronized (statisticMap) {
       if (statisticMap.containsKey(path)) {
         statisticMap.put(path, null);
@@ -296,7 +296,7 @@ public class StatMonitor implements IService {
     try {
       service.awaitTermination(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      LOGGER.error("StatMonitor timing service could not be shutdown.", e);
+      logger.error("StatMonitor timing service could not be shutdown.", e);
       // Restore interrupted state...
       Thread.currentThread().interrupt();
     }
@@ -359,8 +359,8 @@ public class StatMonitor implements IService {
                 }
               }
             }
-          } catch (FileNodeManagerException e) {
-            LOGGER
+          } catch (StorageEngineException e) {
+            logger
                 .error("Error occurred when deleting statistics information periodically, because",
                     e);
           }
@@ -369,7 +369,7 @@ public class StatMonitor implements IService {
         insert(tsRecordHashMap);
         numBackLoop.incrementAndGet();
       } catch (Exception e) {
-        LOGGER.error("Error occurred in Stat Monitor thread", e);
+        logger.error("Error occurred in Stat Monitor thread", e);
       }
     }
 
@@ -382,9 +382,9 @@ public class StatMonitor implements IService {
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);
-        } catch (FileNodeManagerException e) {
+        } catch (StorageEngineException e) {
           numInsertError.incrementAndGet();
-          LOGGER.error("Inserting stat points error.", e);
+          logger.error("Inserting stat points error.", e);
         }
       }
     }

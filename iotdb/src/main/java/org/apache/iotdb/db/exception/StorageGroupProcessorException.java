@@ -16,29 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.querycontext;
+package org.apache.iotdb.db.exception;
 
-import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+public class StorageGroupProcessorException extends ProcessorException {
 
-public class UnsealedTsFile {
+  private static final long serialVersionUID = 7373978140952977661L;
 
-  private String filePath;
-  private List<ChunkMetaData> timeSeriesChunkMetaDatas;
-
-  public String getFilePath() {
-    return filePath;
+  public StorageGroupProcessorException() {
+    super();
   }
 
-  public void setFilePath(String filePath) {
-    this.filePath = filePath;
+  public StorageGroupProcessorException(PathErrorException pathExcp) {
+    super(pathExcp.getMessage());
   }
 
-  public List<ChunkMetaData> getChunkMetaDataList() {
-    return timeSeriesChunkMetaDatas;
+  public StorageGroupProcessorException(String msg) {
+    super(msg);
   }
 
-  public void setTimeSeriesChunkMetaDatas(List<ChunkMetaData> timeSeriesChunkMetaDatas) {
-    this.timeSeriesChunkMetaDatas = timeSeriesChunkMetaDatas;
+  public StorageGroupProcessorException(Throwable throwable) {
+    super(throwable);
+  }
+
+  public StorageGroupProcessorException(String msg, Throwable e) {
+    super(msg, e);
   }
 }

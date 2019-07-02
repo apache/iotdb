@@ -32,7 +32,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
-import org.apache.iotdb.db.exception.UnsealedTsFileProcessorException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileSchemaUtils;
@@ -47,9 +47,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class UnsealedTsFileProcessorTest {
+public class TsFileProcessorTest {
 
-  private UnsealedTsFileProcessor processor;
+  private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
   private String filePath = "data/testUnsealedTsFileProcessor.tsfile";
   private String deviceId = "root.vehicle.d0";
@@ -71,10 +71,10 @@ public class UnsealedTsFileProcessorTest {
 
   @Test
   public void testWriteAndFlush()
-      throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
-    processor = new UnsealedTsFileProcessor(storageGroup, new File(filePath),
+      throws WriteProcessException, IOException, TsFileProcessorException {
+    processor = new TsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
-        ()-> true);
+        ()-> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -86,7 +86,7 @@ public class UnsealedTsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(new InsertPlan(record), true);
+      processor.insert(new InsertPlan(record));
     }
 
     // query data in memory
@@ -118,10 +118,10 @@ public class UnsealedTsFileProcessorTest {
 
   @Test
   public void testMultiFlush()
-      throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
-    processor = new UnsealedTsFileProcessor(storageGroup, new File(filePath),
+      throws WriteProcessException, IOException, TsFileProcessorException {
+    processor = new TsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
-        ()->true);
+        ()->true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -134,7 +134,7 @@ public class UnsealedTsFileProcessorTest {
       for (int i = 1; i <= 10; i++) {
         TSRecord record = new TSRecord(i, deviceId);
         record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-        processor.insert(new InsertPlan(record), true);
+        processor.insert(new InsertPlan(record));
       }
       processor.asyncFlush();
     }
@@ -153,11 +153,11 @@ public class UnsealedTsFileProcessorTest {
 
   @Test
   public void testWriteAndClose()
-      throws WriteProcessException, IOException, UnsealedTsFileProcessorException {
-    processor = new UnsealedTsFileProcessor(storageGroup, new File(filePath),
+      throws WriteProcessException, IOException, TsFileProcessorException {
+    processor = new TsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE,
-        unsealedTsFileProcessorV2 -> {
-          TsFileResource resource = unsealedTsFileProcessorV2.getTsFileResource();
+        unsealedTsFileProcessor -> {
+          TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
           synchronized (resource) {
             for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
               String deviceId = startTime.getKey();
@@ -165,7 +165,7 @@ public class UnsealedTsFileProcessorTest {
             }
             resource.close();
           }
-        }, ()->true);
+        }, ()->true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -177,7 +177,7 @@ public class UnsealedTsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(new InsertPlan(record), true);
+      processor.insert(new InsertPlan(record));
     }
 
     // query data in memory

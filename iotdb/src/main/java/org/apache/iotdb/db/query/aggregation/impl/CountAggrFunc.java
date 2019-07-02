@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 public class CountAggrFunc extends AggregateFunction {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CountAggrFunc.class);
+  private static final Logger logger = LoggerFactory.getLogger(CountAggrFunc.class);
 
   public CountAggrFunc() {
     super(TSDataType.INT64);
@@ -52,8 +52,8 @@ public class CountAggrFunc extends AggregateFunction {
 
   @Override
   public void calculateValueFromPageHeader(PageHeader pageHeader) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("PageHeader>>>>>>>>>>>>num of rows:{}, minTimeStamp:{}, maxTimeStamp{}",
+    if (logger.isDebugEnabled()) {
+      logger.debug("PageHeader>>>>>>>>>>>>num of rows:{}, minTimeStamp:{}, maxTimeStamp{}",
           pageHeader.getNumOfValues(), pageHeader.getMinTimestamp(), pageHeader.getMaxTimestamp());
     }
     long preValue = resultData.getLongRet();

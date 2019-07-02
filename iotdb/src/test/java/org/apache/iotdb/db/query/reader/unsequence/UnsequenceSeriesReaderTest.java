@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.reader.unsequence;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSourceV2;
-import org.apache.iotdb.db.exception.FileNodeProcessorException;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
@@ -50,9 +50,9 @@ public class UnsequenceSeriesReaderTest extends ReaderTestHelper {
     }
 
     @Test
-    public void testUnseqSeriesReaderWithGlobalTimeFilter() throws IOException, FileNodeProcessorException {
+    public void testUnseqSeriesReaderWithGlobalTimeFilter() throws IOException, StorageGroupProcessorException {
         Path path = new Path(deviceId, measurementId);
-        QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+        QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
         IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnseqSeriesReader(path,
                 queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, TimeFilter.eq(4));
         int cnt = 0;
@@ -66,9 +66,9 @@ public class UnsequenceSeriesReaderTest extends ReaderTestHelper {
     }
 
     @Test
-    public void testUnseqSeriesReaderWithoutFilter() throws IOException, FileNodeProcessorException {
+    public void testUnseqSeriesReaderWithoutFilter() throws IOException, StorageGroupProcessorException {
         Path path = new Path(deviceId, measurementId);
-        QueryDataSourceV2 queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+        QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
         IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnseqSeriesReader(path,
                 queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, null);
         int cnt = 0;

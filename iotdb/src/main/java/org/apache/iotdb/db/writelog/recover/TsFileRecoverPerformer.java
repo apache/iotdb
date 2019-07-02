@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.memtable.MemTableFlushTaskV2;
+import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -34,7 +34,7 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 /**
  * TsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last
@@ -62,7 +62,7 @@ public class TsFileRecoverPerformer {
   }
 
   /**
-   * 1. recover the TsFile by NativeRestorableIOWriter and truncate position of last recovery
+   * 1. recover the TsFile by RestorableTsFileIOWriter and truncate position of last recovery
    * 2. redo the WALs to recover unpersisted data
    * 3. flush and close the file
    * 4. clean WALs
@@ -78,9 +78,9 @@ public class TsFileRecoverPerformer {
       return;
     }
     // remove corrupted part of the TsFile
-    NativeRestorableIOWriter restorableTsFileIOWriter;
+    RestorableTsFileIOWriter restorableTsFileIOWriter;
     try {
-      restorableTsFileIOWriter = new NativeRestorableIOWriter(insertFile);
+      restorableTsFileIOWriter = new RestorableTsFileIOWriter(insertFile);
     } catch (IOException e) {
       throw new ProcessorException(e);
     }
@@ -112,7 +112,7 @@ public class TsFileRecoverPerformer {
     }
 
     // flush logs
-    MemTableFlushTaskV2 tableFlushTask = new MemTableFlushTaskV2(recoverMemTable, fileSchema, restorableTsFileIOWriter,
+    MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, fileSchema, restorableTsFileIOWriter,
         logNodePrefix);
 
     try {

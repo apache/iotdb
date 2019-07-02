@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -30,16 +29,6 @@ public class MemSeriesLazyMerger implements TimeValuePairSorter {
 
   public MemSeriesLazyMerger() {
     memSeriesList = new ArrayList<>();
-  }
-
-  /**
-   * Constructor of MemSeriesLazyMerger.
-   *
-   * @param memSerieses Please ensure that the memSerieses are in ascending order by timestamp.
-   */
-  public MemSeriesLazyMerger(ReadOnlyMemChunk... memSerieses) {
-    this();
-    Collections.addAll(memSeriesList, memSerieses);
   }
 
   /**

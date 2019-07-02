@@ -16,29 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.exception;
 
-public class FileNodeProcessorException extends ProcessorException {
+public class FlushRunTimeException extends RuntimeException {
 
-  private static final long serialVersionUID = 7373978140952977661L;
-
-  public FileNodeProcessorException() {
-    super();
+  public FlushRunTimeException() {
   }
 
-  public FileNodeProcessorException(PathErrorException pathExcp) {
-    super(pathExcp.getMessage());
+  public FlushRunTimeException(String message) {
+    super(message);
   }
 
-  public FileNodeProcessorException(String msg) {
-    super(msg);
+  public FlushRunTimeException(String message, Throwable cause) {
+    super(message, cause);
   }
 
-  public FileNodeProcessorException(Throwable throwable) {
-    super(throwable);
-  }
-
-  public FileNodeProcessorException(String msg, Throwable e) {
-    super(msg, e);
+  public FlushRunTimeException(Throwable cause) {
+    super(cause);
   }
 }
