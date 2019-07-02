@@ -74,7 +74,7 @@ public class TsFileProcessorTest {
       throws WriteProcessException, IOException, TsFileProcessorException {
     processor = new TsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
-        ()-> true);
+        ()-> true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -86,7 +86,7 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(new InsertPlan(record), true);
+      processor.insert(new InsertPlan(record));
     }
 
     // query data in memory
@@ -121,7 +121,7 @@ public class TsFileProcessorTest {
       throws WriteProcessException, IOException, TsFileProcessorException {
     processor = new TsFileProcessor(storageGroup, new File(filePath),
         FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE, x->{},
-        ()->true);
+        ()->true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -134,7 +134,7 @@ public class TsFileProcessorTest {
       for (int i = 1; i <= 10; i++) {
         TSRecord record = new TSRecord(i, deviceId);
         record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-        processor.insert(new InsertPlan(record), true);
+        processor.insert(new InsertPlan(record));
       }
       processor.asyncFlush();
     }
@@ -165,7 +165,7 @@ public class TsFileProcessorTest {
             }
             resource.close();
           }
-        }, ()->true);
+        }, ()->true, true);
 
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = processor
         .query(deviceId, measurementId, dataType, props);
@@ -177,7 +177,7 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(new InsertPlan(record), true);
+      processor.insert(new InsertPlan(record));
     }
 
     // query data in memory

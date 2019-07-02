@@ -295,7 +295,7 @@ public class StorageGroupProcessor {
     }
 
     // insert TsFileProcessor
-    result = tsFileProcessor.insert(insertPlan, sequence);
+    result = tsFileProcessor.insert(insertPlan);
 
     // try to update the latest time of the device of this tsRecord
     if (result && latestTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
@@ -335,11 +335,11 @@ public class StorageGroupProcessor {
     if (sequence) {
       return new TsFileProcessor(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessor,
-          this::updateLatestFlushTimeCallback);
+          this::updateLatestFlushTimeCallback, sequence);
     } else {
       return new TsFileProcessor(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessor,
-          () -> true);
+          () -> true, sequence);
     }
   }
 
