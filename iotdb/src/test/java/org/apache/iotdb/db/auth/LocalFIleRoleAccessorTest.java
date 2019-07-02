@@ -75,7 +75,7 @@ public class LocalFIleRoleAccessorTest {
     }
     assertEquals(null, accessor.loadRole("not a role"));
 
-    // deleteDataInMemory
+    // delete
     assertEquals(true, accessor.deleteRole(roles[roles.length - 1].getName()));
     assertEquals(false, accessor.deleteRole(roles[roles.length - 1].getName()));
     assertEquals(null, accessor.loadRole(roles[roles.length - 1].getName()));

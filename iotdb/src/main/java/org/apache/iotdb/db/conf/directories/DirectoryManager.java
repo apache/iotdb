@@ -45,10 +45,16 @@ public class DirectoryManager {
   private DirectoryManager() {
     sequenceFileFolders =
         new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    for (int i = 0; i < sequenceFileFolders.size(); i++) {
+      sequenceFileFolders.set(i, sequenceFileFolders.get(i) + File.separator + "sequence");
+    }
     mkDirs(sequenceFileFolders);
 
     unsequenceFileFolders =
         new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    for (int i = 0; i < unsequenceFileFolders.size(); i++) {
+      unsequenceFileFolders.set(i, unsequenceFileFolders.get(i) + File.separator + "unsequence");
+    }
     mkDirs(unsequenceFileFolders);
 
     String strategyName = "";

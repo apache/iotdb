@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import java.io.File;
 import java.io.IOException;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -87,20 +88,21 @@ public class EnvironmentUtils {
   }
 
   private static void cleanAllDir() throws IOException {
-    // deleteDataInMemory sequential files
+    // delete sequential files
     for (String path : directoryManager.getAllSequenceFileFolders()) {
       cleanDir(path);
     }
-    // deleteDataInMemory unsequence files
+    // delete unsequence files
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       cleanDir(path);
     }
     // delete system info
     cleanDir(config.getSystemDir());
-    // deleteDataInMemory wal
+    // delete wal
     cleanDir(config.getWalFolder());
-    // deleteDataInMemory index
+    // delete index
     cleanDir(config.getIndexFileDir());
+    cleanDir(config.getBaseDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -108,23 +110,7 @@ public class EnvironmentUtils {
   }
 
   public static void cleanDir(String dir) throws IOException {
-    File file = new File(dir);
-    if (file.exists()) {
-      if (file.isDirectory()) {
-        for (File subFile : file.listFiles()) {
-          cleanDir(subFile.getAbsolutePath());
-        }
-        if(file.listFiles().length != 0){
-          System.out.println(String.format("The file %s has file.", dir));
-          for (File f: file.listFiles()) {
-            System.out.println(f.getAbsolutePath());
-          }
-        }
-      }
-      if (!file.delete()) {
-        throw new IOException(String.format("The file %s can't be deleted", dir));
-      }
-    }
+    FileUtils.deleteDirectory(new File(dir));
   }
 
   /**
@@ -139,7 +125,6 @@ public class EnvironmentUtils {
    * disable memory control</br>
    * this function should be called before all code in the setup
    */
-
   public static void envSetUp() throws StartupException, IOException {
     createAllDir();
     // disable the system monitor
@@ -148,12 +133,12 @@ public class EnvironmentUtils {
     try {
       authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {
-      throw new StartupException(e.getMessage());
+      throw new StartupException(e);
     }
     try {
       authorizer.reset();
     } catch (AuthException e) {
-      throw new StartupException(e.getMessage());
+      throw new StartupException(e);
     }
     StorageEngine.getInstance().reset();
     MultiFileLogNodeManager.getInstance().start();

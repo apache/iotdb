@@ -188,7 +188,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   /**
-   * If chunk contains data with timestamp less than 'timestamp', create a copy and deleteDataInMemory all those
+   * If chunk contains data with timestamp less than 'timestamp', create a copy and delete all those
    * data. Otherwise return null.
    *
    * @param chunk the source chunk.

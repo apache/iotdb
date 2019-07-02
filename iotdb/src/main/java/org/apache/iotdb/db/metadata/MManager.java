@@ -52,8 +52,6 @@ import org.slf4j.LoggerFactory;
  * This class takes the responsibility of serialization of all the metadata info and persistent it
  * into files. This class contains all the interfaces to modify the metadata for delta system. All
  * the operations will be insert into the logs temporary in case the downtime of the delta system.
- *
- * @author Jinrui Zhang
  */
 public class MManager {
 
@@ -68,7 +66,7 @@ public class MManager {
   private MGraph mgraph;
   private BufferedWriter logWriter;
   private boolean writeToLog;
-  private String systemDir;
+  private String schemaDir;
 
   private RandomDeleteCache<String, PathCheckRet> checkAndGetDataTypeCache;
   private RandomDeleteCache<String, MNode> mNodeCache;
@@ -79,13 +77,13 @@ public class MManager {
 
   private MManager() {
 
-    systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    schemaDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "schema";
 
-    File systemFolder = new File(systemDir);
+    File systemFolder = new File(schemaDir);
     if (!systemFolder.exists()) {
       systemFolder.mkdirs();
     }
-    logFilePath = systemDir + File.separator + MetadataConstant.METADATA_LOG;
+    logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
     writeToLog = false;
 
     int cacheSize = IoTDBDescriptor.getInstance().getConfig().getmManagerCacheSize();
@@ -232,7 +230,7 @@ public class MManager {
   private void initLogStream() throws IOException {
     if (logWriter == null) {
       File logFile = new File(logFilePath);
-      File metadataDir = new File(systemDir);
+      File metadataDir = new File(schemaDir);
       if (!metadataDir.exists()) {
         metadataDir.mkdirs();
       }
@@ -404,7 +402,7 @@ public class MManager {
   }
 
   /**
-   * deleteDataInMemory given paths from metadata and data.
+   * delete given paths from metadata and data.
    * @param deletePathList list of paths to be deleted
    * @return the first set contains StorageGroups that are affected by this deletion but
    * still have remaining timeseries, so these StorageGroups should be closed to make sure the data
@@ -432,7 +430,7 @@ public class MManager {
         Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(storageGroupName);
         // Thread safety: just one thread can access/modify the schemaMap
         synchronized (schemaMap) {
-          // TODO: don't deleteDataInMemory the storage group seriesPath recursively
+          // TODO: don't delete the storage group seriesPath recursively
           Path path = new Path(p);
           String measurementId = path.getMeasurement();
           if (numSchemaMap.get(measurementId) == 1) {

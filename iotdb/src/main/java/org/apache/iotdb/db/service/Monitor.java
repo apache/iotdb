@@ -33,6 +33,11 @@ public class Monitor implements MonitorMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(Monitor.class);
 
   public static final Monitor INSTANCE = new Monitor();
+
+  public static Monitor getInstance() {
+    return INSTANCE;
+  }
+
   private final String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
@@ -95,7 +100,7 @@ public class Monitor implements MonitorMBean, IService {
   @Override
   public int getDataOpenFileNum() {
     return OpenFileNumUtil.getInstance()
-        .get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+        .get(OpenFileNumUtil.OpenFileNumStatistics.SEQUENCE_FILE_OPEN_NUM);
   }
 
   @Override

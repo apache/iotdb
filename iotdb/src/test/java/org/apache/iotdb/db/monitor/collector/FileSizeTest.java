@@ -29,6 +29,7 @@ import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class FileSizeTest {
@@ -47,6 +48,7 @@ public class FileSizeTest {
     EnvironmentUtils.cleanEnv();
   }
 
+  @Ignore
   @Test
   public void testGetFileSizesInByte() {
     long dataSizeBefore;

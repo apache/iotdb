@@ -88,7 +88,7 @@ public class WriteLogNodeTest {
   @Test
   public void testNotifyFlush() throws IOException {
     // this test writes a few logs and sync them
-    // then calls notifyStartFlush() and notifyEndFlush() to deleteDataInMemory old file
+    // then calls notifyStartFlush() and notifyEndFlush() to delete old file
     String identifier = "root.logTestDevice";
 
     WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);

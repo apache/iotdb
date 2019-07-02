@@ -128,7 +128,7 @@ public class IoTDBConfig {
    */
   private boolean enableStatMonitor = false;
   /**
-   * Set the time interval when StatMonitor performs deleteDataInMemory detection. The default value is 600s.
+   * Set the time interval when StatMonitor performs delete detection. The default value is 600s.
    */
   private int statMonitorDetectFreqSec = 60 * 10;
   /**

@@ -172,7 +172,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
       }
     }
     series.data = delResult;
-    LOG.info("deleteDataInMemory series:{}, timestamp:{}", path, deleteTime);
+    LOG.info("delete series:{}, timestamp:{}", path, deleteTime);
     return true;
   }
 

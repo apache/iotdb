@@ -115,7 +115,7 @@ public class SyncFileManagerTest {
       assert (lastFileList.containsAll(entry.getValue()));
     }
 
-    // add some files and deleteDataInMemory some files
+    // add some files and delete some files
     r = new Random(1);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
@@ -199,7 +199,7 @@ public class SyncFileManagerTest {
       assert (allFileList.get(entry.getKey()).containsAll(entry.getValue()));
     }
 
-    // deleteDataInMemory some files and add some files
+    // delete some files and add some files
     int count = 0;
     Map<String, Set<String>> deleteFile = new HashMap<>();
     for (Entry<String, Set<String>> entry : allFileList.entrySet()) {
@@ -310,7 +310,7 @@ public class SyncFileManagerTest {
       assert (newFileList.get(entry.getKey()).containsAll(entry.getValue()));
     }
 
-    // deleteDataInMemory some files and add some files
+    // delete some files and add some files
     int count = 0;
     Map<String, Set<String>> deleteFile = new HashMap<>();
     for (Entry<String, Set<String>> entry : allFileList.entrySet()) {

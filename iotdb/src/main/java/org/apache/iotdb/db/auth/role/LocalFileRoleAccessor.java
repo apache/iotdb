@@ -135,7 +135,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     }
     if ((roleProfile.exists() && !roleProfile.delete()) || (backFile.exists() && !backFile
         .delete())) {
-      throw new IOException(String.format("Cannot deleteDataInMemory role file of %s", rolename));
+      throw new IOException(String.format("Cannot delete role file of %s", rolename));
     }
     return true;
   }
