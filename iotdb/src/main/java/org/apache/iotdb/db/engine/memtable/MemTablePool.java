@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +69,7 @@ public class MemTablePool {
           availableMemTables.wait(WAIT_TIME);
         } catch (InterruptedException e) {
           logger.error("{} fails to wait fot memtables {}, continue to wait", applier, e);
+          Thread.currentThread().interrupt();
         }
         logger.info("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
       }
