@@ -79,6 +79,12 @@ public class TsFileProcessor {
 
   private IMemTable workMemTable;
 
+  /**
+   * sync this object in query() and asyncFlush()
+   */
+  private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
+
+
   private VersionController versionController;
 
   private CloseTsFileCallBack closeUnsealedFileCallback;
@@ -86,11 +92,6 @@ public class TsFileProcessor {
   private Supplier flushUpdateLatestFlushTimeCallback;
 
   private WriteLogNode logNode;
-
-  /**
-   * sync this object in query() and asyncFlush()
-   */
-  private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
 
   TsFileProcessor(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,

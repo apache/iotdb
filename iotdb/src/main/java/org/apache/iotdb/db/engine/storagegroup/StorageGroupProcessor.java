@@ -72,7 +72,7 @@ public class StorageGroupProcessor {
   private TsFileProcessor workSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
-  // includes sealed and unsealed unSequnce tsfiles
+  // includes sealed and unsealed unSequence tsfiles
   private List<TsFileResource> unSequenceFileList = new ArrayList<>();
   private TsFileProcessor workUnSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
@@ -245,9 +245,9 @@ public class StorageGroupProcessor {
 
       // insert to sequence or unSequence file
       if (insertPlan.getTime() > latestFlushedTimeForEachDevice.get(insertPlan.getDeviceId())) {
-        return insertUnsealedDataFile(insertPlan, true);
+        return insertTsFileProcessor(insertPlan, true);
       } else {
-        return insertUnsealedDataFile(insertPlan, false);
+        return insertTsFileProcessor(insertPlan, false);
       }
     } catch (StorageGroupProcessorException | IOException e) {
       logger.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
@@ -257,12 +257,12 @@ public class StorageGroupProcessor {
     }
   }
 
-  private boolean insertUnsealedDataFile(InsertPlan insertPlan, boolean sequence)
+  private boolean insertTsFileProcessor(InsertPlan insertPlan, boolean sequence)
       throws IOException {
     TsFileProcessor tsFileProcessor = null;
     boolean result;
 
-    // create a new BufferWriteProcessor
+    // create a new TsfileProcessor
     try {
       if (sequence) {
         if (workSequenceTsFileProcessor == null) {
@@ -282,7 +282,7 @@ public class StorageGroupProcessor {
       logger.error("dis space is insufficient", e);
     }
 
-    // insert BufferWrite
+    // insert TsFileProcessor
     result = tsFileProcessor.insert(insertPlan, sequence);
 
     // try to update the latest time of the device of this tsRecord
@@ -290,7 +290,7 @@ public class StorageGroupProcessor {
       latestTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // check memtable size and may asyncFlush the workMemtable
+    // check memtable size and may asyncFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
 
       logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
