@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.context;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -88,7 +87,4 @@ public class QueryContext {
     return jobId;
   }
 
-  public void setJobId(long jobId) {
-    this.jobId = jobId;
-  }
 }

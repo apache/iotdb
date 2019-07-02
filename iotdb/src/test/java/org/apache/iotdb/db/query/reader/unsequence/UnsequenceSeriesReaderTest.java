@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.query.reader.unsequence;
 
+import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
@@ -31,9 +32,10 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-
 public class UnsequenceSeriesReaderTest extends ReaderTestHelper {
+
+    private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
+
     @Override
     protected void insertData() {
         for (int j = 1; j <= 10; j++) {
@@ -50,11 +52,13 @@ public class UnsequenceSeriesReaderTest extends ReaderTestHelper {
     }
 
     @Test
-    public void testUnseqSeriesReaderWithGlobalTimeFilter() throws IOException, StorageGroupProcessorException {
+    public void testUnseqSeriesReaderWithGlobalTimeFilter() throws IOException {
         Path path = new Path(deviceId, measurementId);
-        QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+        QueryDataSource queryDataSource = storageGroupProcessor
+            .query(deviceId, measurementId, context);
         IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnseqSeriesReader(path,
-                queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, TimeFilter.eq(4));
+            queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT,
+            TimeFilter.eq(4));
         int cnt = 0;
         while (reader.hasNext()) {
             cnt++;
@@ -66,11 +70,12 @@ public class UnsequenceSeriesReaderTest extends ReaderTestHelper {
     }
 
     @Test
-    public void testUnseqSeriesReaderWithoutFilter() throws IOException, StorageGroupProcessorException {
+    public void testUnseqSeriesReaderWithoutFilter() throws IOException {
         Path path = new Path(deviceId, measurementId);
-        QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+        QueryDataSource queryDataSource = storageGroupProcessor
+            .query(deviceId, measurementId, context);
         IPointReader reader = SeriesReaderFactoryImpl.getInstance().createUnseqSeriesReader(path,
-                queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, null);
+            queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, null);
         int cnt = 0;
         while (reader.hasNext()) {
             cnt++;

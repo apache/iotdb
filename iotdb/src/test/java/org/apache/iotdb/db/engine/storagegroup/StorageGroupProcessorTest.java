@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -38,6 +39,7 @@ public class StorageGroupProcessorTest {
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private StorageGroupProcessor processor;
+  private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   @Before
   public void setUp() throws Exception {
@@ -64,9 +66,9 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseFileNode();
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId);
+    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context);
 
-    Assert.assertEquals(queryDataSource.getSeqResources().size(), 10);
+    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
@@ -93,7 +95,7 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseFileNode();
 
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId);
+    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {

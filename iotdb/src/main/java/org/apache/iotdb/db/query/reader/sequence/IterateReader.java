@@ -18,29 +18,26 @@
  */
 package org.apache.iotdb.db.query.reader.sequence;
 
+import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
-import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * get data sequentially from the reader list.
  */
-public class IterateReader implements IAggregateReader {
+public abstract class IterateReader implements IAggregateReader {
 
-  protected List<IAggregateReader> seqResourceSeriesReaderList;
-  protected boolean curReaderInitialized;
-  protected int nextSeriesReaderIndex;
   protected IAggregateReader currentSeriesReader;
+  private boolean curReaderInitialized;
+  private int nextSeriesReaderIndex;
+  private int readerSize;
 
-  public IterateReader() {
-    this.seqResourceSeriesReaderList = new ArrayList<>();
+
+  public IterateReader(int readerSize) {
     this.curReaderInitialized = false;
     this.nextSeriesReaderIndex = 0;
+    this.readerSize = readerSize;
   }
 
   @Override
@@ -52,9 +49,10 @@ public class IterateReader implements IAggregateReader {
       curReaderInitialized = false;
     }
 
-    while (nextSeriesReaderIndex < seqResourceSeriesReaderList.size()) {
-      currentSeriesReader = seqResourceSeriesReaderList.get(nextSeriesReaderIndex++);
-      if (currentSeriesReader.hasNext()) {
+    while (nextSeriesReaderIndex < readerSize) {
+      //seqResourceSeriesReaderList.get(nextSeriesReaderIndex++)
+      boolean statisfyed = constructNextReader(nextSeriesReaderIndex++);
+      if (statisfyed && currentSeriesReader.hasNext()) {
         curReaderInitialized = true;
         return true;
       }
@@ -62,12 +60,7 @@ public class IterateReader implements IAggregateReader {
     return false;
   }
 
-  @Override
-  public void close() throws IOException {
-    for (IBatchReader seriesReader : seqResourceSeriesReaderList) {
-      seriesReader.close();
-    }
-  }
+  public abstract boolean constructNextReader(int idx) throws IOException;
 
   @Override
   public BatchData nextBatch() throws IOException {
@@ -82,5 +75,10 @@ public class IterateReader implements IAggregateReader {
   @Override
   public void skipPageData() throws IOException {
     currentSeriesReader.skipPageData();
+  }
+
+  @Override
+  public void close() {
+    // file stream is managed in QueryResourceManager.
   }
 }

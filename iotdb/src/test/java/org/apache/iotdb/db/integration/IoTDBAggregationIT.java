@@ -594,7 +594,7 @@ public class IoTDBAggregationIT {
       for (int i = 3000; i < 6500; i++) {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
       }
-      statement.execute("merge");
+//      statement.execute("merge");
 
       // prepare BufferWrite cache
       for (int i = 9000; i < 10000; i++) {

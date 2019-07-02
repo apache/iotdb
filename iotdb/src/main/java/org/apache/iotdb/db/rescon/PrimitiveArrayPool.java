@@ -31,8 +31,6 @@ import org.slf4j.LoggerFactory;
  */
 public class PrimitiveArrayPool {
 
-  private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayPool.class);
-
   /**
    * data type -> Array<PrimitiveArray>
    */
@@ -59,7 +57,7 @@ public class PrimitiveArrayPool {
   private PrimitiveArrayPool() {}
 
   public synchronized Object getPrimitiveDataListByType(TSDataType dataType) {
-    ArrayDeque dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, (k)->new ArrayDeque<>());
+    ArrayDeque dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, k ->new ArrayDeque<>());
     Object dataArray = dataListQueue.poll();
     switch (dataType) {
       case BOOLEAN:

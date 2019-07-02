@@ -70,39 +70,46 @@ public class WalChecker {
       File storageWalFolder = storageWalFolders[dirIndex];
       logger.info("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
       File walFile = new File(storageWalFolder, WAL_FILE_NAME);
-      if (!walFile.exists()) {
-        logger.debug("No wal file in this dir, skipping");
-        continue;
-      }
-
-      if (walFile.length() > 0 && walFile.length() < SingleFileLogReader.LEAST_LOG_SIZE) {
-        // contains only one damaged log
-        logger.error("{} fails the check because it is non-empty but does not contain enough bytes "
-            + "even for one log.", walFile.getAbsoluteFile());
+      if (!checkFile(walFile)) {
         failedFiles.add(walFile);
-        continue;
-      }
-
-      SingleFileLogReader logReader = null;
-      try {
-        logReader = new SingleFileLogReader(walFile);
-        while (logReader.hasNext()) {
-          logReader.next();
-        }
-        if (logReader.isFileCorrupted()) {
-          failedFiles.add(walFile);
-        }
-      } catch (IOException e) {
-        failedFiles.add(walFile);
-        logger.error("{} fails the check because", walFile.getAbsoluteFile(), e);
-      } finally {
-        if( logReader != null) {
-          logReader.close();
-        }
       }
     }
     return failedFiles;
   }
+
+  private boolean checkFile(File walFile) {
+    if (!walFile.exists()) {
+      logger.debug("No wal file in this dir, skipping");
+      return true;
+    }
+
+    if (walFile.length() > 0 && walFile.length() < SingleFileLogReader.LEAST_LOG_SIZE) {
+      // contains only one damaged log
+      logger.error("{} fails the check because it is non-empty but does not contain enough bytes "
+          + "even for one log.", walFile.getAbsoluteFile());
+      return false;
+    }
+
+    SingleFileLogReader logReader = null;
+    try {
+      logReader = new SingleFileLogReader(walFile);
+      while (logReader.hasNext()) {
+        logReader.next();
+      }
+      if (logReader.isFileCorrupted()) {
+        return false;
+      }
+    } catch (IOException e) {
+      logger.error("{} fails the check because", walFile.getAbsoluteFile(), e);
+      return false;
+    } finally {
+      if( logReader != null) {
+        logReader.close();
+      }
+    }
+    return true;
+  }
+
 
   // a temporary method which should be in the integrated self-check module in the future
   public static void report(List<File> failedFiles) {
