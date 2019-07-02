@@ -35,12 +35,15 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * TsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last
  * crash and removes the redone logs.
  */
 public class TsFileRecoverPerformer {
+  private static final Logger logger = LoggerFactory.getLogger(TsFileRecoverPerformer.class);
 
   private String insertFilePath;
   private String logNodePrefix;
@@ -62,11 +65,11 @@ public class TsFileRecoverPerformer {
   }
 
   /**
-   * 1. recover the TsFile by RestorableTsFileIOWriter and truncate position of last recovery
+   * 1. recover the TsFile by RestorableTsFileIOWriter and truncate the file to remaining corrected
+   * data
    * 2. redo the WALs to recover unpersisted data
    * 3. flush and close the file
    * 4. clean WALs
-   * @throws ProcessorException
    */
   public void recover() throws ProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
@@ -75,6 +78,7 @@ public class TsFileRecoverPerformer {
         tsFileResource, fileSchema, recoverMemTable, acceptUnseq);
     File insertFile = new File(insertFilePath);
     if (!insertFile.exists()) {
+      logger.error("TsFile {} is missing, will skip its recovery.", insertFilePath);
       return;
     }
     // remove corrupted part of the TsFile
@@ -97,7 +101,8 @@ public class TsFileRecoverPerformer {
     } else {
       // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
       // map must be updated first to avoid duplicated insertion
-      for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter.getChunkGroupMetaDatas()) {
+      for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter
+          .getChunkGroupMetaDatas()) {
         for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
           tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
           tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
@@ -109,7 +114,8 @@ public class TsFileRecoverPerformer {
     logReplayer.replayLogs();
     if (!recoverMemTable.isEmpty()) {
       // flush logs
-      MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, fileSchema, restorableTsFileIOWriter,
+      MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, fileSchema,
+          restorableTsFileIOWriter,
           logNodePrefix);
       try {
         tableFlushTask.flushMemTable();
@@ -124,7 +130,8 @@ public class TsFileRecoverPerformer {
 
     // clean logs
     try {
-      MultiFileLogNodeManager.getInstance().deleteNode(logNodePrefix + new File(insertFilePath).getName());
+      MultiFileLogNodeManager.getInstance()
+          .deleteNode(logNodePrefix + new File(insertFilePath).getName());
     } catch (IOException e) {
       throw new ProcessorException(e);
     }

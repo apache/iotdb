@@ -89,9 +89,15 @@ public class TsFileProcessor {
 
   private VersionController versionController;
 
+  /**
+   * this callback is called after the corresponding TsFile is called endFile().
+   */
   private CloseTsFileCallBack closeUnsealedFileCallback;
 
-  private Supplier flushUpdateLatestFlushTimeCallback;
+  /**
+   *
+   */
+  private Supplier updateLatestFlushTimeCallback;
 
   private WriteLogNode logNode;
 
@@ -100,7 +106,7 @@ public class TsFileProcessor {
   TsFileProcessor(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,
       CloseTsFileCallBack closeUnsealedFileCallback,
-      Supplier flushUpdateLatestFlushTimeCallback, boolean sequence)
+      Supplier updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
@@ -108,7 +114,7 @@ public class TsFileProcessor {
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;
-    this.flushUpdateLatestFlushTimeCallback = flushUpdateLatestFlushTimeCallback;
+    this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
   }
@@ -156,7 +162,7 @@ public class TsFileProcessor {
    * Delete data whose timestamp <= 'timestamp' and belonging to timeseries deviceId.measurementId.
    * Delete data in both working MemTable and flushing MemTables.
    */
-  public void delete(Deletion deletion) {
+  public void deleteDataInMemory(Deletion deletion) {
     flushQueryLock.writeLock().lock();
     try {
       if (workMemTable != null) {
@@ -204,14 +210,19 @@ public class TsFileProcessor {
     logger.info("File {} is closed synchronously", tsFileResource.getFile().getAbsolutePath());
   }
 
-  /**
-   * Ensure there must be a flush thread submitted after setCloseMark() is called, therefore the
-   * close task will be executed by a flush thread.
-   */
+
   void asyncClose() {
     flushQueryLock.writeLock().lock();
     logger.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
     try {
+      shouldClose = true;
+      // when a flush thread serves this TsFileProcessor (because the processor is submitted by
+      // registerUnsealedTsFileProcessor()), the thread will seal the corresponding TsFile and
+      // execute other cleanup works if shouldClose == true and flushingMemTables is empty.
+
+      // To ensure there must be a flush thread serving this processor after the field `shouldClose`
+      // is set true, we need to generate a NotifyFlushMemTable as a signal task and submit it to
+      // the FlushManager.
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
       if (tmpMemTable.isSignalMemTable()) {
         logger.info(
@@ -220,12 +231,12 @@ public class TsFileProcessor {
       } else {
         logger.info("storage group {} async flush a memtable when async close", storageGroupName);
       }
+      updateLatestFlushTimeCallback.get();
       flushingMemTables.add(tmpMemTable);
-      shouldClose = true;
+
       workMemTable = null;
       tmpMemTable.setVersion(versionController.nextVersion());
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
-      flushUpdateLatestFlushTimeCallback.get();
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -245,7 +256,7 @@ public class TsFileProcessor {
       flushingMemTables.addLast(tmpMemTable);
       tmpMemTable.setVersion(versionController.nextVersion());
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
-      flushUpdateLatestFlushTimeCallback.get();
+      updateLatestFlushTimeCallback.get();
       workMemTable = null;
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -276,7 +287,7 @@ public class TsFileProcessor {
       flushingMemTables.addLast(workMemTable);
       workMemTable.setVersion(versionController.nextVersion());
       FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
-      flushUpdateLatestFlushTimeCallback.get();
+      updateLatestFlushTimeCallback.get();
       workMemTable = null;
     } catch (IOException e) {
       logger.error("WAL notify start flush failed", e);

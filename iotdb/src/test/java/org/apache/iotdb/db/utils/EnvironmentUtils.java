@@ -82,30 +82,30 @@ public class EnvironmentUtils {
     // close metadata
     MManager.getInstance().clear();
     MManager.getInstance().flushObjectToFile();
-    // delete all directory
+    // deleteDataInMemory all directory
     cleanAllDir();
     StorageEngine.getInstance().setReadOnly(false);
     StorageEngine.getInstance().reset();
   }
 
   private static void cleanAllDir() throws IOException {
-    // delete sequential files
-    for (String path : directoryManager.getAllTsFileFolders()) {
+    // deleteDataInMemory sequential files
+    for (String path : directoryManager.getAllSequenceFileFolders()) {
       cleanDir(path);
     }
-    // delete unsequence files
-    for (String path : directoryManager.getAllOverflowFileFolders()) {
+    // deleteDataInMemory unsequence files
+    for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       cleanDir(path);
     }
-    // delete system info
+    // deleteDataInMemory system info
     cleanDir(config.getSystemInfoDir());
-    // delete metadata
+    // deleteDataInMemory metadata
     cleanDir(config.getMetadataDir());
-    // delete wal
+    // deleteDataInMemory wal
     cleanDir(config.getWalFolder());
-    // delete index
+    // deleteDataInMemory index
     cleanDir(config.getIndexFileDir());
-    // delete data
+    // deleteDataInMemory data
     cleanDir(config.getDataDir());
   }
 
@@ -165,11 +165,11 @@ public class EnvironmentUtils {
 
   private static void createAllDir() throws IOException {
     // create sequential files
-    for (String path : directoryManager.getAllTsFileFolders()) {
+    for (String path : directoryManager.getAllSequenceFileFolders()) {
       createDir(path);
     }
     // create unsequential files
-    for (String path : directoryManager.getAllOverflowFileFolders()) {
+    for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       cleanDir(path);
     }
     // create storage group
