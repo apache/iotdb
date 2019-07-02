@@ -120,7 +120,10 @@ public class StorageGroupProcessor {
   private String storageGroupName;
 
   /**
-   *
+   * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
+   * (i.e., fileSchema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
+   * closing(Un)SequenceTsFileProcessor, latestTimeForEachDevice, and
+   * latestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
 
@@ -130,7 +133,7 @@ public class StorageGroupProcessor {
   private final Object closeStorageGroupCondition = new Object();
 
   /**
-   *
+   * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
 
@@ -329,9 +332,6 @@ public class StorageGroupProcessor {
       if (tsFileProcessor.shouldClose()) {
         moveWorkProcessorToClosingList(tsFileProcessor, sequence);
         tsFileProcessor.asyncClose();
-        logger.info("The file size {} reaches the threshold, async close tsfile: {}.",
-            tsFileProcessor.getTsFileResource().getFileSize(),
-            tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
       } else {
         tsFileProcessor.asyncFlush();
       }
@@ -571,55 +571,41 @@ public class StorageGroupProcessor {
           closeStorageGroupCondition.wait();
         }
       } catch (InterruptedException e) {
-        logger
-            .error("CloseFileNodeCondition error occurs while waiting for closing the storage "
-                    + "group {}",
-                storageGroupName, e);
+        logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
+                    + "group {}", storageGroupName, e);
         Thread.currentThread().interrupt();
       }
     }
   }
 
   public void syncDeleteDataFiles() {
-    synchronized (closeStorageGroupCondition) {
-      writeLock();
-      try {
-        putWorkingTsFileProcessorIntoClosingList();
-        while (!closingSequenceTsFileProcessor.isEmpty() || !closingUnSequenceTsFileProcessor
-            .isEmpty()) {
-          closeStorageGroupCondition.wait();
-        }
-        List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
-        folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
-        for (String tsfilePath : folder) {
-          File storageGroupFolder = new File(tsfilePath, storageGroupName);
-          if (storageGroupFolder.exists()) {
-            try {
-              FileUtils.deleteDirectory(storageGroupFolder);
-            } catch (IOException e) {
-              logger.error("Delete tsfiles failed", e);
-            }
+    waitForAllCurrentTsFileProcessorsClosed();
+    writeLock();
+    try {
+      List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
+      folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+      for (String tsfilePath : folder) {
+        File storageGroupFolder = new File(tsfilePath, storageGroupName);
+        if (storageGroupFolder.exists()) {
+          try {
+            FileUtils.deleteDirectory(storageGroupFolder);
+          } catch (IOException e) {
+            logger.error("Delete tsfiles failed", e);
           }
         }
-        this.workSequenceTsFileProcessor = null;
-        this.workUnSequenceTsFileProcessor = null;
-        this.sequenceFileList.clear();
-        this.unSequenceFileList.clear();
-        this.latestFlushedTimeForEachDevice.clear();
-        this.latestTimeForEachDevice.clear();
-      } catch (InterruptedException e) {
-        logger
-            .error("CloseFileNodeCondition error occurs while waiting for closing the storage "
-                    + "group {}",
-                storageGroupName, e);
-        Thread.currentThread().interrupt();
-      } finally {
-        writeUnlock();
       }
+      this.workSequenceTsFileProcessor = null;
+      this.workUnSequenceTsFileProcessor = null;
+      this.sequenceFileList.clear();
+      this.unSequenceFileList.clear();
+      this.latestFlushedTimeForEachDevice.clear();
+      this.latestTimeForEachDevice.clear();
+    } finally {
+      writeUnlock();
     }
   }
 
-  public boolean updateLatestFlushTimeCallback() {
+  private boolean updateLatestFlushTimeCallback() {
     // update the largest timestamp in the last flushing memtable
     for (Entry<String, Long> entry : latestTimeForEachDevice.entrySet()) {
       latestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
@@ -639,6 +625,7 @@ public class StorageGroupProcessor {
     } finally {
       closeQueryLock.writeLock().unlock();
     }
+    //closingSequenceTsFileProcessor is a thread safety class.
     if (closingSequenceTsFileProcessor.contains(tsFileProcessor)) {
       closingSequenceTsFileProcessor.remove(tsFileProcessor);
     } else {

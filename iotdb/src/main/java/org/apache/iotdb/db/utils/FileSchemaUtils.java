@@ -35,7 +35,7 @@ public class FileSchemaUtils {
    * @return the schema of the FileNode named processorName.
    * @throws WriteProcessException when the fileSchema cannot be created.
    */
-  public static FileSchema constructFileSchema(String processorName) throws WriteProcessException {
+  public static FileSchema constructFileSchema(String processorName) {
     List<MeasurementSchema> columnSchemaList;
     columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(processorName);
     return getFileSchemaFromColumnSchema(columnSchemaList);

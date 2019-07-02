@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public class FunctionOperator extends FilterOperator {
 
-  private Logger LOG = LoggerFactory.getLogger(FunctionOperator.class);
+  private static final Logger logger = LoggerFactory.getLogger(FunctionOperator.class);
 
   public FunctionOperator(int tokenIntType) {
     super(tokenIntType);
@@ -39,7 +39,7 @@ public class FunctionOperator extends FilterOperator {
 
   @Override
   public boolean addChildOperator(FilterOperator op) {
-    LOG.error("cannot add child to leaf FilterOperator, now it's FunctionOperator");
+    logger.error("cannot add child to leaf FilterOperator, now it's FunctionOperator");
     return false;
   }
 

@@ -32,6 +32,10 @@ import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 
 public class DatetimeUtils {
 
+  private DatetimeUtils() {
+    // forbidding instantiation
+  }
+
   public static final DateTimeFormatter ISO_LOCAL_DATE_WIDTH_1_2;
 
   static {
@@ -191,11 +195,11 @@ public class DatetimeUtils {
               String.format("Failed to convert %s to millisecond, zone offset is %s, "
                       + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00", str, offset));
     }
-    if (str.indexOf('Z') > 0){
+    if (str.contains("Z")){
       return convertDatetimeStrToMillisecond(str.substring(0, str.indexOf('Z')) + "+00:00", offset, depth);
     } else if (str.length() - str.lastIndexOf('+') != 6 && str.length() - str.lastIndexOf('-') != 6) {
       return convertDatetimeStrToMillisecond(str + offset, offset, depth + 1);
-    } else if (str.indexOf('[') > 0 || str.indexOf(']') > 0) {
+    } else if (str.contains("[")  || str.contains("]")) {
       throw new DateTimeException(
           String.format("%s with [time-region] at end is not supported now, "
               + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00", str));

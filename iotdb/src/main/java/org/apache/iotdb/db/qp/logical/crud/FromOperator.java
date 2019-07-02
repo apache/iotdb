@@ -37,7 +37,7 @@ public class FromOperator extends Operator {
     prefixList = new ArrayList<>();
   }
 
-  public void addPrefixTablePath(Path prefixPath) throws LogicalOperatorException {
+  public void addPrefixTablePath(Path prefixPath) {
     prefixList.add(prefixPath);
   }
 

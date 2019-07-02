@@ -335,7 +335,7 @@ public class StorageEngine implements IService {
 
 
   /**
-   * delete all storage groups' timeseries.
+   * delete all data of storage groups' timeseries.
    */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");

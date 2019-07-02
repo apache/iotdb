@@ -34,8 +34,6 @@ import org.slf4j.LoggerFactory;
 
 public class InsertPlan extends PhysicalPlan {
 
-  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
-
   private String deviceId;
   private String[] measurements;
   private TSDataType[] dataTypes;
@@ -139,6 +137,11 @@ public class InsertPlan extends PhysicalPlan {
     return time == that.time && Objects.equals(deviceId, that.deviceId)
         && Arrays.equals(measurements, that.measurements)
         && Arrays.equals(values, that.values);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(deviceId, time);
   }
 
   @Override

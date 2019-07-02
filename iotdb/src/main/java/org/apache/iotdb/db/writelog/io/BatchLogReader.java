@@ -62,6 +62,7 @@ public class BatchLogReader implements ILogReader{
 
   @Override
   public void close() {
+    // nothing to be closed
   }
 
   @Override

@@ -45,12 +45,7 @@ public class IoTDBDescriptor {
     return conf;
   }
 
-  /**
-   * load an property file and set TsfileDBConfig variables.
-   */
-  private void loadProps() {
-    InputStream inputStream;
-
+  private String getPropsUrl() {
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -63,10 +58,23 @@ public class IoTDBDescriptor {
             IoTDBConfig.CONFIG_NAME);
         // update all data seriesPath
         conf.updatePath();
-        return;
+        return null;
       }
     } else {
       url += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
+    }
+    return url;
+  }
+
+  /**
+   * load an property file and set TsfileDBConfig variables.
+   */
+  private void loadProps() {
+    InputStream inputStream;
+
+    String url = getPropsUrl();
+    if (url == null) {
+      return;
     }
 
     try {
@@ -189,13 +197,8 @@ public class IoTDBDescriptor {
             .parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
       }
       String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
-      try {
-        conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
-        logger.info("Time zone has been set to {}", conf.getZoneID());
-      } catch (Exception e) {
-        logger.error("Time zone format error {}, use default configuration {}", tmpTimeZone,
-            conf.getZoneID(), e);
-      }
+      conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
+      logger.info("Time zone has been set to {}", conf.getZoneID());
 
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);

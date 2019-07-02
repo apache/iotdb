@@ -23,8 +23,6 @@ import java.util.EnumMap;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Manage all primitive data list in memory, including get and release operation.

@@ -35,7 +35,7 @@ public class ExceptionBuilder {
 
   public static final int UNKNOWN_ERROR = 20000;
   public static final int NO_PARAMETERS_EXISTS = 20001;
-  public static final int INVALID﻿_PARAMETER_NO = 20002;
+  public static final int INVALID_PARAMETER_NO = 20002;
   public static final int CONN_HOST_ERROR = 20003;
   public static final int AUTH_PLUGIN_ERR = 20061;
   public static final int INSECURE_API_ERR = 20062;

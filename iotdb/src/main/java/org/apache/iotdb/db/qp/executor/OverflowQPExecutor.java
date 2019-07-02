@@ -587,8 +587,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     AuthDataSet dataSet = new AuthDataSet(headerList, typeList);
     int index = 0;
     for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-      if (path == null || AuthUtils
-          .pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+      if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
         RowRecord record = new RowRecord(index++);
         Field roleF = new Field(TSDataType.TEXT);
         roleF.setBinaryV(new Binary(""));
@@ -602,18 +601,18 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     for (String roleN : user.getRoleList()) {
       Role role = authorizer.getRole(roleN);
       if (role != null) {
-        for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-          if (path == null
-              || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
-            RowRecord record = new RowRecord(index++);
-            Field roleF = new Field(TSDataType.TEXT);
-            roleF.setBinaryV(new Binary(roleN));
-            record.addField(roleF);
-            Field privilegeF = new Field(TSDataType.TEXT);
-            privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
-            record.addField(privilegeF);
-            dataSet.putRecord(record);
-          }
+        continue;
+      }
+      for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+          RowRecord record = new RowRecord(index++);
+          Field roleF = new Field(TSDataType.TEXT);
+          roleF.setBinaryV(new Binary(roleN));
+          record.addField(roleF);
+          Field privilegeF = new Field(TSDataType.TEXT);
+          privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
+          record.addField(privilegeF);
+          dataSet.putRecord(record);
         }
       }
     }
