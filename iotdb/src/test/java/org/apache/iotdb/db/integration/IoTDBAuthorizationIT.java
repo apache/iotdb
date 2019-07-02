@@ -432,7 +432,7 @@ public class IoTDBAuthorizationIT {
     }
     assertTrue(caught);
 
-    // the user cannot delete the timeseries now
+    // the user cannot deleteDataInMemory the timeseries now
     caught = false;
     try {
       // no privilege to create this one any more
@@ -442,12 +442,12 @@ public class IoTDBAuthorizationIT {
     }
     assertTrue(caught);
 
-    // the user can delete the timeseries now
+    // the user can deleteDataInMemory the timeseries now
     adminStmt.execute("GRANT USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.a");
     adminStmt.execute("GRANT USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root.b");
     userStmt.execute("DELETE TIMESERIES root.a.b");
 
-    // revoke the privilege to delete time series
+    // revoke the privilege to deleteDataInMemory time series
     adminStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
     adminStmt.execute("SET STORAGE GROUP TO root.b");
     adminStmt.execute("CREATE TIMESERIES root.b.a WITH DATATYPE=INT32,ENCODING=PLAIN");

@@ -139,7 +139,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   private String syncDataPath;
 
   /**
-   * Init threadLocal variable and delete old useless files.
+   * Init threadLocal variable and deleteDataInMemory old useless files.
    */
   @Override
   public boolean init(String storageGroup) {
@@ -151,7 +151,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       FileUtils.deleteDirectory(new File(syncDataPath));
     } catch (IOException e) {
-      logger.error("cannot delete directory {} ", syncFolderPath);
+      logger.error("cannot deleteDataInMemory directory {} ", syncFolderPath);
       return false;
     }
     for (String bufferWritePath : bufferWritePaths) {
@@ -162,7 +162,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         try {
           FileUtils.deleteDirectory(backupDirectory);
         } catch (IOException e) {
-          logger.error("cannot delete directory {} ", syncFolderPath);
+          logger.error("cannot deleteDataInMemory directory {} ", syncFolderPath);
           return false;
         }
       }
@@ -469,7 +469,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         String header = syncDataPath;
         String relativePath = path.substring(header.length());
         TsFileResource fileNode = new TsFileResource(
-            new File(DirectoryManager.getInstance().getNextFolderIndexForTsFile() +
+            new File(DirectoryManager.getInstance().getNextFolderIndexForSequenceFile() +
                 File.separator + relativePath), startTimeMap, endTimeMap
         );
         // call interface of load external file
@@ -720,7 +720,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       FileUtils.deleteDirectory(new File(syncFolderPath));
     } catch (IOException e) {
-      logger.error("can not delete directory {}", syncFolderPath, e);
+      logger.error("can not deleteDataInMemory directory {}", syncFolderPath, e);
     }
     logger.info("Synchronization has finished!");
   }

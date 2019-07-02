@@ -92,7 +92,7 @@ public class LocalFileUserAccessorTest {
       assertEquals(users[i].getName(), usernames.get(i));
     }
 
-    // delete
+    // deleteDataInMemory
     assertEquals(false, accessor.deleteUser("not a user"));
     assertEquals(true, accessor.deleteUser(users[users.length - 1].getName()));
     usernames = accessor.listAllUsers();

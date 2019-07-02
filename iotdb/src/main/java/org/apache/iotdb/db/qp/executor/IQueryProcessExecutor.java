@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 public interface IQueryProcessExecutor {
 
   /**
-   * Process Non-Query Physical plan, including insert/update/delete operation of
+   * Process Non-Query Physical plan, including insert/update/deleteDataInMemory operation of
    * data/metadata/Privilege
    *
    * @param plan Physical Non-Query Plan
@@ -91,18 +91,18 @@ public interface IQueryProcessExecutor {
       throws ProcessorException;
 
   /**
-   * execute delete command and return whether the operator is successful.
+   * execute deleteDataInMemory command and return whether the operator is successful.
    *
-   * @param deletePlan physical delete plan
+   * @param deletePlan physical deleteDataInMemory plan
    * @return - whether the operator is successful.
    */
   boolean delete(DeletePlan deletePlan) throws ProcessorException;
 
   /**
-   * execute delete command and return whether the operator is successful.
+   * execute deleteDataInMemory command and return whether the operator is successful.
    *
-   * @param path : delete series seriesPath
-   * @param deleteTime end time in delete command
+   * @param path : deleteDataInMemory series seriesPath
+   * @param deleteTime end time in deleteDataInMemory command
    * @return - whether the operator is successful.
    */
   boolean delete(Path path, long deleteTime) throws ProcessorException;

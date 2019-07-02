@@ -66,7 +66,7 @@ public class LocalFileAuthorizerTest {
       assertEquals("The username or the password is not correct", e.getMessage());
     }
     /*
-     * create user,delete user
+     * create user,deleteDataInMemory user
      */
     User user = new User("user", "password");
     try {

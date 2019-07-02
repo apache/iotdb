@@ -145,7 +145,7 @@ public class DeletionFileNodeTest {
         new Deletion(new Path(processorName, measurements[3]), 105, 30),
     };
 
-    File fileNodeDir = new File(DirectoryManager.getInstance().getTsFileFolder(0), processorName);
+    File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0), processorName);
     File[] modFiles = fileNodeDir.listFiles((dir, name)
         -> name.endsWith(ModificationFile.FILE_SUFFIX));
     assertEquals(1, modFiles.length);

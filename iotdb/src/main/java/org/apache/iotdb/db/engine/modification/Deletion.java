@@ -23,7 +23,7 @@ import java.util.Objects;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
- * Deletion is a delete operation on a timeseries.
+ * Deletion is a deleteDataInMemory operation on a timeseries.
  */
 public class Deletion extends Modification {
 

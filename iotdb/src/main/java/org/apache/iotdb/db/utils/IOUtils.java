@@ -159,17 +159,17 @@ public class IOUtils {
 
   /**
    * Replace newFile with oldFile. If the file system does not support atomic file replacement
-   * then delete the old file first.
+   * then deleteDataInMemory the old file first.
    *
    * @param newFile the new file.
    * @param oldFile the file to be replaced.
    */
   public static void replaceFile(File newFile, File oldFile) throws IOException {
     if (!newFile.renameTo(oldFile)) {
-      // some OSs need to delete the old file before renaming to it
+      // some OSs need to deleteDataInMemory the old file before renaming to it
       if(!oldFile.delete()){
         throw new IOException(
-                String.format("Cannot delete old user file : %s", oldFile.getPath()));
+                String.format("Cannot deleteDataInMemory old user file : %s", oldFile.getPath()));
       }
       if (!newFile.renameTo(oldFile)) {
         throw new IOException(
