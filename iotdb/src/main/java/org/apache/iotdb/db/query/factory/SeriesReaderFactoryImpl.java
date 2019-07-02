@@ -18,25 +18,28 @@
  */
 package org.apache.iotdb.db.query.factory;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.SeriesReaderWithValueFilter;
 import org.apache.iotdb.db.query.reader.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.merge.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.unsequence.UnsequenceSeriesReader;
 import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
 import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.unsequence.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.unsequence.DiskChunkReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.unsequence.UnsequenceSeriesReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -51,16 +54,8 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
-
-  private static final Logger logger = LoggerFactory.getLogger(SeriesReaderFactoryImpl.class);
 
   private SeriesReaderFactoryImpl() {
   }
@@ -78,61 +73,79 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     int priorityValue = 1;
 
     for (TsFileResource tsFileResource : unseqResources) {
-
-      // store only one opened file stream into manager, to avoid too many opened files
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-              .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
-
-      // get modified chunk metadatas
-      List<ChunkMetaData> metaDataList;
-      if (tsFileResource.isClosed()) {
-        MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
-        metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
-        // mod
-        List<Modification> pathModifications = context
-                .getPathModifications(tsFileResource.getModFile(),
-                        seriesPath.getFullPath());
-        if (!pathModifications.isEmpty()) {
-          QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
-        }
-      } else {
-        metaDataList = tsFileResource.getChunkMetaDatas();
-      }
-
-      // add readers for chunks
-      // TODO future advancement: decrease the duplicated code
-      ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
-      for (ChunkMetaData chunkMetaData : metaDataList) {
-
-        DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
-                chunkMetaData.getEndTime(),
-                chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
-                chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
-                chunkMetaData.getTsDataType());
-
-        if (filter != null && !filter.satisfy(digest)) {
-          continue;
-        }
-
-        Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-        ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
-                : new ChunkReaderWithoutFilter(chunk);
-
-        unseqMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
-
-        priorityValue++;
-      }
-
-      // add reader for MemTable
-      if (!tsFileResource.isClosed()) {
-        unseqMergeReader.addReaderWithPriority(
-                new MemChunkReader(tsFileResource.getReadOnlyMemChunk(), filter), priorityValue++);
-      }
+      priorityValue = constructReaders(tsFileResource, unseqMergeReader, context, filter,
+          seriesPath, priorityValue);
     }
 
     // TODO add external sort when needed
     return unseqMergeReader;
   }
+
+  private int constructReaders(TsFileResource tsFileResource,
+      UnsequenceSeriesReader unseqMergeReader, QueryContext context, Filter filter,
+      Path seriesPath, int priorityValue)
+      throws IOException {
+    int newPriority = constructChunkReader(tsFileResource, seriesPath,
+        context, filter, unseqMergeReader, priorityValue);
+
+    // add reader for MemTable
+    if (!tsFileResource.isClosed()) {
+      unseqMergeReader.addReaderWithPriority(
+          new MemChunkReader(tsFileResource.getReadOnlyMemChunk(), filter), newPriority++);
+    }
+    return newPriority;
+  }
+
+  private int constructChunkReader(TsFileResource tsFileResource, Path seriesPath,
+      QueryContext context, Filter filter, UnsequenceSeriesReader unseqMergeReader, int priority)
+      throws IOException {
+    int newPriority = priority;
+    // store only one opened file stream into manager, to avoid too many opened files
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
+        .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
+
+    // get modified chunk metadatas
+    List<ChunkMetaData> metaDataList;
+    if (tsFileResource.isClosed()) {
+      MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
+      metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
+      // mod
+      List<Modification> pathModifications = context
+          .getPathModifications(tsFileResource.getModFile(),
+              seriesPath.getFullPath());
+      if (!pathModifications.isEmpty()) {
+        QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
+      }
+    } else {
+      metaDataList = tsFileResource.getChunkMetaDatas();
+    }
+
+    // add readers for chunks
+    // TODO future advancement: decrease the duplicated code
+    ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
+    for (ChunkMetaData chunkMetaData : metaDataList) {
+
+      DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
+          chunkMetaData.getEndTime(),
+          chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
+          chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
+          chunkMetaData.getTsDataType());
+
+      if (filter != null && !filter.satisfy(digest)) {
+        continue;
+      }
+
+      Chunk chunk = chunkLoader.getChunk(chunkMetaData);
+      ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
+          : new ChunkReaderWithoutFilter(chunk);
+
+      unseqMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader), newPriority);
+
+      newPriority++;
+    }
+    return newPriority;
+  }
+
 
   private SeriesReaderByTimestamp createUnseqSeriesReaderByTimestamp(Path seriesPath,
                                                                      List<TsFileResource> unseqResources, QueryContext context) throws IOException {
@@ -229,7 +242,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
             timeFilter, context);
 
     // unseq reader for all chunk groups in unseqFile
-    IPointReader unseqMergeReader = null;
+    IPointReader unseqMergeReader;
     unseqMergeReader = createUnseqSeriesReader(path, queryDataSource.getUnseqResources(), context,
             timeFilter);
 

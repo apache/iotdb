@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -73,9 +74,6 @@ public class StorageEngine implements IService {
     return INSTANCE;
   }
 
-
-
-
   private StorageEngine() {
     infoDir = FilePathUtils.regularizePath(config.getSystemInfoDir());
     // create infoDir
@@ -98,13 +96,13 @@ public class StorageEngine implements IService {
       }
     } catch (ProcessorException | MetadataErrorException e) {
       logger.error("init a storage group processor failed. ", e);
-      throw new RuntimeException(e);
+      throw new StorageEngineFailureException(e);
     }
   }
 
   @Override
   public void start() {
-
+    // nothing to be done
   }
 
   @Override

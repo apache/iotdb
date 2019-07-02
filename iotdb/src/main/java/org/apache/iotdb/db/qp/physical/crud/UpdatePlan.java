@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.lineFeedSignal;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.LINE_FEED_SIGNAL;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -110,10 +110,10 @@ public class UpdatePlan extends PhysicalPlan {
     StringContainer sc = new StringContainer();
     String preSpace = "  ";
     sc.addTail("UpdatePlan:");
-    sc.addTail(preSpace, "paths:  ", path.toString(), lineFeedSignal);
-    sc.addTail(preSpace, "value:", value, lineFeedSignal);
-    sc.addTail(preSpace, "filter: ", lineFeedSignal);
-    intervals.forEach(p -> sc.addTail(preSpace, preSpace, p.left, p.right, lineFeedSignal));
+    sc.addTail(preSpace, "paths:  ", path.toString(), LINE_FEED_SIGNAL);
+    sc.addTail(preSpace, "value:", value, LINE_FEED_SIGNAL);
+    sc.addTail(preSpace, "filter: ", LINE_FEED_SIGNAL);
+    intervals.forEach(p -> sc.addTail(preSpace, preSpace, p.left, p.right, LINE_FEED_SIGNAL));
     return sc.toString();
   }
 

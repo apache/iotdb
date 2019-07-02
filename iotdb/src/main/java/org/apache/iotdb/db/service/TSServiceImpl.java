@@ -24,6 +24,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.USER;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -43,20 +44,19 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.QueryInBatchStmtException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -90,6 +90,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_Status;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -218,7 +219,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
   }
 
-  protected void releaseQueryResource(TSCloseOperationReq req) throws Exception {
+  protected void releaseQueryResource(TSCloseOperationReq req) throws StorageEngineException {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       return;
@@ -259,158 +260,122 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSFetchMetadataResp(status);
     }
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
-    switch (req.getType()) {
-      case "SHOW_TIMESERIES":
-        String path = req.getColumnPath();
-        try {
+    try {
+      switch (req.getType()) {
+        case "SHOW_TIMESERIES":
+          String path = req.getColumnPath();
           List<List<String>> showTimeseriesList = getTimeSeriesForPath(path);
           resp.setShowTimeseriesList(showTimeseriesList);
-        } catch (PathErrorException | InterruptedException | ProcessorException e) {
-          status = getErrorStatus(
-              String.format("Failed to fetch timeseries %s's metadata because: %s",
-                  req.getColumnPath(), e));
-          resp.setStatus(status);
-          return resp;
-        } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          logger
-              .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
-                  outOfMemoryError);
-          status = getErrorStatus(
-              String.format("Failed to fetch timeseries %s's metadata because: %s",
-                  req.getColumnPath(), outOfMemoryError));
-          resp.setStatus(status);
-          return resp;
-        }
-        status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-        break;
-      case "SHOW_STORAGE_GROUP":
-        try {
+          status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+          break;
+        case "SHOW_STORAGE_GROUP":
           Set<String> storageGroups = getAllStorageGroups();
           resp.setShowStorageGroups(storageGroups);
-        } catch (PathErrorException | InterruptedException e) {
-          status = getErrorStatus(
-              String.format("Failed to fetch storage groups' metadata because: %s", e));
-          resp.setStatus(status);
-          return resp;
-        } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          logger.error("Failed to fetch storage groups' metadata", outOfMemoryError);
-          status = getErrorStatus(
-              String.format("Failed to fetch storage groups' metadata because: %s",
-                  outOfMemoryError));
-          resp.setStatus(status);
-          return resp;
-        }
-        status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-        break;
-      case "METADATA_IN_JSON":
-        String metadataInJson;
-        try {
-          metadataInJson = getMetadataInString();
-        } catch (PathErrorException | InterruptedException | ProcessorException e) {
-          status = getErrorStatus(
-              String.format("Failed to fetch all metadata in json because: %s", e));
-          resp.setStatus(status);
-          return resp;
-        } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          logger.error("Failed to fetch all metadata in json", outOfMemoryError);
-          status = getErrorStatus(
-              String.format("Failed to fetch all metadata in json because: %s", outOfMemoryError));
-          resp.setStatus(status);
-          return resp;
-        }
-        resp.setMetadataInJson(metadataInJson);
-        status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-        break;
-      case "DELTA_OBEJECT":
-        Metadata metadata;
-        try {
+          status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+          break;
+        case "METADATA_IN_JSON":
+          String metadataInJson = getMetadataInString();
+          resp.setMetadataInJson(metadataInJson);
+          status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+          break;
+        case "DELTA_OBEJECT":
+          Metadata metadata = getMetadata();
           String column = req.getColumnPath();
-          metadata = getMetadata();
           Map<String, List<String>> deviceMap = metadata.getDeviceMap();
           if (deviceMap == null || !deviceMap.containsKey(column)) {
             resp.setColumnsList(new ArrayList<>());
           } else {
             resp.setColumnsList(deviceMap.get(column));
           }
-        } catch (PathErrorException | InterruptedException | ProcessorException e) {
-          logger.error("cannot get delta object map", e);
-          status = getErrorStatus(String.format("Failed to fetch delta object map because: %s", e));
-          resp.setStatus(status);
-          return resp;
-        } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          logger.error("Failed to get delta object map", outOfMemoryError);
-          status = getErrorStatus(
-              String.format("Failed to get delta object map because: %s", outOfMemoryError));
+          status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
           break;
-        }
-        status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-        break;
-      case "COLUMN":
-        try {
+        case "COLUMN":
           resp.setDataType(getSeriesType(req.getColumnPath()).toString());
-        } catch (PathErrorException | InterruptedException | ProcessorException e) {
-          // TODO aggregate seriesPath e.g. last(root.ln.wf01.wt01.status)
-          // status = new TS_Status(TS_StatusCode.ERROR_STATUS);
-          // status.setErrorMessage(String.format("Failed to fetch %s's data type because: %s",
-          // req.getColumnPath(), e));
-          // resp.setStatus(status);
-          // return resp;
-        }
-        status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-        break;
-      case "ALL_COLUMNS":
-        try {
-          resp.setColumnsList(getPaths(req.getColumnPath()));
-        } catch (InterruptedException | ProcessorException | MetadataErrorException e) {
-          status = getErrorStatus(String
-              .format("Failed to fetch %s's all columns because: %s", req.getColumnPath(), e));
-          resp.setStatus(status);
-          return resp;
-        } catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-          logger.error("Failed to fetch seriesPath {}'s all columns", req.getColumnPath(),
-              outOfMemoryError);
-          status = getErrorStatus(String.format("Failed to fetch %s's all columns because: %s",
-              req.getColumnPath(), outOfMemoryError));
+          status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
           break;
-        }
-        status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-        break;
-      default:
-        status = new TS_Status(TS_StatusCode.ERROR_STATUS);
-        status
-            .setErrorMessage(String.format("Unsuport fetch metadata operation %s", req.getType()));
-        break;
+        case "ALL_COLUMNS":
+          resp.setColumnsList(getPaths(req.getColumnPath()));
+          status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+          break;
+        default:
+          status = new TS_Status(TS_StatusCode.ERROR_STATUS);
+          status
+              .setErrorMessage(
+                  String.format("Unsupported fetch metadata operation %s", req.getType()));
+          break;
+      }
+    } catch (PathErrorException | MetadataErrorException | OutOfMemoryError e) {
+      logger
+          .error(String.format("Failed to fetch timeseries %s's metadata", req.getColumnPath()),
+              e);
+      Thread.currentThread().interrupt();
+      status = getErrorStatus(
+          String.format("Failed to fetch metadata because: %s", e));
+      resp.setStatus(status);
+      return resp;
     }
     resp.setStatus(status);
     return resp;
   }
 
-  protected Set<String> getAllStorageGroups() throws PathErrorException, InterruptedException {
+  protected Set<String> getAllStorageGroups() throws PathErrorException {
     return MManager.getInstance().getAllStorageGroup();
   }
 
   protected List<List<String>> getTimeSeriesForPath(String path)
-      throws PathErrorException, InterruptedException, ProcessorException {
+      throws PathErrorException {
     return MManager.getInstance().getShowTimeseriesPath(path);
   }
 
-  protected String getMetadataInString()
-      throws InterruptedException, PathErrorException, ProcessorException {
+  protected String getMetadataInString() {
     return MManager.getInstance().getMetadataInString();
   }
 
   protected Metadata getMetadata()
-      throws PathErrorException, InterruptedException, ProcessorException {
+      throws PathErrorException {
     return MManager.getInstance().getMetadata();
   }
 
   protected TSDataType getSeriesType(String path)
-      throws PathErrorException, InterruptedException, ProcessorException {
+      throws PathErrorException {
+    switch (path.toLowerCase()) {
+      // authorization queries
+      case "role":
+      case "user":
+      case "privilege":
+        return TSDataType.TEXT;
+      default:
+          // do nothing
+    }
+
+    if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
+      // aggregation
+      int leftBracketIndex = path.indexOf('(');
+      String aggrType = path.substring(0, leftBracketIndex);
+      String innerPath = path.substring(leftBracketIndex + 1, path.length() - 1);
+      switch (aggrType.toLowerCase()) {
+        case StatisticConstant.MIN_TIME:
+        case StatisticConstant.MAX_TIME:
+        case StatisticConstant.COUNT:
+          return TSDataType.INT64;
+        case StatisticConstant.LAST:
+        case StatisticConstant.FIRST:
+        case StatisticConstant.MIN_VALUE:
+        case StatisticConstant.MAX_VALUE:
+          return getSeriesType(innerPath);
+        case StatisticConstant.MEAN:
+        case StatisticConstant.SUM:
+          return TSDataType.DOUBLE;
+        default:
+          throw new PathErrorException(
+              "aggregate does not support " + aggrType + " function.");
+      }
+    }
     return MManager.getInstance().getSeriesType(path);
   }
 
   protected List<String> getPaths(String path)
-      throws MetadataErrorException, InterruptedException, ProcessorException {
+      throws MetadataErrorException {
     return MManager.getInstance().getPaths(path);
   }
 
@@ -421,7 +386,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @return true if the statement is ADMIN COMMAND
    * @throws IOException exception
    */
-  private boolean execAdminCommand(String statement) throws IOException {
+  private boolean execAdminCommand(String statement) {
     if (!"root".equals(username.get())) {
       return false;
     }
@@ -435,8 +400,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return true;
       case "merge":
           // TODO change to merge!!!
-        StorageEngine.getInstance().syncCloseAllProcessor();
-        return true;
+        throw new UnsupportedOperationException("merge not implemented");
       default:
         return false;
     }
@@ -445,54 +409,67 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req)
       throws TException {
+    String currStmt = null;
+    List<Integer> result = new ArrayList<>();
     try {
       if (!checkLogin()) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN, null);
       }
       List<String> statements = req.getStatements();
-      List<Integer> result = new ArrayList<>();
+
       boolean isAllSuccessful = true;
-      String batchErrorMessage = "";
+      StringBuilder batchErrorMessage = new StringBuilder();
 
       for (String statement : statements) {
-        try {
-          PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-          physicalPlan.setProposer(username.get());
-          if (physicalPlan.isQuery()) {
-            return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-                "statement is query :" + statement, result);
-          }
-          TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan);
-          if (resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)) {
-            result.add(Statement.SUCCESS_NO_INFO);
-          } else {
-            result.add(Statement.EXECUTE_FAILED);
-            isAllSuccessful = false;
-            batchErrorMessage = resp.getStatus().getErrorMessage();
-          }
-        } catch (Exception e) {
-          String errMessage = String.format(
-              "Fail to generate physcial plan and execute for statement "
-                  + "%s beacuse %s",
-              statement, e.getMessage());
-          logger.warn("Error occurred when executing {}", statement, e);
-          result.add(Statement.EXECUTE_FAILED);
-          isAllSuccessful = false;
-          batchErrorMessage = errMessage;
-        }
+        currStmt = statement;
+        isAllSuccessful = isAllSuccessful && executeStatement(statement, batchErrorMessage, result);
       }
       if (isAllSuccessful) {
         return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
             "Execute batch statements successfully", result);
       } else {
-        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, batchErrorMessage, result);
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, batchErrorMessage.toString(),
+            result);
       }
+    } catch (QueryInBatchStmtException e) {
+      return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+          "statement is query :" + currStmt, result);
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
     }
   }
+
+  private boolean executeStatement(String statement, StringBuilder batchErrorMessage,
+      List<Integer> result) throws QueryInBatchStmtException {
+    try {
+      PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
+      if (physicalPlan.isQuery()) {
+        throw new QueryInBatchStmtException();
+      }
+      TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan);
+      if (resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)) {
+        result.add(Statement.SUCCESS_NO_INFO);
+      } else {
+        result.add(Statement.EXECUTE_FAILED);
+        batchErrorMessage.append(resp.getStatus().getErrorMessage()).append("\n");
+        return false;
+      }
+    } catch (Exception e) {
+      String errMessage = String.format(
+          "Fail to generate physcial plan and execute for statement "
+              + "%s beacuse %s",
+          statement, e.getMessage());
+      logger.warn("Error occurred when executing {}", statement, e);
+      result.add(Statement.EXECUTE_FAILED);
+      batchErrorMessage.append(errMessage).append("\n");
+      return false;
+    }
+    return true;
+  }
+
+
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) throws TException {
@@ -503,42 +480,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       String statement = req.getStatement();
 
-      try {
-        if (execAdminCommand(statement)) {
-          return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS");
-        }
-      } catch (Exception e) {
-        logger.error("meet error while executing admin command!", e);
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+      if (execAdminCommand(statement)) {
+        return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS");
       }
 
-      try {
-        if (execSetConsistencyLevel(statement)) {
-          return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
-              "Execute set consistency level successfully");
-        }
-      } catch (Exception e) {
-        logger.error("Error occurred when executing statement {}", statement, e);
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+      if (execSetConsistencyLevel(statement)) {
+        return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
+            "Execute set consistency level successfully");
       }
 
       PhysicalPlan physicalPlan;
-      try {
-        physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-        physicalPlan.setProposer(username.get());
-      } catch (IllegalASTFormatException e) {
-        logger.debug("meet error while parsing SQL to physical plan: ", e);
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-            "Statement format is not right:" + e.getMessage());
-      } catch (NullPointerException e) {
-        logger.error("meet error while parsing SQL to physical plan: ", e);
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Statement is not allowed");
-      }
+      physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
         return executeQueryStatement(req);
       } else {
         return executeUpdateStatement(physicalPlan);
       }
+    } catch (IllegalASTFormatException e) {
+      logger.debug("meet error while parsing SQL to physical plan: ", e);
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+          "Statement format is not right:" + e.getMessage());
     } catch (Exception e) {
       logger.info("meet error while executing statement: {}", req.getStatement(), e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -548,13 +509,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * Set consistency level
    */
-  public boolean execSetConsistencyLevel(String statement) throws Exception {
+  public boolean execSetConsistencyLevel(String statement) throws SQLException {
     if (statement == null) {
       return false;
     }
     statement = statement.toLowerCase().trim();
     if (Pattern.matches(IoTDBConstant.SET_READ_CONSISTENCY_LEVEL_PATTERN, statement)) {
-      throw new Exception(
+      throw new SQLException(
           "IoTDB Stand-alone version does not support setting read-insert consistency level");
     } else {
       return false;
@@ -566,13 +527,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     try {
       if (!checkLogin()) {
-        logger.info("{}: Not login.", IoTDBConstant.GLOBAL_DB_NAME);
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
       }
 
       String statement = req.getStatement();
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-      plan.setProposer(username.get());
 
       TSExecuteStatementResp resp;
       List<String> columns = new ArrayList<>();
@@ -640,7 +600,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     // check file level set
-
     try {
       checkFileLevelSet(paths);
     } catch (PathErrorException e) {
@@ -657,53 +616,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSExecuteStatementResp resp = getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "");
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
-    if (plan instanceof QueryPlan) {
-      switch (plan.getOperatorType()) {
-        case QUERY:
-        case FILL:
-          for (Path p : paths) {
-            columns.add(p.getFullPath());
+    switch (plan.getOperatorType()) {
+      case QUERY:
+      case FILL:
+        for (Path p : paths) {
+          columns.add(p.getFullPath());
+        }
+        break;
+      case AGGREGATION:
+      case GROUPBY:
+        List<String> aggregations = plan.getAggregations();
+        if (aggregations.size() != paths.size()) {
+          for (int i = 1; i < paths.size(); i++) {
+            aggregations.add(aggregations.get(0));
           }
-          break;
-        case AGGREGATION:
-        case GROUPBY:
-          List<String> aggregations = plan.getAggregations();
-          if (aggregations.size() != paths.size()) {
-            for (int i = 1; i < paths.size(); i++) {
-              aggregations.add(aggregations.get(0));
-            }
-          }
-          for (int i = 0; i < paths.size(); i++) {
-            columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
-          }
-          break;
-        default:
-          throw new TException("unsupported query type: " + plan.getOperatorType());
-      }
-    } else {
-      Operator.OperatorType type = plan.getOperatorType();
-      switch (type) {
-        case QUERY:
-        case FILL:
-          for (Path p : paths) {
-            columns.add(p.getFullPath());
-          }
-          break;
-        case AGGREGATION:
-        case GROUPBY:
-          List<String> aggregations = plan.getAggregations();
-          if (aggregations.size() != paths.size()) {
-            for (int i = 1; i < paths.size(); i++) {
-              aggregations.add(aggregations.get(0));
-            }
-          }
-          for (int i = 0; i < paths.size(); i++) {
-            columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
-          }
-          break;
-        default:
-          throw new TException("not support " + type + " in new read process");
-      }
+        }
+        for (int i = 0; i < paths.size(); i++) {
+          columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+        }
+        break;
+      default:
+        throw new TException("unsupported query type: " + plan.getOperatorType());
     }
     return resp;
   }
@@ -780,13 +713,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throws TException {
     try {
       if (!checkLogin()) {
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
+        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
       }
       String statement = req.getStatement();
       return executeUpdateStatement(statement);
-    } catch (ProcessorException e) {
-      logger.error("meet error while executing update statement.", e);
-      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -832,13 +762,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return processor.getExecutor().processNonQuery(plan);
   }
 
-  private TSExecuteStatementResp executeUpdateStatement(String statement)
-      throws ProcessorException {
+  private TSExecuteStatementResp executeUpdateStatement(String statement) {
 
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-      physicalPlan.setProposer(username.get());
     } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
       logger.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -855,15 +783,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void recordANewQuery(String statement, PhysicalPlan physicalPlan) {
     queryStatus.get().put(statement, physicalPlan);
     // refresh current queryRet for statement
-    if (queryRet.get().containsKey(statement)) {
-      queryRet.get().remove(statement);
-    }
+    queryRet.get().remove(statement);
   }
 
   /**
-   * Check whether current user has logined.
+   * Check whether current user has logged in.
    *
-   * @return true: If logined; false: If not logined
+   * @return true: If logged in; false: If not logged in
    */
   protected boolean checkLogin() {
     return username.get() != null;
