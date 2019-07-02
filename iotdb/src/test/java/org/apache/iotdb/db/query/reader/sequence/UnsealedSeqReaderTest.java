@@ -19,18 +19,22 @@
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.ReaderTestHelper;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class UnsealedSeqReaderTest extends ReaderTestHelper {
 
+  private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
+
   @Test
   public void testUnSealedReader() throws IOException {
-    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resource.isClosed());
     UnSealedTsFileReader reader = new UnSealedTsFileReader(resource, null, false);
@@ -48,7 +52,7 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
 
   @Test
   public void testUnSealedByTimestampReader() throws IOException {
-    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId);
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resource.isClosed());
     UnSealedTsFileReaderByTimestamp reader = new UnSealedTsFileReaderByTimestamp(
