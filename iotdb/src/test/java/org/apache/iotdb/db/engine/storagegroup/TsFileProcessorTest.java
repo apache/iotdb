@@ -165,7 +165,11 @@ public class TsFileProcessorTest {
               String deviceId = startTime.getKey();
               resource.getEndTimeMap().put(deviceId, resource.getStartTimeMap().get(deviceId));
             }
-            resource.close();
+            try {
+              resource.close();
+            } catch (IOException e) {
+              throw new TsFileProcessorException(e);
+            }
           }
         }, ()->true, true);
 
