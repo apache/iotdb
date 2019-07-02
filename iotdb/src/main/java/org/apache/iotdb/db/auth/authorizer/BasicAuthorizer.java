@@ -72,7 +72,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void createUser(String username, String password) throws AuthException {
     if (!userManager.createUser(username, password)) {
-      throw new AuthException("User " + username + " already exists");
+      throw new AuthException(String.format("User %s already exists", username));
     }
   }
 
@@ -82,7 +82,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException("Default administrator cannot be deleted");
     }
     if (!userManager.deleteUser(username)) {
-      throw new AuthException("User " + username + " does not exist");
+      throw new AuthException(String.format("User %s does not exist", username));
     }
   }
 
@@ -97,9 +97,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       newPath = IoTDBConstant.PATH_ROOT;
     }
     if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
-      throw new AuthException(
-          "User " + username + " already has " + PrivilegeType.values()[privilegeId]
-              + " on " + path);
+      throw new AuthException(String.format(
+          "User %s already has %s on %s", username, PrivilegeType.values()[privilegeId], path));
     }
   }
 
@@ -114,15 +113,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       p = IoTDBConstant.PATH_ROOT;
     }
     if (!userManager.revokePrivilegeFromUser(username, p, privilegeId)) {
-      throw new AuthException("User " + username + " does not have " +
-          PrivilegeType.values()[privilegeId] + " on " + path);
+      throw new AuthException(String.format("User %s does not have %s on %s", username,
+          PrivilegeType.values()[privilegeId], path));
     }
   }
 
   @Override
   public void createRole(String roleName) throws AuthException {
     if (!roleManager.createRole(roleName)) {
-      throw new AuthException("Role " + roleName + " already exists");
+      throw new AuthException(String.format("Role %s already exists", roleName));
     }
   }
 
@@ -130,7 +129,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void deleteRole(String roleName) throws AuthException {
     boolean success = roleManager.deleteRole(roleName);
     if (!success) {
-      throw new AuthException("Role " + roleName + " does not exist");
+      throw new AuthException(String.format("Role %s does not exist", roleName));
     } else {
       // proceed to revoke the role in all users
       List<String> users = userManager.listAllUsers();
@@ -154,8 +153,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       p = IoTDBConstant.PATH_ROOT;
     }
     if(!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
-      throw new AuthException("Role " + roleName + " already has " + PrivilegeType.values()[privilegeId]
-          + " on " + path);
+      throw new AuthException(String.format("Role %s already has %s on %s", roleName,
+          PrivilegeType.values()[privilegeId], path));
     }
   }
 
@@ -167,8 +166,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       p = IoTDBConstant.PATH_ROOT;
     }
     if (!roleManager.revokePrivilegeFromRole(roleName, p, privilegeId)) {
-      throw new AuthException("Role " + roleName + " does not have " +
-          PrivilegeType.values()[privilegeId] + " on " + path);
+      throw new AuthException(String.format("Role %s does not have %s on %s", roleName,
+          PrivilegeType.values()[privilegeId], path));
     }
   }
 
@@ -186,7 +185,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
       }
     } else {
-      throw new AuthException("User " + username + " already has role " + roleName);
+      throw new AuthException(String.format("User %s already has role %s",
+       username, roleName));
     }
   }
 
@@ -197,7 +197,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     if (!userManager.revokeRoleFromUser(roleName, username)) {
-      throw new AuthException("User " + username + " does not have role " + roleName);
+      throw new AuthException(String.format("User %s does not have role %s", username,
+          roleName));
     }
   }
 
