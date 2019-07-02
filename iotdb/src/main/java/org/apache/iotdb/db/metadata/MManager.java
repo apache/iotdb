@@ -431,7 +431,8 @@ public class MManager {
    * @param deletePathList list of paths to be deleted
    * @return the first set contains StorageGroups that are affected by this deletion but
    * still have remaining timeseries, so these StorageGroups should be closed to make sure the data
-   * deletion is persisted; the second set contains StorageGroups that contain no more timeseries
+   * deletion is persisted;
+   * <br/> the second set contains StorageGroups that contain no more timeseries
    * after this deletion and files of such StorageGroups should be deleted to reclaim disk space.
    * @throws MetadataErrorException
    */
@@ -883,7 +884,7 @@ public class MManager {
   /**
    * function for getting all file names.
    */
-  public List<String> getAllFileNames() throws MetadataErrorException {
+  public List<String> getAllStorageGroupNames() throws MetadataErrorException {
 
     lock.readLock().lock();
     try {

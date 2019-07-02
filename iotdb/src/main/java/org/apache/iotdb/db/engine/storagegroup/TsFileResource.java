@@ -198,8 +198,10 @@ public class TsFileResource {
     return closed;
   }
 
-  public void close() {
+  public void close() throws IOException {
     closed = true;
+    modFile.close();
+    modFile = null;
     processor = null;
   }
 

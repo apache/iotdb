@@ -393,8 +393,8 @@ public class TsFileProcessor {
   }
 
   public void close() throws TsFileProcessorException {
-    tsFileResource.close();
     try {
+      tsFileResource.close();
       MultiFileLogNodeManager.getInstance()
           .deleteNode(storageGroupName + "-" + tsFileResource.getFile().getName());
     } catch (IOException e) {

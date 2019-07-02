@@ -559,13 +559,13 @@ public class StorageGroupProcessor {
 
 
   /**
-   * This method will be blocked until this file node can be closed.
+   * This method will be blocked until this storage group can be closed.
    */
-  public void syncCloseAndStopFileNode(Supplier<Boolean> removeProcessorFromManagerCallback) {
+  public void syncCloseTsFileProcessorsAndStop(Supplier<Boolean> removeProcessorFromManagerCallback) {
     synchronized (closeFileNodeCondition) {
       try {
-        asyncForceClose();
         toBeClosed = true;
+        asyncForceClose();
         while (true) {
           if (closingSequenceTsFileProcessor.isEmpty() && closingUnSequenceTsFileProcessor
               .isEmpty()) {

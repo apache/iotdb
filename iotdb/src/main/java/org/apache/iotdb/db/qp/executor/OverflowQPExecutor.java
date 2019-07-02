@@ -391,7 +391,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           Pair<Set<String>, Set<String>> closeDeletedStorageGroupPair =
               mManager.deletePathsFromMTree(deletePathList);
           for (String deleteStorageGroup : closeDeletedStorageGroupPair.right) {
-            storageEngine.deleteOneFileNodeTimeSeries(deleteStorageGroup);
+            storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
           }
           break;
         case SET_FILE_LEVEL:

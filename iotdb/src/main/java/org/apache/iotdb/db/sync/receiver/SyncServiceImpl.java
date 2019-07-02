@@ -474,7 +474,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         );
         // call interface of load external file
         try {
-          if (!STORAGE_GROUP_MANAGER.appendFileToFileNode(storageGroup, fileNode, path)) {
+          if (!STORAGE_GROUP_MANAGER.appendFileToStorageGroupProcessor(storageGroup, fileNode, path)) {
             // it is a file with unsequence data
             if (config.isUpdateHistoricalDataPossibility()) {
               loadOldData(path);
