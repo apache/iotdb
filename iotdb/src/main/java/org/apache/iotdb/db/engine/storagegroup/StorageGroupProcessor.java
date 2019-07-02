@@ -579,32 +579,29 @@ public class StorageGroupProcessor {
   }
 
   public void syncDeleteDataFiles() {
-    synchronized (closeStorageGroupCondition) {
-      waitForAllCurrentTsFileProcessorsClosed();
-
-      writeLock();
-      try {
-        List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
-        folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
-        for (String tsfilePath : folder) {
-          File storageGroupFolder = new File(tsfilePath, storageGroupName);
-          if (storageGroupFolder.exists()) {
-            try {
-              FileUtils.deleteDirectory(storageGroupFolder);
-            } catch (IOException e) {
-              logger.error("Delete tsfiles failed", e);
-            }
+    waitForAllCurrentTsFileProcessorsClosed();
+    writeLock();
+    try {
+      List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
+      folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+      for (String tsfilePath : folder) {
+        File storageGroupFolder = new File(tsfilePath, storageGroupName);
+        if (storageGroupFolder.exists()) {
+          try {
+            FileUtils.deleteDirectory(storageGroupFolder);
+          } catch (IOException e) {
+            logger.error("Delete tsfiles failed", e);
           }
         }
-        this.workSequenceTsFileProcessor = null;
-        this.workUnSequenceTsFileProcessor = null;
-        this.sequenceFileList.clear();
-        this.unSequenceFileList.clear();
-        this.latestFlushedTimeForEachDevice.clear();
-        this.latestTimeForEachDevice.clear();
-      } finally {
-        writeUnlock();
       }
+      this.workSequenceTsFileProcessor = null;
+      this.workUnSequenceTsFileProcessor = null;
+      this.sequenceFileList.clear();
+      this.unSequenceFileList.clear();
+      this.latestFlushedTimeForEachDevice.clear();
+      this.latestTimeForEachDevice.clear();
+    } finally {
+      writeUnlock();
     }
   }
 
