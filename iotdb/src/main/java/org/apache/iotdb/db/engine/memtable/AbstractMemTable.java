@@ -75,8 +75,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (!memSeries.containsKey(measurement)) {
       memSeries.put(measurement, genMemSeries(dataType));
     }
-    IWritableMemChunk ret = memSeries.get(measurement);
-    return ret;
+    return memSeries.get(measurement);
   }
 
   protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
@@ -233,12 +232,6 @@ public abstract class AbstractMemTable implements IMemTable {
       return newChunk;
     }
     return null;
-  }
-
-  @Override
-  public boolean containSeries(String deviceId, String measurementId) {
-    Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
-    return deviceMap != null && deviceMap.containsKey(measurementId);
   }
 
   public void setVersion(long version) {

@@ -75,7 +75,7 @@ public class ChunkBufferPoolTest {
         } catch (InterruptedException e) {
         }
         chunkBuffers.remove(chunkBuffer);
-        ChunkBufferPool.getInstance().putBack(chunkBuffer, "test case");
+        ChunkBufferPool.getInstance().putBack(chunkBuffer);
       }
     }
   }

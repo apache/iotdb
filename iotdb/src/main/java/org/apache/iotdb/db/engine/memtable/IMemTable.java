@@ -22,7 +22,6 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -90,8 +89,6 @@ public interface IMemTable {
    * @return a MemTable with the same data as this one.
    */
   IMemTable copy();
-
-  boolean containSeries(String deviceId, String measurementId);
 
   boolean isSignalMemTable();
 
