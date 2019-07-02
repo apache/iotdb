@@ -22,7 +22,6 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -144,21 +143,6 @@ public class BasicFunctionOperator extends FunctionOperator {
     }
     sc.addTail(path.toString(), this.tokenSymbol, value, ", single\n");
     return sc.toString();
-  }
-
-  @Override
-  public BasicFunctionOperator clone() {
-    BasicFunctionOperator ret;
-    try {
-      ret = new BasicFunctionOperator(this.tokenIntType, path.clone(), value);
-    } catch (LogicalOperatorException e) {
-      logger.error("error clone:", e);
-      return null;
-    }
-    ret.tokenSymbol = tokenSymbol;
-    ret.isLeaf = isLeaf;
-    ret.isSingle = isSingle;
-    return ret;
   }
 
   @Override

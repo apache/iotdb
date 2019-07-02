@@ -34,6 +34,8 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 public class EngineNodeConstructor extends AbstractNodeConstructor {
 
   public EngineNodeConstructor() {
+    // nothing to initialize
+    // TODO: make this a util class
   }
 
   /**

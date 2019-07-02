@@ -18,16 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
-import sun.nio.ch.DirectBuffer;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
-
 public class CommonUtils {
-
-  public static final int JAVA_VERSION = CommonUtils.getJdkVersion();
 
   private CommonUtils(){}
 
