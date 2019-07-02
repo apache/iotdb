@@ -54,7 +54,7 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
-import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -126,7 +126,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private Map<Long, PhysicalPlan> idStmtMap = new ConcurrentHashMap<>();
 
   public TSServiceImpl() throws IOException {
-    processor = new QueryProcessor(new OverflowQPExecutor());
+    processor = new QueryProcessor(new QueryProcessExecutor());
   }
 
   @Override

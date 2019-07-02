@@ -32,7 +32,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Implement a simple executor with a memory demo reading processor for test.
  */
-public class MemIntQpExecutor extends QueryProcessExecutor {
+public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
 
   private static Logger LOG = LoggerFactory.getLogger(MemIntQpExecutor.class);
 

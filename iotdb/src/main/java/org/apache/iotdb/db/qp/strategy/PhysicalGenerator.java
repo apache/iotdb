@@ -274,7 +274,7 @@ public class PhysicalGenerator {
   }
 
   // private SingleQueryPlan constructSelectPlan(FilterOperator filterOperator, List<Path> paths,
-  // QueryProcessExecutor conf) throws QueryProcessorException {
+  // AbstractQueryProcessExecutor conf) throws QueryProcessorException {
   // FilterOperator timeFilter = null;
   // FilterOperator freqFilter = null;
   // FilterOperator valueFilter = null;

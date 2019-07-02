@@ -52,7 +52,7 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
-import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.sync.conf.Constans;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -506,7 +506,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public void loadOldData(String filePath) throws IOException, ProcessorException {
     Set<String> timeseriesSet = new HashSet<>();
     TsFileSequenceReader reader = null;
-    OverflowQPExecutor insertExecutor = new OverflowQPExecutor();
+    QueryProcessExecutor insertExecutor = new QueryProcessExecutor();
     try {
       /** use tsfile reader to get data **/
       reader = new TsFileSequenceReader(filePath);
@@ -586,7 +586,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public void loadOldData(String filePath, List<String> overlapFiles)
       throws IOException, ProcessorException {
     Set<String> timeseriesList = new HashSet<>();
-    OverflowQPExecutor insertExecutor = new OverflowQPExecutor();
+    QueryProcessExecutor insertExecutor = new QueryProcessExecutor();
     Map<String, ReadOnlyTsFile> tsfilesReaders = openReaders(filePath, overlapFiles);
     try {
       TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
