@@ -138,7 +138,7 @@ public class FileSize implements IStatistic {
       if (kinds.equals(MonitorConstants.FileSizeConstants.SETTLED)) {
         //sum bufferWriteDirs size
         long settledSize = INIT_VALUE_IF_FILE_NOT_EXIST;
-        for (String bufferWriteDir : config.getSeqDataDirs()) {
+        for (String bufferWriteDir : config.getDataDirs()) {
           File settledFile = new File(bufferWriteDir);
           if (settledFile.exists()) {
             try {

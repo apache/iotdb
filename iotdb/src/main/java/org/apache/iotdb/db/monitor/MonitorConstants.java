@@ -98,7 +98,7 @@ public class MonitorConstants {
     OVERFLOW(Monitor.INSTANCE.getBaseDirectory() + File.separatorChar + "unsequence"),
     SETTLED(Monitor.INSTANCE.getBaseDirectory() + File.separatorChar + "sequence"),
     WAL(new File(config.getWalFolder()).getAbsolutePath()),
-    INFO(new File(config.getSystemInfoDir()).getAbsolutePath()),
+    INFO(new File(config.getSystemDir()).getAbsolutePath()),
     SCHEMA(new File(config.getMetadataDir()).getAbsolutePath());
 
     public String getPath() {

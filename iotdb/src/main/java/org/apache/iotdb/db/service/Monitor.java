@@ -41,7 +41,7 @@ public class Monitor implements MonitorMBean, IService {
   @Override
   public long getDataSizeInByte() {
     try {
-      return FileUtils.sizeOfDirectory(new File(config.getDataDir()));
+      return FileUtils.sizeOfDirectory(new File(config.getTsfileDir()));
     } catch (Exception e) {
       logger.error("meet error while trying to get data size.", e);
       return -1;
@@ -69,7 +69,7 @@ public class Monitor implements MonitorMBean, IService {
   @Override
   public String getBaseDirectory() {
     try {
-      File file = new File(config.getDataDir());
+      File file = new File(config.getTsfileDir());
       return file.getAbsolutePath();
     } catch (Exception e) {
       logger.error("meet error while trying to get base dir.", e);

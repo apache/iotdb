@@ -116,12 +116,12 @@ public class SyncServiceImpl implements SyncService.Iface {
   /**
    * IoTDB data directory
    **/
-  private String dataPath = config.getDataDir();
+  private String baseDir = config.getBaseDir();
 
   /**
    * IoTDB  multiple bufferWrite directory
    **/
-  private String[] bufferWritePaths = config.getSeqDataDirs();
+  private String[] bufferWritePaths = config.getDataDirs();
 
   /**
    * The path to store metadata file of sender
@@ -185,8 +185,8 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Init file path and clear data if last sync process failed.
    */
   private void initPath() {
-    dataPath = FilePathUtils.regularizePath(dataPath);
-    syncFolderPath = dataPath + SYNC_SERVER + File.separatorChar + this.uuid.get();
+    baseDir = FilePathUtils.regularizePath(baseDir);
+    syncFolderPath = baseDir + SYNC_SERVER + File.separatorChar + this.uuid.get();
     syncDataPath = syncFolderPath + File.separatorChar + Constans.DATA_SNAPSHOT_NAME;
     schemaFromSenderPath
         .set(syncFolderPath + File.separator + MetadataConstant.METADATA_LOG);

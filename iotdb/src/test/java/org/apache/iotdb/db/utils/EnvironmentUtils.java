@@ -98,7 +98,7 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // delete system info
-    cleanDir(config.getSystemInfoDir());
+    cleanDir(config.getSystemDir());
     // delete metadata
     cleanDir(config.getMetadataDir());
     // delete wal
@@ -106,7 +106,7 @@ public class EnvironmentUtils {
     // delete index
     cleanDir(config.getIndexFileDir());
     // delete data
-    cleanDir(config.getDataDir());
+    cleanDir(config.getTsfileDir());
   }
 
   public static void cleanDir(String dir) throws IOException {
@@ -173,7 +173,7 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // create storage group
-    createDir(config.getSystemInfoDir());
+    createDir(config.getSystemDir());
     // create metadata
     createDir(config.getMetadataDir());
     // create wal

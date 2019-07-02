@@ -26,9 +26,9 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 public class SyncSenderConfig {
 
   private String[] seqFileDirectory = IoTDBDescriptor.getInstance().getConfig()
-      .getSeqDataDirs();
+      .getDataDirs();
 
-  private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getDataDir();
+  private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getTsfileDir();
 
   private String lockFilePath;
 

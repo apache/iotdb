@@ -18,10 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
-import java.io.File;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.slf4j.Logger;
@@ -31,8 +28,6 @@ public class IoTDBConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   public static final String CONFIG_NAME = "iotdb-engine.properties";
-  private static final String DEFAULT_DATA_DIR = "data";
-  private static final String DEFAULT_SYS_DIR = "system";
   static final String DEFAULT_SEQ_DATA_DIR = "sequence";
   static final String DEFAULT_UNSEQ_DATA_DIR = "unsequence";
   private static final String MULTI_DIR_STRATEGY_PREFIX =
@@ -68,30 +63,20 @@ public class IoTDBConfig {
   private int walBufferSize = 16*1024*1024;
 
   /**
-   * Data directory.
+   * system base dir, stores all system data and wal
    */
-  private String dataDir = "data";
+  private String baseDir = "data";
 
   /**
-   * System info directory, including version file for each storage group
+   * System directory, including version file for each storage group and metadata
    */
-  private String systemInfoDir = "info";
+  private String systemDir = "data/system";
 
   /**
-   * Wal directory.
+   * Data directory of data.
+   * It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
-  private String walFolder = "wal";
-
-  /**
-   * Data directory of non-sequential data.
-   */
-  private String[] unseqDataDirs = {DEFAULT_UNSEQ_DATA_DIR};
-
-  /**
-   * Data directory of sequential data.
-   * It can be settled as seqDataDirs = {"settled1", "settled2", "settled3"};
-   */
-  private String[] seqDataDirs = {DEFAULT_SEQ_DATA_DIR};
+  private String[] dataDirs = {"data/data"};
 
   /**
    * Strategy of multiple directories.
@@ -99,16 +84,16 @@ public class IoTDBConfig {
   private String multiDirStrategyClassName = null;
 
   /**
-   * Data directory of metadata data.
+   * Wal directory.
    */
-  private String metadataDir = "meta";
-
-  private int memtableNumber = 20;
+  private String walFolder = "data/wal";
 
   /**
    * Data directory for index files (KV-match indexes).
    */
-  private String indexFileDir = "index";
+  private String indexFileDir = "data/index";
+
+  private int memtableNumber = 20;
 
   /**
    * The maximum concurrent thread number for merging. When the value <=0 or > CPU core
@@ -202,129 +187,18 @@ public class IoTDBConfig {
 
   void updatePath() {
     confirmMultiDirStrategy();
-
-    preUpdatePath();
-
-    // update the paths of subdirectories in the dataDir
-    if (getDataDir().length() > 0 && !getDataDir().endsWith(File.separator)) {
-      setDataDir(getDataDir() + File.separatorChar);
-    }
-    if (getUnseqDataDirs() == null || getUnseqDataDirs().length == 0) {
-      setUnseqDataDirs(new String[]{DEFAULT_UNSEQ_DATA_DIR});
-    }
-    for (int i = 0; i < getUnseqDataDirs().length; i++) {
-      if (new File(getUnseqDataDirs()[i]).isAbsolute()) {
-        continue;
-      }
-
-      getUnseqDataDirs()[i] = getDataDir() + getUnseqDataDirs()[i];
-    }
-
-    if (getSeqDataDirs() == null || getSeqDataDirs().length == 0) {
-      setSeqDataDirs(new String[]{DEFAULT_SEQ_DATA_DIR});
-    }
-    for (int i = 0; i < getSeqDataDirs().length; i++) {
-      if (new File(getSeqDataDirs()[i]).isAbsolute()) {
-        continue;
-      }
-
-      getSeqDataDirs()[i] = getDataDir() + getSeqDataDirs()[i];
-    }
-
-    // update the paths of subdirectories in the systemInfoDir
-    if (getSystemInfoDir().length() > 0 && !getSystemInfoDir().endsWith(File.separator)) {
-      setSystemInfoDir(getSystemInfoDir() + File.separatorChar);
-    }
-    setSystemInfoDir(getSystemInfoDir() + getSystemInfoDir());
-    setMetadataDir(getSystemInfoDir() + getMetadataDir());
-
-    // update the paths of subdirectories in the walFolder
-    if (getWalFolder().length() > 0 && !getWalFolder().endsWith(File.separator)) {
-      setWalFolder(getWalFolder() + File.separatorChar);
-    }
-    setWalFolder(getWalFolder() + getWalFolder());
-
-    setIndexFileDir(getDataDir() + getIndexFileDir());
-  }
-
-  /*
-   * First, if dataDir is null, dataDir will be assigned the default
-   * value(i.e.,"data"+File.separatorChar+"data".
-   * Then, if dataDir is absolute, leave dataDir as it is. If dataDir is relative, dataDir
-   * will be converted to the complete version using non-empty %IOTDB_HOME%. e.g.
-   * for windows platform, | IOTDB_HOME | dataDir before | dataDir
-   * after | |-----------------|--------------------|---------------------------| |
-   * D:\\iotdb\iotdb | null |
-   * D:\\iotdb\iotdb\data\data | | D:\\iotdb\iotdb | dataDir | D:\\iotdb\iotdb\dataDir |
-   * | D:\\iotdb\iotdb |
-   * C:\\dataDir | C:\\dataDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
-   *
-   * First, if systemInfoDir is null, systemInfoDir will be assigned the default
-   * value(i.e.,"data"+File.separatorChar+"system".
-   * Then, if systemInfoDir is absolute, leave systemInfoDir as it is. If systemInfoDir is relative,
-   * systemInfoDir will be converted to the complete version using non-empty %IOTDB_HOME%.
-   * e.g. for windows platform, | IOTDB_HOME | systemInfoDir before | systemInfoDir
-   * after | |-----------------|--------------------|-----------------------------|
-   * | D:\\iotdb\iotdb | null |D:\\iotdb\iotdb\data\system | | D:\\iotdb\iotdb | systemInfoDir
-   * | D:\\iotdb\iotdb\systemInfoDir | | D:\\iotdb\iotdb |
-   * C:\\systemInfoDir | C:\\systemInfoDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
-   *
-   * First, if walFolder is null, walFolder will be assigned the default
-   * value(i.e.,"data"+File.separatorChar+"data". Then,
-   * if walFolder is absolute, leave walFolder as it is. If walFolder is relative,
-   * walFolder will be converted to the complete
-   * version using non-empty %IOTDB_HOME%. e.g. for windows platform,
-   * | IOTDB_HOME | walFolder before | walFolder after |
-   * |-----------------|--------------------|-----------------------------|
-   * | D:\\iotdb\iotdb | null |
-   * D:\\iotdb\iotdb\data\wal | | D:\\iotdb\iotdb | walFolder | D:\\iotdb\iotdb\walFolder |
-   * | D:\\iotdb\iotdb | C:\\walFolder |
-   * C:\\walFolder | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
-   *
-   */
-
-  private void preUpdatePath() {
-    if (getDataDir() == null) {
-      setDataDir(DEFAULT_DATA_DIR + File.separatorChar + DEFAULT_DATA_DIR);
-    }
-    if (getSystemInfoDir() == null) {
-      setSystemInfoDir(DEFAULT_DATA_DIR + File.separatorChar + DEFAULT_SYS_DIR);
-    }
-    if (getWalFolder() == null) {
-      setWalFolder(DEFAULT_DATA_DIR);
-    }
-
-    List<String> dirs = new ArrayList<>();
-    dirs.add(getDataDir());
-    dirs.add(getSystemInfoDir());
-    dirs.add(getWalFolder());
-    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    for (int i = 0; i < 3; i++) {
-      String dir = dirs.get(i);
-      if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-        if (!homeDir.endsWith(File.separator)) {
-          dir = homeDir + File.separatorChar + dir;
-        } else {
-          dir = homeDir + dir;
-        }
-        dirs.set(i, dir);
-      }
-    }
-    setDataDir(dirs.get(0));
-    setSystemInfoDir(dirs.get(1));
-    setWalFolder(dirs.get(2));
   }
 
   private void confirmMultiDirStrategy() {
     if (getMultiDirStrategyClassName() == null) {
-      setMultiDirStrategyClassName(DEFAULT_MULTI_DIR_STRATEGY);
+      multiDirStrategyClassName = DEFAULT_MULTI_DIR_STRATEGY;
     }
     if (!getMultiDirStrategyClassName().contains(".")) {
-      setMultiDirStrategyClassName(MULTI_DIR_STRATEGY_PREFIX + getMultiDirStrategyClassName());
+      multiDirStrategyClassName = MULTI_DIR_STRATEGY_PREFIX + multiDirStrategyClassName;
     }
 
     try {
-      Class.forName(getMultiDirStrategyClassName());
+      Class.forName(multiDirStrategyClassName);
     } catch (ClassNotFoundException e) {
       logger.warn("Cannot find given directory strategy {}, using the default value",
           getMultiDirStrategyClassName(), e);
@@ -332,8 +206,8 @@ public class IoTDBConfig {
     }
   }
 
-  public String[] getSeqDataDirs() {
-    return seqDataDirs;
+  public String[] getDataDirs() {
+    return dataDirs;
   }
 
   public String getRpcAddress() {
@@ -376,20 +250,12 @@ public class IoTDBConfig {
     this.forceWalPeriodInMs = forceWalPeriodInMs;
   }
 
-  public String getDataDir() {
-    return dataDir;
+  public String getSystemDir() {
+    return systemDir;
   }
 
-  void setDataDir(String dataDir) {
-    this.dataDir = dataDir;
-  }
-
-  public String getSystemInfoDir() {
-    return systemInfoDir;
-  }
-
-  void setSystemInfoDir(String systemInfoDir) {
-    this.systemInfoDir = systemInfoDir;
+  void setSystemDir(String systemDir) {
+    this.systemDir = systemDir;
   }
 
   public String getWalFolder() {
@@ -400,16 +266,8 @@ public class IoTDBConfig {
     this.walFolder = walFolder;
   }
 
-  public String[] getUnseqDataDirs() {
-    return unseqDataDirs;
-  }
-
-  void setUnseqDataDirs(String[] unseqDataDirs) {
-    this.unseqDataDirs = unseqDataDirs;
-  }
-
-  void setSeqDataDirs(String[] seqDataDirs) {
-    this.seqDataDirs = seqDataDirs;
+  void setDataDirs(String[] dataDirs) {
+    this.dataDirs = dataDirs;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -418,14 +276,6 @@ public class IoTDBConfig {
 
   void setMultiDirStrategyClassName(String multiDirStrategyClassName) {
     this.multiDirStrategyClassName = multiDirStrategyClassName;
-  }
-
-  public String getMetadataDir() {
-    return metadataDir;
-  }
-
-  private void setMetadataDir(String metadataDir) {
-    this.metadataDir = metadataDir;
   }
 
   public String getIndexFileDir() {
@@ -550,6 +400,14 @@ public class IoTDBConfig {
 
   void setUpdateHistoricalDataPossibility(boolean updateHistoricalDataPossibility) {
     this.updateHistoricalDataPossibility = updateHistoricalDataPossibility;
+  }
+
+  public String getBaseDir() {
+    return baseDir;
+  }
+
+  public void setBaseDir(String baseDir) {
+    this.baseDir = baseDir;
   }
 
   public String getIpWhiteList() {

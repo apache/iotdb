@@ -77,7 +77,7 @@ public class StorageEngine implements IService {
 
 
   private StorageEngine() {
-    infoDir = FilePathUtils.regularizePath(config.getSystemInfoDir());
+    infoDir = FilePathUtils.regularizePath(config.getSystemDir());
     // create infoDir
     File dir = new File(infoDir);
     if (dir.mkdirs()) {
@@ -334,7 +334,7 @@ public class StorageEngine implements IService {
           }
         }
         // delete storage group info file
-        String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getSystemInfoDir();
+        String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
         FileUtils.deleteDirectory(new File(fileNodePath, storageGroupName));
       } catch (IOException e) {
         logger.error("Delete tsfiles failed", e);
