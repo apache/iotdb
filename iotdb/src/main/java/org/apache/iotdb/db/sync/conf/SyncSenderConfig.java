@@ -28,7 +28,7 @@ public class SyncSenderConfig {
   private String[] seqFileDirectory = IoTDBDescriptor.getInstance().getConfig()
       .getDataDirs();
 
-  private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getTsfileDir();
+  private String dataDirectory = IoTDBDescriptor.getInstance().getConfig().getBaseDir();
 
   private String lockFilePath;
 
@@ -50,9 +50,7 @@ public class SyncSenderConfig {
    * Init path
    */
   public void init() {
-    String metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
-    metadataDirPath = FilePathUtils.regularizePath(metadataDirPath);
-    schemaPath = metadataDirPath + MetadataConstant.METADATA_LOG;
+    schemaPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + MetadataConstant.METADATA_LOG;
     if (dataDirectory.length() > 0
         && dataDirectory.charAt(dataDirectory.length() - 1) != File.separatorChar) {
       dataDirectory += File.separatorChar;

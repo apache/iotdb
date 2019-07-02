@@ -41,14 +41,8 @@ public class TsFileMetadataUtils {
    * @return -meta data
    */
   public static TsFileMetaData getTsFileMetaData(String filePath) throws IOException {
-    TsFileSequenceReader reader = null;
-    try {
-      reader = new TsFileSequenceReader(filePath);
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
       return reader.readFileMetadata();
-    } finally {
-      if (reader != null) {
-        reader.close();
-      }
     }
   }
 
@@ -65,19 +59,13 @@ public class TsFileMetadataUtils {
     if (!fileMetaData.getDeviceMap().containsKey(deviceId)) {
       return null;
     } else {
-      TsFileSequenceReader reader = null;
-      try {
-        reader = new TsFileSequenceReader(filePath);
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
         long offset = fileMetaData.getDeviceMap().get(deviceId).getOffset();
         int size = fileMetaData.getDeviceMap().get(deviceId).getLen();
         ByteBuffer data = ByteBuffer.allocate(size);
         reader.readRaw(offset, size, data);
         data.flip();
         return TsDeviceMetadata.deserializeFrom(data);
-      } finally {
-        if (reader != null) {
-          reader.close();
-        }
       }
     }
   }

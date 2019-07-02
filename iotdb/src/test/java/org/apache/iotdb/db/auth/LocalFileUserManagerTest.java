@@ -93,7 +93,7 @@ public class LocalFileUserManagerTest {
     }
     assertEquals(true, caught);
 
-    // delete
+    // deleteDataInMemory
     assertEquals(false, manager.deleteUser("not a user"));
     assertEquals(true, manager.deleteUser(users[users.length - 1].getName()));
     assertEquals(null, manager.getUser(users[users.length - 1].getName()));

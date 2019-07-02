@@ -33,8 +33,8 @@ public class LocalFileAuthorizer extends BasicAuthorizer {
   private static Logger logger = LoggerFactory.getLogger(LocalFileAuthorizer.class);
 
   private LocalFileAuthorizer() throws AuthException {
-    super(new LocalFileUserManager(config.getBaseDir() + File.separator + "users" + File.separator),
-        new LocalFileRoleManager(config.getBaseDir() + File.separator + "roles" + File.separator));
+    super(new LocalFileUserManager(config.getSystemDir() + File.separator + "users"),
+        new LocalFileRoleManager(config.getSystemDir() + File.separator + "roles"));
   }
 
   /**

@@ -78,17 +78,17 @@ public class DirectoryManager {
   }
 
   // only used by test
-  public String getTsFolderForTest() {
+  public String getSequenceFolderForTest() {
     return sequenceFileFolders.get(0);
   }
 
   // only used by test
-  public void setTsFolderForTest(String path) {
+  public void setSequenceFolderForTest(String path) {
     sequenceFileFolders.set(0, path);
   }
 
   public String getNextFolderForSequenceFile() throws DiskSpaceInsufficientException {
-    return getTsFileFolder(getNextFolderIndexForTsFile());
+    return getSequenceFileFolder(getNextFolderIndexForSequenceFile());
   }
 
   /**
@@ -96,19 +96,19 @@ public class DirectoryManager {
    *
    * @return next folder index
    */
-  public int getNextFolderIndexForTsFile() throws DiskSpaceInsufficientException {
+  public int getNextFolderIndexForSequenceFile() throws DiskSpaceInsufficientException {
     return sequenceStrategy.nextFolderIndex();
   }
 
-  public String getTsFileFolder(int index) {
+  public String getSequenceFileFolder(int index) {
     return sequenceFileFolders.get(index);
   }
 
-  public int getTsFileFolderIndex(String folder) {
+  public int getSequenceFileFolderIndex(String folder) {
     return sequenceFileFolders.indexOf(folder);
   }
 
-  public List<String> getAllTsFileFolders() {
+  public List<String> getAllSequenceFileFolders() {
     return sequenceFileFolders;
   }
 
@@ -121,7 +121,7 @@ public class DirectoryManager {
   }
 
   public String getNextFolderForUnSequenceFile() throws DiskSpaceInsufficientException {
-    return getOverflowFileFolder(getNextFolderIndexForOverflowFile());
+    return getUnSequenceFileFolder(getNextFolderIndexForUnSequenceFile());
   }
 
   /**
@@ -129,24 +129,24 @@ public class DirectoryManager {
    *
    * @return next folder index
    */
-  public int getNextFolderIndexForOverflowFile() throws DiskSpaceInsufficientException {
+  public int getNextFolderIndexForUnSequenceFile() throws DiskSpaceInsufficientException {
     return unsequenceStrategy.nextFolderIndex();
   }
 
-  public String getOverflowFileFolder(int index) {
+  public String getUnSequenceFileFolder(int index) {
     return unsequenceFileFolders.get(index);
   }
 
-  public int getOverflowFileFolderIndex(String folder) {
+  public int getUnSequenceFileFolderIndex(String folder) {
     return unsequenceFileFolders.indexOf(folder);
   }
 
-  public List<String> getAllOverflowFileFolders() {
+  public List<String> getAllUnSequenceFileFolders() {
     return unsequenceFileFolders;
   }
 
   // only used by test
-  public String getOverflowFolderForTest() {
+  public String getUnSequenceFolderForTest() {
     return unsequenceFileFolders.get(0);
   }
 }

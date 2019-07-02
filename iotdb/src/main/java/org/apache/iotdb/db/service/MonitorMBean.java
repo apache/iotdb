@@ -38,11 +38,7 @@ public interface MonitorMBean {
 
   int getWalOpenFileNum();
 
-  int getDeltaOpenFileNum();
-
   int getDigestOpenFileNum();
-
-  int getOverflowOpenFileNum();
 
   int getMetadataOpenFileNum();
 

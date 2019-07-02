@@ -289,7 +289,7 @@ public class SQLParserTest {
             "TOK_WHERE", "<", "TOK_PATH", "time", "TOK_DATETIME", "2016-11-16 16:22:33+08:00"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("delete from root.d1.s1 where time < 2016-11-16 16:22:33+08:00");
+        .generateAST("deleteDataInMemory from root.d1.s1 where time < 2016-11-16 16:22:33+08:00");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -307,7 +307,7 @@ public class SQLParserTest {
         Arrays.asList("TOK_DELETE", "TOK_PATH", "TOK_ROOT", "d1", "s1",
             "TOK_WHERE", "<", "TOK_PATH", "time", "TOK_DATETIME", "now"));
     ArrayList<String> rec = new ArrayList<>();
-    AstNode astTree = ParseGenerator.generateAST("delete from root.d1.s1 where time < now();");
+    AstNode astTree = ParseGenerator.generateAST("deleteDataInMemory from root.d1.s1 where time < now();");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -326,7 +326,7 @@ public class SQLParserTest {
             "TOK_WHERE", "<", "TOK_PATH", "time", "12345678909876"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("delete from root.d1.s1 where time < 12345678909876");
+        .generateAST("deleteDataInMemory from root.d1.s1 where time < 12345678909876");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -346,7 +346,7 @@ public class SQLParserTest {
             "TOK_DATETIME", "now"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("delete from root.d1.s1,root.d2.s3 where time < now();");
+        .generateAST("deleteDataInMemory from root.d1.s1,root.d2.s3 where time < now();");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -366,7 +366,7 @@ public class SQLParserTest {
             "123456"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("delete from root.d1.*,root.*.s2 where !(time < 123456)");
+        .generateAST("deleteDataInMemory from root.d1.*,root.*.s2 where !(time < 123456)");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -401,7 +401,7 @@ public class SQLParserTest {
         Arrays.asList("TOK_DELETE", "TOK_TIMESERIES", "TOK_PATH", "TOK_ROOT", "dt", "a", "b", "d1",
             "s1"));
     ArrayList<String> rec = new ArrayList<>();
-    AstNode astTree = ParseGenerator.generateAST("delete timeseries root.dt.a.b.d1.s1;");
+    AstNode astTree = ParseGenerator.generateAST("deleteDataInMemory timeseries root.dt.a.b.d1.s1;");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -418,7 +418,7 @@ public class SQLParserTest {
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_DELETE", "TOK_TIMESERIES", "TOK_PATH", "TOK_ROOT", "*"));
     ArrayList<String> rec = new ArrayList<>();
-    AstNode astTree = ParseGenerator.generateAST("delete timeseries root.*");
+    AstNode astTree = ParseGenerator.generateAST("deleteDataInMemory timeseries root.*");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -436,7 +436,7 @@ public class SQLParserTest {
         Arrays.asList("TOK_DELETE", "TOK_TIMESERIES", "TOK_PATH", "TOK_ROOT",
             "dt", "a", "b", "TOK_PATH", "TOK_ROOT", "*"));
     ArrayList<String> rec = new ArrayList<>();
-    AstNode astTree = ParseGenerator.generateAST("delete timeseries root.dt.a.b,root.*;");
+    AstNode astTree = ParseGenerator.generateAST("deleteDataInMemory timeseries root.dt.a.b,root.*;");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1122,10 +1122,10 @@ public class SQLParserTest {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_GRANT", "TOK_USER", "myusername", "TOK_PRIVILEGES",
-            "'create'", "'delete'", "TOK_PATH", "TOK_ROOT", "laptop", "d1", "s1"));
+            "'create'", "'deleteDataInMemory'", "TOK_PATH", "TOK_ROOT", "laptop", "d1", "s1"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("grant user myusername privileges 'create','delete' on root.laptop.d1.s1");
+        .generateAST("grant user myusername privileges 'create','deleteDataInMemory' on root.laptop.d1.s1");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1141,10 +1141,10 @@ public class SQLParserTest {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_GRANT", "TOK_ROLE", "admin", "TOK_PRIVILEGES",
-            "'create'", "'delete'", "TOK_PATH", "TOK_ROOT", "laptop", "d1", "s1"));
+            "'create'", "'deleteDataInMemory'", "TOK_PATH", "TOK_ROOT", "laptop", "d1", "s1"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("grant role admin privileges 'create','delete' on root.laptop.d1.s1;");
+        .generateAST("grant role admin privileges 'create','deleteDataInMemory' on root.laptop.d1.s1;");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1160,10 +1160,10 @@ public class SQLParserTest {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_REVOKE", "TOK_USER", "myusername", "TOK_PRIVILEGES",
-            "'create'", "'delete'", "TOK_PATH", "TOK_ROOT", "laptop", "d1", "s1"));
+            "'create'", "'deleteDataInMemory'", "TOK_PATH", "TOK_ROOT", "laptop", "d1", "s1"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("revoke user myusername privileges 'create','delete' on root.laptop.d1.s1");
+        .generateAST("revoke user myusername privileges 'create','deleteDataInMemory' on root.laptop.d1.s1");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1179,10 +1179,10 @@ public class SQLParserTest {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_REVOKE", "TOK_ROLE", "admin", "TOK_PRIVILEGES",
-            "'create'", "'delete'", "TOK_PATH", "TOK_ROOT", "laptop", "d1", "s1"));
+            "'create'", "'deleteDataInMemory'", "TOK_PATH", "TOK_ROOT", "laptop", "d1", "s1"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator
-        .generateAST("revoke role admin privileges 'create','delete' on root.laptop.d1.s1;");
+        .generateAST("revoke role admin privileges 'create','deleteDataInMemory' on root.laptop.d1.s1;");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 

@@ -76,18 +76,18 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   protected void insertData() {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
-      storageGroupProcessor.asyncForceClose();
+      storageGroupProcessor.putWorkingTsFileProcessorIntoClosingList();
     }
     for (int j = 1010; j <= 1019; j++) {
       insertOneRecord(j, j);
       storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
     }
-    storageGroupProcessor.syncCloseFileNode();
+    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 
     for (int j = 1020; j <= 3019; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.syncCloseFileNode();
+    storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 
     assert storageGroupProcessor.getWorkSequenceTsFileProcessor() == null;
 

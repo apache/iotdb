@@ -153,7 +153,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      statement.execute("merge");
+//      statement.execute("merge");
 
       Thread.sleep(5000);
 

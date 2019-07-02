@@ -106,7 +106,7 @@ public class IoTDBFlushQueryMergeTest {
       statement.close();
 
       statement = connection.createStatement();
-      statement.execute("merge");
+//      statement.execute("merge");
       statement.close();
 
     } catch (Exception e) {

@@ -80,6 +80,8 @@ grafana/logs/
 **/.nb-gradle/
 grafana/data/
 
+### vscode project
+**/.vscode/
 
 **/.DS_Store
 

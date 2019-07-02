@@ -62,13 +62,13 @@ public class StorageGroupProcessorTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.asyncForceClose();
+      processor.putWorkingTsFileProcessorIntoClosingList();
     }
 
-    processor.syncCloseFileNode();
+    processor.waitForAllCurrentTsFileProcessorsClosed();
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context);
 
-    Assert.assertEquals(queryDataSource.getSeqResources().size(), 10);
+    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
@@ -82,18 +82,18 @@ public class StorageGroupProcessorTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.asyncForceClose();
+      processor.putWorkingTsFileProcessorIntoClosingList();
     }
-    processor.syncCloseFileNode();
+    processor.waitForAllCurrentTsFileProcessorsClosed();
 
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.asyncForceClose();
+      processor.putWorkingTsFileProcessorIntoClosingList();
     }
 
-    processor.syncCloseFileNode();
+    processor.waitForAllCurrentTsFileProcessorsClosed();
 
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());

@@ -125,7 +125,7 @@ public class IoTDBDeletionIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
                     "root");
     Statement statement = connection.createStatement();
-    statement.execute("merge");
+//    statement.execute("merge");
     statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
 
     // before merge completes
@@ -205,13 +205,13 @@ public class IoTDBDeletionIT {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
-      statement.execute("merge");
+//      statement.execute("merge");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
-      statement.execute("merge");
+//      statement.execute("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
         statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",

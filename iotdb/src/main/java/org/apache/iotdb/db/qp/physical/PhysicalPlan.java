@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.physical;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -35,17 +36,6 @@ public abstract class PhysicalPlan {
   private boolean isQuery;
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
-
-  /**
-   * plans in a Storage Group are executed serially, this id is to guarantee in recovery stage plans
-   * in WAL can be redone in the same order
-   */
-  private long planId;
-
-  /**
-   * The name of the user who proposed this operation.
-   */
-  private String proposer;
 
   protected PhysicalPlan(boolean isQuery) {
     this.isQuery = isQuery;
@@ -75,27 +65,11 @@ public abstract class PhysicalPlan {
   }
 
   public List<String> getAggregations() {
-    return null;
-  }
-
-  public String getProposer() {
-    return proposer;
-  }
-
-  public void setProposer(String proposer) {
-    this.proposer = proposer;
+    return Collections.emptyList();
   }
 
   public void setQuery(boolean query) {
     isQuery = query;
-  }
-
-  public long getPlanId() {
-    return planId;
-  }
-
-  public void setPlanId(long planId) {
-    this.planId = planId;
   }
 
   public void serializeTo(ByteBuffer buffer) {

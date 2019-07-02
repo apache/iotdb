@@ -66,7 +66,6 @@ public class EnvironmentUtils {
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
-    // tsFileConfig.duplicateIncompletedPage = false;
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
@@ -81,7 +80,6 @@ public class EnvironmentUtils {
     DeviceMetaDataCache.getInstance().clear();
     // close metadata
     MManager.getInstance().clear();
-    MManager.getInstance().flushObjectToFile();
     // delete all directory
     cleanAllDir();
     StorageEngine.getInstance().setReadOnly(false);
@@ -89,24 +87,24 @@ public class EnvironmentUtils {
   }
 
   private static void cleanAllDir() throws IOException {
-    // delete sequential files
-    for (String path : directoryManager.getAllTsFileFolders()) {
+    // deleteDataInMemory sequential files
+    for (String path : directoryManager.getAllSequenceFileFolders()) {
       cleanDir(path);
     }
-    // delete unsequence files
-    for (String path : directoryManager.getAllOverflowFileFolders()) {
+    // deleteDataInMemory unsequence files
+    for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       cleanDir(path);
     }
     // delete system info
     cleanDir(config.getSystemDir());
-    // delete metadata
-    cleanDir(config.getMetadataDir());
-    // delete wal
+    // deleteDataInMemory wal
     cleanDir(config.getWalFolder());
-    // delete index
+    // deleteDataInMemory index
     cleanDir(config.getIndexFileDir());
-    // delete data
-    cleanDir(config.getTsfileDir());
+    // delete data files
+    for (String dataDir : config.getDataDirs()) {
+      cleanDir(dataDir);
+    }
   }
 
   public static void cleanDir(String dir) throws IOException {
@@ -165,23 +163,23 @@ public class EnvironmentUtils {
 
   private static void createAllDir() throws IOException {
     // create sequential files
-    for (String path : directoryManager.getAllTsFileFolders()) {
+    for (String path : directoryManager.getAllSequenceFileFolders()) {
       createDir(path);
     }
     // create unsequential files
-    for (String path : directoryManager.getAllOverflowFileFolders()) {
+    for (String path : directoryManager.getAllUnSequenceFileFolders()) {
       cleanDir(path);
     }
     // create storage group
     createDir(config.getSystemDir());
-    // create metadata
-    createDir(config.getMetadataDir());
     // create wal
     createDir(config.getWalFolder());
     // create index
     createDir(config.getIndexFileDir());
     // create data
-    createDir("data");
+    for (String dataDir: config.getDataDirs()) {
+      createDir(dataDir);
+    }
   }
 
   private static void createDir(String dir) {

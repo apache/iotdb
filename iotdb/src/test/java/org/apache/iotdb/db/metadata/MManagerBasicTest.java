@@ -103,8 +103,8 @@ public class MManagerBasicTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    // just delete s0, and don't delete root.laptop.d1??
-    // delete storage group or not
+    // just deleteDataInMemory s0, and don't deleteDataInMemory root.laptop.d1??
+    // deleteDataInMemory storage group or not
     assertFalse(manager.pathExist("root.laptop.d1.s1"));
     try {
       manager.deletePathsFromMTree(Collections.singletonList(new Path("root.laptop.d1.s0")));

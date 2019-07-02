@@ -16,23 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.utils.MemUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+package org.apache.iotdb.db.exception;
 
-public class IoTDBShutdownHook extends Thread{
+public class QueryInBatchStmtException extends Exception {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBShutdownHook.class);
+  public QueryInBatchStmtException() {
+  }
 
-  @Override
-  public void run() {
-    if(logger.isInfoEnabled()) {
-      logger.info("IoTDB exits...");
-      logger.info("Jvm memory usage: {}",
-          MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory() -
-              Runtime.getRuntime().freeMemory()));
-    }
+  public QueryInBatchStmtException(String message) {
+    super(message);
+  }
+
+  public QueryInBatchStmtException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public QueryInBatchStmtException(Throwable cause) {
+    super(cause);
   }
 }

@@ -135,7 +135,8 @@ public class FileSize implements IStatistic {
   public Map<FileSizeConstants, Long> getFileSizesInByte() {
     EnumMap<FileSizeConstants, Long> fileSizes = new EnumMap<>(FileSizeConstants.class);
     for (FileSizeConstants kinds : MonitorConstants.FileSizeConstants.values()) {
-      if (kinds.equals(MonitorConstants.FileSizeConstants.SETTLED)) {
+      // TODO FIX ME!!!
+      if (kinds.equals(FileSizeConstants.SYS)) {
         //sum bufferWriteDirs size
         long settledSize = INIT_VALUE_IF_FILE_NOT_EXIST;
         for (String bufferWriteDir : config.getDataDirs()) {

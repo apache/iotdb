@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -73,9 +74,6 @@ public class StorageEngine implements IService {
     return INSTANCE;
   }
 
-
-
-
   private StorageEngine() {
     infoDir = FilePathUtils.regularizePath(config.getSystemDir());
     // create infoDir
@@ -98,13 +96,13 @@ public class StorageEngine implements IService {
       }
     } catch (ProcessorException | MetadataErrorException e) {
       logger.error("init a storage group processor failed. ", e);
-      throw new RuntimeException(e);
+      throw new StorageEngineFailureException(e);
     }
   }
 
   @Override
   public void start() {
-
+    // nothing to be done
   }
 
   @Override
@@ -187,7 +185,7 @@ public class StorageEngine implements IService {
   public void asyncFlushAndSealAllFiles() {
     synchronized (processorMap) {
       for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-        storageGroupProcessor.asyncForceClose();
+        storageGroupProcessor.putWorkingTsFileProcessorIntoClosingList();
       }
     }
   }
@@ -201,7 +199,7 @@ public class StorageEngine implements IService {
     logger.info("Start closing all storage group processor");
     synchronized (processorMap){
       for(StorageGroupProcessor processor: processorMap.values()){
-        processor.syncCloseFileNode();
+        processor.waitForAllCurrentTsFileProcessorsClosed();
       }
     }
   }
@@ -215,7 +213,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
+   * deleteDataInMemory data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
    */
   public void delete(String deviceId, String measurementId, long timestamp)
       throws StorageEngineException {
@@ -312,7 +310,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * delete all data files (both memory data and file on disk) in a storage group.
+   * deleteDataInMemory all data files (both memory data and file on disk) in a storage group.
    * It is used when there is no timeseries (which are all deleted) in this storage group)
    */
   public void deleteAllDataFilesInOneStorageGroup(String storageGroupName) {
@@ -324,26 +322,7 @@ public class StorageEngine implements IService {
   private void syncDeleteDataFiles(String storageGroupName) {
     logger.info("Force to delete the data in storage group processor {}", storageGroupName);
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
-    processor.syncCloseTsFileProcessorsAndStop(() -> {
-      try {
-        // delete storage group data file
-        for (String tsfilePath: DirectoryManager.getInstance().getAllTsFileFolders()) {
-          File storageGroupFolder = new File(tsfilePath, storageGroupName);
-          if (storageGroupFolder.exists()) {
-            FileUtils.deleteDirectory(storageGroupFolder);
-          }
-        }
-        // delete storage group info file
-        String fileNodePath = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-        FileUtils.deleteDirectory(new File(fileNodePath, storageGroupName));
-      } catch (IOException e) {
-        logger.error("Delete tsfiles failed", e);
-      }
-      synchronized (processorMap) {
-        processorMap.remove(storageGroupName);
-      }
-      return true;
-    });
+    processor.syncDeleteDataFiles();
   }
 
   /**
@@ -353,12 +332,12 @@ public class StorageEngine implements IService {
       CompressionType compressor, Map<String, String> props) throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(path.getDevice());
     storageGroupProcessor
-        .addTimeSeries(path.getMeasurement(), dataType, encoding, compressor, props);
+        .addMeasurement(path.getMeasurement(), dataType, encoding, compressor, props);
   }
 
 
   /**
-   * delete all storage groups' timeseries.
+   * deleteDataInMemory all storage groups' timeseries.
    */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
@@ -367,7 +346,7 @@ public class StorageEngine implements IService {
         this.deleteAllDataFilesInOneStorageGroup(storageGroup);
       }
     } catch (MetadataErrorException e) {
-      logger.error("delete storage groups failed.", e);
+      logger.error("deleteDataInMemory storage groups failed.", e);
       return false;
     }
     return true;
