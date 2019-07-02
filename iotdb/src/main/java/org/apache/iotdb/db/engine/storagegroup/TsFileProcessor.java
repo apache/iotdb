@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.memtable.NotifyFlushMemTable;
@@ -44,6 +45,8 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -93,10 +96,12 @@ public class TsFileProcessor {
 
   private WriteLogNode logNode;
 
+  private boolean sequence;
+
   TsFileProcessor(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,
       CloseTsFileCallBack closeUnsealedFileCallback,
-      Supplier flushUpdateLatestFlushTimeCallback)
+      Supplier flushUpdateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.fileSchema = fileSchema;
@@ -105,17 +110,18 @@ public class TsFileProcessor {
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.closeUnsealedFileCallback = closeUnsealedFileCallback;
     this.flushUpdateLatestFlushTimeCallback = flushUpdateLatestFlushTimeCallback;
+    this.sequence = sequence;
     logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
   }
 
   /**
-   * insert a TsRecord into the workMemtable. If the memory usage is beyond the memTableThreshold,
-   * put it into flushing list.
+   * insert data in an InsertPlan into the workingMemtable. If the memory usage is beyond the
+   * memTableThreshold, put the workingMemtable into the flushing list.
    *
    * @param insertPlan physical plan of insertion
    * @return succeed or fail
    */
-  public boolean insert(InsertPlan insertPlan, boolean sequence) {
+  public boolean insert(InsertPlan insertPlan) {
 
     if (workMemTable == null) {
       // TODO change the impl of getAvailableMemTable to non-blocking
@@ -158,6 +164,7 @@ public class TsFileProcessor {
         workMemTable
             .delete(deletion.getDevice(), deletion.getMeasurement(), deletion.getTimestamp());
       }
+      // flushing memTables are immutable, only record this deletion in these memTables for query
       for (IMemTable memTable : flushingMemTables) {
         memTable.delete(deletion);
       }
@@ -192,6 +199,7 @@ public class TsFileProcessor {
         flushingMemTables.wait();
       } catch (InterruptedException e) {
         logger.error("wait close interrupted", e);
+        Thread.currentThread().interrupt();
       }
     }
     logger.info("File {} is closed synchronously", tsFileResource.getFile().getAbsolutePath());
@@ -249,6 +257,7 @@ public class TsFileProcessor {
         tmpMemTable.wait();
       } catch (InterruptedException e) {
         logger.error("wait flush finished meets error", e);
+        Thread.currentThread().interrupt();
       }
     }
   }
@@ -303,9 +312,9 @@ public class TsFileProcessor {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
 
-    logger.info("storage group {} start to flush a memtable in a flush thread", storageGroupName);
+    logger.info("storage group {} starts to flush a memtable in a flush thread", storageGroupName);
 
-    // null memtable only appears when calling asyncClose()
+    // signal memtable only appears when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
       MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, fileSchema, writer,
           storageGroupName);
@@ -320,6 +329,7 @@ public class TsFileProcessor {
         } catch (IOException e1) {
           logger.error("Truncate corrupted data meets error", e1);
         }
+        Thread.currentThread().interrupt();
       }
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -419,9 +429,9 @@ public class TsFileProcessor {
   }
 
   /**
-   * get the chunk(s) in the memtable ( one from work memtable and the other ones in flushing status
-   * and then compact them into one TimeValuePairSorter). Then get the related ChunkMetadatas of
-   * data in disk.
+   * get the chunk(s) in the memtable (one from work memtable and the other ones in flushing
+   * memtables and then compact them into one TimeValuePairSorter). Then get the related
+   * ChunkMetadata of data in disk.
    *
    * @param deviceId device id
    * @param measurementId sensor id
@@ -429,7 +439,7 @@ public class TsFileProcessor {
    * @return corresponding chunk data and chunk metadata in memory
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> query(String deviceId,
-      String measurementId, TSDataType dataType, Map<String, String> props) {
+      String measurementId, TSDataType dataType, Map<String, String> props, QueryContext context) {
     flushQueryLock.readLock().lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -454,11 +464,13 @@ public class TsFileProcessor {
           Collections.emptyMap());
 
       ModificationFile modificationFile = tsFileResource.getModFile();
+      List<Modification> modifications = context.getPathModifications(modificationFile,
+          deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
 
       List<ChunkMetaData> chunkMetaDataList = writer
           .getVisibleMetadatas(deviceId, measurementId, dataType);
       QueryUtils.modifyChunkMetaData(chunkMetaDataList,
-          (List<Modification>) modificationFile.getModifications());
+          modifications);
 
       return new Pair<>(timeValuePairSorter, chunkMetaDataList);
     } finally {

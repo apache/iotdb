@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -81,7 +81,8 @@ public class StorageEngine implements IService {
     // create infoDir
     File dir = new File(infoDir);
     if (dir.mkdirs()) {
-      logger.info("Base system directory {} of all storage groups doesn't exist, create it",
+
+      logger.info("Information directory {} of all storage groups doesn't exist, create it",
           dir.getPath());
     }
 
@@ -120,7 +121,6 @@ public class StorageEngine implements IService {
   private StorageGroupProcessor getProcessor(String path) throws StorageEngineException {
     String storageGroupName = "";
     try {
-      // return the storage group name
       storageGroupName = MManager.getInstance().getStorageGroupNameByPath(path);
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupName);
@@ -155,7 +155,7 @@ public class StorageEngine implements IService {
 
 
   /**
-   * insert TsRecord into storage group.
+   * execute an InsertPlan on a storage group.
    *
    * @param insertPlan physical plan of insertion
    * @return true if and only if this insertion succeeds
@@ -215,7 +215,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * delete data.
+   * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
    */
   public void delete(String deviceId, String measurementId, long timestamp)
       throws StorageEngineException {
@@ -235,10 +235,11 @@ public class StorageEngine implements IService {
 
 
   /**
-   * begin query.
+   * begin a query on a given deviceId. Any TsFile contains such device should not be deleted at
+   * once after merge.
    *
    * @param deviceId queried deviceId
-   * @return a query token for the device.
+   * @return a token for the query.
    */
   public int beginQuery(String deviceId) throws StorageEngineException {
     // TODO implement it when developing the merge function
@@ -246,7 +247,8 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * end query.
+   * end query on a given deviceId. If some TsFile has been merged and this query is the
+   * last query using it, the TsFile can be deleted safely.
    */
   public void endQuery(String deviceId, int token) throws StorageEngineException {
     // TODO  implement it when developing the merge function
@@ -261,7 +263,7 @@ public class StorageEngine implements IService {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(deviceId, measurementId);
+    return storageGroupProcessor.query(deviceId, measurementId, context);
   }
 
   /**

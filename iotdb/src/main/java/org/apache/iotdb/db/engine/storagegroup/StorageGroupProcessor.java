@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +36,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -48,6 +50,7 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -67,23 +70,28 @@ public class StorageGroupProcessor {
 
   private FileSchema fileSchema;
 
-  // includes sealed and unsealed sequence tsfiles
+  // includes sealed and unsealed sequence TsFiles
   private List<TsFileResource> sequenceFileList = new ArrayList<>();
   private TsFileProcessor workSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
-  // includes sealed and unsealed unSequence tsfiles
+  // includes sealed and unsealed unSequence TsFiles
   private List<TsFileResource> unSequenceFileList = new ArrayList<>();
   private TsFileProcessor workUnSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
 
   /**
    * device -> global latest timestamp of each device
+   * latestTimeForEachDevice caches non-flushed changes upon timestamps of each device, and is used
+   * to update latestFlushedTimeForEachDevice when a flush is issued.
    */
   private Map<String, Long> latestTimeForEachDevice = new HashMap<>();
 
   /**
    * device -> largest timestamp of the latest memtable to be submitted to asyncFlush
+   * latestFlushedTimeForEachDevice determines whether a data point should be put into a sequential
+   * file or an unsequential file. Data of some device with timestamp less than or equals to the
+   * device's latestFlushedTime should go into an unsequential file.
    */
   private Map<String, Long> latestFlushedTimeForEachDevice = new HashMap<>();
 
@@ -99,12 +107,21 @@ public class StorageGroupProcessor {
    */
   private volatile boolean toBeClosed;
 
+  /**
+   * versionController assigns a version for each MemTable and deletion/update such that after
+   * they are persisted, the order of insertions, deletions and updates can be re-determined.
+   */
   private VersionController versionController;
 
+  /**
+   * mergeDeleteLock is to be used in merge. Concurrent deletion and merge may result in losing
+   * some deletion in the merged new file, so a lock is necessary.
+   */
   private ReentrantLock mergeDeleteLock = new ReentrantLock();
 
   /**
-   * This is the modification file of the result of the current merge.
+   * This is the modification file of the result of the current merge. Because the merged file
+   * may be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   private ModificationFile mergingModification;
 
@@ -115,9 +132,6 @@ public class StorageGroupProcessor {
     // construct the file schema
     this.fileSchema = constructFileSchema(storageGroupName);
 
-    /**
-     * version controller
-     */
     try {
       File storageGroupInfoDir = new File(baseDir, storageGroupName);
       if (storageGroupInfoDir.mkdirs()) {
@@ -136,6 +150,7 @@ public class StorageGroupProcessor {
 
   private void recover() throws ProcessorException {
     logger.info("recover StorageGroupProcessor {}", storageGroupName);
+    // collect TsFiles from sequential data directory
     List<File> tsFiles = new ArrayList<>();
     List<String> seqFileFolders = DirectoryManager.getInstance().getAllTsFileFolders();
     for (String baseDir : seqFileFolders) {
@@ -143,12 +158,12 @@ public class StorageGroupProcessor {
       if (!fileFolder.exists()) {
         continue;
       }
-      for (File tsfile : fileFolder.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX))) {
-        tsFiles.add(tsfile);
-      }
+      Collections
+          .addAll(tsFiles, fileFolder.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX)));
     }
     recoverSeqFiles(tsFiles);
 
+    // collect TsFiles from unsequential data directory
     tsFiles.clear();
     List<String> unseqFileFolder = DirectoryManager.getInstance().getAllOverflowFileFolders();
     for (String baseDir : unseqFileFolder) {
@@ -156,9 +171,8 @@ public class StorageGroupProcessor {
       if (!fileFolder.exists()) {
         continue;
       }
-      for (File tsfile : fileFolder.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX))) {
-        tsFiles.add(tsfile);
-      }
+      Collections
+          .addAll(tsFiles, fileFolder.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX)));
     }
     recoverUnseqFiles(tsFiles);
 
@@ -168,10 +182,10 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverSeqFiles(List<File> tsfiles) throws ProcessorException {
-    tsfiles.sort(new CompareFileName());
-    for (File tsfile : tsfiles) {
-      TsFileResource tsFileResource = new TsFileResource(tsfile);
+  private void recoverSeqFiles(List<File> tsFiles) throws ProcessorException {
+    tsFiles.sort(new TsFileNameComparator());
+    for (File tsFile : tsFiles) {
+      TsFileResource tsFileResource = new TsFileResource(tsFile);
       sequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
           , fileSchema, versionController, tsFileResource, false);
@@ -179,10 +193,10 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverUnseqFiles(List<File> tsfiles) throws ProcessorException {
-    tsfiles.sort(new CompareFileName());
-    for (File tsfile : tsfiles) {
-      TsFileResource tsFileResource = new TsFileResource(tsfile);
+  private void recoverUnseqFiles(List<File> tsFiles) throws ProcessorException {
+    tsFiles.sort(new TsFileNameComparator());
+    for (File tsFile : tsFiles) {
+      TsFileResource tsFileResource = new TsFileResource(tsFile);
       unSequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           fileSchema,
@@ -191,7 +205,9 @@ public class StorageGroupProcessor {
     }
   }
 
-  class CompareFileName implements Comparator<File> {
+  // TsFileNameComparator compares TsFiles by the version number in its name
+  // ({systemTime}-{versionNum}.tsfile)
+  class TsFileNameComparator implements Comparator<File> {
 
     @Override
     public int compare(File o1, File o2) {
@@ -244,11 +260,8 @@ public class StorageGroupProcessor {
       latestFlushedTimeForEachDevice.putIfAbsent(insertPlan.getDeviceId(), Long.MIN_VALUE);
 
       // insert to sequence or unSequence file
-      if (insertPlan.getTime() > latestFlushedTimeForEachDevice.get(insertPlan.getDeviceId())) {
-        return insertTsFileProcessor(insertPlan, true);
-      } else {
-        return insertTsFileProcessor(insertPlan, false);
-      }
+      return insertTsFileProcessor(insertPlan,
+          insertPlan.getTime() > latestFlushedTimeForEachDevice.get(insertPlan.getDeviceId()));
     } catch (StorageGroupProcessorException | IOException e) {
       logger.error("insert tsRecord to unsealed data file failed, because {}", e.getMessage(), e);
       return false;
@@ -278,12 +291,12 @@ public class StorageGroupProcessor {
         tsFileProcessor = workUnSequenceTsFileProcessor;
       }
     } catch (DiskSpaceInsufficientException e) {
-      //TODO handle disk full exception
-      logger.error("dis space is insufficient", e);
+      logger.error("disk space is insufficient", e);
+      StorageEngine.getInstance().setReadOnly(true);
     }
 
     // insert TsFileProcessor
-    result = tsFileProcessor.insert(insertPlan, sequence);
+    result = tsFileProcessor.insert(insertPlan);
 
     // try to update the latest time of the device of this tsRecord
     if (result && latestTimeForEachDevice.get(insertPlan.getDeviceId()) < insertPlan.getTime()) {
@@ -309,14 +322,11 @@ public class StorageGroupProcessor {
   private TsFileProcessor createTsFileProcessor(boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
     String baseDir;
-    long start = System.currentTimeMillis();
     if (sequence) {
       baseDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
     } else {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
-    start = System.currentTimeMillis() - start;
-    logger.info("getNextFolder in Directory manager cost: {}", start);
     new File(baseDir, storageGroupName).mkdirs();
 
     String filePath = Paths.get(baseDir, storageGroupName,
@@ -326,11 +336,11 @@ public class StorageGroupProcessor {
     if (sequence) {
       return new TsFileProcessor(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessor,
-          this::updateLatestFlushTimeCallback);
+          this::updateLatestFlushTimeCallback, sequence);
     } else {
       return new TsFileProcessor(storageGroupName, new File(filePath),
           fileSchema, versionController, this::closeUnsealedTsFileProcessor,
-          () -> true);
+          () -> true, sequence);
     }
   }
 
@@ -340,7 +350,7 @@ public class StorageGroupProcessor {
   private void asyncCloseTsFileProcessor(TsFileProcessor tsFileProcessor,
       boolean sequence) {
 
-    // check file size and may close the BufferWrite
+    // check file size and may close the TsFile
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
       workSequenceTsFileProcessor = null;
@@ -360,13 +370,13 @@ public class StorageGroupProcessor {
 
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
-  public QueryDataSource query(String deviceId, String measurementId) {
+  public QueryDataSource query(String deviceId, String measurementId, QueryContext context) {
     insertLock.readLock().lock();
     try {
       List<TsFileResource> seqResources = getFileReSourceListForQuery(sequenceFileList,
-          deviceId, measurementId);
+          deviceId, measurementId, context);
       List<TsFileResource> unseqResources = getFileReSourceListForQuery(unSequenceFileList,
-          deviceId, measurementId);
+          deviceId, measurementId, context);
       return new QueryDataSource(new Path(deviceId, measurementId), seqResources, unseqResources);
     } finally {
       insertLock.readLock().unlock();
@@ -387,13 +397,14 @@ public class StorageGroupProcessor {
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
   private List<TsFileResource> getFileReSourceListForQuery(List<TsFileResource> tsFileResources,
-      String deviceId, String measurementId) {
+      String deviceId, String measurementId, QueryContext context) {
 
     MeasurementSchema mSchema = fileSchema.getMeasurementSchema(measurementId);
     TSDataType dataType = mSchema.getType();
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileResource tsFileResource : tsFileResources) {
+      // TODO: try filtering files if the query contains time filter
       if (!tsFileResource.containsDevice(deviceId)) {
         continue;
       }
@@ -403,10 +414,11 @@ public class StorageGroupProcessor {
           if (tsFileResource.isClosed()) {
             tsfileResourcesForQuery.add(tsFileResource);
           } else {
+            // left: in-memory data, right: meta of disk data
             Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair;
             pair = tsFileResource
                   .getUnsealedFileProcessor()
-                  .query(deviceId, measurementId, dataType, mSchema.getProps());
+                  .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
             tsfileResourcesForQuery
                 .add(new TsFileResource(tsFileResource.getFile(),
                     tsFileResource.getStartTimeMap(),
@@ -438,7 +450,7 @@ public class StorageGroupProcessor {
     try {
       Long lastUpdateTime = latestTimeForEachDevice.get(deviceId);
       // no tsfile data, the delete operation is invalid
-      if (lastUpdateTime == null || lastUpdateTime == Long.MIN_VALUE) {
+      if (lastUpdateTime == null) {
         logger.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
         return;
       }
@@ -462,8 +474,8 @@ public class StorageGroupProcessor {
         updatedModFiles.add(mergingModification);
       }
 
-      deleteFiles(sequenceFileList, deletion, updatedModFiles);
-      deleteFiles(unSequenceFileList, deletion, updatedModFiles);
+      deleteDataInFiles(sequenceFileList, deletion, updatedModFiles);
+      deleteDataInFiles(unSequenceFileList, deletion, updatedModFiles);
 
     } catch (Exception e) {
       // roll back
@@ -477,7 +489,7 @@ public class StorageGroupProcessor {
   }
 
 
-  private void deleteFiles(List<TsFileResource> tsFileResourceList, Deletion deletion,
+  private void deleteDataInFiles(List<TsFileResource> tsFileResourceList, Deletion deletion,
       List<ModificationFile> updatedModFiles)
       throws IOException {
     String deviceId = deletion.getDevice();
@@ -542,17 +554,16 @@ public class StorageGroupProcessor {
     synchronized (closeFileNodeCondition) {
       try {
         asyncForceClose();
-        while (true) {
-          if (closingSequenceTsFileProcessor.isEmpty() && closingUnSequenceTsFileProcessor
-              .isEmpty()) {
-            break;
-          }
+        while (!closingSequenceTsFileProcessor.isEmpty() || !closingUnSequenceTsFileProcessor
+            .isEmpty()) {
           closeFileNodeCondition.wait();
         }
       } catch (InterruptedException e) {
         logger
-            .error("CloseFileNodeCondition occurs error while waiting for closing the file node {}",
+            .error("CloseFileNodeCondition occurs an error while waiting for closing the storage "
+                    + "group {}",
                 storageGroupName, e);
+        Thread.currentThread().interrupt();
       }
     }
   }
@@ -578,6 +589,7 @@ public class StorageGroupProcessor {
         logger
             .error("CloseFileNodeCondition occurs error while waiting for closing the file node {}",
                 storageGroupName, e);
+        Thread.currentThread().interrupt();
       }
     }
   }
@@ -608,7 +620,7 @@ public class StorageGroupProcessor {
     } else {
       closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
     }
-    logger.info("signal closing file node condition");
+    logger.info("signal closing storage group condition in {}", storageGroupName);
     synchronized (closeFileNodeCondition) {
       closeFileNodeCondition.notify();
     }
@@ -617,18 +629,6 @@ public class StorageGroupProcessor {
 
   public TsFileProcessor getWorkSequenceTsFileProcessor() {
     return workSequenceTsFileProcessor;
-  }
-
-  public TsFileProcessor getWorkUnSequenceTsFileProcessor() {
-    return workUnSequenceTsFileProcessor;
-  }
-
-  public String getStorageGroupName() {
-    return storageGroupName;
-  }
-
-  public int getClosingProcessorSize() {
-    return unSequenceFileList.size() + sequenceFileList.size();
   }
 
   @FunctionalInterface
