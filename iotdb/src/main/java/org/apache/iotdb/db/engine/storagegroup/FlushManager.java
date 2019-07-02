@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 import org.apache.iotdb.db.engine.pool.FlushPoolManager;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

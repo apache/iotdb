@@ -32,10 +32,8 @@ public class MemTablePool {
   /**
    * >= number of storage group * 2
    * TODO check this parameter to ensure that capaity * MaxMemTable Size < JVM memory / 2
-   *
-   * do not set capacity
    */
-  private static final int capacity = 2209000;
+  private static final int capacity = IoTDBDescriptor.getInstance().getConfig().getMemtableNumber();
 
   private int size = 0;
 
