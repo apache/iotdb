@@ -29,11 +29,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class is used to cache <code>RowGroupBlockMetaDataCache</code> of tsfile in IoTDB.
+ * This class is used to cache <code>DeviceMetaDataCache</code> of tsfile in IoTDB.
  */
-public class RowGroupBlockMetaDataCache {
+public class DeviceMetaDataCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(RowGroupBlockMetaDataCache.class);
+  private static final Logger logger = LoggerFactory.getLogger(DeviceMetaDataCache.class);
 
   private static final int CACHE_SIZE = 100;
   /**
@@ -44,11 +44,11 @@ public class RowGroupBlockMetaDataCache {
   private AtomicLong cacheHintNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
-  private RowGroupBlockMetaDataCache(int cacheSize) {
+  private DeviceMetaDataCache(int cacheSize) {
     lruCache = new LruLinkedHashMap(cacheSize, true);
   }
 
-  public static RowGroupBlockMetaDataCache getInstance() {
+  public static DeviceMetaDataCache getInstance() {
     return RowGroupBlockMetaDataCacheSingleton.INSTANCE;
   }
 
@@ -108,8 +108,8 @@ public class RowGroupBlockMetaDataCache {
    */
   private static class RowGroupBlockMetaDataCacheSingleton {
 
-    private static final RowGroupBlockMetaDataCache INSTANCE = new
-        RowGroupBlockMetaDataCache(CACHE_SIZE);
+    private static final DeviceMetaDataCache INSTANCE = new
+        DeviceMetaDataCache(CACHE_SIZE);
   }
 
   /**
@@ -154,7 +154,7 @@ public class RowGroupBlockMetaDataCache {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    RowGroupBlockMetaDataCache that = (RowGroupBlockMetaDataCache) o;
+    DeviceMetaDataCache that = (DeviceMetaDataCache) o;
     return Objects.equals(lruCache, that.lruCache) &&
             Objects.equals(cacheHintNum, that.cacheHintNum) &&
             Objects.equals(cacheRequestNum, that.cacheRequestNum);
