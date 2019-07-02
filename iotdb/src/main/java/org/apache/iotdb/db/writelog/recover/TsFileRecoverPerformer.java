@@ -107,18 +107,16 @@ public class TsFileRecoverPerformer {
 
     // redo logs
     logReplayer.replayLogs();
-    if (recoverMemTable.isEmpty()) {
-      return;
-    }
-
-    // flush logs
-    MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, fileSchema, restorableTsFileIOWriter,
-        logNodePrefix);
-
-    try {
-      tableFlushTask.flushMemTable();
-    } catch (ExecutionException | InterruptedException e) {
-      throw new ProcessorException(e);
+    if (!recoverMemTable.isEmpty()) {
+      // flush logs
+      MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, fileSchema, restorableTsFileIOWriter,
+          logNodePrefix);
+      try {
+        tableFlushTask.flushMemTable();
+      } catch (ExecutionException | InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new ProcessorException(e);
+      }
     }
 
     // close file
