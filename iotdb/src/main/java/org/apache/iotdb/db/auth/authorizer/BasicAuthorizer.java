@@ -70,20 +70,24 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public boolean createUser(String username, String password) throws AuthException {
-    return userManager.createUser(username, password);
+  public void createUser(String username, String password) throws AuthException {
+    if (!userManager.createUser(username, password)) {
+      throw new AuthException("User " + username + " already exists");
+    }
   }
 
   @Override
-  public boolean deleteUser(String username) throws AuthException {
+  public void deleteUser(String username) throws AuthException {
     if (IoTDBConstant.ADMIN_NAME.equals(username)) {
       throw new AuthException("Default administrator cannot be deleted");
     }
-    return userManager.deleteUser(username);
+    if (!userManager.deleteUser(username)) {
+      throw new AuthException("User " + username + " does not exist");
+    }
   }
 
   @Override
-  public boolean grantPrivilegeToUser(String username, String path, int privilegeId)
+  public void grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
     String newPath = path;
     if (IoTDBConstant.ADMIN_NAME.equals(username)) {
@@ -92,11 +96,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
       newPath = IoTDBConstant.PATH_ROOT;
     }
-    return userManager.grantPrivilegeToUser(username, newPath, privilegeId);
+    if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
+      throw new AuthException(
+          "User " + username + " already has " + PrivilegeType.values()[privilegeId]
+              + " on " + path);
+    }
   }
 
   @Override
-  public boolean revokePrivilegeFromUser(String username, String path, int privilegeId)
+  public void revokePrivilegeFromUser(String username, String path, int privilegeId)
       throws AuthException {
     if (IoTDBConstant.ADMIN_NAME.equals(username)) {
       throw new AuthException("Invalid operation, administrator must have all privileges");
@@ -105,19 +113,24 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
       p = IoTDBConstant.PATH_ROOT;
     }
-    return userManager.revokePrivilegeFromUser(username, p, privilegeId);
+    if (!userManager.revokePrivilegeFromUser(username, p, privilegeId)) {
+      throw new AuthException("User " + username + " does not have " +
+          PrivilegeType.values()[privilegeId] + " on " + path);
+    }
   }
 
   @Override
-  public boolean createRole(String roleName) throws AuthException {
-    return roleManager.createRole(roleName);
+  public void createRole(String roleName) throws AuthException {
+    if (!roleManager.createRole(roleName)) {
+      throw new AuthException("Role " + roleName + " already exists");
+    }
   }
 
   @Override
-  public boolean deleteRole(String roleName) throws AuthException {
+  public void deleteRole(String roleName) throws AuthException {
     boolean success = roleManager.deleteRole(roleName);
     if (!success) {
-      return false;
+      throw new AuthException("Role " + roleName + " does not exist");
     } else {
       // proceed to revoke the role in all users
       List<String> users = userManager.listAllUsers();
@@ -131,31 +144,36 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         }
       }
     }
-    return true;
   }
 
   @Override
-  public boolean grantPrivilegeToRole(String roleName, String path, int privilegeId)
+  public void grantPrivilegeToRole(String roleName, String path, int privilegeId)
       throws AuthException {
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
       p = IoTDBConstant.PATH_ROOT;
     }
-    return roleManager.grantPrivilegeToRole(roleName, p, privilegeId);
+    if(!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
+      throw new AuthException("Role " + roleName + " already has " + PrivilegeType.values()[privilegeId]
+          + " on " + path);
+    }
   }
 
   @Override
-  public boolean revokePrivilegeFromRole(String roleName, String path, int privilegeId)
+  public void revokePrivilegeFromRole(String roleName, String path, int privilegeId)
       throws AuthException {
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
       p = IoTDBConstant.PATH_ROOT;
     }
-    return roleManager.revokePrivilegeFromRole(roleName, p, privilegeId);
+    if (!roleManager.revokePrivilegeFromRole(roleName, p, privilegeId)) {
+      throw new AuthException("Role " + roleName + " does not have " +
+          PrivilegeType.values()[privilegeId] + " on " + path);
+    }
   }
 
   @Override
-  public boolean grantRoleToUser(String roleName, String username) throws AuthException {
+  public void grantRoleToUser(String roleName, String username) throws AuthException {
     Role role = roleManager.getRole(roleName);
     if (role == null) {
       throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
@@ -166,21 +184,21 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       role = roleManager.getRole(roleName);
       if (role == null) {
         throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
-      } else {
-        return true;
       }
     } else {
-      return false;
+      throw new AuthException("User " + username + " already has role " + roleName);
     }
   }
 
   @Override
-  public boolean revokeRoleFromUser(String roleName, String username) throws AuthException {
+  public void revokeRoleFromUser(String roleName, String username) throws AuthException {
     Role role = roleManager.getRole(roleName);
     if (role == null) {
       throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
-    return userManager.revokeRoleFromUser(roleName, username);
+    if (!userManager.revokeRoleFromUser(roleName, username)) {
+      throw new AuthException("User " + username + " does not have role " + roleName);
+    }
   }
 
   @Override
@@ -205,8 +223,10 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public boolean updateUserPassword(String username, String newPassword) throws AuthException {
-    return userManager.updateUserPassword(username, newPassword);
+  public void updateUserPassword(String username, String newPassword) throws AuthException {
+    if (!userManager.updateUserPassword(username, newPassword)) {
+      throw new AuthException("password " + newPassword + " is illegal");
+    }
   }
 
   @Override

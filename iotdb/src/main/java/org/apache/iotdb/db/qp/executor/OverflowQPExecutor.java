@@ -31,14 +31,13 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -68,12 +67,8 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class OverflowQPExecutor extends QueryProcessExecutor {
-
-  private static final Logger LOG = LoggerFactory.getLogger(OverflowQPExecutor.class);
 
   private StorageEngine storageEngine;
   private MManager mManager = MManager.getInstance();
@@ -265,7 +260,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       return storageEngine.insert(insertPlan);
 
     } catch (PathErrorException | StorageEngineException e) {
-      throw new ProcessorException(e.getMessage());
+      throw new ProcessorException(e);
     }
   }
 
@@ -291,82 +286,53 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     try {
       switch (authorType) {
         case UPDATE_USER:
-          if (!authorizer.updateUserPassword(userName, newPassword)) {
-            throw new ProcessorException("password " + newPassword + " is illegal");
-          }
-          return true;
+          authorizer.updateUserPassword(userName, newPassword);
+          break;
         case CREATE_USER:
-          if (!authorizer.createUser(userName, password)) {
-            throw new ProcessorException("User " + userName + " already exists");
-          }
-          return true;
+          authorizer.createUser(userName, password);
+          break;
         case CREATE_ROLE:
-          if (!authorizer.createRole(roleName)) {
-            throw new ProcessorException("Role " + roleName + " already exists");
-          }
-          return true;
+          authorizer.createRole(roleName);
+          break;
         case DROP_USER:
-          if (!authorizer.deleteUser(userName)) {
-            throw new ProcessorException("User " + userName + " does not exist");
-          }
-          return true;
+          authorizer.deleteUser(userName);
+          break;
         case DROP_ROLE:
-          if (!authorizer.deleteRole(roleName)) {
-            throw new ProcessorException("Role " + roleName + " does not exist");
-          }
-          return true;
+          authorizer.deleteRole(roleName);
+          break;
         case GRANT_ROLE:
           for (int i : permissions) {
-            if (!authorizer.grantPrivilegeToRole(roleName, nodeName.getFullPath(), i)) {
-              throw new ProcessorException(
-                  "Role " + roleName + " already has " + PrivilegeType.values()[i]
-                      + " on " + nodeName.getFullPath());
-            }
+            authorizer.grantPrivilegeToRole(roleName, nodeName.getFullPath(), i);
           }
-          return true;
+         break;
         case GRANT_USER:
           for (int i : permissions) {
-            if (!authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i)) {
-              throw new ProcessorException(
-                  "User " + userName + " already has " + PrivilegeType.values()[i]
-                      + " on " + nodeName.getFullPath());
-            }
+            authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i);
           }
-          return true;
+          break;
         case GRANT_ROLE_TO_USER:
-          if (!authorizer.grantRoleToUser(roleName, userName)) {
-            throw new ProcessorException("User " + userName + " already has role " + roleName);
-          }
-          return true;
+          authorizer.grantRoleToUser(roleName, userName);
+         break;
         case REVOKE_USER:
           for (int i : permissions) {
-            if (!authorizer.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i)) {
-              throw new ProcessorException(
-                  "User " + userName + " does not have " + PrivilegeType.values()[i] + " on "
-                      + nodeName);
-            }
+            authorizer.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i);
           }
-          return true;
+          break;
         case REVOKE_ROLE:
           for (int i : permissions) {
-            if (!authorizer.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i)) {
-              throw new ProcessorException(
-                  "Role " + roleName + " does not have " + PrivilegeType.values()[i] + " on "
-                      + nodeName);
-            }
+            authorizer.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i);
           }
-          return true;
+          break;
         case REVOKE_ROLE_FROM_USER:
-          if (!authorizer.revokeRoleFromUser(roleName, userName)) {
-            throw new ProcessorException("User " + userName + " does not have role " + roleName);
-          }
-          return true;
+          authorizer.revokeRoleFromUser(roleName, userName);
+          break;
         default:
           throw new ProcessorException("Unsupported operation " + authorType);
       }
     } catch (AuthException e) {
-      throw new ProcessorException(e.getMessage());
+      throw new ProcessorException(e);
     }
+    return true;
   }
 
   private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
@@ -424,7 +390,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     PropertyOperator.PropertyType propertyType = propertyPlan.getPropertyType();
     Path propertyPath = propertyPlan.getPropertyPath();
     Path metadataPath = propertyPlan.getMetadataPath();
-    MManager mManager = MManager.getInstance();
     try {
       switch (propertyType) {
         case ADD_TREE:
@@ -446,7 +411,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           throw new ProcessorException("unknown namespace type:" + propertyType);
       }
     } catch (PathErrorException | IOException | MetadataErrorException e) {
-      throw new ProcessorException("meet error in " + propertyType + " . " + e.getMessage());
+      throw new ProcessorException("meet error in " + propertyType + " . ", e);
     }
     return true;
   }
@@ -601,7 +566,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           throw new ProcessorException("Unsupported operation " + authorType);
       }
     } catch (AuthException e) {
-      throw new ProcessorException(e.getMessage());
+      throw new ProcessorException(e);
     }
     return dataSet;
   }

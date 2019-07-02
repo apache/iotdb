@@ -48,22 +48,20 @@ public interface IAuthorizer {
    *            is not null or empty
    * @param password
    *            is not null or empty
-   * @return True if the user is successfully created, false when the user already exists.
    * @throws AuthException
-   *             if the given username or password is illegal.
+   *             if the given username or password is illegal or the user already exists.
    */
-  boolean createUser(String username, String password) throws AuthException;
+  void createUser(String username, String password) throws AuthException;
 
   /**
    * Delete a user.
    *
    * @param username
    *            the username of the user.
-   * @return True if the user is successfully deleted, false if the user does not exists.
    * @throws AuthException
-   *             When attempting to delete the default administrator
+   *             When attempting to delete the default administrator or the user does not exists.
    */
-  boolean deleteUser(String username) throws AuthException;
+  void deleteUser(String username) throws AuthException;
 
   /**
    * Grant a privilege on a seriesPath to a user.
@@ -75,11 +73,10 @@ public interface IAuthorizer {
    *            seriesPath-free privilege, this should be "root".
    * @param privilegeId
    *            An integer that represents a privilege.
-   * @return True if the permission is successfully added, false if the permission already exists.
    * @throws AuthException
-   *             If the user does not exist or the privilege or the seriesPath is illegal.
+   *             If the user does not exist or the privilege or the seriesPath is illegal or the permission already exists.
    */
-  boolean grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException;
+  void grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from a user.
@@ -91,12 +88,11 @@ public interface IAuthorizer {
    *            seriesPath-free privilege, this should be "root".
    * @param privilegeId
    *            An integer that represents a privilege.
-   * @return True if the permission is successfully revoked,
-   *          false if the permission does not exists.
    * @throws AuthException
-   *             If the user does not exist or the privilege or the seriesPath is illegal.
+   *             If the user does not exist or the privilege or the seriesPath is illegal or if
+   *             the permission does not exist.
    */
-  boolean revokePrivilegeFromUser(String username, String path,
+  void revokePrivilegeFromUser(String username, String path,
       int privilegeId) throws AuthException;
 
   /**
@@ -104,20 +100,18 @@ public interface IAuthorizer {
    *
    * @param roleName
    *            the name of the role to be added.
-   * @return True if the role is successfully added, false if the role already exists
-   * @throws AuthException if exception raised when adding the role.
+   * @throws AuthException if exception raised when adding the role or the role already exists.
    */
-  boolean createRole(String roleName) throws AuthException;
+  void createRole(String roleName) throws AuthException;
 
   /**
    * Delete a role.
    *
    * @param roleName
    *            the name of the role tobe deleted.
-   * @return True if the role is successfully deleted, false if the role does not exists.
-   * @throws AuthException if exception raised when deleting the role.
+   * @throws AuthException if exception raised when deleting the role or the role does not exists.
    */
-  boolean deleteRole(String roleName) throws AuthException;
+  void deleteRole(String roleName) throws AuthException;
 
   /**
    * Add a privilege on a seriesPath to a role.
@@ -129,11 +123,11 @@ public interface IAuthorizer {
    *            a seriesPath-free privilege, this should be "root".
    * @param privilegeId
    *            An integer that represents a privilege.
-   * @return True if the privilege is successfully granted, false if the privilege already exists.
    * @throws AuthException
-   *             If the role does not exist or the privilege or the seriesPath is illegal.
+   *             If the role does not exist or the privilege or the seriesPath is illegal or
+   *             the privilege already exists.
    */
-  boolean grantPrivilegeToRole(String roleName, String path, int privilegeId) throws AuthException;
+  void grantPrivilegeToRole(String roleName, String path, int privilegeId) throws AuthException;
 
   /**
    * Remove a privilege on a seriesPath from a role.
@@ -147,9 +141,10 @@ public interface IAuthorizer {
    *            An integer that represents a privilege.
    * @return True if the privilege is successfully revoked, false if the privilege does not exists.
    * @throws AuthException
-   *             If the role does not exist or the privilege or the seriesPath is illegal.
+   *             If the role does not exist or the privilege or the seriesPath is illegal or the
+   *             privilege does not exists.
    */
-  boolean revokePrivilegeFromRole(String roleName, String path,
+  void revokePrivilegeFromRole(String roleName, String path,
       int privilegeId) throws AuthException;
 
   /**
@@ -159,11 +154,10 @@ public interface IAuthorizer {
    *            The name of the role to be added.
    * @param username
    *            The name of the user to which the role is added.
-   * @return True if the role is successfully added, false if the role already exists.
    * @throws AuthException
-   *             If either the role or the user does not exist.
+   *             If either the role or the user does not exist or the role already exists.
    */
-  boolean grantRoleToUser(String roleName, String username) throws AuthException;
+  void grantRoleToUser(String roleName, String username) throws AuthException;
 
   /**
    * Revoke a role from a user.
@@ -174,9 +168,9 @@ public interface IAuthorizer {
    *            The name of the user from which the role is removed.
    * @return True if the role is successfully removed, false if the role already exists.
    * @throws AuthException
-   *             If either the role or the user does not exist.
+   *             If either the role or the user does not exist or the role already exists.
    */
-  boolean revokeRoleFromUser(String roleName, String username) throws AuthException;
+  void revokeRoleFromUser(String roleName, String username) throws AuthException;
 
   /**
    * Get the all the privileges of a user on a seriesPath.
@@ -198,11 +192,10 @@ public interface IAuthorizer {
    *            The user whose password is to be modified.
    * @param newPassword
    *            The new password.
-   * @return True if the password is successfully modified, false if the new password is illegal.
    * @throws AuthException
-   *             If the user does not exists.
+   *             If the user does not exists or  the new password is illegal.
    */
-  boolean updateUserPassword(String username, String newPassword) throws AuthException;
+  void updateUserPassword(String username, String newPassword) throws AuthException;
 
   /**
    * Check if the user have the privilege on the seriesPath.
