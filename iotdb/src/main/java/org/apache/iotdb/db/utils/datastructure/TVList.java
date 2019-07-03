@@ -38,7 +38,7 @@ public abstract class TVList {
   protected int size;
 
   protected long[][] sortedTimestamps;
-  protected boolean sorted = false;
+  protected boolean sorted = true;
 
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
@@ -63,13 +63,9 @@ public abstract class TVList {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    if (!sorted) {
-      int arrayIndex = index / ARRAY_SIZE;
-      int elementIndex = index % ARRAY_SIZE;
-      return timestamps.get(arrayIndex)[elementIndex];
-    } else {
-      return sortedTimestamps[index/ARRAY_SIZE][index%ARRAY_SIZE];
-    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    return timestamps.get(arrayIndex)[elementIndex];
   }
 
   public void putLong(long time, long value) {
@@ -138,16 +134,37 @@ public abstract class TVList {
 
   public abstract TVList clone();
 
+  protected abstract void releaseLastValueArray();
+
+  protected void releaseLastTimeArray() {
+    PrimitiveArrayPool.getInstance().release(timestamps.remove(timestamps.size() - 1));
+  }
+
+  public void delete(long upperBound) {
+    int newSize = 0;
+    minTime = Long.MAX_VALUE;
+    for (int i = 0; i < size; i++) {
+      long time = getTime(i);
+      if (time > upperBound) {
+        set(i, newSize++);
+        minTime = time < minTime ? time : minTime;
+      }
+    }
+    size = newSize;
+    // release primitive arrays that are empty
+    int newArrayNum = newSize / ARRAY_SIZE;
+    if (newSize % ARRAY_SIZE != 0) {
+      newArrayNum ++;
+    }
+    for (int releaseIdx = newArrayNum; releaseIdx < timestamps.size(); releaseIdx++) {
+      releaseLastTimeArray();
+      releaseLastValueArray();
+    }
+  }
+
   protected void cloneAs(TVList cloneList) {
-    if (!sorted) {
-      for (long[] timestampArray : timestamps) {
-        cloneList.timestamps.add(cloneTime(timestampArray));
-      }
-    } else {
-      cloneList.sortedTimestamps = new long[sortedTimestamps.length][ARRAY_SIZE];
-      for (int i = 0; i < sortedTimestamps.length; i++) {
-        System.arraycopy(sortedTimestamps[i], 0, cloneList.sortedTimestamps[i], 0, ARRAY_SIZE);
-      }
+    for (long[] timestampArray : timestamps) {
+      cloneList.timestamps.add(cloneTime(timestampArray));
     }
     cloneList.size = size;
     cloneList.sorted = sorted;
@@ -157,7 +174,7 @@ public abstract class TVList {
   public void clear() {
     size = 0;
     timeOffset = Long.MIN_VALUE;
-    sorted = false;
+    sorted = true;
     minTime = Long.MIN_VALUE;
     clearTime();
     clearSortedTime();
