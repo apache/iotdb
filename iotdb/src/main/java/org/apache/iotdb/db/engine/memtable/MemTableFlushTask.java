@@ -67,7 +67,7 @@ public class MemTableFlushTask {
   /**
    * the function for flushing memtable.
    */
-  public void flushMemTable() throws ExecutionException, InterruptedException {
+  public void syncFlushMemTable() throws ExecutionException, InterruptedException {
     long start = System.currentTimeMillis();
     long sortTime = 0;
     for (String deviceId : memTable.getMemTableMap().keySet()) {
@@ -89,7 +89,9 @@ public class MemTableFlushTask {
 
     ioTaskFuture.get();
 
-    logger.info("Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms", storageGroup, memTable, System.currentTimeMillis() - start);
+    logger.info(
+        "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
+        storageGroup, memTable, System.currentTimeMillis() - start);
   }
 
 
@@ -99,9 +101,8 @@ public class MemTableFlushTask {
       for (int i = 0; i < tvPairs.size(); i++) {
         long time = tvPairs.getTime(i);
 
-        // skip deleted and duplicated data
-        if (time < tvPairs.getTimeOffset() ||
-            (i+1 < tvPairs.size() && (time == tvPairs.getTime(i+1)))) {
+        // skip duplicated data
+        if ((i+1 < tvPairs.size() && (time == tvPairs.getTime(i+1)))) {
           continue;
         }
 
@@ -125,7 +126,7 @@ public class MemTableFlushTask {
             seriesWriterImpl.write(time, tvPairs.getBinary(i));
             break;
           default:
-            logger.error("Storage group {}, don't support data type: {}", storageGroup,
+            logger.error("Storage group {} does not support data type: {}", storageGroup,
                 dataType);
             break;
         }
@@ -227,7 +228,7 @@ public class MemTableFlushTask {
   static class EndChunkGroupIoTask {
     private long version;
 
-    public EndChunkGroupIoTask(long version) {
+    EndChunkGroupIoTask(long version) {
       this.version = version;
     }
   }
@@ -235,7 +236,7 @@ public class MemTableFlushTask {
   static class StartFlushGroupIOTask {
     private String deviceId;
 
-    public StartFlushGroupIOTask(String deviceId) {
+    StartFlushGroupIOTask(String deviceId) {
       this.deviceId = deviceId;
     }
   }

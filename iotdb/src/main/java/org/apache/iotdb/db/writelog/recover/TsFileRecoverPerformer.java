@@ -118,7 +118,7 @@ public class TsFileRecoverPerformer {
           restorableTsFileIOWriter,
           logNodePrefix);
       try {
-        tableFlushTask.flushMemTable();
+        tableFlushTask.syncFlushMemTable();
         // close file
         restorableTsFileIOWriter.endFile(fileSchema);
         tsFileResource.serialize();

@@ -206,4 +206,9 @@ public class WritableMemChunk implements IWritableMemChunk {
   public long getMinTime() {
     return list.getMinTime();
   }
+
+  @Override
+  public void delete(long upperBound) {
+    list.delete(upperBound);
+  }
 }

@@ -62,4 +62,6 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
   default long getMinTime() {
     return Long.MIN_VALUE;
   }
+
+  void delete(long upperBound);
 }
