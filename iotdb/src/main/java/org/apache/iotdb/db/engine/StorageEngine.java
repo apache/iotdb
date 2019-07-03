@@ -77,8 +77,7 @@ public class StorageEngine implements IService {
     // create systemDir
     File dir = new File(systemDir);
     if (dir.mkdirs()) {
-
-      logger.info("Information directory {} of all storage groups doesn't exist, create it",
+      logger.info("System directory {} doesn't exist, create it",
           dir.getPath());
     }
 
