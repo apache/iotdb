@@ -28,8 +28,6 @@ public class IoTDBConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   public static final String CONFIG_NAME = "iotdb-engine.properties";
-  static final String DEFAULT_SEQ_DATA_DIR = "sequence";
-  static final String DEFAULT_UNSEQ_DATA_DIR = "unsequence";
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";

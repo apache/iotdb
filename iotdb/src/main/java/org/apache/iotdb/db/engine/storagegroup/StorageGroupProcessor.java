@@ -215,7 +215,6 @@ public class StorageGroupProcessor {
     for (File tsFile : tsFiles) {
       TsFileResource tsFileResource = new TsFileResource(tsFile);
       sequenceFileList.add(tsFileResource);
-      logger.info("recovered a file: {}", tsFileResource.getFile().getAbsolutePath());
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
           , fileSchema, versionController, tsFileResource, false);
       recoverPerformer.recover();
@@ -227,7 +226,6 @@ public class StorageGroupProcessor {
     for (File tsFile : tsFiles) {
       TsFileResource tsFileResource = new TsFileResource(tsFile);
       unSequenceFileList.add(tsFileResource);
-      logger.info("recovered a file: {}", tsFileResource.getFile().getAbsolutePath());
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           fileSchema,
           versionController, tsFileResource, true);
