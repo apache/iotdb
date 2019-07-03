@@ -48,6 +48,9 @@ public class BinaryTVList extends TVList {
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
     size++;
+    if (sorted && size > 1 && timestamp < getTime(size - 2)) {
+      sorted = false;
+    }
   }
 
   @Override
@@ -55,16 +58,12 @@ public class BinaryTVList extends TVList {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    if (!sorted) {
-      int arrayIndex = index / ARRAY_SIZE;
-      int elementIndex = index % ARRAY_SIZE;
-      return values.get(arrayIndex)[elementIndex];
-    } else {
-      return sortedValues[index/ARRAY_SIZE][index%ARRAY_SIZE];
-    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    return values.get(arrayIndex)[elementIndex];
   }
 
-  public void set(int index, long timestamp, Binary value) {
+  protected void set(int index, long timestamp, Binary value) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
@@ -78,15 +77,8 @@ public class BinaryTVList extends TVList {
   public BinaryTVList clone() {
     BinaryTVList cloneList = new BinaryTVList();
     cloneAs(cloneList);
-    if (!sorted) {
-      for (Binary[] valueArray : values) {
-        cloneList.values.add(cloneValue(valueArray));
-      }
-    } else {
-      cloneList.sortedValues = new Binary[sortedValues.length][ARRAY_SIZE];
-      for (int i = 0; i < sortedValues.length; i++) {
-        System.arraycopy(sortedValues[i], 0, cloneList.sortedValues[i], 0, ARRAY_SIZE);
-      }
+    for (Binary[] valueArray : values) {
+      cloneList.values.add(cloneValue(valueArray));
     }
     return cloneList;
   }
@@ -107,8 +99,8 @@ public class BinaryTVList extends TVList {
           .getInstance().getDataListsByType(TSDataType.TEXT, size);
     }
     sort(0, size);
-    clearTime();
-    clearValue();
+    clearSortedValue();
+    clearSortedTime();
     sorted = true;
   }
 
@@ -177,4 +169,8 @@ public class BinaryTVList extends TVList {
     set(pos, pivotTime, pivotValue);
   }
 
+  @Override
+  protected void releaseLastValueArray() {
+    PrimitiveArrayPool.getInstance().release(values.remove(values.size() - 1));
+  }
 }

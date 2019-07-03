@@ -166,25 +166,20 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public boolean delete(String deviceId, String measurementId, long timestamp) {
+  public void delete(String deviceId, String measurementId, long timestamp) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
     if (deviceMap != null) {
       IWritableMemChunk chunk = deviceMap.get(measurementId);
       if (chunk == null) {
-        return true;
+        return;
       }
-      IWritableMemChunk newChunk = filterChunk(chunk, timestamp);
-      if (newChunk != null) {
-        deviceMap.put(measurementId, newChunk);
-        return newChunk.count() != chunk.count();
-      }
+      chunk.delete(timestamp);
     }
-    return false;
   }
 
   @Override
-  public boolean delete(Deletion deletion) {
-    return this.modifications.add(deletion);
+  public void delete(Deletion deletion) {
+    this.modifications.add(deletion);
   }
 
   /**

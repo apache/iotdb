@@ -70,18 +70,16 @@ public interface IMemTable {
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
    * @param timestamp the upper-bound of deletion time.
-   * @return true if there is data that been deleted. otherwise false.
    */
-  boolean delete(String deviceId, String measurementId, long timestamp);
+  void delete(String deviceId, String measurementId, long timestamp);
 
   /**
    * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
    * deviceId.measurementId. Only called for flushing MemTable.
    *
    * @param deletion and object representing this deletion
-   * @return true if there is data that been deleted. otherwise false.
    */
-  boolean delete(Deletion deletion);
+  void delete(Deletion deletion);
 
   /**
    * Make a copy of this MemTable.
