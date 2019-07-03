@@ -97,7 +97,7 @@ public class TsFileProcessor {
   /**
    * this callback is called after the corresponding TsFile is called endFile().
    */
-  private CloseTsFileCallBack closeUnsealedFileCallback;
+  private CloseTsFileCallBack closeTsFileCallback;
 
   /**
    * this callback is called before the workMemtable is added into the flushingMemTables.
@@ -110,7 +110,7 @@ public class TsFileProcessor {
 
   TsFileProcessor(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,
-      CloseTsFileCallBack closeUnsealedFileCallback,
+      CloseTsFileCallBack closeTsFileCallback,
       Supplier updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
@@ -118,7 +118,7 @@ public class TsFileProcessor {
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
-    this.closeUnsealedFileCallback = closeUnsealedFileCallback;
+    this.closeTsFileCallback = closeTsFileCallback;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
     logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
@@ -225,26 +225,24 @@ public class TsFileProcessor {
     try {
       shouldClose = true;
       // when a flush thread serves this TsFileProcessor (because the processor is submitted by
-      // registerUnsealedTsFileProcessor()), the thread will seal the corresponding TsFile and
-      // execute other cleanup works if shouldClose == true and flushingMemTables is empty.
+      // registerTsFileProcessor()), the thread will seal the corresponding TsFile and
+      // execute other cleanup works if (shouldClose == true and flushingMemTables is empty).
 
       // To ensure there must be a flush thread serving this processor after the field `shouldClose`
       // is set true, we need to generate a NotifyFlushMemTable as a signal task and submit it to
       // the FlushManager.
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
-      if (tmpMemTable.isSignalMemTable()) {
-        logger.info(
-            "storage group {} add a signal memtable into flushing memtable list when async close",
-            storageGroupName);
-      } else {
-        logger.info("storage group {} async flush a memtable when async close", storageGroupName);
+      if (logger.isDebugEnabled()) {
+        if (tmpMemTable.isSignalMemTable()) {
+          logger.debug(
+              "storage group {} add a signal memtable into flushing memtable list when async close",
+              storageGroupName);
+        } else {
+          logger
+              .debug("storage group {} async flush a memtable when async close", storageGroupName);
+        }
       }
-      updateLatestFlushTimeCallback.get();
-      flushingMemTables.add(tmpMemTable);
-
-      workMemTable = null;
-      tmpMemTable.setVersion(versionController.nextVersion());
-      FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
+      addAMemtableIntoFlushingList(tmpMemTable);
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -261,18 +259,33 @@ public class TsFileProcessor {
       if (tmpMemTable.isSignalMemTable()) {
         logger.debug("add a signal memtable into flushing memtable list when sync flush");
       }
-      flushingMemTables.addLast(tmpMemTable);
-      tmpMemTable.setVersion(versionController.nextVersion());
-      FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
-      updateLatestFlushTimeCallback.get();
-      workMemTable = null;
+      addAMemtableIntoFlushingList(tmpMemTable);
     } finally {
       flushQueryLock.writeLock().unlock();
     }
 
+
     synchronized (tmpMemTable) {
       try {
-        tmpMemTable.wait();
+        long startWait = System.currentTimeMillis();
+        while (true) {
+          tmpMemTable.wait(1000);
+
+          flushQueryLock.readLock().lock();
+          try {
+            if (!flushingMemTables.contains(tmpMemTable)) {
+              break;
+            }
+          } finally {
+            flushQueryLock.readLock().unlock();
+          }
+
+          if ((System.currentTimeMillis() - startWait) > 60_000) {
+            logger.warn("has waited for synced flushing a memtable in {} for 60 seconds.",
+                this.tsFileResource.getFile().getAbsolutePath());
+            startWait = System.currentTimeMillis();
+          }
+        }
       } catch (InterruptedException e) {
         logger.error("wait flush finished meets error", e);
         Thread.currentThread().interrupt();
@@ -292,11 +305,9 @@ public class TsFileProcessor {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         getLogNode().notifyStartFlush();
       }
-      flushingMemTables.addLast(workMemTable);
-      workMemTable.setVersion(versionController.nextVersion());
-      FlushManager.getInstance().registerUnsealedTsFileProcessor(this);
-      updateLatestFlushTimeCallback.get();
-      workMemTable = null;
+
+      addAMemtableIntoFlushingList(workMemTable);
+
     } catch (IOException e) {
       logger.error("WAL notify start flush failed", e);
     } finally {
@@ -304,9 +315,22 @@ public class TsFileProcessor {
     }
   }
 
+  /**
+   * this method calls updateLatestFlushTimeCallback and move the given memtable into the flushing
+   * queue, set the current working memtable as null and then register the tsfileProcessor into the
+   * flushManager again.
+   */
+  private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) {
+    updateLatestFlushTimeCallback.get();
+    flushingMemTables.addLast(tobeFlushed);
+    tobeFlushed.setVersion(versionController.nextVersion());
+    workMemTable = null;
+    FlushManager.getInstance().registerTsFileProcessor(this);
+  }
+
 
   /**
-   * return the memtable to MemTablePool and make metadata in writer visible
+   * put back the memtable to MemTablePool and make metadata in writer visible
    */
   private void releaseFlushedMemTable(IMemTable memTable) {
     flushQueryLock.writeLock().lock();
@@ -332,13 +356,13 @@ public class TsFileProcessor {
 
     logger.info("storage group {} starts to flush a memtable in a flush thread", storageGroupName);
 
-    // signal memtable only appears when calling asyncClose()
+    // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
       MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, fileSchema, writer,
           storageGroupName);
       try {
         writer.mark();
-        flushTask.flushMemTable();
+        flushTask.syncFlushMemTable();
       } catch (ExecutionException | InterruptedException | IOException e) {
         StorageEngine.getInstance().setReadOnly(true);
         try {
@@ -359,7 +383,7 @@ public class TsFileProcessor {
 
     // for sync flush
     synchronized (memTableToFlush) {
-      memTableToFlush.notify();
+      memTableToFlush.notifyAll();
     }
 
     if (shouldClose && flushingMemTables.isEmpty()) {
@@ -378,7 +402,7 @@ public class TsFileProcessor {
 
       // for sync close
       synchronized (flushingMemTables) {
-        flushingMemTables.notify();
+        flushingMemTables.notifyAll();
       }
     }
   }
@@ -389,15 +413,14 @@ public class TsFileProcessor {
     tsFileResource.serialize();
     writer.endFile(fileSchema);
 
-    // remove this processor from Closing list in StorageGroupProcessor, mark the TsFileResource closed, no need writer anymore
-    closeUnsealedFileCallback.call(this);
+    // remove this processor from Closing list in StorageGroupProcessor,
+    // mark the TsFileResource closed, no need writer anymore
+    closeTsFileCallback.call(this);
 
     writer = null;
 
     if (logger.isInfoEnabled()) {
-
       long closeEndTime = System.currentTimeMillis();
-
       logger.info("Storage group {} close the file {}, start time is {}, end time is {}, "
               + "time consumption of flushing metadata is {}ms",
           storageGroupName, tsFileResource.getFile().getAbsoluteFile(),
@@ -449,12 +472,12 @@ public class TsFileProcessor {
   /**
    * get the chunk(s) in the memtable (one from work memtable and the other ones in flushing
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
-   * ChunkMetadata of data in disk.
+   * ChunkMetadata of data on disk.
    *
    * @param deviceId device id
    * @param measurementId sensor id
    * @param dataType data type
-   * @return corresponding chunk data and chunk metadata in memory
+   * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> query(String deviceId,
       String measurementId, TSDataType dataType, Map<String, String> props, QueryContext context) {

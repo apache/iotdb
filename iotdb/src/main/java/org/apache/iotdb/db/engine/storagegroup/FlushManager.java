@@ -38,14 +38,14 @@ public class FlushManager {
       TsFileProcessor tsFileProcessor = tsFileProcessorQueue.poll();
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);
-      registerUnsealedTsFileProcessor(tsFileProcessor);
+      registerTsFileProcessor(tsFileProcessor);
     }
   }
 
   /**
    * Add BufferWriteProcessor to asyncFlush manager
    */
-  void registerUnsealedTsFileProcessor(TsFileProcessor tsFileProcessor) {
+  void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
       if (!tsFileProcessor.isManagedByFlushManager() && tsFileProcessor.getFlushingMemTableSize() > 0) {
         logger.info("storage group {} begin to submit a flush thread, flushing memtable size: {}",

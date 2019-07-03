@@ -67,7 +67,7 @@ public class MemTableFlushTask {
   /**
    * the function for flushing memtable.
    */
-  public void flushMemTable() throws ExecutionException, InterruptedException {
+  public void syncFlushMemTable() throws ExecutionException, InterruptedException {
     long start = System.currentTimeMillis();
     long sortTime = 0;
     for (String deviceId : memTable.getMemTableMap().keySet()) {
