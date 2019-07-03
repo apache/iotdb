@@ -96,10 +96,10 @@ public class ParseDriver {
       LOG.trace("meet error while parsing statement: {}", command, e);
     }
 
-    if (lexer.getErrors().isEmpty() && parser.errors.isEmpty()) {
-    } else if (!lexer.getErrors().isEmpty()) {
+    if (!lexer.getErrors().isEmpty()) {
       throw new ParseException(lexer.getErrors());
-    } else {
+    }
+    if (!parser.errors.isEmpty()) {
       throw new ParseException(parser.errors);
     }
 
@@ -107,7 +107,7 @@ public class ParseDriver {
       AstNode tree = (AstNode) r.getTree();
       tree.setUnknownTokenBoundaries();
       return tree;
-    }else {
+    } else {
       return null;
     }
   }

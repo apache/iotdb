@@ -244,12 +244,12 @@ public class DeletionFileNodeTest {
     File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), processorName);
     File[] modFiles = fileNodeDir.listFiles((dir, name)
         -> name.endsWith(ModificationFile.FILE_SUFFIX));
-    assertEquals(modFiles.length, 1);
+    assertEquals(1, modFiles.length);
 
     LocalTextModificationAccessor accessor =
         new LocalTextModificationAccessor(modFiles[0].getPath());
     Collection<Modification> modifications = accessor.read();
-    assertEquals(modifications.size(), 3);
+    assertEquals( 3, modifications.size());
     int i = 0;
     for (Modification modification : modifications) {
       assertTrue(modification.equals(realModifications[i++]));

@@ -349,27 +349,32 @@ public class StatMonitor implements IService {
         if (seconds >= statMonitorDetectFreqSec) {
           runningTimeMillis = currentTimeMillis;
           // delete time-series data
-          StorageEngine fManager = StorageEngine.getInstance();
-          try {
-            for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
-              for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
-                if (temporaryStatList.contains(statParamName)) {
-                  fManager.delete(entry.getKey(), statParamName,
-                      currentTimeMillis - statMonitorRetainIntervalSec * 1000);
-                }
-              }
-            }
-          } catch (StorageEngineException e) {
-            logger
-                .error("Error occurred when deleting statistics information periodically, because",
-                    e);
-          }
+          cleanOutDated();
         }
         Map<String, TSRecord> tsRecordHashMap = gatherStatistics();
         insert(tsRecordHashMap);
         numBackLoop.incrementAndGet();
       } catch (Exception e) {
         logger.error("Error occurred in Stat Monitor thread", e);
+      }
+    }
+
+    public void cleanOutDated() {
+      long currentTimeMillis = System.currentTimeMillis();
+      try {
+        StorageEngine fManager = StorageEngine.getInstance();
+        for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
+          for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
+            if (temporaryStatList.contains(statParamName)) {
+              fManager.delete(entry.getKey(), statParamName,
+                  currentTimeMillis - statMonitorRetainIntervalSec * 1000);
+            }
+          }
+        }
+      } catch (StorageEngineException e) {
+        logger
+            .error("Error occurred when deleting statistics information periodically, because",
+                e);
       }
     }
 

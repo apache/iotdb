@@ -79,7 +79,6 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new PathErrorException(String.format("Timeseries %s is not right.", timeseriesPath));
     }
-    int i = 1;
     MNode cur = findLeafParent(nodeNames);
     String levelPath = cur.getDataFileName();
 
