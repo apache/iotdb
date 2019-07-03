@@ -39,18 +39,18 @@ public class IoTDBConfig {
   private int rpcPort = 6667;
 
   /**
-   * Is the insert ahead log enable.
+   * Is the write ahead log enable.
    */
   private boolean enableWal = true;
 
   /**
-   * When a certain amount of insert ahead logs is reached, they will be flushed to the disk. It is
+   * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
    * possible to lose at most flush_wal_threshold operations.
    */
   private int flushWalThreshold = 10000;
 
   /**
-   * The cycle when insert ahead log is periodically forced to be written to disk(in milliseconds) If
+   * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call outputStream.force(true) after every each insert
    */
   private long forceWalPeriodInMs = 10;

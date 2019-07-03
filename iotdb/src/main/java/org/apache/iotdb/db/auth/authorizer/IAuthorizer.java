@@ -139,7 +139,6 @@ public interface IAuthorizer {
    *            seriesPath-free privilege, this should be "root".
    * @param privilegeId
    *            An integer that represents a privilege.
-   * @return True if the privilege is successfully revoked, false if the privilege does not exists.
    * @throws AuthException
    *             If the role does not exist or the privilege or the seriesPath is illegal or the
    *             privilege does not exists.
@@ -166,7 +165,6 @@ public interface IAuthorizer {
    *            The name of the role to be removed.
    * @param username
    *            The name of the user from which the role is removed.
-   * @return True if the role is successfully removed, false if the role already exists.
    * @throws AuthException
    *             If either the role or the user does not exist or the role already exists.
    */

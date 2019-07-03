@@ -45,6 +45,7 @@ public class FlushManager {
   /**
    * Add BufferWriteProcessor to asyncFlush manager
    */
+  @SuppressWarnings("squid:S2445")
   void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
       if (!tsFileProcessor.isManagedByFlushManager() && tsFileProcessor.getFlushingMemTableSize() > 0) {

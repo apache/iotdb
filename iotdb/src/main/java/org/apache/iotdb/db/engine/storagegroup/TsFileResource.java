@@ -47,7 +47,7 @@ public class TsFileResource {
   private Map<String, Long> startTimeMap;
 
   /**
-   * device -> end time null if it's an unsealed tsfile
+   * device -> end time. It is null if it's an unsealed sequence tsfile
    */
   private Map<String, Long> endTimeMap;
 
@@ -58,13 +58,14 @@ public class TsFileResource {
   private volatile boolean closed = false;
 
   /**
-   * Chunk metadata list of unsealed tsfile
+   * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
+   * process.
    */
   private List<ChunkMetaData> chunkMetaDatas;
 
 
   /**
-   * Mem chunk data
+   * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
    */
   private ReadOnlyMemChunk readOnlyMemChunk;
 
@@ -209,6 +210,7 @@ public class TsFileResource {
       modFile = null;
     }
     processor = null;
+    chunkMetaDatas = null;
   }
 
   public TsFileProcessor getUnsealedFileProcessor() {

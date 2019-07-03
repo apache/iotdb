@@ -40,6 +40,9 @@ public abstract class TVList {
   protected long[][] sortedTimestamps;
   protected boolean sorted = false;
 
+  /**
+   * this field is effective only in the Tvlist in a RealOnlyMemChunk.
+   */
   private long timeOffset = Long.MIN_VALUE;
 
   protected long pivotTime;
@@ -255,6 +258,10 @@ public abstract class TVList {
     return null;
   }
 
+  /**
+   * this field is effective only in the Tvlist in a RealOnlyMemChunk.
+   * @return
+   */
   public long getTimeOffset() {
     return timeOffset;
   }
