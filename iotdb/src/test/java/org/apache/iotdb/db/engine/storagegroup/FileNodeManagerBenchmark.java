@@ -90,7 +90,6 @@ public class FileNodeManagerBenchmark {
     latch.await();
     long endTime = System.currentTimeMillis();
     tearDown();
-    System.out.println(String.format("The total time: %d ms", (endTime - startTime)));
   }
 
   private static TSRecord getRecord(String deltaObjectId, long timestamp) {

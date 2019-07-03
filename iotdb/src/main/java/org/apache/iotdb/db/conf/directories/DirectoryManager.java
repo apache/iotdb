@@ -30,8 +30,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The main class of multiple directories. Used to allocate folders to data files.
- *
- * @author East
  */
 public class DirectoryManager {
 

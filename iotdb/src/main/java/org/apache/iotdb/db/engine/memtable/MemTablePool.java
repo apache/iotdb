@@ -52,7 +52,7 @@ public class MemTablePool {
         return new PrimitiveMemTable();
       } else if (!availableMemTables.isEmpty()) {
         logger
-            .info("system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
+            .debug("system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
                 size, availableMemTables.size(), applier);
         return availableMemTables.pop();
       }
@@ -61,7 +61,7 @@ public class MemTablePool {
       int waitCount = 1;
       while (true) {
         if (!availableMemTables.isEmpty()) {
-          logger.info(
+          logger.debug(
               "system memtable size: {}, stack size: {}, then get a memtable from stack for {}",
               size, availableMemTables.size(), applier);
           return availableMemTables.pop();
@@ -72,7 +72,7 @@ public class MemTablePool {
           logger.error("{} fails to wait fot memtables {}, continue to wait", applier, e);
           Thread.currentThread().interrupt();
         }
-        logger.info("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
+        logger.debug("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
       }
     }
   }
@@ -85,7 +85,7 @@ public class MemTablePool {
       memTable.clear();
       availableMemTables.push(memTable);
       availableMemTables.notify();
-      logger.info("{} return a memtable, stack size {}", storageGroup, availableMemTables.size());
+      logger.debug("{} return a memtable, stack size {}", storageGroup, availableMemTables.size());
     }
   }
 

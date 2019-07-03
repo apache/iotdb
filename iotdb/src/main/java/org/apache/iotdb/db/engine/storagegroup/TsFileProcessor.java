@@ -307,7 +307,7 @@ public class TsFileProcessor {
       flushingMemTables.remove(memTable);
       memTable.release();
       MemTablePool.getInstance().putBack(memTable, storageGroupName);
-      logger.info("storage group {} flush finished, remove a memtable from flushing list, "
+      logger.debug("storage group {} flush finished, remove a memtable from flushing list, "
           + "flushing memtable list size: {}", storageGroupName, flushingMemTables.size());
     } finally {
       flushQueryLock.writeLock().unlock();
