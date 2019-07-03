@@ -130,6 +130,7 @@ public class MManager {
     lock.writeLock().lock();
     File logFile = new File(logFilePath);
 
+
     try {
       initFromLog(logFile);
       seriesNumberInStorageGroups = mgraph.countSeriesNumberInEachStorageGroup();

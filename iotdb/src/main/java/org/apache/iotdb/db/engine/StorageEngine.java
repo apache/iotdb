@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -75,10 +76,10 @@ public class StorageEngine implements IService {
   private StorageEngine() {
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     // create systemDir
-    File dir = new File(systemDir);
-    if (dir.mkdirs()) {
-      logger.info("System directory {} doesn't exist, create it",
-          dir.getPath());
+    try {
+      FileUtils.forceMkdir(new File(systemDir));
+    } catch (IOException e) {
+      throw new StorageEngineFailureException("create system directory failed!");
     }
 
     /**
