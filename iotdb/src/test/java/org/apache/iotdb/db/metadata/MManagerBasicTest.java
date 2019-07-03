@@ -98,7 +98,7 @@ public class MManagerBasicTest {
     }
     assertTrue(manager.pathExist("root.laptop.d1.s1"));
     try {
-      manager.deletePathsFromMTree(Collections.singletonList(new Path("root.laptop.d1.s1")));
+      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s1")));
     } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -107,7 +107,7 @@ public class MManagerBasicTest {
     // delete storage group or not
     assertFalse(manager.pathExist("root.laptop.d1.s1"));
     try {
-      manager.deletePathsFromMTree(Collections.singletonList(new Path("root.laptop.d1.s0")));
+      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s0")));
     } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -137,13 +137,13 @@ public class MManagerBasicTest {
     assertFalse(manager.checkFileNameByPath("root.laptop.d2"));
 
     try {
-      manager.deletePathsFromMTree(Collections.singletonList(new Path("root.laptop.d1.s0")));
+      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s0")));
     } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      manager.deletePathsFromMTree(Collections.singletonList(new Path("root.laptop.d1.s1")));
+      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s1")));
     } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -187,13 +187,13 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deletePathsFromMTree(Collections.singletonList(new Path("root.laptop.d2.s0")));
+      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d2.s0")));
     } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      manager.deletePathsFromMTree(Collections.singletonList(new Path("root.laptop.d2.s1")));
+      manager.deletePaths(Collections.singletonList(new Path("root.laptop.d2.s1")));
     } catch (MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -354,9 +354,9 @@ public class MManagerBasicTest {
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
 
-    manager.deletePathsFromMTree(Collections.singletonList(new Path("root.laptop.d1.s1")));
+    manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s1")));
     assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.deletePathsFromMTree(Collections.singletonList(new Path("root.laptop.d1.s2")));
+    manager.deletePaths(Collections.singletonList(new Path("root.laptop.d1.s2")));
     assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
   }
 }

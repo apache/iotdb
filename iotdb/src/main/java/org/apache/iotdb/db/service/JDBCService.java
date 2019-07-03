@@ -129,8 +129,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
       jdbcServiceThread.setName(ThreadName.JDBC_SERVICE.getName());
       jdbcServiceThread.start();
       startLatch.await();
-    } catch (IOException | InterruptedException | ClassNotFoundException |
+    } catch (InterruptedException | ClassNotFoundException |
         IllegalAccessException | InstantiationException e) {
+      Thread.currentThread().interrupt();
       String errorMessage = String
           .format("Failed to start %s", this.getID().getName());
       throw new StartupException(errorMessage, e);
@@ -167,6 +168,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
       reset();
       logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
     }
   }
@@ -187,7 +189,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
     private CountDownLatch threadStopLatch;
 
     public JDBCServiceThread(CountDownLatch threadStartLatch, CountDownLatch threadStopLatch)
-        throws IOException, ClassNotFoundException, IllegalAccessException, InstantiationException {
+        throws ClassNotFoundException, IllegalAccessException, InstantiationException {
       protocolFactory = new TBinaryProtocol.Factory();
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       impl = (TSServiceImpl) Class.forName(config.getRpcImplClassName()).newInstance();
@@ -196,6 +198,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
       this.threadStopLatch = threadStopLatch;
     }
 
+    @SuppressWarnings("squid:S2093") // socket will be used later
     @Override
     public void run() {
       try {

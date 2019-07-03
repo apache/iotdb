@@ -355,7 +355,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         case DELETE_PATH:
           deleteDataOfTimeSeries(deletePathList);
           Set<String> emptyStorageGroups =
-              mManager.deletePathsFromMTree(deletePathList);
+              mManager.deletePaths(deletePathList);
           for (String deleteStorageGroup : emptyStorageGroups) {
             storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
           }

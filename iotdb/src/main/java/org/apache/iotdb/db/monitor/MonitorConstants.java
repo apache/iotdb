@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.monitor.collector.FileSize;
-import org.apache.iotdb.db.service.Monitor;
 
 public class MonitorConstants {
 

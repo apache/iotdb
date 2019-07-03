@@ -136,6 +136,7 @@ public class LogReplayer {
     recoverMemTable.insert(insertPlan);
   }
 
+  @SuppressWarnings("unused")
   private void replayUpdate(UpdatePlan updatePlan) {
     // TODO: support update
     throw new UnsupportedOperationException("Update not supported");

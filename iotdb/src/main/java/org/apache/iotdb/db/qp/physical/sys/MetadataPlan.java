@@ -116,7 +116,8 @@ public class MetadataPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    String ret = String.format("seriesPath: %s\nresultDataType: %s\nencoding: %s\nnamespace type: %s\nargs: ", path, dataType, encoding, namespaceType);
+    String ret = String.format("seriesPath: %s%nresultDataType: %s%nencoding: %s%nnamespace type:"
+        + " %s%nargs: ", path, dataType, encoding, namespaceType);
     StringBuilder stringBuilder = new StringBuilder(ret.length()+50);
     stringBuilder.append(ret);
     for (Map.Entry prop : props.entrySet()) {

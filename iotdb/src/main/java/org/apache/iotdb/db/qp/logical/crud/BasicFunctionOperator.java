@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import java.util.Objects;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -163,5 +164,27 @@ public class BasicFunctionOperator extends FunctionOperator {
   @Override
   public String toString() {
     return "[" + path.getFullPath() + tokenSymbol + value + "]";
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    BasicFunctionOperator that = (BasicFunctionOperator) o;
+    return Objects.equals(path, that.path) &&
+        Objects.equals(value, that.value) &&
+        funcToken == that.funcToken;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), path, value, funcToken);
   }
 }
