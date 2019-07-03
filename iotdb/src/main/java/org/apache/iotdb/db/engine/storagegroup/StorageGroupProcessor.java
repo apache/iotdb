@@ -165,13 +165,13 @@ public class StorageGroupProcessor {
     this.fileSchema = constructFileSchema(storageGroupName);
 
     try {
-      File storageGroupInfoDir = new File(systemInfoDir, storageGroupName);
-      if (storageGroupInfoDir.mkdirs()) {
-        logger.info("Storage Group Info Directory {} doesn't exist, create it",
-            storageGroupInfoDir.getPath());
+      File storageGroupSysDir = new File(systemInfoDir, storageGroupName);
+      if (storageGroupSysDir.mkdirs()) {
+        logger.info("Storage Group system Directory {} doesn't exist, create it",
+            storageGroupSysDir.getPath());
       }
 
-      versionController = new SimpleFileVersionController(storageGroupInfoDir.getPath());
+      versionController = new SimpleFileVersionController(storageGroupSysDir.getPath());
     } catch (IOException e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -180,7 +180,7 @@ public class StorageGroupProcessor {
   }
 
   private void recover() throws ProcessorException {
-    logger.info("recover StorageGroupProcessor {}", storageGroupName);
+    logger.info("recover Storage Group  {}", storageGroupName);
 
     // collect TsFiles from sequential data directory
     List<File> tsFiles = getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
@@ -214,6 +214,7 @@ public class StorageGroupProcessor {
     for (File tsFile : tsFiles) {
       TsFileResource tsFileResource = new TsFileResource(tsFile);
       sequenceFileList.add(tsFileResource);
+      logger.info("recovered a file: {}", tsFileResource.getFile().getAbsolutePath());
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
           , fileSchema, versionController, tsFileResource, false);
       recoverPerformer.recover();
@@ -225,6 +226,7 @@ public class StorageGroupProcessor {
     for (File tsFile : tsFiles) {
       TsFileResource tsFileResource = new TsFileResource(tsFile);
       unSequenceFileList.add(tsFileResource);
+      logger.info("recovered a file: {}", tsFileResource.getFile().getAbsolutePath());
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           fileSchema,
           versionController, tsFileResource, true);
