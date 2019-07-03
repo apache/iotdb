@@ -80,14 +80,28 @@ public class MTree implements Serializable {
       throw new PathErrorException(String.format("Timeseries %s is not right.", timeseriesPath));
     }
     int i = 1;
+    MNode cur = findLeafParent(nodeNames);
+    String levelPath = cur.getDataFileName();
+
+    MNode leaf = new MNode(nodeNames[nodeNames.length - 1], cur, dataType, encoding, compressor);
+    if ( props != null && !props.isEmpty()) {
+      leaf.getSchema().setProps(props);
+    }
+    leaf.setDataFileName(levelPath);
+    if (cur.isLeaf()) {
+      throw new PathErrorException(
+          String.format("The Node [%s] is left node, the timeseries %s can't be created",
+              cur.getName(), timeseriesPath));
+    }
+    cur.addChild(nodeNames[nodeNames.length - 1], leaf);
+  }
+
+  private MNode findLeafParent(String[] nodeNames) throws PathErrorException {
     MNode cur = root;
     String levelPath = null;
-    while (i < nodeNames.length) {
+    int i = 1;
+    while (i < nodeNames.length - 1) {
       String nodeName = nodeNames[i];
-      if (i == nodeNames.length - 1) {
-        cur.setDataFileName(levelPath);
-        break;
-      }
       if (cur.isStorageLevel()) {
         levelPath = cur.getDataFileName();
       }
@@ -95,7 +109,7 @@ public class MTree implements Serializable {
         if (cur.isLeaf()) {
           throw new PathErrorException(
               String.format("The Node [%s] is left node, the timeseries %s can't be created",
-                  cur.getName(), timeseriesPath));
+                  cur.getName(), String.join(",", nodeNames)));
         }
         cur.addChild(nodeName, new MNode(nodeName, cur, false));
       }
@@ -106,18 +120,8 @@ public class MTree implements Serializable {
       }
       i++;
     }
-    MNode leaf = new MNode(nodeNames[nodeNames.length - 1], cur, dataType, encoding, compressor);
-    if ( props != null && !props.isEmpty()) {
-      leaf.getSchema().setProps(props);
-    }
-    levelPath = cur.getDataFileName();
-    leaf.setDataFileName(levelPath);
-    if (cur.isLeaf()) {
-      throw new PathErrorException(
-          String.format("The Node [%s] is left node, the timeseries %s can't be created",
-              cur.getName(), timeseriesPath));
-    }
-    cur.addChild(nodeNames[nodeNames.length - 1], leaf);
+    cur.setDataFileName(levelPath);
+    return cur;
   }
 
 
@@ -238,11 +242,7 @@ public class MTree implements Serializable {
       i++;
     }
     MNode temp = cur.getChild(nodeNames[i]);
-    if (temp == null || !temp.isStorageLevel()) {
-      return false;
-    } else {
-      return true;
-    }
+    return temp != null && temp.isStorageLevel();
   }
 
   /**
@@ -748,9 +748,9 @@ public class MTree implements Serializable {
    */
   HashSet<String> getAllStorageGroup() {
     HashSet<String> res = new HashSet<>();
-    MNode root;
-    if ((root = getRoot()) != null) {
-      findStorageGroup(root, "root", res);
+    MNode rootNode;
+    if ((rootNode = getRoot()) != null) {
+      findStorageGroup(rootNode, "root", res);
     }
     return res;
   }

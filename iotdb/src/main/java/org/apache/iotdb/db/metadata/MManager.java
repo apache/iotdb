@@ -124,6 +124,7 @@ public class MManager {
   }
 
   //Because the writer will be used later and should not be closed here.
+  @SuppressWarnings("squid:S2093")
   private void init() {
 
     lock.writeLock().lock();
@@ -202,7 +203,7 @@ public class MManager {
             props);
         break;
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
-        deletePathsFromMTree(Collections.singletonList(new Path(args[1])));
+        deletePaths(Collections.singletonList(new Path(args[1])));
         break;
       case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
         setStorageLevelToMTree(args[1]);
@@ -275,8 +276,8 @@ public class MManager {
       throw new MetadataErrorException(e);
     }
     // the two map is stored in the storage group node
-    Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneStorageGroup(fileNodePath);
-    Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(fileNodePath);
+    Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(fileNodePath);
+    Map<String, Integer> numSchemaMap = getStorageGroupNumSchemaMap(fileNodePath);
     String lastNode = path.getMeasurement();
     boolean isNewMeasurement = true;
     // Thread safety: just one thread can access/modify the schemaMap
@@ -402,57 +403,58 @@ public class MManager {
   }
 
   /**
-   * delete given paths from metadata and data.
+   * delete given paths from metadata.
    * @param deletePathList list of paths to be deleted
-   * @return the first set contains StorageGroups that are affected by this deletion but
-   * still have remaining timeseries, so these StorageGroups should be closed to make sure the data
-   * deletion is persisted;
-   * <br/> the second set contains StorageGroups that contain no more timeseries
+   * @return a set contains StorageGroups that contain no more timeseries
    * after this deletion and files of such StorageGroups should be deleted to reclaim disk space.
    * @throws MetadataErrorException
    */
-  public Set<String> deletePathsFromMTree(List<Path> deletePathList)
+  public Set<String> deletePaths(List<Path> deletePathList)
       throws MetadataErrorException {
     if (deletePathList != null && !deletePathList.isEmpty()) {
       List<String> fullPath = collectPaths(deletePathList);
 
-
       Set<String> emptyStorageGroups = new HashSet<>();
       for (String p : fullPath) {
-        String storageGroupName;
-        try {
-          storageGroupName = getStorageGroupNameByPath(p);
-        } catch (PathErrorException e) {
-          throw new MetadataErrorException(e);
-        }
-        // the two map is stored in the storage group node
-        Map<String, MeasurementSchema> schemaMap = getSchemaMapForOneStorageGroup(storageGroupName);
-        Map<String, Integer> numSchemaMap = getNumSchemaMapForOneFileNode(storageGroupName);
-        // Thread safety: just one thread can access/modify the schemaMap
-        synchronized (schemaMap) {
-          // TODO: don't delete the storage group seriesPath recursively
-          Path path = new Path(p);
-          String measurementId = path.getMeasurement();
-          if (numSchemaMap.get(measurementId) == 1) {
-            numSchemaMap.remove(measurementId);
-            schemaMap.remove(measurementId);
-          } else {
-            numSchemaMap.put(measurementId, numSchemaMap.get(measurementId) - 1);
-          }
-          String deleteNameSpacePath;
-          try {
-            deleteNameSpacePath = deletePathFromMTreeInternal(p);
-          } catch (PathErrorException | IOException e) {
-            throw new MetadataErrorException(e);
-          }
-          if (deleteNameSpacePath != null) {
-            emptyStorageGroups.add(deleteNameSpacePath);
-          }
+        String emptiedStorageGroup = deletePath(p);
+        if (emptiedStorageGroup != null) {
+          emptyStorageGroups.add(emptiedStorageGroup);
         }
       }
       return emptyStorageGroups;
     }
     return Collections.emptySet();
+  }
+
+  private String deletePath(String pathStr) throws MetadataErrorException {
+    String storageGroupName;
+    try {
+      storageGroupName = getStorageGroupNameByPath(pathStr);
+    } catch (PathErrorException e) {
+      throw new MetadataErrorException(e);
+    }
+    String emptiedStorageGroup;
+    // the two maps are stored in the storage group node
+    Map<String, MeasurementSchema> schemaMap = getStorageGroupSchemaMap(storageGroupName);
+    Map<String, Integer> numSchemaMap = getStorageGroupNumSchemaMap(storageGroupName);
+    // Thread safety: just one thread can access/modify the schemaMap
+    synchronized (schemaMap) {
+      // TODO: don't delete the storage group seriesPath recursively
+      Path path = new Path(pathStr);
+      String measurementId = path.getMeasurement();
+      if (numSchemaMap.get(measurementId) == 1) {
+        numSchemaMap.remove(measurementId);
+        schemaMap.remove(measurementId);
+      } else {
+        numSchemaMap.put(measurementId, numSchemaMap.get(measurementId) - 1);
+      }
+      try {
+        emptiedStorageGroup = deletePathFromMTree(pathStr);
+      } catch (PathErrorException | IOException e) {
+        throw new MetadataErrorException(e);
+      }
+    }
+    return emptiedStorageGroup;
   }
 
   /**
@@ -461,7 +463,7 @@ public class MManager {
    * @return the related storage group name if there is no path in the storage group anymore;
    * otherwise null
    */
-  private String deletePathFromMTreeInternal(String path) throws PathErrorException, IOException {
+  private String deletePathFromMTree(String path) throws PathErrorException, IOException {
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
@@ -768,7 +770,7 @@ public class MManager {
   /**
    * function for getting schema map for one file node.
    */
-  private Map<String, MeasurementSchema> getSchemaMapForOneStorageGroup(String path) {
+  private Map<String, MeasurementSchema> getStorageGroupSchemaMap(String path) {
 
     lock.readLock().lock();
     try {
@@ -781,7 +783,7 @@ public class MManager {
   /**
    * function for getting num schema map for one file node.
    */
-  private Map<String, Integer> getNumSchemaMapForOneFileNode(String path) {
+  private Map<String, Integer> getStorageGroupNumSchemaMap(String path) {
 
     lock.readLock().lock();
     try {

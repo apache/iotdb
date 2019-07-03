@@ -60,23 +60,13 @@ public class JobFileManager {
     //sequence data
     for(TsFileResource tsFileResource : dataSource.getSeqResources()){
       String path = tsFileResource.getFile().getPath();
-      if(tsFileResource.isClosed()){
-        addFilePathToMap(jobId, path, true);
-      }
-      else {
-        addFilePathToMap(jobId, path, false);
-      }
+      addFilePathToMap(jobId, path, tsFileResource.isClosed());
     }
 
     //unsequence data
     for(TsFileResource tsFileResource : dataSource.getUnseqResources()){
       String path = tsFileResource.getFile().getPath();
-      if(tsFileResource.isClosed()){
-        addFilePathToMap(jobId, path, true);
-      }
-      else {
-        addFilePathToMap(jobId, path, false);
-      }
+      addFilePathToMap(jobId, path, tsFileResource.isClosed());
     }
   }
 

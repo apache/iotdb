@@ -290,7 +290,7 @@ public class SyncServiceImpl implements SyncService.Iface {
             props);
         break;
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
-        metadataManger.deletePathsFromMTree(Collections.singletonList(new Path(args[1])));
+        metadataManger.deletePaths(Collections.singletonList(new Path(args[1])));
         break;
       case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
         metadataManger.setStorageLevelToMTree(args[1]);

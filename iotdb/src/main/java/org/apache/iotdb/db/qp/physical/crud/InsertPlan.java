@@ -29,8 +29,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class InsertPlan extends PhysicalPlan {
 

@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.read.common.Path;
 

@@ -239,12 +239,11 @@ public class MGraph implements Serializable {
    * @return A {@code Metadata} instance which stores all metadata info
    */
   public Metadata getMetadata() throws PathErrorException {
-    Map<String, List<MeasurementSchema>> seriesMap = getSchemaForAllType();
     Map<String, List<String>> deviceIdMap = getDeviceForAllType();
     return new Metadata(deviceIdMap);
   }
 
-  HashSet<String> getAllStorageGroup() throws PathErrorException {
+  HashSet<String> getAllStorageGroup() {
     return mtree.getAllStorageGroup();
   }
 

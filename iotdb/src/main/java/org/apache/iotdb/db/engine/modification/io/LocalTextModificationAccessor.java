@@ -22,14 +22,12 @@ package org.apache.iotdb.db.engine.modification.io;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -125,11 +123,9 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   }
 
   private static String encodeDeletion(Deletion del) {
-    StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder.append(del.getType().toString()).append(SEPARATOR).append(del.getPathString())
-            .append(SEPARATOR).append(del.getVersionNum()).append(SEPARATOR)
-            .append(del.getTimestamp());
-    return stringBuilder.toString();
+    return del.getType().toString() + SEPARATOR + del.getPathString()
+        + SEPARATOR + del.getVersionNum() + SEPARATOR
+        + del.getTimestamp();
   }
 
   private static Deletion decodeDeletion(String[] fields) throws IOException {
@@ -138,16 +134,17 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     }
 
     String path = fields[1];
-    long versionNum, timestamp;
+    long versionNum;
+    long timestamp;
     try {
       versionNum = Long.parseLong(fields[2]);
     } catch (NumberFormatException e) {
-      throw new IOException("Invalide version number: " + fields[2]);
+      throw new IOException("Invalid version number: " + fields[2]);
     }
     try {
       timestamp = Long.parseLong(fields[3]);
     } catch (NumberFormatException e) {
-      throw new IOException("Invalide timestamp: " + fields[3]);
+      throw new IOException("Invalid timestamp: " + fields[3]);
     }
 
     return new Deletion(new Path(path), versionNum, timestamp);
