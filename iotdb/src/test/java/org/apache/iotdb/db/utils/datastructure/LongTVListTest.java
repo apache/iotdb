@@ -60,7 +60,7 @@ public class LongTVListTest {
     Random random = new Random();
     LongTVList tvList = new LongTVList();
     List<TimeValuePair> inputs = new ArrayList<>();
-    for (long i = 0; i < 0; i++) {
+    for (long i = 0; i < 10000; i++) {
       long time = random.nextInt(10000);
       long value = random.nextInt(10000);
       tvList.putLong(time, value);
