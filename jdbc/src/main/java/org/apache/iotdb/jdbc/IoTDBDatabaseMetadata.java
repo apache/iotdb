@@ -1200,7 +1200,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       return getMetadataInJsonFunc();
     } catch (IoTDBSQLException e) {
       logger.error("Failed to fetch metadata in json because: ", e);
-      System.out.println("Failed to fetch metadata in json because: " + e);
     } catch (TException e) {
       boolean flag = connection.reconnect();
       this.client = connection.client;
@@ -1210,17 +1209,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e2) {
           logger.error("Fail to get all timeseries " + "info after reconnecting."
                   + " please check server status", e2);
-          System.out.println(
-              "Fail to get all timeseries " + "info after reconnecting."
-                  + " please check server status");
         } catch (IoTDBSQLException e1) {
           // ignored
         }
       } else {
         logger.error("Fail to reconnect to server "
                 + "when getting all timeseries info. please check server status");
-        System.out.println("Fail to reconnect to server "
-            + "when getting all timeseries info. please check server status");
       }
     }
     return null;

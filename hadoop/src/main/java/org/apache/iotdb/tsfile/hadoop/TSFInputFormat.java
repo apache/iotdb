@@ -270,8 +270,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
         } else {
           FileSystem fileSystem = path.getFileSystem(configuration);
           logger.info("The file status is {}", fileStatus.getClass().getName());
-          System.out.println("The file status is " + fileStatus.getClass().getName());
-          System.out.println("The file system is " + fileSystem.getClass());
+          logger.info("The file system is " + fileSystem.getClass());
           blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
         }
         logger.info("The block location information is {}", Arrays.toString(blockLocations));

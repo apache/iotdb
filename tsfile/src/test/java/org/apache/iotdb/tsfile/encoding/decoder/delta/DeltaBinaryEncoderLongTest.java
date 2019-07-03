@@ -56,7 +56,6 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testBasic() throws IOException {
-    System.out.println("write basic");
     long data[] = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = i * i * BASIC_FACTOR;
@@ -66,7 +65,6 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testBoundInt() throws IOException {
-    System.out.println("write bounded int");
     long data[] = new long[ROW_NUM];
     for (int i = 2; i < 21; i++) {
       boundInt(i, data);
@@ -74,7 +72,6 @@ public class DeltaBinaryEncoderLongTest {
   }
 
   private void boundInt(int power, long[] data) throws IOException {
-    System.out.println("the bound of 2 power:" + power);
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextInt((int) Math.pow(2, power)) * BASIC_FACTOR;
     }
@@ -83,7 +80,6 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testRandom() throws IOException {
-    System.out.println("write random");
     long data[] = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextLong();
@@ -93,7 +89,6 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testMaxMin() throws IOException {
-    System.out.println("write maxmin");
     long data[] = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = (i & 1) == 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
@@ -181,11 +176,9 @@ public class DeltaBinaryEncoderLongTest {
   }
 
   private void shouldReadAndWrite(long[] data, int length) throws IOException {
-    System.out.println("source data size:" + 8 * length + " byte");
     out = new ByteArrayOutputStream();
     writeData(data, length);
     byte[] page = out.toByteArray();
-    System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
     int i = 0;
     while (reader.hasNext(buffer)) {

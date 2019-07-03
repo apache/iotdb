@@ -98,7 +98,6 @@ public class SyncFileManager {
     logger.info("Acquire list of valid files.");
     for (Entry<String, Set<String>> entry : validAllFiles.entrySet()) {
       for (String path : entry.getValue()) {
-        logger.info(path);
         currentLocalFiles.get(entry.getKey()).remove(path);
       }
     }

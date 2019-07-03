@@ -59,7 +59,7 @@ public class MemTableFlushTask {
     this.storageGroup = storageGroup;
     subTaskPoolManager.submit(encodingTask);
     this.ioTaskFuture = subTaskPoolManager.submit(ioTask);
-    logger.info("flush task of Storage group {} memtable {} is created ",
+    logger.debug("flush task of Storage group {} memtable {} is created ",
         storageGroup, memTable.getVersion());
   }
 
@@ -83,7 +83,7 @@ public class MemTableFlushTask {
       encodingTaskQueue.add(new EndChunkGroupIoTask(memTable.getVersion()));
     }
     noMoreEncodingTask = true;
-    logger.info(
+    logger.debug(
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);
 
@@ -136,7 +136,7 @@ public class MemTableFlushTask {
     public void run() {
       long memSerializeTime = 0;
       boolean noMoreMessages = false;
-      logger.info("Storage group {} memtable {}, starts to encoding data.", storageGroup,
+      logger.debug("Storage group {} memtable {}, starts to encoding data.", storageGroup,
           memTable.getVersion());
       while (true) {
         if (noMoreEncodingTask) {
@@ -173,7 +173,7 @@ public class MemTableFlushTask {
         }
       }
       noMoreIOTask = true;
-      logger.info("Storage group {}, flushing memtable {} into disk: Encoding data cost "
+      logger.debug("Storage group {}, flushing memtable {} into disk: Encoding data cost "
               + "{} ms.",
           storageGroup, memTable.getVersion(), memSerializeTime);
     }
@@ -182,7 +182,7 @@ public class MemTableFlushTask {
   private Runnable ioTask = () -> {
       long ioTime = 0;
       boolean returnWhenNoTask = false;
-      logger.info("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
+      logger.debug("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
       while (true) {
         if (noMoreIOTask) {
           returnWhenNoTask = true;
@@ -195,7 +195,7 @@ public class MemTableFlushTask {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
-            logger.error("Storage group {} memtable, io flush task is interrupted.", storageGroup
+            logger.error("Storage group {} memtable, io task is interrupted.", storageGroup
                 , memTable.getVersion(), e);
             Thread.currentThread().interrupt();
           }
@@ -213,14 +213,14 @@ public class MemTableFlushTask {
               writer.endChunkGroup(endGroupTask.version);
             }
           } catch (IOException e) {
-            logger.error("Storage group {} memtable {}, io error.", storageGroup,
+            logger.error("Storage group {} memtable {}, io task meets error.", storageGroup,
                 memTable.getVersion(), e);
             throw new FlushRunTimeException(e);
           }
           ioTime += System.currentTimeMillis() - starTime;
         }
       }
-      logger.info("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
+      logger.debug("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
           storageGroup, ioTime);
     };
 

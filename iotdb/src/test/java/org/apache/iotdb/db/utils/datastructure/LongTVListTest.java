@@ -77,9 +77,6 @@ public class LongTVListTest {
 
   @Test
   public void compareLongTVListSortTime() {
-
-    long start = System.currentTimeMillis();
-
     for (int j = 0; j < 100; j++) {
       LongTVList tvList = new LongTVList();
       for (long i = 0; i < 1000; i++) {
@@ -91,9 +88,6 @@ public class LongTVListTest {
         tvList.getTime(i);
       }
     }
-    start = System.currentTimeMillis() - start;
-    System.out.println("tvList sort time: " + start);
-
   }
 
 }
