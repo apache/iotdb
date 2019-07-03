@@ -199,6 +199,7 @@ public abstract class AbstractMemTable implements IMemTable {
   private IWritableMemChunk filterChunk(IWritableMemChunk chunk, long timestamp) {
 
     if (!chunk.isEmpty() && chunk.getMinTime() <= timestamp) {
+      //TODO we can avoid sorting data here by scanning data once.
       List<TimeValuePair> timeValuePairs = chunk.getSortedTimeValuePairList();
       TSDataType dataType = chunk.getType();
       IWritableMemChunk newChunk = genMemSeries(dataType);

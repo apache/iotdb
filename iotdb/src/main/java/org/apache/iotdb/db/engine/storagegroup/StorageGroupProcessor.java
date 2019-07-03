@@ -370,6 +370,8 @@ public class StorageGroupProcessor {
    */
   private void moveWorkProcessorToClosingList(TsFileProcessor tsFileProcessor,
       boolean sequence) {
+    //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
+    //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
       workSequenceTsFileProcessor = null;
@@ -556,7 +558,7 @@ public class StorageGroupProcessor {
     TsFileResource resource = tsFileProcessor.getTsFileResource();
     for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
       String deviceId = startTime.getKey();
-      resource.getEndTimeMap().put(deviceId, latestTimeForEachDevice.get(deviceId));
+      resource.forceUpdateEndTime(deviceId, latestTimeForEachDevice.get(deviceId));
     }
   }
 
@@ -634,7 +636,7 @@ public class StorageGroupProcessor {
     }
     logger.info("signal closing storage group condition in {}", storageGroupName);
     synchronized (closeStorageGroupCondition) {
-      closeStorageGroupCondition.notify();
+      closeStorageGroupCondition.notifyAll();
     }
   }
 

@@ -70,12 +70,17 @@ public class TsFileProcessor {
 
   private TsFileResource tsFileResource;
 
+  /**
+   * Whether the processor is in the queue of the FlushManager or being flushed by a flush thread.
+   */
   private volatile boolean managedByFlushManager;
 
   private ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
 
   /**
-   * true: should be closed
+   * It is set by the StorageGroupProcessor and checked by flush threads.
+   * (If shouldClose == true and its flushingMemTables are all flushed, then the flush thread will
+   * close this file.)
    */
   private volatile boolean shouldClose;
 
@@ -95,7 +100,7 @@ public class TsFileProcessor {
   private CloseTsFileCallBack closeUnsealedFileCallback;
 
   /**
-   *
+   * this callback is called before the workMemtable is added into the flushingMemTables.
    */
   private Supplier updateLatestFlushTimeCallback;
 
@@ -120,8 +125,7 @@ public class TsFileProcessor {
   }
 
   /**
-   * insert data in an InsertPlan into the workingMemtable. If the memory usage is beyond the
-   * memTableThreshold, put the workingMemtable into the flushing list.
+   * insert data in an InsertPlan into the workingMemtable.
    *
    * @param insertPlan physical plan of insertion
    * @return succeed or fail
@@ -148,18 +152,22 @@ public class TsFileProcessor {
     }
     // update start time of this memtable
     tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
+    //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+    //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // insert tsRecord to work memtable
+    // insert insertPlan to the work memtable
     workMemTable.insert(insertPlan);
 
     return true;
   }
 
   /**
-   * Delete data whose timestamp <= 'timestamp' and belonging to timeseries deviceId.measurementId.
+   * Delete data which belongs to the timeseries `deviceId.measurementId` and the timestamp of which
+   * <= 'timestamp' in the deletion. <br/>
+   *
    * Delete data in both working MemTable and flushing MemTables.
    */
   public void deleteDataInMemory(Deletion deletion) {
@@ -196,7 +204,7 @@ public class TsFileProcessor {
   }
 
   void syncClose() {
-    logger.info("Sync close file: {}, first async close it",
+    logger.info("Sync close file: {}, will firstly async close it",
         tsFileResource.getFile().getAbsolutePath());
     asyncClose();
     synchronized (flushingMemTables) {

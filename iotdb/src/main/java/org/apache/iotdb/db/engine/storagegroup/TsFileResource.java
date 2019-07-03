@@ -155,6 +155,10 @@ public class TsFileResource {
     }
   }
 
+  public void forceUpdateEndTime(String device, long time) {
+      endTimeMap.put(device, time);
+  }
+
   public List<ChunkMetaData> getChunkMetaDatas() {
     return chunkMetaDatas;
   }
