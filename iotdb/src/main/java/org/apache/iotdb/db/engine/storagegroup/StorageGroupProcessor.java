@@ -148,6 +148,7 @@ public class StorageGroupProcessor {
    * losing some deletion in the merged new file, so a lock is necessary.
    * TODO reconsidering this when implementing the merge process.
    */
+  @SuppressWarnings("unused") // to be used in merge
   private ReentrantLock mergeDeleteLock = new ReentrantLock();
 
   /**

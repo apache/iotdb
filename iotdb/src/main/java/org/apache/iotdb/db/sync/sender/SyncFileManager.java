@@ -144,21 +144,26 @@ public class SyncFileManager {
       }
       File[] listFiles = new File(path).listFiles();
       for (File storageGroup : listFiles) {
-        if (storageGroup.isDirectory() && !storageGroup.getName().equals(Constans.SYNC_CLIENT)) {
-          if (!currentLocalFiles.containsKey(storageGroup.getName())) {
-            currentLocalFiles.put(storageGroup.getName(), new HashSet<>());
-          }
-          if (!validAllFiles.containsKey(storageGroup.getName())) {
-            validAllFiles.put(storageGroup.getName(), new HashSet<>());
-          }
-          File[] files = storageGroup.listFiles();
-          for (File file : files) {
-            if (!file.getPath().endsWith(RESTORE_SUFFIX) && !new File(
-                file.getPath() + RESTORE_SUFFIX).exists()) {
-              currentLocalFiles.get(storageGroup.getName()).add(file.getPath());
-            }
-          }
+        if (!storageGroup.isDirectory() || storageGroup.getName().equals(Constans.SYNC_CLIENT)) {
+          continue;
         }
+        getStorageGroupFiles(storageGroup);
+      }
+    }
+  }
+
+  private void getStorageGroupFiles(File storageGroup) {
+    if (!currentLocalFiles.containsKey(storageGroup.getName())) {
+      currentLocalFiles.put(storageGroup.getName(), new HashSet<>());
+    }
+    if (!validAllFiles.containsKey(storageGroup.getName())) {
+      validAllFiles.put(storageGroup.getName(), new HashSet<>());
+    }
+    File[] files = storageGroup.listFiles();
+    for (File file : files) {
+      if (!file.getPath().endsWith(RESTORE_SUFFIX) && !new File(
+          file.getPath() + RESTORE_SUFFIX).exists()) {
+        currentLocalFiles.get(storageGroup.getName()).add(file.getPath());
       }
     }
   }

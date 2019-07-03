@@ -269,9 +269,10 @@ public class StorageEngine implements IService {
    * @param storageGroupName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
+  @SuppressWarnings("unused") // reimplement sync module
   public boolean appendFileToStorageGroupProcessor(String storageGroupName, TsFileResource appendFile,
       String appendFilePath) throws StorageEngineException {
-    // TODO
+    // TODO reimplement sync module
     return true;
   }
 
@@ -281,9 +282,10 @@ public class StorageEngine implements IService {
    * @param storageGroupName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
+  @SuppressWarnings("unused") // reimplement sync module
   public List<String> getOverlapFiles(String storageGroupName, TsFileResource appendFile,
       String uuid) throws StorageEngineException {
-    // TODO
+    // TODO reimplement sync module
     return Collections.emptyList();
   }
 
