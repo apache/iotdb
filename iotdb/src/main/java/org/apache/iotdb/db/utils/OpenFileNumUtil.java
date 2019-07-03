@@ -170,28 +170,10 @@ public class OpenFileNumUtil {
       pro = r.exec(COMMAND_TEMPLATE);
       BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()));
       String line;
-      int oldValue;
+
       while ((line = in.readLine()) != null) {
         lineCount++;
-        String[] temp = line.split("\\s+");
-        if (line.contains(Integer.toString(pid)) && temp.length > 8) {
-          oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
-          resultMap.put(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM, oldValue + 1);
-          for (OpenFileNumStatistics openFileNumStatistics : OpenFileNumStatistics.values()) {
-            if (openFileNumStatistics.path != null) {
-              for (String path : openFileNumStatistics.path) {
-                if (temp[8].contains(path)) {
-                  oldValue = resultMap.get(openFileNumStatistics);
-                  resultMap.put(openFileNumStatistics, oldValue + 1);
-                }
-              }
-            }
-          }
-          if (temp[7].contains("TCP") || temp[7].contains("UDP")) {
-            oldValue = resultMap.get(OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM);
-            resultMap.put(OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM, oldValue + 1);
-          }
-        }
+        countOneFile(line, pid, resultMap);
       }
       if (lineCount < OpenFileNumStatistics.values().length) {
         isOutputValid = false;
@@ -207,6 +189,30 @@ public class OpenFileNumUtil {
       logger.error("Cannot get open file number of IoTDB process because ", e);
     }
     return resultMap;
+  }
+
+  private static void countOneFile(String line, int pid, EnumMap<OpenFileNumStatistics, Integer> resultMap) {
+    String[] temp = line.split("\\s+");
+    if (!line.contains(Integer.toString(pid)) || temp.length <= 8) {
+      return;
+    }
+    int oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
+    resultMap.put(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM, oldValue + 1);
+    for (OpenFileNumStatistics openFileNumStatistics : OpenFileNumStatistics.values()) {
+      if (openFileNumStatistics.path == null) {
+        continue;
+      }
+      for (String path : openFileNumStatistics.path) {
+        if (temp[8].contains(path)) {
+          oldValue = resultMap.get(openFileNumStatistics);
+          resultMap.put(openFileNumStatistics, oldValue + 1);
+        }
+      }
+    }
+    if (temp[7].contains("TCP") || temp[7].contains("UDP")) {
+      oldValue = resultMap.get(OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM);
+      resultMap.put(OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM, oldValue + 1);
+    }
   }
 
   /**
