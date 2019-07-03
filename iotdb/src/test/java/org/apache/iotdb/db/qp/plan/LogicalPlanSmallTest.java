@@ -69,7 +69,7 @@ public class LogicalPlanSmallTest {
     AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
     RootOperator operator = generator.getLogicalPlan(astNode);
     Assert.assertEquals(operator.getClass(), QueryOperator.class);
-    Assert.assertEquals(((QueryOperator) operator).getSeriesLimit(), 10);
+    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
   }
 
   @Test(expected = LogicalOperatorException.class)
@@ -121,8 +121,8 @@ public class LogicalPlanSmallTest {
     AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
     RootOperator operator = generator.getLogicalPlan(astNode);
     Assert.assertEquals(operator.getClass(), QueryOperator.class);
-    Assert.assertEquals(((QueryOperator) operator).getSeriesLimit(), 10);
-    Assert.assertEquals(((QueryOperator) operator).getSeriesOffset(), 1);
+    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesOffset());
   }
 
   @Test(expected = LogicalOptimizeException.class)
