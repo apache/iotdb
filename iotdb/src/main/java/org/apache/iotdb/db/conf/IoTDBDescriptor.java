@@ -127,7 +127,7 @@ public class IoTDBDescriptor {
 
       conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
 
-      conf.setDataDirs(properties.getProperty("data_dir", IoTDBConfig.DEFAULT_SEQ_DATA_DIR)
+      conf.setDataDirs(properties.getProperty("data_dirs", IoTDBConfig.DEFAULT_SEQ_DATA_DIR)
           .split(","));
 
       conf.setSystemDir(properties.getProperty("sys_dir", conf.getSystemDir()));
