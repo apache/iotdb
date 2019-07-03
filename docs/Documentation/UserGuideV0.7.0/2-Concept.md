@@ -35,7 +35,7 @@ The following basic concepts are involved in IoTDB:
 
 * Device
 
-A devices is an installation equipped with sensors in real scenarios. In IoTDB, all sensors should have their corresponding devices.
+A device is an installation equipped with sensors in real scenarios. In IoTDB, all sensors should have their corresponding devices.
 
 * Sensor
 
