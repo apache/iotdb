@@ -76,7 +76,7 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   protected void insertData() throws IOException {
     for (int j = 1000; j <= 1009; j++) {
       insertOneRecord(j, j);
-      storageGroupProcessor.putWorkingTsFileProcessorIntoClosingList();
+      storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
     }
     for (int j = 1010; j <= 1019; j++) {
       insertOneRecord(j, j);

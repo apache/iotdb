@@ -183,7 +183,7 @@ public class StorageEngine implements IService {
   public void asyncFlushAndSealAllFiles() {
     synchronized (processorMap) {
       for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-        storageGroupProcessor.putWorkingTsFileProcessorIntoClosingList();
+        storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
       }
     }
   }

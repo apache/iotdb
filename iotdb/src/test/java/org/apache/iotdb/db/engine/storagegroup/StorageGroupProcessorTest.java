@@ -62,7 +62,7 @@ public class StorageGroupProcessorTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.putWorkingTsFileProcessorIntoClosingList();
+      processor.putAllWorkingTsFileProcessorIntoClosingList();
     }
 
     processor.waitForAllCurrentTsFileProcessorsClosed();
@@ -82,7 +82,7 @@ public class StorageGroupProcessorTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.putWorkingTsFileProcessorIntoClosingList();
+      processor.putAllWorkingTsFileProcessorIntoClosingList();
     }
     processor.waitForAllCurrentTsFileProcessorsClosed();
 
@@ -90,7 +90,7 @@ public class StorageGroupProcessorTest {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.putWorkingTsFileProcessorIntoClosingList();
+      processor.putAllWorkingTsFileProcessorIntoClosingList();
     }
 
     processor.waitForAllCurrentTsFileProcessorsClosed();

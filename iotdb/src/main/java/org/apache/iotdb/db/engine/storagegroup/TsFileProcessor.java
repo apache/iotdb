@@ -206,6 +206,9 @@ public class TsFileProcessor {
   void syncClose() {
     logger.info("Sync close file: {}, will firstly async close it",
         tsFileResource.getFile().getAbsolutePath());
+    if (shouldClose) {
+      return;
+    }
     asyncClose();
     synchronized (flushingMemTables) {
       try {
@@ -221,8 +224,11 @@ public class TsFileProcessor {
 
   void asyncClose() {
     flushQueryLock.writeLock().lock();
-    logger.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
     try {
+      logger.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
+      if (shouldClose) {
+        return;
+      }
       shouldClose = true;
       // when a flush thread serves this TsFileProcessor (because the processor is submitted by
       // registerTsFileProcessor()), the thread will seal the corresponding TsFile and
