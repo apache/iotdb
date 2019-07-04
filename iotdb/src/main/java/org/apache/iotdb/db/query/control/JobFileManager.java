@@ -76,11 +76,11 @@ public class JobFileManager {
    */
   void removeUsedFilesForGivenJob(long jobId) {
       for (String filePath : sealedFilePathsMap.get(jobId)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, false);
+        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, true);
       }
       sealedFilePathsMap.remove(jobId);
       for (String filePath : unsealedFilePathsMap.get(jobId)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, true);
+        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, false);
       }
       unsealedFilePathsMap.remove(jobId);
   }

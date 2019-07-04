@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.reader.sequence;
 
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -140,8 +141,8 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
             .get(fileNode.getFile().getPath(), true);
 
-    MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
-    List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
+    List<ChunkMetaData> metaDataList = DeviceMetaDataCache
+        .getInstance().get(fileNode.getFile().getPath(), seriesPath);
 
     List<Modification> pathModifications = context.getPathModifications(fileNode.getModFile(),
             seriesPath.getFullPath());

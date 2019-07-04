@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.sequence;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -128,9 +129,8 @@ public class SequenceSeriesReader extends IterateReader {
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
         .get(tsfile.getFile().getPath(), true);
-
-    MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
-    List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
+    List<ChunkMetaData> metaDataList =  DeviceMetaDataCache
+        .getInstance().get(tsfile.getFile().getPath(), seriesPath);
 
     List<Modification> pathModifications = context.getPathModifications(tsfile.getModFile(),
         seriesPath.getFullPath());

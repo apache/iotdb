@@ -19,10 +19,17 @@
 package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * This class is used to read metadata(<code>TsFileMetaData</code> and
@@ -30,7 +37,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
  */
 public class TsFileMetadataUtils {
 
-  private TsFileMetadataUtils(){
+  private TsFileMetadataUtils() {
 
   }
 
@@ -41,9 +48,8 @@ public class TsFileMetadataUtils {
    * @return -meta data
    */
   public static TsFileMetaData getTsFileMetaData(String filePath) throws IOException {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
-      return reader.readFileMetadata();
-    }
+    TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
+    return reader.readFileMetadata();
   }
 
   /**
@@ -59,14 +65,34 @@ public class TsFileMetadataUtils {
     if (!fileMetaData.getDeviceMap().containsKey(deviceId)) {
       return null;
     } else {
-      try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
-        long offset = fileMetaData.getDeviceMap().get(deviceId).getOffset();
-        int size = fileMetaData.getDeviceMap().get(deviceId).getLen();
-        ByteBuffer data = ByteBuffer.allocate(size);
-        reader.readRaw(offset, size, data);
-        data.flip();
-        return TsDeviceMetadata.deserializeFrom(data);
-      }
+      // get the index information of TsDeviceMetadata
+      TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(deviceId);
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
+      // read TsDeviceMetadata from file
+      TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
+      return tsDeviceMetadata;
     }
   }
+
+  /**
+   * get all ChunkMetaData List included in all ChunkGroups of this device.
+   */
+  public static ConcurrentHashMap<Path, List<ChunkMetaData>> getChunkMetaDataList(
+      TsDeviceMetadata tsDeviceMetadata) {
+    ConcurrentHashMap<Path, List<ChunkMetaData>> pathToChunkMetaDataList = new ConcurrentHashMap<>();
+    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
+      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
+          .getChunkMetaDataList();
+      String deviceId = chunkGroupMetaData.getDeviceID();
+      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
+        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
+        pathToChunkMetaDataList.putIfAbsent(path, new ArrayList<>());
+        chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+        pathToChunkMetaDataList.get(path).add(chunkMetaData);
+      }
+    }
+    return pathToChunkMetaDataList;
+  }
+
+
 }

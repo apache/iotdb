@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.factory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -107,8 +108,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     // get modified chunk metadatas
     List<ChunkMetaData> metaDataList;
     if (tsFileResource.isClosed()) {
-      MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
-      metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
+      metaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource.getFile().getPath(), seriesPath);
       // mod
       List<Modification> pathModifications = context
           .getPathModifications(tsFileResource.getModFile(),
@@ -161,8 +161,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
       List<ChunkMetaData> metaDataList;
       if (tsFileResource.isClosed()) {
-        MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
-        metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
+        metaDataList = DeviceMetaDataCache.getInstance().get(tsFileResource.getFile().getPath(), seriesPath);
         // mod
         List<Modification> pathModifications = context
                 .getPathModifications(tsFileResource.getModFile(),

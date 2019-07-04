@@ -19,12 +19,17 @@
 package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,9 +42,9 @@ public class DeviceMetaDataCache {
 
   private static final int CACHE_SIZE = 100;
   /**
-   * key: the file path + deviceId.
+   * key: the file path. value: key: series path, value: list of chunkMetaData.
    */
-  private LinkedHashMap<String, TsDeviceMetadata> lruCache;
+  private LinkedHashMap<String, ConcurrentHashMap<Path, List<ChunkMetaData>>> lruCache;
 
   private AtomicLong cacheHintNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
@@ -55,15 +60,13 @@ public class DeviceMetaDataCache {
   /**
    * get {@link TsDeviceMetadata}. THREAD SAFE.
    */
-  public TsDeviceMetadata get(String filePath, String deviceId, TsFileMetaData fileMetaData)
+  public List<ChunkMetaData> get(String filePath, Path seriesPath)
       throws IOException {
-    // The key(the tsfile path and deviceId) for the lruCache
 
-    String jointPath = filePath + deviceId;
-    Object jointPathObject = jointPath.intern();
+    Object jointPathObject = filePath.intern();
     synchronized (lruCache) {
       cacheRequestNum.incrementAndGet();
-      if (lruCache.containsKey(jointPath)) {
+      if (lruCache.containsKey(filePath) && lruCache.get(filePath).containsKey(seriesPath)) {
         cacheHintNum.incrementAndGet();
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -71,28 +74,35 @@ public class DeviceMetaDataCache {
                   + "the number of hints for cache is {}",
               cacheRequestNum.get(), cacheHintNum.get());
         }
-        return lruCache.get(jointPath);
+        return new ArrayList<>(lruCache.get(filePath).get(seriesPath));
       }
     }
     synchronized (jointPathObject) {
       synchronized (lruCache) {
-        if (lruCache.containsKey(jointPath)) {
-          return lruCache.get(jointPath);
+        if (lruCache.containsKey(filePath) && lruCache.get(filePath).containsKey(seriesPath)) {
+          return new ArrayList<>(lruCache.get(filePath).get(seriesPath));
         }
       }
       if (logger.isDebugEnabled()) {
         logger.debug("Cache didn't hint: the number of requests for cache is {}",
             cacheRequestNum.get());
       }
+      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
       TsDeviceMetadata blockMetaData = TsFileMetadataUtils
-          .getTsRowGroupBlockMetaData(filePath, deviceId,
+          .getTsRowGroupBlockMetaData(filePath, seriesPath.getDevice(),
               fileMetaData);
+      ConcurrentHashMap<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
+          .getChunkMetaDataList(blockMetaData);
       synchronized (lruCache) {
-        lruCache.put(jointPath, blockMetaData);
-        return lruCache.get(jointPath);
+        lruCache.put(filePath, chunkMetaData);
+        if(lruCache.get(filePath).containsKey(seriesPath)){
+          return new ArrayList<>(lruCache.get(filePath).get(seriesPath));
+        }
+        return new ArrayList<>();
       }
     }
   }
+
 
   /**
    * clear LRUCache.
@@ -115,9 +125,9 @@ public class DeviceMetaDataCache {
   /**
    * This class is a map used to cache the <code>RowGroupBlockMetaData</code>. The caching strategy
    * is LRU.
-   *
    */
-  private class LruLinkedHashMap extends LinkedHashMap<String, TsDeviceMetadata> {
+  private class LruLinkedHashMap extends
+      LinkedHashMap<String, ConcurrentHashMap<Path, List<ChunkMetaData>>> {
 
     private static final long serialVersionUID = 1290160928914532649L;
     private static final float LOAD_FACTOR_MAP = 0.75f;
@@ -129,7 +139,8 @@ public class DeviceMetaDataCache {
     }
 
     @Override
-    protected boolean removeEldestEntry(Map.Entry<String, TsDeviceMetadata> eldest) {
+    protected boolean removeEldestEntry(
+        Map.Entry<String, ConcurrentHashMap<Path, List<ChunkMetaData>>> eldest) {
       return size() > maxCapacity;
     }
 
@@ -152,12 +163,16 @@ public class DeviceMetaDataCache {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DeviceMetaDataCache that = (DeviceMetaDataCache) o;
     return Objects.equals(lruCache, that.lruCache) &&
-            Objects.equals(cacheHintNum, that.cacheHintNum) &&
-            Objects.equals(cacheRequestNum, that.cacheRequestNum);
+        Objects.equals(cacheHintNum, that.cacheHintNum) &&
+        Objects.equals(cacheRequestNum, that.cacheRequestNum);
   }
 
   @Override
