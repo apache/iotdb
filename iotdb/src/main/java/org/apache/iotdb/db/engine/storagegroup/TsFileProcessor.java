@@ -209,9 +209,9 @@ public class TsFileProcessor {
     if (shouldClose) {
       return;
     }
-    asyncClose();
     synchronized (flushingMemTables) {
       try {
+        asyncClose();
         flushingMemTables.wait();
       } catch (InterruptedException e) {
         logger.error("wait close interrupted", e);
