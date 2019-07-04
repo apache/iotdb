@@ -156,7 +156,7 @@ public class TsFileGeneratorForTest {
 
     FileSchema schema = generateTestSchema();
 
-    TSFileDescriptor.getInstance().getConfig().groupSizeInByte = chunkGroupSize;
+    TSFileDescriptor.getInstance().getConfig().memTableSizeInByte = chunkGroupSize;
     TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage = pageSize;
     innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 

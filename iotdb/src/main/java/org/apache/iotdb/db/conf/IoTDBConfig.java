@@ -56,9 +56,10 @@ public class IoTDBConfig {
   private long forceWalPeriodInMs = 10;
 
   /**
-   * Size of log buffer in each log node(in byte).
+   * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
+   * is smaller than this parameter, then the insert plan will be rejected by WAL.
    */
-  private int walBufferSize = 16*1024*1024;
+  private int walBufferSize = 16 * 1024 * 1024;
 
   /**
    * system base dir, stores all system data and wal
@@ -71,8 +72,7 @@ public class IoTDBConfig {
   private String systemDir = "data/system";
 
   /**
-   * Data directory of data.
-   * It can be settled as dataDirs = {"data1", "data2", "data3"};
+   * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
   private String[] dataDirs = {"data/data"};
 
@@ -94,8 +94,8 @@ public class IoTDBConfig {
   private int memtableNumber = 20;
 
   /**
-   * The maximum concurrent thread number for merging. When the value <=0 or > CPU core
-   * number, use the CPU core number.
+   * The maximum concurrent thread number for merging. When the value <=0 or > CPU core number, use
+   * the CPU core number.
    */
   private int mergeConcurrentThreads = Runtime.getRuntime().availableProcessors();
 

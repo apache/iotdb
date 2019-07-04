@@ -60,8 +60,8 @@ public class IoTDBLogFileSizeTest {
     if (skip) {
       return;
     }
-    groupSize = TSFileConfig.groupSizeInByte;
-    TSFileConfig.groupSizeInByte = 8 * 1024 * 1024;
+    groupSize = TSFileConfig.memTableSizeInByte;
+    TSFileConfig.memTableSizeInByte = 8 * 1024 * 1024;
     EnvironmentUtils.closeStatMonitor();
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -74,7 +74,7 @@ public class IoTDBLogFileSizeTest {
     if (skip) {
       return;
     }
-    TSFileConfig.groupSizeInByte = groupSize;
+    TSFileConfig.memTableSizeInByte = groupSize;
     executeSQL(tearDownSqls);
     daemon.stop();
     Thread.sleep(5000);
