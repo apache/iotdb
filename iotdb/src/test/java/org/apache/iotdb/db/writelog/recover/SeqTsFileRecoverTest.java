@@ -116,6 +116,7 @@ public class SeqTsFileRecoverTest {
   @After
   public void tearDown() throws IOException {
     FileUtils.deleteDirectory(tsF.getParentFile());
+    resource.close();
     node.delete();
   }
 
