@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader;
 
+import java.io.IOException;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -50,7 +51,7 @@ public abstract class ReaderTestHelper {
     EnvironmentUtils.cleanDir(systemDir);
   }
 
-  abstract protected void insertData();
+  abstract protected void insertData() throws IOException;
 
   protected void insertOneRecord(long time, int num) {
     TSRecord record = new TSRecord(time, deviceId);

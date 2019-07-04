@@ -242,7 +242,11 @@ public class TsFileProcessor {
               .debug("storage group {} async flush a memtable when async close", storageGroupName);
         }
       }
-      addAMemtableIntoFlushingList(tmpMemTable);
+      try {
+        addAMemtableIntoFlushingList(tmpMemTable);
+      } catch (IOException e) {
+        logger.error("async close failed, because", e);
+      }
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -251,7 +255,7 @@ public class TsFileProcessor {
   /**
    * TODO if the flushing thread is too fast, the tmpMemTable.wait() may never wakeup
    */
-  public void syncFlush() {
+  public void syncFlush() throws IOException {
     IMemTable tmpMemTable;
     flushQueryLock.writeLock().lock();
     try {
@@ -302,9 +306,6 @@ public class TsFileProcessor {
       if (workMemTable == null) {
         return;
       }
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        getLogNode().notifyStartFlush();
-      }
 
       addAMemtableIntoFlushingList(workMemTable);
 
@@ -320,10 +321,13 @@ public class TsFileProcessor {
    * queue, set the current working memtable as null and then register the tsfileProcessor into the
    * flushManager again.
    */
-  private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) {
+  private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
     updateLatestFlushTimeCallback.get();
     flushingMemTables.addLast(tobeFlushed);
     tobeFlushed.setVersion(versionController.nextVersion());
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+      getLogNode().notifyStartFlush();
+    }
     workMemTable = null;
     FlushManager.getInstance().registerTsFileProcessor(this);
   }
