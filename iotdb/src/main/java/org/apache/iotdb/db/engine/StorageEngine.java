@@ -150,7 +150,7 @@ public class StorageEngine implements IService {
       sgProcessor.clear();
     }
     processorMap.clear();
-    readOnly = true;
+    readOnly = false;
   }
 
 
