@@ -140,7 +140,6 @@ public class MManager {
         maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
             .max(Integer::compareTo).get();
       }
-      logWriter = new BufferedWriter(new FileWriter(logFile, true));
       writeToLog = true;
     } catch (PathErrorException | IOException | MetadataErrorException e) {
       mgraph = new MGraph(ROOT_NAME);
@@ -177,6 +176,12 @@ public class MManager {
       this.mNodeCache.clear();
       this.seriesNumberInStorageGroups.clear();
       this.maxSeriesNumberAmongStorageGroup = 0;
+      if (logWriter != null) {
+        logWriter.close();
+        logWriter = null;
+      }
+    } catch (IOException e) {
+      logger.error("Cannot close metadata log writer, because:", e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -229,7 +234,7 @@ public class MManager {
     }
   }
 
-  private void initLogStream() throws IOException {
+  private BufferedWriter getLogWriter() throws IOException {
     if (logWriter == null) {
       File logFile = new File(logFilePath);
       File metadataDir = new File(schemaDir);
@@ -240,6 +245,7 @@ public class MManager {
       fileWriter = new FileWriter(logFile, true);
       logWriter = new BufferedWriter(fileWriter);
     }
+    return logWriter;
   }
 
   public boolean addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
@@ -333,16 +339,16 @@ public class MManager {
         maxSeriesNumberAmongStorageGroup = size + 1;
       }
       if (writeToLog) {
-        initLogStream();
-        logWriter.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.ADD_PATH_TO_MTREE,
+        BufferedWriter writer = getLogWriter();
+        writer.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.ADD_PATH_TO_MTREE,
             path, dataType.serialize(), encoding.serialize(), compressor.serialize()));
         if (props != null) {
           for (Map.Entry entry : props.entrySet()) {
-            logWriter.write(String.format(",%s=%s", entry.getKey(), entry.getValue()));
+            writer.write(String.format(",%s=%s", entry.getKey(), entry.getValue()));
           }
         }
-        logWriter.newLine();
-        logWriter.flush();
+        writer.newLine();
+        writer.flush();
       }
     } finally {
       lock.writeLock().unlock();
@@ -471,10 +477,10 @@ public class MManager {
       mNodeCache.clear();
       String dataFileName = mgraph.deletePath(path);
       if (writeToLog) {
-        initLogStream();
-        logWriter.write(MetadataOperationType.DELETE_PATH_FROM_MTREE + "," + path);
-        logWriter.newLine();
-        logWriter.flush();
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.DELETE_PATH_FROM_MTREE + "," + path);
+        writer.newLine();
+        writer.flush();
       }
       String storageGroup = getStorageGroupNameByPath(path);
       int size = seriesNumberInStorageGroups.get(storageGroup);
@@ -517,10 +523,10 @@ public class MManager {
       mgraph.setStorageLevel(path);
       seriesNumberInStorageGroups.put(path, 0);
       if (writeToLog) {
-        initLogStream();
-        logWriter.write(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE + "," + path);
-        logWriter.newLine();
-        logWriter.flush();
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE + "," + path);
+        writer.newLine();
+        writer.flush();
       }
     } catch (IOException | PathErrorException e) {
       throw new MetadataErrorException(e);
@@ -551,10 +557,10 @@ public class MManager {
     try {
       mgraph.addAPTree(ptreeRootName);
       if (writeToLog) {
-        initLogStream();
-        logWriter.write(MetadataOperationType.ADD_A_PTREE + "," + ptreeRootName);
-        logWriter.newLine();
-        logWriter.flush();
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.ADD_A_PTREE + "," + ptreeRootName);
+        writer.newLine();
+        writer.flush();
       }
     } finally {
       lock.writeLock().unlock();
@@ -571,10 +577,10 @@ public class MManager {
     try {
       mgraph.addPathToPTree(path);
       if (writeToLog) {
-        initLogStream();
-        logWriter.write(MetadataOperationType.ADD_A_PATH_TO_PTREE + "," + path);
-        logWriter.newLine();
-        logWriter.flush();
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.ADD_A_PATH_TO_PTREE + "," + path);
+        writer.newLine();
+        writer.flush();
       }
     } finally {
       lock.writeLock().unlock();
@@ -590,10 +596,10 @@ public class MManager {
     try {
       mgraph.deletePath(path);
       if (writeToLog) {
-        initLogStream();
-        logWriter.write(MetadataOperationType.DELETE_PATH_FROM_PTREE + "," + path);
-        logWriter.newLine();
-        logWriter.flush();
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.DELETE_PATH_FROM_PTREE + "," + path);
+        writer.newLine();
+        writer.flush();
       }
     } finally {
       lock.writeLock().unlock();
@@ -609,10 +615,10 @@ public class MManager {
     try {
       mgraph.linkMNodeToPTree(path, mpath);
       if (writeToLog) {
-        initLogStream();
-        logWriter.write(MetadataOperationType.LINK_MNODE_TO_PTREE + "," + path + "," + mpath);
-        logWriter.newLine();
-        logWriter.flush();
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.LINK_MNODE_TO_PTREE + "," + path + "," + mpath);
+        writer.newLine();
+        writer.flush();
       }
     } finally {
       lock.writeLock().unlock();
@@ -629,10 +635,10 @@ public class MManager {
     try {
       mgraph.unlinkMNodeFromPTree(path, mpath);
       if (writeToLog) {
-        initLogStream();
-        logWriter.write(MetadataOperationType.UNLINK_MNODE_FROM_PTREE + "," + path + "," + mpath);
-        logWriter.newLine();
-        logWriter.flush();
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.UNLINK_MNODE_FROM_PTREE + "," + path + "," + mpath);
+        writer.newLine();
+        writer.flush();
       }
     } finally {
       lock.writeLock().unlock();

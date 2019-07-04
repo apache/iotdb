@@ -25,7 +25,6 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class DefaultTsFileInput implements TsFileInput {
 
@@ -63,12 +62,12 @@ public class DefaultTsFileInput implements TsFileInput {
 
   @Override
   public int read() throws IOException {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public int read(byte[] b, int off, int len) throws IOException {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -88,6 +87,6 @@ public class DefaultTsFileInput implements TsFileInput {
 
   @Override
   public int readInt() throws IOException {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 }
