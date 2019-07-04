@@ -72,8 +72,9 @@ public class EnvironmentUtils {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
       Assert.fail();
     }
-    StatMonitor.getInstance().close();
     StorageEngine.getInstance().reset();
+
+    StatMonitor.getInstance().close();
     // clean wal
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
@@ -83,8 +84,6 @@ public class EnvironmentUtils {
     MManager.getInstance().clear();
     // delete all directory
     cleanAllDir();
-    StorageEngine.getInstance().setReadOnly(false);
-    StorageEngine.getInstance().reset();
   }
 
   private static void cleanAllDir() throws IOException {

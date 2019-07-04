@@ -145,8 +145,12 @@ public class StorageEngine implements IService {
   /**
    * This function is just for unit test.
    */
-  public synchronized void reset() {
+  public synchronized void reset() throws IOException {
+    for (StorageGroupProcessor sgProcessor : processorMap.values()) {
+      sgProcessor.clear();
+    }
     processorMap.clear();
+    readOnly = true;
   }
 
 

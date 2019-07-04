@@ -633,4 +633,14 @@ public class StorageGroupProcessor {
   public interface CloseTsFileCallBack {
     void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
+
+  public void clear() throws IOException {
+    for (TsFileResource tsFileResource : unSequenceFileList) {
+      tsFileResource.close();
+    }
+    for (TsFileResource tsFileResource : sequenceFileList) {
+      tsFileResource.close();
+    }
+  }
+
 }
