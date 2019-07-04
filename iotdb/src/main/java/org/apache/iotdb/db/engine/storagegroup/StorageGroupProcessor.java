@@ -376,6 +376,12 @@ public class StorageGroupProcessor {
     waitForAllCurrentTsFileProcessorsClosed();
     writeLock();
     try {
+      for (TsFileResource tsFileResource : unSequenceFileList) {
+        tsFileResource.close();
+      }
+      for (TsFileResource tsFileResource : sequenceFileList) {
+        tsFileResource.close();
+      }
       List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
       folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       for (String tsfilePath : folder) {
@@ -394,6 +400,8 @@ public class StorageGroupProcessor {
       this.unSequenceFileList.clear();
       this.latestFlushedTimeForEachDevice.clear();
       this.latestTimeForEachDevice.clear();
+    } catch (IOException e) {
+      logger.error("Cannot delete files in storage group {}, because", storageGroupName, e);
     } finally {
       writeUnlock();
     }
@@ -632,15 +640,6 @@ public class StorageGroupProcessor {
   @FunctionalInterface
   public interface CloseTsFileCallBack {
     void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
-  }
-
-  public void clear() throws IOException {
-    for (TsFileResource tsFileResource : unSequenceFileList) {
-      tsFileResource.close();
-    }
-    for (TsFileResource tsFileResource : sequenceFileList) {
-      tsFileResource.close();
-    }
   }
 
 }
