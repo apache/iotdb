@@ -83,8 +83,8 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     MetadataPlan plan = (MetadataPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("seriesPath: root.vehicle.d1.s1\n" + "resultDataType: INT32\n" + "encoding: RLE\n"
-        + "namespace type: ADD_PATH\n" + "args: ", plan.toString());
+    assertEquals(String.format("seriesPath: root.vehicle.d1.s1%n" + "resultDataType: INT32%n" +
+        "encoding: RLE%nnamespace type: ADD_PATH%n" + "args: "), plan.toString());
   }
 
   @Test
