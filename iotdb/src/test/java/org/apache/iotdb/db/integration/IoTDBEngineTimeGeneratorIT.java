@@ -69,12 +69,12 @@ public class IoTDBEngineTimeGeneratorIT {
     // origin value
     maxNumberOfPointsInPage = tsFileConfig.maxNumberOfPointsInPage;
     pageSizeInByte = tsFileConfig.pageSizeInByte;
-    groupSizeInByte = tsFileConfig.groupSizeInByte;
+    groupSizeInByte = tsFileConfig.memTableSizeInByte;
 
     // new value
     tsFileConfig.maxNumberOfPointsInPage = 100;
     tsFileConfig.pageSizeInByte = 1024 * 1024 * 150;
-    tsFileConfig.groupSizeInByte = 1024 * 1024 * 100;
+    tsFileConfig.memTableSizeInByte = 1024 * 1024 * 100;
 
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -91,7 +91,7 @@ public class IoTDBEngineTimeGeneratorIT {
     // recovery value
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     tsFileConfig.pageSizeInByte = pageSizeInByte;
-    tsFileConfig.groupSizeInByte = groupSizeInByte;
+    tsFileConfig.memTableSizeInByte = groupSizeInByte;
 
     EnvironmentUtils.cleanEnv();
   }

@@ -82,11 +82,21 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
       children.sort(Comparator.comparing(o -> o.getSinglePath().getFullPath()));
     }
     List<FilterOperator> ret = new ArrayList<>();
+    int firstNonSingleIndex = mergeSingleFilters(ret, filter);
+
+    // add last null child
+    return addLastNullChild(ret, filter, firstNonSingleIndex, childPath);
+  }
+
+  private int mergeSingleFilters(List<FilterOperator> ret, FilterOperator filter) {
+    List<FilterOperator> children = filter.getChildren();
     List<FilterOperator> tempExtrNode = null;
-    int i;
-    for (i = 0; i < children.size(); i++) {
-      tempPath = children.get(i).getSinglePath();
-      // sorted by seriesPath, all "null" paths are in the end
+    Path tempPath;
+    Path childPath = null;
+    int firstNonSingleIndex;
+    for (firstNonSingleIndex = 0; firstNonSingleIndex < children.size(); firstNonSingleIndex++) {
+      tempPath = children.get(firstNonSingleIndex).getSinglePath();
+      // sorted by seriesPath, all non-single filters are in the end
       if (tempPath == null) {
         break;
       }
@@ -94,17 +104,17 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         // first child to be added
         childPath = tempPath;
         tempExtrNode = new ArrayList<>();
-        tempExtrNode.add(children.get(i));
+        tempExtrNode.add(children.get(firstNonSingleIndex));
       } else if (childPath.equals(tempPath)) {
         // successive next single child with same seriesPath,merge it with previous children
-        tempExtrNode.add(children.get(i));
+        tempExtrNode.add(children.get(firstNonSingleIndex));
       } else {
-        // not more same, add exist nodes in tempExtrNode into a new node
+        // not more same, add existing nodes in tempExtrNode into a new node
         // prevent make a node which has only one child.
         if (tempExtrNode.size() == 1) {
           ret.add(tempExtrNode.get(0));
           // use exist Object directly for efficiency
-          tempExtrNode.set(0, children.get(i));
+          tempExtrNode.set(0, children.get(firstNonSingleIndex));
           childPath = tempPath;
         } else {
           // add a new inner node
@@ -113,7 +123,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
           newFilter.setChildren(tempExtrNode);
           ret.add(newFilter);
           tempExtrNode = new ArrayList<>();
-          tempExtrNode.add(children.get(i));
+          tempExtrNode.add(children.get(firstNonSingleIndex));
           childPath = tempPath;
         }
       }
@@ -130,12 +140,12 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         ret.add(newFil);
       }
     }
-    // add last null child
-    return addLastNullChild(children, ret, filter, i, childPath);
+    return firstNonSingleIndex;
   }
 
-  private Path addLastNullChild(List<FilterOperator> children, List<FilterOperator> ret,
+  private Path addLastNullChild(List<FilterOperator> ret,
                                 FilterOperator filter, int i, Path childPath){
+    List<FilterOperator> children = filter.getChildren();
     for (; i < children.size(); i++) {
       ret.add(children.get(i));
     }

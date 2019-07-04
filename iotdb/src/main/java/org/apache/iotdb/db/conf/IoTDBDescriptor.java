@@ -92,16 +92,16 @@ public class IoTDBDescriptor {
       properties.load(inputStream);
       conf.setEnableStatMonitor(Boolean
           .parseBoolean(properties.getProperty("enable_stat_monitor",
-                  Boolean.toString(conf.isEnableStatMonitor()))));
+              Boolean.toString(conf.isEnableStatMonitor()))));
       conf.setBackLoopPeriodSec(Integer
           .parseInt(properties.getProperty("back_loop_period_in_second",
-                  Integer.toString(conf.getBackLoopPeriodSec()))));
+              Integer.toString(conf.getBackLoopPeriodSec()))));
       int statMonitorDetectFreqSec = Integer.parseInt(
           properties.getProperty("stat_monitor_detect_freq_in_second",
-                  Integer.toString(conf.getStatMonitorDetectFreqSec())));
+              Integer.toString(conf.getStatMonitorDetectFreqSec())));
       int statMonitorRetainIntervalSec = Integer.parseInt(
           properties.getProperty("stat_monitor_retain_interval_in_second",
-                  Integer.toString(conf.getStatMonitorRetainIntervalSec())));
+              Integer.toString(conf.getStatMonitorRetainIntervalSec())));
       // the conf value must > default value, or may cause system unstable
       if (conf.getStatMonitorDetectFreqSec() < statMonitorDetectFreqSec) {
         conf.setStatMonitorDetectFreqSec(statMonitorDetectFreqSec);
@@ -127,7 +127,7 @@ public class IoTDBDescriptor {
 
       conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
 
-      conf.setDataDirs(properties.getProperty("data_dir", IoTDBConfig.DEFAULT_SEQ_DATA_DIR)
+      conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
       conf.setSystemDir(properties.getProperty("sys_dir", conf.getSystemDir()));
@@ -140,11 +140,11 @@ public class IoTDBDescriptor {
 
       conf.setFlushWalThreshold(Integer
           .parseInt(properties.getProperty("flush_wal_threshold",
-                  Integer.toString(conf.getFlushWalThreshold()))));
+              Integer.toString(conf.getFlushWalThreshold()))));
 
       conf.setForceWalPeriodInMs(Long
           .parseLong(properties.getProperty("force_wal_period_in_ms",
-                  Long.toString(conf.getForceWalPeriodInMs()))));
+              Long.toString(conf.getForceWalPeriodInMs()))));
       conf.setWalBufferSize(Integer.parseInt(properties.getProperty("wal_buffer_size",
           Integer.toString(conf.getWalBufferSize()))));
 
@@ -153,7 +153,7 @@ public class IoTDBDescriptor {
 
       conf.setMergeConcurrentThreads(Integer
           .parseInt(properties.getProperty("merge_concurrent_threads",
-                  Integer.toString(conf.getMergeConcurrentThreads()))));
+              Integer.toString(conf.getMergeConcurrentThreads()))));
       if (conf.getMergeConcurrentThreads() <= 0
           || conf.getMergeConcurrentThreads() > Runtime.getRuntime().availableProcessors()) {
         conf.setMergeConcurrentThreads(Runtime.getRuntime().availableProcessors());
@@ -162,32 +162,31 @@ public class IoTDBDescriptor {
       conf.setFetchSize(Integer.parseInt(properties.getProperty("fetch_size",
           Integer.toString(conf.getFetchSize()))));
 
-
       conf.setTsFileSizeThreshold(Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
-                  Long.toString(conf.getTsFileSizeThreshold())).trim()));
+              Long.toString(conf.getTsFileSizeThreshold())).trim()));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
-                  Boolean.toString(conf.isSyncEnable()))));
+              Boolean.toString(conf.isSyncEnable()))));
       conf.setSyncServerPort(Integer
           .parseInt(properties.getProperty("sync_server_port",
-                  Integer.toString(conf.getSyncServerPort())).trim()));
+              Integer.toString(conf.getSyncServerPort())).trim()));
       conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
           properties.getProperty("update_historical_data_possibility",
-                  Boolean.toString(conf.isSyncEnable()))));
+              Boolean.toString(conf.isSyncEnable()))));
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       conf.setConcurrentFlushThread(Integer
           .parseInt(properties.getProperty("concurrent_flush_thread",
-                  Integer.toString(conf.getConcurrentFlushThread()))));
+              Integer.toString(conf.getConcurrentFlushThread()))));
       if (conf.getConcurrentFlushThread() <= 0) {
         conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
       }
 
       conf.setmManagerCacheSize(Integer
           .parseInt(properties.getProperty("schema_manager_cache_size",
-                  Integer.toString(conf.getmManagerCacheSize())).trim()));
+              Integer.toString(conf.getmManagerCacheSize())).trim()));
 
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());
@@ -216,6 +215,7 @@ public class IoTDBDescriptor {
   }
 
   private static class IoTDBDescriptorHolder {
+
     private static final IoTDBDescriptor INSTANCE = new IoTDBDescriptor();
   }
 }

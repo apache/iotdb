@@ -423,7 +423,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       for (String statement : statements) {
         currStmt = statement;
-        isAllSuccessful = isAllSuccessful && executeStatement(statement, batchErrorMessage, result);
+        isAllSuccessful = isAllSuccessful && executeStatementInBatch(statement, batchErrorMessage, result);
       }
       if (isAllSuccessful) {
         return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
@@ -441,12 +441,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private boolean executeStatement(String statement, StringBuilder batchErrorMessage,
+  // execute one statement of a batch. Currently, query is not allowed in a batch statement and
+  // on finding queries in a batch, such query will be ignored and an error will be generated
+  private boolean executeStatementInBatch(String statement, StringBuilder batchErrorMessage,
       List<Integer> result) throws QueryInBatchStmtException {
     try {
       PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
-        throw new QueryInBatchStmtException();
+        throw new QueryInBatchStmtException("Query statement not allowed in batch: " + statement);
       }
       TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan);
       if (resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)) {

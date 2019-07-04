@@ -51,7 +51,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TsFileSequenceReader implements AutoCloseable{
+public class TsFileSequenceReader implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
 
@@ -173,8 +173,6 @@ public class TsFileSequenceReader implements AutoCloseable{
 
   /**
    * whether the file is a complete TsFile: only if the head magic and tail magic string exists.
-   * @return
-   * @throws IOException
    */
   public boolean isComplete() throws IOException {
     return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.length() * 2 && readTailMagic()
@@ -218,9 +216,10 @@ public class TsFileSequenceReader implements AutoCloseable{
    */
   public long getPositionOfFirstDeviceMetaIndex() throws IOException {
     TsFileMetaData metaData = readFileMetadata();
-    Optional<Long> data = metaData.getDeviceMap().values().stream().map(TsDeviceMetadataIndex::getOffset)
+    Optional<Long> data = metaData.getDeviceMap().values().stream()
+        .map(TsDeviceMetadataIndex::getOffset)
         .min(Comparator.comparing(Long::valueOf));
-    if(data.isPresent()) {
+    if (data.isPresent()) {
       return data.get();
     } else {
       //no real data
@@ -352,7 +351,8 @@ public class TsFileSequenceReader implements AutoCloseable{
    * @param position the file offset of this chunk's header
    * @param markerRead true if the offset does not contains the marker , otherwise false
    */
-  private PageHeader readPageHeader(TSDataType dataType, long position, boolean markerRead) throws IOException {
+  private PageHeader readPageHeader(TSDataType dataType, long position, boolean markerRead)
+      throws IOException {
     return PageHeader.deserializeFrom(dataType, tsFileInput, position, markerRead);
   }
 
@@ -370,10 +370,6 @@ public class TsFileSequenceReader implements AutoCloseable{
 
   /**
    *
-   * @param header
-   * @param position
-   * @return
-   * @throws IOException
    */
   public long skipPageData(PageHeader header, long position) throws IOException {
     return position + header.getCompressedSize();
@@ -466,8 +462,8 @@ public class TsFileSequenceReader implements AutoCloseable{
   /**
    * Self Check the file and return the position before where the data is safe.
    *
-   * @param newSchema @OUT.  the measurement schema in the file will be added into
-   * this parameter. (can be null)
+   * @param newSchema @OUT.  the measurement schema in the file will be added into this parameter.
+   * (can be null)
    * @param newMetaData @OUT can not be null, the chunk group metadta in the file will be added into
    * this parameter.
    * @param fastFinish if true and the file is complete, then newSchema and newMetaData parameter
@@ -552,10 +548,12 @@ public class TsFileSequenceReader implements AutoCloseable{
             for (int j = 1; j < header.getNumOfPages() - 1; j++) {
               //a new Page
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
+              numOfPoints += pageHeader.getNumOfValues();
               this.skipPageData(pageHeader);
             }
             if (header.getNumOfPages() > 1) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
+              numOfPoints += pageHeader.getNumOfValues();
               endTimeOfChunk = pageHeader.getMaxTimestamp();
               this.skipPageData(pageHeader);
             }

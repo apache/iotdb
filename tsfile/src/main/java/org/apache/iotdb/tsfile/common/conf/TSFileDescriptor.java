@@ -106,16 +106,16 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
-      TSFileConfig.groupSizeInByte = Integer
+      TSFileConfig.memTableSizeInByte = Integer
           .parseInt(
               properties.getProperty("group_size_in_byte",
-                  Integer.toString(TSFileConfig.groupSizeInByte)));
+                  Integer.toString(TSFileConfig.memTableSizeInByte)));
       TSFileConfig.pageSizeInByte = Integer
           .parseInt(properties
               .getProperty("page_size_in_byte", Integer.toString(TSFileConfig.pageSizeInByte)));
-      if (TSFileConfig.pageSizeInByte > TSFileConfig.groupSizeInByte) {
+      if (TSFileConfig.pageSizeInByte > TSFileConfig.memTableSizeInByte) {
         logger.warn("page_size is greater than group size, will set it as the same with group size");
-        TSFileConfig.pageSizeInByte = TSFileConfig.groupSizeInByte;
+        TSFileConfig.pageSizeInByte = TSFileConfig.memTableSizeInByte;
       }
       TSFileConfig.maxNumberOfPointsInPage = Integer.parseInt(
           properties

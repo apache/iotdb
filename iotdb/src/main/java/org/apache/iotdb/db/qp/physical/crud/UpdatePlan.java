@@ -129,4 +129,10 @@ public class UpdatePlan extends PhysicalPlan {
     return Objects.equals(intervals, that.intervals) && Objects.equals(value, that.value)
         && Objects.equals(path, that.path);
   }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(value, path);
+  }
+
 }

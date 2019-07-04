@@ -28,8 +28,6 @@ public class IoTDBConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   public static final String CONFIG_NAME = "iotdb-engine.properties";
-  static final String DEFAULT_SEQ_DATA_DIR = "sequence";
-  static final String DEFAULT_UNSEQ_DATA_DIR = "unsequence";
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
@@ -41,26 +39,27 @@ public class IoTDBConfig {
   private int rpcPort = 6667;
 
   /**
-   * Is the insert ahead log enable.
+   * Is the write ahead log enable.
    */
   private boolean enableWal = true;
 
   /**
-   * When a certain amount of insert ahead logs is reached, they will be flushed to the disk. It is
+   * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
    * possible to lose at most flush_wal_threshold operations.
    */
   private int flushWalThreshold = 10000;
 
   /**
-   * The cycle when insert ahead log is periodically forced to be written to disk(in milliseconds) If
+   * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call outputStream.force(true) after every each insert
    */
   private long forceWalPeriodInMs = 10;
 
   /**
-   * Size of log buffer in each log node(in byte).
+   * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
+   * is smaller than this parameter, then the insert plan will be rejected by WAL.
    */
-  private int walBufferSize = 16*1024*1024;
+  private int walBufferSize = 16 * 1024 * 1024;
 
   /**
    * system base dir, stores all system data and wal
@@ -73,8 +72,7 @@ public class IoTDBConfig {
   private String systemDir = "data/system";
 
   /**
-   * Data directory of data.
-   * It can be settled as dataDirs = {"data1", "data2", "data3"};
+   * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
   private String[] dataDirs = {"data/data"};
 
@@ -96,8 +94,8 @@ public class IoTDBConfig {
   private int memtableNumber = 20;
 
   /**
-   * The maximum concurrent thread number for merging. When the value <=0 or > CPU core
-   * number, use the CPU core number.
+   * The maximum concurrent thread number for merging. When the value <=0 or > CPU core number, use
+   * the CPU core number.
    */
   private int mergeConcurrentThreads = Runtime.getRuntime().availableProcessors();
 

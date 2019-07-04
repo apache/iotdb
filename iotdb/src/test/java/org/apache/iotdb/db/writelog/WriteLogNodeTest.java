@@ -81,6 +81,7 @@ public class WriteLogNodeTest {
     ILogReader reader = logNode.getLogReader();
     assertEquals(bwInsertPlan, reader.next());
     assertEquals(deletePlan, reader.next());
+    reader.close();
 
     logNode.delete();
   }
@@ -106,14 +107,17 @@ public class WriteLogNodeTest {
     ILogReader logReader = logNode.getLogReader();
     assertEquals(bwInsertPlan, logReader.next());
     assertEquals(deletePlan, logReader.next());
+    logReader.close();
 
     logNode.notifyEndFlush();
     logReader = logNode.getLogReader();
     assertEquals(deletePlan, logReader.next());
+    logReader.close();
 
     logNode.notifyEndFlush();
     logReader = logNode.getLogReader();
     assertFalse(logReader.hasNext());
+    logReader.close();
 
     logNode.delete();
   }

@@ -50,6 +50,7 @@ public class MemTableFlushTaskTest {
 
   @After
   public void tearDown() throws Exception {
+    writer.close();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir("data");
   }
@@ -63,7 +64,7 @@ public class MemTableFlushTaskTest {
     assertTrue(writer
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).isEmpty());
-    memTableFlushTask.flushMemTable();
+    memTableFlushTask.syncFlushMemTable();
     writer.makeMetadataVisible();
     assertEquals(1, writer
         .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,

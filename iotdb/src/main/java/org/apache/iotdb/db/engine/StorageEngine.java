@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -75,11 +76,10 @@ public class StorageEngine implements IService {
   private StorageEngine() {
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     // create systemDir
-    File dir = new File(systemDir);
-    if (dir.mkdirs()) {
-
-      logger.info("Information directory {} of all storage groups doesn't exist, create it",
-          dir.getPath());
+    try {
+      FileUtils.forceMkdir(new File(systemDir));
+    } catch (IOException e) {
+      throw new StorageEngineFailureException("create system directory failed!");
     }
 
     /**
@@ -145,8 +145,9 @@ public class StorageEngine implements IService {
   /**
    * This function is just for unit test.
    */
-  public synchronized void reset() {
+  public synchronized void reset() throws IOException {
     processorMap.clear();
+    readOnly = false;
   }
 
 
@@ -183,7 +184,7 @@ public class StorageEngine implements IService {
   public void asyncFlushAndSealAllFiles() {
     synchronized (processorMap) {
       for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-        storageGroupProcessor.putWorkingTsFileProcessorIntoClosingList();
+        storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
       }
     }
   }
@@ -269,9 +270,10 @@ public class StorageEngine implements IService {
    * @param storageGroupName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
+  @SuppressWarnings("unused") // reimplement sync module
   public boolean appendFileToStorageGroupProcessor(String storageGroupName, TsFileResource appendFile,
       String appendFilePath) throws StorageEngineException {
-    // TODO
+    // TODO reimplement sync module
     return true;
   }
 
@@ -281,9 +283,10 @@ public class StorageEngine implements IService {
    * @param storageGroupName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
+  @SuppressWarnings("unused") // reimplement sync module
   public List<String> getOverlapFiles(String storageGroupName, TsFileResource appendFile,
       String uuid) throws StorageEngineException {
-    // TODO
+    // TODO reimplement sync module
     return Collections.emptyList();
   }
 

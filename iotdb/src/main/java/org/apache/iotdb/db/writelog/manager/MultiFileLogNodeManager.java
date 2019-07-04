@@ -54,8 +54,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           logger.info("WAL force thread exits.");
           return;
         }
-        if (logger.isDebugEnabled()) {
-        }
 
         for (WriteLogNode node : nodeMap.values()) {
           try {

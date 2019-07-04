@@ -140,7 +140,7 @@ public class TsFileWriter implements AutoCloseable{
     this.schema = schema;
     this.schema.registerMeasurements(fileWriter.getKnownSchema());
     this.pageSize = TSFileConfig.pageSizeInByte;
-    this.chunkGroupSizeThreshold = TSFileConfig.groupSizeInByte;
+    this.chunkGroupSizeThreshold = TSFileConfig.memTableSizeInByte;
     if (this.pageSize >= chunkGroupSizeThreshold) {
       LOG.warn(
           "TsFile's page size {} is greater than chunk group size {}, please enlarge the chunk group"
@@ -241,13 +241,11 @@ public class TsFileWriter implements AutoCloseable{
       long memSize = calculateMemSizeForAllGroup();
       assert memSize > 0;
       if (memSize > chunkGroupSizeThreshold) {
-        LOG.info("start_flush_row_group, memory space occupy:{}", memSize);
+        LOG.debug("start to flush chunk groups, memory space occupy:{}", memSize);
         recordCountForNextMemCheck = recordCount * chunkGroupSizeThreshold / memSize;
-        LOG.debug("current threshold:{}, next check:{}", recordCount, recordCountForNextMemCheck);
         return flushAllChunkGroups();
       } else {
         recordCountForNextMemCheck = recordCount * chunkGroupSizeThreshold / memSize;
-        LOG.debug("current threshold:{}, next check:{}", recordCount, recordCountForNextMemCheck);
         return false;
       }
     }

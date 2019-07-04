@@ -100,6 +100,8 @@ public class LogReplayer {
       }
     } catch (IOException e) {
       throw new ProcessorException("Cannot replay logs", e);
+    } finally {
+      logReader.close();
     }
     tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateTime(k, v));
     tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateTime(k, v));

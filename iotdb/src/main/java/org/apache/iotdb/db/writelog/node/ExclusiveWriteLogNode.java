@@ -82,7 +82,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         sync();
       }
     } catch (BufferOverflowException e) {
-      throw new IOException("Log cannot fit into buffer", e);
+      throw new IOException("Log cannot fit into buffer, please increase wal_buffer_size", e);
     } finally {
       lock.writeLock().unlock();
     }
