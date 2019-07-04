@@ -50,9 +50,9 @@ public class MemTableFlushTaskTest {
 
   @After
   public void tearDown() throws Exception {
+    writer.close();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir("data");
-    writer.close();
   }
 
   @Test
