@@ -129,8 +129,8 @@ public class TSFileDescriptor {
       TSFileConfig.floatPrecision = Integer
           .parseInt(properties
               .getProperty("float_precision", Integer.toString(TSFileConfig.floatPrecision)));
-      TSFileConfig.timeSeriesEncoder = properties
-          .getProperty("time_series_encoder", TSFileConfig.timeSeriesEncoder);
+      TSFileConfig.timeEncoder = properties
+          .getProperty("time_encoder", TSFileConfig.timeEncoder);
       TSFileConfig.valueEncoder = properties
           .getProperty("value_encoder", TSFileConfig.valueEncoder);
       TSFileConfig.compressor = properties.getProperty("compressor", TSFileConfig.compressor);

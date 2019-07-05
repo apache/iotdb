@@ -281,6 +281,15 @@ The detail of each variables are as follows:
 |Default| 134217728 |
 |Effective|Immediately|
 
+* page\_size\_in\_byte
+
+|Name| page\_size\_in\_byte |
+|:---:|:---|
+|Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
+|Type|Int32|
+|Default| 134217728 |
+|Effective|Immediately|
+
 * max\_number\_of\_points\_in\_page
 
 |Name| max\_number\_of\_points\_in\_page |
@@ -299,15 +308,6 @@ The detail of each variables are as follows:
 |Default| 128 |
 |Effective|Immediately|
 
-* page\_size\_in\_byte
-
-|Name| page\_size\_in\_byte |
-|:---:|:---|
-|Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
-|Type|Int32|
-|Default| 134217728 |
-|Effective|Immediately|
-
 * time\_series\_data\_type
 
 |Name| time\_series\_data\_type |
@@ -317,13 +317,22 @@ The detail of each variables are as follows:
 |Default| Int64 |
 |Effective|Immediately|
 
-* time\_series\_encoder
+* time\_encoder
 
-|Name| time\_series\_data\_type |
+|Name| time\_encoder |
 |:---:|:---|
-|Description| TimeSeries encoding type|
+|Description| Encoding type of time column|
 |Type|Enum String: “TS_2DIFF”,“PLAIN”,“RLE”|
 |Default| TS_2DIFF |
+|Effective|Immediately|
+
+* value\_encoder
+
+|Name| value\_encoder |
+|:---:|:---|
+|Description| Encoding type of value column|
+|Type|Enum String: “TS_2DIFF”,“PLAIN”,“RLE”|
+|Default| PLAIN |
 |Effective|Immediately|
 
 * float_precision
@@ -336,105 +345,6 @@ The detail of each variables are as follows:
 |Effective|Immediately|
 
 #### Engine Layer
-
-* back\_loop\_period
-
-|Name| back\_loop\_period |
-|:---:|:---|
-|Description| The frequency at which the system statistic module triggers(in seconds). |
-|Type|Int32|
-|Default| 10 |
-|Effective|After restart system|
-
-* data\_dir
-
-|Name| data\_dir |
-|:---:|:---|
-|Description| The IoTDB data path.By default, it is stored in the data directory at the same level as the bin directory. It is recommended to use an absolute path. |
-|Type|String|
-|Default| data |
-|Effective|After restart system|
-
-* enable_wal
-
-|Name| enable_wal |
-|:---:|:---|
-|Description| Whether to enable the pre-write log. The default value is true(enabled), and false means closed. |
-|Type|Bool|
-|Default| true |
-|Effective|After restart system|
-
-* fetch_size
-
-|Name| fetch_size |
-|:---:|:---|
-|Description| The amount of data read each time in batches(the number of data strips, that is, the number of different time stamps.) |
-|Type|Int32|
-|Default| 10000 |
-|Effective|After restart system|
-
-* flush\_wal\_period\_in\_ms
-
-|Name| flush\_wal\_period\_in\_ms |
-|:---:|:---|
-|Description| The period during which the log is periodically flushed to disk(in milliseconds) |
-|Type|Int32|
-|Default| 10 |
-|Effective|After restart system|
-
-* flush\_wal\_threshold
-
-|Name| flush\_wal\_threshold |
-|:---:|:---|
-|Description| After the WAL reaches this value, it is flushed to disk, and it is possible to lose at most flush_wal_threshold operations. |
-|Type|Int32|
-|Default| 10000 |
-|Effective|After restart system|
-
-* max\_opened\_folder
-
-|Name| max\_opened\_folder |
-|:---:|:---|
-|Description| The maximum number of folders opened at the same time. When the value becomes larger, the memory usage increases, the IO random read and write becomes less, and the file partition (ie, group) is more neat; the smaller the value, the less memory is occupied, the IO random read and write becomes more, and the file block size is insufficient. |
-|Type|Int32|
-|Default| 100 |
-|Effective|After restart system|
-
-* merge\_concurrent\_threads
-
-|Name| merge\_concurrent\_threads |
-|:---:|:---|
-|Description| THe max threads which can be used when unsequence data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the unsequence data is too large, the reading will be slower. |
-|Type|Int32|
-|Default| 10 |
-|Effective|After restart system|
-
-* mult\_dir\_strategy
-
-|Name| mult\_dir\_strategy |
-|:---:|:---|
-|Description| IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. <UserDfineStrategyPackage> (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
-|Type|String|
-|Default| MaxDiskUsableSpaceFirstStrategy |
-|Effective|After restart system|
-
-* period\_time\_for\_flush\_in\_second
-
-|Name| period\_time\_for\_flush\_in\_second |
-|:---:|:---|
-|Description| The interval period IoTDB closes files(in seconds). At every set time, the system will automatically flush the data in the memory to the disk and seal all the files that are currently open.|
-|Type|Int32|
-|Default| 3600 |
-|Effective|After restart system|
-
-* period\_time\_for\_merge\_in\_second
-
-|Name| period\_time\_for\_merge\_in\_second |
-|:---:|:---|
-|Description| IoTDB has two parts of data in memory at runtime: unsequence and sequence file. The system will automatically merge the two parts of data at regular intervals. This is the merge interval(in seconds).|
-|Type|Int32|
-|Default| 7200 |
-|Effective|After restart system|
 
 * rpc_address
 
@@ -454,33 +364,6 @@ The detail of each variables are as follows:
 |Default| 6667 |
 |Effective|After restart system|
 
-* tsfile_dir
-
-|Name| tsfile_dir |
-|:---:|:---|
-|Description| The storage path of TsFile. By default, it is stored in three folders under data directory(soldled1, settled2, and settled3). See the [mult\_dir\_strategy](chapter4,multdirstrategy) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
-|Type|String[]|
-|Default| settled1, settled2, settled3 |
-|Effective|After restart system|
-
-* wal\_cleanup\_threshold
-
-|Name| wal\_cleanup\_threshold |
-|:---:|:---|
-|Description| When the total number of logs in the file and in memory reaches this value, all logs are compressed and the useless log is removed. The default is 500000. If this value is too large, it will cause a short write pause. If it is too small, it will increase IO and CPU consumption. |
-|Type|Int32|
-|Default| 500000 |
-|Effective|After restart system|
-
-* sys\_dir
-
-|Name| sys\_dir |
-|:---:|:---|
-|Description| IoTDB metadata storage path.(By default it is in the data directory at the same level as the bin directory. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. |
-|Type|String|
-|Default| system |
-|Effective|After restart system|
-
 * time_zone
 
 |Name| time_zone |
@@ -488,6 +371,96 @@ The detail of each variables are as follows:
 |Description| The time zone in which the server is located, the default is Beijing time (+8) |
 |Type|Time Zone String|
 |Default| +08:00 |
+|Effective|After restart system|
+
+* base\_dir
+
+|Name| base\_dir |
+|:---:|:---|
+|Description| The IoTDB system folder. It is recommended to use an absolute path. |
+|Type|String|
+|Default| data |
+|Effective|After restart system|
+
+* data_dirs
+
+|Name| data_dirs |
+|:---:|:---|
+|Description| The directories of data files. Multiple directories are separated by comma. See the [mult\_dir\_strategy](chapter4,multdirstrategy) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
+|Type|String[]|
+|Default| data/data |
+|Effective|After restart system|
+
+* wal\_dir
+
+|Name| wal\_dir |
+|:---:|:---|
+|Description| Write Ahead Log storage path. It is recommended to use an absolute path. |
+|Type|String|
+|Default| data/wal |
+|Effective|After restart system|
+
+* enable_wal
+
+|Name| enable_wal |
+|:---:|:---|
+|Description| Whether to enable the pre-write log. The default value is true(enabled), and false means closed. |
+|Type|Bool|
+|Default| true |
+|Effective|After restart system|
+
+* mult\_dir\_strategy
+
+|Name| mult\_dir\_strategy |
+|:---:|:---|
+|Description| IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. <UserDfineStrategyPackage> (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
+|Type|String|
+|Default| MaxDiskUsableSpaceFirstStrategy |
+|Effective|After restart system|
+
+* tsfile\_size\_threshold
+
+|Name| tsfile\_size\_threshold |
+|:---:|:---|
+|Description| When a TsFile size on the disk exceeds this threshold, the TsFile is closed and open a new TsFile to accept data writes. The unit is byte and the default value is 2G.|
+|Type| Int64 |
+|Default| 2147483648 |
+|Effective|After restart system|
+
+* flush\_wal\_threshold
+
+|Name| flush\_wal\_threshold |
+|:---:|:---|
+|Description| After the WAL reaches this value, it is flushed to disk, and it is possible to lose at most flush_wal_threshold operations. |
+|Type|Int32|
+|Default| 10000 |
+|Effective|After restart system|
+
+* flush\_wal\_period\_in\_ms
+
+|Name| force\_wal\_period\_in\_ms |
+|:---:|:---|
+|Description| The period during which the log is periodically forced to flush to disk(in milliseconds) |
+|Type|Int32|
+|Default| 10 |
+|Effective|After restart system|
+
+* fetch_size
+
+|Name| fetch_size |
+|:---:|:---|
+|Description| The amount of data read each time in batches(the number of data strips, that is, the number of different time stamps.) |
+|Type|Int32|
+|Default| 10000 |
+|Effective|After restart system|
+
+* merge\_concurrent\_threads
+
+|Name| merge\_concurrent\_threads |
+|:---:|:---|
+|Description| THe max threads which can be used when unsequence data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the unsequence data is too large, the reading will be slower. |
+|Type|Int32|
+|Default| 10 |
 |Effective|After restart system|
 
 * enable\_stat\_monitor
@@ -499,14 +472,13 @@ The detail of each variables are as follows:
 |Default| true |
 |Effective|After restart system|
 
+* back\_loop\_period_in_second
 
-* tsfile\_size\_threshold
-
-|Name| tsfile\_size\_threshold |
+|Name| back\_loop\_period\_in\_second |
 |:---:|:---|
-|Description| When a TsFile size on the disk exceeds this threshold, the TsFile is closed and open a new TsFile to accept data writes. The unit is byte and the default value is 2G.|
-|Type| Int64 |
-|Default| 2147483648 |
+|Description| The frequency at which the system statistic module triggers(in seconds). |
+|Type|Int32|
+|Default| 5 |
 |Effective|After restart system|
 
 * concurrent\_flush\_thread
@@ -518,7 +490,6 @@ The detail of each variables are as follows:
 |Default| 0 |
 |Effective|After restart system|
 
-
 * stat\_monitor\_detect\_freq\_sec
 
 |Name| concurrent\_flush\_thread |
@@ -527,7 +498,6 @@ The detail of each variables are as follows:
 |Type| Int32 |
 |Default|600 |
 |Effective|After restart system|
-
 
 * stat\_monitor\_retain\_interval\_sec
 

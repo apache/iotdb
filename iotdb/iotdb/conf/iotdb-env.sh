@@ -130,11 +130,11 @@ calculate_heap_sizes
 # Minimum heap size
 #HEAP_NEWSIZE="2G"
 
-LOCAL_JMX=no
+JMX_LOCAL=no
 
 JMX_PORT="31999"
 
-if [ "$LOCAL_JMX" = "yes" ]; then
+if [ "JMX_LOCAL" = "yes" ]; then
 	IOTDB_JMX_OPTS="-Diotdb.jmx.local.port=$JMX_PORT"
 	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
 else

@@ -42,7 +42,7 @@ public abstract class ChunkReader {
   private IUnCompressor unCompressor;
   private Decoder valueDecoder;
   private Decoder timeDecoder = Decoder.getDecoderByType(
-      TSEncoding.valueOf(TSFileConfig.timeSeriesEncoder),
+      TSEncoding.valueOf(TSFileConfig.timeEncoder),
       TSDataType.INT64);
 
   private Filter filter;
