@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 
 public class OpenFileNumUtilTest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpenFileNumUtilTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(OpenFileNumUtilTest.class);
   private static final String TEST_FILE_PREFIX = "testFileForOpenFileNumUtil";
   private static final String MAC_OS_NAME = "mac";
   private static final String LINUX_OS_NAME = "linux";
@@ -64,14 +64,14 @@ public class OpenFileNumUtilTest {
   public void setUp() {
     int testProcessID = getProcessID();
     openFileNumUtil.setPid(testProcessID);
-    String dataFilePath = OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM.getPath().get(0);
+    String dataFilePath = OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM.getPath().get(0);
     String userDir = System.getProperty("user.dir");
     currDir = userDir + File.separator + testProcessID;
     testDataDirRoot = new File(currDir);
     currDir = currDir + File.separator + dataFilePath;
     File testDataDir = new File(currDir);
     if (!testDataDir.isDirectory() && !testDataDir.mkdirs()) {
-      LOGGER.error("Create test file dir {} failed.", testDataDir.getPath());
+      logger.error("Create test file dir {} failed.", testDataDir.getPath());
     }
     testFileName = TEST_FILE_PREFIX + testProcessID;
   }
@@ -83,7 +83,7 @@ public class OpenFileNumUtilTest {
       try {
         fw.close();
       } catch (IOException e) {
-        LOGGER.error(e.getMessage());
+        logger.error(e.getMessage());
       }
     }
 
@@ -93,7 +93,7 @@ public class OpenFileNumUtilTest {
         try {
           Files.delete(file.toPath());
         } catch (IOException e) {
-          LOGGER.error(e.getMessage());
+          logger.error(e.getMessage());
         }
       }
     }
@@ -102,7 +102,7 @@ public class OpenFileNumUtilTest {
     try {
       FileUtils.deleteDirectory(testDataDirRoot);
     } catch (IOException e) {
-      LOGGER.error("Delete test data dir {} failed.", testDataDirRoot);
+      logger.error("Delete test data dir {} failed.", testDataDirRoot);
     }
   }
 
@@ -110,12 +110,12 @@ public class OpenFileNumUtilTest {
   public void testDataOpenFileNumWhenCreateFile() {
     if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
       // get total open file number under /data/data before create new files
-      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
       for (int i = 0; i < testFileNum; i++) {
         fileList.add(new File(currDir + testFileName + i));
       }
       // create testFileNum File, then get total open file number statistics
-      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
       totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
       // create test file shall not affect total open file number statistics
       // if 'lsof' command is valid
@@ -127,7 +127,7 @@ public class OpenFileNumUtilTest {
       }
     } else {
       assertEquals(UNSUPPORTED_OS_ERROR_CODE,
-          openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
+          openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM));
     }
   }
 
@@ -137,29 +137,29 @@ public class OpenFileNumUtilTest {
       for (int i = 0; i < testFileNum; i++) {
         fileList.add(new File(currDir + testFileName + i));
       }
-      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
       for (File file : fileList) {
         if (file.exists()) {
           try {
             fileWriterList.add(new FileWriter(file));
           } catch (IOException e) {
-            LOGGER.error(e.getMessage());
+            logger.error(e.getMessage());
           }
         } else {
           try {
             boolean flag = file.createNewFile();
             if (flag) {
-              LOGGER.debug("Create a file {} successfully", file);
+              logger.debug("Create a file {} successfully", file);
               fileWriterList.add(new FileWriter(file));
             } else {
-              LOGGER.error("create test file {} failed when creating file writer.", file.getPath());
+              logger.error("create test file {} failed when creating file writer.", file.getPath());
             }
           } catch (IOException e) {
-            LOGGER.error(e.getMessage());
+            logger.error(e.getMessage());
           }
         }
       }
-      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
       totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
       // create FileWriter shall cause total open file number increase by testFileNum
       if (openFileNumUtil.isCommandValid()) {
@@ -170,13 +170,13 @@ public class OpenFileNumUtilTest {
       }
     } else {
       assertEquals(UNSUPPORTED_OS_ERROR_CODE,
-          openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
+          openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM));
     }
   }
 
   @Test
   public void testDataOpenFileNumWhenFileWriterWriting() {
-    LOGGER.debug("testDataOpenFileNumWhenFileWriterWriting...");
+    logger.debug("testDataOpenFileNumWhenFileWriterWriting...");
     if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
       for (int i = 0; i < testFileNum; i++) {
         fileList.add(new File(currDir + testFileName + i));
@@ -186,32 +186,32 @@ public class OpenFileNumUtilTest {
           try {
             fileWriterList.add(new FileWriter(file));
           } catch (IOException e) {
-            LOGGER.error(e.getMessage());
+            logger.error(e.getMessage());
           }
         } else {
           try {
             if (!file.createNewFile()) {
-              LOGGER.error("create test file {} failed.", file.getPath());
+              logger.error("create test file {} failed.", file.getPath());
             }
           } catch (IOException e) {
-            LOGGER.error(e.getMessage());
+            logger.error(e.getMessage());
           }
           try {
             fileWriterList.add(new FileWriter(file));
           } catch (IOException e) {
-            LOGGER.error(e.getMessage());
+            logger.error(e.getMessage());
           }
         }
       }
-      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
       for (FileWriter fw : fileWriterList) {
         try {
           fw.write("this is a test file for open file number counting.");
         } catch (IOException e) {
-          LOGGER.error(e.getMessage());
+          logger.error(e.getMessage());
         }
       }
-      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
       totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
       // writing test file shall not affect total open file number statistics
       if (openFileNumUtil.isCommandValid()) {
@@ -222,13 +222,13 @@ public class OpenFileNumUtilTest {
       }
     } else {
       assertEquals(UNSUPPORTED_OS_ERROR_CODE,
-          openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
+          openFileNumUtil.get(OpenFileNumStatistics.SEQUENCE_FILE_OPEN_NUM));
     }
   }
 
   @Test
   public void testDataOpenFileNumWhenFileWriterClose() {
-    LOGGER.debug("testDataOpenFileNumWhenFileWriterClose...");
+    logger.debug("testDataOpenFileNumWhenFileWriterClose...");
     if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
       for (int i = 0; i < testFileNum; i++) {
         fileList.add(new File(currDir + testFileName + i));
@@ -238,20 +238,20 @@ public class OpenFileNumUtilTest {
           try {
             fileWriterList.add(new FileWriter(file));
           } catch (IOException e) {
-            LOGGER.error(e.getMessage());
+            logger.error(e.getMessage());
           }
         } else {
           try {
             if (!file.createNewFile()) {
-              LOGGER.error("create test file {} failed.", file.getPath());
+              logger.error("create test file {} failed.", file.getPath());
             }
           } catch (IOException e) {
-            LOGGER.error(e.getMessage());
+            logger.error(e.getMessage());
           }
           try {
             fileWriterList.add(new FileWriter(file));
           } catch (IOException e) {
-            LOGGER.error(e.getMessage());
+            logger.error(e.getMessage());
           }
         }
       }
@@ -259,18 +259,18 @@ public class OpenFileNumUtilTest {
         try {
           fw.write("this is a test file for open file number counting.");
         } catch (IOException e) {
-          LOGGER.error(e.getMessage());
+          logger.error(e.getMessage());
         }
       }
-      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
       for (FileWriter fw : fileWriterList) {
         try {
           fw.close();
         } catch (IOException e) {
-          LOGGER.error(e.getMessage());
+          logger.error(e.getMessage());
         }
       }
-      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
       totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
       // close FileWriter shall cause total open file number decrease by testFileNum
       if (openFileNumUtil.isCommandValid()) {
@@ -281,7 +281,7 @@ public class OpenFileNumUtilTest {
       }
     } else {
       assertEquals(UNSUPPORTED_OS_ERROR_CODE,
-          openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
+          openFileNumUtil.get(OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM));
     }
   }
 }

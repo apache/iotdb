@@ -50,7 +50,7 @@ public class MNode implements Serializable {
   // node is one leaf
   private MeasurementSchema schema;
   private MNode parent;
-  private LinkedHashMap<String, MNode> children;
+  private Map<String, MNode> children;
 
   /**
    * Constructor of MNode.
@@ -182,11 +182,11 @@ public class MNode implements Serializable {
     this.parent = parent;
   }
 
-  public LinkedHashMap<String, MNode> getChildren() {
+  public Map<String, MNode> getChildren() {
     return children;
   }
 
-  public void setChildren(LinkedHashMap<String, MNode> children) {
+  public void setChildren(Map<String, MNode> children) {
     this.children = children;
   }
 

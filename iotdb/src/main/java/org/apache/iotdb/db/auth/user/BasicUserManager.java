@@ -250,7 +250,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       User user = getUser(username);
       if (user == null) {
-        throw new AuthException(String.format("No such user %s", username));
+        throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
       }
       if (!user.hasRole(roleName)) {
         return false;

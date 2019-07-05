@@ -67,7 +67,6 @@ public class ImportCsvTestIT extends AbstractScript {
         "Encounter an error when importing data, error is: Connection Error, please check whether "
             + "the network is available or the server has started."};
     String dir = getCurrentPath("pwd");
-    System.out.println(dir);
     ProcessBuilder builder = new ProcessBuilder("sh",
         dir + File.separator + "cli" + File.separator + "bin" + File.separator + "import-csv.sh",
         "-h",

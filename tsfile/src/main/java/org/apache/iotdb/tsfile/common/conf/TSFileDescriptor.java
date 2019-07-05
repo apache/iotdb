@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TSFileDescriptor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TSFileDescriptor.class);
+  private static final Logger logger = LoggerFactory.getLogger(TSFileDescriptor.class);
   private TSFileConfig conf = new TSFileConfig();
 
   private TSFileDescriptor() {
@@ -58,13 +58,13 @@ public class TSFileDescriptor {
     try {
       Set<URL> urlSet = Loader.getResources(resource, classLoader);
       if (urlSet != null && urlSet.size() > 1) {
-        LOGGER.warn("Resource [{}] occurs multiple times on the classpath", resource);
+        logger.warn("Resource [{}] occurs multiple times on the classpath", resource);
         for (URL url : urlSet) {
-          LOGGER.warn("Resource [{}] occurs at [{}]", resource, url);
+          logger.warn("Resource [{}] occurs at [{}]", resource, url);
         }
       }
     } catch (IOException e) {
-      LOGGER.error("Failed to get url list for {}", resource);
+      logger.error("Failed to get url list for {}", resource);
     }
   }
 
@@ -86,7 +86,7 @@ public class TSFileDescriptor {
         ClassLoader classLoader = Loader.getClassLoaderOfObject(this);
         URL u = getResource(TSFileConfig.CONFIG_FILE_NAME, classLoader);
         if (u == null) {
-          LOGGER.warn("Failed to find config file {} at classpath, use default configuration",
+          logger.warn("Failed to find config file {} at classpath, use default configuration",
               TSFileConfig.CONFIG_FILE_NAME);
           return;
         } else {
@@ -98,11 +98,11 @@ public class TSFileDescriptor {
     try {
       inputStream = new FileInputStream(new File(url));
     } catch (FileNotFoundException e) {
-      LOGGER.warn("Fail to find config file {}", url);
+      logger.warn("Fail to find config file {}", url);
       return;
     }
 
-    LOGGER.info("Start to read config file {}", url);
+    logger.info("Start to read config file {}", url);
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
@@ -114,7 +114,7 @@ public class TSFileDescriptor {
           .parseInt(properties
               .getProperty("page_size_in_byte", Integer.toString(TSFileConfig.pageSizeInByte)));
       if (TSFileConfig.pageSizeInByte > TSFileConfig.groupSizeInByte) {
-        LOGGER.warn("page_size is greater than group size, will set it as the same with group size");
+        logger.warn("page_size is greater than group size, will set it as the same with group size");
         TSFileConfig.pageSizeInByte = TSFileConfig.groupSizeInByte;
       }
       TSFileConfig.maxNumberOfPointsInPage = Integer.parseInt(
@@ -129,20 +129,20 @@ public class TSFileDescriptor {
       TSFileConfig.floatPrecision = Integer
           .parseInt(properties
               .getProperty("float_precision", Integer.toString(TSFileConfig.floatPrecision)));
-      TSFileConfig.timeSeriesEncoder = properties
-          .getProperty("time_series_encoder", TSFileConfig.timeSeriesEncoder);
+      TSFileConfig.timeEncoder = properties
+          .getProperty("time_encoder", TSFileConfig.timeEncoder);
       TSFileConfig.valueEncoder = properties
           .getProperty("value_encoder", TSFileConfig.valueEncoder);
       TSFileConfig.compressor = properties.getProperty("compressor", TSFileConfig.compressor);
     } catch (IOException e) {
-      LOGGER.warn("Cannot load config file, use default configuration", e);
+      logger.warn("Cannot load config file, use default configuration", e);
     } catch (Exception e) {
-      LOGGER.error("Loading settings {} failed", url, e);
+      logger.error("Loading settings {} failed", url, e);
     } finally {
       try {
         inputStream.close();
       } catch (IOException e) {
-        LOGGER.error("Failed to close stream for loading config", e);
+        logger.error("Failed to close stream for loading config", e);
       }
 
     }

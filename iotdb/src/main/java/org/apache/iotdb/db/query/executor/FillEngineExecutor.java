@@ -23,13 +23,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutTimeGenerator;
+import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -58,17 +57,15 @@ public class FillEngineExecutor {
    * @param context query context
    */
   public QueryDataSet execute(QueryContext context)
-      throws FileNodeManagerException, PathErrorException, IOException {
+      throws StorageEngineException, PathErrorException, IOException {
     QueryResourceManager.getInstance().beginQueryOfGivenQueryPaths(jobId, selectedSeries);
 
     List<IFill> fillList = new ArrayList<>();
     List<TSDataType> dataTypeList = new ArrayList<>();
     for (Path path : selectedSeries) {
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(path, context);
       TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
       dataTypeList.add(dataType);
-      IFill fill = null;
+      IFill fill;
       if (!typeIFillMap.containsKey(dataType)) {
         fill = new PreviousFill(dataType, queryTime, 0);
       } else {
@@ -76,7 +73,7 @@ public class FillEngineExecutor {
       }
       fill.setDataType(dataType);
       fill.setQueryTime(queryTime);
-      fill.constructReaders(queryDataSource, context);
+      fill.constructReaders(path, context);
       fillList.add(fill);
     }
 
@@ -85,7 +82,7 @@ public class FillEngineExecutor {
       readers.add(fill.getFillResult());
     }
 
-    return new EngineDataSetWithoutTimeGenerator(selectedSeries, dataTypeList, readers);
+    return new EngineDataSetWithoutValueFilter(selectedSeries, dataTypeList, readers);
   }
 
 }

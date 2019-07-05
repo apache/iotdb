@@ -50,7 +50,7 @@ public class TimePlainEncodeReadTest {
 
   @Before
   public void prepare() throws IOException, InterruptedException, WriteProcessException {
-    TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder = "PLAIN";
+    TSFileDescriptor.getInstance().getConfig().timeEncoder = "PLAIN";
     FileGenerator.generateFile();
     TsFileSequenceReader reader = new TsFileSequenceReader(fileName);
     roTsFile = new ReadOnlyTsFile(reader);

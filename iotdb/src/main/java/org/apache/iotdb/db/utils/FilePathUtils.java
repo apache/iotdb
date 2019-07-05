@@ -22,6 +22,10 @@ import java.io.File;
 
 public class FilePathUtils {
 
+  private FilePathUtils() {
+    // forbidding instantiation
+  }
+
   /**
    * Format file path to end with File.separator
    * @param filePath origin file path

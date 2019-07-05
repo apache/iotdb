@@ -130,7 +130,7 @@ public interface IUnCompressor {
 
   class SnappyUnCompressor implements IUnCompressor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SnappyUnCompressor.class);
+    private static final Logger logger = LoggerFactory.getLogger(SnappyUnCompressor.class);
 
     @Override
     public int getUncompressedLength(byte[] array, int offset, int length) throws IOException {
@@ -151,7 +151,7 @@ public interface IUnCompressor {
       try {
         return Snappy.uncompress(bytes);
       } catch (IOException e) {
-        LOGGER.error(
+        logger.error(
             "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte, "
                 + "bytes is {}",
             bytes, e);
@@ -175,7 +175,7 @@ public interface IUnCompressor {
       try {
         return Snappy.uncompress(compressed, uncompressed);
       } catch (IOException e) {
-        LOGGER.error(
+        logger.error(
             "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte, "
                 + "bytes is {}",
             compressed.array(), e);

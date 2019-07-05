@@ -25,16 +25,12 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.ByteBuffer;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.exception.SysCheckException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
 import org.junit.Test;
 
 public class WalCheckerTest {
@@ -76,14 +72,14 @@ public class WalCheckerTest {
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
             + WAL_FILE_NAME);
 
-        List<byte[]> binaryPlans = new ArrayList<>();
+        ByteBuffer binaryPlans = ByteBuffer.allocate(64*1024);
         String deviceId = "device1";
         String[] measurements = new String[]{"s1", "s2", "s3"};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          binaryPlans.add(PhysicalPlanLogTransfer
-              .operatorToLog(new InsertPlan(deviceId, j, measurements, values)));
+          new InsertPlan(deviceId, j, measurements, values).serializeTo(binaryPlans);
         }
+        binaryPlans.flip();
         logWriter.write(binaryPlans);
         logWriter.force();
 
@@ -109,16 +105,15 @@ public class WalCheckerTest {
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
             + WAL_FILE_NAME);
 
-        List<byte[]> binaryPlans = new ArrayList<>();
+        ByteBuffer binaryPlans = ByteBuffer.allocate(64*1024);
         String deviceId = "device1";
         String[] measurements = new String[]{"s1", "s2", "s3"};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          binaryPlans.add(PhysicalPlanLogTransfer
-              .operatorToLog(new InsertPlan(deviceId, j, measurements, values)));
+          new InsertPlan(deviceId, j, measurements, values).serializeTo(binaryPlans);
         }
         if (i > 2) {
-          binaryPlans.add("not a wal".getBytes());
+          binaryPlans.put("not a wal".getBytes());
         }
         logWriter.write(binaryPlans);
         logWriter.force();

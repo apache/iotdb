@@ -28,8 +28,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -204,7 +202,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
    * TODO can I be optimized?
    */
   public Encoder getTimeEncoder() {
-    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileConfig.timeSeriesEncoder);
+    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileConfig.timeEncoder);
     TSDataType timeType = TSDataType.valueOf(TSFileConfig.timeSeriesDataType);
     return TSEncodingBuilder.getConverter(timeSeriesEncoder).getEncoder(timeType);
   }

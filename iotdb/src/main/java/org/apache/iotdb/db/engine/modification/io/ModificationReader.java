@@ -34,7 +34,7 @@ public interface ModificationReader {
    *
    * @return a list of modifications contained the medium.
    */
-  Collection<Modification> read() throws IOException;
+  Collection<Modification> read();
 
   /**
    * Release resources like streams.

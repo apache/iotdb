@@ -18,20 +18,16 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
-import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
-import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -44,11 +40,11 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
  * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to the jobs.
  * During the life cycle of a query, the following methods must be called in strict order:
  * 1. assignJobId - get an Id for the new job.
- * 2. beginQueryOfGivenQueryPaths - remind FileNodeManager that some files are being used
+ * 2. beginQueryOfGivenQueryPaths - remind StorageEngine that some files are being used
  * 3. (if using filter)beginQueryOfGivenExpression
- *     - remind FileNodeManager that some files are being used
+ *     - remind StorageEngine that some files are being used
  * 4. getQueryDataSource - open files for the job or reuse existing readers.
- * 5. endQueryForGivenJob - release the resource used by this job.
+ * 5. endQueryForGivenJob - putBack the resource used by this job.
  * </p>
  */
 public class QueryResourceManager {
@@ -64,29 +60,29 @@ public class QueryResourceManager {
    * <p>
    * For example, during a query process Q1, given a query sql <sql>select device_1.sensor_1,
    * device_1.sensor_2, device_2.sensor_1, device_2.sensor_2</sql>, we will invoke
-   * <code>FileNodeManager.getInstance().beginQuery(device_1)</code> and
-   * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> both once. Although there
+   * <code>StorageEngine.getInstance().beginQuery(device_1)</code> and
+   * <code>StorageEngine.getInstance().beginQuery(device_2)</code> both once. Although there
    * exists four paths, but the unique devices are only `device_1` and `device_2`. When invoking
-   * <code>FileNodeManager.getInstance().beginQuery(device_1)</code>, it returns result token `1`.
+   * <code>StorageEngine.getInstance().beginQuery(device_1)</code>, it returns result token `1`.
    * Similarly,
-   * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> returns result token `2`.
+   * <code>StorageEngine.getInstance().beginQuery(device_2)</code> returns result token `2`.
    *
    * In the meanwhile, another query process Q2 aroused by other client is triggered, whose sql
-   * statement is same to Q1. Although <code>FileNodeManager.getInstance().beginQuery(device_1)
+   * statement is same to Q1. Although <code>StorageEngine.getInstance().beginQuery(device_1)
    * </code>
    * and
-   * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> will be invoked again, it
+   * <code>StorageEngine.getInstance().beginQuery(device_2)</code> will be invoked again, it
    * returns result token `3` and `4` .
    *
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_1, 1)</code> and
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_2, 2)</code> must be invoked no matter how
+   * <code>StorageEngine.getInstance().endQueryForGivenJob(device_1, 1)</code> and
+   * <code>StorageEngine.getInstance().endQueryForGivenJob(device_2, 2)</code> must be invoked no matter how
    * query process Q1 exits normally or abnormally. So is Q2,
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_1, 3)</code> and
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob(device_2, 4)</code> must be invoked
+   * <code>StorageEngine.getInstance().endQueryForGivenJob(device_1, 3)</code> and
+   * <code>StorageEngine.getInstance().endQueryForGivenJob(device_2, 4)</code> must be invoked
    *
-   * Last but no least, to ensure the correctness of write process and query process of IoTDB,
-   * <code>FileNodeManager.getInstance().beginQuery()</code> and
-   * <code>FileNodeManager.getInstance().endQueryForGivenJob()</code> must be executed rightly.
+   * Last but no least, to ensure the correctness of insert process and query process of IoTDB,
+   * <code>StorageEngine.getInstance().beginQuery()</code> and
+   * <code>StorageEngine.getInstance().endQueryForGivenJob()</code> must be executed rightly.
    * </p>
    */
   private ConcurrentHashMap<Long, ConcurrentHashMap<String, List<Integer>>> queryTokensMap;
@@ -118,13 +114,13 @@ public class QueryResourceManager {
    * calculation.
    */
   public void beginQueryOfGivenQueryPaths(long jobId, List<Path> queryPaths)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
     Set<String> deviceIdSet = new HashSet<>();
     queryPaths.forEach(path -> deviceIdSet.add(path.getDevice()));
 
     for (String deviceId : deviceIdSet) {
       putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          FileNodeManager.getInstance().beginQuery(deviceId));
+          StorageEngine.getInstance().beginQuery(deviceId));
     }
   }
 
@@ -133,12 +129,12 @@ public class QueryResourceManager {
    * calculation.
    */
   public void beginQueryOfGivenExpression(long jobId, IExpression expression)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
     Set<String> deviceIdSet = new HashSet<>();
     getUniquePaths(expression, deviceIdSet);
     for (String deviceId : deviceIdSet) {
       putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          FileNodeManager.getInstance().beginQuery(deviceId));
+          StorageEngine.getInstance().beginQuery(deviceId));
     }
   }
 
@@ -149,23 +145,23 @@ public class QueryResourceManager {
    * Note : the method is for cluster
    */
   public void beginQueryOfGivenExpression(long jobId, IExpression expression,
-      Set<String> remoteDeviceIdSet) throws FileNodeManagerException {
+      Set<String> remoteDeviceIdSet) throws StorageEngineException {
     Set<String> deviceIdSet = new HashSet<>();
     getUniquePaths(expression, deviceIdSet);
     deviceIdSet.removeAll(remoteDeviceIdSet);
     for (String deviceId : deviceIdSet) {
       putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          FileNodeManager.getInstance().beginQuery(deviceId));
+          StorageEngine.getInstance().beginQuery(deviceId));
     }
   }
 
+
   public QueryDataSource getQueryDataSource(Path selectedPath,
-      QueryContext context)
-      throws FileNodeManagerException {
+      QueryContext context) throws StorageEngineException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
-    QueryDataSource queryDataSource = FileNodeManager.getInstance()
-        .query(singleSeriesExpression, context);
+    QueryDataSource queryDataSource = StorageEngine
+        .getInstance().query(singleSeriesExpression, context);
 
     // add used files to current thread request cached map
     filePathsManager.addUsedFilesForGivenJob(context.getJobId(), queryDataSource);
@@ -177,14 +173,14 @@ public class QueryResourceManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All
    * query tokens created by this jdbc request must be cleared.
    */
-  public void endQueryForGivenJob(long jobId) throws FileNodeManagerException {
+  public void endQueryForGivenJob(long jobId) throws StorageEngineException {
     if (queryTokensMap.get(jobId) == null) {
       // no resource need to be released.
       return;
     }
     for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
       for (int token : entry.getValue()) {
-        FileNodeManager.getInstance().endQuery(entry.getKey(), token);
+        StorageEngine.getInstance().endQuery(entry.getKey(), token);
       }
     }
     queryTokensMap.remove(jobId);

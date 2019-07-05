@@ -123,7 +123,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
     @Override
     public Object getValue() {
-      return value;
+      return getBoolean();
     }
 
     @Override
@@ -174,7 +174,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
     @Override
     public Object getValue() {
-      return value;
+      return getInt();
     }
 
     @Override
@@ -235,7 +235,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
     @Override
     public Object getValue() {
-      return value;
+      return getLong();
     }
 
     @Override
@@ -276,7 +276,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
     @Override
     public Object getValue() {
-      return value;
+      return getFloat();
     }
 
     @Override
@@ -327,7 +327,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
     @Override
     public Object getValue() {
-      return value;
+      return getDouble();
     }
 
     @Override
@@ -378,7 +378,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
     @Override
     public Object getValue() {
-      return value;
+      return getBinary();
     }
 
     @Override

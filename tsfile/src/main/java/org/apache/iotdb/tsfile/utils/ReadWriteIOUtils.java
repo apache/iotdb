@@ -335,7 +335,11 @@ public class ReadWriteIOUtils {
    */
   public static short readShort(InputStream inputStream) throws IOException {
     byte[] bytes = new byte[SHORT_LEN];
-    inputStream.read(bytes);
+    int readLen = inputStream.read(bytes);
+    if (readLen != SHORT_LEN) {
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+          SHORT_LEN, readLen));
+    }
     return BytesUtils.bytesToShort(bytes);
   }
 
@@ -351,7 +355,11 @@ public class ReadWriteIOUtils {
    */
   public static float readFloat(InputStream inputStream) throws IOException {
     byte[] bytes = new byte[FLOAT_LEN];
-    inputStream.read(bytes);
+    int readLen = inputStream.read(bytes);
+    if (readLen != FLOAT_LEN) {
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+          FLOAT_LEN, readLen));
+    }
     return BytesUtils.bytesToFloat(bytes);
   }
 
@@ -369,7 +377,11 @@ public class ReadWriteIOUtils {
    */
   public static double readDouble(InputStream inputStream) throws IOException {
     byte[] bytes = new byte[DOUBLE_LEN];
-    inputStream.read(bytes);
+    int readLen = inputStream.read(bytes);
+    if (readLen != DOUBLE_LEN) {
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+          DOUBLE_LEN, readLen));
+    }
     return BytesUtils.bytesToDouble(bytes);
   }
 
@@ -387,7 +399,11 @@ public class ReadWriteIOUtils {
    */
   public static int readInt(InputStream inputStream) throws IOException {
     byte[] bytes = new byte[INT_LEN];
-    inputStream.read(bytes);
+    int readLen = inputStream.read(bytes);
+    if (readLen != INT_LEN) {
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+          INT_LEN, readLen));
+    }
     return BytesUtils.bytesToInt(bytes);
   }
 
@@ -415,7 +431,11 @@ public class ReadWriteIOUtils {
    */
   public static long readLong(InputStream inputStream) throws IOException {
     byte[] bytes = new byte[LONG_LEN];
-    inputStream.read(bytes);
+    int readLen = inputStream.read(bytes);
+    if (readLen != LONG_LEN) {
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+          LONG_LEN, readLen));
+    }
     return BytesUtils.bytesToLong(bytes);
   }
 
@@ -432,7 +452,11 @@ public class ReadWriteIOUtils {
   public static String readString(InputStream inputStream) throws IOException {
     int strLength = readInt(inputStream);
     byte[] bytes = new byte[strLength];
-    inputStream.read(bytes, 0, strLength);
+    int readLen = inputStream.read(bytes, 0, strLength);
+    if (readLen != strLength) {
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+          strLength, readLen));
+    }
     return new String(bytes, 0, strLength);
   }
 

@@ -35,21 +35,19 @@ public class DoublePrecisionEncoder extends GorillaEncoder {
   }
 
   @Override
-  public void encode(double value, ByteArrayOutputStream out) throws IOException {
+  public void encode(double value, ByteArrayOutputStream out) {
     if (!flag) {
       // case: write first 8 byte value without any encoding
       flag = true;
       preValue = Double.doubleToLongBits(value);
       leadingZeroNum = Long.numberOfLeadingZeros(preValue);
       tailingZeroNum = Long.numberOfTrailingZeros(preValue);
-      byte[] bufferBig = new byte[8];
       byte[] bufferLittle = new byte[8];
 
       for (int i = 0; i < 8; i++) {
         bufferLittle[i] = (byte) (((preValue) >> (i * 8)) & 0xFF);
-        bufferBig[8 - i - 1] = (byte) (((preValue) >> (i * 8)) & 0xFF);
       }
-      out.write(bufferLittle);
+      out.write(bufferLittle, 0, bufferLittle.length);
     } else {
       long nextValue = Double.doubleToLongBits(value);
       long tmp = nextValue ^ preValue;
@@ -90,7 +88,7 @@ public class DoublePrecisionEncoder extends GorillaEncoder {
   }
 
   @Override
-  public void flush(ByteArrayOutputStream out) throws IOException {
+  public void flush(ByteArrayOutputStream out) {
     encode(Double.NaN, out);
     clearBuffer(out);
     reset();

@@ -25,6 +25,7 @@ import java.util.Random;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,7 +46,7 @@ public class PrimitiveMemTableTest {
   @Test
   public void memSeriesCloneTest() {
     TSDataType dataType = TSDataType.INT32;
-    WritableMemChunk series = new WritableMemChunk(dataType);
+    WritableMemChunk series = new WritableMemChunk(dataType, TVList.newList(dataType));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, String.valueOf(i));
@@ -89,7 +90,6 @@ public class PrimitiveMemTableTest {
 
   private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,
       int size) {
-    int dataSize = 100;
     TimeValuePair[] ret = genTimeValuePair(size, dataType);
 
     for (int i = 0; i < ret.length; i++) {
@@ -130,7 +130,7 @@ public class PrimitiveMemTableTest {
   public void testFloatType() {
     IMemTable memTable = new PrimitiveMemTable();
     String deviceId = "d1";
-    int size = 1000000;
+    int size = 100;
     write(memTable, deviceId, "s1", TSDataType.FLOAT, size);
   }
 

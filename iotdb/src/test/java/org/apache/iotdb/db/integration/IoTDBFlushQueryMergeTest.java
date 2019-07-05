@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -53,25 +51,18 @@ public class IoTDBFlushQueryMergeTest {
 
   };
 
-  private static IoTDBConfig iotDBConfig = IoTDBDescriptor.getInstance().getConfig();
-  private static long overflowFileSizeThreshold;
-
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
-    overflowFileSizeThreshold = iotDBConfig.getOverflowFileSizeThreshold();
-    iotDBConfig.setOverflowFileSizeThreshold(0);
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     daemon.stop();
-    iotDBConfig.setOverflowFileSizeThreshold(overflowFileSizeThreshold);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -115,7 +106,7 @@ public class IoTDBFlushQueryMergeTest {
       statement.close();
 
       statement = connection.createStatement();
-      statement.execute("merge");
+//      statement.execute("merge");
       statement.close();
 
     } catch (Exception e) {

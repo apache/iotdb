@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.monitor.collector.FileSize;
-import org.apache.iotdb.db.service.Monitor;
 
 public class MonitorConstants {
 
@@ -40,7 +39,7 @@ public class MonitorConstants {
   private static final String FILE_SIZE = "file_size";
   public static final String FILE_SIZE_STORAGE_GROUP_NAME = STAT_STORAGE_GROUP_PREFIX
       + MONITOR_PATH_SEPARATOR + FILE_SIZE;
-  // statistic for write module
+  // statistic for insert module
   static final String FILE_NODE_MANAGER_PATH = "write.global";
   public static final String FILE_NODE_PATH = "write";
   /**
@@ -93,12 +92,9 @@ public class MonitorConstants {
   }
 
   public enum FileSizeConstants {
-    DATA(Monitor.INSTANCE.getBaseDirectory()),
-    OVERFLOW(new File(config.getOverflowDataDir()).getAbsolutePath()),
-    SETTLED(Monitor.INSTANCE.getBaseDirectory() + File.separatorChar + "settled"),
+    // TODO add multi data dir monitor
     WAL(new File(config.getWalFolder()).getAbsolutePath()),
-    INFO(new File(config.getFileNodeDir()).getAbsolutePath()),
-    SCHEMA(new File(config.getMetadataDir()).getAbsolutePath());
+    SYS(new File(config.getSystemDir()).getAbsolutePath());
 
     public String getPath() {
       return path;

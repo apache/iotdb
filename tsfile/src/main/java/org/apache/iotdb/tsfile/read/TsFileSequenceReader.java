@@ -51,9 +51,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TsFileSequenceReader implements AutoCloseable{
+public class TsFileSequenceReader implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileSequenceReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
 
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -173,8 +173,6 @@ public class TsFileSequenceReader implements AutoCloseable{
 
   /**
    * whether the file is a complete TsFile: only if the head magic and tail magic string exists.
-   * @return
-   * @throws IOException
    */
   public boolean isComplete() throws IOException {
     return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.length() * 2 && readTailMagic()
@@ -218,9 +216,10 @@ public class TsFileSequenceReader implements AutoCloseable{
    */
   public long getPositionOfFirstDeviceMetaIndex() throws IOException {
     TsFileMetaData metaData = readFileMetadata();
-    Optional<Long> data = metaData.getDeviceMap().values().stream().map(TsDeviceMetadataIndex::getOffset)
+    Optional<Long> data = metaData.getDeviceMap().values().stream()
+        .map(TsDeviceMetadataIndex::getOffset)
         .min(Comparator.comparing(Long::valueOf));
-    if(data.isPresent()) {
+    if (data.isPresent()) {
       return data.get();
     } else {
       //no real data
@@ -352,12 +351,17 @@ public class TsFileSequenceReader implements AutoCloseable{
    * @param position the file offset of this chunk's header
    * @param markerRead true if the offset does not contains the marker , otherwise false
    */
-  private PageHeader readPageHeader(TSDataType dataType, long position, boolean markerRead) throws IOException {
+  private PageHeader readPageHeader(TSDataType dataType, long position, boolean markerRead)
+      throws IOException {
     return PageHeader.deserializeFrom(dataType, tsFileInput, position, markerRead);
   }
 
   public long position() throws IOException {
     return tsFileInput.position();
+  }
+
+  public void position(long offset) throws IOException {
+    tsFileInput.position(offset);
   }
 
   public void skipPageData(PageHeader header) throws IOException {
@@ -366,10 +370,6 @@ public class TsFileSequenceReader implements AutoCloseable{
 
   /**
    *
-   * @param header
-   * @param position
-   * @return
-   * @throws IOException
    */
   public long skipPageData(PageHeader header, long position) throws IOException {
     return position + header.getCompressedSize();
@@ -462,8 +462,8 @@ public class TsFileSequenceReader implements AutoCloseable{
   /**
    * Self Check the file and return the position before where the data is safe.
    *
-   * @param newSchema @OUT.  the measurement schema in the file will be added into
-   * this parameter. (can be null)
+   * @param newSchema @OUT.  the measurement schema in the file will be added into this parameter.
+   * (can be null)
    * @param newMetaData @OUT can not be null, the chunk group metadta in the file will be added into
    * this parameter.
    * @param fastFinish if true and the file is complete, then newSchema and newMetaData parameter
@@ -494,8 +494,6 @@ public class TsFileSequenceReader implements AutoCloseable{
     long startOffsetOfChunkGroup = 0;
     long endOffsetOfChunkGroup;
     long versionOfChunkGroup = 0;
-    boolean haveReadAnUnverifiedGroupFooter = false;
-    boolean newGroup = true;
 
     if (fileSize < TSFileConfig.MAGIC_STRING.length()) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
@@ -513,7 +511,7 @@ public class TsFileSequenceReader implements AutoCloseable{
         return TsFileCheckStatus.COMPLETE_FILE;
       }
     }
-
+    boolean newChunkGroup = true;
     // not a complete file, we will recover it...
     long truncatedPosition = magicStringBytes.length;
     boolean goon = true;
@@ -522,20 +520,16 @@ public class TsFileSequenceReader implements AutoCloseable{
       while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
-            //this is a chunk.
-            if (haveReadAnUnverifiedGroupFooter) {
-              //now we are sure that the last ChunkGroupFooter is complete.
-              haveReadAnUnverifiedGroupFooter = false;
-              truncatedPosition = this.position() - 1;
-              newGroup = true;
-            }
-            if (newGroup) {
+            // this is the first chunk of a new ChunkGroup.
+            if (newChunkGroup) {
+              newChunkGroup = false;
               chunks = new ArrayList<>();
               startOffsetOfChunkGroup = this.position() - 1;
-              newGroup = false;
             }
-            //if there is something wrong with a chunk, we will drop this part of data
-            // (the whole ChunkGroup)
+            fileOffsetOfChunk = this.position() - 1;
+            // if there is something wrong with a chunk, we will drop the whole ChunkGroup
+            // as different chunks may be created by the same insertions(sqls), and partial
+            // insertion is not tolerable
             ChunkHeader header = this.readChunkHeader();
             measurementID = header.getMeasurementID();
             if (newSchema != null) {
@@ -544,7 +538,6 @@ public class TsFileSequenceReader implements AutoCloseable{
                       header.getEncodingType(), header.getCompressionType()));
             }
             dataType = header.getDataType();
-            fileOffsetOfChunk = this.position() - 1;
             if (header.getNumOfPages() > 0) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
               numOfPoints += pageHeader.getNumOfValues();
@@ -555,10 +548,12 @@ public class TsFileSequenceReader implements AutoCloseable{
             for (int j = 1; j < header.getNumOfPages() - 1; j++) {
               //a new Page
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
+              numOfPoints += pageHeader.getNumOfValues();
               this.skipPageData(pageHeader);
             }
             if (header.getNumOfPages() > 1) {
               PageHeader pageHeader = this.readPageHeader(header.getDataType());
+              numOfPoints += pageHeader.getNumOfValues();
               endTimeOfChunk = pageHeader.getMaxTimestamp();
               this.skipPageData(pageHeader);
             }
@@ -570,8 +565,8 @@ public class TsFileSequenceReader implements AutoCloseable{
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
             //this is a chunk group
-            //if there is something wrong with the chunkGroup Footer, we will drop this part of data
-            //because we can not guarantee the correction of the deviceId.
+            //if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
+            //because we can not guarantee the correctness of the deviceId.
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             deviceID = chunkGroupFooter.getDeviceID();
             endOffsetOfChunkGroup = this.position();
@@ -579,30 +574,25 @@ public class TsFileSequenceReader implements AutoCloseable{
             currentChunkGroup.setEndOffsetOfChunkGroup(endOffsetOfChunkGroup);
             currentChunkGroup.setVersion(versionOfChunkGroup++);
             newMetaData.add(currentChunkGroup);
-            // though we have read the current ChunkMetaData from Disk, it may be incomplete.
-            // because if the file only loses one byte, the ChunkMetaData.deserialize() returns ok,
-            // while the last filed of the ChunkMetaData is incorrect.
-            // So, only reading the next MASK, can make sure that this ChunkMetaData is complete.
-            haveReadAnUnverifiedGroupFooter = true;
+            newChunkGroup = true;
+            truncatedPosition = this.position();
             break;
-
           default:
-            // it is impossible that we read an incorrect data.
+            // the disk file is corrupted, using this file may be dangerous
             MetaMarker.handleUnexpectedMarker(marker);
             goon = false;
+            logger.error("Unrecognized marker detected, this file may be corrupted");
         }
       }
-      //now we read the tail of the file, so we are sure that the last ChunkGroupFooter is complete.
+      // now we read the tail of the data section, so we are sure that the last ChunkGroupFooter is
+      // complete.
       truncatedPosition = this.position() - 1;
     } catch (IOException e2) {
-      //if it is the end of the file, and we read an unverifiedGroupFooter, we must remove this ChunkGroup
-      if (haveReadAnUnverifiedGroupFooter && !newMetaData.isEmpty()) {
-        newMetaData.remove(newMetaData.size() - 1);
-      }
-    } finally {
-      //something wrong or all data is complete. We will discard current FileMetadata
-      // so that we can continue to write data into this tsfile.
-      return truncatedPosition;
+      logger.info("TsFile self-check cannot proceed at position {} after {} chunk groups "
+          + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());
     }
+    // Despite the completeness of the data section, we will discard current FileMetadata
+    // so that we can continue to write data into this tsfile.
+    return truncatedPosition;
   }
 }

@@ -23,11 +23,11 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByWithOnlyTimeFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -47,42 +47,43 @@ import org.apache.iotdb.tsfile.utils.Pair;
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
  * plan, physical plan will be executed by EngineQueryRouter.
  */
-public class EngineQueryRouter implements IEngineQueryRouter{
+public class EngineQueryRouter implements IEngineQueryRouter {
 
   @Override
   public QueryDataSet query(QueryExpression queryExpression, QueryContext context)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
 
     if (queryExpression.hasQueryFilter()) {
       try {
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
             .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
         queryExpression.setExpression(optimizedExpression);
-
+        EngineExecutor engineExecutor =
+            new EngineExecutor(queryExpression);
         if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-          EngineExecutorWithoutTimeGenerator engineExecutor =
-              new EngineExecutorWithoutTimeGenerator(queryExpression);
-          return engineExecutor.execute(context);
+          return engineExecutor.executeWithoutValueFilter(context);
         } else {
-          EngineExecutorWithTimeGenerator engineExecutor = new EngineExecutorWithTimeGenerator(
-              queryExpression);
-          return engineExecutor.execute(context);
+          return engineExecutor.executeWithValueFilter(context);
         }
 
-      } catch (QueryFilterOptimizationException e) {
-        throw new FileNodeManagerException(e);
+      } catch (QueryFilterOptimizationException | IOException e) {
+        throw new StorageEngineException(e);
       }
     } else {
-      EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
+      EngineExecutor engineExecutor = new EngineExecutor(
           queryExpression);
-      return engineExecutor.execute(context);
+      try {
+        return engineExecutor.executeWithoutValueFilter(context);
+      } catch (IOException e) {
+        throw new StorageEngineException(e);
+      }
     }
   }
 
   @Override
   public QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context) throws QueryFilterOptimizationException,
-      FileNodeManagerException, IOException, PathErrorException, ProcessorException {
+      StorageEngineException, IOException, PathErrorException, ProcessorException {
 
     if (expression != null) {
       IExpression optimizedExpression = ExpressionOptimizer.getInstance()
@@ -90,14 +91,14 @@ public class EngineQueryRouter implements IEngineQueryRouter{
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
           selectedSeries, aggres, optimizedExpression);
       if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-        return engineExecutor.executeWithOutTimeGenerator(context);
+        return engineExecutor.executeWithoutValueFilter(context);
       } else {
-        return engineExecutor.executeWithTimeGenerator(context);
+        return engineExecutor.executeWithValueFilter(context);
       }
     } else {
       AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(
           selectedSeries, aggres, null);
-      return engineExecutor.executeWithOutTimeGenerator(context);
+      return engineExecutor.executeWithoutValueFilter(context);
     }
   }
 
@@ -105,7 +106,7 @@ public class EngineQueryRouter implements IEngineQueryRouter{
   public QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
       QueryContext context)
-      throws ProcessorException, QueryFilterOptimizationException, FileNodeManagerException,
+      throws ProcessorException, QueryFilterOptimizationException, StorageEngineException,
       PathErrorException, IOException {
 
     long nextJobId = context.getJobId();
@@ -148,7 +149,7 @@ public class EngineQueryRouter implements IEngineQueryRouter{
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
         .optimize(expression, selectedSeries);
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      GroupByWithOnlyTimeFilterDataSet groupByEngine = new GroupByWithOnlyTimeFilterDataSet(
+      GroupByWithoutValueFilterDataSet groupByEngine = new GroupByWithoutValueFilterDataSet(
           nextJobId, selectedSeries, unit, origin, mergedIntervalList);
       groupByEngine.initGroupBy(context, aggres, optimizedExpression);
       return groupByEngine;
@@ -164,7 +165,7 @@ public class EngineQueryRouter implements IEngineQueryRouter{
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
       QueryContext context)
-      throws FileNodeManagerException, PathErrorException, IOException {
+      throws StorageEngineException, PathErrorException, IOException {
 
     long nextJobId = context.getJobId();
 

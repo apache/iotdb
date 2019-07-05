@@ -19,27 +19,22 @@
 package org.apache.iotdb.db.writelog.node;
 
 import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.writelog.LogPosition;
+import org.apache.iotdb.db.writelog.io.ILogReader;
 
+/**
+ * WriteLogNode is the minimum unit of managing WALs.
+ */
 public interface WriteLogNode {
 
   /**
-   * Write a log which implements LogSerializable. First, the log will be conveyed to byte[] by
-   * codec. Then the byte[] will be put into a cache. If necessary, the logs in the cache will be
+   * Write a wal for a PhysicalPlan. First, the PhysicalPlan will be conveyed to byte[].
+   * Then the byte[] will be put into a cache. When the cache is full, the logs in the cache will be
    * synced to disk.
    *
-   * @param plan -plan
-   * @return The position to be written of the log.
+   * @param plan - a PhysicalPlan
    */
-  LogPosition write(PhysicalPlan plan) throws IOException;
-
-  /**
-   * First judge the stage of recovery by status of files, and then recover from that stage.
-   */
-  void recover() throws RecoverException;
+  void write(PhysicalPlan plan) throws IOException;
 
   /**
    * Sync and close streams.
@@ -51,21 +46,17 @@ public interface WriteLogNode {
    */
   void forceSync() throws IOException;
 
-  /*
-   * Force OS to sync all written data to disk.
-   */
-  void force() throws IOException;
-
   /**
-   * When a FileNode attempts to start a flush, this method must be called to rename log file.
+   * When data that have WALs in this node start to be flushed, this method must be called to
+   * change the working WAL file.
    */
   void notifyStartFlush() throws IOException;
 
   /**
-   * When the flush of a FlieNode ends, this method must be called to check if log file needs
-   * cleaning.
+   * When data that have WALs in this node end flushing, this method must be called to check and
+   * remove the out-dated logs file.
    */
-  void notifyEndFlush(List<LogPosition> logPositions);
+  void notifyEndFlush();
 
   /**
    * return identifier of the log node.
@@ -75,15 +66,21 @@ public interface WriteLogNode {
   String getIdentifier();
 
   /**
-   * return the directory where wal file is placed.
+   * return the directory where wal files of this node are placed.
    *
-   * @return The directory where wal file is placed.
+   * @return The directory where wal files of this node are placed.
    */
   String getLogDirectory();
 
   /**
-   * Abandon all logs in this node and delete the log directory. The caller should guarantee that NO
-   * MORE WRITE is coming.
+   * Abandon all logs in this node and delete the log directory. Calling insert() after calling
+   * this method is undefined.
    */
   void delete() throws IOException;
+
+  /**
+   * return an ILogReader which can iterate each log in this log node.
+   * @return an ILogReader which can iterate each log in this log node.
+   */
+  ILogReader getLogReader();
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.context;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,8 +56,7 @@ public class QueryContext {
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<Modification> getPathModifications(ModificationFile modFile, String path)
-      throws IOException {
+  public List<Modification> getPathModifications(ModificationFile modFile, String path) {
 
     Map<String, List<Modification>> fileModifications =
         filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new HashMap<>());
@@ -74,7 +72,7 @@ public class QueryContext {
       if (!allModifications.isEmpty()) {
         List<Modification> finalPathModifications = pathModifications;
         allModifications.forEach(modification -> {
-          if (modification.getPath().equals(path)) {
+          if (modification.getPathString().equals(path)) {
             finalPathModifications.add(modification);
           }
         });
@@ -89,7 +87,4 @@ public class QueryContext {
     return jobId;
   }
 
-  public void setJobId(long jobId) {
-    this.jobId = jobId;
-  }
 }

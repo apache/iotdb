@@ -20,17 +20,16 @@
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.engine.querycontext.UnsealedTsFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
-import org.apache.iotdb.db.query.reader.IBatchReader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
+import org.apache.iotdb.db.query.reader.sequence.adapter.FileSeriesReaderAdapter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -38,10 +37,13 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
-public class UnSealedTsFileReader implements IBatchReader, IAggregateReader {
+/**
+ * batch reader of data in: 1) the data in unseal tsfile part which has been flushed to disk; 2) the
+ * data in flushing memtable list.
+ */
+public class UnSealedTsFileReader extends IterateReader {
 
-  protected Path seriesPath;
-  private FileSeriesReader unSealedReader;
+  List<IAggregateReader> unSealedResources;
 
   /**
    * Construct funtion for UnSealedTsFileReader.
@@ -51,51 +53,44 @@ public class UnSealedTsFileReader implements IBatchReader, IAggregateReader {
    * @param isReverse true-traverse chunks from behind forward; false-traverse chunks from front to
    * back;
    */
-  public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile, Filter filter, boolean isReverse)
+  public UnSealedTsFileReader(TsFileResource unsealedTsFile, Filter filter, boolean isReverse)
       throws IOException {
-
+    super(2);
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-        .get(unsealedTsFile.getFilePath(),
-            false);
+        .get(unsealedTsFile.getFile().getPath(), false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
-    List<ChunkMetaData> metaDataList = unsealedTsFile.getChunkMetaDataList();
-    //reverse chunk metadata list if traversing chunks from behind forward
+    List<ChunkMetaData> metaDataList = unsealedTsFile.getChunkMetaDatas();
+    // reverse chunk metadata list if traversing chunks from behind forward
     if (isReverse && metaDataList != null && !metaDataList.isEmpty()) {
       Collections.reverse(metaDataList);
     }
 
+    // data in unseal tsfile which has been flushed to disk
+    FileSeriesReader unSealedReader;
     if (filter == null) {
       unSealedReader = new FileSeriesReaderWithoutFilter(chunkLoader, metaDataList);
     } else {
       unSealedReader = new FileSeriesReaderWithFilter(chunkLoader, metaDataList, filter);
     }
-  }
+    unSealedResources = new ArrayList<>();
+    // data in flushing memtable
+    MemChunkReader memChunkReader = new MemChunkReader(unsealedTsFile.getReadOnlyMemChunk(),
+        filter);
+    if (isReverse) {
+      unSealedResources.add(memChunkReader);
+      unSealedResources.add(new FileSeriesReaderAdapter(unSealedReader));
+    } else {
 
-  @Override
-  public boolean hasNext() throws IOException {
-    return unSealedReader.hasNextBatch();
-  }
+      unSealedResources.add(new FileSeriesReaderAdapter(unSealedReader));
+      unSealedResources.add(memChunkReader);
 
-  @Override
-  public void close() throws IOException {
-    if (unSealedReader != null) {
-      unSealedReader.close();
     }
   }
 
   @Override
-  public BatchData nextBatch() throws IOException {
-    return unSealedReader.nextBatch();
-  }
-
-  @Override
-  public PageHeader nextPageHeader() throws IOException {
-    return unSealedReader.nextPageHeader();
-  }
-
-  @Override
-  public void skipPageData() {
-    unSealedReader.skipPageData();
+  public boolean constructNextReader(int idx) {
+    currentSeriesReader = unSealedResources.get(idx);
+    return true;
   }
 }

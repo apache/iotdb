@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 public class QueryPlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = -5865840981549195660L;
   private List<Path> paths = null;
   private IExpression expression = null;
 

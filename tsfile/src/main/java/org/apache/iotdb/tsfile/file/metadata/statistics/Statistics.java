@@ -170,7 +170,7 @@ public abstract class Statistics<T> {
   }
 
   /**
-   * This method with two parameters is only used by {@code overflow} which updates/inserts/deletes
+   * This method with two parameters is only used by {@code unsequence} which updates/inserts/deletes
    * timestamp.
    *
    * @param min min timestamp

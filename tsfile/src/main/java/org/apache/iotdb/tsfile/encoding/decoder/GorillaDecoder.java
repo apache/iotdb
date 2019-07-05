@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 public abstract class GorillaDecoder extends Decoder {
 
   protected static final int EOF = -1;
-  private static final Logger LOGGER = LoggerFactory.getLogger(GorillaDecoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(GorillaDecoder.class);
   // flag to indicate whether the first value is read from stream
   protected boolean flag;
   protected int leadingZeroNum;
@@ -87,7 +87,7 @@ public abstract class GorillaDecoder extends Decoder {
       this.buffer = ReadWriteIOUtils.read(buffer);
       numberLeftInBuffer = 8;
     } else {
-      LOGGER.error("Failed to fill a new buffer, because there is no byte to read");
+      logger.error("Failed to fill a new buffer, because there is no byte to read");
       this.buffer = EOF;
       numberLeftInBuffer = -1;
     }

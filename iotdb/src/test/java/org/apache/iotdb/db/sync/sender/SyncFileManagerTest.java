@@ -40,7 +40,7 @@ public class SyncFileManagerTest {
       POST_BACK_DIRECTORY_TEST + Constans.LAST_LOCAL_FILE_NAME;
   private static final String SENDER_FILE_PATH_TEST = POST_BACK_DIRECTORY_TEST + "data";
   private SyncFileManager manager = SyncFileManager.getInstance();
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncFileManagerTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncFileManagerTest.class);
 
   @Before
   public void setUp() throws IOException, InterruptedException {
@@ -49,7 +49,7 @@ public class SyncFileManagerTest {
       file.getParentFile().mkdirs();
     }
     if (!file.exists() && !file.createNewFile()) {
-      LOGGER.error("Can not create new file {}", file.getPath());
+      logger.error("Can not create new file {}", file.getPath());
     }
     file = new File(SENDER_FILE_PATH_TEST);
     if (!file.exists()) {
@@ -95,7 +95,7 @@ public class SyncFileManagerTest {
           file.getParentFile().mkdirs();
         }
         if (!file.exists() && !file.createNewFile()) {
-          LOGGER.error("Can not create new file {}", file.getPath());
+          logger.error("Can not create new file {}", file.getPath());
         }
       }
     }
@@ -131,7 +131,7 @@ public class SyncFileManagerTest {
           file.getParentFile().mkdirs();
         }
         if (!file.exists() && !file.createNewFile()) {
-          LOGGER.error("Can not create new file {}", file.getPath());
+          logger.error("Can not create new file {}", file.getPath());
         }
       }
     }
@@ -187,7 +187,7 @@ public class SyncFileManagerTest {
           file.getParentFile().mkdirs();
         }
         if (!file.exists() && !file.createNewFile()) {
-          LOGGER.error("Can not create new file {}", file.getPath());
+          logger.error("Can not create new file {}", file.getPath());
         }
       }
     }
@@ -232,7 +232,7 @@ public class SyncFileManagerTest {
           file.getParentFile().mkdirs();
         }
         if (!file.exists() && !file.createNewFile()) {
-          LOGGER.error("Can not create new file {}", file.getPath());
+          logger.error("Can not create new file {}", file.getPath());
         }
       }
     }
@@ -242,13 +242,13 @@ public class SyncFileManagerTest {
     assert (allFileList.size() == fileList.size());
     for (Entry<String, Set<String>> entry : fileList.entrySet()) {
       assert (allFileList.containsKey(entry.getKey()));
-      LOGGER.debug("allFileList");
+      logger.debug("allFileList");
       for (String a : allFileList.get(entry.getKey())) {
-        LOGGER.debug(a);
+        logger.debug(a);
       }
-      LOGGER.debug("FileList");
+      logger.debug("FileList");
       for (String a : entry.getValue()) {
-        LOGGER.debug(a);
+        logger.debug(a);
       }
       assert (allFileList.get(entry.getKey()).containsAll(entry.getValue()));
     }
@@ -294,7 +294,7 @@ public class SyncFileManagerTest {
           file.getParentFile().mkdirs();
         }
         if (!file.exists() && !file.createNewFile()) {
-          LOGGER.error("Can not create new file {}", file.getPath());
+          logger.error("Can not create new file {}", file.getPath());
         }
       }
     }
@@ -348,7 +348,7 @@ public class SyncFileManagerTest {
           file.getParentFile().mkdirs();
         }
         if (!file.exists() && !file.createNewFile()) {
-          LOGGER.error("Can not create new file {}", file.getPath());
+          logger.error("Can not create new file {}", file.getPath());
         }
       }
     }

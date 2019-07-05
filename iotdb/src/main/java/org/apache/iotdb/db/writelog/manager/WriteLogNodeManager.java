@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.writelog.manager;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 
 /**
@@ -28,40 +27,23 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 public interface WriteLogNodeManager {
 
   /**
-   * Get a WriteLogNode by a identifier like "{storageGroupName}-bufferwrite/overflow". The
-   * WriteLogNode will be automatically created if not exist and restoreFilePath and
-   * processorStoreFilePath are provided, if either restoreFilePath or processorStoreFilePath is not
-   * provided and the LogNode does not exist, null is returned.
+   * Get a WriteLogNode by a identifier like "{storageGroupName}-{BufferWrite/Overflow}-{
+   * nameOfTsFile}". The WriteLogNode will be automatically created if not exist.
    *
-   * @param identifier -identifier, the format: "{storageGroupName}-bufferwrite/overflow"
-   * @param restoreFilePath -restore file path of the data file. e.g, data/settled/{storageGroupName}/{tsfileName}.restore
-   * @param processorStoreFilePath -processor store file path. e.g., data/system/info/{storageGroupName}/{storageGroupName}.restore
+   * @param identifier -identifier, the format: "{storageGroupName}-{BufferWrite/Overflow}-{
+   * nameOfTsFile}"
    */
-  WriteLogNode getNode(String identifier, String restoreFilePath, String processorStoreFilePath)
-      throws IOException;
+  WriteLogNode getNode(String identifier);
 
   /**
-   * Delete a log node. If the node log does not exist, this will be an empty operation.
+   * Delete a log node. If the log node does not exist, this will be an empty operation.
    *
    * @param identifier -identifier
    */
   void deleteNode(String identifier) throws IOException;
 
   /**
-   * Make all node of this manager start recovery.
-   */
-  void recover() throws RecoverException;
-
-  /**
    * Close all nodes.
    */
   void close();
-
-  /**
-   * return whether wal files exist for certain fileNode.
-   *
-   * @param fileNodeName -fileNode Name
-   * @return Whether WAL files exist for certain fileNode/
-   */
-  boolean hasWAL(String fileNodeName);
 }

@@ -47,8 +47,6 @@ import org.slf4j.LoggerFactory;
  * and flush data stored in memory to OutputStream. At the end of writing, user should call {@code
  * close()} method to flush the last data outside and close the normal outputStream and error
  * outputStream.
- *
- * @author kangrong
  */
 public class TsFileWriter implements AutoCloseable{
 
@@ -74,11 +72,6 @@ public class TsFileWriter implements AutoCloseable{
    **/
   private long recordCountForNextMemCheck = 100;
   private long chunkGroupSizeThreshold;
-  /**
-   * In an individual TsFile, version number is not meaningful, added
-   * only for tests.
-   */
-  private long version = 0;
 
   /**
    * init this TsFileWriter.
@@ -117,16 +110,6 @@ public class TsFileWriter implements AutoCloseable{
    */
   public TsFileWriter(TsFileOutput output, FileSchema schema) throws IOException {
     this(new TsFileIOWriter(output), schema, TSFileDescriptor.getInstance().getConfig());
-  }
-
-  /**
-   * init this TsFileWriter.
-   *
-   * @param file the File to be written by this TsFileWriter
-   * @param conf the configuration of this TsFile
-   */
-  public TsFileWriter(File file, TSFileConfig conf) throws IOException {
-    this(new TsFileIOWriter(file), new FileSchema(), conf);
   }
 
   /**
@@ -258,13 +241,11 @@ public class TsFileWriter implements AutoCloseable{
       long memSize = calculateMemSizeForAllGroup();
       assert memSize > 0;
       if (memSize > chunkGroupSizeThreshold) {
-        LOG.info("start_flush_row_group, memory space occupy:{}", memSize);
+        LOG.debug("start to flush chunk groups, memory space occupy:{}", memSize);
         recordCountForNextMemCheck = recordCount * chunkGroupSizeThreshold / memSize;
-        LOG.debug("current threshold:{}, next check:{}", recordCount, recordCountForNextMemCheck);
         return flushAllChunkGroups();
       } else {
         recordCountForNextMemCheck = recordCount * chunkGroupSizeThreshold / memSize;
-        LOG.debug("current threshold:{}, next check:{}", recordCount, recordCountForNextMemCheck);
         return false;
       }
     }
@@ -273,7 +254,7 @@ public class TsFileWriter implements AutoCloseable{
   }
 
   /**
-   * flush the data in all series writers of all rowgroup writers and their page writers to
+   * flush the data in all series writers of all chunk group writers and their page writers to
    * outputStream.
    *
    * @return true - size of tsfile or metadata reaches the threshold. false - otherwise. But this
@@ -282,26 +263,19 @@ public class TsFileWriter implements AutoCloseable{
    */
   private boolean flushAllChunkGroups() throws IOException {
     if (recordCount > 0) {
-      long totalMemStart = fileWriter.getPos();
-
       for (Map.Entry<String, IChunkGroupWriter> entry: groupWriters.entrySet()) {
         long pos = fileWriter.getPos();
         String deviceId = entry.getKey();
         IChunkGroupWriter groupWriter = entry.getValue();
-        fileWriter.startFlushChunkGroup(deviceId);
+        fileWriter.startChunkGroup(deviceId);
         ChunkGroupFooter chunkGroupFooter = groupWriter.flushToFileWriter(fileWriter);
         if (fileWriter.getPos() - pos != chunkGroupFooter.getDataSize()) {
           throw new IOException(String.format(
-              "Flushed data size is inconsistent with computation! Estimated: %d, Actuall: %d",
+              "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
               chunkGroupFooter.getDataSize(), fileWriter.getPos() - pos));
         }
-
-        fileWriter.endChunkGroup(chunkGroupFooter, version++);
+        fileWriter.endChunkGroup(0);
       }
-      long actualTotalChunkGroupSize = fileWriter.getPos() - totalMemStart;
-      LOG.info("total chunk group size:{}", actualTotalChunkGroupSize);
-      LOG.info("write chunk group end");
-      recordCount = 0;
       reset();
     }
     return false;
@@ -309,6 +283,7 @@ public class TsFileWriter implements AutoCloseable{
 
   private void reset() {
     groupWriters.clear();
+    recordCount = 0;
   }
 
   /**
@@ -317,6 +292,7 @@ public class TsFileWriter implements AutoCloseable{
    *
    * @throws IOException exception in IO
    */
+  @Override
   public void close() throws IOException {
     LOG.info("start close file");
     flushAllChunkGroups();

@@ -117,13 +117,9 @@ public class AstNode extends CommonTree implements Node, Serializable {
     while (!stack2.isEmpty()) {
       AstNode next = stack2.pop();
 
-      if (next.children == null) {
-        if (next.startIndex < 0 || next.stopIndex < 0) {
-          next.startIndex = next.stopIndex = next.token.getTokenIndex();
-        }
-      } else if (next.startIndex >= 0 && next.stopIndex >= 0) {
-        continue;
-      } else if (!next.children.isEmpty()) {
+      if (next.children == null && (next.startIndex < 0 || next.stopIndex < 0)) {
+        next.startIndex = next.stopIndex = next.token.getTokenIndex();
+      } else if (!(next.startIndex >= 0 && next.stopIndex >= 0) && !next.children.isEmpty()) {
         AstNode firstChild = (AstNode) next.children.get(0);
         AstNode lastChild = (AstNode) next.children.get(next.children.size() - 1);
         next.startIndex = firstChild.getTokenStartIndex();
@@ -304,39 +300,7 @@ public class AstNode extends CommonTree implements Node, Serializable {
     while (!stack.isEmpty()) {
       AstNode next = stack.peek();
       if (!next.visited) {
-        if (next.parent != null && next.parent.getChildCount() > 1 && next != next.parent
-            .getChild(0)) {
-          rootNode.addtoMemoizedString(" ");
-        }
-
-        next.rootNode = rootNode;
-        next.startIndx = rootNode.getMemoizedStringLen();
-
-        // Leaf
-        if (next.children == null || next.children.isEmpty()) {
-          String str = next.toString();
-          rootNode.addtoMemoizedString(
-              next.getType() != TSParser.StringLiteral ? str.toLowerCase() : str);
-          next.endIndx = rootNode.getMemoizedStringLen();
-          stack.pop();
-          continue;
-        }
-
-        if (!next.isNil()) {
-          rootNode.addtoMemoizedString("(");
-          String str = next.toString();
-          rootNode.addtoMemoizedString(
-              (next.getType() == TSParser.StringLiteral || null == str) ? str : str.toLowerCase());
-          rootNode.addtoMemoizedString(" ");
-        }
-
-        if (next.children != null) {
-          for (int i = next.children.size() - 1; i >= 0; i--) {
-            stack.push((AstNode) next.children.get(i));
-          }
-        }
-
-        next.visited = true;
+        toStringVisit(next, stack);
       } else {
         if (!next.isNil()) {
           rootNode.addtoMemoizedString(")");
@@ -345,11 +309,47 @@ public class AstNode extends CommonTree implements Node, Serializable {
         next.visited = false;
         stack.pop();
       }
-
     }
 
     return rootNode.getMemoizedSubString(startIndx, endIndx);
   }
+
+  private void toStringVisit(AstNode next, Deque<AstNode> stack) {
+    if (next.parent != null && next.parent.getChildCount() > 1 && next != next.parent
+        .getChild(0)) {
+      rootNode.addtoMemoizedString(" ");
+    }
+
+    next.rootNode = rootNode;
+    next.startIndx = rootNode.getMemoizedStringLen();
+
+    // Leaf
+    if (next.children == null || next.children.isEmpty()) {
+      String str = next.toString();
+      rootNode.addtoMemoizedString(
+          next.getType() != TSParser.StringLiteral ? str.toLowerCase() : str);
+      next.endIndx = rootNode.getMemoizedStringLen();
+      stack.pop();
+      return;
+    }
+
+    if (!next.isNil()) {
+      rootNode.addtoMemoizedString("(");
+      String str = next.toString();
+      rootNode.addtoMemoizedString(
+          (next.getType() == TSParser.StringLiteral || null == str) ? str : str.toLowerCase());
+      rootNode.addtoMemoizedString(" ");
+    }
+
+    if (next.children != null) {
+      for (int i = next.children.size() - 1; i >= 0; i--) {
+        stack.push((AstNode) next.children.get(i));
+      }
+    }
+
+    next.visited = true;
+  }
+
 
   @Override
   public AstNode getChild(int i) {

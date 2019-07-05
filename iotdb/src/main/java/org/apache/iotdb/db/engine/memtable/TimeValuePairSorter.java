@@ -23,11 +23,10 @@ import java.util.List;
 
 import org.apache.iotdb.db.utils.TimeValuePair;
 
-@FunctionalInterface
 public interface TimeValuePairSorter {
 
   /**
-   * get the distinct sorted startTime.
+   * get the distinct sorted startTime. Only for query.
    *
    * @return a List which contains all distinct {@link TimeValuePair}s in ascending order by
    * timestamp.

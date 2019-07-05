@@ -27,18 +27,18 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Implement a simple executor with a memory demo reading processor for test.
  */
-public class MemIntQpExecutor extends QueryProcessExecutor {
+public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
 
   private static Logger LOG = LoggerFactory.getLogger(MemIntQpExecutor.class);
 
@@ -91,8 +91,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     switch (plan.getOperatorType()) {
       case DELETE:
-        DeletePlan delete = (DeletePlan) plan;
-        return delete(delete.getPaths(), delete.getDeleteTime());
+        return delete((DeletePlan) plan);
       case UPDATE:
         UpdatePlan update = (UpdatePlan) plan;
         boolean flag = true;
@@ -101,10 +100,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         }
         return flag;
       case INSERT:
-        InsertPlan insert = (InsertPlan) plan;
-        int result = multiInsert(insert.getDeviceId(), insert.getTime(), insert.getMeasurements(),
-            insert.getValues());
-        return result == 0;
+        return insert((InsertPlan) plan);
       default:
         throw new UnsupportedOperationException();
     }
@@ -113,7 +109,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   @Override
   public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException,
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException,
       QueryFilterOptimizationException {
     return null;
   }
@@ -121,7 +117,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   @Override
   public QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
       long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException,
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException,
       QueryFilterOptimizationException {
     return null;
   }
@@ -129,7 +125,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   @Override
   public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException {
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException {
     return null;
   }
 
@@ -181,18 +177,6 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public int insert(Path path, long insertTime, String value) {
-    String strPath = path.toString();
-    if (!demoMemDataBase.containsKey(strPath)) {
-      demoMemDataBase.put(strPath, new TestSeries());
-    }
-    demoMemDataBase.get(strPath).data.put(insertTime, Integer.valueOf(value));
-    timeStampUnion.add(insertTime);
-    LOG.info("insert into {}:<{},{}>", path, insertTime, value);
-    return 0;
-  }
-
-  @Override
   public List<String> getAllPaths(String fullPath) {
     return fakeAllPaths != null ? fakeAllPaths.get(fullPath) : new ArrayList<String>() {
       {
@@ -202,9 +186,16 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public int multiInsert(String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) {
-    return 0;
+  public boolean insert(InsertPlan insertPlan) {
+    for (int i = 0; i < insertPlan.getMeasurements().length; i++) {
+      String strPath = insertPlan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + insertPlan.getMeasurements()[i];
+      if (!demoMemDataBase.containsKey(strPath)) {
+        demoMemDataBase.put(strPath, new TestSeries());
+      }
+      demoMemDataBase.get(strPath).data.put(insertPlan.getTime(), Integer.valueOf(insertPlan.getValues()[i]));
+      timeStampUnion.add(insertPlan.getTime());
+    }
+    return true;
   }
 
   @Override

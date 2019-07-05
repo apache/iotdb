@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TSFRecordReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(TSFRecordReader.class);
 
   private QueryDataSet dataSet = null;
   private List<Field> fields = null;
@@ -84,8 +84,8 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
       if (measurementIdsList == null) {
         measurementIdsList = initSensorIdList(rowGroupMetaDataList);
       }
-      LOGGER.info("deltaObjectIds:" + deltaObjectIdsList);
-      LOGGER.info("Sensors:" + measurementIdsList);
+      logger.info("deltaObjectIds:" + deltaObjectIdsList);
+      logger.info("Sensors:" + measurementIdsList);
 
       this.sensorNum = measurementIdsList.size();
       isReadDeviceId = TSFInputFormat.getReadDeltaObject(configuration);
@@ -102,7 +102,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
       dataSet = queryEngine
           .queryWithSpecificRowGroups(deltaObjectIdsList, measurementIdsList, null, null, null);
     } else {
-      LOGGER.error("The InputSplit class is not {}, the class is {}", TSFInputSplit.class.getName(),
+      logger.error("The InputSplit class is not {}, the class is {}", TSFInputSplit.class.getName(),
           split.getClass().getName());
       throw new InternalError(String.format("The InputSplit class is not %s, the class is %s",
           TSFInputSplit.class.getName(), split.getClass().getName()));
@@ -133,9 +133,9 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
     sensorIndex += sensorNum;
 
     if (fields == null || sensorIndex >= fields.size()) {
-      LOGGER.info("Start another row~");
+      logger.info("Start another row~");
       if (!dataSet.next()) {
-        LOGGER.info("Finish all rows~");
+        logger.info("Finish all rows~");
         return false;
       }
 
@@ -176,7 +176,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
     for (int i = 0; i < sensorNum; i++) {
       Field field = fields.get(sensorIndex + i);
       if (field.isNull()) {
-        LOGGER.info("Current value is null");
+        logger.info("Current value is null");
         writables[index] = NullWritable.get();
       } else {
         switch (field.dataType) {
@@ -199,7 +199,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, ArrayWritable> {
             writables[index] = new Text(field.getBinaryV().getStringValue());
             break;
           default:
-            LOGGER.error("The data type is not support {}", field.dataType);
+            logger.error("The data type is not support {}", field.dataType);
             throw new InterruptedException(
                 String.format("The data type %s is not support ", field.dataType));
         }

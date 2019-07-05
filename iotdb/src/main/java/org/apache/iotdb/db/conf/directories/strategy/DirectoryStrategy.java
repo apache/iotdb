@@ -27,12 +27,10 @@ import org.slf4j.LoggerFactory;
 /**
  * The basic class of all the strategies of multiple directories. If a user wants to define his own
  * strategy, his strategy has to extend this class and implement the abstract method.
- *
- * @author East
  */
 public abstract class DirectoryStrategy {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(DirectoryStrategy.class);
+  protected static final Logger logger = LoggerFactory.getLogger(DirectoryStrategy.class);
 
   /**
    * All the folders of data files, should be init once the subclass is created.
@@ -76,8 +74,12 @@ public abstract class DirectoryStrategy {
   }
 
   protected long getUsableSpace(String dir) {
-    long space = new File(dir).getFreeSpace();
-    LOGGER.trace("Folder {} has {} available bytes.", dir, space);
+    File file = new File(dir);
+    if (!file.exists() && !file.mkdirs()) {
+      return 0;
+    }
+    long space = file.getFreeSpace();
+    logger.trace("Folder {} has {} available bytes.", dir, space);
     return space;
   }
 

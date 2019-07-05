@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public class JDBCServiceEventHandler implements TServerEventHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(JDBCServiceEventHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(JDBCServiceEventHandler.class);
   private TSServiceImpl serviceImpl;
   private CountDownLatch startLatch;
 
@@ -50,7 +50,7 @@ public class JDBCServiceEventHandler implements TServerEventHandler {
     try {
       serviceImpl.handleClientExit();
     } catch (TException e) {
-      LOGGER.error("failed to clear client status", e);
+      logger.error("failed to clear client status", e);
     }
   }
 

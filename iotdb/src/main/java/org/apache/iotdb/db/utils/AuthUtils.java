@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class AuthUtils {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AuthUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(AuthUtils.class);
 
   private static final int MIN_PASSWORD_LENGTH = 4;
   private static final int MIN_USERNAME_LENGTH = 4;
@@ -47,7 +47,7 @@ public class AuthUtils {
   }
 
   /**
-   * validate password length.
+   * validate password size.
    *
    * @param password user password
    * @throws AuthException Authenticate Exception
@@ -55,7 +55,7 @@ public class AuthUtils {
   public static void validatePassword(String password) throws AuthException {
     if (password.length() < MIN_PASSWORD_LENGTH) {
       throw new AuthException(
-          "Password's length must be greater than or equal to " + MIN_USERNAME_LENGTH);
+          "Password's size must be greater than or equal to " + MIN_USERNAME_LENGTH);
     }
   }
 
@@ -68,7 +68,7 @@ public class AuthUtils {
   public static void validateUsername(String username) throws AuthException {
     if (username.length() < MIN_USERNAME_LENGTH) {
       throw new AuthException(
-          "Username's length must be greater than or equal to " + MIN_USERNAME_LENGTH);
+          "Username's size must be greater than or equal to " + MIN_USERNAME_LENGTH);
     }
   }
 
@@ -81,7 +81,7 @@ public class AuthUtils {
   public static void validateRolename(String rolename) throws AuthException {
     if (rolename.length() < MIN_ROLENAME_LENGTH) {
       throw new AuthException(
-          "Role name's length must be greater than or equal to " + MIN_ROLENAME_LENGTH);
+          "Role name's size must be greater than or equal to " + MIN_ROLENAME_LENGTH);
     }
   }
 
@@ -163,7 +163,7 @@ public class AuthUtils {
       messageDigest.update(password.getBytes(STRING_ENCODING));
       return new String(messageDigest.digest(), STRING_ENCODING);
     } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-      LOGGER.error("meet error while encrypting password.", e);
+      logger.error("meet error while encrypting password.", e);
       return password;
     }
   }

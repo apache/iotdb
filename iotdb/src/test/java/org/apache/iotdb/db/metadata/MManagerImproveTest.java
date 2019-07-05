@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -52,11 +52,10 @@ public class MManagerImproveTest {
       }
     }
 
-    mManager.flushObjectToFile();
   }
 
   @After
-  public void after() throws IOException, FileNodeManagerException {
+  public void after() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
   }
 

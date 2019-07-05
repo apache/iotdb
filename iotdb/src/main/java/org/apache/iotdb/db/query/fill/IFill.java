@@ -20,13 +20,10 @@
 package org.apache.iotdb.db.query.fill;
 
 import java.io.IOException;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
-import org.apache.iotdb.db.query.reader.AllDataReader;
+import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
-import org.apache.iotdb.db.query.reader.sequence.SequenceDataReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -50,21 +47,14 @@ public abstract class IFill {
 
   public abstract IFill copy(Path path);
 
-  public abstract void constructReaders(QueryDataSource queryDataSource, QueryContext context)
-      throws IOException;
+  public abstract void constructReaders(Path path, QueryContext context)
+      throws IOException, StorageEngineException;
 
-  void constructReaders(QueryDataSource queryDataSource, QueryContext context, long beforeRange)
-      throws IOException {
+  void constructReaders(Path path, QueryContext context, long beforeRange)
+      throws IOException, StorageEngineException {
     Filter timeFilter = constructFilter(beforeRange);
-    // sequence reader for sealed tsfile, unsealed tsfile, memory
-    SequenceDataReader sequenceReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-        timeFilter, context, false);
-
-    // unseq reader for all chunk groups in unSeqFile, memory
-    PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
-        .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
-
-    allDataReader = new AllDataReader(sequenceReader, unSeqMergeReader);
+    allDataReader = SeriesReaderFactoryImpl.getInstance()
+        .createSeriesReaderWithoutValueFilter(path, timeFilter, context);
   }
 
   public abstract IPointReader getFillResult() throws IOException;
