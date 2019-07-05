@@ -79,11 +79,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
   public static String checkValue(TSDataType dataType, String value) throws ProcessorException {
     if (dataType == TSDataType.BOOLEAN) {
+      value = value.toLowerCase();
       if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
         value = "false";
       } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
         value = "true";
-      } else {
+      } else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE
+          .equals(value)) {
         throw new ProcessorException("The BOOLEAN data type should be true/TRUE or false/FALSE");
       }
     } else if (dataType == TSDataType.TEXT) {
