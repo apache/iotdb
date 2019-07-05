@@ -192,7 +192,7 @@ public class TsFileProcessor {
 
 
   boolean shouldFlush() {
-    return workMemTable.memSize() > TSFileConfig.memTableSizeInByte;
+    return workMemTable.memSize() > TSFileConfig.groupSizeInByte;
   }
 
 

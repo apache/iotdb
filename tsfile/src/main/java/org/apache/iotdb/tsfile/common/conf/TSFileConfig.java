@@ -41,8 +41,7 @@ public class TSFileConfig {
 
   // RLE configuration
   public static final int DOUBLE_VALUE_LENGTH = 7;
-  // Bitmap configuration
-  public static final int BITMAP_BITWIDTH = 1;
+
   /**
    * String encoder with UTF-8 encodes a character to at most 4 bytes.
    */
@@ -59,9 +58,9 @@ public class TSFileConfig {
    */
   public static final int DYNAMIC_DATA_SIZE = 1000;
   /**
-   * Memory size threshold for flushing to disk or HDFS, default value is 128MB.
+   * Memory size threshold for flushing to disk, default value is 128MB.
    */
-  public static int memTableSizeInByte = 128 * 1024 * 1024;
+  public static int groupSizeInByte = 128 * 1024 * 1024;
   /**
    * The memory size for each series writer to pack page, default value is 64KB.
    */

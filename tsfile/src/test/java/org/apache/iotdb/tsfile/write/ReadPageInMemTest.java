@@ -90,8 +90,8 @@ public class ReadPageInMemTest {
     file.delete();
     pageSize = conf.pageSizeInByte;
     conf.pageSizeInByte = 200;
-    ChunkGroupSize = conf.memTableSizeInByte;
-    conf.memTableSizeInByte = 100000;
+    ChunkGroupSize = conf.groupSizeInByte;
+    conf.groupSizeInByte = 100000;
     pageCheckSizeThreshold = conf.pageCheckSizeThreshold;
     conf.pageCheckSizeThreshold = 1;
     defaultMaxStringLength = conf.maxStringLength;
@@ -104,7 +104,7 @@ public class ReadPageInMemTest {
   public void tearDown() throws Exception {
     file.delete();
     conf.pageSizeInByte = pageSize;
-    conf.memTableSizeInByte = ChunkGroupSize;
+    conf.groupSizeInByte = ChunkGroupSize;
     conf.pageCheckSizeThreshold = pageCheckSizeThreshold;
     conf.maxStringLength = defaultMaxStringLength;
   }

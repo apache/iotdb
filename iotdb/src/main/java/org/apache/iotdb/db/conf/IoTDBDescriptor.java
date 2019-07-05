@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.ZoneId;
 import java.util.Properties;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,10 +128,10 @@ public class IoTDBDescriptor {
 
       conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
 
+      conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "system");
+
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
-
-      conf.setSystemDir(properties.getProperty("sys_dir", conf.getSystemDir()));
 
       conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
 

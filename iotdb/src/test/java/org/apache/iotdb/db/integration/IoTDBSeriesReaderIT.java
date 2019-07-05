@@ -73,12 +73,12 @@ public class IoTDBSeriesReaderIT {
     // origin value
     maxNumberOfPointsInPage = tsFileConfig.maxNumberOfPointsInPage;
     pageSizeInByte = tsFileConfig.pageSizeInByte;
-    groupSizeInByte = tsFileConfig.memTableSizeInByte;
+    groupSizeInByte = tsFileConfig.groupSizeInByte;
 
     // new value
     tsFileConfig.maxNumberOfPointsInPage = 1000;
     tsFileConfig.pageSizeInByte = 1024 * 1024 * 150;
-    tsFileConfig.memTableSizeInByte = 1024 * 1024 * 1000;
+    tsFileConfig.groupSizeInByte = 1024 * 1024 * 1000;
 
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -98,7 +98,7 @@ public class IoTDBSeriesReaderIT {
     // recovery value
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     tsFileConfig.pageSizeInByte = pageSizeInByte;
-    tsFileConfig.memTableSizeInByte = groupSizeInByte;
+    tsFileConfig.groupSizeInByte = groupSizeInByte;
 
     EnvironmentUtils.cleanEnv();
   }
