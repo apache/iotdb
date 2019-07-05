@@ -424,7 +424,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description| When a TsFile size on the disk exceeds this threshold, the TsFile is closed and open a new TsFile to accept data writes. The unit is byte and the default value is 2G.|
 |Type| Int64 |
-|Default| 2147483648 |
+|Default| 536870912 |
 |Effective|After restart system|
 
 * flush\_wal\_threshold
@@ -449,7 +449,7 @@ The detail of each variables are as follows:
 
 |Name| fetch_size |
 |:---:|:---|
-|Description| The amount of data read each time in batches(the number of data strips, that is, the number of different time stamps.) |
+|Description| The amount of data read each time in batch (the number of data strips, that is, the number of different timestamps.) |
 |Type|Int32|
 |Default| 10000 |
 |Effective|After restart system|

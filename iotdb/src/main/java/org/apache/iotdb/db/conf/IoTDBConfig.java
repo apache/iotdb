@@ -115,7 +115,7 @@ public class IoTDBConfig {
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
-  private long tsFileSizeThreshold = 2 * 1024 * 1024 * 1024L;
+  private long tsFileSizeThreshold = 512 * 1024 * 1024L;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
