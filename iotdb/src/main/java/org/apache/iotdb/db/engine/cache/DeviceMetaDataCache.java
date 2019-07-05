@@ -94,8 +94,9 @@ public class DeviceMetaDataCache {
       ConcurrentHashMap<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
           .getChunkMetaDataList(blockMetaData);
       synchronized (lruCache) {
-        lruCache.put(filePath, chunkMetaData);
-        if(lruCache.get(filePath).containsKey(seriesPath)){
+        lruCache.putIfAbsent(filePath, new ConcurrentHashMap<>());
+        lruCache.get(filePath).putAll(chunkMetaData);
+        if (lruCache.get(filePath).containsKey(seriesPath)) {
           return new ArrayList<>(lruCache.get(filePath).get(seriesPath));
         }
         return new ArrayList<>();
@@ -103,6 +104,21 @@ public class DeviceMetaDataCache {
     }
   }
 
+  /**
+   * the num of chunkMetaData cached in the class.
+   * @return num of chunkMetaData cached in the LRUCache
+   */
+  public int calChunkMetaDataNum() {
+    int cnt = 0;
+    synchronized (lruCache) {
+      for (ConcurrentHashMap<Path, List<ChunkMetaData>> map : lruCache.values()) {
+        for(List<ChunkMetaData> metaDataList: map.values()){
+          cnt+=metaDataList.size();
+        }
+      }
+    }
+    return cnt;
+  }
 
   /**
    * clear LRUCache.
@@ -120,63 +136,5 @@ public class DeviceMetaDataCache {
 
     private static final DeviceMetaDataCache INSTANCE = new
         DeviceMetaDataCache(CACHE_SIZE);
-  }
-
-  /**
-   * This class is a map used to cache the <code>RowGroupBlockMetaData</code>. The caching strategy
-   * is LRU.
-   */
-  private class LruLinkedHashMap extends
-      LinkedHashMap<String, ConcurrentHashMap<Path, List<ChunkMetaData>>> {
-
-    private static final long serialVersionUID = 1290160928914532649L;
-    private static final float LOAD_FACTOR_MAP = 0.75f;
-    private int maxCapacity;
-
-    public LruLinkedHashMap(int maxCapacity, boolean isLru) {
-      super(maxCapacity, LOAD_FACTOR_MAP, isLru);
-      this.maxCapacity = maxCapacity;
-    }
-
-    @Override
-    protected boolean removeEldestEntry(
-        Map.Entry<String, ConcurrentHashMap<Path, List<ChunkMetaData>>> eldest) {
-      return size() > maxCapacity;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      return super.equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-      return super.hashCode();
-    }
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    DeviceMetaDataCache that = (DeviceMetaDataCache) o;
-    return Objects.equals(lruCache, that.lruCache) &&
-        Objects.equals(cacheHintNum, that.cacheHintNum) &&
-        Objects.equals(cacheRequestNum, that.cacheRequestNum);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(lruCache, cacheHintNum, cacheRequestNum);
   }
 }

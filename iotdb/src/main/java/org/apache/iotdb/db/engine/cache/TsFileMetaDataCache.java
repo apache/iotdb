@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.slf4j.Logger;
@@ -31,15 +30,17 @@ import org.slf4j.LoggerFactory;
 public class TsFileMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileMetaDataCache.class);
+
+  private static final int CACHE_SIZE = 100;
   /**
    * key: The file seriesPath of tsfile.
    */
-  private ConcurrentHashMap<String, TsFileMetaData> cache;
+  private LruLinkedHashMap<String, TsFileMetaData> cache;
   private AtomicLong cacheHintNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   private TsFileMetaDataCache() {
-    cache = new ConcurrentHashMap<>();
+    cache = new LruLinkedHashMap<>(CACHE_SIZE, true);
   }
 
   public static TsFileMetaDataCache getInstance() {
@@ -54,36 +55,48 @@ public class TsFileMetaDataCache {
   public TsFileMetaData get(String path) throws IOException {
 
     Object internPath = path.intern();
-    synchronized (internPath) {
-      cacheRequestNum.incrementAndGet();
-      if (!cache.containsKey(path)) {
-        // read value from tsfile
-        TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(path);
-        cache.put(path, fileMetaData);
-        if (logger.isDebugEnabled()) {
-          logger.debug("Cache didn't hint: the number of requests for cache is {}",
-              cacheRequestNum.get());
-        }
-        return cache.get(path);
-      } else {
+    cacheRequestNum.incrementAndGet();
+    synchronized (cache) {
+      if (cache.containsKey(path)) {
         cacheHintNum.incrementAndGet();
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "Cache hint: the number of requests for cache is {}, the number of hints for cache "
-                  + "is {}",
+              "Cache hint: the number of requests for cache is {}, "
+                  + "the number of hints for cache is {}",
               cacheRequestNum.get(), cacheHintNum.get());
         }
         return cache.get(path);
       }
     }
+    synchronized (internPath) {
+      synchronized (cache) {
+        if (cache.containsKey(path)) {
+          cacheHintNum.incrementAndGet();
+          return cache.get(path);
+        }
+      }
+      if (logger.isDebugEnabled()) {
+        logger.debug("Cache didn't hint: the number of requests for cache is {}",
+            cacheRequestNum.get());
+      }
+      TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(path);
+      synchronized (cache) {
+        cache.put(path, fileMetaData);
+        return fileMetaData;
+      }
+    }
   }
 
   public void remove(String path) {
-    cache.remove(path);
+    synchronized (cache) {
+      cache.remove(path);
+    }
   }
 
   public void clear() {
-    cache.clear();
+    synchronized (cache) {
+      cache.clear();
+    }
   }
 
   /*
@@ -91,7 +104,8 @@ public class TsFileMetaDataCache {
    */
   private static class TsFileMetaDataCacheHolder {
 
-    private TsFileMetaDataCacheHolder() {}
+    private TsFileMetaDataCacheHolder() {
+    }
 
     private static final TsFileMetaDataCache INSTANCE = new TsFileMetaDataCache();
   }
