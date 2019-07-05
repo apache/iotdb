@@ -18,6 +18,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;

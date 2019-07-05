@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.apache.iotdb.db.rescon.MemTablePool;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

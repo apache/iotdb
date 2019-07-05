@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
-import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
+import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
