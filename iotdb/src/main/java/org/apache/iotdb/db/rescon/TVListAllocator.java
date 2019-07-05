@@ -35,7 +35,6 @@ import org.apache.iotdb.db.utils.datastructure.FloatTVList;
 import org.apache.iotdb.db.utils.datastructure.IntTVList;
 import org.apache.iotdb.db.utils.datastructure.LongTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.db.utils.datastructure.TVListAllocatorMBean;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TVListAllocator implements TVListAllocatorMBean, IService {
