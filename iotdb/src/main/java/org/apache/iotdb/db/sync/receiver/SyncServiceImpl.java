@@ -42,19 +42,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
-import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
-import org.apache.iotdb.db.engine.filenode.TsFileResource;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
-import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.sync.conf.Constans;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -82,7 +80,7 @@ public class SyncServiceImpl implements SyncService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncServiceImpl.class);
 
-  private static final FileNodeManager fileNodeManager = FileNodeManager.getInstance();
+  private static final StorageEngine STORAGE_GROUP_MANAGER = StorageEngine.getInstance();
   /**
    * Metadata manager
    **/
@@ -118,12 +116,12 @@ public class SyncServiceImpl implements SyncService.Iface {
   /**
    * IoTDB data directory
    **/
-  private String dataPath = config.getDataDir();
+  private String baseDir = config.getBaseDir();
 
   /**
    * IoTDB  multiple bufferWrite directory
    **/
-  private String[] bufferWritePaths = config.getBufferWriteDirs();
+  private String[] bufferWritePaths = config.getDataDirs();
 
   /**
    * The path to store metadata file of sender
@@ -187,8 +185,8 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Init file path and clear data if last sync process failed.
    */
   private void initPath() {
-    dataPath = FilePathUtils.regularizePath(dataPath);
-    syncFolderPath = dataPath + SYNC_SERVER + File.separatorChar + this.uuid.get();
+    baseDir = FilePathUtils.regularizePath(baseDir);
+    syncFolderPath = baseDir + SYNC_SERVER + File.separatorChar + this.uuid.get();
     syncDataPath = syncFolderPath + File.separatorChar + Constans.DATA_SNAPSHOT_NAME;
     schemaFromSenderPath
         .set(syncFolderPath + File.separator + MetadataConstant.METADATA_LOG);
@@ -222,7 +220,7 @@ public class SyncServiceImpl implements SyncService.Iface {
           FileChannel channel = fos.getChannel()) {
         channel.write(schema);
       } catch (Exception e) {
-        logger.error("Cannot write data to file {}.", file.getPath(), e);
+        logger.error("Cannot insert data to file {}.", file.getPath(), e);
         md5OfReceiver = Boolean.toString(Boolean.FALSE);
       }
     } else {
@@ -292,7 +290,7 @@ public class SyncServiceImpl implements SyncService.Iface {
             props);
         break;
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
-        metadataManger.deletePathsFromMTree(Collections.singletonList(new Path(args[1])));
+        metadataManger.deletePaths(Collections.singletonList(new Path(args[1])));
         break;
       case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
         metadataManger.setStorageLevelToMTree(args[1]);
@@ -347,7 +345,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         channel = fos.getChannel();
         channel.write(dataToReceive);
       } catch (IOException e) {
-        logger.error("cannot write data to file {}", file.getPath(), e);
+        logger.error("cannot insert data to file {}", file.getPath(), e);
         md5OfReceiver = Boolean.toString(Boolean.FALSE);
 
       }
@@ -441,7 +439,7 @@ public class SyncServiceImpl implements SyncService.Iface {
    * directly. If data in the tsfile is old, it has two strategy to merge.It depends on the
    * possibility of updating historical data.
    */
-  public void loadData() throws FileNodeManagerException {
+  public void loadData() throws StorageEngineException {
     syncDataPath = FilePathUtils.regularizePath(syncDataPath);
     int processedNum = 0;
     for (String storageGroup : fileNodeMap.get().keySet()) {
@@ -470,23 +468,18 @@ public class SyncServiceImpl implements SyncService.Iface {
         // create a new fileNode
         String header = syncDataPath;
         String relativePath = path.substring(header.length());
-        TsFileResource fileNode = null;
-        try {
-          fileNode = new TsFileResource(startTimeMap, endTimeMap,
-              OverflowChangeType.NO_CHANGE, new File(
-              Directories.getInstance().getNextFolderIndexForTsFile() + File.separator + relativePath)
-          );
-        } catch (DiskSpaceInsufficientException e) {
-          throw new FileNodeManagerException(e);
-        }
+        TsFileResource fileNode = new TsFileResource(
+            new File(DirectoryManager.getInstance().getNextFolderIndexForSequenceFile() +
+                File.separator + relativePath), startTimeMap, endTimeMap
+        );
         // call interface of load external file
         try {
-          if (!fileNodeManager.appendFileToFileNode(storageGroup, fileNode, path)) {
-            // it is a file with overflow data
+          if (!STORAGE_GROUP_MANAGER.appendFileToStorageGroupProcessor(storageGroup, fileNode, path)) {
+            // it is a file with unsequence data
             if (config.isUpdateHistoricalDataPossibility()) {
               loadOldData(path);
             } else {
-              List<String> overlapFiles = fileNodeManager.getOverlapFilesFromFileNode(
+              List<String> overlapFiles = STORAGE_GROUP_MANAGER.getOverlapFiles(
                   storageGroup,
                   fileNode, uuid.get());
               if (overlapFiles.isEmpty()) {
@@ -496,9 +489,9 @@ public class SyncServiceImpl implements SyncService.Iface {
               }
             }
           }
-        } catch (FileNodeManagerException | IOException | ProcessorException e) {
+        } catch (StorageEngineException | IOException | ProcessorException e) {
           logger.error("Can not load external file {}", path);
-          throw new FileNodeManagerException(e);
+          throw new StorageEngineException(e);
         }
         processedNum++;
         logger.info(String
@@ -513,7 +506,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public void loadOldData(String filePath) throws IOException, ProcessorException {
     Set<String> timeseriesSet = new HashSet<>();
     TsFileSequenceReader reader = null;
-    OverflowQPExecutor insertExecutor = new OverflowQPExecutor();
+    QueryProcessExecutor insertExecutor = new QueryProcessExecutor();
     try {
       /** use tsfile reader to get data **/
       reader = new TsFileSequenceReader(filePath);
@@ -562,9 +555,8 @@ public class SyncServiceImpl implements SyncService.Iface {
               }
             }
           }
-          if (insertExecutor
-              .multiInsert(deviceId, record.getTimestamp(), measurementList.toArray(new String[]{}),
-                  insertValues.toArray(new String[]{})) <= 0) {
+          if (insertExecutor.insert(new InsertPlan(deviceId, record.getTimestamp(),
+              measurementList.toArray(new String[0]), insertValues.toArray(new String[0])))) {
             throw new IOException("Inserting series data to IoTDB engine has failed.");
           }
         }
@@ -594,7 +586,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public void loadOldData(String filePath, List<String> overlapFiles)
       throws IOException, ProcessorException {
     Set<String> timeseriesList = new HashSet<>();
-    OverflowQPExecutor insertExecutor = new OverflowQPExecutor();
+    QueryProcessExecutor insertExecutor = new QueryProcessExecutor();
     Map<String, ReadOnlyTsFile> tsfilesReaders = openReaders(filePath, overlapFiles);
     try {
       TsFileSequenceReader reader = new TsFileSequenceReader(filePath);
@@ -640,8 +632,7 @@ public class SyncServiceImpl implements SyncService.Iface {
           /** If there has no overlap data with the timeseries, inserting all data in the sync file **/
           if (originDataPoints.isEmpty()) {
             for (InsertPlan insertPlan : newDataPoints) {
-              if (insertExecutor.multiInsert(insertPlan.getDeviceId(), insertPlan.getTime(),
-                  insertPlan.getMeasurements(), insertPlan.getValues()) <= 0) {
+              if (insertExecutor.insert(insertPlan)) {
                 throw new IOException("Inserting series data to IoTDB engine has failed.");
               }
             }
@@ -649,8 +640,7 @@ public class SyncServiceImpl implements SyncService.Iface {
             /** Compare every data to get valid data **/
             for (InsertPlan insertPlan : newDataPoints) {
               if (!originDataPoints.contains(insertPlan)) {
-                if (insertExecutor.multiInsert(insertPlan.getDeviceId(), insertPlan.getTime(),
-                    insertPlan.getMeasurements(), insertPlan.getValues()) <= 0) {
+                if (insertExecutor.insert(insertPlan)) {
                   throw new IOException("Inserting series data to IoTDB engine has failed.");
                 }
               }

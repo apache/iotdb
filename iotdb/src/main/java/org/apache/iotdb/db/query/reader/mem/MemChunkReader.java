@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.query.reader.mem;
 
-import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
-import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -30,7 +28,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class MemChunkReader implements IPointReader, IBatchReader, IAggregateReader {
+import java.util.Iterator;
+
+public class MemChunkReader implements IPointReader, IAggregateReader {
 
   private Iterator<TimeValuePair> timeValuePairIterator;
   private Filter filter;

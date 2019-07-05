@@ -37,7 +37,7 @@ public class TsFileMetaData {
   private Map<String, TsDeviceMetadataIndex> deviceIndexMap = new HashMap<>();
 
   /**
-   * TSFile schema for this file. This schema contains metadata for all the time series.
+   * TSFile schema for this file. This schema contains metadata for all the measurements.
    */
   private Map<String, MeasurementSchema> measurementSchema = new HashMap<>();
 

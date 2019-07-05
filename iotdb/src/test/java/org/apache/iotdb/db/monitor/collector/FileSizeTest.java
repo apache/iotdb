@@ -29,13 +29,14 @@ import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class FileSizeTest {
 
   private static final String TEST_FILE_CONTENT = "FileSize UT test file";
   private static final String TEST_FILE_PATH =
-      FileSizeConstants.DATA.getPath() + File.separatorChar + "testFile";
+      FileSizeConstants.SYS.getPath() + File.separatorChar + "schemaFile";
 
   @Before
   public void setUp() throws Exception {
@@ -47,6 +48,7 @@ public class FileSizeTest {
     EnvironmentUtils.cleanEnv();
   }
 
+  @Ignore
   @Test
   public void testGetFileSizesInByte() {
     long dataSizeBefore;
@@ -69,9 +71,9 @@ public class FileSizeTest {
       e.printStackTrace();
     }
 
-    dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.DATA);
+    dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);
     byte[] contentInBytes = TEST_FILE_CONTENT.getBytes();
-    // write something into the test file under data dir
+    // insert something into the test file under data dir
     try (FileOutputStream fileOutputStream = new FileOutputStream(testFile)) {
       fileOutputStream.write(contentInBytes);
       fileOutputStream.flush();
@@ -80,7 +82,7 @@ public class FileSizeTest {
       e.printStackTrace();
     }
     // calculate the delta of data dir file size
-    dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.DATA);
+    dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);
     long deltaSize = dataSizeAfter - dataSizeBefore;
 
     if (isWriteSuccess) {

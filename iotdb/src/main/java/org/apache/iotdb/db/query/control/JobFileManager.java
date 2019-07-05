@@ -21,8 +21,7 @@ package org.apache.iotdb.db.query.control;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.engine.filenode.TsFileResource;
-import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 
 /**
@@ -52,25 +51,22 @@ public class JobFileManager {
     unsealedFilePathsMap.computeIfAbsent(jobId, x -> new HashSet<>());
   }
 
+
   /**
    * Add the unique file paths to sealedFilePathsMap and unsealedFilePathsMap.
    */
   public void addUsedFilesForGivenJob(long jobId, QueryDataSource dataSource) {
-    for (TsFileResource tsFileResource : dataSource.getSeqDataSource().getSealedTsFiles()) {
-      String sealedFilePath = tsFileResource.getFilePath();
-      addFilePathToMap(jobId, sealedFilePath, true);
+
+    //sequence data
+    for(TsFileResource tsFileResource : dataSource.getSeqResources()){
+      String path = tsFileResource.getFile().getPath();
+      addFilePathToMap(jobId, path, tsFileResource.isClosed());
     }
 
-    if (dataSource.getSeqDataSource().hasUnsealedTsFile()) {
-      String unSealedFilePath = dataSource.getSeqDataSource().getUnsealedTsFile().getFilePath();
-      addFilePathToMap(jobId, unSealedFilePath, false);
-    }
-
-    for (OverflowInsertFile overflowInsertFile : dataSource.getOverflowSeriesDataSource()
-        .getOverflowInsertFileList()) {
-      String overflowFilePath = overflowInsertFile.getFilePath();
-      // overflow is unclosed by default
-      addFilePathToMap(jobId, overflowFilePath, false);
+    //unsequence data
+    for(TsFileResource tsFileResource : dataSource.getUnseqResources()){
+      String path = tsFileResource.getFile().getPath();
+      addFilePathToMap(jobId, path, tsFileResource.isClosed());
     }
   }
 

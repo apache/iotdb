@@ -41,7 +41,7 @@ public class RocketMQConsumer {
   private Connection connection;
   private Statement statement;
   private String createStorageGroupSqlTemplate = "SET STORAGE GROUP TO %s";
-  private static final Logger LOGGER = LoggerFactory.getLogger(RocketMQConsumer.class);
+  private static final Logger logger = LoggerFactory.getLogger(RocketMQConsumer.class);
 
   public RocketMQConsumer(String producerGroup, String serverAddresses, String connectionUrl,
       String user, String password) throws ClassNotFoundException, SQLException {
@@ -94,12 +94,12 @@ public class RocketMQConsumer {
      * Register callback to execute on arrival of messages fetched from brokers.
      */
     consumer.registerMessageListener((MessageListenerOrderly) (msgs, context) -> {
-      LOGGER.info(String.format("%s Receive New Messages: %s %n", Thread.currentThread().getName(),
+      logger.info(String.format("%s Receive New Messages: %s %n", Thread.currentThread().getName(),
           new String(msgs.get(0).getBody())));
       try {
         statement.execute(new String(msgs.get(0).getBody()));
       } catch (SQLException e) {
-        LOGGER.error(e.getMessage());
+        logger.error(e.getMessage());
       }
       return ConsumeOrderlyStatus.SUCCESS;
     });

@@ -53,7 +53,6 @@ public class IoTDBTimeZoneIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
     deamon = IoTDB.getInstance();
     deamon.active();
     EnvironmentUtils.envSetUp();

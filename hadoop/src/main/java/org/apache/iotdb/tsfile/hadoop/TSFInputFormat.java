@@ -78,7 +78,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
    * key to configure the reading measurementIds
    */
   public static final String READ_MEASUREMENTID = "tsfile.read.measurement";
-  private static final Logger LOGGER = LoggerFactory.getLogger(TSFInputFormat.class);
+  private static final Logger logger = LoggerFactory.getLogger(TSFInputFormat.class);
   private static final String SPERATOR = ",";
 
   /**
@@ -252,10 +252,10 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
     List<InputSplit> splits = new ArrayList<>();
     // get the all file in the directory
     List<FileStatus> listFileStatus = super.listStatus(job);
-    LOGGER.info("The number of this job file is {}", listFileStatus.size());
+    logger.info("The number of this job file is {}", listFileStatus.size());
     // For each file
     for (FileStatus fileStatus : listFileStatus) {
-      LOGGER.info("The file path is {}", fileStatus.getPath());
+      logger.info("The file path is {}", fileStatus.getPath());
       // Get the file path
       Path path = fileStatus.getPath();
       // Get the file length
@@ -265,27 +265,26 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
       if (length > 0) {
         // Get block information in the local file system or hdfs
         if (fileStatus instanceof LocatedFileStatus) {
-          LOGGER.info("The file status is {}", LocatedFileStatus.class.getName());
+          logger.info("The file status is {}", LocatedFileStatus.class.getName());
           blockLocations = ((LocatedFileStatus) fileStatus).getBlockLocations();
         } else {
           FileSystem fileSystem = path.getFileSystem(configuration);
-          LOGGER.info("The file status is {}", fileStatus.getClass().getName());
-          System.out.println("The file status is " + fileStatus.getClass().getName());
-          System.out.println("The file system is " + fileSystem.getClass());
+          logger.info("The file status is {}", fileStatus.getClass().getName());
+          logger.info("The file system is " + fileSystem.getClass());
           blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
         }
-        LOGGER.info("The block location information is {}", Arrays.toString(blockLocations));
+        logger.info("The block location information is {}", Arrays.toString(blockLocations));
         HDFSInputStream hdfsInputStream = new HDFSInputStream(path, configuration);
         FileReader fileReader = new FileReader(hdfsInputStream);
         // Get the timeserise to test
         splits.addAll(generateSplits(path, fileReader, blockLocations));
         fileReader.close();
       } else {
-        LOGGER.warn("The file length is " + length);
+        logger.warn("The file length is " + length);
       }
     }
     configuration.setLong(NUM_INPUT_FILES, listFileStatus.size());
-    LOGGER.info("The number of splits is " + splits.size());
+    logger.info("The number of splits is " + splits.size());
 
     return splits;
   }
@@ -320,7 +319,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
     long splitStart = 0;
     List<String> hosts = new ArrayList<>();
     for (RowGroupMetaData rowGroupMetaData : fileReader.getSortedRowGroupMetaDataList()) {
-      LOGGER.info("The rowGroupMetaData information is {}", rowGroupMetaData);
+      logger.info("The rowGroupMetaData information is {}", rowGroupMetaData);
 
       long start = getRowGroupStart(rowGroupMetaData);
       int blkIndex = getBlockLocationIndex(blockLocations, start);
@@ -332,7 +331,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
       if (blkIndex != currentBlockIndex) {
         TSFInputSplit tsfInputSplit = makeSplit(path, rowGroupMetaDataList, splitStart,
             splitSize, hosts);
-        LOGGER.info("The tsfile inputsplit information is {}", tsfInputSplit);
+        logger.info("The tsfile inputsplit information is {}", tsfInputSplit);
         splits.add(tsfInputSplit);
 
         currentBlockIndex = blkIndex;
@@ -348,7 +347,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
     }
     TSFInputSplit tsfInputSplit = makeSplit(path, rowGroupMetaDataList, splitStart,
         splitSize, hosts);
-    LOGGER.info("The tsfile inputsplit information is {}", tsfInputSplit);
+    logger.info("The tsfile inputsplit information is {}", tsfInputSplit);
     splits.add(tsfInputSplit);
     return splits;
   }
@@ -364,7 +363,7 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, ArrayWritable>
         return i;
       }
     }
-    LOGGER.warn(String.format("Can't find the block. The start is:%d. the last block is", start),
+    logger.warn(String.format("Can't find the block. The start is:%d. the last block is", start),
         blockLocations[blockLocations.length - 1].getOffset()
             + blockLocations[blockLocations.length - 1].getLength());
     return -1;

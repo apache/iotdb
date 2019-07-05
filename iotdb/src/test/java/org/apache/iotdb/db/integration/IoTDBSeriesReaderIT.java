@@ -30,7 +30,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
@@ -68,7 +68,6 @@ public class IoTDBSeriesReaderIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
 
     // use small page setting
     // origin value
@@ -85,7 +84,7 @@ public class IoTDBSeriesReaderIT {
     daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(5000);
+    Thread.sleep(1000);
     insertData();
     connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -154,7 +153,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      statement.execute("merge");
+//      statement.execute("merge");
 
       Thread.sleep(5000);
 
@@ -174,7 +173,7 @@ public class IoTDBSeriesReaderIT {
 
       statement.execute("flush");
 
-      // bufferwrite data, memory data
+      // sequential data, memory data
       for (int time = 200000; time < 201000; time++) {
 
         String sql = String
@@ -188,7 +187,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      // overflow insert, time < 3000
+      // unsequence insert, time < 3000
       for (int time = 2000; time < 2500; time++) {
 
         String sql = String
@@ -205,7 +204,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      // overflow insert, time > 200000
+      // unsequence insert, time > 200000
       for (int time = 200900; time < 201000; time++) {
 
         String sql = String
@@ -225,9 +224,6 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      // overflow update
-      // statement.execute("UPDATE root.vehicle SET d0.s1 = 11111111 WHERE time > 23000 and time < 100100");
-
       statement.close();
     } catch (Exception e) {
       e.printStackTrace();
@@ -240,7 +236,7 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void selectAllTest() throws IOException, FileNodeManagerException {
+  public void selectAllTest() throws IOException, StorageEngineException {
     String selectSql = "select * from root";
     System.out.println("Test >>> " + selectSql);
 
@@ -271,7 +267,7 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void selectOneSeriesWithValueFilterTest() throws IOException, FileNodeManagerException {
+  public void selectOneSeriesWithValueFilterTest() throws IOException, StorageEngineException {
 
     String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
     System.out.println("Test >>> " + selectSql);
@@ -301,7 +297,7 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void seriesTimeDigestReadTest() throws IOException, FileNodeManagerException {
+  public void seriesTimeDigestReadTest() throws IOException, StorageEngineException {
     String selectSql = "select s0 from root.vehicle.d0 where time >= 22987";
     System.out.println("Test >>> " + selectSql);
 
@@ -329,7 +325,7 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void crossSeriesReadUpdateTest() throws IOException, FileNodeManagerException {
+  public void crossSeriesReadUpdateTest() throws IOException, StorageEngineException {
     System.out.println("Test >>> select s1 from root.vehicle.d0 where s0 < 111");
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
     QueryExpression queryExpression = QueryExpression.create();

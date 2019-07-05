@@ -18,24 +18,24 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
-import java.io.Serializable;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * This class is a abstract class for all type of PhysicalPlan.
  */
-public abstract class PhysicalPlan implements Serializable {
+public abstract class PhysicalPlan {
 
-  private static final long serialVersionUID = -6274856391535568352L;
   private boolean isQuery;
   private Operator.OperatorType operatorType;
-
-  /**
-   * The name of the user who proposed this operation.
-   */
-  private String proposer;
+  private static final int NULL_VALUE_LEN = -1;
 
   protected PhysicalPlan(boolean isQuery) {
     this.isQuery = isQuery;
@@ -65,18 +65,69 @@ public abstract class PhysicalPlan implements Serializable {
   }
 
   public List<String> getAggregations() {
-    return null;
-  }
-
-  public String getProposer() {
-    return proposer;
-  }
-
-  public void setProposer(String proposer) {
-    this.proposer = proposer;
+    return Collections.emptyList();
   }
 
   public void setQuery(boolean query) {
     isQuery = query;
   }
+
+  public void serializeTo(ByteBuffer buffer) {
+    throw new UnsupportedOperationException("serialize of unimplemented");
+  }
+
+  public void deserializeFrom(ByteBuffer buffer) {
+    throw new UnsupportedOperationException("serialize of unimplemented");
+  }
+
+  protected void putString(ByteBuffer buffer, String value) {
+    if (value == null) {
+      buffer.putInt(NULL_VALUE_LEN);
+    } else {
+      ReadWriteIOUtils.write(value, buffer);
+    }
+  }
+
+  protected String readString(ByteBuffer buffer) {
+    int valueLen = buffer.getInt();
+    if (valueLen == NULL_VALUE_LEN) {
+      return null;
+    }
+    return ReadWriteIOUtils.readStringWithoutLength(buffer, valueLen);
+  }
+
+  public static class Factory {
+
+    private Factory() {
+      // hidden initializer
+    }
+
+    public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
+      int typeNum = buffer.get();
+      if (typeNum >= PhysicalPlanType.values().length) {
+        throw new IOException("unrecognized log type " + typeNum);
+      }
+      PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
+      PhysicalPlan plan;
+      switch (type) {
+        case INSERT:
+          plan = new InsertPlan();
+          plan.deserializeFrom(buffer);
+          break;
+        case DELETE:
+          plan = new DeletePlan();
+          plan.deserializeFrom(buffer);
+          break;
+        default:
+          throw new IOException("unrecognized log type " + type);
+      }
+      return plan;
+    }
+  }
+
+  public enum PhysicalPlanType {
+    INSERT, DELETE
+  }
+
+
 }

@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBQueryResultSet implements ResultSet {
 
-  private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(IoTDBQueryResultSet.class);
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(IoTDBQueryResultSet.class);
   private static final String METHOD_NOT_SUPPORTED = "Method not supported";
   private final String TIMESTAMP_STR = "Time";
   private static final String limitStr = "LIMIT";
@@ -735,7 +735,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (maxRowsOrRowsLimit > 0 && rowsFetched >= maxRowsOrRowsLimit) {
       // The constraint of maxRows instead of rowsLimit is embodied
       if (rowsLimit == 0 || (maxRows > 0 && maxRows < rowsLimit)) {
-        LOGGER.debug("Reach max rows " + maxRows);
+        logger.debug("Reach max rows " + maxRows);
       }
       return false;
     }

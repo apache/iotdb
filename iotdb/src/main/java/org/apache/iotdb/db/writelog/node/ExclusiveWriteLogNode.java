@@ -1,170 +1,151 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.writelog.node;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.RecoverException;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.writelog.LogPosition;
+import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
 import org.apache.iotdb.db.writelog.io.LogWriter;
-import org.apache.iotdb.db.writelog.recover.ExclusiveLogRecoverPerformer;
-import org.apache.iotdb.db.writelog.recover.RecoverPerformer;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
+import org.apache.iotdb.db.writelog.io.MultiFileLogReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This WriteLogNode is used to manage write ahead logs of a single FileNode.
+ * This WriteLogNode is used to manage insert ahead logs of a TsFile.
  */
 public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<ExclusiveWriteLogNode> {
 
   public static final String WAL_FILE_NAME = "wal";
-  public static final String OLD_SUFFIX = "-old";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
-  /**
-   * This should be the same as the corresponding FileNode's name.
-   */
+  private static int logBufferSize = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
+
   private String identifier;
 
   private String logDirectory;
 
   private ILogWriter currentFileWriter;
 
-  private RecoverPerformer recoverPerformer;
-
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private List<byte[]> logCache = new ArrayList<>(config.getFlushWalThreshold());
+  private ByteBuffer logBuffer = ByteBuffer.allocate(logBufferSize);
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private ReadWriteLock forceLock = new ReentrantReadWriteLock();
+  private long fileId = 0;
+  private long lastFlushedId = 0;
+
+  private int bufferedLogNum = 0;
 
   /**
    * constructor of ExclusiveWriteLogNode.
    *
-   * @param identifier             ExclusiveWriteLogNode identifier
-   * @param restoreFilePath        restore file path
-   * @param processorStoreFilePath processor store file path
+   * @param identifier ExclusiveWriteLogNode identifier
    */
-  public ExclusiveWriteLogNode(String identifier, String restoreFilePath,
-                               String processorStoreFilePath) {
+  public ExclusiveWriteLogNode(String identifier) {
     this.identifier = identifier;
-    this.logDirectory = config.getWalFolder() + File.separator + this.identifier;
+    this.logDirectory =
+        DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
     new File(logDirectory).mkdirs();
-
-    recoverPerformer = new ExclusiveLogRecoverPerformer(restoreFilePath, processorStoreFilePath,
-        this);
-    currentFileWriter = new LogWriter(logDirectory + File.separator + WAL_FILE_NAME);
   }
 
-  public void setRecoverPerformer(RecoverPerformer recoverPerformer) {
-    this.recoverPerformer = recoverPerformer;
-  }
-
-  /*
-   * Return value is of no use in this implementation.
-   */
   @Override
-  public LogPosition write(PhysicalPlan plan) throws IOException {
-    lockForWrite();
+  public void write(PhysicalPlan plan) throws IOException {
+    lock.writeLock().lock();
     try {
-      byte[] logBytes = PhysicalPlanLogTransfer.operatorToLog(plan);
-      logCache.add(logBytes);
-
-      if (logCache.size() >= config.getFlushWalThreshold()) {
+      putLog(plan);
+      if (bufferedLogNum >= config.getFlushWalThreshold()) {
         sync();
       }
+    } catch (BufferOverflowException e) {
+      throw new IOException("Log cannot fit into buffer, please increase wal_buffer_size", e);
     } finally {
-      unlockForWrite();
+      lock.writeLock().unlock();
     }
-    return null;
   }
 
-  @Override
-  public void recover() throws RecoverException {
-    close();
-    recoverPerformer.recover();
+  private void putLog(PhysicalPlan plan) {
+    logBuffer.mark();
+    try {
+      plan.serializeTo(logBuffer);
+    } catch (BufferOverflowException e) {
+      logger.info("WAL BufferOverflow !");
+      logBuffer.reset();
+      sync();
+      plan.serializeTo(logBuffer);
+    }
+    bufferedLogNum ++;
   }
 
   @Override
   public void close() {
     sync();
     forceWal();
-    lockForOther();
-    lockForForceOther();
+    lock.writeLock().lock();
     try {
-      this.currentFileWriter.close();
+      if (this.currentFileWriter != null) {
+        this.currentFileWriter.close();
+        this.currentFileWriter = null;
+      }
       logger.debug("Log node {} closed successfully", identifier);
     } catch (IOException e) {
       logger.error("Cannot close log node {} because:", identifier, e);
+    } finally {
+      lock.writeLock().unlock();
     }
-    unlockForForceOther();
-    unlockForOther();
   }
 
   @Override
   public void forceSync() {
     sync();
-  }
-
-  @Override
-  public void force() {
     forceWal();
   }
 
-  /*
-   * Warning : caller must have lock.
-   */
+
   @Override
   public void notifyStartFlush() {
-    close();
-    File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME);
-    File newLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX);
-    if (!oldLogFile.exists()) {
-      return;
-    }
-    if (!oldLogFile.renameTo(newLogFile)) {
-      logger.error("Log node {} renaming log file failed!", identifier);
-    } else {
-      logger.info("Log node {} renamed log file, file size is {}", identifier,
-          MemUtils.bytesCntToStr(newLogFile.length()));
+    lock.writeLock().lock();
+    try {
+      close();
+      nextFileWriter();
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 
-  /*
-   * Warning : caller must have lock.
-   */
   @Override
-  public void notifyEndFlush(List<LogPosition> logPositions) {
-    discard();
+  public void notifyEndFlush() {
+    lock.writeLock().lock();
+    try {
+      File logFile = new File(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
+      discard(logFile);
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   @Override
@@ -179,102 +160,85 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void delete() throws IOException {
-    lockForOther();
+    lock.writeLock().lock();
     try {
-      logCache.clear();
-      if (currentFileWriter != null) {
-        currentFileWriter.close();
-      }
+      logBuffer.clear();
+      close();
       FileUtils.deleteDirectory(new File(logDirectory));
     } finally {
-      unlockForOther();
+      lock.writeLock().unlock();
     }
   }
 
-  private void lockForWrite() {
-    lock.writeLock().lock();
+  @Override
+  public ILogReader getLogReader() {
+    File[] logFiles = new File(logDirectory).listFiles();
+    Arrays.sort(logFiles,
+        Comparator.comparingInt(f -> Integer.parseInt(f.getName().replace(WAL_FILE_NAME, ""))));
+    return new MultiFileLogReader(logFiles);
   }
 
-  // other means sync and delete
-  private void lockForOther() {
-    lock.writeLock().lock();
-  }
-
-  private void unlockForWrite() {
-    lock.writeLock().unlock();
-  }
-
-  private void unlockForOther() {
-    lock.writeLock().unlock();
-  }
-
-  private void lockForForceOther() {
-    forceLock.writeLock().lock();
-  }
-
-  private void unlockForForceOther() {
-    forceLock.writeLock().unlock();
-  }
-
-  private void sync() {
-    lockForOther();
-    try {
-      logger.debug("Log node {} starts sync, {} logs to be synced", identifier, logCache.size());
-      if (logCache.isEmpty()) {
-        return;
-      }
+  private void discard(File logFile) {
+    if (!logFile.exists()) {
+      logger.info("Log file does not exist");
+    } else {
       try {
-        currentFileWriter.write(logCache);
+        FileUtils.forceDelete(logFile);
+        logger.info("Log node {} cleaned old file", identifier);
       } catch (IOException e) {
-        logger.error("Log node {} sync failed", identifier, e);
+        logger.error("Old log file {} of {} cannot be deleted", logFile.getName(), identifier, e);
       }
-      logCache.clear();
-      logger.debug("Log node {} ends sync.", identifier);
-    } finally {
-      unlockForOther();
     }
   }
 
   private void forceWal() {
-    lockForForceOther();
+    lock.writeLock().lock();
     try {
-      logger.debug("Log node {} starts force, {} logs to be forced", identifier, logCache.size());
       try {
-        currentFileWriter.force();
+        if (currentFileWriter != null) {
+          currentFileWriter.force();
+        }
       } catch (IOException e) {
         logger.error("Log node {} force failed.", identifier, e);
       }
-      logger.debug("Log node {} ends force.", identifier);
     } finally {
-      unlockForForceOther();
+      lock.writeLock().unlock();
     }
   }
 
-  private void discard() {
-    File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX);
-    if (!oldLogFile.exists()) {
-      logger.info("No old log to be deleted");
-    } else {
-      if (!oldLogFile.delete()) {
-        logger.error("Old log file of {} cannot be deleted", identifier);
-      } else {
-        logger.info("Log node {} cleaned old file", identifier);
+  private void sync() {
+    lock.writeLock().lock();
+    try {
+      if (bufferedLogNum == 0) {
+        return;
       }
+      try {
+        getCurrentFileWriter().write(logBuffer);
+      } catch (IOException e) {
+        StorageEngine.getInstance().setReadOnly(true);
+        logger.error("Log node {} sync failed", identifier, e);
+        return;
+      }
+      logBuffer.clear();
+      bufferedLogNum = 0;
+      logger.debug("Log node {} ends sync.", identifier);
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 
-  @Override
-  public String toString() {
-    return "Log node " + identifier;
+  private ILogWriter getCurrentFileWriter() {
+    if (currentFileWriter == null) {
+      nextFileWriter();
+    }
+    return currentFileWriter;
   }
 
-  public String getFileNodeName() {
-    return identifier.split("-")[0];
-  }
-
-  @Override
-  public int compareTo(ExclusiveWriteLogNode o) {
-    return this.identifier.compareTo(o.identifier);
+  private void nextFileWriter() {
+    fileId++;
+    File newFile = new File(logDirectory, WAL_FILE_NAME + fileId);
+    newFile.getParentFile().mkdirs();
+    currentFileWriter = new LogWriter(newFile);
   }
 
   @Override
@@ -295,5 +259,15 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
 
     return compareTo((ExclusiveWriteLogNode) obj) == 0;
+  }
+
+  @Override
+  public String toString() {
+    return "Log node " + identifier;
+  }
+
+  @Override
+  public int compareTo(ExclusiveWriteLogNode o) {
+    return this.identifier.compareTo(o.identifier);
   }
 }

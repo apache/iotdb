@@ -23,9 +23,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -72,16 +69,16 @@ public class MTreeTest {
   public void testAddAndPathExist() {
     MTree root = new MTree("root");
     String path1 = "root";
-    assertEquals(root.isPathExist(path1), true);
-    assertEquals(root.isPathExist("root.laptop.d1"), false);
+    assertEquals(true, root.isPathExist(path1));
+    assertEquals(false, root.isPathExist("root.laptop.d1"));
     try {
       root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE");
     } catch (PathErrorException e1) {
       fail(e1.getMessage());
     }
-    assertEquals(root.isPathExist("root.laptop.d1"), true);
-    assertEquals(root.isPathExist("root.laptop"), true);
-    assertEquals(root.isPathExist("root.laptop.d1.s2"), false);
+    assertEquals(true, root.isPathExist("root.laptop.d1"));
+    assertEquals(true, root.isPathExist("root.laptop"));
+    assertEquals(false, root.isPathExist("root.laptop.d1.s2"));
     try {
       root.addTimeseriesPath("aa.bb.cc", "INT32", "RLE");
     } catch (PathErrorException e) {
@@ -114,16 +111,16 @@ public class MTreeTest {
 
     try {
       HashMap<String, ArrayList<String>> result = root.getAllPath("root.a.*.s0");
-      assertEquals(result.size(), 2);
+      assertEquals(2, result.size());
       assertTrue(result.containsKey("root.a.d1"));
-      assertEquals(result.get("root.a.d1").get(0), "root.a.d1.s0");
+      assertEquals("root.a.d1.s0", result.get("root.a.d1").get(0));
       assertTrue(result.containsKey("root.a.d0"));
-      assertEquals(result.get("root.a.d0").get(0), "root.a.d0.s0");
+      assertEquals("root.a.d0.s0", result.get("root.a.d0").get(0));
       System.out.println(result);
 
       result = root.getAllPath("root.a.*.*.s0");
       assertTrue(result.containsKey("root.a.b.d0"));
-      assertEquals(result.get("root.a.b.d0").get(0), "root.a.b.d0.s0");
+      assertEquals("root.a.b.d0.s0", result.get("root.a.b.d0").get(0));
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -179,10 +176,10 @@ public class MTreeTest {
       root.setStorageGroup("root.laptop.d1");
       assertEquals(true, root.isPathExist("root.laptop.d1"));
       assertEquals(true, root.checkFileNameByPath("root.laptop.d1"));
-      assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1"));
+      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1"));
       assertEquals(false, root.isPathExist("root.laptop.d1.s1"));
       assertEquals(true, root.checkFileNameByPath("root.laptop.d1.s1"));
-      assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1.s1"));
+      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s1"));
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -200,19 +197,19 @@ public class MTreeTest {
           e.getMessage());
     }
     // check timeseries
-    assertEquals(root.isPathExist("root.laptop.d1.s0"), false);
-    assertEquals(root.isPathExist("root.laptop.d1.s1"), false);
-    assertEquals(root.isPathExist("root.laptop.d2.s0"), false);
-    assertEquals(root.isPathExist("root.laptop.d2.s1"), false);
+    assertEquals(false, root.isPathExist("root.laptop.d1.s0"));
+    assertEquals(false, root.isPathExist("root.laptop.d1.s1"));
+    assertEquals(false, root.isPathExist("root.laptop.d2.s0"));
+    assertEquals(false, root.isPathExist("root.laptop.d2.s1"));
 
     try {
-      assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1.s0"));
+      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s0"));
       root.addTimeseriesPath("root.laptop.d1.s0", "INT32", "RLE");
-      assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1.s1"));
+      assertEquals("root.laptop.d1", root.getStorageGroupNameByPath("root.laptop.d1.s1"));
       root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE");
-      assertEquals("root.laptop.d2", root.getFileNameByPath("root.laptop.d2.s0"));
+      assertEquals("root.laptop.d2", root.getStorageGroupNameByPath("root.laptop.d2.s0"));
       root.addTimeseriesPath("root.laptop.d2.s0", "INT32", "RLE");
-      assertEquals("root.laptop.d2", root.getFileNameByPath("root.laptop.d2.s1"));
+      assertEquals("root.laptop.d2", root.getStorageGroupNameByPath("root.laptop.d2.s1"));
       root.addTimeseriesPath("root.laptop.d2.s1", "INT32", "RLE");
     } catch (PathErrorException e) {
       e.printStackTrace();
@@ -224,18 +221,18 @@ public class MTreeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertEquals(root.isPathExist("root.laptop.d1.s0"), false);
+    assertEquals(false, root.isPathExist("root.laptop.d1.s0"));
     try {
       root.deletePath("root.laptop.d1");
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertEquals(root.isPathExist("root.laptop.d1.s1"), false);
-    assertEquals(root.isPathExist("root.laptop.d1"), false);
-    assertEquals(root.isPathExist("root.laptop"), true);
-    assertEquals(root.isPathExist("root.laptop.d2"), true);
-    assertEquals(root.isPathExist("root.laptop.d2.s0"), true);
+    assertEquals(false, root.isPathExist("root.laptop.d1.s1"));
+    assertEquals(false, root.isPathExist("root.laptop.d1"));
+    assertEquals(true, root.isPathExist("root.laptop"));
+    assertEquals(true, root.isPathExist("root.laptop.d2"));
+    assertEquals(true, root.isPathExist("root.laptop.d2.s0"));
   }
 
   @Test

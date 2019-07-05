@@ -114,7 +114,6 @@ public class IoTDBAggregationLargeDataIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
@@ -878,7 +877,7 @@ public class IoTDBAggregationLargeDataIT {
         d0s2sum += time % 123;
       }
 
-      statement.execute("merge");
+//      statement.execute("merge");
 
       System.out.println("large insert cnt = " + cnt);
       System.out

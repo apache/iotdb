@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -82,64 +81,13 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
           break;
       }
     }
-    //release memory
+    //putBack memory
     memSeries = null;
     initialized = true;
   }
 
-  /**
-   * only for test now.
-   */
   public TSDataType getDataType() {
     return dataType;
-  }
-
-  /**
-   * only for test now.
-   */
-  public long getMaxTimestamp() {
-    checkInitialized();
-    if (!isEmpty()) {
-      return sortedTimeValuePairList.get(sortedTimeValuePairList.size() - 1).getTimestamp();
-    } else {
-      return -1;
-    }
-  }
-
-  /**
-   * only for test now.
-   */
-  public long getMinTimestamp() {
-    checkInitialized();
-    if (!isEmpty()) {
-      return sortedTimeValuePairList.get(0).getTimestamp();
-    } else {
-      return -1;
-    }
-  }
-
-  /**
-   * only for test now.
-   */
-  public TsPrimitiveType getValueAtMaxTime() {
-    checkInitialized();
-    if (!isEmpty()) {
-      return sortedTimeValuePairList.get(sortedTimeValuePairList.size() - 1).getValue();
-    } else {
-      return null;
-    }
-  }
-
-  /**
-   * only for test now.
-   */
-  public TsPrimitiveType getValueAtMinTime() {
-    checkInitialized();
-    if (!isEmpty()) {
-      return sortedTimeValuePairList.get(0).getValue();
-    } else {
-      return null;
-    }
   }
 
   @Override

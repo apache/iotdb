@@ -67,7 +67,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SyncSenderImpl implements SyncSender {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncSenderImpl.class);
 
   private TTransport transport;
 
@@ -136,7 +136,7 @@ public class SyncSenderImpl implements SyncSender {
   private void startMonitor() {
     executorService.scheduleWithFixedDelay(() -> {
       if (syncStatus) {
-        LOGGER.info("Sync process is in execution!");
+        logger.info("Sync process is in execution!");
       }
     }, Constans.SYNC_MONITOR_DELAY, Constans.SYNC_MONITOR_PERIOD, TimeUnit.SECONDS);
   }
@@ -149,7 +149,7 @@ public class SyncSenderImpl implements SyncSender {
       try {
         sync();
       } catch (SyncConnectionException | IOException e) {
-        LOGGER.error("Sync failed", e);
+        logger.error("Sync failed", e);
         stop();
       }
     }, Constans.SYNC_PROCESS_DELAY, Constans.SYNC_PROCESS_PERIOD, TimeUnit.SECONDS);
@@ -180,14 +180,14 @@ public class SyncSenderImpl implements SyncSender {
     validAllFiles = syncFileManager.getValidAllFiles();
     currentLocalFiles = syncFileManager.getCurrentLocalFiles();
     if (SyncUtils.isEmpty(validAllFiles)) {
-      LOGGER.info("There has no file to sync !");
+      logger.info("There has no file to sync !");
       return;
     }
 
     // 3. Connect to sync server and Confirm Identity
     establishConnection(config.getServerIp(), config.getServerPort());
     if (!confirmIdentity(config.getUuidPath())) {
-      LOGGER.error("Sorry, you do not have the permission to connect to sync receiver.");
+      logger.error("Sorry, you do not have the permission to connect to sync receiver.");
       System.exit(1);
     }
 
@@ -205,7 +205,7 @@ public class SyncSenderImpl implements SyncSender {
       // 6. Sync data
       syncAllData();
     } catch (SyncConnectionException e) {
-      LOGGER.error("cannot finish sync process", e);
+      logger.error("cannot finish sync process", e);
       syncStatus = false;
       return;
     }
@@ -220,10 +220,10 @@ public class SyncSenderImpl implements SyncSender {
     try {
       serviceClient.cleanUp();
     } catch (TException e) {
-      LOGGER.error("Unable to connect to receiver.", e);
+      logger.error("Unable to connect to receiver.", e);
     }
     transport.close();
-    LOGGER.info("Sync process has finished.");
+    logger.info("Sync process has finished.");
     syncStatus = false;
   }
 
@@ -235,7 +235,7 @@ public class SyncSenderImpl implements SyncSender {
       if (validSnapshot.isEmpty()) {
         continue;
       }
-      LOGGER.info("Sync process starts to transfer data of storage group {}", entry.getKey());
+      logger.info("Sync process starts to transfer data of storage group {}", entry.getKey());
       try {
         if (!serviceClient.init(entry.getKey())) {
           throw new SyncConnectionException("unable init receiver");
@@ -248,9 +248,9 @@ public class SyncSenderImpl implements SyncSender {
         currentLocalFiles.get(entry.getKey()).addAll(validFiles);
         syncFileManager.setCurrentLocalFiles(currentLocalFiles);
         syncFileManager.backupNowLocalFileInfo(config.getLastFileInfo());
-        LOGGER.info("Sync process has finished storage group {}.", entry.getKey());
+        logger.info("Sync process has finished storage group {}.", entry.getKey());
       } else {
-        LOGGER.error("Receiver cannot sync data, abandon this synchronization of storage group {}",
+        logger.error("Receiver cannot sync data, abandon this synchronization of storage group {}",
             entry.getKey());
       }
     }
@@ -271,7 +271,7 @@ public class SyncSenderImpl implements SyncSender {
       transport.open();
     } catch (TTransportException e) {
       syncStatus = false;
-      LOGGER.error("Cannot connect to server");
+      logger.error("Cannot connect to server");
       throw new SyncConnectionException(e);
     }
   }
@@ -293,14 +293,14 @@ public class SyncSenderImpl implements SyncSender {
         uuid = generateUUID();
         out.write(uuid.getBytes());
       } catch (IOException e) {
-        LOGGER.error("Cannot write UUID to file {}", file.getPath());
+        logger.error("Cannot insert UUID to file {}", file.getPath());
         throw new IOException(e);
       }
     } else {
       try (BufferedReader bf = new BufferedReader((new FileReader(uuidPath)))) {
         uuid = bf.readLine();
       } catch (IOException e) {
-        LOGGER.error("Cannot read UUID from file{}", file.getPath());
+        logger.error("Cannot read UUID from file{}", file.getPath());
         throw new IOException(e);
       }
     }
@@ -309,7 +309,7 @@ public class SyncSenderImpl implements SyncSender {
       legalConnection = serviceClient.checkIdentity(uuid,
           InetAddress.getLocalHost().getHostAddress());
     } catch (Exception e) {
-      LOGGER.error("Cannot confirm identity with receiver");
+      logger.error("Cannot confirm identity with receiver");
       throw new SyncConnectionException(e);
     }
     return legalConnection;
@@ -338,7 +338,7 @@ public class SyncSenderImpl implements SyncSender {
         Files.createLink(link, target);
       }
     } catch (IOException e) {
-      LOGGER.error("Can not make fileSnapshot");
+      logger.error("Can not make fileSnapshot");
       throw new IOException(e);
     }
     return validFilesSnapshot;
@@ -390,7 +390,7 @@ public class SyncSenderImpl implements SyncSender {
               bos.reset();
               if (!Boolean.parseBoolean(serviceClient
                   .syncData(null, filePathSplit, buffToSend, SyncDataStatus.PROCESSING_STATUS))) {
-                LOGGER.info("Receiver failed to receive data from {}, retry.", snapshotFilePath);
+                logger.info("Receiver failed to receive data from {}, retry.", snapshotFilePath);
                 continue outer;
               }
             }
@@ -401,11 +401,11 @@ public class SyncSenderImpl implements SyncSender {
           String md5OfReceiver = serviceClient.syncData(md5OfSender, filePathSplit,
               null, SyncDataStatus.FINISH_STATUS);
           if (md5OfSender.equals(md5OfReceiver)) {
-            LOGGER.info("Receiver has received {} successfully.", snapshotFilePath);
+            logger.info("Receiver has received {} successfully.", snapshotFilePath);
             break;
           }
         }
-        LOGGER.info(String.format("Task of synchronization has completed %d/%d.", successNum,
+        logger.info(String.format("Task of synchronization has completed %d/%d.", successNum,
             fileSnapshotList.size()));
       }
     } catch (Exception e) {
@@ -440,7 +440,7 @@ public class SyncSenderImpl implements SyncSender {
           // PROCESSING_STATUS represents there is still schema buffer to send.
           if (!Boolean.parseBoolean(
               serviceClient.syncSchema(null, buffToSend, SyncDataStatus.PROCESSING_STATUS))) {
-            LOGGER.error("Receiver failed to receive metadata, retry.");
+            logger.error("Receiver failed to receive metadata, retry.");
             continue outer;
           }
         }
@@ -449,7 +449,7 @@ public class SyncSenderImpl implements SyncSender {
         String md5OfReceiver = serviceClient
             .syncSchema(md5OfSender, null, SyncDataStatus.FINISH_STATUS);
         if (md5OfSender.equals(md5OfReceiver)) {
-          LOGGER.info("Receiver has received schema successfully.");
+          logger.info("Receiver has received schema successfully.");
           /** receiver start to load metadata **/
           if (Boolean
               .parseBoolean(serviceClient.syncSchema(null, null, SyncDataStatus.SUCCESS_STATUS))) {
@@ -458,7 +458,7 @@ public class SyncSenderImpl implements SyncSender {
           break;
         }
       } catch (Exception e) {
-        LOGGER.error("Cannot sync schema ", e);
+        logger.error("Cannot sync schema ", e);
         throw new SyncConnectionException(e);
       }
     }
@@ -489,7 +489,7 @@ public class SyncSenderImpl implements SyncSender {
       lockFile.createNewFile();
     }
     if (!lockInstance(config.getLockFilePath())) {
-      LOGGER.error("Sync client is running.");
+      logger.error("Sync client is running.");
       System.exit(1);
     }
   }
@@ -511,13 +511,13 @@ public class SyncSenderImpl implements SyncSender {
             randomAccessFile.close();
             FileUtils.forceDelete(file);
           } catch (Exception e) {
-            LOGGER.error("Unable to remove lock file: {}", lockFile, e);
+            logger.error("Unable to remove lock file: {}", lockFile, e);
           }
         }));
         return true;
       }
     } catch (Exception e) {
-      LOGGER.error("Unable to create and/or lock file: {}", lockFile, e);
+      logger.error("Unable to create and/or lock file: {}", lockFile, e);
     }
     return false;
   }

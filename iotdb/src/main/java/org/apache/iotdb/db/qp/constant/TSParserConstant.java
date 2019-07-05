@@ -21,8 +21,16 @@ package org.apache.iotdb.db.qp.constant;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.sql.parse.TSParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TSParserConstant {
+
+  private static final Logger logger = LoggerFactory.getLogger(TSParserConstant.class);
+
+  private TSParserConstant() {
+    // forbidding instantiation
+  }
 
   private static Map<Integer, Integer> antlrQpMap = new HashMap<>();
 
@@ -34,8 +42,6 @@ public class TSParserConstant {
 
     antlrQpMap.put(TSParser.EQUAL, SQLConstant.EQUAL);
     antlrQpMap.put(TSParser.NOTEQUAL, SQLConstant.NOTEQUAL);
-    antlrQpMap.put(TSParser.LESSTHANOREQUALTO, SQLConstant.LESSTHANOREQUALTO);
-    antlrQpMap.put(TSParser.LESSTHAN, SQLConstant.LESSTHAN);
     antlrQpMap.put(TSParser.LESSTHANOREQUALTO, SQLConstant.LESSTHANOREQUALTO);
     antlrQpMap.put(TSParser.LESSTHAN, SQLConstant.LESSTHAN);
     antlrQpMap.put(TSParser.GREATERTHANOREQUALTO, SQLConstant.GREATERTHANOREQUALTO);
@@ -56,7 +62,7 @@ public class TSParserConstant {
    */
   public static int getTSTokenIntType(int antlrIntType) {
     if (!antlrQpMap.containsKey(antlrIntType)) {
-      System.out.println(antlrIntType);
+      logger.error("No such TSToken: {}", antlrIntType);
     }
     return antlrQpMap.get(antlrIntType);
   }

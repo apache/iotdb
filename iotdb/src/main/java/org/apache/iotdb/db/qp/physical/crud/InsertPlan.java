@@ -18,39 +18,55 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
 
 public class InsertPlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = 6102845312368561515L;
   private String deviceId;
   private String[] measurements;
+  private TSDataType[] dataTypes;
   private String[] values;
   private long time;
 
-  // insertType
-  // 1 : BufferWrite Insert 2 : Overflow Insert
-  private int insertType;
+  public InsertPlan() {
+    super(false, OperatorType.INSERT);
+  }
+
+  public InsertPlan(String deviceId, long insertTime, String measurement, String insertValue) {
+    super(false, OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.measurements = new String[] {measurement};
+    this.values = new String[] {insertValue};
+  }
+
+  public InsertPlan(TSRecord tsRecord) {
+    super(false, OperatorType.INSERT);
+    this.deviceId = tsRecord.deviceId;
+    this.time = tsRecord.time;
+    this.measurements = new String[tsRecord.dataPointList.size()];
+    this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
+    this.values = new String[tsRecord.dataPointList.size()];
+    for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
+      measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
+      dataTypes[i] = tsRecord.dataPointList.get(i).getType();
+      values[i] = tsRecord.dataPointList.get(i).getValue().toString();
+    }
+  }
 
   public InsertPlan(String deviceId, long insertTime, String[] measurementList,
       String[] insertValues) {
     super(false, Operator.OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = measurementList;
-    this.values = insertValues;
-  }
-
-  public InsertPlan(int insertType, String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) {
-    super(false, Operator.OperatorType.INSERT);
-    this.insertType = insertType;
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = measurementList;
@@ -65,6 +81,14 @@ public class InsertPlan extends PhysicalPlan {
     this.time = time;
   }
 
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
+  }
+
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
+  }
+
   @Override
   public List<Path> getPaths() {
     List<Path> ret = new ArrayList<>();
@@ -73,14 +97,6 @@ public class InsertPlan extends PhysicalPlan {
       ret.add(new Path(deviceId, m));
     }
     return ret;
-  }
-
-  public int getInsertType() {
-    return insertType;
-  }
-
-  public void setInsertType(int insertType) {
-    this.insertType = insertType;
   }
 
   public String getDeviceId() {
@@ -121,4 +137,50 @@ public class InsertPlan extends PhysicalPlan {
         && Arrays.equals(values, that.values);
   }
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(deviceId, time);
+  }
+
+  @Override
+  public void serializeTo(ByteBuffer buffer) {
+    int type = PhysicalPlanType.INSERT.ordinal();
+    buffer.put((byte) type);
+    buffer.putLong(time);
+
+    putString(buffer, deviceId);
+
+    buffer.putInt(measurements.length);
+    for (String m : measurements) {
+      putString(buffer, m);
+    }
+
+    buffer.putInt(values.length);
+    for (String m : values) {
+      putString(buffer, m);
+    }
+  }
+
+  @Override
+  public void deserializeFrom(ByteBuffer buffer) {
+    this.time = buffer.getLong();
+    this.deviceId = readString(buffer);
+
+    int measurementSize = buffer.getInt();
+    this.measurements = new String[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      measurements[i] = readString(buffer);
+    }
+
+    int valueSize = buffer.getInt();
+    this.values = new String[valueSize];
+    for (int i = 0; i < valueSize; i++) {
+      values[i] = readString(buffer);
+    }
+  }
+
+  @Override
+  public String toString() {
+    return "deviceId: " + deviceId + ", time: " + time;
+  }
 }

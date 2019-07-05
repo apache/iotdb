@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.merge;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.unsequence.UnsequenceSeriesReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.junit.Assert;
@@ -51,7 +52,7 @@ public class SeriesMergeSortReaderTest {
   }
 
   private void test(long[] retTimestamp, long[] retValue, long[]... sources) throws IOException {
-    PriorityMergeReader seriesMergeSortReader = new PriorityMergeReader();
+    UnsequenceSeriesReader seriesMergeSortReader = new UnsequenceSeriesReader();
     for (int i = 0; i < sources.length; i++) {
       seriesMergeSortReader.addReaderWithPriority(
           new FakedSeriesReader(sources[i], i + 1), i + 1);

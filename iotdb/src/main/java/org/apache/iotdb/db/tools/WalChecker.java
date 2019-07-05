@@ -27,16 +27,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.SysCheckException;
-import org.apache.iotdb.db.writelog.io.RAFLogReader;
+import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * WalChecker verifies that whether all write ahead logs in the WAL folder are recognizable.
+ * WalChecker verifies that whether all insert ahead logs in the WAL folder are recognizable.
  */
 public class WalChecker {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(WalChecker.class);
+  private static final Logger logger = LoggerFactory.getLogger(WalChecker.class);
 
   /**
    * the root dir of wals, which should have wal directories of storage groups as its children.
@@ -54,59 +54,69 @@ public class WalChecker {
    */
   public List<File> doCheck() throws SysCheckException {
     File walFolderFile = new File(walFolder);
-    LOGGER.info("Checking folder: {}", walFolderFile.getAbsolutePath());
+    logger.info("Checking folder: {}", walFolderFile.getAbsolutePath());
     if(!walFolderFile.exists() || !walFolderFile.isDirectory()) {
       throw new SysCheckException(String.format("%s is not a directory", walFolder));
     }
 
     File[] storageWalFolders = walFolderFile.listFiles();
     if (storageWalFolders == null || storageWalFolders.length == 0) {
-      LOGGER.info("No sub-directories under the given directory, check ends");
+      logger.info("No sub-directories under the given directory, check ends");
       return Collections.emptyList();
     }
 
     List<File> failedFiles = new ArrayList<>();
     for (int dirIndex = 0; dirIndex < storageWalFolders.length; dirIndex++) {
       File storageWalFolder = storageWalFolders[dirIndex];
-      LOGGER.info("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
+      logger.info("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
       File walFile = new File(storageWalFolder, WAL_FILE_NAME);
-      if (!walFile.exists()) {
-        LOGGER.debug("No wal file in this dir, skipping");
-        continue;
-      }
-
-      if (walFile.length() > 0 && walFile.length() < RAFLogReader.LEAST_LOG_SIZE) {
-        // contains only one damaged log
-        LOGGER.error("{} fails the check because it is non-empty but does not contain enough bytes "
-            + "even for one log.", walFile.getAbsoluteFile());
+      if (!checkFile(walFile)) {
         failedFiles.add(walFile);
-        continue;
-      }
-
-      RAFLogReader logReader = null;
-      try {
-        logReader = new RAFLogReader(walFile);
-        while (logReader.hasNext()) {
-          logReader.next();
-        }
-      } catch (IOException e) {
-        failedFiles.add(walFile);
-        LOGGER.error("{} fails the check because", walFile.getAbsoluteFile(), e);
-      } finally {
-        if( logReader != null) {
-          logReader.close();
-        }
       }
     }
     return failedFiles;
   }
 
+  private boolean checkFile(File walFile) {
+    if (!walFile.exists()) {
+      logger.debug("No wal file in this dir, skipping");
+      return true;
+    }
+
+    if (walFile.length() > 0 && walFile.length() < SingleFileLogReader.LEAST_LOG_SIZE) {
+      // contains only one damaged log
+      logger.error("{} fails the check because it is non-empty but does not contain enough bytes "
+          + "even for one log.", walFile.getAbsoluteFile());
+      return false;
+    }
+
+    SingleFileLogReader logReader = null;
+    try {
+      logReader = new SingleFileLogReader(walFile);
+      while (logReader.hasNext()) {
+        logReader.next();
+      }
+      if (logReader.isFileCorrupted()) {
+        return false;
+      }
+    } catch (IOException e) {
+      logger.error("{} fails the check because", walFile.getAbsoluteFile(), e);
+      return false;
+    } finally {
+      if( logReader != null) {
+        logReader.close();
+      }
+    }
+    return true;
+  }
+
+
   // a temporary method which should be in the integrated self-check module in the future
   public static void report(List<File> failedFiles) {
     if (failedFiles.isEmpty()) {
-      LOGGER.info("Check finished. There is no damaged file");
+      logger.info("Check finished. There is no damaged file");
     } else {
-      LOGGER.error("There are {} failed files. They are {}", failedFiles.size(), failedFiles);
+      logger.error("There are {} failed files. They are {}", failedFiles.size(), failedFiles);
     }
   }
 
@@ -116,7 +126,7 @@ public class WalChecker {
    */
   public static void main(String[] args) throws SysCheckException {
     if (args.length < 1) {
-      LOGGER.error("No enough args: require the walRootDirectory");
+      logger.error("No enough args: require the walRootDirectory");
       return;
     }
 

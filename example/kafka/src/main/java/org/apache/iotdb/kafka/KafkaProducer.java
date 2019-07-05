@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public class KafkaProducer {
 
   private final Producer<String, String> producer;
-  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaProducer.class);
+  private static final Logger logger = LoggerFactory.getLogger(KafkaProducer.class);
 
   public KafkaProducer() {
 
@@ -57,7 +57,7 @@ public class KafkaProducer {
     for (int i = 0; i < Constant.ALL_DATA.length; i++) {
       String key = Integer.toString(i);
       producer.send(new KeyedMessage<>(Constant.TOPIC, key, Constant.ALL_DATA[i]));
-      LOGGER.info(Constant.ALL_DATA[i]);
+      logger.info(Constant.ALL_DATA[i]);
     }
   }
 

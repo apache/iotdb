@@ -36,7 +36,6 @@ public class IoTDBVersionIT {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeMemControl();
     deamon = IoTDB.getInstance();
     deamon.active();
     EnvironmentUtils.envSetUp();
@@ -63,8 +62,8 @@ public class IoTDBVersionIT {
       statement.execute("CREATE TIMESERIES root.versionTest2.s0"
           + " WITH DATATYPE=INT32,ENCODING=PLAIN");
 
-      // write and flush enough times to make the version file persist
-      for (int i = 0; i < 3 * SimpleFileVersionController.getSaveInterval(); i ++) {
+      // insert and flush enough times to make the version file persist
+      for (int i = 0; i < 2 * SimpleFileVersionController.getSaveInterval(); i ++) {
         for (int j = 1; j <= 100; j ++) {
           statement.execute(String
               .format("INSERT INTO root.versionTest1(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
@@ -75,7 +74,7 @@ public class IoTDBVersionIT {
               .format("INSERT INTO root.versionTest2(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
         }
         statement.execute("FLUSH");
-        statement.execute("MERGE");
+//        statement.execute("MERGE");
       }
 
       statement.close();

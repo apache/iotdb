@@ -54,14 +54,14 @@ public class IoTDBStatement implements Statement {
   private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
   private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
-  private static final Logger LOGGER = LoggerFactory
+  private static final Logger logger = LoggerFactory
           .getLogger(IoTDBStatement.class);
   ZoneId zoneId;
   private ResultSet resultSet = null;
   private IoTDBConnection connection;
   private int fetchSize = Config.fetchSize;
   private int queryTimeout = 10;
-  private TSIService.Iface client = null;
+  protected TSIService.Iface client = null;
   private TS_SessionHandle sessionHandle = null;
   private TSOperationHandle operationHandle = null;
   private List<String> batchSQLList;
@@ -87,6 +87,8 @@ public class IoTDBStatement implements Statement {
    * Add SQLWarnings to the warningChain if needed.
    */
   private SQLWarning warningChain = null;
+
+  protected long stmtId = -1;
 
   /**
    * Constructor of IoTDBStatement.
@@ -161,6 +163,7 @@ public class IoTDBStatement implements Statement {
     try {
       if (operationHandle != null) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, -1);
+        closeReq.setStmtId(stmtId);
         TSCloseOperationResp closeResp = client.closeOperation(closeReq);
         Utils.verifySuccess(closeResp.getStatus());
       }
@@ -592,4 +595,11 @@ public class IoTDBStatement implements Statement {
     }
   }
 
+  void requestStmtId() throws SQLException {
+    try {
+      this.stmtId = client.requestStatementId();
+    } catch (TException e) {
+      throw new SQLException("Cannot get id for statement", e);
+    }
+  }
 }

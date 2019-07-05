@@ -34,5 +34,5 @@ service SyncService{
 	string syncData(1:string md5, 2:list<string> filename, 3:binary buff, 4:SyncDataStatus status)
 	bool load()
 	void cleanUp()
-	bool init(1:string storageGroup)
+	bool init(1:string storageGroupName)
 }

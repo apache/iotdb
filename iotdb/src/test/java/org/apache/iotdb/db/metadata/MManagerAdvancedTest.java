@@ -43,8 +43,9 @@ public class MManagerAdvancedTest {
 
     mmanager = MManager.getInstance();
 
-    mmanager.setStorageLevelToMTree("root.vehicle.d1");
     mmanager.setStorageLevelToMTree("root.vehicle.d0");
+    mmanager.setStorageLevelToMTree("root.vehicle.d1");
+    mmanager.setStorageLevelToMTree("root.vehicle.d2");
 
     mmanager.addPathToMTree("root.vehicle.d0.s0", "INT32", "RLE");
     mmanager.addPathToMTree("root.vehicle.d0.s1", "INT64", "RLE");
@@ -71,15 +72,15 @@ public class MManagerAdvancedTest {
 
     try {
       // test file name
-      List<String> fileNames = mmanager.getAllFileNames();
+      List<String> fileNames = mmanager.getAllStorageGroupNames();
       assertEquals(2, fileNames.size());
       if (fileNames.get(0).equals("root.vehicle.d0")) {
-        assertEquals(fileNames.get(1), "root.vehicle.d1");
+        assertEquals("root.vehicle.d1", fileNames.get(1));
       } else {
-        assertEquals(fileNames.get(1), "root.vehicle.d0");
+        assertEquals("root.vehicle.d0", fileNames.get(1));
       }
       // test filename by seriesPath
-      assertEquals("root.vehicle.d0", mmanager.getFileNameByPath("root.vehicle.d0.s1"));
+      assertEquals("root.vehicle.d0", mmanager.getStorageGroupNameByPath("root.vehicle.d0.s1"));
       Map<String, ArrayList<String>> map = mmanager
           .getAllPathGroupByFileName("root.vehicle.d1.*");
       assertEquals(1, map.keySet().size());
@@ -124,7 +125,7 @@ public class MManagerAdvancedTest {
 
   @Test
   public void testGetNextLevelPath()
-      throws PathErrorException, IOException, MetadataErrorException {
+      throws PathErrorException, IOException {
     mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
     mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");

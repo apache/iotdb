@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 
 public class GorillaDecoderTest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(GorillaDecoderTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(GorillaDecoderTest.class);
   private final double delta = 0.0000001;
   private final int floatMaxPointValue = 10000;
   private final long doubleMaxPointValue = 1000000000000000L;
@@ -216,7 +216,7 @@ public class GorillaDecoderTest {
         if (decoder.hasNext(buffer)) {
           float value_ = decoder.readFloat(buffer);
           if (isDebug) {
-            LOGGER.debug("{} // {}", value_, value);
+            logger.debug("{} // {}", value_, value);
           }
           assertEquals(value, value_, delta);
           continue;
@@ -245,7 +245,7 @@ public class GorillaDecoderTest {
         if (decoder.hasNext(buffer)) {
           double value_ = decoder.readDouble(buffer);
           if (isDebug) {
-            LOGGER.debug("{} // {}", value_, value);
+            logger.debug("{} // {}", value_, value);
           }
           assertEquals(value, value_, delta);
           continue;
