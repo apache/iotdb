@@ -36,12 +36,6 @@ The example is to show how to write and read a TsFile File.
 </dependencies>
 ```
 
-## Run TsFileWriteJson.java
-
-```
-  The class is to show how to write Tsfile by using json schema,it use the first interface: 
-            
-```
 
 ## Run TsFileWrite.java
 
