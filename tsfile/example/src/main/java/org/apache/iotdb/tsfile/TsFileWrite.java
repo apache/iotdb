@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  * An example of writing data to TsFile
  */
 public class TsFileWrite {
-  public static void writeData(TsFileWriter tsFileWriter) throws IOException, WriteProcessException {
+  private static void writeData(TsFileWriter tsFileWriter) throws IOException, WriteProcessException {
     // construct TSRecord
     TSRecord tsRecord = new TSRecord(1, "device_1");
     DataPoint dPoint1 = new FloatDataPoint("sensor_1", 1.2f);
@@ -98,39 +98,37 @@ public class TsFileWrite {
     // close TsFile
     tsFileWriter.close();
   }
-  public static void tsFileWriteWithJson() throws IOException,WriteProcessException {
-    /**
-     * There are two ways to construct a TsFile instance,they generate the same TsFile file.
-     * This method uses the first interface:
-     * public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException
-     * The corresponding json file is provided below, which is identical to the measurements in the
-     * following method
-     * public static void tsFileWriteDirect() throws IOException,WriteProcessException
-     * {
-     *     "schema": [
-     *         {
-     *             "measurement_id": "sensor_1",
-     *             "data_type": "FLOAT",
-     *             "encoding": "RLE",
-     * 		       "compressor" : "UNCOMPRESSED"
-     *         },
-     *         {
-     *             "measurement_id": "sensor_2",
-     *             "data_type": "INT32",
-     *             "encoding": "TS_2DIFF",
-     * 	            "compressor" : "UNCOMPRESSED"
-     *
-     *         },
-     *         {
-     *             "measurement_id": "sensor_3",
-     *             "data_type": "INT32",
-     *             "encoding": "TS_2DIFF",
-     * 	           "compressor" : "UNCOMPRESSED"
-     *
-     *        }
-     *     ]
-     * }
-     */
+  /**
+   * There are two ways to construct a TsFile instance,they generate the identical TsFile file.
+   * This method uses the first interface:
+   * public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException
+   * The corresponding json string is provided below.
+   * {
+   *     "schema": [
+   *         {
+   *             "measurement_id": "sensor_1",
+   *             "data_type": "FLOAT",
+   *             "encoding": "RLE",
+   * 		       "compressor" : "UNCOMPRESSED"
+   *         },
+   *         {
+   *             "measurement_id": "sensor_2",
+   *             "data_type": "INT32",
+   *             "encoding": "TS_2DIFF",
+   * 	            "compressor" : "UNCOMPRESSED"
+   *
+   *         },
+   *         {
+   *             "measurement_id": "sensor_3",
+   *             "data_type": "INT32",
+   *             "encoding": "TS_2DIFF",
+   * 	           "compressor" : "UNCOMPRESSED"
+   *
+   *        }
+   *     ]
+   * }
+   */
+  private static void tsFileWriteWithJson() throws IOException,WriteProcessException {
     String path = "testWithJson.tsfile";
     String jsonText = "{\n" +
             "    \"schema\": [\n" +
@@ -170,12 +168,13 @@ public class TsFileWrite {
     writeData(tsFileWriter);
   }
 
-  public static void tsFileWriteDirect() throws IOException,WriteProcessException {
-    /**
-     * There are two ways to construct a TsFile instance,they generate the identical TsFile file.
-     * This method uses the second interface:
-     * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
-     */
+  /**
+   * There are two ways to construct a TsFile instance,they generate the identical TsFile file.
+   * This method uses the second interface:
+   * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
+   * The measurements are identical to the json string provided above.
+   */
+  private static void tsFileWriteDirect() throws IOException,WriteProcessException {
     String path = "testDirect.tsfile";
     File f = new File(path);
     if (f.exists()) {
@@ -195,7 +194,9 @@ public class TsFileWrite {
 
   public static void main(String args[]) {
     try {
+        // Use a json string for all the measurements to write a TsFile
       tsFileWriteWithJson();
+      // Write a TsFile by adding the measurements directly in the method
       tsFileWriteDirect();
     } catch (Throwable e) {
       e.printStackTrace();
