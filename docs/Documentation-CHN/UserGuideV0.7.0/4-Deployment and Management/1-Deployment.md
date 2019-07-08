@@ -37,11 +37,10 @@ IoTDB为您提供了两种安装方式，您可以参考下面的建议，任选
 
 1. Maven>=3.0的运行环境，具体安装方法可以参考以下链接：[https://maven.apache.org/install.html](https://maven.apache.org/install.html)。
 
-2. IoTDB相关依赖模块：TsFile模块和IoTDB-JDBC模块。TsFile的安装方法可以参考[https://github.com/thulab/tsfile/wiki/Installation_0.7.0](https://github.com/thulab/tsfile/wiki/Installation_0.7.0)。IoTDB-JDBC的安装方法可以参考[https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc)。
 
 ### 从官网下载二进制可执行文件
 
-您可以从[http://tsfile.org/download](http://tsfile.org/download)上下载已经编译好的可执行程序iotdb-v0.7.tar.gz或者iotdb-v0.7.zip，该压缩包包含了IoTDB系统运行所需的所有必要组件。
+您可以从[http://iotdb.apache.org/#/Download](http://iotdb.apache.org/#/Download)上下载已经编译好的可执行程序iotdb-xxx.tar.gz或者iotdb-xxx.zip，该压缩包包含了IoTDB系统运行所需的所有必要组件。
 
 ```
 NOTE:
@@ -80,10 +79,6 @@ iotdb/     <-- root path
 ### 使用源码编译
 
 您还可以使用从Git仓库克隆源码进行编译的方式安装IoTDB，具体操作步骤如下：
-
-步骤一：使用源码编译IoTDB时首先需要用maven编译TsFile项目，具体操作请参见：[https://github.com/thulab/tsfile/wiki/Installation_0.7.0](https://github.com/thulab/tsfile/wiki/Installation_0.7.0)。同时还需要用maven编译iotdb-jdbc项目，具体操作请参见：[https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc)。
-
-步骤二：TsFile与JDBC项目编译完成后，执行以下命令，即可获取IoTDB源码（请先确认您的电脑已经安装了git命令行工具）：
 
 ```
 Shell > git clone https://github.com/apache/incubator-iotdb.git
