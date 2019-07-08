@@ -40,18 +40,34 @@ The example is to show how to write and read a TsFile File.
 
 ```
   The class is to show how to write Tsfile by using json schema,it use the first interface: 
-            public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException
+            
 ```
 
 ## Run TsFileWrite.java
 
-```
-  The class is to show how to write Tsfile directly,it use the second interface: 
-            public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
-```
+  This class is to show how to write a Tsfile. It provided two ways:
+  
+   The first one is using a JSON file for measurement(s). The JSON file is an array of JSON objects(schema). The object
+   must include the *measurement_id*, *datatype*, *encoding*, and *compressor*. 
+   
+   An example JSON file is provided in the comments in 
+   the method
+   
+        `public static void tsFileWriteWithJson() throws IOException,WriteProcessException`
+   It uses this interface
+   
+        `public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException`  
+   An alternative way is to add these measurements directly(manually) by the second interface: 
+   
+         `public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException`
+   
+   The method
+   
+         `public static void tsFileWriteDirect() throws IOException,WriteProcessException` 
+   shows how to use that interface.
+   
+   Note that the measurements in the two methods are the same therefore there output Tsfile should also be identical.
 
-### Notice 
-  Class TsFileWrite1 and class TsFileWrite2 are two ways to construct a TsFile instance,they generate the identical TsFile file.
   
 ## Run TsFileRead.java
 
