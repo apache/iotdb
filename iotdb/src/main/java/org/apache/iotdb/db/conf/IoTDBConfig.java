@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.conf;
 
+import java.io.File;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.slf4j.Logger;
@@ -185,8 +189,75 @@ public class IoTDBConfig {
   }
 
   void updatePath() {
+    preUpdatePath();
     confirmMultiDirStrategy();
   }
+
+
+  /*
+   * First, if dataDir is null, dataDir will be assigned the default
+   * value(i.e.,"data"+File.separatorChar+"data".
+   * Then, if dataDir is absolute, leave dataDir as it is. If dataDir is relative, dataDir
+   * will be converted to the complete version using non-empty %IOTDB_HOME%. e.g.
+   * for windows platform, | IOTDB_HOME | dataDir before | dataDir
+   * after | |-----------------|--------------------|---------------------------| |
+   * D:\\iotdb\iotdb | null |
+   * D:\\iotdb\iotdb\data\data | | D:\\iotdb\iotdb | dataDir | D:\\iotdb\iotdb\dataDir |
+   * | D:\\iotdb\iotdb |
+   * C:\\dataDir | C:\\dataDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
+   *
+   * First, if sysDir is null, sysDir will be assigned the default
+   * value(i.e.,"data"+File.separatorChar+"system".
+   * Then, if sysDir is absolute, leave sysDir as it is. If sysDir is relative,
+   * sysDir will be converted to the complete version using non-empty %IOTDB_HOME%.
+   * e.g. for windows platform, | IOTDB_HOME | sysDir before | sysDir
+   * after | |-----------------|--------------------|-----------------------------|
+   * | D:\\iotdb\iotdb | null |D:\\iotdb\iotdb\data\system | | D:\\iotdb\iotdb | sysDir
+   * | D:\\iotdb\iotdb\sysDir | | D:\\iotdb\iotdb |
+   * C:\\sysDir | C:\\sysDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
+   *
+   * First, if walDir is null, walDir will be assigned the default
+   * value(i.e.,"data"+File.separatorChar+"data". Then,
+   * if walDir is absolute, leave walDir as it is. If walDir is relative,
+   * walDir will be converted to the complete
+   * version using non-empty %IOTDB_HOME%. e.g. for windows platform,
+   * | IOTDB_HOME | walDir before | walDir after |
+   * |-----------------|--------------------|-----------------------------|
+   * | D:\\iotdb\iotdb | null |
+   * D:\\iotdb\iotdb\data\wal | | D:\\iotdb\iotdb | walDir | D:\\iotdb\iotdb\walDir |
+   * | D:\\iotdb\iotdb | C:\\walDir |
+   * C:\\walDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
+   *
+   */
+  private void preUpdatePath() {
+    List<String> dirs = new ArrayList<>();
+    dirs.add(baseDir);
+    dirs.add(systemDir);
+    dirs.add(walFolder);
+    dirs.add(indexFileDir);
+    dirs.addAll(Arrays.asList(dataDirs));
+
+    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    for (int i = 0; i < dirs.size(); i++) {
+      String dir = dirs.get(i);
+      if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+        if (!homeDir.endsWith(File.separator)) {
+          dir = homeDir + File.separatorChar + dir;
+        } else {
+          dir = homeDir + dir;
+        }
+        dirs.set(i, dir);
+      }
+    }
+    baseDir = dirs.get(0);
+    systemDir = dirs.get(1);
+    walFolder = dirs.get(2);
+    indexFileDir = dirs.get(3);
+    for (int i = 0; i < dataDirs.length; i++) {
+      dataDirs[i] = dirs.get(i + 4);
+    }
+  }
+
 
   private void confirmMultiDirStrategy() {
     if (getMultiDirStrategyClassName() == null) {
