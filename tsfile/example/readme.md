@@ -31,19 +31,19 @@ The example is to show how to write and read a TsFile File.
     <dependency>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>tsfile</artifactId>
-     	  <version>0.7.0</version>
+     	  <version>0.8.0-SNAPSHOT </version>
     </dependency>
 </dependencies>
 ```
 
-## Run TsFileWrite1.java
+## Run TsFileWriteJson.java
 
 ```
   The class is to show how to write Tsfile by using json schema,it use the first interface: 
-            public TsFileWriter(File file) throws WriteProcessException, IOException
+            public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException
 ```
 
-## Run TsFileWrite2.java
+## Run TsFileWrite.java
 
 ```
   The class is to show how to write Tsfile directly,it use the second interface: 
@@ -51,7 +51,7 @@ The example is to show how to write and read a TsFile File.
 ```
 
 ### Notice 
-  Class TsFileWrite1 and class TsFileWrite2 are two ways to construct a TsFile instance,they generate the same TsFile file.
+  Class TsFileWrite1 and class TsFileWrite2 are two ways to construct a TsFile instance,they generate the identical TsFile file.
   
 ## Run TsFileRead.java
 

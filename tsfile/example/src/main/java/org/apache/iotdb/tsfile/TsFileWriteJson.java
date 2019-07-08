@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONArray;
+import java.io.File;
 /**
  * An example of writing data to TsFile
  * The corresponding json file is this, which is identical to the measurements in TsFileWrite.java
@@ -61,7 +62,7 @@ import com.alibaba.fastjson.JSONArray;
  *     ]
  * }
  */
-public class TsFileWrite1 {
+public class TsFileWriteJson {
 
   public static void main(String args[]) {
     try {
