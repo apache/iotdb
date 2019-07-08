@@ -24,25 +24,17 @@
 
 安装前需要保证设备上配有JDK>=1.8的运行环境，并配置好JAVA_HOME环境变量。
 
-如需从源码进行编译，还需要Maven>=3.0的运行环境，以及安装IoTDB相关依赖（[TsFile模块](https://github.com/thulab/tsfile/wiki/Installation_0.7.0)、[IoTDB-JDBC模块](https://github.com/thulab/iotdb-jdbc)）。
+如需从源码进行编译，还需要Maven>=3.0的运行环境。
 
 ## IoTDB安装
 
-IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安装——下载二进制可运行程序、使用云端版本、使用源码编译。下面介绍官网下载二进制可运行程序方法。
+IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安装——下载二进制可运行程序、使用源码、使用docker镜像。
 
-您可以从http://tsfile.org/download上下载已经编译好的可执行程序iotdb-v0.7.tar.gz或者iotdb-v0.7.zip，该压缩包包含了IoTDB系统运行所需的所有必要组件。
+* 二进制可运行程序：请从Download页面下载最新的安装包，解压后即完成安装。
 
-下载后，您可使用以下操作对IoTDB的压缩包进行解压: 
+* 使用源码：您可以从代码仓库下载源码并编译：`git clone https://github.com/apache/incubator-iotdb.git`, 并通过`mvn package -DskipTests` 进行编译。
 
-如果您使用的操作系统是Linux或MacOS，则使用如下解压命令：
-```
-> uzip iotdb-alpha.zip
-```
-
-如果您使用的操作系统是Windows，则使用解压缩工具解压或使用如下解压命令：
-```
-> tar -zxf iotdb-v0.7.tar.gz
-```
+* 使用Docker： dockerfile文件位于 https://github.com/apache/incubator-iotdb/blob/master/docker/Dockerfile
 
 ## IoTDB试用
 
