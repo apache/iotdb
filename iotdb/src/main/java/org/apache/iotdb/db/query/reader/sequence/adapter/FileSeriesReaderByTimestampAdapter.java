@@ -26,11 +26,11 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 /**
  * This class is used to convert FileSeriesReaderByTimestamp (in TsFile) to IReaderByTimeStamp.
  */
-public class SeriesReaderByTimestampAdapter implements IReaderByTimeStamp {
+public class FileSeriesReaderByTimestampAdapter implements IReaderByTimeStamp {
 
   private FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp;
 
-  public SeriesReaderByTimestampAdapter(FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp) {
+  public FileSeriesReaderByTimestampAdapter(FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp) {
     this.fileSeriesReaderByTimestamp = fileSeriesReaderByTimestamp;
   }
 
