@@ -189,47 +189,15 @@ public class IoTDBConfig {
   }
 
   void updatePath() {
-    preUpdatePath();
+    formulateFolders();
     confirmMultiDirStrategy();
   }
 
 
-  /*
-   * First, if dataDir is null, dataDir will be assigned the default
-   * value(i.e.,"data"+File.separatorChar+"data".
-   * Then, if dataDir is absolute, leave dataDir as it is. If dataDir is relative, dataDir
-   * will be converted to the complete version using non-empty %IOTDB_HOME%. e.g.
-   * for windows platform, | IOTDB_HOME | dataDir before | dataDir
-   * after | |-----------------|--------------------|---------------------------| |
-   * D:\\iotdb\iotdb | null |
-   * D:\\iotdb\iotdb\data\data | | D:\\iotdb\iotdb | dataDir | D:\\iotdb\iotdb\dataDir |
-   * | D:\\iotdb\iotdb |
-   * C:\\dataDir | C:\\dataDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
-   *
-   * First, if sysDir is null, sysDir will be assigned the default
-   * value(i.e.,"data"+File.separatorChar+"system".
-   * Then, if sysDir is absolute, leave sysDir as it is. If sysDir is relative,
-   * sysDir will be converted to the complete version using non-empty %IOTDB_HOME%.
-   * e.g. for windows platform, | IOTDB_HOME | sysDir before | sysDir
-   * after | |-----------------|--------------------|-----------------------------|
-   * | D:\\iotdb\iotdb | null |D:\\iotdb\iotdb\data\system | | D:\\iotdb\iotdb | sysDir
-   * | D:\\iotdb\iotdb\sysDir | | D:\\iotdb\iotdb |
-   * C:\\sysDir | C:\\sysDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
-   *
-   * First, if walDir is null, walDir will be assigned the default
-   * value(i.e.,"data"+File.separatorChar+"data". Then,
-   * if walDir is absolute, leave walDir as it is. If walDir is relative,
-   * walDir will be converted to the complete
-   * version using non-empty %IOTDB_HOME%. e.g. for windows platform,
-   * | IOTDB_HOME | walDir before | walDir after |
-   * |-----------------|--------------------|-----------------------------|
-   * | D:\\iotdb\iotdb | null |
-   * D:\\iotdb\iotdb\data\wal | | D:\\iotdb\iotdb | walDir | D:\\iotdb\iotdb\walDir |
-   * | D:\\iotdb\iotdb | C:\\walDir |
-   * C:\\walDir | | D:\\iotdb\iotdb | "" | D:\\iotdb\iotdb\ |
-   *
+  /**
+   * if the folders are relative paths, add IOTDB_HOME as the path prefix
    */
-  private void preUpdatePath() {
+  private void formulateFolders() {
     List<String> dirs = new ArrayList<>();
     dirs.add(baseDir);
     dirs.add(systemDir);
