@@ -16,6 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile;
+
 import java.io.File;
 import java.io.IOException;
 import com.alibaba.fastjson.JSONArray;
