@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile;
 
 import java.io.File;
@@ -111,21 +112,19 @@ public class TsFileWrite {
    *             "measurement_id": "sensor_1",
    *             "data_type": "FLOAT",
    *             "encoding": "RLE",
-   * 		     "compressor" : "UNCOMPRESSED"
+   * 		         "compressor" : "UNCOMPRESSED"
    *         },
    *         {
    *             "measurement_id": "sensor_2",
    *             "data_type": "INT32",
    *             "encoding": "TS_2DIFF",
-   * 	         "compressor" : "UNCOMPRESSED"
-   *
+   * 	           "compressor" : "UNCOMPRESSED"
    *         },
    *         {
    *             "measurement_id": "sensor_3",
    *             "data_type": "INT32",
    *             "encoding": "TS_2DIFF",
-   * 	         "compressor" : "UNCOMPRESSED"
-   *
+   * 	           "compressor" : "UNCOMPRESSED"
    *        }
    *     ]
    * }

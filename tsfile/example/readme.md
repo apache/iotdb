@@ -39,6 +39,7 @@ The example is to show how to write and read a TsFile File.
 
 ## Run TsFileWrite.java
 
+
   This class is to show how to write a TsFile. It provided two ways:
   
    The first one is using a JSON string for measurement(s). The JSON string is an array of JSON 
@@ -62,6 +63,7 @@ The example is to show how to write and read a TsFile File.
    shows how to use that interface.
    
    Note that the measurements in the two methods are the same therefore there output TsFile should also be identical.
+
 
   
 ## Run TsFileRead.java
