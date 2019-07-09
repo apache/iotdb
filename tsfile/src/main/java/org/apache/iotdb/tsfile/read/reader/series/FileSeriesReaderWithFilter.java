@@ -63,7 +63,9 @@ public class FileSeriesReaderWithFilter extends FileSeriesReader {
           chunkMetaData.getTsDataType());
       return filter.satisfy(digest);
     } catch (Exception e) {
-      LOG.error("when check chunkMetaData, find an error in file {}.", chunkLoader.printFileName());
+      e.printStackTrace();
+      LOG.error("when check chunkMetaData, find an error in file {}. The error is {}",
+          chunkLoader.printFileName(), e);
     }
     return false;
   }
