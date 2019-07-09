@@ -19,6 +19,7 @@ import java.util.Deque;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.rescon.MemTablePool;
+import org.apache.iotdb.db.utils.datastructure.ListPublicBAOS;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -57,7 +58,7 @@ public class ChunkBufferPool {
               .getInstance().getConfig().getMemtableNumber() + 100000;
       if (availableChunkBuffer.isEmpty() && size < capacity) {
         size++;
-        return new ChunkBuffer(schema);
+        return new ChunkBuffer(schema, new ListPublicBAOS());
       } else if (!availableChunkBuffer.isEmpty()) {
         ChunkBuffer chunkBuffer = availableChunkBuffer.pop();
         chunkBuffer.reInit(schema);
