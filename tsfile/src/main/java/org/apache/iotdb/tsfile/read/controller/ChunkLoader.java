@@ -34,4 +34,10 @@ public interface ChunkLoader {
    */
   void close() throws IOException;
 
+  /**
+   *
+   * @return file name of the chunk.
+   */
+  String printFileName();
+
 }

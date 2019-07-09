@@ -69,4 +69,7 @@ public class ChunkLoaderImpl implements ChunkLoader {
     reader.close();
   }
 
+  public String printFileName(){
+    return reader.getFileName();
+  }
 }
