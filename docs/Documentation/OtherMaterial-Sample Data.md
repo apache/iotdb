@@ -21,9 +21,11 @@
 
 <!-- TOC -->
 
-- [Material: Sample Data](#material-sample-data)
-        - [Scenario Description](#scenario-description)
-        - [Sample Data](#sample-data)
+## Outline
+
+- Material: Sample Data
+    - Scenario Description
+    - Sample Data
 
 <!-- /TOC -->
 # Material: Sample Data

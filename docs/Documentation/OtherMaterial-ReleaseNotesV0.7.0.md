@@ -21,13 +21,15 @@
 
 <!-- TOC -->
 
-- [v0.7.0 Release Notes](#v070-release-notes)
-    - [Features](#features)
-        - [IoTDB](#iotdb)
-        - [IoTDB-Transfer-Tool](#iotdb-transfer-tool)
-    - [Bugfixes](#bugfixes)
-        - [IoTDB](#iotdb-1)
-    - [System Organization](#system-organization)
+## Outline
+
+- v0.7.0 Release Notes
+    - Features
+        - IoTDB
+        - IoTDB-Transfer-Tool
+    - Bugfixes
+        - IoTDB
+    - System Organization
 
 <!-- /TOC -->
 ### v0.7.0 Release Notes
