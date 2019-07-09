@@ -27,14 +27,17 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Series reader is used to query one series of one TsFile,
- * and this reader has a filter operating on the same series.
+ * Series reader is used to query one series of one TsFile, and this reader has a filter operating
+ * on the same series.
  */
 public class FileSeriesReaderWithFilter extends FileSeriesReader {
 
   private Filter filter;
+  private static final Logger LOG = LoggerFactory.getLogger(FileSeriesReaderWithFilter.class);
 
   public FileSeriesReaderWithFilter(ChunkLoader chunkLoader,
       List<ChunkMetaData> chunkMetaDataList, Filter filter) {
@@ -50,12 +53,21 @@ public class FileSeriesReaderWithFilter extends FileSeriesReader {
 
   @Override
   protected boolean chunkSatisfied(ChunkMetaData chunkMetaData) {
-    DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
-        chunkMetaData.getEndTime(),
-        chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
-        chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
-        chunkMetaData.getTsDataType());
-    return filter.satisfy(digest);
+    try {
+      assert chunkMetaData.getDigest() != null;
+      assert chunkMetaData.getDigest().getStatistics() != null;
+      DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
+          chunkMetaData.getEndTime(),
+          chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
+          chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
+          chunkMetaData.getTsDataType());
+      return filter.satisfy(digest);
+    } catch (Exception e) {
+      e.printStackTrace();
+      LOG.error("when check chunkMetaData, find an error in file {}. The error is {}",
+          chunkLoader.printFileName(), e);
+    }
+    return false;
   }
 
 }
