@@ -19,10 +19,8 @@
 
 -->
 
-# Chapter 3: Operation Manual
+# 第1章: IoTDB概述
 
-## Sample Data
+## 什么是IoTDB
 
-To make this manual more practical, we will use a specific scenario example to illustrate how to operate IoTDB databases at all stages of use. See [this page](https://github.com/apache/incubator-iotdb/blob/master/docs/Documentation/OtherMaterial-Sample%20Data.txt) for a look. For your convenience, we also provide you with a sample data file in real scenario to import into the IoTDB system for trial and operation.
-
-Download file: [IoTDB-SampleData.txt](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt).
+IoTDB是针对时间序列数据收集、存储与分析一体化的数据管理引擎。它具有体量轻、性能高、易使用的特点，完美对接Hadoop与Spark生态，适用于工业物联网应用中海量时间序列数据高速写入和复杂分析查询的需求。

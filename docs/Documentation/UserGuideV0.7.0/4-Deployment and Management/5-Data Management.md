@@ -30,17 +30,17 @@ The data that IoTDB stores is divided into three categories, namely data files, 
 
 ### Data Files
 
-Data files store all the data that the user wrote to IoTDB, which contains TsFile and other files. TsFile storage directory can be configured with the `tsfile_dir` configuration item (see [file layer](Chap4filelayer) for details). Other files can be configured through [data_dir](chap4datadir) configuration item (see [Engine Layer](chapter4,enginelayer) for details).
+Data files store all the data that the user wrote to IoTDB, which contains TsFile and other files. TsFile storage directory can be configured with the `tsfile_dir` configuration item (see [file layer](/#/Documents/latest/chap4/sec2) for details). Other files can be configured through [data_dir](/#/Documents/latest/chap4/sec2) configuration item (see [Engine Layer](/#/Documents/latest/chap4/sec2) for details).
 
-In order to better support users' storage requirements such as disk space expansion, IoTDB supports multiple file directorys storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [tsfile_dir](Chap4,tsfiledir) configuration item), and you can specify or customize the directory selection policy (see [mult_dir_strategy](chapter4,enginelayer) configuration item for details).
+In order to better support users' storage requirements such as disk space expansion, IoTDB supports multiple file directorys storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [tsfile_dir](/#/Documents/latest/chap4/sec2) configuration item), and you can specify or customize the directory selection policy (see [mult_dir_strategy](/#/Documents/latest/chap4/sec2) configuration item for details).
 
 ### System Files
 
-System files include restore files and schema files, which store metadata information of data in IoTDB. It can be configured through the `sys_dir` configuration item (see [System Layer](chapter4,systemlayer) for details).
+System files include restore files and schema files, which store metadata information of data in IoTDB. It can be configured through the `sys_dir` configuration item (see [System Layer](/#/Documents/latest/chap4/sec2) for details).
 
 ### Pre-write Log Files
 
-Pre-write log files store WAL files. It can be configured through the `wal_dir` configuration item (see [System Layer](chapter4,systemlayer) for details).
+Pre-write log files store WAL files. It can be configured through the `wal_dir` configuration item (see [System Layer](/#/Documents/latest/chap4/sec2) for details).
 
 ### Example of Setting Data storage Directory
 
