@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.conf;
 
+import java.io.File;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.slf4j.Logger;
@@ -187,8 +191,43 @@ public class IoTDBConfig {
   }
 
   void updatePath() {
+    formulateFolders();
     confirmMultiDirStrategy();
   }
+
+
+  /**
+   * if the folders are relative paths, add IOTDB_HOME as the path prefix
+   */
+  private void formulateFolders() {
+    List<String> dirs = new ArrayList<>();
+    dirs.add(baseDir);
+    dirs.add(systemDir);
+    dirs.add(walFolder);
+    dirs.add(indexFileDir);
+    dirs.addAll(Arrays.asList(dataDirs));
+
+    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    for (int i = 0; i < dirs.size(); i++) {
+      String dir = dirs.get(i);
+      if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+        if (!homeDir.endsWith(File.separator)) {
+          dir = homeDir + File.separatorChar + dir;
+        } else {
+          dir = homeDir + dir;
+        }
+        dirs.set(i, dir);
+      }
+    }
+    baseDir = dirs.get(0);
+    systemDir = dirs.get(1);
+    walFolder = dirs.get(2);
+    indexFileDir = dirs.get(3);
+    for (int i = 0; i < dataDirs.length; i++) {
+      dataDirs[i] = dirs.get(i + 4);
+    }
+  }
+
 
   private void confirmMultiDirStrategy() {
     if (getMultiDirStrategyClassName() == null) {

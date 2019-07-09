@@ -19,9 +19,6 @@
 
 -->
 
-<!-- TOC -->
+### v0.7.0 Release Notes
 
-- [Chaper6: JDBC API](#chaper6-jdbc-api)
-
-<!-- /TOC -->
-# Chaper6: JDBC API
+Comming Soon.
