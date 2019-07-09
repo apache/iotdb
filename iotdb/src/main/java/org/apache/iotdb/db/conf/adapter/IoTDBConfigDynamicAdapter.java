@@ -100,10 +100,12 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       CONFIG.setTsFileSizeThreshold(tsFileSize);
       TSFileConfig.groupSizeInByte = memtableSizeInByte;
-      if (shouldClose) {
-        StorageEngine.getInstance().asyncFlushAndSealAllFiles();
-      } else if (memtableSizeInByte < currentMemTableSize) {
-        StorageEngine.getInstance().asyncFlushAllProcessor();
+      if(initialized) {
+        if (shouldClose) {
+          StorageEngine.getInstance().asyncFlushAndSealAllFiles();
+        } else if (memtableSizeInByte < currentMemTableSize) {
+          StorageEngine.getInstance().asyncFlushAllProcessor();
+        }
       }
       currentMemTableSize = memtableSizeInByte;
     }
@@ -121,13 +123,16 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    */
   private int calcuMemTableSize() {
     double ratio = CompressionRatio.getInstance().getRatio();
-    long a = (long) (ratio * maxMemTableNum);
-    long b = (long) ((staticMemory - MAX_MEMORY_B) * ratio);
-    long c = CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_B * MManager
-        .getInstance().getMaximalSeriesNumberAmongStorageGroups();
-    long tempValue = b * b - 4 * a * c;
-    double memTableSize = ((-b + Math.sqrt(tempValue)) / (2 * a));
-    return tempValue < 0 ? -1 : (int) memTableSize;
+    // when unit is byte, it's likely to cause Long type overflow. so use the unit KB.
+    double a = (long) (ratio * maxMemTableNum);
+    double b = (long) ((MAX_MEMORY_B - staticMemory) * ratio);
+    int times = b > Integer.MAX_VALUE ? 1024 : 1;
+    b /= times;
+    double c = (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_B * MManager
+        .getInstance().getMaximalSeriesNumberAmongStorageGroups() / times / times;
+    double tempValue = b * b - 4 * a * c;
+    double memTableSize = ((b + Math.sqrt(tempValue)) / (2 * a));
+    return tempValue < 0 ? -1 : (int) (memTableSize * times);
   }
 
   /**
@@ -194,6 +199,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     totalTimeseries = 0;
     staticMemory = 0;
     maxMemTableNum = MEM_TABLE_AVERAGE_QUEUE_LEN;
+    initialized = false;
   }
 
   private IoTDBConfigDynamicAdapter() {

@@ -26,6 +26,8 @@ import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.CompressionRatio;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +62,12 @@ public class EnvironmentUtils {
 
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignJobId();
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+
+  private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
+
+  private static int oldMaxMemTableNumber = config.getMaxMemtableNumber();
+
+  private static int oldGroupSizeInByte = TSFileConfig.groupSizeInByte;
 
   public static void cleanEnv() throws IOException, StorageEngineException {
 
@@ -84,6 +93,11 @@ public class EnvironmentUtils {
     MManager.getInstance().clear();
     // delete all directory
     cleanAllDir();
+
+    config.setMaxMemtableNumber(oldMaxMemTableNumber);
+    config.setTsFileSizeThreshold(oldTsFileThreshold);
+    TSFileConfig.groupSizeInByte = oldGroupSizeInByte;
+    IoTDBConfigDynamicAdapter.getInstance().reset();
   }
 
   private static void cleanAllDir() throws IOException {
@@ -125,6 +139,9 @@ public class EnvironmentUtils {
    * this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException, IOException {
+    MManager.getInstance().init();
+    IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
+
     createAllDir();
     // disable the system monitor
     config.setEnableStatMonitor(false);

@@ -456,16 +456,19 @@ public class StorageGroupProcessor {
   }
 
   public void asyncFlush() {
+    if (workSequenceTsFileProcessor == null && workUnSequenceTsFileProcessor == null) {
+      return;
+    }
     writeLock();
     try {
-      if (workSequenceTsFileProcessor.shouldFlush()) {
+      if (workSequenceTsFileProcessor != null && workSequenceTsFileProcessor.shouldFlush()) {
         logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
             workSequenceTsFileProcessor.getWorkMemTableMemory(),
             workSequenceTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
         workSequenceTsFileProcessor.asyncFlush();
       }
-      if (workUnSequenceTsFileProcessor.shouldFlush()) {
+      if (workUnSequenceTsFileProcessor != null && workUnSequenceTsFileProcessor.shouldFlush()) {
         logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
             workUnSequenceTsFileProcessor.getWorkMemTableMemory(),
             workUnSequenceTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());

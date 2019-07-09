@@ -34,11 +34,13 @@ public class CompressionRatio {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final String COMPRESSION_RATIO_NAME = "compression_ratio";
+  public static final String COMPRESSION_RATIO_NAME = "compression_ratio";
 
-  private static final String FILE_PREFIX = "Ratio-";
+  public static final String FILE_PREFIX = "Ratio-";
 
-  private static final String SEPARATOR = "-";
+  public static final String SEPARATOR = "-";
+
+  public static final String RATIO_FILE_PATH_FORMAT = FILE_PREFIX + "%f" + SEPARATOR + "%d";
 
   private static final double DEFAULT_COMPRESSION_RATIO = 2.0f;
 
@@ -46,10 +48,11 @@ public class CompressionRatio {
 
   private long calcuTimes;
 
-  private String directoryPath;
+  private File directory;
 
   private CompressionRatio() {
-    directoryPath = FilePathUtils.regularizePath(CONFIG.getSystemDir()) + COMPRESSION_RATIO_NAME;
+    directory = new File(
+        FilePathUtils.regularizePath(CONFIG.getSystemDir()) + COMPRESSION_RATIO_NAME);
     try {
       restore();
     } catch (IOException e) {
@@ -57,16 +60,15 @@ public class CompressionRatio {
     }
   }
 
-  public synchronized void updateRatio(int flushNum) throws IOException {
-    File oldFile = new File(directoryPath,
-        FILE_PREFIX + compressionRatioSum + SEPARATOR + calcuTimes);
-    compressionRatioSum +=
-        (TSFileConfig.groupSizeInByte * flushNum) / CONFIG.getTsFileSizeThreshold();
+  public synchronized void updateRatio(double currentCompressionRatio) throws IOException {
+    File oldFile = new File(directory,
+        String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcuTimes));
+    compressionRatioSum += currentCompressionRatio;
     calcuTimes++;
-    File newFile = new File(directoryPath,
-        FILE_PREFIX + compressionRatioSum + SEPARATOR + calcuTimes);
+    File newFile = new File(directory,
+        String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcuTimes));
     persist(oldFile, newFile);
-    IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters();
+//    IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters(); // This will cause dead lock
   }
 
   public synchronized double getRatio() {
@@ -74,8 +76,9 @@ public class CompressionRatio {
   }
 
   private void persist(File oldFile, File newFile) throws IOException {
+    checkDirectoryExist();
     if (!oldFile.exists()) {
-      FileUtils.forceMkdir(newFile);
+      newFile.createNewFile();
       LOGGER.debug("Old ratio file {} doesn't exist, force create ratio file {}",
           oldFile.getAbsolutePath(), newFile.getAbsolutePath());
     } else {
@@ -85,8 +88,14 @@ public class CompressionRatio {
     }
   }
 
-  private void restore() throws IOException {
-    File directory = new File(directoryPath);
+  private void checkDirectoryExist() throws IOException {
+    if (!directory.exists()) {
+      FileUtils.forceMkdir(directory);
+    }
+  }
+
+  void restore() throws IOException {
+    checkDirectoryExist();
     File[] ratioFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
     File restoreFile;
     if (ratioFiles != null && ratioFiles.length > 0) {
@@ -106,9 +115,26 @@ public class CompressionRatio {
         }
       }
     } else {
-      restoreFile = new File(directory, FILE_PREFIX + compressionRatioSum + SEPARATOR + calcuTimes);
-      FileUtils.forceMkdir(restoreFile);
+      restoreFile = new File(directory,
+          String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcuTimes));
+      restoreFile.createNewFile();
     }
+  }
+
+  /**
+   * Only for test
+   */
+  void reset() {
+    calcuTimes = 0;
+    compressionRatioSum = 0;
+  }
+
+  public double getCompressionRatioSum() {
+    return compressionRatioSum;
+  }
+
+  public long getCalcuTimes() {
+    return calcuTimes;
   }
 
   public static CompressionRatio getInstance() {

@@ -117,10 +117,6 @@ public class MManager {
         }
       }
     };
-
-    init();
-    IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
-    initialized = true;
   }
 
   public static MManager getInstance() {
@@ -129,8 +125,11 @@ public class MManager {
 
   //Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
-  private void init() {
+  public void init() {
 
+    if(initialized){
+      return;
+    }
     lock.writeLock().lock();
     File logFile = new File(logFilePath);
 
@@ -150,6 +149,7 @@ public class MManager {
     } finally {
       lock.writeLock().unlock();
     }
+    initialized = true;
   }
 
 

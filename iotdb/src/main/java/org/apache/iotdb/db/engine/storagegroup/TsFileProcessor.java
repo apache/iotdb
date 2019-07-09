@@ -108,7 +108,7 @@ public class TsFileProcessor {
 
   private boolean sequence;
 
-  private int totalFlushTimes;
+  private long totalMemTableSize;
 
   TsFileProcessor(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,
@@ -194,7 +194,7 @@ public class TsFileProcessor {
 
 
   boolean shouldFlush() {
-    return workMemTable.memSize() > TSFileConfig.groupSizeInByte;
+    return workMemTable != null && workMemTable.memSize() > TSFileConfig.groupSizeInByte;
   }
 
 
@@ -255,9 +255,6 @@ public class TsFileProcessor {
       } catch (IOException e) {
         logger.error("async close failed, because", e);
       }
-      CompressionRatio.getInstance().updateRatio(totalFlushTimes);
-    } catch (IOException e) {
-      logger.error("update compression ratio failed", e);
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -338,8 +335,8 @@ public class TsFileProcessor {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       getLogNode().notifyStartFlush();
     }
-    if(!tobeFlushed.isSignalMemTable()){
-      totalFlushTimes++;
+    if (!tobeFlushed.isSignalMemTable()) {
+      totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
     FlushManager.getInstance().registerTsFileProcessor(this);
@@ -406,6 +403,16 @@ public class TsFileProcessor {
     if (shouldClose && flushingMemTables.isEmpty()) {
       try {
         writer.mark();
+        try {
+          double compressionRatio = totalMemTableSize / writer.getPos();
+          if (totalMemTableSize < writer.getPos()) {
+            logger.error("Compression ratio {} has been less than 1.0.", compressionRatio);
+          } else {
+            CompressionRatio.getInstance().updateRatio(compressionRatio);
+          }
+        } catch (IOException e) {
+          logger.error("update compression ratio failed", e);
+        }
         endFile();
       } catch (IOException | TsFileProcessorException e) {
         StorageEngine.getInstance().setReadOnly(true);

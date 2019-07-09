@@ -23,6 +23,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
@@ -77,6 +78,10 @@ public class EngineDataSetWithValueFilterTest {
       "insert into root.test.d0(timestamp,s0) values(1900,1316)",
       "insert into root.test.d0(timestamp,s0,s1) values(700,1307,'1038')",
       "insert into root.test.d0(timestamp,s1) values(3000,'1309')"};
+
+  static {
+    MManager.getInstance().init();
+  }
 
   @Before
   public void setUp() throws Exception {
