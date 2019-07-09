@@ -28,8 +28,6 @@ public class ListPublicBAOSLongTest {
   private static final int consumerNum = 1;
 
   public static void main(String[] args) throws InterruptedException, FileNotFoundException {
-    System.setOut(new PrintStream(new File("C:\\Users\\10334\\Desktop\\out1.txt")));
-    //Thread.sleep(5000);
     ListPublicBAOS initPublicBAOSPool = new ListPublicBAOS(1024 * 512);
     initPublicBAOSPool.reset();
 
