@@ -32,7 +32,8 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.{GenericInternalRow, GenericRowWithSchema}
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.junit.Assert
@@ -223,8 +224,8 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     fields.add(StructField("device_2.sensor_2", IntegerType, true))
     val schema = StructType(fields)
 
-    var row: GenericRowWithSchema = new GenericRowWithSchema(Array(1L, null, 1.2f, 20, 19, 2.3f, 11), schema)
-    val records = Converter.toTsRecord(row)
+    val row: InternalRow = new GenericInternalRow(Array(1L, null, 1.2f, 20, 19, 2.3f, 11))
+    val records = Converter.toTsRecord(row, schema)
 
     Assert.assertEquals(2, records.size)
     Assert.assertEquals(1, records(0).time)
