@@ -23,7 +23,7 @@ calculate_heap_sizes()
 {
     case "`uname`" in
         Linux)
-            system_memory_in_mb=`free -m | awk '/:/ {print $2;exit}'`
+            system_memory_in_mb=`free -m| sed -n '2p' | awk '{print $2}'`
             system_cpu_cores=`egrep -c 'processor([[:space:]]+):.*' /proc/cpuinfo`
         ;;
         FreeBSD)

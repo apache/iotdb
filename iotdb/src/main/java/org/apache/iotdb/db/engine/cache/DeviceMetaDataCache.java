@@ -58,7 +58,7 @@ public class DeviceMetaDataCache {
   }
 
   /**
-   * get {@link TsDeviceMetadata}. THREAD SAFE.
+   * get {@link ChunkMetaData}. THREAD SAFE.
    */
   public List<ChunkMetaData> get(String filePath, Path seriesPath)
       throws IOException {

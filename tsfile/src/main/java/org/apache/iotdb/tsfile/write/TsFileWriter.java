@@ -166,7 +166,7 @@ public class TsFileWriter implements AutoCloseable{
    * "encoding": "RLE" "compressor":"SNAPPY" }
    * @throws WriteProcessException if the json is illegal or the measurement exists
    */
-  void addMeasurementByJson(JSONObject measurement) throws WriteProcessException {
+  public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException {
     addMeasurement(JsonConverter.convertJsonToMeasurementSchema(measurement));
   }
 

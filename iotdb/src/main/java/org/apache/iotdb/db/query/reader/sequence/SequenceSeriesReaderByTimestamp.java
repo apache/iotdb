@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.query.reader.sequence;
 
+
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
-import org.apache.iotdb.db.query.reader.sequence.adapter.SeriesReaderByTimestampAdapter;
+import org.apache.iotdb.db.query.reader.sequence.adapter.FileSeriesReaderByTimestampAdapter;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 import java.io.IOException;
@@ -151,7 +151,7 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
     }
     ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
-    seriesReader = new SeriesReaderByTimestampAdapter(
+    seriesReader = new FileSeriesReaderByTimestampAdapter(
             new FileSeriesReaderByTimestamp(chunkLoader, metaDataList));
   }
 }

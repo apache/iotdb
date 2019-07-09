@@ -40,7 +40,11 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 /**
+<<<<<<< HEAD
  * IoTDB query executor of Stand-alone version with global time filter.
+=======
+ * IoTDB query executor.
+>>>>>>> origin/master
  */
 public class EngineExecutor {
 

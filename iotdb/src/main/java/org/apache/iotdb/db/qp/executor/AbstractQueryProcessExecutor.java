@@ -65,8 +65,7 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
 
   private QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, PathErrorException, ProcessorException, IOException {
-    QueryExpression queryExpression = QueryExpression.create().setSelectSeries(queryPlan.getPaths())
-        .setExpression(queryPlan.getExpression());
+
     if (queryPlan instanceof GroupByPlan) {
       GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
       return groupBy(groupByPlan.getPaths(), groupByPlan.getAggregations(),
@@ -84,6 +83,9 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
       return fill(queryPlan.getPaths(), fillQueryPlan.getQueryTime(),
           fillQueryPlan.getFillType(), context);
     }
+
+    QueryExpression queryExpression = QueryExpression.create().setSelectSeries(queryPlan.getPaths())
+            .setExpression(queryPlan.getExpression());
     return queryRouter.query(queryExpression, context);
   }
 
