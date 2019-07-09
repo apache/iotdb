@@ -106,16 +106,16 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
-      TSFileConfig.memTableSizeInByte = Integer
+      TSFileConfig.groupSizeInByte = Integer
           .parseInt(
               properties.getProperty("group_size_in_byte",
-                  Integer.toString(TSFileConfig.memTableSizeInByte)));
+                  Integer.toString(TSFileConfig.groupSizeInByte)));
       TSFileConfig.pageSizeInByte = Integer
           .parseInt(properties
               .getProperty("page_size_in_byte", Integer.toString(TSFileConfig.pageSizeInByte)));
-      if (TSFileConfig.pageSizeInByte > TSFileConfig.memTableSizeInByte) {
+      if (TSFileConfig.pageSizeInByte > TSFileConfig.groupSizeInByte) {
         logger.warn("page_size is greater than group size, will set it as the same with group size");
-        TSFileConfig.pageSizeInByte = TSFileConfig.memTableSizeInByte;
+        TSFileConfig.pageSizeInByte = TSFileConfig.groupSizeInByte;
       }
       TSFileConfig.maxNumberOfPointsInPage = Integer.parseInt(
           properties
@@ -129,8 +129,8 @@ public class TSFileDescriptor {
       TSFileConfig.floatPrecision = Integer
           .parseInt(properties
               .getProperty("float_precision", Integer.toString(TSFileConfig.floatPrecision)));
-      TSFileConfig.timeSeriesEncoder = properties
-          .getProperty("time_series_encoder", TSFileConfig.timeSeriesEncoder);
+      TSFileConfig.timeEncoder = properties
+          .getProperty("time_encoder", TSFileConfig.timeEncoder);
       TSFileConfig.valueEncoder = properties
           .getProperty("value_encoder", TSFileConfig.valueEncoder);
       TSFileConfig.compressor = properties.getProperty("compressor", TSFileConfig.compressor);

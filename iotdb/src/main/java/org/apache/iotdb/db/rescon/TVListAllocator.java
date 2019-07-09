@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.datastructure;
+package org.apache.iotdb.db.rescon;
 
 import java.util.ArrayDeque;
 import java.util.EnumMap;
@@ -28,6 +28,13 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.datastructure.BinaryTVList;
+import org.apache.iotdb.db.utils.datastructure.BooleanTVList;
+import org.apache.iotdb.db.utils.datastructure.DoubleTVList;
+import org.apache.iotdb.db.utils.datastructure.FloatTVList;
+import org.apache.iotdb.db.utils.datastructure.IntTVList;
+import org.apache.iotdb.db.utils.datastructure.LongTVList;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TVListAllocator implements TVListAllocatorMBean, IService {
@@ -59,15 +66,15 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
     list.clear();
     if (list instanceof BinaryTVList) {
       tvListCache.get(TSDataType.TEXT).add(list);
-    } else if (list instanceof  BooleanTVList) {
+    } else if (list instanceof BooleanTVList) {
       tvListCache.get(TSDataType.BOOLEAN).add(list);
-    } else if (list instanceof  DoubleTVList) {
+    } else if (list instanceof DoubleTVList) {
       tvListCache.get(TSDataType.DOUBLE).add(list);
     } else if (list instanceof FloatTVList) {
       tvListCache.get(TSDataType.FLOAT).add(list);
-    } else if (list instanceof  IntTVList) {
+    } else if (list instanceof IntTVList) {
       tvListCache.get(TSDataType.INT32).add(list);
-    } else if (list instanceof  LongTVList) {
+    } else if (list instanceof LongTVList) {
       tvListCache.get(TSDataType.INT64).add(list);
     }
   }

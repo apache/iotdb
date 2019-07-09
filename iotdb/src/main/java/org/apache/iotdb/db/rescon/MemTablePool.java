@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.memtable;
+package org.apache.iotdb.db.rescon;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

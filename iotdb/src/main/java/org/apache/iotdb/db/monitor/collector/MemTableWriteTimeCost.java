@@ -21,6 +21,9 @@ package org.apache.iotdb.db.monitor.collector;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * this class
+ */
 public class MemTableWriteTimeCost {
 
   public Map<String, Map<MemTableWriteTimeCostType, long[]>> getTimeCostMaps() {

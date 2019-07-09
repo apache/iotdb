@@ -62,7 +62,7 @@ public class IoTDBConfig {
   private int walBufferSize = 16 * 1024 * 1024;
 
   /**
-   * system base dir, stores all system data and wal
+   * system base dir, stores all system metadata and wal
    */
   private String baseDir = "data";
 
@@ -91,6 +91,7 @@ public class IoTDBConfig {
    */
   private String indexFileDir = "data/index";
 
+
   private int memtableNumber = 20;
 
   /**
@@ -114,7 +115,7 @@ public class IoTDBConfig {
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
-  private long tsFileSizeThreshold = 2 * 1024 * 1024 * 1024L;
+  private long tsFileSizeThreshold = 512 * 1024 * 1024L;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default

@@ -72,12 +72,12 @@ public class IoTDBSequenceDataQueryIT {
     // origin value
     maxNumberOfPointsInPage = tsFileConfig.maxNumberOfPointsInPage;
     pageSizeInByte = tsFileConfig.pageSizeInByte;
-    groupSizeInByte = tsFileConfig.memTableSizeInByte;
+    groupSizeInByte = tsFileConfig.groupSizeInByte;
 
     // new value
     tsFileConfig.maxNumberOfPointsInPage = 100;
     tsFileConfig.pageSizeInByte = 1024 * 1024 * 150;
-    tsFileConfig.memTableSizeInByte = 1024 * 1024 * 100;
+    tsFileConfig.groupSizeInByte = 1024 * 1024 * 100;
 
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -92,7 +92,7 @@ public class IoTDBSequenceDataQueryIT {
     // recovery value
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     tsFileConfig.pageSizeInByte = pageSizeInByte;
-    tsFileConfig.memTableSizeInByte = groupSizeInByte;
+    tsFileConfig.groupSizeInByte = groupSizeInByte;
 
     EnvironmentUtils.cleanEnv();
   }

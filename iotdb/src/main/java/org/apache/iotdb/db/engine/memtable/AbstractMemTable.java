@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +29,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.datastructure.TVListAllocator;
+import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class AbstractMemTable implements IMemTable {
@@ -152,12 +150,12 @@ public abstract class AbstractMemTable implements IMemTable {
 
 
   private long findUndeletedTime(String deviceId, String measurement) {
-    String path = deviceId + PATH_SEPARATOR + measurement;
     long undeletedTime = Long.MIN_VALUE;
     for (Modification modification : modifications) {
-      if (modification instanceof  Deletion) {
+      if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;
-        if (deletion.getPathString().equals(path) && deletion.getTimestamp() > undeletedTime) {
+        if (deletion.getDevice().equals(deviceId) && deletion.getMeasurement().equals(measurement)
+            && deletion.getTimestamp() > undeletedTime) {
           undeletedTime = deletion.getTimestamp();
         }
       }

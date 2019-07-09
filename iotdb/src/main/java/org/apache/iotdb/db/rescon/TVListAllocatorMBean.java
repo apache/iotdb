@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils.datastructure;
+package org.apache.iotdb.db.rescon;
 
 public interface TVListAllocatorMBean {
 

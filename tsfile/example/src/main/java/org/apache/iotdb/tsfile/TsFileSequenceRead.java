@@ -65,7 +65,7 @@ public class TsFileSequenceRead {
           ChunkHeader header = reader.readChunkHeader();
           System.out.println("\tMeasurement: " + header.getMeasurementID());
           Decoder defaultTimeDecoder = Decoder.getDecoderByType(
-              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder),
+              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeEncoder),
               TSDataType.INT64);
           Decoder valueDecoder = Decoder
               .getDecoderByType(header.getEncodingType(), header.getDataType());
