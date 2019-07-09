@@ -30,12 +30,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.memtable.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
-import org.apache.iotdb.db.rescon.MemTablePool;
+import org.apache.iotdb.db.engine.memtable.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -46,6 +46,7 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -78,9 +79,8 @@ public class TsFileProcessor {
   private ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
 
   /**
-   * It is set by the StorageGroupProcessor and checked by flush threads.
-   * (If shouldClose == true and its flushingMemTables are all flushed, then the flush thread will
-   * close this file.)
+   * It is set by the StorageGroupProcessor and checked by flush threads. (If shouldClose == true
+   * and its flushingMemTables are all flushed, then the flush thread will close this file.)
    */
   private volatile boolean shouldClose;
 
@@ -107,6 +107,8 @@ public class TsFileProcessor {
   private WriteLogNode logNode;
 
   private boolean sequence;
+
+  private int totalFlushTimes;
 
   TsFileProcessor(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,
@@ -253,6 +255,9 @@ public class TsFileProcessor {
       } catch (IOException e) {
         logger.error("async close failed, because", e);
       }
+      CompressionRatio.getInstance().updateRatio(totalFlushTimes);
+    } catch (IOException e) {
+      logger.error("update compression ratio failed", e);
     } finally {
       flushQueryLock.writeLock().unlock();
     }
@@ -273,7 +278,6 @@ public class TsFileProcessor {
     } finally {
       flushQueryLock.writeLock().unlock();
     }
-
 
     synchronized (tmpMemTable) {
       try {
@@ -333,6 +337,9 @@ public class TsFileProcessor {
     tobeFlushed.setVersion(versionController.nextVersion());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       getLogNode().notifyStartFlush();
+    }
+    if(!tobeFlushed.isSignalMemTable()){
+      totalFlushTimes++;
     }
     workMemTable = null;
     FlushManager.getInstance().registerTsFileProcessor(this);
@@ -498,7 +505,8 @@ public class TsFileProcessor {
         if (flushingMemTable.isSignalMemTable()) {
           continue;
         }
-        ReadOnlyMemChunk memChunk = flushingMemTable.query(deviceId, measurementId, dataType, props);
+        ReadOnlyMemChunk memChunk = flushingMemTable
+            .query(deviceId, measurementId, dataType, props);
         if (memChunk != null) {
           memSeriesLazyMerger.addMemSeries(memChunk);
         }

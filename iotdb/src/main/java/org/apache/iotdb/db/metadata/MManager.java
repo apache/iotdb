@@ -33,7 +33,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -77,7 +79,8 @@ public class MManager {
 
   private MManager() {
 
-    schemaDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "schema";
+    schemaDir =
+        IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "schema";
 
     File systemFolder = new File(schemaDir);
     if (!systemFolder.exists()) {
@@ -116,6 +119,7 @@ public class MManager {
     };
 
     init();
+    IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
     initialized = true;
   }
 
@@ -129,7 +133,6 @@ public class MManager {
 
     lock.writeLock().lock();
     File logFile = new File(logFilePath);
-
 
     try {
       initFromLog(logFile);
@@ -155,7 +158,7 @@ public class MManager {
     // init the metadata from the operation log
     mgraph = new MGraph(ROOT_NAME);
     if (logFile.exists()) {
-      try( FileReader fr = new FileReader(logFile);
+      try (FileReader fr = new FileReader(logFile);
           BufferedReader br = new BufferedReader(fr)) {
         String cmd;
         while ((cmd = br.readLine()) != null) {
@@ -261,8 +264,8 @@ public class MManager {
    * @param dataType the datetype {@code DataType} for the timeseries
    * @param encoding the encoding function {@code Encoding} for the timeseries
    * @param compressor the compressor function {@code Compressor} for the time series
-   * @return whether the measurement occurs for the first time in this storage group (if true,
-   * the measurement should be registered to the StorageEngine too)
+   * @return whether the measurement occurs for the first time in this storage group (if true, the
+   * measurement should be registered to the StorageEngine too)
    */
   @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
   public boolean addPathToMTree(Path path, TSDataType dataType, TSEncoding encoding,
@@ -280,6 +283,11 @@ public class MManager {
     try {
       fileNodePath = getStorageGroupNameByPath(path.getFullPath());
     } catch (PathErrorException e) {
+      throw new MetadataErrorException(e);
+    }
+    try {
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+    } catch (ConfigAdjusterException e) {
       throw new MetadataErrorException(e);
     }
     // the two map is stored in the storage group node
@@ -326,7 +334,6 @@ public class MManager {
   private void addPathToMTreeInternal(String path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props)
       throws PathErrorException, IOException {
-
 
     lock.writeLock().lock();
     try {
@@ -411,10 +418,10 @@ public class MManager {
 
   /**
    * delete given paths from metadata.
+   *
    * @param deletePathList list of paths to be deleted
-   * @return a set contains StorageGroups that contain no more timeseries
-   * after this deletion and files of such StorageGroups should be deleted to reclaim disk space.
-   * @throws MetadataErrorException
+   * @return a set contains StorageGroups that contain no more timeseries after this deletion and
+   * files of such StorageGroups should be deleted to reclaim disk space.
    */
   public Set<String> deletePaths(List<Path> deletePathList)
       throws MetadataErrorException {
@@ -423,6 +430,11 @@ public class MManager {
 
       Set<String> emptyStorageGroups = new HashSet<>();
       for (String p : fullPath) {
+        try {
+          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
+        } catch (ConfigAdjusterException e) {
+          throw new MetadataErrorException(e);
+        }
         String emptiedStorageGroup = deletePath(p);
         if (emptiedStorageGroup != null) {
           emptyStorageGroups.add(emptiedStorageGroup);
@@ -507,19 +519,15 @@ public class MManager {
    */
   public void setStorageLevelToMTree(String path) throws MetadataErrorException {
     if (initialized && StorageEngine.getInstance().isReadOnly()) {
-      throw new MetadataErrorException("Current system mode is read only, does not support creating Storage Group");
+      throw new MetadataErrorException(
+          "Current system mode is read only, does not support creating Storage Group");
     }
 
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
       mNodeCache.clear();
-      // if (current storage groups + the new storage group + the statistic storage group) * 2 > total memtable number
-      if ((seriesNumberInStorageGroups.size() + 2) * 2 > IoTDBDescriptor.getInstance().getConfig()
-          .getMemtableNumber()) {
-        throw new PathErrorException(
-            "too many storage groups, please increase the number of memtable");
-      }
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       mgraph.setStorageLevel(path);
       seriesNumberInStorageGroups.put(path, 0);
       if (writeToLog) {
@@ -528,15 +536,23 @@ public class MManager {
         writer.newLine();
         writer.flush();
       }
-    } catch (IOException | PathErrorException e) {
+    } catch (IOException | ConfigAdjusterException e) {
       throw new MetadataErrorException(e);
-    } finally{
+    } catch (PathErrorException e) {
+      try {
+        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
+      } catch (ConfigAdjusterException ex) {
+        throw new MetadataErrorException(ex);
+      }
+      throw new MetadataErrorException(e);
+    } finally {
       lock.writeLock().unlock();
     }
   }
 
   /**
    * function for checking if the given path is storage level of mTree or not.
+   *
    * @apiNote :for cluster
    */
   boolean checkStorageLevelOfMTree(String path) {
@@ -747,10 +763,9 @@ public class MManager {
   }
 
   /**
-   * @deprecated Get all MeasurementSchemas for given delta object type.
-   *
    * @param path A seriesPath represented one Delta object
    * @return a list contains all column schema
+   * @deprecated Get all MeasurementSchemas for given delta object type.
    */
   @Deprecated
   public List<MeasurementSchema> getSchemaForOneType(String path) throws PathErrorException {
@@ -1016,8 +1031,8 @@ public class MManager {
   }
 
   /**
-   * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
-   * node.
+   * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to
+   * leaf node.
    */
   private MeasurementSchema getSchemaForOnePath(String path) throws PathErrorException {
 
@@ -1170,14 +1185,23 @@ public class MManager {
     }
   }
 
+  /**
+   * Only for test
+   */
+  public void setMaxSeriesNumberAmongStorageGroup(int maxSeriesNumberAmongStorageGroup) {
+    this.maxSeriesNumberAmongStorageGroup = maxSeriesNumberAmongStorageGroup;
+  }
+
   public int getMaximalSeriesNumberAmongStorageGroups() {
     return maxSeriesNumberAmongStorageGroup;
   }
 
   private static class MManagerHolder {
-    private MManagerHolder(){
+
+    private MManagerHolder() {
       //allowed to do nothing
     }
+
     private static final MManager INSTANCE = new MManager();
   }
 

@@ -178,5 +178,4 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return append;
   }
 
-
 }

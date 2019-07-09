@@ -16,37 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf.adjuster;
+package org.apache.iotdb.db.conf.adapter;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class IoTDBConfigDynamicAdjuster implements IDynamicAdjuster {
+public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigDynamicAdjuster.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   // static parameter section
 
-  private static final float MAX_MEMORY_RATIO = 0.8f;
-
-  private static final float COMPRESSION_RATIO = 0.8f;
+  private static final float WRITE_MEMORY_RATIO = 0.8f;
 
   /**
    * Maximum amount of memory that the Java virtual machine will attempt to use
    */
-  private static final long MAX_MEMORY_B = (long) (Runtime.getRuntime().maxMemory() * MAX_MEMORY_RATIO);
+  private static final long MAX_MEMORY_B = (long) (Runtime.getRuntime().maxMemory()
+      * WRITE_MEMORY_RATIO);
 
   /**
    * Metadata size of per timeseries, the default value is 2KB.
@@ -61,11 +54,9 @@ public class IoTDBConfigDynamicAdjuster implements IDynamicAdjuster {
   /**
    * Average queue length in memtable pool
    */
-  private static final int MEM_TABLE_AVERAGE_QUEUE_LEN = 5;
+  public static final int MEM_TABLE_AVERAGE_QUEUE_LEN = 5;
 
   // static memory section
-
-  private int totalTimeseriesNum;
 
   /**
    * Static memory, includes all timeseries metadata, which equals to TIMESERIES_METADATA_SIZE_B *
@@ -73,44 +64,35 @@ public class IoTDBConfigDynamicAdjuster implements IDynamicAdjuster {
    */
   private long staticMemory;
 
+  private int totalTimeseries;
+
   // MemTable section
 
-  private int totalStorageGroupNum;
-
-  private int maxMemTableNum;
+  private int maxMemTableNum = MEM_TABLE_AVERAGE_QUEUE_LEN;
 
   private int currentMemTableSize;
 
+  private boolean initialized = false;
+
   @Override
   public void init() {
-    try {
-      totalStorageGroupNum = MManager.getInstance().getAllStorageGroup().size();
-      totalTimeseriesNum = MManager.getInstance().getPaths(IoTDBConstant.PATH_ROOT).size();
-    } catch (PathErrorException e) {
-      LOGGER.error("Getting total storage group num meets error, use default value 0.", e);
-    } catch (MetadataErrorException e) {
-      LOGGER.error("Getting total timeseries num meets error, use default value 0.", e);
-    }
-    maxMemTableNum = (totalStorageGroupNum << 1) + MEM_TABLE_AVERAGE_QUEUE_LEN;
-    staticMemory = totalTimeseriesNum * TIMESERIES_METADATA_SIZE_B;
-    tryToAdjustParameters();
   }
 
   @Override
-  public boolean tryToAdjustParameters() {
+  public synchronized boolean tryToAdaptParameters() {
     boolean shouldAdjust = true;
     int memtableSizeInByte = calcuMemTableSize();
     int memTableSizeFloorThreshold = getMemTableSizeFloorThreshold();
     boolean shouldClose = false;
     long tsFileSize = CONFIG.getTsFileSizeThreshold();
     if (memtableSizeInByte < memTableSizeFloorThreshold) {
-      memtableSizeInByte = memTableSizeFloorThreshold;
       shouldClose = true;
       tsFileSize = calcuTsFileSize(memTableSizeFloorThreshold);
+      memtableSizeInByte = (int) tsFileSize;
       if (tsFileSize < memTableSizeFloorThreshold) {
         shouldAdjust = false;
       }
-    } else if(memtableSizeInByte > tsFileSize){
+    } else if (memtableSizeInByte > tsFileSize) {
       memtableSizeInByte = (int) tsFileSize;
     }
 
@@ -125,28 +107,44 @@ public class IoTDBConfigDynamicAdjuster implements IDynamicAdjuster {
       }
       currentMemTableSize = memtableSizeInByte;
     }
+    if (!initialized) {
+      CONFIG.setMaxMemtableNumber(maxMemTableNum);
+      return true;
+    }
     return shouldAdjust;
   }
 
+  /**
+   * Calculate appropriate MemTable size
+   *
+   * @return MemTable size. If the value is -1, there is no valid solution.
+   */
   private int calcuMemTableSize() {
-    long a = (long) (COMPRESSION_RATIO * maxMemTableNum);
-    long b = (long) ((staticMemory - MAX_MEMORY_B) * COMPRESSION_RATIO);
+    double ratio = CompressionRatio.getInstance().getRatio();
+    long a = (long) (ratio * maxMemTableNum);
+    long b = (long) ((staticMemory - MAX_MEMORY_B) * ratio);
     long c = CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_B * MManager
         .getInstance().getMaximalSeriesNumberAmongStorageGroups();
-    double memTableSize1 = ((-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a));
-    System.out.println(memTableSize1/IoTDBConstant.MB);
-    System.out.println(((-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a))/ IoTDBConstant.MB);
-    return (int) memTableSize1;
+    long tempValue = b * b - 4 * a * c;
+    double memTableSize = ((-b + Math.sqrt(tempValue)) / (2 * a));
+    return tempValue < 0 ? -1 : (int) memTableSize;
   }
 
+  /**
+   * Calculate appropriate Tsfile size based on MemTable size
+   *
+   * @param memTableSize MemTable size
+   * @return Tsfile threshold
+   */
   private int calcuTsFileSize(int memTableSize) {
-    return (int) ((MAX_MEMORY_B - maxMemTableNum * memTableSize - staticMemory) * COMPRESSION_RATIO
+    return (int) ((MAX_MEMORY_B - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
+        .getInstance().getRatio()
         * memTableSize / (maxMemTableNum * CHUNK_METADATA_SIZE_B * MManager.getInstance()
         .getMaximalSeriesNumberAmongStorageGroups()));
   }
 
   /**
-   * Get the floor threshold memtable size
+   * Get the floor threshold MemTable size
    */
   private int getMemTableSizeFloorThreshold() {
     return MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()
@@ -158,11 +156,9 @@ public class IoTDBConfigDynamicAdjuster implements IDynamicAdjuster {
    */
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
-    totalStorageGroupNum += diff;
     maxMemTableNum += 2 * diff;
-    if (!tryToAdjustParameters()) {
-      totalStorageGroupNum -= diff;
-      maxMemTableNum -= 2;
+    if (!tryToAdaptParameters()) {
+      maxMemTableNum -= 2 * diff;
       throw new ConfigAdjusterException(
           "The IoTDB system load is too large to create storage group.");
     }
@@ -170,35 +166,51 @@ public class IoTDBConfigDynamicAdjuster implements IDynamicAdjuster {
 
   @Override
   public void addOrDeleteTimeSeries(int diff) throws ConfigAdjusterException {
-    totalTimeseriesNum += diff;
+    totalTimeseries += diff;
     staticMemory += diff * TIMESERIES_METADATA_SIZE_B;
-    if (!tryToAdjustParameters()) {
-      totalTimeseriesNum -= diff;
+    if (!tryToAdaptParameters()) {
+      totalTimeseries -= diff;
       staticMemory -= diff * TIMESERIES_METADATA_SIZE_B;
       throw new ConfigAdjusterException("The IoTDB system load is too large to add timeseries.");
     }
+  }
+
+  public void setInitialized(boolean initialized) {
+    this.initialized = initialized;
   }
 
   public int getCurrentMemTableSize() {
     return currentMemTableSize;
   }
 
-  private IoTDBConfigDynamicAdjuster() {
+  public int getTotalTimeseries() {
+    return totalTimeseries;
+  }
+
+  /**
+   * Only for test
+   */
+  public void reset() {
+    totalTimeseries = 0;
+    staticMemory = 0;
+    maxMemTableNum = MEM_TABLE_AVERAGE_QUEUE_LEN;
+  }
+
+  private IoTDBConfigDynamicAdapter() {
     init();
   }
 
-  public static IoTDBConfigDynamicAdjuster getInstance() {
-    return IoTDBConfigAdjusterHolder.INSTANCE;
+  public static IoTDBConfigDynamicAdapter getInstance() {
+    return IoTDBConfigAdapterHolder.INSTANCE;
   }
 
-  private static class IoTDBConfigAdjusterHolder {
+  private static class IoTDBConfigAdapterHolder {
 
-    private static final IoTDBConfigDynamicAdjuster INSTANCE = new IoTDBConfigDynamicAdjuster();
+    private static final IoTDBConfigDynamicAdapter INSTANCE = new IoTDBConfigDynamicAdapter();
 
-    private IoTDBConfigAdjusterHolder() {
+    private IoTDBConfigAdapterHolder() {
 
     }
 
   }
-
 }

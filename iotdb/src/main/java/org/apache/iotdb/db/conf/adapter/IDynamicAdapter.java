@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf.adjuster;
+package org.apache.iotdb.db.conf.adapter;
 
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 
-public interface IDynamicAdjuster {
+public interface IDynamicAdapter {
 
   /**
    * Init all parameters from config.
@@ -30,7 +30,7 @@ public interface IDynamicAdjuster {
   /**
    * Adjust parameters of memTableNumber, memTableSize and maximum tsfile size.
    */
-  boolean tryToAdjustParameters();
+  boolean tryToAdaptParameters();
 
   /**
    * Add or delete storage groups

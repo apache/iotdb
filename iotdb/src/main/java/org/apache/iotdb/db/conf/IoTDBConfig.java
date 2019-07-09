@@ -91,8 +91,10 @@ public class IoTDBConfig {
    */
   private String indexFileDir = "data/index";
 
-
-  private int memtableNumber = 20;
+  /**
+   * Maximum MemTable number in MemTable pool.
+   */
+  private int maxMemtableNumber = 20;
 
   /**
    * The maximum concurrent thread number for merging. When the value <=0 or > CPU core number, use
@@ -301,12 +303,12 @@ public class IoTDBConfig {
     this.fetchSize = fetchSize;
   }
 
-  public int getMemtableNumber() {
-    return memtableNumber;
+  public int getMaxMemtableNumber() {
+    return maxMemtableNumber;
   }
 
-  void setMemtableNumber(int memtableNumber) {
-    this.memtableNumber = memtableNumber;
+  public void setMaxMemtableNumber(int maxMemtableNumber) {
+    this.maxMemtableNumber = maxMemtableNumber;
   }
 
   public int getConcurrentFlushThread() {
@@ -325,7 +327,7 @@ public class IoTDBConfig {
     return tsFileSizeThreshold;
   }
 
-  void setTsFileSizeThreshold(long tsFileSizeThreshold) {
+  public void setTsFileSizeThreshold(long tsFileSizeThreshold) {
     this.tsFileSizeThreshold = tsFileSizeThreshold;
   }
 

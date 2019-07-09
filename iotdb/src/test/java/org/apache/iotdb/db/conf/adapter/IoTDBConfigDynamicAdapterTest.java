@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf.adjuster;
+package org.apache.iotdb.db.conf.adapter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -38,8 +38,17 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class IoTDBConfigDynamicAdjusterTest {
+public class IoTDBConfigDynamicAdapterTest {
+
   private static IoTDB daemon;
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private long oldTsFileThreshold = CONFIG.getTsFileSizeThreshold();
+
+  private int oldMaxMemTableNumber = CONFIG.getMaxMemtableNumber();
+
+  private int oldGroupSizeInByte = TSFileConfig.groupSizeInByte;
 
   @Before
   public void setUp() throws Exception {
@@ -47,107 +56,74 @@ public class IoTDBConfigDynamicAdjusterTest {
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
   @After
   public void tearDown() throws Exception {
     daemon.stop();
     EnvironmentUtils.cleanEnv();
+    CONFIG.setMaxMemtableNumber(oldMaxMemTableNumber);
+    CONFIG.setTsFileSizeThreshold(oldTsFileThreshold);
+    TSFileConfig.groupSizeInByte = oldGroupSizeInByte;
+    MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(0);
+    IoTDBConfigDynamicAdapter.getInstance().reset();
   }
 
   @Test
-  public void addOrDeleteStorageGroup() {
+  public void addOrDeleteStorageGroup() throws ConfigAdjusterException {
     System.out.println(
         "System total memory : " + Runtime.getRuntime().maxMemory() / IoTDBConstant.MB
             + "MB");
-    IoTDBConfigDynamicAdjuster.getInstance();
-    MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(10000);
-    try {
-      IoTDBConfigDynamicAdjuster.getInstance().addOrDeleteTimeSeries(10000);
-    } catch (ConfigAdjusterException e) {
-      fail();
-    }
-    System.out.println("MemTable size floor threshold is :"
-        + MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()
-        * PrimitiveArrayPool.ARRAY_SIZE * Long.BYTES * 2 / IoTDBConstant.MB + "MB");
+    int memTableNum = IoTDBConfigDynamicAdapter.MEM_TABLE_AVERAGE_QUEUE_LEN;
     for (int i = 1; i < 100; i++) {
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+    }
+    MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(100);
+    for (int i = 1; i < 1000000; i++) {
       try {
-        IoTDBConfigDynamicAdjuster.getInstance().addOrDeleteStorageGroup(1);
-        assertEquals(IoTDBConfigDynamicAdjuster.getInstance().getCurrentMemTableSize(),
+        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
+        memTableNum += 2;
+        assertEquals(IoTDBConfigDynamicAdapter.getInstance().getCurrentMemTableSize(),
             TSFileConfig.groupSizeInByte);
-        System.out.println(String.format("add %d storage groups, the memTableSize is %dMB, the tsFileSize is %dMB", i,
-            TSFileConfig.groupSizeInByte / IoTDBConstant.MB,
-            IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold() / IoTDBConstant.MB));
+        assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
       } catch (ConfigAdjusterException e) {
-        fail();
+        assertEquals("The IoTDB system load is too large to create storage group.", e.getMessage());
+        System.out.println("it has created " + i + " storage groups.");
+        assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
+        break;
       }
     }
   }
 
   @Test
-  public void addOrDeleteTimeSeries() {
+  public void addOrDeleteTimeSeries() throws ConfigAdjusterException {
     System.out.println(
         "System total memory : " + Runtime.getRuntime().maxMemory() / IoTDBConstant.MB
             + "MB");
-    try {
-      IoTDBConfigDynamicAdjuster.getInstance().addOrDeleteStorageGroup(1);
-      for(int i = 1; i <= 100000 ; i++) {
-        if(i ==27780){
-          System.out.println(i);
-        }
-        System.out.println("MemTable size floor threshold is :"
-            + MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()
-            * PrimitiveArrayPool.ARRAY_SIZE * Long.BYTES * 2/ IoTDBConstant.MB + "MB");
-        IoTDBConfigDynamicAdjuster.getInstance().addOrDeleteTimeSeries(1);
-        MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(i);
-        assertEquals(IoTDBConfigDynamicAdjuster.getInstance().getCurrentMemTableSize(),
-            TSFileConfig.groupSizeInByte);
-        System.out.println(String
-            .format("add %d timeseries, the memTableSize is %dMB, the tsFileSize is %dMB", i,
-                TSFileConfig.groupSizeInByte / IoTDBConstant.MB,
-                IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold()
-                    / IoTDBConstant.MB));
-      }
-    } catch (ConfigAdjusterException e) {
-      fail();
+    int totalTimeseries = 0;
+    for (int i = 1; i < 100; i++) {
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
     }
-  }
+    MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(100);
+    for (int i = 1; i < 1000000; i++) {
+      try {
+        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
 
-  @Test
-  public void addOrDeleteTimeSeriesSyso() throws IOException {
-    int sgNum = 1;
-    String fileName = "/Users/litianan/Desktop/" + sgNum + "sg.csv";
-    FileWriter fw = new FileWriter(new File(fileName));
-    fw.write("timeseries,memtable size(MB), memtable threshold(MB), tsfile size(MB)\n");
-    System.out.println(
-        "System total memory : " + Runtime.getRuntime().maxMemory() / IoTDBConstant.MB
-            + "MB");
-    try {
-      for(int i = 1; i <= 100000 ; i++) {
-        if(i % 100 == 0){
-          IoTDBConfigDynamicAdjuster.getInstance().addOrDeleteStorageGroup(sgNum);
+        if (i % 10 == 0) {
+          MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(i);
         }
-        fw.write(String.format("%d,%d,%d,%d\n", i, TSFileConfig.groupSizeInByte / IoTDBConstant.MB, MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()
-            * PrimitiveArrayPool.ARRAY_SIZE * Long.BYTES * 2/ IoTDBConstant.MB, IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold()
-            / IoTDBConstant.MB));
-        System.out.println("MemTable size floor threshold is :"
-            + MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()
-            * PrimitiveArrayPool.ARRAY_SIZE * Long.BYTES * 2/ IoTDBConstant.MB + "MB");
-        IoTDBConfigDynamicAdjuster.getInstance().addOrDeleteTimeSeries(1);
-        MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(i);
-        assertEquals(IoTDBConfigDynamicAdjuster.getInstance().getCurrentMemTableSize(),
+        totalTimeseries += 1;
+        assertEquals(IoTDBConfigDynamicAdapter.getInstance().getCurrentMemTableSize(),
             TSFileConfig.groupSizeInByte);
-        System.out.println(String
-            .format("add %d timeseries, the memTableSize is %dMB, the tsFileSize is %dMB", i,
-                TSFileConfig.groupSizeInByte / IoTDBConstant.MB,
-                IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold()
-                    / IoTDBConstant.MB));
+        assertEquals(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
+            totalTimeseries);
+      } catch (ConfigAdjusterException e) {
+        assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
+        System.out.println("it has added " + i + " timeseries.");
+        assertEquals(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
+            totalTimeseries);
+        break;
       }
-    } catch (ConfigAdjusterException e) {
-//      fail();
     }
-    fw.flush();
-    fw.close();
   }
 }

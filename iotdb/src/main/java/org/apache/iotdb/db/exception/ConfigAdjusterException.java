@@ -16,23 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.exception;
 
-public class FlushRunTimeException extends RuntimeException {
+public class ConfigAdjusterException extends Exception {
 
-  public FlushRunTimeException() {
+  public ConfigAdjusterException() {
   }
 
-  public FlushRunTimeException(String message) {
+  public ConfigAdjusterException(String message) {
     super(message);
   }
 
-  public FlushRunTimeException(String message, Throwable cause) {
+  public ConfigAdjusterException(String message, Throwable cause) {
     super(message, cause);
   }
 
-  public FlushRunTimeException(Throwable cause) {
+  public ConfigAdjusterException(Throwable cause) {
     super(cause);
   }
 }
