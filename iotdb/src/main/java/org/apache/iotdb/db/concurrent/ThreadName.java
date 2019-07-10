@@ -38,7 +38,8 @@ public enum ThreadName {
   INDEX_SERVICE("Index-ServerServiceImpl"),
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync-Server"),
-  SYNC_MONITOR("Sync-Monitor");
+  SYNC_MONITOR("Sync-Monitor"),
+  TIME_COST_STATSTIC("TIME_COST_STATSTIC");
 
   private String name;
 

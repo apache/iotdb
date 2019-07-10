@@ -73,7 +73,8 @@ public class QueryProcessor {
     Operator operator = parseASTToOperator(astNode, zoneId);
     operator = logicalOptimize(operator, executor);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
-    return physicalGenerator.transformToPhysicalPlan(operator);
+    PhysicalPlan qp = physicalGenerator.transformToPhysicalPlan(operator);
+    return qp;
   }
 
   /**
