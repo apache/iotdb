@@ -39,7 +39,7 @@ import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
-import org.apache.iotdb.tsfile.common.constant.SystemConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -61,16 +61,16 @@ public class PhysicalPlanTest {
   public void before() throws ProcessorException {
     Path path1 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d1", "s1"},
-            SystemConstant.PATH_SEPARATOR));
+            TsFileConstant.PATH_SEPARATOR));
     Path path2 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d2", "s1"},
-            SystemConstant.PATH_SEPARATOR));
+            TsFileConstant.PATH_SEPARATOR));
     Path path3 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d3", "s1"},
-            SystemConstant.PATH_SEPARATOR));
+            TsFileConstant.PATH_SEPARATOR));
     Path path4 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d4", "s1"},
-            SystemConstant.PATH_SEPARATOR));
+            TsFileConstant.PATH_SEPARATOR));
     processor.getExecutor().insert(new InsertPlan(path1.getDevice(), 10, path1.getMeasurement(), "10"));
     processor.getExecutor().insert(new InsertPlan(path2.getDevice(), 10, path2.getMeasurement(), "10"));
     processor.getExecutor().insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));
