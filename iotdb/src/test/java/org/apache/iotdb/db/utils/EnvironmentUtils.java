@@ -139,6 +139,7 @@ public class EnvironmentUtils {
    * this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException, IOException {
+    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
     MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 

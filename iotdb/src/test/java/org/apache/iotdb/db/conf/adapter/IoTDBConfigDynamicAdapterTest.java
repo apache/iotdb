@@ -50,6 +50,7 @@ public class IoTDBConfigDynamicAdapterTest {
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(true);
   }
 
   @After

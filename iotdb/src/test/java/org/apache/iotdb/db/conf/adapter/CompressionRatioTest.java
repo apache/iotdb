@@ -57,6 +57,7 @@ public class CompressionRatioTest {
     FileUtils.forceMkdir(new File(directory));
     compressionRatio.reset();
     compressionRatio.restore();
+    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(true);
   }
 
   @After
