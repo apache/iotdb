@@ -27,7 +27,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Properties;
 import java.util.Set;
-import org.apache.iotdb.tsfile.common.constant.SystemConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.Loader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,9 +77,9 @@ public class TSFileDescriptor {
    */
   private void loadProps() {
     InputStream inputStream;
-    String url = System.getProperty(SystemConstant.TSFILE_CONF, null);
+    String url = System.getProperty(TsFileConstant.TSFILE_CONF, null);
     if (url == null) {
-      url = System.getProperty(SystemConstant.TSFILE_HOME, null);
+      url = System.getProperty(TsFileConstant.TSFILE_HOME, null);
       if (url != null) {
         url = url + File.separator + "conf" + File.separator + TSFileConfig.CONFIG_FILE_NAME;
       } else {
