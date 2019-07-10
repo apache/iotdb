@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 import java.util.Arrays;
 import java.util.Collection;
 import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.QueryProcessor;
@@ -70,7 +71,8 @@ public class TSPlanContextAuthorTest {
 
   @Test
   public void testAnalyzeAuthor()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException {
+      throws QueryProcessorException, ArgsErrorException, ProcessorException,
+      MetadataErrorException {
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     AuthorPlan author = (AuthorPlan) processor.parseSQLToPhysicalPlan(inputSQL);
     if (author == null) {

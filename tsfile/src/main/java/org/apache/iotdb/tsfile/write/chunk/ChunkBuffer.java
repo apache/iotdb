@@ -41,8 +41,8 @@ import org.slf4j.LoggerFactory;
 public class ChunkBuffer {
 
   private static final Logger LOG = LoggerFactory.getLogger(ChunkBuffer.class);
-  private final ICompressor compressor;
-  private final MeasurementSchema schema;
+  private ICompressor compressor;
+  private MeasurementSchema schema;
 
   private int numOfPages;
 
@@ -99,7 +99,7 @@ public class ChunkBuffer {
     }
     this.maxTimestamp = maxTimestamp;
     int uncompressedSize = data.remaining();
-    int compressedSize = 0;
+    int compressedSize;
     int compressedPosition = 0;
     byte[] compressedBytes = null;
 
@@ -117,7 +117,7 @@ public class ChunkBuffer {
       }
     }
 
-    int headerSize = 0;
+    int headerSize;
 
     // write the page header to IOWriter
     try {
@@ -209,6 +209,17 @@ public class ChunkBuffer {
   }
 
   /**
+   * reset exist data in page for next stage.
+   */
+  public void reInit(MeasurementSchema schema) {
+    reset();
+    this.schema = schema;
+    this.compressor = ICompressor.getCompressor(schema.getCompressor());
+    numOfPages = 0;
+    maxTimestamp = 0;
+  }
+
+  /**
    * estimate max page memory size.
    *
    * @return the max possible allocated size currently
@@ -231,4 +242,7 @@ public class ChunkBuffer {
     return pageBuffer.size();
   }
 
+  public void setSchema(MeasurementSchema schema) {
+    this.schema = schema;
+  }
 }

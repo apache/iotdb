@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
  */
 public class PropertyPlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = -1462399624512066104L;
   private final PropertyOperator.PropertyType propertyType;
   private Path propertyPath;
   private Path metadataPath;

@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class FillQueryPlan extends QueryPlan {
 
-  private static final long serialVersionUID = -2091710518816582444L;
   private long queryTime;
   private Map<TSDataType, IFill> fillType;
 

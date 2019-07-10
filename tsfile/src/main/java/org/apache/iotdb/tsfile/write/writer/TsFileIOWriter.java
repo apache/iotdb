@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write.writer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,6 +70,8 @@ public class TsFileIOWriter {
   private ChunkGroupMetaData currentChunkGroupMetaData;
   private ChunkMetaData currentChunkMetaData;
   protected boolean canWrite = true;
+
+  private long markedPosition;
 
   /**
    * empty construct function.
@@ -136,9 +139,24 @@ public class TsFileIOWriter {
    *
    * @param deviceId device id
    */
-  public void startFlushChunkGroup(String deviceId) throws IOException {
+  public void startChunkGroup(String deviceId) throws IOException {
     LOG.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     currentChunkGroupMetaData = new ChunkGroupMetaData(deviceId, new ArrayList<>(), out.getPosition());
+  }
+
+  /**
+   * end chunk and write some log.
+   */
+  public void endChunkGroup(long version) throws IOException {
+    long dataSize = out.getPosition() - currentChunkGroupMetaData.getStartOffsetOfChunkGroup();
+    ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(currentChunkGroupMetaData.getDeviceID(),
+        dataSize, currentChunkGroupMetaData.getChunkMetaDataList().size());
+    chunkGroupFooter.serializeTo(out.wrapAsStream());
+    currentChunkGroupMetaData.setEndOffsetOfChunkGroup(out.getPosition());
+    currentChunkGroupMetaData.setVersion(version);
+    chunkGroupMetaDataList.add(currentChunkGroupMetaData);
+    LOG.debug("end chunk group:{}", currentChunkGroupMetaData);
+    currentChunkGroupMetaData = null;
   }
 
   /**
@@ -197,20 +215,6 @@ public class TsFileIOWriter {
     currentChunkGroupMetaData.addTimeSeriesChunkMetaData(currentChunkMetaData);
     LOG.debug("end series chunk:{},totalvalue:{}", currentChunkMetaData, totalValueCount);
     currentChunkMetaData = null;
-  }
-
-  /**
-   * end chunk and write some log.
-   *
-   * @param chunkGroupFooter -use to serialize
-   */
-  public void endChunkGroup(ChunkGroupFooter chunkGroupFooter, long version) throws IOException {
-    chunkGroupFooter.serializeTo(out.wrapAsStream());
-    currentChunkGroupMetaData.setEndOffsetOfChunkGroup(out.getPosition());
-    currentChunkGroupMetaData.setVersion(version);
-    chunkGroupMetaDataList.add(currentChunkGroupMetaData);
-    LOG.debug("end chunk group:{}", currentChunkGroupMetaData);
-    currentChunkGroupMetaData = null;
   }
 
   /**
@@ -320,6 +324,8 @@ public class TsFileIOWriter {
     return out.getPosition();
   }
 
+
+
   /**
    * get chunkGroupMetaDataList.
    *
@@ -333,10 +339,19 @@ public class TsFileIOWriter {
     return canWrite;
   }
 
+  public void mark() throws IOException {
+    markedPosition = getPos();
+  }
+
+  public void reset() throws IOException {
+    out.truncate(markedPosition);
+  }
+
   /**
-   * close the inputstream or file channel in force. This is just used for Testing.
+   * close the outputStream or file channel without writing FileMetadata.
+   * This is just used for Testing.
    */
-  void forceClose() throws IOException {
+  public void close() throws IOException {
     canWrite = false;
     out.close();
   }

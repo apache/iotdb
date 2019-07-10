@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class PrimitiveMemTable extends AbstractMemTable {
@@ -35,7 +36,7 @@ public class PrimitiveMemTable extends AbstractMemTable {
 
   @Override
   protected IWritableMemChunk genMemSeries(TSDataType dataType) {
-    return new WritableMemChunk(dataType);
+    return new WritableMemChunk(dataType, TVListAllocator.getInstance().allocate(dataType));
   }
 
   @Override
@@ -44,4 +45,18 @@ public class PrimitiveMemTable extends AbstractMemTable {
 
     return new PrimitiveMemTable(newMap);
   }
+
+  @Override
+  public boolean isSignalMemTable() {
+    return false;
+  }
+
+  @Override
+  public int hashCode() {return (int) getVersion();}
+
+  @Override
+  public boolean equals(Object obj) {
+    return this == obj;
+  }
+
 }

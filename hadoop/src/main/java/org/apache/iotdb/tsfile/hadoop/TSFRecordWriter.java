@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 
 public class TSFRecordWriter extends RecordWriter<NullWritable, TSRow> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TSFRecordWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(TSFRecordWriter.class);
 
   private TsFile write = null;
 
@@ -70,7 +70,7 @@ public class TSFRecordWriter extends RecordWriter<NullWritable, TSRow> {
   @Override
   public void close(TaskAttemptContext context) throws IOException, InterruptedException {
 
-    LOGGER.info("Close the recordwriter, the task attempt id is {}", context.getTaskAttemptID());
+    logger.info("Close the recordwriter, the task attempt id is {}", context.getTaskAttemptID());
     write.close();
   }
 

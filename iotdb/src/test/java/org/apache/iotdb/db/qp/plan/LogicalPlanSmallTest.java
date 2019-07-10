@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.plan;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
@@ -53,7 +55,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
-  public void testSlimit1() throws QueryProcessorException, ArgsErrorException {
+  public void testSlimit1()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10";
     AstNode astTree;
     try {
@@ -66,11 +69,12 @@ public class LogicalPlanSmallTest {
     AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
     RootOperator operator = generator.getLogicalPlan(astNode);
     Assert.assertEquals(operator.getClass(), QueryOperator.class);
-    Assert.assertEquals(((QueryOperator) operator).getSeriesLimit(), 10);
+    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
   }
 
   @Test(expected = LogicalOperatorException.class)
-  public void testSlimit2() throws QueryProcessorException, ArgsErrorException {
+  public void testSlimit2()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1111111111111111111111";
     AstNode astTree;
     try {
@@ -86,7 +90,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test(expected = LogicalOperatorException.class)
-  public void testSlimit3() throws QueryProcessorException, ArgsErrorException {
+  public void testSlimit3()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 0";
     AstNode astTree;
     try {
@@ -102,7 +107,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
-  public void testSoffset() throws QueryProcessorException, ArgsErrorException {
+  public void testSoffset()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
     AstNode astTree;
     try {
@@ -115,12 +121,13 @@ public class LogicalPlanSmallTest {
     AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
     RootOperator operator = generator.getLogicalPlan(astNode);
     Assert.assertEquals(operator.getClass(), QueryOperator.class);
-    Assert.assertEquals(((QueryOperator) operator).getSeriesLimit(), 10);
-    Assert.assertEquals(((QueryOperator) operator).getSeriesOffset(), 1);
+    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesOffset());
   }
 
   @Test(expected = LogicalOptimizeException.class)
-  public void testSlimitLogicalOptimize() throws QueryProcessorException, ArgsErrorException {
+  public void testSlimitLogicalOptimize()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
     AstNode astTree;
     try {
@@ -146,10 +153,10 @@ public class LogicalPlanSmallTest {
     Path path4 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d4", "s1"},
             SystemConstant.PATH_SEPARATOR));
-    executor.insert(path1, 10, "10");
-    executor.insert(path2, 10, "10");
-    executor.insert(path3, 10, "10");
-    executor.insert(path4, 10, "10");
+    executor.insert(new InsertPlan(path1.getDevice(), 10, path1.getMeasurement(), "10"));
+    executor.insert(new InsertPlan(path2.getDevice(), 10, path2.getMeasurement(), "10"));
+    executor.insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));
+    executor.insert(new InsertPlan(path4.getDevice(), 10, path4.getMeasurement(), "10"));
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
     operator = (SFWOperator) concatPathOptimizer.transform(operator);
     // expected to throw LogicalOptimizeException: Wrong use of SLIMIT: SLIMIT is not allowed to be used with
@@ -157,7 +164,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test(expected = LogicalOperatorException.class)
-  public void testLimit1() throws QueryProcessorException, ArgsErrorException {
+  public void testLimit1()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 111111111111111111111111";
     AstNode astTree;
     try {
@@ -173,7 +181,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test(expected = LogicalOperatorException.class)
-  public void testLimit2() throws QueryProcessorException, ArgsErrorException {
+  public void testLimit2()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 0";
     AstNode astTree;
     try {

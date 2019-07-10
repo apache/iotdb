@@ -21,10 +21,13 @@ package org.apache.iotdb.db.qp.executor;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -51,7 +54,7 @@ public interface IQueryProcessExecutor {
    * @return QueryDataSet
    */
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, FileNodeManagerException, PathErrorException,
+      throws IOException, StorageEngineException, PathErrorException,
       QueryFilterOptimizationException, ProcessorException;
 
   /**
@@ -59,21 +62,21 @@ public interface IQueryProcessExecutor {
    */
   QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException, QueryFilterOptimizationException;
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process group by plan of qp layer, construct queryDataSet.
    */
   QueryDataSet groupBy(List<Path> paths, List<String> aggres, IExpression expression,
       long unit, long origin, List<Pair<Long, Long>> intervals, QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException, QueryFilterOptimizationException;
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException, QueryFilterOptimizationException;
 
   /**
    * process fill plan of qp layer, construct queryDataSet.
    */
   QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes,
       QueryContext context)
-      throws ProcessorException, IOException, PathErrorException, FileNodeManagerException;
+      throws ProcessorException, IOException, PathErrorException, StorageEngineException;
 
   /**
    * execute update command and return whether the operator is successful.
@@ -90,11 +93,10 @@ public interface IQueryProcessExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param paths : delete series paths
-   * @param deleteTime end time in delete command
+   * @param deletePlan physical delete plan
    * @return - whether the operator is successful.
    */
-  boolean delete(List<Path> paths, long deleteTime) throws ProcessorException;
+  boolean delete(DeletePlan deletePlan) throws ProcessorException;
 
   /**
    * execute delete command and return whether the operator is successful.
@@ -106,26 +108,11 @@ public interface IQueryProcessExecutor {
   boolean delete(Path path, long deleteTime) throws ProcessorException;
 
   /**
-   * insert a single value. Only used in test
-   *
-   * @param path seriesPath to be inserted
-   * @param insertTime - it's time point but not a range
-   * @param value value to be inserted
-   * @return - Operate Type.
-   */
-  int insert(Path path, long insertTime, String value) throws ProcessorException;
-
-  /**
    * execute insert command and return whether the operator is successful.
    *
-   * @param deviceId deviceId to be inserted
-   * @param insertTime - it's time point but not a range
-   * @param measurementList measurements to be inserted
-   * @param insertValues values to be inserted
    * @return - Operate Type.
    */
-  int multiInsert(String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) throws ProcessorException;
+  boolean insert(InsertPlan insertPlan) throws ProcessorException;
 
   boolean judgePathExists(Path fullPath);
 
@@ -137,7 +124,7 @@ public interface IQueryProcessExecutor {
   /**
    * Get all paths of a full path
    */
-  List<String> getAllPaths(String originPath) throws PathErrorException;
+  List<String> getAllPaths(String originPath) throws MetadataErrorException;
 
   int getFetchSize();
 

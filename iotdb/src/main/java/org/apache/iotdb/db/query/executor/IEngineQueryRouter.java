@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.executor;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -40,14 +40,14 @@ public interface IEngineQueryRouter {
    * Execute physical plan.
    */
   QueryDataSet query(QueryExpression queryExpression, QueryContext context)
-      throws FileNodeManagerException, PathErrorException;
+      throws StorageEngineException, PathErrorException;
 
   /**
    * Execute aggregation query.
    */
   QueryDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, QueryContext context)
-      throws QueryFilterOptimizationException, FileNodeManagerException, IOException, PathErrorException, ProcessorException;
+      throws QueryFilterOptimizationException, StorageEngineException, IOException, PathErrorException, ProcessorException;
 
   /**
    * Execute groupBy query.
@@ -63,7 +63,7 @@ public interface IEngineQueryRouter {
   QueryDataSet groupBy(List<Path> selectedSeries, List<String> aggres,
       IExpression expression, long unit, long origin, List<Pair<Long, Long>> intervals,
       QueryContext context)
-      throws ProcessorException, QueryFilterOptimizationException, FileNodeManagerException,
+      throws ProcessorException, QueryFilterOptimizationException, StorageEngineException,
       PathErrorException, IOException;
   /**
    * Execute fill query.
@@ -73,6 +73,6 @@ public interface IEngineQueryRouter {
    * @param fillType type IFill map
    */
   QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType,
-      QueryContext context) throws FileNodeManagerException, PathErrorException, IOException;
+      QueryContext context) throws StorageEngineException, PathErrorException, IOException;
 
 }

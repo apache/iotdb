@@ -23,62 +23,78 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.List;
 import java.util.zip.CRC32;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+/**
+ * LogWriter writes the binarized logs into a file using FileChannel together with check sums of
+ * each log calculated using CRC32.
+ */
 public class LogWriter implements ILogWriter {
 
   private File logFile;
   private FileOutputStream fileOutputStream;
-  private FileChannel outputStream;
+  private FileChannel channel;
   private CRC32 checkSummer = new CRC32();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
+  private ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
 
   public LogWriter(String logFilePath) {
     logFile = new File(logFilePath);
   }
 
+  public LogWriter(File logFile) {
+    this.logFile = logFile;
+  }
+
   @Override
-  public void write(List<byte[]> logCache) throws IOException {
-    if (outputStream == null) {
+  public void write(ByteBuffer logBuffer) throws IOException {
+    if (channel == null) {
       fileOutputStream = new FileOutputStream(logFile, true);
-      outputStream = fileOutputStream.getChannel();
+      channel = fileOutputStream.getChannel();
     }
-    int totalSize = 0;
-    for (byte[] bytes : logCache) {
-      totalSize += 4 + 8 + bytes.length;
-    }
-    ByteBuffer buffer = ByteBuffer.allocate(totalSize);
-    for (byte[] bytes : logCache) {
-      buffer.putInt(bytes.length);
-      checkSummer.reset();
-      checkSummer.update(bytes);
-      buffer.putLong(checkSummer.getValue());
-      buffer.put(bytes);
-    }
-    buffer.flip();
-    outputStream.write(buffer);
+    logBuffer.flip();
+    int logSize = logBuffer.limit();
+    // 4 bytes size and 8 bytes check sum
+
+    checkSummer.reset();
+    checkSummer.update(logBuffer);
+    long checkSum = checkSummer.getValue();
+
+    logBuffer.flip();
+
+    lengthBuffer.clear();
+    checkSumBuffer.clear();
+    lengthBuffer.putInt(logSize);
+    checkSumBuffer.putLong(checkSum);
+    lengthBuffer.flip();
+    checkSumBuffer.flip();
+
+    channel.write(lengthBuffer);
+    channel.write(logBuffer);
+    channel.write(checkSumBuffer);
+
     if (config.getForceWalPeriodInMs() == 0) {
-      outputStream.force(true);
+      channel.force(true);
     }
   }
 
   @Override
   public void force() throws IOException {
-    if (outputStream != null) {
-      outputStream.force(true);
+    if (channel != null) {
+      channel.force(true);
     }
   }
 
   @Override
   public void close() throws IOException {
-    if (outputStream != null) {
+    if (channel != null) {
       fileOutputStream.close();
       fileOutputStream = null;
-      outputStream.close();
-      outputStream = null;
+      channel.close();
+      channel = null;
     }
   }
 }

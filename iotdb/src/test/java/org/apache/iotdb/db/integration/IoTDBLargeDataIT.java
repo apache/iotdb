@@ -53,7 +53,6 @@ public class IoTDBLargeDataIT {
   public static void setUp() throws Exception {
 
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
 
     // use small page setting
     // origin value
@@ -156,7 +155,7 @@ public class IoTDBLargeDataIT {
 
       statement.execute("flush");
 
-      // bufferwrite data, memory data
+      // sequential data, memory data
       for (int time = 200000; time < 201000; time++) {
 
         String sql = String
@@ -206,9 +205,6 @@ public class IoTDBLargeDataIT {
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
         statement.execute(sql);
       }
-
-      // overflow delete
-      // statement.execute("DELETE FROM root.vehicle.d0.s1 WHERE time < 3200");
 
       statement.close();
     } catch (Exception e) {

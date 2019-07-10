@@ -42,7 +42,7 @@ public class MultipleClientSyncTest {
 
   Map<String, ArrayList<String>> timeseriesList = new HashMap();
   Map<String, ArrayList<String>> timeseriesList1 = new HashMap();
-  private static final Logger LOGGER = LoggerFactory.getLogger(MultipleClientSyncTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(MultipleClientSyncTest.class);
   private Set<String> dataSender = new HashSet<>();
   private Set<String> dataReceiver = new HashSet<>();
 
@@ -91,7 +91,7 @@ public class MultipleClientSyncTest {
 
     for (String storageGroup : timeseriesList.keySet()) {
       String sqlFormat = "select %s from %s";
-      LOGGER.debug(String.format("%s:", storageGroup));
+      logger.debug(String.format("%s:", storageGroup));
       int count = 0;
       int count1 = 0;
       int count2 = 0;
@@ -136,7 +136,7 @@ public class MultipleClientSyncTest {
             statement.close();
             statement1.close();
           } catch (Exception e) {
-            LOGGER.error("", e);
+            logger.error("", e);
           } finally {
             if (connection != null) {
               connection.close();
@@ -151,14 +151,14 @@ public class MultipleClientSyncTest {
         if (count > 20) {
           break;
         }
-        LOGGER.debug(String.valueOf(count1));
-        LOGGER.debug(String.valueOf(count2));
+        logger.debug(String.valueOf(count1));
+        logger.debug(String.valueOf(count2));
       }
     }
 
     for (String storageGroup : timeseriesList1.keySet()) {
       String sqlFormat = "select %s from %s";
-      LOGGER.debug(String.format("%s:", storageGroup));
+      logger.debug(String.format("%s:", storageGroup));
       int count = 0;
       int count1;
       int count2;
@@ -203,7 +203,7 @@ public class MultipleClientSyncTest {
             statement.close();
             statement1.close();
           } catch (Exception e) {
-            LOGGER.error("", e);
+            logger.error("", e);
           } finally {
             if (connection != null) {
               connection.close();
@@ -218,8 +218,8 @@ public class MultipleClientSyncTest {
         if (count > 20) {
           break;
         }
-        LOGGER.debug(String.valueOf(count1));
-        LOGGER.debug(String.valueOf(count2));
+        logger.debug(String.valueOf(count1));
+        logger.debug(String.valueOf(count2));
       }
     }
   }

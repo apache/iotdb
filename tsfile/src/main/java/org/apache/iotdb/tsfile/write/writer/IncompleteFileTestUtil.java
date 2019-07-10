@@ -56,6 +56,6 @@ public class IncompleteFileTestUtil {
         byte[] data = new byte[3];
         buffer.get(data, 0, 3);
         writer.getIOWriter().out.write(data);
-        writer.getIOWriter().forceClose();
+        writer.getIOWriter().close();
     }
 }

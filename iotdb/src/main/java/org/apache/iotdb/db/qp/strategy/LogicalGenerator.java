@@ -23,12 +23,13 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHANOREQUALTO;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.antlr.runtime.Token;
 import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
@@ -63,15 +64,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class receives an AstNode and transform it to an operator which is a logical plan.
  */
 public class LogicalGenerator {
 
-  private Logger log = LoggerFactory.getLogger(LogicalGenerator.class);
+  private static final String ERR_INCORRECT_AUTHOR_COMMAND = "illegal ast tree in grant author "
+      + "command, please check you SQL statement";
+
   private RootOperator initializedOperator = null;
   private ZoneId zoneId;
 
@@ -80,7 +81,7 @@ public class LogicalGenerator {
   }
 
   public RootOperator getLogicalPlan(AstNode astNode)
-      throws QueryProcessorException, ArgsErrorException {
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     analyze(astNode);
     return initializedOperator;
   }
@@ -91,7 +92,8 @@ public class LogicalGenerator {
    * @throws QueryProcessorException exception in query process
    * @throws ArgsErrorException args error
    */
-  private void analyze(AstNode astNode) throws QueryProcessorException, ArgsErrorException {
+  private void analyze(AstNode astNode)
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
     Token token = astNode.getToken();
     if (token == null) {
       throw new QueryProcessorException("given token is null");
@@ -256,68 +258,79 @@ public class LogicalGenerator {
   private void analyzeList(AstNode astNode) {
     int childrenSize = astNode.getChildren().size();
     if (childrenSize == 1) {
-      int tokenType = astNode.getChild(0).getType();
-      if (tokenType == TSParser.TOK_USER) {
-        // list all users
-        initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
-            AuthorOperator.AuthorType.LIST_USER);
-      } else if (tokenType == TSParser.TOK_ROLE) {
-        // list all roles
-        initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
-            AuthorOperator.AuthorType.LIST_ROLE);
-      }
+      // list users or roles
+      analyzeSimpleList(astNode);
     } else if (childrenSize == 3) {
-      int tokenType = astNode.getChild(1).getType();
-      if (tokenType == TSParser.TOK_USER) {
-        // list user privileges on seriesPath
-        AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-            AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-        initializedOperator = operator;
-        operator.setUserName(astNode.getChild(1).getChild(0).getText());
-        operator.setNodeNameList(parsePath(astNode.getChild(2)));
-      } else if (tokenType == TSParser.TOK_ROLE) {
-        // list role privileges on seriesPath
-        AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-            AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-        initializedOperator = operator;
-        operator.setRoleName(astNode.getChild(1).getChild(0).getText());
-        operator.setNodeNameList(parsePath(astNode.getChild(2)));
-      } else if (tokenType == TSParser.TOK_ALL) {
-        tokenType = astNode.getChild(0).getType();
-        if (tokenType == TSParser.TOK_PRIVILEGES) {
-          tokenType = astNode.getChild(2).getType();
-          if (tokenType == TSParser.TOK_USER) {
-            // list all privileges of a user
-            AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-                AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-            initializedOperator = operator;
-            operator.setUserName(astNode.getChild(2).getChild(0).getText());
-          } else if (tokenType == TSParser.TOK_ROLE) {
-            // list all privileges of a role
-            AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-                AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-            initializedOperator = operator;
-            operator.setRoleName(astNode.getChild(2).getChild(0).getText());
-          }
-        } else {
-          tokenType = astNode.getChild(2).getType();
-          if (tokenType == TSParser.TOK_USER) {
-            // list all roles of a user
-            AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-                AuthorOperator.AuthorType.LIST_USER_ROLES);
-            initializedOperator = operator;
-            operator.setUserName(astNode.getChild(2).getChild(0).getText());
-          } else if (tokenType == TSParser.TOK_ROLE) {
-            // list all users of a role
-            AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-                AuthorOperator.AuthorType.LIST_ROLE_USERS);
-            initializedOperator = operator;
-            operator.setRoleName(astNode.getChild(2).getChild(0).getText());
-          }
+      // list privileges of user/role, roles of a user, users of a role
+      analyzeComplexList(astNode);
+    }
+  }
+
+  private void analyzeSimpleList(AstNode astNode) {
+    int tokenType = astNode.getChild(0).getType();
+    if (tokenType == TSParser.TOK_USER) {
+      // list all users
+      initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
+          AuthorOperator.AuthorType.LIST_USER);
+    } else if (tokenType == TSParser.TOK_ROLE) {
+      // list all roles
+      initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
+          AuthorOperator.AuthorType.LIST_ROLE);
+    }
+  }
+
+  private void analyzeComplexList(AstNode astNode) {
+    int tokenType = astNode.getChild(1).getType();
+    if (tokenType == TSParser.TOK_USER) {
+      // list user privileges on seriesPath
+      AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
+          AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
+      initializedOperator = operator;
+      operator.setUserName(astNode.getChild(1).getChild(0).getText());
+      operator.setNodeNameList(parsePath(astNode.getChild(2)));
+    } else if (tokenType == TSParser.TOK_ROLE) {
+      // list role privileges on seriesPath
+      AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
+          AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
+      initializedOperator = operator;
+      operator.setRoleName(astNode.getChild(1).getChild(0).getText());
+      operator.setNodeNameList(parsePath(astNode.getChild(2)));
+    } else if (tokenType == TSParser.TOK_ALL) {
+      tokenType = astNode.getChild(0).getType();
+      if (tokenType == TSParser.TOK_PRIVILEGES) {
+        tokenType = astNode.getChild(2).getType();
+        if (tokenType == TSParser.TOK_USER) {
+          // list all privileges of a user
+          AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
+              AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
+          initializedOperator = operator;
+          operator.setUserName(astNode.getChild(2).getChild(0).getText());
+        } else if (tokenType == TSParser.TOK_ROLE) {
+          // list all privileges of a role
+          AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
+              AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
+          initializedOperator = operator;
+          operator.setRoleName(astNode.getChild(2).getChild(0).getText());
+        }
+      } else {
+        tokenType = astNode.getChild(2).getType();
+        if (tokenType == TSParser.TOK_USER) {
+          // list all roles of a user
+          AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
+              AuthorOperator.AuthorType.LIST_USER_ROLES);
+          initializedOperator = operator;
+          operator.setUserName(astNode.getChild(2).getChild(0).getText());
+        } else if (tokenType == TSParser.TOK_ROLE) {
+          // list all users of a role
+          AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
+              AuthorOperator.AuthorType.LIST_ROLE_USERS);
+          initializedOperator = operator;
+          operator.setRoleName(astNode.getChild(2).getChild(0).getText());
         }
       }
     }
   }
+
 
   private void analyzePropertyCreate(AstNode astNode) {
     PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_CREATE,
@@ -368,7 +381,7 @@ public class LogicalGenerator {
     initializedOperator = propertyOperator;
   }
 
-  private void analyzeMetadataCreate(AstNode astNode) throws MetadataArgsErrorException {
+  private void analyzeMetadataCreate(AstNode astNode) throws MetadataErrorException {
     Path series = parsePath(astNode.getChild(0).getChild(0));
     AstNode paramNode = astNode.getChild(1);
     String dataType = paramNode.getChild(0).getChild(0).getText();
@@ -510,7 +523,7 @@ public class LogicalGenerator {
       throw new LogicalOperatorException(
           "For delete command, where clause must be like : time < XXX or time <= XXX");
     }
-    long time = Long.valueOf(((BasicFunctionOperator) filterOperator).getValue());
+    long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
     if (filterOperator.getTokenIntType() == LESSTHAN) {
       time = time - 1;
     }
@@ -695,7 +708,7 @@ public class LogicalGenerator {
       throw new LogicalOperatorException("Only \"=\" can be used in fill function");
     }
 
-    Map<TSDataType, IFill> fillTypes = new HashMap<>();
+    Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
     int childNum = node.getChildCount();
     for (int i = 0; i < childNum; i++) {
       AstNode childNode = node.getChild(i);
@@ -785,7 +798,7 @@ public class LogicalGenerator {
   }
 
   private long parseTimeUnit(AstNode node) throws LogicalOperatorException {
-    long timeInterval = Long.valueOf(node.getChild(0).getText());
+    long timeInterval = Long.parseLong(node.getChild(0).getText());
     if (timeInterval <= 0) {
       throw new LogicalOperatorException("Interval must more than 0.");
     }
@@ -848,7 +861,7 @@ public class LogicalGenerator {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new LogicalOperatorException("input timestamp cannot be empty");
     }
-    if (timestampStr.toLowerCase().equals(SQLConstant.NOW_FUNC)) {
+    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
       return System.currentTimeMillis();
     }
     try {
@@ -931,7 +944,7 @@ public class LogicalGenerator {
       authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
     } else {
       throw new IllegalASTFormatException(
-          "illegal ast tree in grant author command, please check you SQL statement");
+          ERR_INCORRECT_AUTHOR_COMMAND);
     }
     initializedOperator = authorOperator;
   }
@@ -974,11 +987,11 @@ public class LogicalGenerator {
           break;
         default:
           throw new IllegalASTFormatException(
-              "illegal ast tree in grant author command, please check you SQL statement");
+              ERR_INCORRECT_AUTHOR_COMMAND);
       }
     } else {
       throw new IllegalASTFormatException(
-          "illegal ast tree in grant author command, please check you SQL statement");
+          ERR_INCORRECT_AUTHOR_COMMAND);
     }
     initializedOperator = authorOperator;
   }
@@ -1015,11 +1028,11 @@ public class LogicalGenerator {
         authorOperator.setNodeNameList(nodePath);
       } else {
         throw new IllegalASTFormatException(
-            "illegal ast tree in grant author command, please check you SQL statement");
+            ERR_INCORRECT_AUTHOR_COMMAND);
       }
     } else {
       throw new IllegalASTFormatException(
-          "illegal ast tree in grant author command, please check you SQL statement");
+          ERR_INCORRECT_AUTHOR_COMMAND);
     }
     initializedOperator = authorOperator;
   }
@@ -1056,17 +1069,17 @@ public class LogicalGenerator {
         authorOperator.setNodeNameList(nodePath);
       } else {
         throw new IllegalASTFormatException(
-            "illegal ast tree in grant author command, please check you SQL statement");
+            ERR_INCORRECT_AUTHOR_COMMAND);
       }
     } else {
       throw new IllegalASTFormatException(
-          "illegal ast tree in grant author command, please check you SQL statement");
+          ERR_INCORRECT_AUTHOR_COMMAND);
     }
     initializedOperator = authorOperator;
   }
 
   private void checkMetadataArgs(String dataType, String encoding, String compressor)
-      throws MetadataArgsErrorException {
+      throws MetadataErrorException {
 //    final String rle = "RLE";
 //    final String plain = "PLAIN";
 //    final String ts2Diff = "TS_2DIFF";
@@ -1075,30 +1088,36 @@ public class LogicalGenerator {
     TSDataType tsDataType;
     TSEncoding tsEncoding;
     if (dataType == null) {
-      throw new MetadataArgsErrorException("data type cannot be null");
+      throw new MetadataErrorException("data type cannot be null");
     }
 
     try {
       tsDataType = TSDataType.valueOf(dataType);
     } catch (Exception e) {
-      throw new MetadataArgsErrorException(String.format("data type %s not support", dataType));
+      throw new MetadataErrorException(String.format("data type %s not support", dataType));
     }
 
     if (encoding == null) {
-      throw new MetadataArgsErrorException("encoding type cannot be null");
+      throw new MetadataErrorException("encoding type cannot be null");
     }
 
     try {
       tsEncoding = TSEncoding.valueOf(encoding);
     } catch (Exception e) {
-      throw new MetadataArgsErrorException(String.format("encoding %s is not support", encoding));
+      throw new MetadataErrorException(String.format("encoding %s is not support", encoding));
     }
 
     try {
       CompressionType.valueOf(compressor);
     } catch (Exception e) {
-      throw new MetadataArgsErrorException(String.format("compressor %s is not support", compressor));
+      throw new MetadataErrorException(String.format("compressor %s is not support", compressor));
     }
+
+    checkDataTypeEncoding(tsDataType, tsEncoding);
+  }
+
+  private void checkDataTypeEncoding(TSDataType tsDataType, TSEncoding tsEncoding)
+      throws MetadataErrorException {
     boolean throwExp = false;
     switch (tsDataType) {
       case BOOLEAN:
@@ -1129,9 +1148,8 @@ public class LogicalGenerator {
         throwExp = true;
     }
     if (throwExp) {
-      throw new MetadataArgsErrorException(
-          String.format("encoding %s does not support %s", encoding, dataType));
+      throw new MetadataErrorException(
+          String.format("encoding %s does not support %s", tsEncoding, tsDataType));
     }
   }
-
 }

@@ -116,7 +116,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, long value) throws IOException {
+  public void write(long time, long value) {
     this.time = time;
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
@@ -128,7 +128,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, int value) throws IOException {
+  public void write(long time, int value) {
     this.time = time;
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
@@ -140,7 +140,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, boolean value) throws IOException {
+  public void write(long time, boolean value) {
     this.time = time;
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
@@ -152,7 +152,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, float value) throws IOException {
+  public void write(long time, float value) {
     this.time = time;
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
@@ -164,7 +164,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, double value) throws IOException {
+  public void write(long time, double value) {
     this.time = time;
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
@@ -176,7 +176,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, BigDecimal value) throws IOException {
+  public void write(long time, BigDecimal value) {
     this.time = time;
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
@@ -188,7 +188,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, Binary value) throws IOException {
+  public void write(long time, Binary value) {
     this.time = time;
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
@@ -288,5 +288,9 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public int getNumOfPages() {
     return chunkBuffer.getNumOfPages();
+  }
+
+  public ChunkBuffer getChunkBuffer() {
+    return chunkBuffer;
   }
 }

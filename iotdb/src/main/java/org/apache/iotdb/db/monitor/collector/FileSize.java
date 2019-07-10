@@ -30,8 +30,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
@@ -51,10 +51,10 @@ import org.slf4j.LoggerFactory;
 public class FileSize implements IStatistic {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileSize.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileSize.class);
   private static final long ABNORMAL_VALUE = -1L;
   private static final long INIT_VALUE_IF_FILE_NOT_EXIST = 0L;
-  private FileNodeManager fileNodeManager;
+  private StorageEngine storageEngine;
 
   @Override
   public Map<String, TSRecord> getAllStatisticsValue() {
@@ -77,11 +77,11 @@ public class FileSize implements IStatistic {
       hashMap.put(seriesPath, MonitorConstants.DATA_TYPE_INT64);
       Path path = new Path(seriesPath);
       try {
-        fileNodeManager.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
+        storageEngine.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
             TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
             Collections.emptyMap());
-      } catch (FileNodeManagerException e) {
-        LOGGER.error("Register File Size Stats into fileNodeManager Failed.", e);
+      } catch (StorageEngineException e) {
+        logger.error("Register File Size Stats into storageEngine Failed.", e);
       }
     }
     StatMonitor.getInstance().registerStatStorageGroup(hashMap);
@@ -114,7 +114,7 @@ public class FileSize implements IStatistic {
   }
 
   private FileSize() {
-    fileNodeManager = FileNodeManager.getInstance();
+    storageEngine = StorageEngine.getInstance();
     if (config.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();
@@ -135,32 +135,17 @@ public class FileSize implements IStatistic {
   public Map<FileSizeConstants, Long> getFileSizesInByte() {
     EnumMap<FileSizeConstants, Long> fileSizes = new EnumMap<>(FileSizeConstants.class);
     for (FileSizeConstants kinds : MonitorConstants.FileSizeConstants.values()) {
-      if (kinds.equals(MonitorConstants.FileSizeConstants.SETTLED)) {
-        //sum bufferWriteDirs size
-        long settledSize = INIT_VALUE_IF_FILE_NOT_EXIST;
-        for (String bufferWriteDir : config.getBufferWriteDirs()) {
-          File settledFile = new File(bufferWriteDir);
-          if (settledFile.exists()) {
-            try {
-              settledSize += FileUtils.sizeOfDirectory(settledFile);
-            } catch (Exception e) {
-              LOGGER.error("Meet error while trying to get {} size with dir {} .", kinds,
-                  bufferWriteDir, e);
-              fileSizes.put(kinds, ABNORMAL_VALUE);
-            }
-          }
-        }
-        fileSizes.put(kinds, settledSize);
+
+      if (kinds.equals(FileSizeConstants.SYS)) {
+        fileSizes.put(kinds, collectSeqFileSize(fileSizes, kinds));
       } else {
         File file = new File(kinds.getPath());
         if (file.exists()) {
           try {
             fileSizes.put(kinds, FileUtils.sizeOfDirectory(file));
           } catch (Exception e) {
-            LOGGER
-                .error("Meet error while trying to get {} size with dir {} .", kinds,
-                    kinds.getPath(),
-                    e);
+            logger.error("Meet error while trying to get {} size with dir {} .", kinds,
+                    kinds.getPath(), e);
             fileSizes.put(kinds, ABNORMAL_VALUE);
           }
         } else {
@@ -169,5 +154,25 @@ public class FileSize implements IStatistic {
       }
     }
     return fileSizes;
+  }
+
+  private long collectSeqFileSize(EnumMap<FileSizeConstants, Long> fileSizes, FileSizeConstants kinds) {
+    long fileSize = INIT_VALUE_IF_FILE_NOT_EXIST;
+    for (String sequenceDir : config.getDataDirs()) {
+      if (sequenceDir.contains("unsequence")) {
+        continue;
+      }
+      File settledFile = new File(sequenceDir);
+      if (settledFile.exists()) {
+        try {
+          fileSize += FileUtils.sizeOfDirectory(settledFile);
+        } catch (Exception e) {
+          logger.error("Meet error while trying to get {} size with dir {} .", kinds,
+              sequenceDir, e);
+          fileSizes.put(kinds, ABNORMAL_VALUE);
+        }
+      }
+    }
+    return fileSize;
   }
 }

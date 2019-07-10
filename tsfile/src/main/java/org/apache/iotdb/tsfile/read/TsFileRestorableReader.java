@@ -21,16 +21,14 @@ package org.apache.iotdb.tsfile.read;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.writer.NativeRestorableIOWriter;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TsFileRestorableReader extends TsFileSequenceReader {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileRestorableReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileRestorableReader.class);
 
   public TsFileRestorableReader(String file) throws IOException {
     this(file, true);
@@ -60,8 +58,8 @@ public class TsFileRestorableReader extends TsFileSequenceReader {
     // Check if file is damaged
     if (!isComplete()) {
       // Try to close it
-      LOGGER.info("File {} has no correct tail magic, try to repair...", file);
-      NativeRestorableIOWriter rWriter = new NativeRestorableIOWriter(new File(file), false);
+      logger.info("File {} has no correct tail magic, try to repair...", file);
+      RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(new File(file));
       TsFileWriter writer = new TsFileWriter(rWriter);
       // This writes the right magic string
       writer.close();

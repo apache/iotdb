@@ -28,14 +28,14 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // Notice : statistics in this class may not be accurate because of limited user authority.
 public class OpenFileNumUtil {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpenFileNumUtil.class);
+  private static final Logger logger = LoggerFactory.getLogger(OpenFileNumUtil.class);
   private static final int PID_ERROR_CODE = -1;
   private static final int UNSUPPORTED_OS_ERROR_CODE = -2;
   private static final int UNKNOWN_STATISTICS_ERROR_CODE = -3;
@@ -48,7 +48,7 @@ public class OpenFileNumUtil {
   private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static Directories directories = Directories.getInstance();
+  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
   private static final String[] COMMAND_TEMPLATE = {"/bin/bash", "-c", ""};
   private static boolean isOutputValid = false;
   private int pid;
@@ -125,10 +125,10 @@ public class OpenFileNumUtil {
         in1.close();
         pro1.destroy();
       } catch (IOException e) {
-        LOGGER.error("Cannot get PID of IoTDB process because ", e);
+        logger.error("Cannot get PID of IoTDB process because ", e);
       }
     } else {
-      LOGGER.warn("Unsupported OS {} for OpenFileNumUtil to get the PID of IoTDB.", os);
+      logger.warn("Unsupported OS {} for OpenFileNumUtil to get the PID of IoTDB.", os);
     }
     return iotdbPid;
   }
@@ -144,9 +144,9 @@ public class OpenFileNumUtil {
 
   /**
    * return statistic Map, whose key belongs to enum OpenFileNumStatistics: TOTAL_OPEN_FILE_NUM is
-   * the current total open file number of IoTDB service process; DATA_OPEN_FILE_NUM is the current
+   * the current total open file number of IoTDB service process; SEQUENCE_FILE_OPEN_NUM is the current
    * open file number under data directory; DELTA_OPEN_FILE_NUM is the current open file number of
-   * TsFile; OVERFLOW_OPEN_FILE_NUM is the current open file number of overflow file;
+   * TsFile; UNSEQUENCE_FILE_OPEN_NUM is the current open file number of unsequence file;
    * WAL_OPEN_FILE_NUM is the current open file number of WAL file; METADATA_OPEN_FILE_NUM is the
    * current open file number of metadata; DIGEST_OPEN_FILE_NUM is the current open file number of
    * fileNodeDir; SOCKET_OPEN_FILE_NUM is the current open socket connection of IoTDB service
@@ -170,28 +170,10 @@ public class OpenFileNumUtil {
       pro = r.exec(COMMAND_TEMPLATE);
       BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()));
       String line;
-      int oldValue;
+
       while ((line = in.readLine()) != null) {
         lineCount++;
-        String[] temp = line.split("\\s+");
-        if (line.contains(Integer.toString(pid)) && temp.length > 8) {
-          oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
-          resultMap.put(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM, oldValue + 1);
-          for (OpenFileNumStatistics openFileNumStatistics : OpenFileNumStatistics.values()) {
-            if (openFileNumStatistics.path != null) {
-              for (String path : openFileNumStatistics.path) {
-                if (temp[8].contains(path)) {
-                  oldValue = resultMap.get(openFileNumStatistics);
-                  resultMap.put(openFileNumStatistics, oldValue + 1);
-                }
-              }
-            }
-          }
-          if (temp[7].contains("TCP") || temp[7].contains("UDP")) {
-            oldValue = resultMap.get(OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM);
-            resultMap.put(OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM, oldValue + 1);
-          }
-        }
+        countOneFile(line, pid, resultMap);
       }
       if (lineCount < OpenFileNumStatistics.values().length) {
         isOutputValid = false;
@@ -204,9 +186,33 @@ public class OpenFileNumUtil {
       in.close();
       pro.destroy();
     } catch (Exception e) {
-      LOGGER.error("Cannot get open file number of IoTDB process because ", e);
+      logger.error("Cannot get open file number of IoTDB process because ", e);
     }
     return resultMap;
+  }
+
+  private static void countOneFile(String line, int pid, EnumMap<OpenFileNumStatistics, Integer> resultMap) {
+    String[] temp = line.split("\\s+");
+    if (!line.contains(Integer.toString(pid)) || temp.length <= 8) {
+      return;
+    }
+    int oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
+    resultMap.put(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM, oldValue + 1);
+    for (OpenFileNumStatistics openFileNumStatistics : OpenFileNumStatistics.values()) {
+      if (openFileNumStatistics.path == null) {
+        continue;
+      }
+      for (String path : openFileNumStatistics.path) {
+        if (temp[8].contains(path)) {
+          oldValue = resultMap.get(openFileNumStatistics);
+          resultMap.put(openFileNumStatistics, oldValue + 1);
+        }
+      }
+    }
+    if (temp[7].contains("TCP") || temp[7].contains("UDP")) {
+      oldValue = resultMap.get(OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM);
+      resultMap.put(OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM, oldValue + 1);
+    }
   }
 
   /**
@@ -255,16 +261,14 @@ public class OpenFileNumUtil {
 
   public enum OpenFileNumStatistics {
     TOTAL_OPEN_FILE_NUM(null),
-    DATA_OPEN_FILE_NUM(Collections.singletonList(config.getDataDir())),
-    DELTA_OPEN_FILE_NUM(directories.getAllTsFileFolders()),
-    OVERFLOW_OPEN_FILE_NUM(Collections.singletonList(config.getOverflowDataDir())),
+    SEQUENCE_FILE_OPEN_NUM(directoryManager.getAllSequenceFileFolders()),
+    UNSEQUENCE_FILE_OPEN_NUM(directoryManager.getAllUnSequenceFileFolders()),
     WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalFolder())),
-    METADATA_OPEN_FILE_NUM(Collections.singletonList(config.getMetadataDir())),
-    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getFileNodeDir())),
+    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getSystemDir())),
     SOCKET_OPEN_FILE_NUM(null);
 
     // path is a list of directory corresponding to the OpenFileNumStatistics enum element,
-    // e.g. data/data/ for DATA_OPEN_FILE_NUM
+    // e.g. data/data/ for SEQUENCE_FILE_OPEN_NUM
     private List<String> path;
 
     OpenFileNumStatistics(List<String> path) {

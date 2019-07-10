@@ -18,36 +18,28 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
-import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.RecoverException;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.sync.receiver.SyncServiceManager;
+import org.apache.iotdb.db.sync.receiver.SyncServerManager;
+import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.db.writelog.manager.WriteLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IoTDB implements IoTDBMBean {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDB.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
       IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
 
-  public static final IoTDB getInstance() {
+  public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
   }
 
@@ -62,33 +54,31 @@ public class IoTDB implements IoTDBMBean {
       checks.verify();
     } catch (StartupException e) {
       // TODO: what are some checks
-      LOGGER.error("{}: failed to start because some checks failed. ",
+      logger.error("{}: failed to start because some checks failed. ",
           IoTDBConstant.GLOBAL_DB_NAME, e);
       return;
     }
     try {
       setUp();
     } catch (StartupException e) {
-      LOGGER.error("meet error while starting up.", e);
+      logger.error("meet error while starting up.", e);
       deactivate();
-      LOGGER.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
+      logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
-    LOGGER.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
+    logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
   private void setUp() throws StartupException {
-    LOGGER.info("Setting up IoTDB...");
+    logger.info("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
 
-    FileNodeManager.getInstance().recovery();
-    try {
-      systemDataRecovery();
-    } catch (RecoverException e) {
-      throw new StartupException("Fail to recover data", e);
-    }
+    boolean enableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(enableWAL);
+
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored
     // Warn: registMonitor() method should be called after systemDataRecovery()
@@ -96,33 +86,32 @@ public class IoTDB implements IoTDBMBean {
       StatMonitor.getInstance().recovery();
     }
 
-    registerManager.register(FileNodeManager.getInstance());
+    registerManager.register(StorageEngine.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(JMXService.getInstance());
     registerManager.register(JDBCService.getInstance());
-    registerManager.register(Monitor.INSTANCE);
-    registerManager.register(CloseMergeService.getInstance());
+    registerManager.register(Monitor.getInstance());
     registerManager.register(StatMonitor.getInstance());
-    registerManager.register(BasicMemController.getInstance());
-    registerManager.register(SyncServiceManager.getInstance());
     registerManager.register(Measurement.INSTANCE);
+    registerManager.register(SyncServerManager.getInstance());
+    registerManager.register(TVListAllocator.getInstance());
 
     JMXService.registerMBean(getInstance(), mbeanName);
 
     initErrorInformation();
 
-    LOGGER.info("IoTDB is set up.");
+    logger.info("IoTDB is set up.");
   }
 
-  public void deactivate() {
-    LOGGER.info("Deactivating IoTDB...");
+  private void deactivate() {
+    logger.info("Deactivating IoTDB...");
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    LOGGER.info("IoTDB is deactivated.");
+    logger.info("IoTDB is deactivated.");
   }
 
   @Override
-  public void stop() throws FileNodeManagerException {
+  public void stop() {
     deactivate();
   }
 
@@ -132,38 +121,6 @@ public class IoTDB implements IoTDBMBean {
 
   private void initErrorInformation() {
     ExceptionBuilder.getInstance().loadInfo();
-  }
-
-  /**
-   * Recover data using system log.
-   *
-   * @throws RecoverException if FileNode(Manager)Exception is encountered during the recovery.
-   * @throws IOException if IOException is encountered during the recovery.
-   */
-  private void systemDataRecovery() throws RecoverException {
-    LOGGER.info("{}: start checking write log...", IoTDBConstant.GLOBAL_DB_NAME);
-
-    WriteLogNodeManager writeLogManager = MultiFileLogNodeManager.getInstance();
-    List<String> filenodeNames = null;
-    try {
-      filenodeNames = MManager.getInstance().getAllFileNames();
-    } catch (PathErrorException e) {
-      throw new RecoverException(e);
-    }
-    for (String filenodeName : filenodeNames) {
-      if (writeLogManager.hasWAL(filenodeName)) {
-        try {
-          FileNodeManager.getInstance().recoverFileNode(filenodeName);
-        } catch (FileNodeManagerException e) {
-          throw new RecoverException(e);
-        }
-      }
-    }
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    boolean enableWal = config.isEnableWal();
-    config.setEnableWal(false);
-    writeLogManager.recover();
-    config.setEnableWal(enableWal);
   }
 
   private static class IoTDBHolder {

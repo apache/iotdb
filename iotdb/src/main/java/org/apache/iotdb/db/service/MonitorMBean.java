@@ -28,10 +28,6 @@ public interface MonitorMBean {
 
   long getBufferWriteCacheSize();
 
-  long getMergePeriodInSecond();
-
-  long getClosePeriodInSecond();
-
   String getBaseDirectory();
 
   boolean getWriteAheadLogStatus();
@@ -42,11 +38,7 @@ public interface MonitorMBean {
 
   int getWalOpenFileNum();
 
-  int getDeltaOpenFileNum();
-
   int getDigestOpenFileNum();
-
-  int getOverflowOpenFileNum();
 
   int getMetadataOpenFileNum();
 

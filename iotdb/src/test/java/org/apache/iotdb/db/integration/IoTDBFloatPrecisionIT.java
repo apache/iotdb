@@ -60,7 +60,6 @@ public class IoTDBFloatPrecisionIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.closeMemControl();
     initCreateSQLStatement();
     daemon = IoTDB.getInstance();
     daemon.active();

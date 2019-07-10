@@ -23,8 +23,5 @@ public class MetadataConstant {
     //allowed to do nothing
   }
   public static final String ROOT = "root";
-  public static final String METADATA_OBJ = "mdata.obj";
   public static final String METADATA_LOG = "mlog.txt";
-  public static final String METADATA_TEMP = ".temp";
-
 }

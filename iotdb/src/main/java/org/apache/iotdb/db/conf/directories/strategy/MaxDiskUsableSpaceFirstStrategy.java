@@ -18,41 +18,34 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
 public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
 
   @Override
-  public int nextFolderIndex() {
+  public int nextFolderIndex() throws DiskSpaceInsufficientException {
     return getMaxSpaceFolder();
   }
 
   /**
    * get max space folder.
    */
-  public int getMaxSpaceFolder() {
-    List<Integer> candidates = new ArrayList<>();
-    long max;
+  public int getMaxSpaceFolder() throws DiskSpaceInsufficientException {
+    int maxIndex = -1;
+    long maxSpace = 0;
 
-    candidates.add(0);
-    max = new File(folders.get(0)).getUsableSpace();
-    for (int i = 1; i < folders.size(); i++) {
-      long current = new File(folders.get(i)).getUsableSpace();
-      if (max < current) {
-        candidates.clear();
-        candidates.add(i);
-        max = current;
-      } else if (max == current) {
-        candidates.add(i);
+    for (int i = 0; i < folders.size(); i++) {
+      long space = getUsableSpace(folders.get(i));
+      if (space > maxSpace) {
+        maxSpace = space;
+        maxIndex = i;
       }
     }
 
-    Random random = new Random(System.currentTimeMillis());
-    int index = random.nextInt(candidates.size());
+    if (maxIndex == -1) {
+      throw new DiskSpaceInsufficientException(folders);
+    }
 
-    return candidates.get(index);
+    return maxIndex;
   }
 }

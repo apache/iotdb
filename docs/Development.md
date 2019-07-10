@@ -83,6 +83,18 @@ Changes to IoTDB source codes are made through Github pull request. Anyone can r
 
 To propose a change to release documentation (that is, docs that appear under <https://iotdb.apache.org/#/Documents>), edit the Markdown source files in Iotdb’s docs/ directory(`documentation-EN` branch). The process to propose a doc change is otherwise the same as the process for proposing code changes below.  
 
+Whenever updating **User Guide** documents, remember to update "0-Content.md" in the same time. Here are two brief examples to show how to add new documents or how to modify existing documents:
+
+1. Suppose we have "chapter 1:Overview" already, and want to add a new document "A.md" in chapter 1.
+Then,
+   * Step 1: add document named "5-A.md" in folder "1-Overview", since it is the fifth section in this chapter;
+   * Step 2: modify "0-Content.md" file by adding "* 5-A.md" in the list of "# Chapter 1: Overview".
+
+2. Suppose we want to create a new chapter "chapter7: RoadMap", and want to add a new document "B.md" in chapter 7.
+Then,
+   * Step 1: create a new folder named "7-RoadMap", and add document named "1-B.md" in folder "7-RoadMap";
+   * Step 2: modify "0-Content.md" file by adding "# Chapter 7: RoadMap" in the end, and  adding "* 1-B.md" in the list of this new chapter.
+
 ### Contributing Bug Reports
 
 If you encounter a problem, try to search the mailing list and JIRA to check whether other people have faced the same situation. If it is not reported before, please report an issue.

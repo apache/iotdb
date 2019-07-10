@@ -21,10 +21,10 @@ package org.apache.iotdb.db.query.reader.mem;
 
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
-public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
+public class MemChunkReaderByTimestamp implements IReaderByTimeStamp {
 
   private Iterator<TimeValuePair> timeValuePairIterator;
   private boolean hasCachedTimeValuePair;

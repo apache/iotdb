@@ -30,9 +30,14 @@ import org.slf4j.LoggerFactory;
 
 public class Monitor implements MonitorMBean, IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Monitor.class);
+  private static final Logger logger = LoggerFactory.getLogger(Monitor.class);
 
   public static final Monitor INSTANCE = new Monitor();
+
+  public static Monitor getInstance() {
+    return INSTANCE;
+  }
+
   private final String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
@@ -41,9 +46,13 @@ public class Monitor implements MonitorMBean, IService {
   @Override
   public long getDataSizeInByte() {
     try {
-      return FileUtils.sizeOfDirectory(new File(config.getDataDir()));
+      long totalSize = 0;
+      for (String dataDir : config.getDataDirs()) {
+        totalSize += FileUtils.sizeOfDirectory(new File(dataDir));
+      }
+      return totalSize;
     } catch (Exception e) {
-      LOGGER.error("meet error while trying to get data size.", e);
+      logger.error("meet error while trying to get data size.", e);
       return -1;
     }
   }
@@ -69,10 +78,10 @@ public class Monitor implements MonitorMBean, IService {
   @Override
   public String getBaseDirectory() {
     try {
-      File file = new File(config.getDataDir());
+      File file = new File(config.getBaseDir());
       return file.getAbsolutePath();
     } catch (Exception e) {
-      LOGGER.error("meet error while trying to get base dir.", e);
+      logger.error("meet error while trying to get base dir.", e);
       return "Unavailable";
     }
   }
@@ -91,19 +100,7 @@ public class Monitor implements MonitorMBean, IService {
   @Override
   public int getDataOpenFileNum() {
     return OpenFileNumUtil.getInstance()
-        .get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
-  }
-
-  @Override
-  public int getDeltaOpenFileNum() {
-    return OpenFileNumUtil.getInstance()
-        .get(OpenFileNumUtil.OpenFileNumStatistics.DELTA_OPEN_FILE_NUM);
-  }
-
-  @Override
-  public int getOverflowOpenFileNum() {
-    return OpenFileNumUtil.getInstance()
-        .get(OpenFileNumUtil.OpenFileNumStatistics.OVERFLOW_OPEN_FILE_NUM);
+        .get(OpenFileNumUtil.OpenFileNumStatistics.SEQUENCE_FILE_OPEN_NUM);
   }
 
   @Override
@@ -114,8 +111,8 @@ public class Monitor implements MonitorMBean, IService {
 
   @Override
   public int getMetadataOpenFileNum() {
-    return OpenFileNumUtil.getInstance()
-        .get(OpenFileNumUtil.OpenFileNumStatistics.METADATA_OPEN_FILE_NUM);
+    // TODO
+    return 0;
   }
 
   @Override
@@ -128,16 +125,6 @@ public class Monitor implements MonitorMBean, IService {
   public int getSocketOpenFileNum() {
     return OpenFileNumUtil.getInstance()
         .get(OpenFileNumUtil.OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM);
-  }
-
-  @Override
-  public long getMergePeriodInSecond() {
-    return config.getPeriodTimeForMerge();
-  }
-
-  @Override
-  public long getClosePeriodInSecond() {
-    return config.getPeriodTimeForFlush();
   }
 
   @Override

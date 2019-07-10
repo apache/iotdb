@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public class LongRleDecoder extends RleDecoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LongRleDecoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(LongRleDecoder.class);
 
   /**
    * current value for rle repeated value.
@@ -73,7 +73,7 @@ public class LongRleDecoder extends RleDecoder {
       try {
         readNext();
       } catch (IOException e) {
-        LOGGER.error(
+        logger.error(
             "tsfile-encoding IntRleDecoder: error occurs when reading all encoding number, length "
                 + "is {}, bit width is {}",
             length, bitWidth, e);

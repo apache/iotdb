@@ -25,13 +25,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.ZoneId;
 import java.util.Properties;
-import org.apache.iotdb.db.engine.memcontrol.BasicMemController.ControllerType;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IoTDBDescriptor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   private IoTDBConfig conf = new IoTDBConfig();
 
   private IoTDBDescriptor() {
@@ -46,67 +46,75 @@ public class IoTDBDescriptor {
     return conf;
   }
 
-  /**
-   * load an property file and set TsfileDBConfig variables.
-   */
-  private void loadProps() {
-    InputStream inputStream;
-
+  private String getPropsUrl() {
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (url != null) {
         url = url + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
       } else {
-        LOGGER.warn(
+        logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
             IoTDBConfig.CONFIG_NAME);
         // update all data seriesPath
         conf.updatePath();
-        return;
+        return null;
       }
     } else {
       url += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
+    }
+    return url;
+  }
+
+  /**
+   * load an property file and set TsfileDBConfig variables.
+   */
+  private void loadProps() {
+    InputStream inputStream;
+
+    String url = getPropsUrl();
+    if (url == null) {
+      return;
     }
 
     try {
       inputStream = new FileInputStream(new File(url));
     } catch (FileNotFoundException e) {
-      LOGGER.warn("Fail to find config file {}", url, e);
+      logger.warn("Fail to find config file {}", url, e);
       // update all data seriesPath
       conf.updatePath();
       return;
     }
 
-    LOGGER.info("Start to read config file {}", url);
+    logger.info("Start to read config file {}", url);
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
       conf.setEnableStatMonitor(Boolean
           .parseBoolean(properties.getProperty("enable_stat_monitor",
-                  Boolean.toString(conf.isEnableStatMonitor()))));
+              Boolean.toString(conf.isEnableStatMonitor()))));
       conf.setBackLoopPeriodSec(Integer
           .parseInt(properties.getProperty("back_loop_period_in_second",
-                  Integer.toString(conf.getBackLoopPeriodSec()))));
+              Integer.toString(conf.getBackLoopPeriodSec()))));
       int statMonitorDetectFreqSec = Integer.parseInt(
           properties.getProperty("stat_monitor_detect_freq_in_second",
-                  Integer.toString(conf.getStatMonitorDetectFreqSec())));
+              Integer.toString(conf.getStatMonitorDetectFreqSec())));
       int statMonitorRetainIntervalSec = Integer.parseInt(
           properties.getProperty("stat_monitor_retain_interval_in_second",
-                  Integer.toString(conf.getStatMonitorRetainIntervalSec())));
+              Integer.toString(conf.getStatMonitorRetainIntervalSec())));
       // the conf value must > default value, or may cause system unstable
       if (conf.getStatMonitorDetectFreqSec() < statMonitorDetectFreqSec) {
         conf.setStatMonitorDetectFreqSec(statMonitorDetectFreqSec);
       } else {
-        LOGGER.info("The stat_monitor_detect_freq_sec value is smaller than default,"
+        logger.info("The stat_monitor_detect_freq_sec value is smaller than default,"
             + " use default value");
       }
 
       if (conf.getStatMonitorRetainIntervalSec() < statMonitorRetainIntervalSec) {
         conf.setStatMonitorRetainIntervalSec(statMonitorRetainIntervalSec);
       } else {
-        LOGGER.info("The stat_monitor_retain_interval_sec value is smaller than default,"
+        logger.info("The stat_monitor_retain_interval_sec value is smaller than default,"
             + " use default value");
       }
 
@@ -118,30 +126,35 @@ public class IoTDBDescriptor {
       conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
           Boolean.toString(conf.isEnableWal()))));
 
+      conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
+
+      conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "system");
+
+      conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
+          .split(","));
+
+      conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
+
+      conf.setMemtableNumber(Integer
+          .parseInt(properties.getProperty("memtable_number",
+              Integer.toString(conf.getMemtableNumber()))));
+
       conf.setFlushWalThreshold(Integer
           .parseInt(properties.getProperty("flush_wal_threshold",
-                  Integer.toString(conf.getFlushWalThreshold()))));
-      conf.setFlushWalPeriodInMs(Long
-          .parseLong(properties.getProperty("flush_wal_period_in_ms",
-                  Long.toString(conf.getFlushWalPeriodInMs()))));
+              Integer.toString(conf.getFlushWalThreshold()))));
+
       conf.setForceWalPeriodInMs(Long
           .parseLong(properties.getProperty("force_wal_period_in_ms",
-                  Long.toString(conf.getForceWalPeriodInMs()))));
+              Long.toString(conf.getForceWalPeriodInMs()))));
+      conf.setWalBufferSize(Integer.parseInt(properties.getProperty("wal_buffer_size",
+          Integer.toString(conf.getWalBufferSize()))));
 
-      conf.setDataDir(properties.getProperty("data_dir", conf.getDataDir()));
-      conf.setBufferWriteDirs(properties.getProperty("tsfile_dir", conf.DEFAULT_TSFILE_DIR)
-          .split(","));
-      conf.setSysDir(properties.getProperty("sys_dir", conf.getSysDir()));
-      conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
+      conf.setMultiDirStrategyClassName(properties.getProperty("mult_dir_strategy",
+          conf.getMultiDirStrategyClassName()));
 
-      conf.setMultDirStrategyClassName(properties.getProperty("mult_dir_strategy",
-          conf.getMultDirStrategyClassName()));
-
-      conf.setMaxOpenFolder(Integer.parseInt(properties.getProperty("max_opened_folder",
-              Integer.toString(conf.getMaxOpenFolder()))));
       conf.setMergeConcurrentThreads(Integer
           .parseInt(properties.getProperty("merge_concurrent_threads",
-                  Integer.toString(conf.getMergeConcurrentThreads()))));
+              Integer.toString(conf.getMergeConcurrentThreads()))));
       if (conf.getMergeConcurrentThreads() <= 0
           || conf.getMergeConcurrentThreads() > Runtime.getRuntime().availableProcessors()) {
         conf.setMergeConcurrentThreads(Runtime.getRuntime().availableProcessors());
@@ -150,106 +163,42 @@ public class IoTDBDescriptor {
       conf.setFetchSize(Integer.parseInt(properties.getProperty("fetch_size",
           Integer.toString(conf.getFetchSize()))));
 
-      conf.setPeriodTimeForFlush(Long.parseLong(
-          properties.getProperty("period_time_for_flush_in_second",
-                  Long.toString(conf.getPeriodTimeForFlush())).trim()));
-      conf.setPeriodTimeForMerge(Long.parseLong(
-          properties.getProperty("period_time_for_merge_in_second",
-              Long.toString(conf.getPeriodTimeForMerge())).trim()));
-      conf.setEnableTimingCloseAndMerge(Boolean.parseBoolean(properties
-          .getProperty("enable_timing_close_and_merge",
-                  Boolean.toString(conf.isEnableTimingCloseAndMerge())).trim()));
-
-      conf.setMemThresholdWarning((long) (Runtime.getRuntime().maxMemory() * Double.parseDouble(
-          properties.getProperty("mem_threshold_warning",
-                  Long.toString(conf.getMemThresholdWarning())).trim())));
-      conf.setMemThresholdDangerous((long) (Runtime.getRuntime().maxMemory() * Double.parseDouble(
-          properties.getProperty("mem_threshold_dangerous",
-                  Long.toString(conf.getMemThresholdDangerous())).trim())));
-
-      conf.setMemMonitorInterval(Long
-          .parseLong(properties.getProperty("mem_monitor_interval_in_ms",
-                  Long.toString(conf.getMemMonitorInterval())).trim()));
-
-      conf.setMemControllerType(Integer
-          .parseInt(properties.getProperty("mem_controller_type",
-                  Integer.toString(conf.getMemControllerType())).trim()));
-      conf.setMemControllerType(conf.getMemControllerType() >= ControllerType.values().length ? 0
-          : conf.getMemControllerType());
-
-      conf.setBufferwriteMetaSizeThreshold(Long.parseLong(properties
-          .getProperty("bufferwrite_meta_size_threshold",
-                  Long.toString(conf.getBufferwriteMetaSizeThreshold())).trim()));
-      conf.setBufferwriteFileSizeThreshold(Long.parseLong(properties
-          .getProperty("bufferwrite_file_size_threshold",
-                  Long.toString(conf.getBufferwriteFileSizeThreshold())).trim()));
-
-      conf.setOverflowMetaSizeThreshold(Long.parseLong(
-          properties.getProperty("overflow_meta_size_threshold",
-                  Long.toString(conf.getOverflowMetaSizeThreshold())).trim()));
-      conf.setOverflowFileSizeThreshold(Long.parseLong(
-          properties.getProperty("overflow_file_size_threshold",
-              Long.toString(conf.getOverflowFileSizeThreshold())).trim()));
+      conf.setTsFileSizeThreshold(Long.parseLong(properties
+          .getProperty("tsfile_size_threshold",
+              Long.toString(conf.getTsFileSizeThreshold())).trim()));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
-                  Boolean.toString(conf.isSyncEnable()))));
+              Boolean.toString(conf.isSyncEnable()))));
       conf.setSyncServerPort(Integer
           .parseInt(properties.getProperty("sync_server_port",
-                  Integer.toString(conf.getSyncServerPort())).trim()));
+              Integer.toString(conf.getSyncServerPort())).trim()));
       conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
           properties.getProperty("update_historical_data_possibility",
-                  Boolean.toString(conf.isSyncEnable()))));
-      conf.setIpWhiteList(properties.getProperty("IP_white_list", conf.getIpWhiteList()));
-
-      if (conf.getMemThresholdWarning() <= 0) {
-        conf.setMemThresholdWarning(IoTDBConstant.MEM_THRESHOLD_WARNING_DEFAULT);
-      }
-      if (conf.getMemThresholdDangerous() < conf.getMemThresholdWarning()) {
-        conf.setMemThresholdDangerous(Math.max(conf.getMemThresholdWarning(),
-            IoTDBConstant.MEM_THRESHOLD_DANGEROUS_DEFAULT));
-      }
+              Boolean.toString(conf.isSyncEnable()))));
+      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       conf.setConcurrentFlushThread(Integer
           .parseInt(properties.getProperty("concurrent_flush_thread",
-                  Integer.toString(conf.getConcurrentFlushThread()))));
+              Integer.toString(conf.getConcurrentFlushThread()))));
       if (conf.getConcurrentFlushThread() <= 0) {
         conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
       }
 
-      conf.setEnableMemMonitor(Boolean
-          .parseBoolean(properties.getProperty("enable_mem_monitor",
-                  Boolean.toString(conf.isEnableMemMonitor())).trim()));
-      conf.setEnableSmallFlush(Boolean
-          .parseBoolean(properties.getProperty("enable_small_flush",
-                  Boolean.toString(conf.isEnableSmallFlush())).trim()));
-      conf.setSmallFlushInterval(Long
-          .parseLong(properties.getProperty("small_flush_interval",
-                  Long.toString(conf.getSmallFlushInterval())).trim()));
-      conf.setExternalSortThreshold(Integer.parseInt(
-          properties.getProperty("external_sort_threshold",
-                  Integer.toString(conf.getExternalSortThreshold())).trim()));
       conf.setmManagerCacheSize(Integer
           .parseInt(properties.getProperty("schema_manager_cache_size",
-                  Integer.toString(conf.getmManagerCacheSize())).trim()));
-
-      int maxLogEntrySize = Integer
-          .parseInt(properties.getProperty("max_log_entry_size",
-                  Integer.toString(conf.getMaxLogEntrySize())).trim());
-      conf.setMaxLogEntrySize(maxLogEntrySize > 0 ? maxLogEntrySize :
-          conf.getMaxLogEntrySize());
+              Integer.toString(conf.getmManagerCacheSize())).trim()));
 
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());
 
-      String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
-      try {
-        conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
-        LOGGER.info("Time zone has been set to {}", conf.getZoneID());
-      } catch (Exception e) {
-        LOGGER.error("Time zone format error {}, use default configuration {}", tmpTimeZone,
-            conf.getZoneID(), e);
+      if (properties.containsKey("chunk_buffer_pool_enable")) {
+        conf.setChunkBufferPoolEnable(Boolean
+            .parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
       }
+      String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
+      conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
+      logger.info("Time zone has been set to {}", conf.getZoneID());
 
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
@@ -262,21 +211,22 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("performance_stat_memory_in_kb",
               Integer.toString(conf.getPerformance_stat_memory_in_kb())).trim()));
     } catch (IOException e) {
-      LOGGER.warn("Cannot load config file because, use default configuration", e);
+      logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {
-      LOGGER.warn("Incorrect format in config file, use default configuration", e);
+      logger.warn("Incorrect format in config file, use default configuration", e);
     } finally {
       // update all data seriesPath
       conf.updatePath();
       try {
         inputStream.close();
       } catch (IOException e) {
-        LOGGER.error("Fail to close config file input stream because ", e);
+        logger.error("Fail to close config file input stream because ", e);
       }
     }
   }
 
   private static class IoTDBDescriptorHolder {
+
     private static final IoTDBDescriptor INSTANCE = new IoTDBDescriptor();
   }
 }

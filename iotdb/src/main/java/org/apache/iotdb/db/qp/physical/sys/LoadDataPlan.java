@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class LoadDataPlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = -6631296704227106470L;
   private final String inputFilePath;
   private final String measureType;
 

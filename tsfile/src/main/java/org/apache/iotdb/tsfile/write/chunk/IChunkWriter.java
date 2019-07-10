@@ -33,37 +33,37 @@ public interface IChunkWriter {
   /**
    * write a time value pair.
    */
-  void write(long time, int value) throws IOException;
+  void write(long time, int value);
 
   /**
    * write a time value pair.
    */
-  void write(long time, long value) throws IOException;
+  void write(long time, long value);
 
   /**
    * write a time value pair.
    */
-  void write(long time, boolean value) throws IOException;
+  void write(long time, boolean value);
 
   /**
    * write a time value pair.
    */
-  void write(long time, float value) throws IOException;
+  void write(long time, float value);
 
   /**
    * write a time value pair.
    */
-  void write(long time, double value) throws IOException;
+  void write(long time, double value);
 
   /**
    * write a time value pair.
    */
-  void write(long time, BigDecimal value) throws IOException;
+  void write(long time, BigDecimal value);
 
   /**
    * write a time value pair.
    */
-  void write(long time, Binary value) throws IOException;
+  void write(long time, Binary value);
 
   /**
    * flush data to TsFileIOWriter.

@@ -21,16 +21,9 @@ package org.apache.iotdb.db.metadata;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -85,7 +78,7 @@ public class MetadataTest {
 
       Metadata combineMetadata = Metadata.combineMetadatas(new Metadata[]{metadata1, metadata2});
       assertTrue(metadata.equals(combineMetadata));
-    } catch (PathErrorException | IOException e) {
+    } catch (PathErrorException | IOException | MetadataErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

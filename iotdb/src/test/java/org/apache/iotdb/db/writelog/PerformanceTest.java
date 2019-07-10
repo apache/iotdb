@@ -20,13 +20,10 @@ package org.apache.iotdb.db.writelog;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.MetadataArgsErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -34,13 +31,9 @@ import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.db.qp.physical.transfer.PhysicalPlanLogTransfer;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,7 +41,6 @@ import org.junit.Test;
 public class PerformanceTest {
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private TSFileConfig fileConfig = TSFileDescriptor.getInstance().getConfig();
 
   private boolean enableWal;
   private boolean skip = true;
@@ -68,7 +60,7 @@ public class PerformanceTest {
 
   @Test
   public void writeLogTest() throws IOException {
-    // this test write 1000000 * 3 logs and report elapsed time
+    // this test insert 1000000 * 3 logs and report elapsed time
     if (skip) {
       return;
     }
@@ -86,13 +78,11 @@ public class PerformanceTest {
         tempRestore.createNewFile();
         tempProcessorStore.createNewFile();
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
-            tempRestore.getPath(),
-            tempProcessorStore.getPath());
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
 
         long time = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
-          InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
+          InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
               new String[]{"s1", "s2", "s3", "s4"},
               new String[]{"1.0", "15", "str", "false"});
           UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
@@ -122,9 +112,8 @@ public class PerformanceTest {
 
   @Test
   public void recoverTest()
-      throws IOException, RecoverException, FileNodeManagerException, PathErrorException,
-      MetadataArgsErrorException {
-    // this test write 1000000 * 3 logs , recover from them and report elapsed time
+      throws IOException, PathErrorException{
+    // this test insert 1000000 * 3 logs , recover from them and report elapsed time
     if (skip) {
       return;
     }
@@ -136,7 +125,7 @@ public class PerformanceTest {
 
     try {
       MManager.getInstance().setStorageLevelToMTree("root.logTestDevice");
-    } catch (PathErrorException ignored) {
+    } catch (MetadataErrorException ignored) {
     }
     MManager.getInstance().addPathToMTree("root.logTestDevice.s1",
         TSDataType.DOUBLE.name(),
@@ -149,12 +138,10 @@ public class PerformanceTest {
             TSEncoding.PLAIN.name());
     MManager.getInstance().addPathToMTree("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
         TSEncoding.PLAIN.name());
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice",
-        tempRestore.getPath(),
-        tempProcessorStore.getPath());
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     for (int i = 0; i < 1000000; i++) {
-      InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
+      InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice", 100,
       new String[]{"s1", "s2", "s3", "s4"}, new String[]{"1.0", "15", "str", "false"});
       UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
           new Path("root.logTestDevice.s1"));
@@ -167,7 +154,6 @@ public class PerformanceTest {
     try {
       logNode.forceSync();
       long time = System.currentTimeMillis();
-      logNode.recover();
       System.out.println(
           3000000 + " logs use " + (System.currentTimeMillis() - time) + "ms when recovering ");
     } finally {
@@ -176,61 +162,5 @@ public class PerformanceTest {
       tempProcessorStore.delete();
       tempRestore.getParentFile().delete();
     }
-  }
-
-  @Test
-  public void encodeDecodeTest() throws IOException {
-    if (skip) {
-      return;
-    }
-    long time = System.currentTimeMillis();
-    byte[] bytes3 = null;
-    byte[] bytes2 = null;
-    byte[] bytes1 = null;
-
-    InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-        new String[]{"s1", "s2", "s3", "s4"},
-    new String[]{"1.0", "15", "str", "false"});
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
-        new Path("root.logTestDevice.s1"));
-    for (int i = 0; i < 20; i++) {
-      updatePlan.addInterval(new Pair<Long, Long>(200l, 300l));
-    }
-
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
-    for (int i = 0; i < 1000000; i++) {
-      bytes1 = PhysicalPlanLogTransfer.operatorToLog(bwInsertPlan);
-      bytes2 = PhysicalPlanLogTransfer.operatorToLog(updatePlan);
-      bytes3 = PhysicalPlanLogTransfer.operatorToLog(deletePlan);
-    }
-    System.out.println("3000000 logs encoding use " + (System.currentTimeMillis() - time) + "ms");
-
-    time = System.currentTimeMillis();
-    for (int i = 0; i < 1000000; i++) {
-      bwInsertPlan = (InsertPlan) PhysicalPlanLogTransfer.logToOperator(bytes1);
-      updatePlan = (UpdatePlan) PhysicalPlanLogTransfer.logToOperator(bytes2);
-      deletePlan = (DeletePlan) PhysicalPlanLogTransfer.logToOperator(bytes3);
-    }
-    System.out.println("3000000 logs decoding use " + (System.currentTimeMillis() - time) + "ms");
-  }
-
-  @Test
-  public void SQLEncodingComparisonTest() throws IOException {
-    String sql = "INSERT INTO root.logTestDevice(time,s1,s2,s3,s4) "
-        + "VALUES (100,1.0,15,\"str\",false)";
-    InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
-        new String[]{"s1", "s2", "s3", "s4"},
-        new String[]{"1.0", "15", "str", "false"});
-    long time = System.currentTimeMillis();
-    for (int i = 0; i < 1000000; i++) {
-      byte[] bytes = PhysicalPlanLogTransfer.operatorToLog(bwInsertPlan);
-    }
-    System.out.println("1000000 logs encoding use " + (System.currentTimeMillis() - time) + "ms");
-
-    time = System.currentTimeMillis();
-    for (int i = 0; i < 1000000; i++) {
-      byte[] bytes = sql.getBytes();
-    }
-    System.out.println("1000000 sqls encoding use " + (System.currentTimeMillis() - time) + "ms");
   }
 }

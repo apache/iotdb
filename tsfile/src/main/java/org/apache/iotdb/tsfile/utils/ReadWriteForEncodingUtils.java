@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -128,9 +129,8 @@ public class ReadWriteForEncodingUtils {
    *
    * @param value value to write into stream
    * @param out output stream
-   * @throws IOException exception in IO
    */
-  public static void writeUnsignedVarInt(int value, OutputStream out) throws IOException {
+  public static void writeUnsignedVarInt(int value, ByteArrayOutputStream out) {
     while ((value & 0xFFFFFF80) != 0L) {
       out.write((value & 0x7F) | 0x80);
       value >>>= 7;

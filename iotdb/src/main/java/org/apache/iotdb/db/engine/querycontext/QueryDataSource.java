@@ -16,27 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.querycontext;
 
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.util.List;
+
 public class QueryDataSource {
+  private Path seriesPath;
+  private List<TsFileResource> seqResources;
+  private List<TsFileResource> unseqResources;
 
-  // sequence data source
-  private GlobalSortedSeriesDataSource seriesDataSource;
-
-  // unSequence data source
-  private OverflowSeriesDataSource overflowSeriesDataSource;
-
-  public QueryDataSource(GlobalSortedSeriesDataSource seriesDataSource,
-      OverflowSeriesDataSource overflowSeriesDataSource) {
-    this.seriesDataSource = seriesDataSource;
-    this.overflowSeriesDataSource = overflowSeriesDataSource;
+  public QueryDataSource(Path seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
+    this.seriesPath = seriesPath;
+    this.seqResources = seqResources;
+    this.unseqResources = unseqResources;
   }
 
-  public GlobalSortedSeriesDataSource getSeqDataSource() {
-    return seriesDataSource;
+  public Path getSeriesPath() {
+    return seriesPath;
   }
 
-  public OverflowSeriesDataSource getOverflowSeriesDataSource() {
-    return overflowSeriesDataSource;
+  public List<TsFileResource> getSeqResources() {
+    return seqResources;
+  }
+
+  public List<TsFileResource> getUnseqResources() {
+    return unseqResources;
   }
 }

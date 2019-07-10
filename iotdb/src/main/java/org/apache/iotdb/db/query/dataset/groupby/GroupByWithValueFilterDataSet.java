@@ -23,14 +23,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
-import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
+import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
+import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<EngineReaderByTimeStamp> allDataReaderList;
+  private List<IReaderByTimeStamp> allDataReaderList;
   private TimeGenerator timestampGenerator;
   /**
    * cached timestamp for next group by partition.
@@ -70,22 +70,22 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * init reader and aggregate function.
    */
   public void initGroupBy(QueryContext context, List<String> aggres, IExpression expression)
-      throws FileNodeManagerException, PathErrorException, ProcessorException, IOException {
+      throws StorageEngineException, PathErrorException, ProcessorException, IOException {
     initAggreFuction(aggres);
 
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
     QueryResourceManager
         .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
     this.timestampGenerator = new EngineTimeGenerator(expression, context);
-    this.allDataReaderList = SeriesReaderFactory
-        .getByTimestampReadersOfSelectedPaths(selectedSeries, context);
+    this.allDataReaderList = SeriesReaderFactoryImpl.getInstance()
+        .createSeriesReadersByTimestamp(selectedSeries, context);
   }
 
   @Override
   public RowRecord next() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next()"
-          + " in GroupByWithOnlyTimeFilterDataSet.");
+          + " in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
     for (AggregateFunction function : functions) {
@@ -135,8 +135,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * construct an array of timestamps for one batch of a group by partition calculating.
    *
    * @param timestampArray timestamp array
-   * @param timeArrayLength the current length of timestamp array
-   * @return time array length
+   * @param timeArrayLength the current size of timestamp array
+   * @return time array size
    */
   private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
       throws IOException {

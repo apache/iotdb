@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SyncFileManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncFileManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(SyncFileManager.class);
 
   /**
    * Files that need to be synchronized
@@ -80,7 +80,7 @@ public class SyncFileManager {
     lastLocalFiles.clear();
     currentLocalFiles.clear();
     getLastLocalFileList(syncConfig.getLastFileInfo());
-    getCurrentLocalFileList(systemConfig.getBufferWriteDirs());
+    getCurrentLocalFileList(systemConfig.getDataDirs());
     getValidFileList();
   }
 
@@ -95,10 +95,9 @@ public class SyncFileManager {
         }
       }
     }
-    LOGGER.info("Acquire list of valid files.");
+    logger.info("Acquire list of valid files.");
     for (Entry<String, Set<String>> entry : validAllFiles.entrySet()) {
       for (String path : entry.getValue()) {
-        LOGGER.info(path);
         currentLocalFiles.get(entry.getKey()).remove(path);
       }
     }
@@ -125,7 +124,7 @@ public class SyncFileManager {
           fileList.add(fileName);
         }
       } catch (IOException e) {
-        LOGGER.error("Cannot get last local file list when reading file {}.",
+        logger.error("Cannot get last local file list when reading file {}.",
             syncConfig.getLastFileInfo());
         throw new IOException(e);
       }
@@ -145,21 +144,26 @@ public class SyncFileManager {
       }
       File[] listFiles = new File(path).listFiles();
       for (File storageGroup : listFiles) {
-        if (storageGroup.isDirectory() && !storageGroup.getName().equals(Constans.SYNC_CLIENT)) {
-          if (!currentLocalFiles.containsKey(storageGroup.getName())) {
-            currentLocalFiles.put(storageGroup.getName(), new HashSet<>());
-          }
-          if (!validAllFiles.containsKey(storageGroup.getName())) {
-            validAllFiles.put(storageGroup.getName(), new HashSet<>());
-          }
-          File[] files = storageGroup.listFiles();
-          for (File file : files) {
-            if (!file.getPath().endsWith(RESTORE_SUFFIX) && !new File(
-                file.getPath() + RESTORE_SUFFIX).exists()) {
-              currentLocalFiles.get(storageGroup.getName()).add(file.getPath());
-            }
-          }
+        if (!storageGroup.isDirectory() || storageGroup.getName().equals(Constans.SYNC_CLIENT)) {
+          continue;
         }
+        getStorageGroupFiles(storageGroup);
+      }
+    }
+  }
+
+  private void getStorageGroupFiles(File storageGroup) {
+    if (!currentLocalFiles.containsKey(storageGroup.getName())) {
+      currentLocalFiles.put(storageGroup.getName(), new HashSet<>());
+    }
+    if (!validAllFiles.containsKey(storageGroup.getName())) {
+      validAllFiles.put(storageGroup.getName(), new HashSet<>());
+    }
+    File[] files = storageGroup.listFiles();
+    for (File file : files) {
+      if (!file.getPath().endsWith(RESTORE_SUFFIX) && !new File(
+          file.getPath() + RESTORE_SUFFIX).exists()) {
+        currentLocalFiles.get(storageGroup.getName()).add(file.getPath());
       }
     }
   }
@@ -177,7 +181,7 @@ public class SyncFileManager {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("Cannot back up current local file info", e);
+      logger.error("Cannot back up current local file info", e);
     }
   }
 

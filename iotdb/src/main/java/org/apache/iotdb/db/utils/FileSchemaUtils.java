@@ -35,23 +35,19 @@ public class FileSchemaUtils {
    * @return the schema of the FileNode named processorName.
    * @throws WriteProcessException when the fileSchema cannot be created.
    */
-  public static FileSchema constructFileSchema(String processorName) throws WriteProcessException {
+  public static FileSchema constructFileSchema(String processorName) {
     List<MeasurementSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForFileName(processorName);
-    return getFileSchemaFromColumnSchema(columnSchemaList, processorName);
+    columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(processorName);
+    return getFileSchemaFromColumnSchema(columnSchemaList);
   }
 
   /**
    * getFileSchemaFromColumnSchema construct a FileSchema using the schema of the columns and the
    * device type.
    * @param schemaList the schema of the columns in this file.
-   * @param deviceType the name of the FileNode.
    * @return a FileSchema contains the provided schemas.
-   * @throws WriteProcessException when the FileSchema cannot be constructed.
    */
-  public static FileSchema getFileSchemaFromColumnSchema(List<MeasurementSchema> schemaList,
-      String deviceType)
-      throws WriteProcessException {
+  public static FileSchema getFileSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
     FileSchema schema = new FileSchema();
     for (MeasurementSchema measurementSchema : schemaList) {
       schema.registerMeasurement(measurementSchema);

@@ -25,7 +25,12 @@ import org.apache.iotdb.tsfile.read.common.Path;
 /**
  * this class contains several constants used in SQL.
  */
+@SuppressWarnings("unused") // some fields are for future features
 public class SQLConstant {
+
+  private SQLConstant() {
+    // forbidding instantiation
+  }
 
   public static final String RESERVED_TIME = "time";
   public static final String RESERVED_FREQ = "freq";
@@ -33,7 +38,7 @@ public class SQLConstant {
   public static final String NOW_FUNC = "now";
   public static final String START_TIME_STR = "1970-1-01T00:00:00";
 
-  public static final String lineFeedSignal = "\n";
+  public static final String LINE_FEED_SIGNAL = "\n";
   public static final String ROOT = "root";
   public static final String METADATA_PARAM_EQUAL = "=";
   public static final String QUOTE = "'";
@@ -85,9 +90,9 @@ public class SQLConstant {
   public static final int TOK_PROPERTY_UNLINK = 58;
   public static final int TOK_LIST = 59;
 
-  public static Map<Integer, String> tokenSymbol = new HashMap<>();
-  public static Map<Integer, String> tokenNames = new HashMap<>();
-  public static Map<Integer, Integer> reverseWords = new HashMap<>();
+  public static final Map<Integer, String> tokenSymbol = new HashMap<>();
+  public static final Map<Integer, String> tokenNames = new HashMap<>();
+  public static final Map<Integer, Integer> reverseWords = new HashMap<>();
 
   static {
     tokenSymbol.put(KW_AND, "&");

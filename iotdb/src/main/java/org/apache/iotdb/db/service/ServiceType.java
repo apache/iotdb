@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.service;
 
 public enum ServiceType {
-  FILE_NODE_SERVICE("File Node ServerService", ""),
+  STORAGE_ENGINE_SERVICE("Storage Engine ServerService", ""),
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
   JDBC_SERVICE("JDBC ServerService", "JDBCService"),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
@@ -31,7 +31,8 @@ public enum ServiceType {
   AUTHORIZATION_SERVICE("Authorization ServerService", ""),
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
   SYNC_SERVICE("SYNC ServerService", ""),
-  PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE");
+  PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE"),
+  TVLIST_ALLOCATOR_SERVICE("TVList Allocator", "");
 
   private String name;
   private String jmxName;

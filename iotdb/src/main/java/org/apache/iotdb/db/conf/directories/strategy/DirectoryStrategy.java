@@ -18,19 +18,19 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
+import java.io.File;
 import java.util.List;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * The basic class of all the strategies of multiple directories. If a user wants to define his own
  * strategy, his strategy has to extend this class and implement the abstract method.
- *
- * @author East
  */
 public abstract class DirectoryStrategy {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(DirectoryStrategy.class);
+  protected static final Logger logger = LoggerFactory.getLogger(DirectoryStrategy.class);
 
   /**
    * All the folders of data files, should be init once the subclass is created.
@@ -42,7 +42,7 @@ public abstract class DirectoryStrategy {
    *
    * @param folders the folders from conf
    */
-  public void init(List<String> folders) {
+  public void init(List<String> folders) throws DiskSpaceInsufficientException {
     this.folders = folders;
   }
 
@@ -51,7 +51,7 @@ public abstract class DirectoryStrategy {
    *
    * @return the index of folder that will be allocated
    */
-  public abstract int nextFolderIndex();
+  public abstract int nextFolderIndex() throws DiskSpaceInsufficientException;
 
   /**
    * Return the actual string value of a folder by its index.
@@ -71,5 +71,19 @@ public abstract class DirectoryStrategy {
   // only used by test
   public void setFolderForTest(String path) {
     folders.set(0, path);
+  }
+
+  protected long getUsableSpace(String dir) {
+    File file = new File(dir);
+    if (!file.exists() && !file.mkdirs()) {
+      return 0;
+    }
+    long space = file.getFreeSpace();
+    logger.trace("Folder {} has {} available bytes.", dir, space);
+    return space;
+  }
+
+  protected boolean hasSpace(String dir) {
+    return getUsableSpace(dir) > 0;
   }
 }

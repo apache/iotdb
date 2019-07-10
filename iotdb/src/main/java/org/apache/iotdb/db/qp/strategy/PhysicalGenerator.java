@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.strategy;
 
 import java.util.List;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
@@ -48,15 +47,12 @@ import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Used to convert logical operator to physical plan
  */
 public class PhysicalGenerator {
 
-  private static final Logger logger = LoggerFactory.getLogger(PhysicalGenerator.class);
   private IQueryProcessExecutor executor;
 
   public PhysicalGenerator(IQueryProcessExecutor executor) {
@@ -64,7 +60,7 @@ public class PhysicalGenerator {
   }
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator)
-      throws QueryProcessorException, ProcessorException {
+      throws QueryProcessorException {
     List<Path> paths;
     switch (operator.getType()) {
       case AUTHOR:
@@ -99,18 +95,18 @@ public class PhysicalGenerator {
         }
         return new DeletePlan(delete.getTime(), paths);
       case INSERT:
-        InsertOperator Insert = (InsertOperator) operator;
-        paths = Insert.getSelectedPaths();
+        InsertOperator insert = (InsertOperator) operator;
+        paths = insert.getSelectedPaths();
         if (paths.size() != 1) {
           throw new LogicalOperatorException(
               "For Insert command, cannot specified more than one seriesPath:" + paths);
         }
-        if (Insert.getTime() <= 0) {
+        if (insert.getTime() <= 0) {
           throw new LogicalOperatorException("For Insert command, time must greater than 0.");
         }
-        return new InsertPlan(paths.get(0).getFullPath(), Insert.getTime(),
-            Insert.getMeasurementList(),
-            Insert.getValueList());
+        return new InsertPlan(paths.get(0).getFullPath(), insert.getTime(),
+            insert.getMeasurementList(),
+            insert.getValueList());
       // case UPDATE:
       // UpdateOperator update = (UpdateOperator) operator;
       // UpdatePlan updatePlan = new UpdatePlan();
@@ -229,12 +225,12 @@ public class PhysicalGenerator {
   // } else if (queryOperator.hasAggregation()) { //old aggregation
   // return multiQueryPlan;
   // } else { //ordinary query
-  // return transformQueryV2(queryOperator);
+  // return transformQuery(queryOperator);
   // }
   // }
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
-      throws QueryProcessorException, ProcessorException {
+      throws QueryProcessorException {
 
     QueryPlan queryPlan;
 
@@ -278,7 +274,7 @@ public class PhysicalGenerator {
   }
 
   // private SingleQueryPlan constructSelectPlan(FilterOperator filterOperator, List<Path> paths,
-  // QueryProcessExecutor conf) throws QueryProcessorException {
+  // AbstractQueryProcessExecutor conf) throws QueryProcessorException {
   // FilterOperator timeFilter = null;
   // FilterOperator freqFilter = null;
   // FilterOperator valueFilter = null;

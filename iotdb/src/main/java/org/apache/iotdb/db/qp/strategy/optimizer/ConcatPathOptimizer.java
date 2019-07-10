@@ -22,12 +22,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
@@ -334,7 +333,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       for (String pathStr : pathMap.keySet()) {
         retPaths.add(new Path(pathStr));
       }
-    } catch (PathErrorException e) {
+    } catch (MetadataErrorException e) {
       throw new LogicalOptimizeException("error when remove star: ", e);
     }
     return retPaths;
@@ -353,7 +352,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             newAggregations.add(afterConcatAggregations.get(i));
           }
         }
-      } catch (PathErrorException e) {
+      } catch (MetadataErrorException e) {
         throw new LogicalOptimizeException("error when remove star: ", e);
       }
     }
