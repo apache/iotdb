@@ -26,8 +26,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.junit.Ignore;
 import org.junit.Test;
 
+@Ignore
 public class ModificationFileTest {
 
   @Test

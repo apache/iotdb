@@ -50,8 +50,8 @@ public class StorageGroupProcessorTest {
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
     processor.syncDeleteDataFiles();
+    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir("data");
   }
 
