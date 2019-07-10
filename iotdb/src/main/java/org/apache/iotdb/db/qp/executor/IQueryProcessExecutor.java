@@ -126,8 +126,4 @@ public interface IQueryProcessExecutor {
    */
   List<String> getAllPaths(String originPath) throws MetadataErrorException;
 
-  int getFetchSize();
-
-  void setFetchSize(int fetchSize);
-
 }

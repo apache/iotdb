@@ -45,23 +45,19 @@ import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IoTDBStatement implements Statement {
 
   private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
   private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
-  private static final Logger logger = LoggerFactory
-          .getLogger(IoTDBStatement.class);
   ZoneId zoneId;
   private ResultSet resultSet = null;
   private IoTDBConnection connection;
-  private int fetchSize = Config.fetchSize;
+  private int fetchSize;
   private int queryTimeout = 10;
-  protected TSIService.Iface client = null;
-  private TS_SessionHandle sessionHandle = null;
+  protected TSIService.Iface client;
+  private TS_SessionHandle sessionHandle;
   private TSOperationHandle operationHandle = null;
   private List<String> batchSQLList;
   private AtomicLong queryId = new AtomicLong(0);
@@ -375,7 +371,8 @@ public class IoTDBStatement implements Statement {
           return executeUpdateSQL(sql);
         } catch (TException e2) {
           throw new SQLException(
-              "Fail to execute update " + sql + "after reconnecting. please check server status", e2);
+              "Fail to execute update " + sql + "after reconnecting. please check server status",
+              e2);
         }
       } else {
         throw new SQLException(
