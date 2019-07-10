@@ -161,6 +161,10 @@ public abstract class Statistics<T> {
     return isEmpty;
   }
 
+  public void setEmpty(boolean empty) {
+    isEmpty = empty;
+  }
+
   public void updateStats(boolean value) {
     throw new UnsupportedOperationException();
   }
