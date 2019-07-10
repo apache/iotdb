@@ -23,7 +23,12 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SU
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
@@ -33,6 +38,10 @@ import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -90,9 +99,31 @@ public class TsFileRecoverPerformer {
     }
 
     if (!restorableTsFileIOWriter.hasCrashed()) {
+      // tsfile is complete
       try {
-        // recover two maps of time
-        tsFileResource.deSerialize();
+        if (tsFileResource.fileExists()) {
+          // .resource file exists, deserialize it
+          tsFileResource.deSerialize();
+        } else {
+          // .resource file does not exist, read file metadata and recover tsfile resource
+          try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getFile().getAbsolutePath())) {
+            TsFileMetaData metaData = reader.readFileMetadata();
+            List<TsDeviceMetadataIndex> deviceMetadataIndexList = new ArrayList<>(
+                metaData.getDeviceMap().values());
+            for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
+              TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
+              List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
+              for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+                for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+                  tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
+                  tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+                }
+              }
+            }
+          }
+          // write .resource file
+          tsFileResource.serialize();
+        }
         return;
       } catch (IOException e) {
         throw new ProcessorException("recover the resource file failed: " + insertFilePath
