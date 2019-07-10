@@ -523,7 +523,7 @@ public class TsFileProcessor {
           deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
 
       List<ChunkMetaData> chunkMetaDataList = writer
-          .getVisibleMetadatas(deviceId, measurementId, dataType);
+          .getVisibleMetadataList(deviceId, measurementId, dataType);
       QueryUtils.modifyChunkMetaData(chunkMetaDataList,
           modifications);
 
