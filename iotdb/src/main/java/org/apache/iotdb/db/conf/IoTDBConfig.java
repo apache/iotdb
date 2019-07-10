@@ -46,12 +46,12 @@ public class IoTDBConfig {
   /**
    * Memory allocated for the read process
    */
-  private long allocateMemoryForWrite;
+  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 6 / 10;
 
   /**
-   * Memoru allocated for the write process
+   * Memory allocated for the write process
    */
-  private long allocateMemoryForRead;
+  private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /**
    * Is dynamic parameter adapter enable.

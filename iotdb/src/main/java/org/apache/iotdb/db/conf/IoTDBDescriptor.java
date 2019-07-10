@@ -231,16 +231,19 @@ public class IoTDBDescriptor {
   }
 
   private void initMemoryAllocate(Properties properties){
-    String memoryAllocateProportion = properties.getProperty("write_read_free_memory_proportion",
-        IoTDBConstant.DEFAULT_MEMORY_ALLOCATE_PROPORTION);
-    String[] proportions = memoryAllocateProportion.split(":");
-    int proportionSum = 0;
-    for(String proportion:proportions){
-      proportionSum += Integer.valueOf(proportion.trim());
+    String memoryAllocateProportion = properties.getProperty("write_read_free_memory_proportion");
+    if(memoryAllocateProportion != null) {
+      String[] proportions = memoryAllocateProportion.split(":");
+      int proportionSum = 0;
+      for (String proportion : proportions) {
+        proportionSum += Integer.valueOf(proportion.trim());
+      }
+      long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
+      conf.setAllocateMemoryForWrite(
+          maxMemoryAvailable * Integer.valueOf(proportions[0].trim()) / proportionSum);
+      conf.setAllocateMemoryForRead(
+          maxMemoryAvailable * Integer.valueOf(proportions[1].trim()) / proportionSum);
     }
-    long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
-    conf.setAllocateMemoryForWrite(maxMemoryAvailable * Integer.valueOf(proportions[0].trim()) / proportionSum);
-    conf.setAllocateMemoryForRead(maxMemoryAvailable * Integer.valueOf(proportions[1].trim()) / proportionSum);
   }
 
   private static class IoTDBDescriptorHolder {

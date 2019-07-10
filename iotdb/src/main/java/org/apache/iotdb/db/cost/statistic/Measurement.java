@@ -273,14 +273,6 @@ public class Measurement implements MeasurementMBean, IService {
     }
     stopStatistic();
     futureList.clear();
-    service.shutdownNow();
-    try {
-      service.awaitTermination(5, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      LOGGER.error("Performance statistic service could not be shutdown, {}", e.getMessage());
-      // Restore interrupted state...
-      Thread.currentThread().interrupt();
-    }
   }
 
   @Override

@@ -61,5 +61,4 @@ public class IoTDBConstant {
   public static final String USER = "User";
   public static final String PRIVILEGE = "Privilege";
 
-  public static final String DEFAULT_MEMORY_ALLOCATE_PROPORTION = "6:3:1";
 }

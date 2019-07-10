@@ -33,15 +33,12 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   // static parameter section
 
-  private static final double WRITE_MEMORY_RATIO = 0.8;
-
   private static final double FLUSH_THRESHOLD = 0.2;
 
   /**
-   * Maximum amount of memory that the Java virtual machine will attempt to use
+   * Maximum amount of memory allocated for write process.
    */
-  private static final long MAX_MEMORY_B = (long) (Runtime.getRuntime().maxMemory()
-      * WRITE_MEMORY_RATIO);
+  private static final long ALLOCATE_MEMORY_FOR_WRITE = CONFIG.getAllocateMemoryForWrite();
 
   /**
    * Metadata size of per timeseries, the default value is 2KB.
@@ -126,7 +123,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     double ratio = CompressionRatio.getInstance().getRatio();
     // when unit is byte, it's likely to cause Long type overflow. so use the unit KB.
     double a = (long) (ratio * maxMemTableNum);
-    double b = (long) ((MAX_MEMORY_B - staticMemory) * ratio);
+    double b = (long) ((ALLOCATE_MEMORY_FOR_WRITE - staticMemory) * ratio);
     int times = b > Integer.MAX_VALUE ? 1024 : 1;
     b /= times;
     double c = (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_B * MManager
@@ -143,7 +140,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * @return Tsfile threshold
    */
   private int calcuTsFileSize(int memTableSize) {
-    return (int) ((MAX_MEMORY_B - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
+    return (int) ((ALLOCATE_MEMORY_FOR_WRITE - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
         .getInstance().getRatio()
         * memTableSize / (maxMemTableNum * CHUNK_METADATA_SIZE_B * MManager.getInstance()
         .getMaximalSeriesNumberAmongStorageGroups()));

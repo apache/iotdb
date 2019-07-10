@@ -77,14 +77,12 @@ public class MemTablePoolTest {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
-            e.printStackTrace();
           }
           continue;
         }
         try {
           Thread.sleep(10);
         } catch (InterruptedException e) {
-          e.printStackTrace();
         }
         memTables.remove(memTable);
         MemTablePool.getInstance().putBack(memTable, "test case");
