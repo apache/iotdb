@@ -176,6 +176,20 @@ public class IoTDBConfig {
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
   /**
+   * Is stat performance of sub-module enable.
+   */
+  private boolean enablePerformanceStat = false;
+
+  /**
+   * The display of stat performance interval in ms.
+   */
+  private long performanceStatDisplayInterval = 60000;
+
+  /**
+   * The memory used for stat performance.
+   */
+  private int performance_stat_memory_in_kb = 20;
+  /**
    * whether use chunkBufferPool.
    */
   private boolean chunkBufferPoolEnable = false;
@@ -486,5 +500,29 @@ public class IoTDBConfig {
 
   void setChunkBufferPoolEnable(boolean chunkBufferPoolEnable) {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
+  }
+
+  public boolean isEnablePerformanceStat() {
+    return enablePerformanceStat;
+  }
+
+  public void setEnablePerformanceStat(boolean enablePerformanceStat) {
+    this.enablePerformanceStat = enablePerformanceStat;
+  }
+
+  public long getPerformanceStatDisplayInterval() {
+    return performanceStatDisplayInterval;
+  }
+
+  public void setPerformanceStatDisplayInterval(long performanceStatDisplayInterval) {
+    this.performanceStatDisplayInterval = performanceStatDisplayInterval;
+  }
+
+  public int getPerformance_stat_memory_in_kb() {
+    return performance_stat_memory_in_kb;
+  }
+
+  public void setPerformance_stat_memory_in_kb(int performance_stat_memory_in_kb) {
+    this.performance_stat_memory_in_kb = performance_stat_memory_in_kb;
   }
 }

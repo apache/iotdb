@@ -42,6 +42,8 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.cost.statistic.Measurement;
+import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
@@ -345,7 +347,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case "privilege":
         return TSDataType.TEXT;
       default:
-          // do nothing
+        // do nothing
     }
 
     if (path.contains("(") && !path.startsWith("(") && path.endsWith(")")) {
@@ -399,7 +401,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         StorageEngine.getInstance().syncCloseAllProcessor();
         return true;
       case "merge":
-          // TODO change to merge!!!
+        // TODO change to merge!!!
         throw new UnsupportedOperationException("merge not implemented");
       default:
         return false;
@@ -409,6 +411,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req)
       throws TException {
+    long t1 = System.currentTimeMillis();
     String currStmt = null;
     List<Integer> result = new ArrayList<>();
     try {
@@ -422,14 +425,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       StringBuilder batchErrorMessage = new StringBuilder();
 
       for (String statement : statements) {
+        long t2 = System.currentTimeMillis();
         currStmt = statement;
-        isAllSuccessful = isAllSuccessful && executeStatementInBatch(statement, batchErrorMessage, result);
+        isAllSuccessful =
+            isAllSuccessful && executeStatementInBatch(statement, batchErrorMessage, result);
+        Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
       }
+
       if (isAllSuccessful) {
         return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
             "Execute batch statements successfully", result);
       } else {
-        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, batchErrorMessage.toString(),
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+            batchErrorMessage.toString(),
             result);
       }
     } catch (QueryInBatchStmtException e) {
@@ -438,6 +446,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
+    } finally {
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH, t1);
     }
   }
 
@@ -470,7 +480,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     return true;
   }
-
 
 
   @Override
@@ -526,7 +535,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) throws TException {
-
+    long t1 = System.currentTimeMillis();
     try {
       if (!checkLogin()) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -557,6 +566,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+    } finally {
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, t1);
     }
   }
 
@@ -727,7 +738,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan) {
     List<Path> paths = plan.getPaths();
-
     try {
       if (!checkAuthorization(paths, plan)) {
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
@@ -748,6 +758,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.debug("meet error while processing non-query. ", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
+
     TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
     String msg = execRet ? "Execute successfully" : "Execute statement error.";
     TSExecuteStatementResp resp = getTSExecuteStatementResp(statusCode, msg);
