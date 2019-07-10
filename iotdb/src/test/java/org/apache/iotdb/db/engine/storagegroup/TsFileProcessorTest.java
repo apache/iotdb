@@ -182,7 +182,7 @@ public class TsFileProcessorTest {
         assertEquals(chunkMetaData, chunkMetaDataRestore);
       }
     }
-
+    restorableTsFileIOWriter.close();
     processor.syncClose();
   }
 
