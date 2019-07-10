@@ -20,7 +20,7 @@ package org.apache.iotdb.db.conf.directories.strategy;
 
 import java.util.List;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class DirectoryStrategy {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(DirectoryStrategy.class);
+  protected static final Logger logger = LoggerFactory.getLogger(DirectoryStrategy.class);
 
   /**
    * All the folders of data files, should be init once the subclass is created.
@@ -50,7 +50,7 @@ public abstract class DirectoryStrategy {
 
     boolean hasSpace = false;
     for (String folder : folders) {
-      if (FileUtils.hasSpace(folder)) {
+      if (CommonUtils.hasSpace(folder)) {
         hasSpace = true;
         break;
       }

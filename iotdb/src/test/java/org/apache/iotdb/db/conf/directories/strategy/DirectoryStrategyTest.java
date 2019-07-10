@@ -27,7 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,7 +39,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 @RunWith(PowerMockRunner.class)
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "org.w3c.*"})
-@PrepareForTest(FileUtils.class)
+@PrepareForTest(CommonUtils.class)
 public class DirectoryStrategyTest {
 
   List<String> dataDirList;
@@ -56,12 +56,12 @@ public class DirectoryStrategyTest {
     fullDirIndexSet.add(1);
     fullDirIndexSet.add(3);
 
-    PowerMockito.mockStatic(FileUtils.class);
+    PowerMockito.mockStatic(CommonUtils.class);
     for (int i = 0; i < dataDirList.size(); i++) {
       boolean res = !fullDirIndexSet.contains(i);
-      PowerMockito.when(FileUtils.hasSpace(dataDirList.get(i))).thenReturn(res);
-      PowerMockito.when(FileUtils.getUsableSpace(dataDirList.get(i))).thenReturn(res ? (long) (i + 1) : 0L);
-      PowerMockito.when(FileUtils.getOccupiedSpace(dataDirList.get(i))).thenReturn(res ? (long) (i + 1) : Long.MAX_VALUE);
+      PowerMockito.when(CommonUtils.hasSpace(dataDirList.get(i))).thenReturn(res);
+      PowerMockito.when(CommonUtils.getUsableSpace(dataDirList.get(i))).thenReturn(res ? (long) (i + 1) : 0L);
+      PowerMockito.when(CommonUtils.getOccupiedSpace(dataDirList.get(i))).thenReturn(res ? (long) (i + 1) : Long.MAX_VALUE);
     }
   }
 
@@ -96,7 +96,7 @@ public class DirectoryStrategyTest {
       assertEquals(maxIndex, maxDiskUsableSpaceFirstStrategy.nextFolderIndex());
     }
 
-    PowerMockito.when(FileUtils.getUsableSpace(dataDirList.get(maxIndex))).thenReturn(0L);
+    PowerMockito.when(CommonUtils.getUsableSpace(dataDirList.get(maxIndex))).thenReturn(0L);
     maxIndex = getIndexOfMaxSpace();
     for (int i = 0; i < dataDirList.size(); i++) {
       assertEquals(maxIndex, maxDiskUsableSpaceFirstStrategy.nextFolderIndex());
@@ -107,7 +107,7 @@ public class DirectoryStrategyTest {
     int index = -1;
     long maxSpace = -1;
     for (int i = 0; i < dataDirList.size(); i++) {
-      long space = FileUtils.getUsableSpace(dataDirList.get(i));
+      long space = CommonUtils.getUsableSpace(dataDirList.get(i));
       if (maxSpace < space) {
         index = i;
         maxSpace = space;
@@ -127,7 +127,7 @@ public class DirectoryStrategyTest {
       assertEquals(minIndex, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
     }
 
-    PowerMockito.when(FileUtils.getOccupiedSpace(dataDirList.get(minIndex))).thenReturn(Long.MAX_VALUE);
+    PowerMockito.when(CommonUtils.getOccupiedSpace(dataDirList.get(minIndex))).thenReturn(Long.MAX_VALUE);
     minIndex = getIndexOfMinOccupiedSpace();
     for (int i = 0; i < dataDirList.size(); i++) {
       assertEquals(minIndex, minFolderOccupiedSpaceFirstStrategy.nextFolderIndex());
@@ -138,7 +138,7 @@ public class DirectoryStrategyTest {
     int index = -1;
     long minOccupied = Long.MAX_VALUE;
     for (int i = 0; i < dataDirList.size(); i++) {
-      long space = FileUtils.getOccupiedSpace(dataDirList.get(i));
+      long space = CommonUtils.getOccupiedSpace(dataDirList.get(i));
       if (minOccupied > space) {
         index = i;
         minOccupied = space;
@@ -150,7 +150,7 @@ public class DirectoryStrategyTest {
   @Test
   public void testAllDiskFull() {
     for (int i = 0; i < dataDirList.size(); i++) {
-      PowerMockito.when(FileUtils.hasSpace(dataDirList.get(i))).thenReturn(false);
+      PowerMockito.when(CommonUtils.hasSpace(dataDirList.get(i))).thenReturn(false);
     }
 
     SequenceStrategy sequenceStrategy = new SequenceStrategy();

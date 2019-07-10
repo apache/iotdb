@@ -43,7 +43,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
       try {
         space = FileUtils.getOccupiedSpace(folder);
       } catch (IOException e) {
-        LOGGER.error("Cannot calculate occupied space for path {}.", folder, e);
+        logger.error("Cannot calculate occupied space for path {}.", folder, e);
       }
       if (space < minSpace) {
         minSpace = space;
