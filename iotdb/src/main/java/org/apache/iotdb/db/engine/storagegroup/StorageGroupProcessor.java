@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.tsfile.common.constant.SystemConstant.TSFILE_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +33,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -226,8 +227,8 @@ public class StorageGroupProcessor {
   // TsFileNameComparator compares TsFiles by the version number in its name
   // ({systemTime}-{versionNum}.tsfile)
   public int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().split("-");
-    String[] items2 = o2.getName().split("-");
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split("-");
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split("-");
     if (Long.valueOf(items1[0]) - Long.valueOf(items2[0]) == 0) {
       return Long.compare(Long.valueOf(items1[1]), Long.valueOf(items2[1]));
     } else {
