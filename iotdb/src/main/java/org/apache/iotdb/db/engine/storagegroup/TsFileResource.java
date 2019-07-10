@@ -156,6 +156,10 @@ public class TsFileResource {
     }
   }
 
+  public boolean fileExists() {
+    return new File(file+RESOURCE_SUFFIX).exists();
+  }
+
   public void forceUpdateEndTime(String device, long time) {
       endTimeMap.put(device, time);
   }
