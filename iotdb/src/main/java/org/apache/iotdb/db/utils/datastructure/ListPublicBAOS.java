@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.utils.datastructure.ListPublicBAOSPool.ARRAY_SIZE;
+import static org.apache.iotdb.db.utils.datastructure.ByteArrayPool.ARRAY_SIZE;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
  * java.io.ByteArrayOutputStream} with a {@code List } of {@code byte[]}.
  * <p>
  * For efficient and controllable GC, all {@code byte[]} are allocated from {@linkplain
- * ListPublicBAOSPool} and should be put back after {@code close}.
+ * ByteArrayPool} and should be put back after {@code close}.
  * <p>
  * Referring to {@linkplain TVList} and {@linkplain org.apache.iotdb.db.rescon.PrimitiveArrayPool PrimitiveArrayPool}.
  * <p>
@@ -74,7 +74,7 @@ public class ListPublicBAOS extends PublicBAOS {
               + size);
     }
 
-    values = ListPublicBAOSPool.getInstance().getByteLists(size);
+    values = ByteArrayPool.getInstance().getByteLists(size);
     dataSize = 0;
     capacity = size;
   }
@@ -119,21 +119,16 @@ public class ListPublicBAOS extends PublicBAOS {
    */
   private void ensureCapacity(int minCapacity) {
     while (minCapacity - capacity > 0) {
-      values.add((byte[]) ListPublicBAOSPool.getInstance().getPrimitiveByteList());
+      values.add(ByteArrayPool.getInstance().getPrimitiveByteList());
       capacity += ARRAY_SIZE;
     }
-  }
-
-  public byte[] getBuf() {
-    // TODO
-    throw new UnsupportedOperationException();
   }
 
   public synchronized void reset() {
     dataSize = 0;
     if (values != null) {
       for (byte[] dataArray : values) {
-        ListPublicBAOSPool.getInstance().release(dataArray);
+        ByteArrayPool.getInstance().release(dataArray);
       }
       values.clear();
     }
@@ -147,10 +142,7 @@ public class ListPublicBAOS extends PublicBAOS {
     reset();
   }
 
-  /**
-   * We are not sure whether following functions will be invoked in PublicBOAS. We'd defer to
-   * implement them, but throw exception to avoid unexpected calling.
-   */
+
   public synchronized void writeTo(OutputStream out) throws IOException {
     int lastArrayIndex = dataSize / ARRAY_SIZE;
     int lastElementIndex = dataSize % ARRAY_SIZE;
@@ -181,6 +173,14 @@ public class ListPublicBAOS extends PublicBAOS {
 
   }
 
+  /**
+   * We are not sure whether following functions will be invoked in PublicBOAS. We'd defer to
+   * implement them, but throw exception to avoid unexpected calling.
+   */
+  public byte[] getBuf() {
+    throw new UnsupportedOperationException();
+  }
+
   public synchronized String toString() {
     throw new UnsupportedOperationException();
   }
@@ -188,6 +188,7 @@ public class ListPublicBAOS extends PublicBAOS {
   public synchronized String toString(String charsetName) {
     throw new UnsupportedOperationException();
   }
+
 
 }
 

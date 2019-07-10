@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.utils.datastructure.ListPublicBAOSPool.ARRAY_SIZE;
+import static org.apache.iotdb.db.utils.datastructure.ByteArrayPool.ARRAY_SIZE;
 
 import static org.junit.Assert.*;
 import org.junit.Test;

@@ -24,15 +24,15 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
-public class ListPublicBAOSPoolTest {
+public class ByteArrayPoolTest {
   @Test
   public void testGetPrimitiveByteList1() {
     byte[] byteArray1 = null;
     byte[] byteArray2 = null;
     byte[] byteArray3 = null;
-    byteArray1 = (byte[]) ListPublicBAOSPool.getInstance().getPrimitiveByteList();
-    byteArray2 = (byte[]) ListPublicBAOSPool.getInstance().getPrimitiveByteList();
-    byteArray3 = (byte[]) ListPublicBAOSPool.getInstance().getPrimitiveByteList();
+    byteArray1 = (byte[]) ByteArrayPool.getInstance().getPrimitiveByteList();
+    byteArray2 = (byte[]) ByteArrayPool.getInstance().getPrimitiveByteList();
+    byteArray3 = (byte[]) ByteArrayPool.getInstance().getPrimitiveByteList();
     assertNotNull(byteArray1);
     assertNotNull(byteArray2);
     assertNotNull(byteArray3);
@@ -42,9 +42,9 @@ public class ListPublicBAOSPoolTest {
   public void testGetPrimitiveByteList2() {
     byte[] byteArray1 = null;
     byte[] byteArray2 = null;
-    byteArray1 = (byte[]) ListPublicBAOSPool.getInstance().getPrimitiveByteList();
-    ListPublicBAOSPool.getInstance().release(byteArray1);
-    byteArray2 = (byte[]) ListPublicBAOSPool.getInstance().getPrimitiveByteList();
+    byteArray1 = (byte[]) ByteArrayPool.getInstance().getPrimitiveByteList();
+    ByteArrayPool.getInstance().release(byteArray1);
+    byteArray2 = (byte[]) ByteArrayPool.getInstance().getPrimitiveByteList();
     assertNotNull(byteArray1);
     assertEquals(byteArray1, byteArray2);
   }
@@ -52,7 +52,7 @@ public class ListPublicBAOSPoolTest {
   @Test
   public void testGetByteLists1() {
     List<byte[]> byteLists = null;
-    byteLists = ListPublicBAOSPool.getInstance().getByteLists(ListPublicBAOSPool.ARRAY_SIZE * 3);
+    byteLists = ByteArrayPool.getInstance().getByteLists(ByteArrayPool.ARRAY_SIZE * 3);
     assertNotNull(byteLists);
     assertEquals(3, byteLists.size());
   }
@@ -60,7 +60,7 @@ public class ListPublicBAOSPoolTest {
   @Test
   public void testGetByteLists2() {
     List<byte[]> byteLists = null;
-    byteLists = ListPublicBAOSPool.getInstance().getByteLists(ListPublicBAOSPool.ARRAY_SIZE * 3 + 1);
+    byteLists = ByteArrayPool.getInstance().getByteLists(ByteArrayPool.ARRAY_SIZE * 3 + 1);
     assertNotNull(byteLists);
     assertEquals(4, byteLists.size());
   }
@@ -68,7 +68,7 @@ public class ListPublicBAOSPoolTest {
   @Test
   public void testGetByteLists3() {
     List<byte[]> byteLists = null;
-    byteLists = ListPublicBAOSPool.getInstance().getByteLists(0);
+    byteLists = ByteArrayPool.getInstance().getByteLists(0);
     assertNotNull(byteLists);
     assertEquals(0, byteLists.size());
   }
@@ -77,12 +77,12 @@ public class ListPublicBAOSPoolTest {
   public void testGetByteLists4() {
     List<byte[]> byteLists1 = null;
     List<byte[]> byteLists2 = null;
-    byteLists1 = ListPublicBAOSPool.getInstance().getByteLists(ListPublicBAOSPool.ARRAY_SIZE * 3);
+    byteLists1 = ByteArrayPool.getInstance().getByteLists(ByteArrayPool.ARRAY_SIZE * 3);
     //release byteLists1
     for (byte[] e : byteLists1)
-      ListPublicBAOSPool.getInstance().release(e);
+      ByteArrayPool.getInstance().release(e);
 
-    byteLists2 = ListPublicBAOSPool.getInstance().getByteLists(ListPublicBAOSPool.ARRAY_SIZE * 3);
+    byteLists2 = ByteArrayPool.getInstance().getByteLists(ByteArrayPool.ARRAY_SIZE * 3);
 
     assertEquals(byteLists1.size(), byteLists2.size());
     for (int i = 0; i < byteLists1.size(); i++) {

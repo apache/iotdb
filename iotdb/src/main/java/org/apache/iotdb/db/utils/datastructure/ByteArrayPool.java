@@ -29,22 +29,22 @@ import java.util.List;
  *
  * @author Pengze Lv, kangrong
  */
-public class ListPublicBAOSPool {
+public class ByteArrayPool {
 
   private static final ArrayDeque<byte[]> byteArrayQueue = new ArrayDeque<>();
 
   public static final int ARRAY_SIZE = 512;
 
-  public static ListPublicBAOSPool getInstance() {
+  public static ByteArrayPool getInstance() {
     return INSTANCE;
   }
 
-  private static final ListPublicBAOSPool INSTANCE = new ListPublicBAOSPool();
+  private static final ByteArrayPool INSTANCE = new ByteArrayPool();
 
-  private ListPublicBAOSPool() {}
+  private ByteArrayPool() {}
 
-  public synchronized Object getPrimitiveByteList() {
-    Object dataArray = byteArrayQueue.poll();
+  public synchronized byte[] getPrimitiveByteList() {
+    byte[] dataArray = byteArrayQueue.poll();
 
     if (dataArray == null) {
       dataArray = new byte[ARRAY_SIZE];
@@ -68,7 +68,7 @@ public class ListPublicBAOSPool {
     List<byte[]> bytes = new ArrayList<>();
 
     for (int i = 0; i < arrayNumber; i++) {
-      bytes.add((byte[]) getPrimitiveByteList());
+      bytes.add(getPrimitiveByteList());
     }
     return bytes;
   }

@@ -22,7 +22,7 @@ import java.io.*;
 import java.lang.Thread;
 import java.util.Random;
 
-import static org.apache.iotdb.db.utils.datastructure.ListPublicBAOSPool.ARRAY_SIZE;
+import static org.apache.iotdb.db.utils.datastructure.ByteArrayPool.ARRAY_SIZE;
 
 public class ListPublicBAOSLongTest {
   private static final int consumerNum = 1;
