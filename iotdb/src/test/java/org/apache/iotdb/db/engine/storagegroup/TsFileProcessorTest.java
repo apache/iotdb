@@ -107,7 +107,7 @@ public class TsFileProcessorTest {
       assertEquals(num, timeValuePair.getValue().getInt());
     }
 
-    // flush asynchronously
+    // flush synchronously
     processor.syncFlush();
 
     pair = processor.query(deviceId, measurementId, dataType, props, context);
@@ -154,7 +154,7 @@ public class TsFileProcessorTest {
       assertEquals(num, timeValuePair.getValue().getInt());
     }
 
-    // flush asynchronously
+    // flush synchronously
     processor.syncFlush();
 
     pair = processor.query(deviceId, measurementId, dataType, props, context);
@@ -166,15 +166,15 @@ public class TsFileProcessorTest {
     assertEquals(dataType, right.get(0).getTsDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
-    List<ChunkGroupMetaData> chunkGroupMetaDatas = tsFileIOWriter.getChunkGroupMetaDatas();
-    RestorableTsFileIOWriter tsFileIOWriterRestore = new RestorableTsFileIOWriter(
+    List<ChunkGroupMetaData> chunkGroupMetaDataList = tsFileIOWriter.getChunkGroupMetaDatas();
+    RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(
         new File(filePath));
-    List<ChunkGroupMetaData> chunkGroupMetaDatasRestore = tsFileIOWriterRestore
+    List<ChunkGroupMetaData> restoredChunkGroupMetaDataList = restorableTsFileIOWriter
         .getChunkGroupMetaDatas();
-    assertEquals(chunkGroupMetaDatas.size(), chunkGroupMetaDatasRestore.size());
-    for (int i = 0; i < chunkGroupMetaDatas.size(); i++) {
-      ChunkGroupMetaData chunkGroupMetaData = chunkGroupMetaDatas.get(i);
-      ChunkGroupMetaData chunkGroupMetaDataRestore = chunkGroupMetaDatasRestore.get(i);
+    assertEquals(chunkGroupMetaDataList.size(), restoredChunkGroupMetaDataList.size());
+    for (int i = 0; i < chunkGroupMetaDataList.size(); i++) {
+      ChunkGroupMetaData chunkGroupMetaData = chunkGroupMetaDataList.get(i);
+      ChunkGroupMetaData chunkGroupMetaDataRestore = restoredChunkGroupMetaDataList.get(i);
       for (int j = 0; j < chunkGroupMetaData.getChunkMetaDataList().size(); j++) {
         ChunkMetaData chunkMetaData = chunkGroupMetaData.getChunkMetaDataList().get(j);
         ChunkMetaData chunkMetaDataRestore = chunkGroupMetaDataRestore.getChunkMetaDataList()
@@ -269,7 +269,7 @@ public class TsFileProcessorTest {
       assertEquals(num, timeValuePair.getValue().getInt());
     }
 
-    // flush asynchronously
+    // close synchronously
     processor.syncClose();
 
     assertTrue(processor.getTsFileResource().isClosed());
