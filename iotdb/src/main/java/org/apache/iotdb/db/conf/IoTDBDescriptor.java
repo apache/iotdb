@@ -123,6 +123,11 @@ public class IoTDBDescriptor {
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
+      conf.setEnableParameterAdapter(Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
+          Boolean.toString(conf.isEnableParameterAdapter()))));
+
+      initMemoryAllocate(properties);
+
       conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
           Boolean.toString(conf.isEnableWal()))));
 
@@ -142,8 +147,12 @@ public class IoTDBDescriptor {
       conf.setForceWalPeriodInMs(Long
           .parseLong(properties.getProperty("force_wal_period_in_ms",
               Long.toString(conf.getForceWalPeriodInMs()))));
-      conf.setWalBufferSize(Integer.parseInt(properties.getProperty("wal_buffer_size",
-          Integer.toString(conf.getWalBufferSize()))));
+
+      int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",
+          Integer.toString(conf.getWalBufferSize())));
+      if(walBufferSize > 0) {
+        conf.setWalBufferSize(walBufferSize);
+      }
 
       conf.setMultiDirStrategyClassName(properties.getProperty("mult_dir_strategy",
           conf.getMultiDirStrategyClassName()));
@@ -209,6 +218,19 @@ public class IoTDBDescriptor {
         logger.error("Fail to close config file input stream because ", e);
       }
     }
+  }
+
+  private void initMemoryAllocate(Properties properties){
+    String memoryAllocateProportion = properties.getProperty("write_read_free_memory_proportion",
+        IoTDBConstant.DEFAULT_MEMORY_ALLOCATE_PROPORTION);
+    String[] proportions = memoryAllocateProportion.split(":");
+    int proportionSum = 0;
+    for(String proportion:proportions){
+      proportionSum += Integer.valueOf(proportion.trim());
+    }
+    long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
+    conf.setAllocateMemoryForWrite(maxMemoryAvailable * Integer.valueOf(proportions[0].trim()) / proportionSum);
+    conf.setAllocateMemoryForRead(maxMemoryAvailable * Integer.valueOf(proportions[1].trim()) / proportionSum);
   }
 
   private static class IoTDBDescriptorHolder {

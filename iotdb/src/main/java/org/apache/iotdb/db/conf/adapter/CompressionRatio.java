@@ -68,7 +68,9 @@ public class CompressionRatio {
     File newFile = new File(directory,
         String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcuTimes));
     persist(oldFile, newFile);
-    IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters();
+    if (CONFIG.isEnableParameterAdapter()) {
+      IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters();
+    }
   }
 
   public synchronized double getRatio() {

@@ -37,10 +37,26 @@ public class IoTDBConfig {
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
   private String rpcAddress = "0.0.0.0";
+
   /**
    * Port which the JDBC server listens to.
    */
   private int rpcPort = 6667;
+
+  /**
+   * Memory allocated for the read process
+   */
+  private long allocateMemoryForWrite;
+
+  /**
+   * Memoru allocated for the write process
+   */
+  private long allocateMemoryForRead;
+
+  /**
+   * Is dynamic parameter adapter enable.
+   */
+  private boolean enableParameterAdapter = true;
 
   /**
    * Is the write ahead log enable.
@@ -488,5 +504,29 @@ public class IoTDBConfig {
 
   void setChunkBufferPoolEnable(boolean chunkBufferPoolEnable) {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
+  }
+
+  public boolean isEnableParameterAdapter() {
+    return enableParameterAdapter;
+  }
+
+  public void setEnableParameterAdapter(boolean enableParameterAdapter) {
+    this.enableParameterAdapter = enableParameterAdapter;
+  }
+
+  public long getAllocateMemoryForWrite() {
+    return allocateMemoryForWrite;
+  }
+
+  public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
+    this.allocateMemoryForWrite = allocateMemoryForWrite;
+  }
+
+  public long getAllocateMemoryForRead() {
+    return allocateMemoryForRead;
+  }
+
+  public void setAllocateMemoryForRead(long allocateMemoryForRead) {
+    this.allocateMemoryForRead = allocateMemoryForRead;
   }
 }

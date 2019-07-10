@@ -79,10 +79,6 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   private boolean initialized = false;
 
   @Override
-  public void init() {
-  }
-
-  @Override
   public synchronized boolean tryToAdaptParameters() {
     boolean shouldAdjust = true;
     int memtableSizeInByte = calcuMemTableSize();
@@ -167,6 +163,10 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
     maxMemTableNum += 2 * diff;
+    if(!CONFIG.isEnableParameterAdapter()){
+      CONFIG.setMaxMemtableNumber(maxMemTableNum);
+      return;
+    }
     if (!tryToAdaptParameters()) {
       maxMemTableNum -= 2 * diff;
       throw new ConfigAdjusterException(
@@ -176,6 +176,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   @Override
   public void addOrDeleteTimeSeries(int diff) throws ConfigAdjusterException {
+    if(!CONFIG.isEnableParameterAdapter()){
+      return;
+    }
     totalTimeseries += diff;
     staticMemory += diff * TIMESERIES_METADATA_SIZE_B;
     if (!tryToAdaptParameters()) {
@@ -208,7 +211,6 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   }
 
   private IoTDBConfigDynamicAdapter() {
-    init();
   }
 
   public static IoTDBConfigDynamicAdapter getInstance() {

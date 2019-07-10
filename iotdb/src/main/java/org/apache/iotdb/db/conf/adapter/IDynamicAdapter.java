@@ -23,11 +23,6 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 public interface IDynamicAdapter {
 
   /**
-   * Init all parameters from config.
-   */
-  void init() ;
-
-  /**
    * Adjust parameters of memTableNumber, memTableSize and maximum tsfile size.
    */
   boolean tryToAdaptParameters();
