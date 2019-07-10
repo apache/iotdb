@@ -30,6 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -63,23 +65,24 @@ public class TsFileResource {
    */
   private List<ChunkMetaData> chunkMetaDatas;
 
-
   /**
    * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
    */
   private ReadOnlyMemChunk readOnlyMemChunk;
 
+  private ReentrantReadWriteLock mergeQueryLock = new ReentrantReadWriteLock();
+
   public TsFileResource(File file) {
     this.file = file;
-    this.startTimeMap = new HashMap<>();
+    this.startTimeMap = new ConcurrentHashMap<>();
     this.endTimeMap = new HashMap<>();
     this.closed = true;
   }
 
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
-    this.startTimeMap = new HashMap<>();
-    this.endTimeMap = new HashMap<>();
+    this.startTimeMap = new ConcurrentHashMap<>();
+    this.endTimeMap = new ConcurrentHashMap<>();
     this.processor = processor;
   }
 
@@ -223,5 +226,9 @@ public class TsFileResource {
     if (endTime == null || endTime < time) {
       endTimeMap.put(deviceId, time);
     }
+  }
+
+  public ReentrantReadWriteLock getMergeQueryLock() {
+    return mergeQueryLock;
   }
 }

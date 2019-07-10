@@ -62,4 +62,9 @@ public interface MetadataQuerier {
    */
   List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
       long spacePartitionEndPos) throws IOException;
+
+  /**
+   * clear caches (if used) to release memory.
+   */
+  void clear();
 }

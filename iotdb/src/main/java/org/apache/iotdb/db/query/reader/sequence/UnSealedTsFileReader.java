@@ -57,7 +57,7 @@ public class UnSealedTsFileReader extends IterateReader {
       throws IOException {
     super(2);
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-        .get(unsealedTsFile.getFile().getPath(), false);
+        .get(unsealedTsFile, false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
     List<ChunkMetaData> metaDataList = unsealedTsFile.getChunkMetaDatas();

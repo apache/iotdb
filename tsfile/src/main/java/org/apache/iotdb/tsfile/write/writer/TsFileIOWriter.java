@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.write.writer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -72,6 +71,11 @@ public class TsFileIOWriter {
   protected boolean canWrite = true;
 
   private long markedPosition;
+
+  protected int totalChunkNum = 0;
+  protected int invalidChunkNum;
+
+  protected File file;
 
   /**
    * empty construct function.
@@ -215,6 +219,7 @@ public class TsFileIOWriter {
     currentChunkGroupMetaData.addTimeSeriesChunkMetaData(currentChunkMetaData);
     LOG.debug("end series chunk:{},totalvalue:{}", currentChunkMetaData, totalValueCount);
     currentChunkMetaData = null;
+    totalChunkNum ++;
   }
 
   /**
@@ -237,6 +242,8 @@ public class TsFileIOWriter {
 
     TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors,
         TSFileConfig.CURRENT_VERSION);
+    tsFileMetaData.setTotalChunkNum(totalChunkNum);
+    tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
 
     long footerIndex = out.getPosition();
     LOG.debug("start to flush the footer,file pos:{}", footerIndex);
@@ -369,5 +376,17 @@ public class TsFileIOWriter {
    */
   public Map<String, MeasurementSchema> getKnownSchema() {
     return Collections.emptyMap();
+  }
+
+  public int getTotalChunkNum() {
+    return totalChunkNum;
+  }
+
+  public int getInvalidChunkNum() {
+    return invalidChunkNum;
+  }
+
+  public File getFile() {
+    return file;
   }
 }

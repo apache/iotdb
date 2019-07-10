@@ -61,6 +61,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   protected String file;
 
+  private int totalChunkNum;
+
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
    * file metadata size.Then the reader will skip the first TSFileConfig.MAGIC_STRING.length() bytes
@@ -516,6 +518,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     long truncatedPosition = magicStringBytes.length;
     boolean goon = true;
     byte marker;
+    int chunkCnt = 0;
     try {
       while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -562,6 +565,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             currentChunk.setNumOfPoints(numOfPoints);
             chunks.add(currentChunk);
             numOfPoints = 0;
+            chunkCnt ++;
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
             //this is a chunk group
@@ -576,6 +580,9 @@ public class TsFileSequenceReader implements AutoCloseable {
             newMetaData.add(currentChunkGroup);
             newChunkGroup = true;
             truncatedPosition = this.position();
+
+            totalChunkNum += chunkCnt;
+            chunkCnt = 0;
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous
@@ -594,5 +601,9 @@ public class TsFileSequenceReader implements AutoCloseable {
     // Despite the completeness of the data section, we will discard current FileMetadata
     // so that we can continue to write data into this tsfile.
     return truncatedPosition;
+  }
+
+  public int getTotalChunkNum() {
+    return totalChunkNum;
   }
 }

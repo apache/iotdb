@@ -17,9 +17,22 @@
  * under the License.
  */
 
-/**
- * Package merge contains classes supporting merge functionality (also compaction in other
- * systems) that compacts several data files into a new one, making it more ordered and removing
- * duplicated data.
- */
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.exception;
+
+public class MergeException extends Exception{
+
+  public MergeException() {
+  }
+
+  public MergeException(String message) {
+    super(message);
+  }
+
+  public MergeException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public MergeException(Throwable cause) {
+    super(cause);
+  }
+}

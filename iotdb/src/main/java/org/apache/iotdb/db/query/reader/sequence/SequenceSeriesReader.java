@@ -127,7 +127,7 @@ public class SequenceSeriesReader extends IterateReader {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(tsfile.getFile().getPath(), true);
+        .get(tsfile, true);
 
     MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
     List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
