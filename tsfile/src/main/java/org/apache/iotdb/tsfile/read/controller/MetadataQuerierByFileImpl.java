@@ -302,4 +302,9 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   private enum LocateStatus {
     in, before, after
   }
+
+  @Override
+  public void clear() {
+    chunkMetaDataCache.clear();
+  }
 }

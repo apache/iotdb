@@ -36,7 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * a restorable tsfile which do not depend on a restore file.
+ * a restorable tsfile which does not depend on a restore file.
  */
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
@@ -65,6 +65,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
+    this.file = file;
     this.out = new DefaultTsFileOutput(file, true);
 
     // file doesn't exist
@@ -86,9 +87,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
         // uncompleted file
         truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetaDataList, true);
+        totalChunkNum = reader.getTotalChunkNum();
         if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
-          throw new IOException(String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+          throw new IOException(
+              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
           crashed = true;
           out.truncate(TSFileConfig.MAGIC_STRING.length());
@@ -117,7 +120,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @param dataType the value type
    * @return chunks' metadata
    */
-  public List<ChunkMetaData> getVisibleMetadatas(String deviceId, String measurementId, TSDataType dataType) {
+  public List<ChunkMetaData> getVisibleMetadatas(String deviceId, String measurementId,
+      TSDataType dataType) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
     if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
       for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
@@ -172,11 +176,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private List<ChunkGroupMetaData> getAppendedRowGroupMetadata() {
     List<ChunkGroupMetaData> append = new ArrayList<>();
     if (lastFlushedChunkGroupIndex < chunkGroupMetaDataList.size()) {
-      append.addAll(chunkGroupMetaDataList.subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
+      append.addAll(chunkGroupMetaDataList
+          .subList(lastFlushedChunkGroupIndex, chunkGroupMetaDataList.size()));
       lastFlushedChunkGroupIndex = chunkGroupMetaDataList.size();
     }
     return append;
   }
-
 
 }

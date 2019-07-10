@@ -138,7 +138,7 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-            .get(fileNode.getFile().getPath(), true);
+            .get(fileNode, true);
 
     MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
     List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);

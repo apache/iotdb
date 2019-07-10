@@ -56,7 +56,7 @@ public class ChunkMetaData {
   /**
    * All data with timestamp <= deletedAt are considered deleted.
    */
-  private long deletedAt = -1;
+  private long deletedAt = Long.MIN_VALUE;
 
   private TsDigest valuesStatistics;
 

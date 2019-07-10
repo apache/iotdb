@@ -59,7 +59,7 @@ public class UnSealedTsFileReaderByTimestamp implements IReaderByTimeStamp {
    */
   public UnSealedTsFileReaderByTimestamp(TsFileResource tsFileResource) throws IOException {
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-            .get(tsFileResource.getFile().getPath(), false);
+            .get(tsFileResource, false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
     unSealedReader = new FileSeriesReaderByTimestamp(chunkLoader,
             tsFileResource.getChunkMetaDatas());

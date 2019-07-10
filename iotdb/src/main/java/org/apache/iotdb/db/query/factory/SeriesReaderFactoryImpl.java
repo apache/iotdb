@@ -102,7 +102,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
     int newPriority = priority;
     // store only one opened file stream into manager, to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
+        .get(tsFileResource, tsFileResource.isClosed());
 
     // get modified chunk metadatas
     List<ChunkMetaData> metaDataList;
@@ -157,7 +157,7 @@ public class SeriesReaderFactoryImpl implements ISeriesReaderFactory {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-              .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
+              .get(tsFileResource, tsFileResource.isClosed());
 
       List<ChunkMetaData> metaDataList;
       if (tsFileResource.isClosed()) {
