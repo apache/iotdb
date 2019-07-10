@@ -489,6 +489,10 @@ public class TsFileProcessor {
     return workMemTable.memSize();
   }
 
+  RestorableTsFileIOWriter getWriter() {
+    return writer;
+  }
+
   String getStorageGroupName() {
     return storageGroupName;
   }
@@ -534,7 +538,7 @@ public class TsFileProcessor {
           deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
 
       List<ChunkMetaData> chunkMetaDataList = writer
-          .getVisibleMetadatas(deviceId, measurementId, dataType);
+          .getVisibleMetadataList(deviceId, measurementId, dataType);
       QueryUtils.modifyChunkMetaData(chunkMetaDataList,
           modifications);
 
