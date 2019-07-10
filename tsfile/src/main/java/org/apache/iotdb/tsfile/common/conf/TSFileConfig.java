@@ -41,8 +41,7 @@ public class TSFileConfig {
 
   // RLE configuration
   public static final int DOUBLE_VALUE_LENGTH = 7;
-  // Bitmap configuration
-  public static final int BITMAP_BITWIDTH = 1;
+
   /**
    * String encoder with UTF-8 encodes a character to at most 4 bytes.
    */
@@ -59,7 +58,7 @@ public class TSFileConfig {
    */
   public static final int DYNAMIC_DATA_SIZE = 1000;
   /**
-   * Memory size threshold for flushing to disk or HDFS, default value is 128MB.
+   * Memory size threshold for flushing to disk, default value is 128MB.
    */
   public static int groupSizeInByte = 128 * 1024 * 1024;
   /**
@@ -87,10 +86,10 @@ public class TSFileConfig {
    */
   public static int floatPrecision = 2;
   /**
-   * Encoder of time series, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
+   * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
    * value is TS_2DIFF.
    */
-  public static String timeSeriesEncoder = "TS_2DIFF";
+  public static String timeEncoder = "TS_2DIFF";
   /**
    * Encoder of value series. default value is PLAIN. For int, long data type, TsFile also supports
    * TS_2DIFF and RLE(run-length encoding). For float, double data type, TsFile also supports

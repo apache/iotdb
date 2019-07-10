@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.lineFeedSignal;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.LINE_FEED_SIGNAL;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 
 public class UpdatePlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = 8952248212926920033L;
   private List<Pair<Long, Long>> intervals = new ArrayList<>();
   private String value;
   private Path path;
@@ -111,10 +110,10 @@ public class UpdatePlan extends PhysicalPlan {
     StringContainer sc = new StringContainer();
     String preSpace = "  ";
     sc.addTail("UpdatePlan:");
-    sc.addTail(preSpace, "paths:  ", path.toString(), lineFeedSignal);
-    sc.addTail(preSpace, "value:", value, lineFeedSignal);
-    sc.addTail(preSpace, "filter: ", lineFeedSignal);
-    intervals.forEach(p -> sc.addTail(preSpace, preSpace, p.left, p.right, lineFeedSignal));
+    sc.addTail(preSpace, "paths:  ", path.toString(), LINE_FEED_SIGNAL);
+    sc.addTail(preSpace, "value:", value, LINE_FEED_SIGNAL);
+    sc.addTail(preSpace, "filter: ", LINE_FEED_SIGNAL);
+    intervals.forEach(p -> sc.addTail(preSpace, preSpace, p.left, p.right, LINE_FEED_SIGNAL));
     return sc.toString();
   }
 
@@ -130,4 +129,10 @@ public class UpdatePlan extends PhysicalPlan {
     return Objects.equals(intervals, that.intervals) && Objects.equals(value, that.value)
         && Objects.equals(path, that.path);
   }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(value, path);
+  }
+
 }

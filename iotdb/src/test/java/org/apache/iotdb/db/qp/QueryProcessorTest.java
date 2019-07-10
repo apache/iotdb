@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Collections;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.executor.OverflowQPExecutor;
+import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -38,7 +38,7 @@ public class QueryProcessorTest {
 
   private CompressionType compressionType = CompressionType.valueOf(TSFileConfig.compressor);
   private MManager mManager = MManager.getInstance();
-  private QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+  private QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
 
   @Before
   public void setUp() throws Exception {

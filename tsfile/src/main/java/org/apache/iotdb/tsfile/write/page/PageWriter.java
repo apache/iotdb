@@ -60,7 +60,7 @@ public class PageWriter {
   /**
    * write a time value pair into encoder
    */
-  public void write(long time, boolean value) throws IOException {
+  public void write(long time, boolean value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
   }
@@ -68,7 +68,7 @@ public class PageWriter {
   /**
    * write a time value pair into encoder
    */
-  public void write(long time, short value) throws IOException {
+  public void write(long time, short value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
   }
@@ -76,7 +76,7 @@ public class PageWriter {
   /**
    * write a time value pair into encoder
    */
-  public void write(long time, int value) throws IOException {
+  public void write(long time, int value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
   }
@@ -84,7 +84,7 @@ public class PageWriter {
   /**
    * write a time value pair into encoder
    */
-  public void write(long time, long value) throws IOException {
+  public void write(long time, long value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
   }
@@ -92,7 +92,7 @@ public class PageWriter {
   /**
    * write a time value pair into encoder
    */
-  public void write(long time, float value) throws IOException {
+  public void write(long time, float value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
   }
@@ -100,7 +100,7 @@ public class PageWriter {
   /**
    * write a time value pair into encoder
    */
-  public void write(long time, double value) throws IOException {
+  public void write(long time, double value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
   }
@@ -108,7 +108,7 @@ public class PageWriter {
   /**
    * write a time value pair into encoder
    */
-  public void write(long time, BigDecimal value) throws IOException {
+  public void write(long time, BigDecimal value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
   }
@@ -116,7 +116,7 @@ public class PageWriter {
   /**
    * write a time value pair into encoder
    */
-  public void write(long time, Binary value) throws IOException {
+  public void write(long time, Binary value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
   }

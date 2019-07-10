@@ -19,26 +19,31 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import org.apache.iotdb.db.utils.PrimitiveArrayList;
-import org.apache.iotdb.db.utils.PrimitiveArrayListFactory;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsBinary;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsBoolean;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsInt;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsLong;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
+  private static final Logger logger = LoggerFactory.getLogger(WritableMemChunk.class);
   private TSDataType dataType;
-  private PrimitiveArrayList list;
+  private TVList list;
+  private List<TimeValuePair> sortedList;
 
-  public WritableMemChunk(TSDataType dataType) {
+  public WritableMemChunk(TSDataType dataType, TVList list) {
     this.dataType = dataType;
-    this.list = PrimitiveArrayListFactory.getByDataType(dataType);
+    this.list = list;
   }
 
   @Override
@@ -65,8 +70,10 @@ public class WritableMemChunk implements IWritableMemChunk {
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
+    sortedList = null;
   }
 
+  @Override
   public void write(long insertTime, Object value) {
     switch (dataType) {
       case BOOLEAN:
@@ -90,61 +97,53 @@ public class WritableMemChunk implements IWritableMemChunk {
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
+    sortedList = null;
   }
 
 
   @Override
   public void putLong(long t, long v) {
-    list.putTimestamp(t, v);
+    list.putLong(t, v);
   }
 
   @Override
   public void putInt(long t, int v) {
-    list.putTimestamp(t, v);
+    list.putInt(t, v);
   }
 
   @Override
   public void putFloat(long t, float v) {
-    list.putTimestamp(t, v);
+    list.putFloat(t, v);
   }
 
   @Override
   public void putDouble(long t, double v) {
-    list.putTimestamp(t, v);
+    list.putDouble(t, v);
   }
 
   @Override
   public void putBinary(long t, Binary v) {
-    list.putTimestamp(t, v);
+    list.putBinary(t, v);
   }
 
   @Override
   public void putBoolean(long t, boolean v) {
-    list.putTimestamp(t, v);
+    list.putBoolean(t, v);
   }
 
   @Override
-  // TODO: Consider using arrays to sort and remove duplicates
-  public List<TimeValuePair> getSortedTimeValuePairList() {
-    int length = list.size();
-    Map<Long, TsPrimitiveType> map = new HashMap<>(length, 1.0f);
-    for (int i = 0; i < length; i++) {
-      map.put(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i)));
-    }
-    List<TimeValuePair> ret = new ArrayList<>(map.size());
-    map.forEach((k, v) -> ret.add(new TimeValuePairInMemTable(k, v)));
-    ret.sort(TimeValuePair::compareTo);
-    return ret;
-
+  public synchronized TVList getSortedTVList() {
+    list.sort();
+    return list;
   }
 
   @Override
-  public void reset() {
-    this.list = PrimitiveArrayListFactory.getByDataType(dataType);
+  public TVList getTVList() {
+    return list;
   }
 
   @Override
-  public int count() {
+  public long count() {
     return list.size();
   }
 
@@ -153,4 +152,63 @@ public class WritableMemChunk implements IWritableMemChunk {
     return dataType;
   }
 
+  @Override
+  public void setTimeOffset(long offset) {
+    list.setTimeOffset(offset);
+  }
+
+  @Override
+  public synchronized List<TimeValuePair> getSortedTimeValuePairList() {
+    if (sortedList != null) {
+      return sortedList;
+    }
+    sortedList = new ArrayList<>();
+    list.sort();
+    for (int i = 0; i < list.size(); i++) {
+      long time = list.getTime(i);
+      if (time < list.getTimeOffset() ||
+          (i + 1 < list.size() && (time == list.getTime(i + 1)))) {
+        continue;
+      }
+      switch (dataType) {
+        case BOOLEAN:
+          sortedList.add(new TimeValuePair(time, new TsBoolean(list.getBoolean(i))));
+          break;
+        case INT32:
+          sortedList.add(new TimeValuePair(time, new TsInt(list.getInt(i))));
+          break;
+        case INT64:
+          sortedList.add(new TimeValuePair(time, new TsLong(list.getLong(i))));
+          break;
+        case FLOAT:
+          sortedList.add(new TimeValuePair(time, new TsFloat(list.getFloat(i))));
+          break;
+        case DOUBLE:
+          sortedList.add(new TimeValuePair(time, new TsDouble(list.getDouble(i))));
+          break;
+        case TEXT:
+          sortedList.add(new TimeValuePair(time, new TsBinary(list.getBinary(i))));
+          break;
+        default:
+          logger.error("Unsupported data type: {}", dataType);
+          break;
+      }
+    }
+    return this.sortedList;
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return list.size() == 0;
+  }
+
+  @Override
+  public long getMinTime() {
+    return list.getMinTime();
+  }
+
+  @Override
+  public void delete(long upperBound) {
+    list.delete(upperBound);
+  }
 }

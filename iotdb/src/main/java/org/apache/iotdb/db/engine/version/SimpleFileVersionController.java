@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * SimpleFileVersionController uses a local file and its file name to store the version.
  */
 public class SimpleFileVersionController implements VersionController {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleFileVersionController.class);
+  private static final Logger logger = LoggerFactory.getLogger(SimpleFileVersionController.class);
 
   /**
    * Every time currVersion - prevVersion >= saveInterval, currVersion is persisted and prevVersion
@@ -54,7 +54,7 @@ public class SimpleFileVersionController implements VersionController {
     try {
       checkPersist();
     } catch (IOException e) {
-      LOGGER.error("Error occurred when getting next version.", e);
+      logger.error("Error occurred when getting next version.", e);
     }
     return currVersion;
   }
@@ -78,7 +78,7 @@ public class SimpleFileVersionController implements VersionController {
     File oldFile = new File(directoryPath, FILE_PREFIX + prevVersion);
     File newFile = new File(directoryPath, FILE_PREFIX + currVersion);
     FileUtils.moveFile(oldFile, newFile);
-    LOGGER.info("Version file updated, previous: {}, current: {}",
+    logger.info("Version file updated, previous: {}, current: {}",
         oldFile.getAbsolutePath(), newFile.getAbsolutePath());
     prevVersion = currVersion;
   }

@@ -50,35 +50,35 @@ public abstract class Encoder {
     this.type = type;
   }
 
-  public void encode(boolean value, ByteArrayOutputStream out) throws IOException {
+  public void encode(boolean value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException("Method encode boolean is not supported by Encoder");
   }
 
-  public void encode(short value, ByteArrayOutputStream out) throws IOException {
+  public void encode(short value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException("Method encode short is not supported by Encoder");
   }
 
-  public void encode(int value, ByteArrayOutputStream out) throws IOException {
+  public void encode(int value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException("Method encode int is not supported by Encoder");
   }
 
-  public void encode(long value, ByteArrayOutputStream out) throws IOException {
+  public void encode(long value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException("Method encode long is not supported by Encoder");
   }
 
-  public void encode(float value, ByteArrayOutputStream out) throws IOException {
+  public void encode(float value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException("Method encode float is not supported by Encoder");
   }
 
-  public void encode(double value, ByteArrayOutputStream out) throws IOException {
+  public void encode(double value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException("Method encode double is not supported by Encoder");
   }
 
-  public void encode(Binary value, ByteArrayOutputStream out) throws IOException {
+  public void encode(Binary value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException("Method encode Binary is not supported by Encoder");
   }
 
-  public void encode(BigDecimal value, ByteArrayOutputStream out) throws IOException {
+  public void encode(BigDecimal value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException("Method encode BigDecimal is not supported by Encoder");
   }
 

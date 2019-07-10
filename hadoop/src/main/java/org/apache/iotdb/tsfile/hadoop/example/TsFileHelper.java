@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 
 public class TsFileHelper {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileHelper.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileHelper.class);
 
   public static void deleteTsFile(String filePath) {
     File file = new File(filePath);
@@ -121,8 +121,8 @@ public class TsFileHelper {
     file.delete();
     writeTsFile(filePath);
     TsFile tsFile = new TsFile(new TsRandomAccessLocalFileReader(filePath));
-    LOGGER.info("Get columns information: {}", tsFile.getAllColumns());
-    LOGGER.info("Get all deltaObjectId: {}", tsFile.getAllDeltaObject());
+    logger.info("Get columns information: {}", tsFile.getAllColumns());
+    logger.info("Get all deltaObjectId: {}", tsFile.getAllDeltaObject());
     tsFile.close();
   }
 }

@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.utils;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collections;
@@ -145,7 +144,7 @@ public class TsFileGeneratorForTest {
     fw.close();
   }
 
-  static public void write() throws IOException, InterruptedException, WriteProcessException {
+  static public void write() throws IOException {
     File file = new File(outputDataFile);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
@@ -155,8 +154,6 @@ public class TsFileGeneratorForTest {
       Assert.assertTrue(errorFile.delete());
     }
 
-    // LOG.info(jsonSchema.toString());
-    // FileSchema schema = new FileSchema(jsonSchema);
     FileSchema schema = generateTestSchema();
 
     TSFileDescriptor.getInstance().getConfig().groupSizeInByte = chunkGroupSize;
@@ -165,34 +162,17 @@ public class TsFileGeneratorForTest {
 
     // write
     try (Scanner in = new Scanner(new File(inputDataFile))) {
-      long lineCount = 0;
-      long startTime = System.currentTimeMillis();
-      long endTime = System.currentTimeMillis();
       assert in != null;
       while (in.hasNextLine()) {
-        if (lineCount % 1000000 == 0) {
-          endTime = System.currentTimeMillis();
-          // logger.info("write line:{},inner space consumer:{},use
-          // time:{}",lineCount,innerWriter.calculateMemSizeForEachGroup(),endTime);
-          LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-        }
         String str = in.nextLine();
         TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
         innerWriter.write(record);
-        lineCount++;
       }
-      endTime = System.currentTimeMillis();
-      LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-      endTime = System.currentTimeMillis();
-      LOG.info("write total:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-      LOG.info("src file size:{}GB", FileUtils.getLocalFileByte(inputDataFile, FileUtils.Unit.GB));
-      LOG.info("out file size:{}MB", FileUtils.getLocalFileByte(outputDataFile, FileUtils.Unit.MB));
     } catch (WriteProcessException e) {
       e.printStackTrace();
     } finally {
       innerWriter.close();
     }
-    LOG.info("write to file successfully!!");
   }
 
   private static JSONObject generateTestData() {
@@ -238,7 +218,6 @@ public class TsFileGeneratorForTest {
     JSONObject jsonSchema = new JSONObject();
     jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
     jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, measureGroup1);
-    // System.out.println(jsonSchema);
     return jsonSchema;
   }
 

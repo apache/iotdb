@@ -54,7 +54,7 @@ public class RandomNum {
   /**
    * get random text consisting of lowercase letters and numbers.
    *
-   * @param length -the length of random text
+   * @param length -the size of random text
    */
   public static String getRandomText(int length) {
 

@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class MetadataPlan extends PhysicalPlan {
 
-  private static final long serialVersionUID = -3717406842093744475L;
   private final MetadataOperator.NamespaceType namespaceType;
   private Path path;
   private TSDataType dataType;
@@ -117,7 +116,8 @@ public class MetadataPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    String ret = String.format("seriesPath: %s\nresultDataType: %s\nencoding: %s\nnamespace type: %s\nargs: ", path, dataType, encoding, namespaceType);
+    String ret = String.format("seriesPath: %s%nresultDataType: %s%nencoding: %s%nnamespace type:"
+        + " %s%nargs: ", path, dataType, encoding, namespaceType);
     StringBuilder stringBuilder = new StringBuilder(ret.length()+50);
     stringBuilder.append(ret);
     for (Map.Entry prop : props.entrySet()) {

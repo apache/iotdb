@@ -52,13 +52,13 @@ public class ModificationFile {
     this.filePath = filePath;
   }
 
-  private void init() throws IOException {
+  private void init() {
     synchronized (this) {
       modifications = (List<Modification>) reader.read();
     }
   }
 
-  private void checkInit() throws IOException {
+  private void checkInit() {
     if (modifications == null) {
       init();
     }
@@ -103,7 +103,7 @@ public class ModificationFile {
    *
    * @return an ArrayList of modifications.
    */
-  public Collection<Modification> getModifications() throws IOException {
+  public Collection<Modification> getModifications() {
     synchronized (this) {
       checkInit();
       return new ArrayList<>(modifications);

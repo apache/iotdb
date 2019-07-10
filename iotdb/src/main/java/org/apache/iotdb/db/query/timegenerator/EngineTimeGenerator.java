@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -39,12 +39,12 @@ public class EngineTimeGenerator implements TimeGenerator {
    * Constructor of EngineTimeGenerator.
    */
   public EngineTimeGenerator(IExpression expression, QueryContext context)
-      throws FileNodeManagerException {
+      throws StorageEngineException {
     this.expression = expression;
     initNode(context);
   }
 
-  private void initNode(QueryContext context) throws FileNodeManagerException {
+  private void initNode(QueryContext context) throws StorageEngineException {
     EngineNodeConstructor engineNodeConstructor = new EngineNodeConstructor();
     this.operatorNode = engineNodeConstructor.construct(expression, context);
   }

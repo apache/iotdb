@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
 @Deprecated
 public class BitmapEncoder extends Encoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BitmapEncoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(BitmapEncoder.class);
 
   /**
    * Bitmap Encoder stores all current values in a list temporally.
@@ -65,7 +65,7 @@ public class BitmapEncoder extends Encoder {
   public BitmapEncoder() {
     super(TSEncoding.BITMAP);
     this.values = new ArrayList<>();
-    LOGGER.debug("tsfile-encoding BitmapEncoder: init bitmap encoder");
+    logger.debug("tsfile-encoding BitmapEncoder: init bitmap encoder");
   }
 
   /**
@@ -79,7 +79,7 @@ public class BitmapEncoder extends Encoder {
    * @see Encoder#encode(int, java.io.ByteArrayOutputStream)
    */
   @Override
-  public void encode(int value, ByteArrayOutputStream out) throws IOException {
+  public void encode(int value, ByteArrayOutputStream out) {
     values.add(value);
   }
 

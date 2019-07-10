@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 public class RegisterManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RegisterManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(RegisterManager.class);
   private List<IService> iServices;
 
   public RegisterManager() {
@@ -39,7 +39,7 @@ public class RegisterManager {
   public void register(IService service) throws StartupException {
     for (IService s : iServices) {
       if (s.getID() == service.getID()) {
-        LOGGER.info("{} has already been registered. skip", service.getID().getName());
+        logger.info("{} has already been registered. skip", service.getID().getName());
         return;
       }
     }
@@ -55,10 +55,10 @@ public class RegisterManager {
       try {
         service.stop();
       } catch (Exception e) {
-        LOGGER.error("Failed to stop {} because:", service.getID().getName(), e);
+        logger.error("Failed to stop {} because:", service.getID().getName(), e);
       }
     }
     iServices.clear();
-    LOGGER.info("deregister all service.");
+    logger.info("deregister all service.");
   }
 }

@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  */
 public class FloatDecoder extends Decoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FloatDecoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(FloatDecoder.class);
   private Decoder decoder;
 
   /**
@@ -55,10 +55,10 @@ public class FloatDecoder extends Decoder {
     if (encodingType == TSEncoding.RLE) {
       if (dataType == TSDataType.FLOAT) {
         decoder = new IntRleDecoder(EndianType.LITTLE_ENDIAN);
-        LOGGER.debug("tsfile-encoding FloatDecoder: init decoder using int-rle and float");
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using int-rle and float");
       } else if (dataType == TSDataType.DOUBLE) {
         decoder = new LongRleDecoder(EndianType.LITTLE_ENDIAN);
-        LOGGER.debug("tsfile-encoding FloatDecoder: init decoder using long-rle and double");
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using long-rle and double");
       } else {
         throw new TsFileDecodingException(
             String.format("data type %s is not supported by FloatDecoder", dataType));
@@ -66,10 +66,10 @@ public class FloatDecoder extends Decoder {
     } else if (encodingType == TSEncoding.TS_2DIFF) {
       if (dataType == TSDataType.FLOAT) {
         decoder = new DeltaBinaryDecoder.IntDeltaDecoder();
-        LOGGER.debug("tsfile-encoding FloatDecoder: init decoder using int-delta and float");
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using int-delta and float");
       } else if (dataType == TSDataType.DOUBLE) {
         decoder = new DeltaBinaryDecoder.LongDeltaDecoder();
-        LOGGER.debug("tsfile-encoding FloatDecoder: init decoder using long-delta and double");
+        logger.debug("tsfile-encoding FloatDecoder: init decoder using long-delta and double");
       } else {
         throw new TsFileDecodingException(
             String.format("data type %s is not supported by FloatDecoder", dataType));

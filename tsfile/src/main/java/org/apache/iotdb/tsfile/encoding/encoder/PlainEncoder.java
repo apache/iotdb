@@ -31,12 +31,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author Zhang Jinrui
- */
 public class PlainEncoder extends Encoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PlainEncoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(PlainEncoder.class);
   private EndianType endianType;
   private TSDataType dataType;
   private int maxStringLength;
@@ -71,7 +68,7 @@ public class PlainEncoder extends Encoder {
       out.write(value & 0xFF);
       out.write((value >> 8) & 0xFF);
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
-      LOGGER.error(
+      logger.error(
           "tsfile-encoding PlainEncoder: current version does not support short value encoding");
       throw new TsFileEncodingException(
           "tsfile-encoding PlainEncoder: current version does not support short value encoding");
@@ -86,7 +83,7 @@ public class PlainEncoder extends Encoder {
       out.write((value >> 16) & 0xFF);
       out.write((value >> 24) & 0xFF);
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
-      LOGGER.error(
+      logger.error(
           "tsfile-encoding PlainEncoder: current version does not support int value encoding");
       throw new TsFileEncodingException(
           "tsfile-encoding PlainEncoder: current version does not support int value encoding");
@@ -106,13 +103,13 @@ public class PlainEncoder extends Encoder {
       if (this.endianType == EndianType.LITTLE_ENDIAN) {
         out.write(bufferLittle);
       } else if (this.endianType == EndianType.BIG_ENDIAN) {
-        LOGGER.error(
+        logger.error(
             "tsfile-encoding PlainEncoder: current version does not support long value encoding");
         throw new TsFileEncodingException(
             "tsfile-encoding PlainEncoder: current version does not support long value encoding");
       }
     } catch (IOException e) {
-      LOGGER
+      logger
           .error("tsfile-encoding PlainEncoder: error occurs when encode long value {}", value, e);
     }
   }
@@ -135,7 +132,7 @@ public class PlainEncoder extends Encoder {
       // write value
       out.write(value.getValues());
     } catch (IOException e) {
-      LOGGER.error("tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value,
+      logger.error("tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value,
           e);
     }
   }
@@ -172,7 +169,7 @@ public class PlainEncoder extends Encoder {
   }
 
   @Override
-  public void encode(BigDecimal value, ByteArrayOutputStream out) throws IOException {
+  public void encode(BigDecimal value, ByteArrayOutputStream out) {
     throw new TsFileEncodingException(
         "tsfile-encoding PlainEncoder: current version does not support BigDecimal value encoding");
   }

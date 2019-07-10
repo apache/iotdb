@@ -33,8 +33,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * RecordUtils is a utility class for parsing data in form of CSV string.
- *
- * @author kangrong
  */
 public class RecordUtils {
 

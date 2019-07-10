@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  */
 public class FileReaderManager implements IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileReaderManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
 
   /**
    * max number of file streams being cached, must be lower than 65535.
@@ -101,13 +101,13 @@ public class FileReaderManager implements IService {
       Map<String, AtomicInteger> refMap) {
     for (Map.Entry<String, TsFileSequenceReader> entry : readerMap.entrySet()) {
       TsFileSequenceReader reader = entry.getValue();
-      int referenceNum = refMap.get(entry.getKey()).get();
+      AtomicInteger refAtom = refMap.get(entry.getKey());
 
-      if (referenceNum == 0) {
+      if (refAtom != null && refAtom.get() == 0) {
         try {
           reader.close();
         } catch (IOException e) {
-          LOGGER.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+          logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
         }
         readerMap.remove(entry.getKey());
         refMap.remove(entry.getKey());
@@ -117,7 +117,7 @@ public class FileReaderManager implements IService {
 
   /**
    * Get the reader of the file(tsfile or unseq tsfile) indicated by filePath. If the reader already
-   * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosed .
+   * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosing .
    * Otherwise a new reader will be created and cached.
    *
    * @param filePath the path of the file, of which the reader is desired.
@@ -133,7 +133,7 @@ public class FileReaderManager implements IService {
     if (!readerMap.containsKey(filePath)) {
 
       if (readerMap.size() >= MAX_CACHED_FILE_SIZE) {
-        LOGGER.warn("Query has opened {} files !", readerMap.size());
+        logger.warn("Query has opened {} files !", readerMap.size());
       }
 
       TsFileSequenceReader tsFileReader = !isClosed ? new UnClosedTsFileReader(filePath)
@@ -151,6 +151,7 @@ public class FileReaderManager implements IService {
    * of a reader equals zero, the reader can be closed and removed.
    */
   public synchronized void increaseFileReaderReference(String filePath, boolean isClosed) {
+    // TODO : this should be called in get()
     if (!isClosed) {
       unclosedReferenceMap.computeIfAbsent(filePath, k -> new AtomicInteger()).getAndIncrement();
     } else {
@@ -227,7 +228,7 @@ public class FileReaderManager implements IService {
     try {
       executorService.awaitTermination(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      LOGGER.error("StatMonitor timing service could not be shutdown.", e);
+      logger.error("StatMonitor timing service could not be shutdown.", e);
       Thread.currentThread().interrupt();
     }
   }

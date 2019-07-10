@@ -32,7 +32,7 @@ public class IOUtils {
   /**
    * Write a string into the given stream.
    *
-   * @param outputStream        the destination to write.
+   * @param outputStream        the destination to insert.
    * @param str                 the string to be written.
    * @param encoding            string encoding like 'utf-8'.
    * @param encodingBufferLocal a ThreadLocal buffer may be passed to avoid
@@ -54,7 +54,7 @@ public class IOUtils {
   /**
    * Write an integer into the given stream.
    *
-   * @param outputStream        the destination to write.
+   * @param outputStream        the destination to insert.
    * @param i                   the integer to be written.
    * @param encodingBufferLocal a ThreadLocal buffer may be passed to avoid
    *                            frequently memory allocations. A null may also be passed
@@ -138,7 +138,7 @@ public class IOUtils {
 
   /**
    * Write a PathPrivilege to the given stream.
-   * @param outputStream the destination to write.
+   * @param outputStream the destination to insert.
    * @param pathPrivilege the PathPrivilege to be written.
    * @param encoding string encoding like 'utf-8'.
    * @param encodingBufferLocal a ThreadLocal buffer may be passed to avoid

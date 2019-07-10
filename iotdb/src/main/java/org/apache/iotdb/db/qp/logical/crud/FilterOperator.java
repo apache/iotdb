@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -203,6 +202,20 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
       return -1;
     }
     return fil.singlePath.toString().compareTo(singlePath.toString());
+  }
+
+  @Override
+  public boolean equals(Object fil) {
+    if (!(fil instanceof FilterOperator)) {
+      return false;
+    }
+    FilterOperator operator = (FilterOperator) fil;
+    return compareTo(operator) == 0;
+  }
+
+  @Override
+  public int hashCode() {
+    return tokenSymbol.hashCode();
   }
 
   public boolean isLeaf() {

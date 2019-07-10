@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGeneratorImpl;
-import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 public class ExecutorWithTimeGenerator implements QueryExecutor {
 
@@ -65,7 +65,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
     // the size of hasFilter is equal to selectedPathList, if a series has a filter, it is true,
     // otherwise false
     List<Boolean> cached = removeFilteredPaths(expression, selectedPathList);
-    List<SeriesReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
+    List<FileSeriesReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
     Iterator<Boolean> cachedIterator = cached.iterator();
@@ -81,7 +81,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
           readersOfSelectedSeries.add(null);
           continue;
         }
-        SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(chunkLoader,
+        FileSeriesReaderByTimestamp seriesReader = new FileSeriesReaderByTimestamp(chunkLoader,
             chunkMetaDataList);
         readersOfSelectedSeries.add(seriesReader);
       } else {
