@@ -27,14 +27,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -58,8 +57,8 @@ public class StorageEngine implements IService {
   private volatile boolean readOnly = false;
 
   /**
-   * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor will have a
-   * subfolder under the systemDir.
+   * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
+   * will have a subfolder under the systemDir.
    */
   private final String systemDir;
 
@@ -88,7 +87,7 @@ public class StorageEngine implements IService {
      */
     try {
       List<String> storageGroups = MManager.getInstance().getAllStorageGroupNames();
-      for (String storageGroup: storageGroups) {
+      for (String storageGroup : storageGroups) {
         StorageGroupProcessor processor = new StorageGroupProcessor(systemDir, storageGroup);
         logger.info("Storage Group Processor {} is recovered successfully", storageGroup);
         processorMap.put(storageGroup, processor);
@@ -129,15 +128,13 @@ public class StorageEngine implements IService {
             logger.debug("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName);
-            synchronized (processorMap) {
-              processorMap.put(storageGroupName, processor);
-            }
+            processorMap.put(storageGroupName, processor);
           }
         }
       }
       return processor;
     } catch (PathErrorException | ProcessorException e) {
-      logger.error("Fail to get StorageGroupProcessor {}", storageGroupName,  e);
+      logger.error("Fail to get StorageGroupProcessor {}", storageGroupName, e);
       throw new StorageEngineException(e);
     }
   }
@@ -183,31 +180,24 @@ public class StorageEngine implements IService {
    * only for unit test
    */
   public void asyncFlushAndSealAllFiles() {
-    synchronized (processorMap) {
-      for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-        storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
-      }
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
     }
   }
 
   public void asyncFlushAllProcessor() {
-    synchronized (processorMap) {
-      for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-        storageGroupProcessor.asyncFlush();
-      }
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      storageGroupProcessor.asyncFlush();
     }
   }
 
   /**
-   * flush command
-   * Sync asyncCloseOneProcessor all file node processors.
+   * flush command Sync asyncCloseOneProcessor all file node processors.
    */
   public void syncCloseAllProcessor() {
     logger.info("Start closing all storage group processor");
-    synchronized (processorMap){
-      for(StorageGroupProcessor processor: processorMap.values()){
-        processor.waitForAllCurrentTsFileProcessorsClosed();
-      }
+    for (StorageGroupProcessor processor : processorMap.values()) {
+      processor.waitForAllCurrentTsFileProcessorsClosed();
     }
   }
 
@@ -252,8 +242,8 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * end query on a given deviceId. If some TsFile has been merged and this query is the
-   * last query using it, the TsFile can be deleted safely.
+   * end query on a given deviceId. If some TsFile has been merged and this query is the last query
+   * using it, the TsFile can be deleted safely.
    */
   public void endQuery(String deviceId, int token) throws StorageEngineException {
     // TODO  implement it when developing the merge function
@@ -279,7 +269,8 @@ public class StorageEngine implements IService {
    * @param appendFile the appended tsfile information
    */
   @SuppressWarnings("unused") // reimplement sync module
-  public boolean appendFileToStorageGroupProcessor(String storageGroupName, TsFileResource appendFile,
+  public boolean appendFileToStorageGroupProcessor(String storageGroupName,
+      TsFileResource appendFile,
       String appendFilePath) throws StorageEngineException {
     // TODO reimplement sync module
     return true;
@@ -319,8 +310,8 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * delete all data files (both memory data and file on disk) in a storage group.
-   * It is used when there is no timeseries (which are all deleted) in this storage group)
+   * delete all data files (both memory data and file on disk) in a storage group. It is used when
+   * there is no timeseries (which are all deleted) in this storage group)
    */
   public void deleteAllDataFilesInOneStorageGroup(String storageGroupName) {
     if (processorMap.containsKey(storageGroupName)) {

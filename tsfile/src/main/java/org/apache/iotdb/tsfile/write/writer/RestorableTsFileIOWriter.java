@@ -178,4 +178,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return append;
   }
 
+  public Map<String, Map<String, List<ChunkMetaData>>> getMetadatas() {
+    return metadatas;
+  }
 }

@@ -33,7 +33,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   // static parameter section
 
-  private static final float WRITE_MEMORY_RATIO = 0.8f;
+  private static final double WRITE_MEMORY_RATIO = 0.8;
+
+  private static final double FLUSH_THRESHOLD = 0.2;
 
   /**
    * Maximum amount of memory that the Java virtual machine will attempt to use
@@ -72,6 +74,8 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   private int currentMemTableSize;
 
+  // Adapter section
+
   private boolean initialized = false;
 
   @Override
@@ -103,7 +107,8 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       if(initialized) {
         if (shouldClose) {
           StorageEngine.getInstance().asyncFlushAndSealAllFiles();
-        } else if (memtableSizeInByte < currentMemTableSize) {
+        } else if (memtableSizeInByte < currentMemTableSize
+            && currentMemTableSize - memtableSizeInByte > currentMemTableSize * FLUSH_THRESHOLD) {
           StorageEngine.getInstance().asyncFlushAllProcessor();
         }
       }
