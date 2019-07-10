@@ -57,7 +57,7 @@ import org.apache.iotdb.db.sql.parse.AstNode;
 import org.apache.iotdb.db.sql.parse.Node;
 import org.apache.iotdb.db.sql.parse.TSParser;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.SystemConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -892,7 +892,7 @@ public class LogicalGenerator {
         path[i] = node.getChild(i).getText();
       }
     }
-    return new Path(new StringContainer(path, SystemConstant.PATH_SEPARATOR));
+    return new Path(new StringContainer(path, TsFileConstant.PATH_SEPARATOR));
   }
 
   private String parseStringWithQuoto(String src) throws IllegalASTFormatException {
@@ -916,7 +916,7 @@ public class LogicalGenerator {
         || csvPath.charAt(csvPath.length() - 1) != '\'') {
       throw new IllegalASTFormatException("data load: error format csvPath:" + csvPath);
     }
-    StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
+    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
     sc.addTail(SQLConstant.ROOT);
     for (int i = 2; i < childCount; i++) {
       // String pathNode = astNode.getChild(i).getText().toLowerCase();
