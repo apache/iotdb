@@ -475,6 +475,10 @@ public class TsFileProcessor {
     return workMemTable.memSize();
   }
 
+  RestorableTsFileIOWriter getWriter() {
+    return writer;
+  }
+
   String getStorageGroupName() {
     return storageGroupName;
   }
