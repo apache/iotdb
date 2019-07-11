@@ -53,11 +53,8 @@ public class RecoverMergeTask extends MergeTask {
   public RecoverMergeTask(
       List<TsFileResource> allSeqFiles,
       List<TsFileResource> allUnseqFiles,
-      String storageGroupDir) throws IOException {
-    super();
-    this.seqFiles = allSeqFiles;
-    this.unseqFiles = allUnseqFiles;
-    this.storageGroupDir = storageGroupDir;
+      String storageGroupDir, MergeCallback callback) throws IOException {
+    super(allSeqFiles, allUnseqFiles, storageGroupDir, callback);
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException, MetadataErrorException {

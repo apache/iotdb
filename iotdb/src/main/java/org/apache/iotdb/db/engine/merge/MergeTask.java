@@ -99,16 +99,14 @@ public class MergeTask implements Callable<Void> {
 
   private long currDeviceMaxTime;
 
-  protected MergeTask() {
-
-  }
+  protected MergeCallback callback;
 
   public MergeTask(List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles, String storageGroupDir) throws IOException {
+      List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback) throws IOException {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.storageGroupDir = storageGroupDir;
-    this.mergeLogger = new MergeLogger(storageGroupDir);
+    this.callback = callback;
   }
 
   @Override
@@ -118,7 +116,7 @@ public class MergeTask implements Callable<Void> {
   }
 
   private void doMerge() throws MetadataErrorException, IOException {
-
+    this.mergeLogger = new MergeLogger(storageGroupDir);
     logFiles();
 
     List<Path> unmergedSeries = collectPathsInUnseqFiles();
@@ -187,6 +185,10 @@ public class MergeTask implements Callable<Void> {
       File mergeFile = new File(seqFile.getFile().getPath() + MERGE_SUFFIX);
       mergeFile.delete();
     }
+
+    if (executeCallback) {
+      callback.call(seqFiles, unseqFiles);
+    }
   }
 
   private void moveMergedToOld(TsFileResource seqFile) throws IOException {
@@ -249,7 +251,7 @@ public class MergeTask implements Callable<Void> {
       maxVersion = maxVersion < chunkMetaData.getVersion() ? chunkMetaData.getVersion() :
           maxVersion;
     }
-    fileWriter.endChunkGroup(maxVersion);
+    fileWriter.endChunkGroup(maxVersion + 1);
   }
 
   private void moveUnmergedToNew(TsFileResource seqFile) throws IOException {
@@ -276,7 +278,7 @@ public class MergeTask implements Callable<Void> {
         fileWriter.startChunkGroup(path.getDevice());
         long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetaDataList, chunkLoader,
             chunkWriter, measurementSchema, fileWriter);
-        fileWriter.endChunkGroup(maxVersion);
+        fileWriter.endChunkGroup(maxVersion + 1);
       }
     }
 
@@ -365,7 +367,7 @@ public class MergeTask implements Callable<Void> {
     mergeFileWriter.startChunkGroup(deviceId);
     if (mergeChunks(seqChunkMeta, fileLimitTime, chunkLoader, measurementSchema,
         unseqReader, mergeFileWriter, currTsFile, path)) {
-      mergeFileWriter.endChunkGroup(seqChunkMeta.get(seqChunkMeta.size() - 1).getVersion());
+      mergeFileWriter.endChunkGroup(seqChunkMeta.get(seqChunkMeta.size() - 1).getVersion() + 1);
       mergeLogger.logFilePositionUpdate(mergeFileWriter.getFile());
     }
     currTsFile.updateTime(path.getDevice(), currDeviceMaxTime);

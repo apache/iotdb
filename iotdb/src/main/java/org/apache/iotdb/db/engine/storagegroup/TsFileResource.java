@@ -235,4 +235,9 @@ public class TsFileResource {
   public ReentrantReadWriteLock getMergeQueryLock() {
     return mergeQueryLock;
   }
+
+  public void removeModFile() throws IOException {
+    getModFile().remove();
+    modFile = null;
+  }
 }

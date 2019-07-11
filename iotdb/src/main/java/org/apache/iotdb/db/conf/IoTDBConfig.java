@@ -180,6 +180,10 @@ public class IoTDBConfig {
    */
   private boolean chunkBufferPoolEnable = false;
 
+  private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
+
+  private int mergeThreadNum = 2;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -486,5 +490,21 @@ public class IoTDBConfig {
 
   void setChunkBufferPoolEnable(boolean chunkBufferPoolEnable) {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
+  }
+
+  public long getMergeMemoryBudget() {
+    return mergeMemoryBudget;
+  }
+
+  public void setMergeMemoryBudget(long mergeMemoryBudget) {
+    this.mergeMemoryBudget = mergeMemoryBudget;
+  }
+
+  public int getMergeThreadNum() {
+    return mergeThreadNum;
+  }
+
+  public void setMergeThreadNum(int mergeThreadNum) {
+    this.mergeThreadNum = mergeThreadNum;
   }
 }

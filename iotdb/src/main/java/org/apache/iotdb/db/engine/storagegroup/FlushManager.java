@@ -43,7 +43,7 @@ public class FlushManager {
   }
 
   /**
-   * Add BufferWriteProcessor to asyncFlush manager
+   * Add TsFileProcessor to asyncFlush manager
    */
   @SuppressWarnings("squid:S2445")
   void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
