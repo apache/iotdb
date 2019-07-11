@@ -26,6 +26,7 @@ import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -101,17 +102,29 @@ public class MergeTask implements Callable<Void> {
 
   protected MergeCallback callback;
 
+  protected String taskName;
+
   public MergeTask(List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback) throws IOException {
+      List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
+      String taskName) throws IOException {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.storageGroupDir = storageGroupDir;
     this.callback = callback;
+    this.taskName = taskName;
   }
 
   @Override
   public Void call() throws Exception {
-    doMerge();
+    try  {
+      doMerge();
+    } catch (Exception e) {
+      logger.error("Runtime exception in merge {}", taskName, e);
+      seqFiles = Collections.emptyList();
+      unseqFiles = Collections.emptyList();
+      cleanUp(true);
+      throw e;
+    }
     return null;
   }
 
@@ -131,17 +144,34 @@ public class MergeTask implements Callable<Void> {
   protected void mergeFiles(List<TsFileResource> unmergedFiles) throws IOException {
     // decide whether to write the unmerged chunks to the merge files or to move the merged data
     // back to the origin seqFile's
+    if (logger.isInfoEnabled()) {
+      logger.info("{} starts to merge {} files", taskName, unmergedFiles.size());
+    }
+    int cnt = 0;
     for (TsFileResource seqFile : unmergedFiles) {
       int mergedChunkNum = mergedChunkCnt.getOrDefault(seqFile, 0);
       int unmergedChunkNum = unmergedChunkCnt.getOrDefault(seqFile, 0);
       if (mergedChunkNum >= unmergedChunkNum) {
         // move the unmerged data to the new file
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} moving unmerged data of {} to the merged file", taskName,
+              seqFile.getFile().getName());
+        }
         moveUnmergedToNew(seqFile);
       } else {
         // move the merged data to the old file
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} moving merged data of {} to the old file", taskName,
+              seqFile.getFile().getName());
+        }
         moveMergedToOld(seqFile);
       }
+      cnt ++;
+      if (logger.isInfoEnabled()) {
+        logger.debug("{} has merged {}/{} files", taskName, cnt, unmergedFiles.size());
+      }
     }
+    logger.info("{} has merged all files", taskName);
     mergeLogger.logMergeEnd();
   }
 
@@ -152,20 +182,35 @@ public class MergeTask implements Callable<Void> {
   }
 
   protected void mergeSeries(List<Path> unmergedSeries) throws IOException {
+    if (logger.isInfoEnabled()) {
+      logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
+    }
     for (TsFileResource seqFile : seqFiles) {
       unmergedChunkStartTimes.put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's temp merge file
+    int mergedCnt = 0;
+    double progress = 0.0;
     for (Path path : unmergedSeries) {
       mergeLogger.logTSStart(path);
       mergeOnePath(path);
       mergeLogger.logTSEnd(path);
+      mergedCnt ++;
+      if (logger.isDebugEnabled()) {
+        double newProgress = 100 * mergedCnt / (double) (unmergedSeries.size());
+        if (newProgress - progress >= 0.01) {
+          progress = newProgress;
+          logger.debug("{} has merged {}% series", taskName, progress);
+        }
+      }
     }
+    logger.info("{} all series are merged", taskName);
     mergeLogger.logAllTsEnd();
   }
 
 
   protected void cleanUp(boolean executeCallback) throws IOException {
+    logger.info("{} is cleaning up", taskName);
     for (TsFileSequenceReader sequenceReader : fileReaderCache.values()) {
       sequenceReader.close();
     }
@@ -289,6 +334,7 @@ public class MergeTask implements Callable<Void> {
 
     seqFile.getMergeQueryLock().writeLock().lock();
     try {
+      seqFile.getFile().delete();
       FileUtils.moveFile(fileWriter.getFile(), seqFile.getFile());
     } finally {
       seqFile.getMergeQueryLock().writeLock().unlock();

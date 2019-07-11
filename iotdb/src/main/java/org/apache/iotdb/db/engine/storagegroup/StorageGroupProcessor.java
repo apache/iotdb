@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.apache.iotdb.db.engine.merge.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.SystemConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -39,6 +41,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.merge.MergeFileSelector;
 import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.MergeManager;
+import org.apache.iotdb.db.engine.merge.RecoverMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -48,6 +51,7 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -184,13 +188,23 @@ public class StorageGroupProcessor {
   private void recover() throws ProcessorException {
     logger.info("recover Storage Group  {}", storageGroupName);
 
-    // collect TsFiles from sequential data directory
-    List<File> tsFiles = getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
-    recoverSeqFiles(tsFiles);
+    // collect TsFiles from sequential and unsequential data directory
+    List<TsFileResource> seqTsFiles = getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
+    List<TsFileResource> unseqTsFiles =
+        getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
-    // collect TsFiles from unsequential data directory
-    tsFiles = getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
-    recoverUnseqFiles(tsFiles);
+    String taskName = storageGroupName + System.currentTimeMillis();
+    try {
+      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
+          storageGroupSysDir.getPath(), this::mergeEndAction, taskName);
+      logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
+      recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isMergeAfterReboot());
+    } catch (IOException | MetadataErrorException e) {
+      throw new ProcessorException(e);
+    }
+
+    recoverSeqFiles(seqTsFiles);
+    recoverUnseqFiles(unseqTsFiles);
 
     for (TsFileResource resource : sequenceFileList) {
       latestTimeForEachDevice.putAll(resource.getEndTimeMap());
@@ -198,23 +212,47 @@ public class StorageGroupProcessor {
     }
   }
 
-  private List<File> getAllFiles(List<String> folders) {
+  private List<TsFileResource> getAllFiles(List<String> folders) {
     List<File> tsFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = new File(baseDir, storageGroupName);
       if (!fileFolder.exists()) {
         continue;
       }
+      // some TsFileResource may be persisting when the system crashed, try recovering such
+      // resources
+      continueFailedRenames(fileFolder, TEMP_SUFFIX);
+
+      // some TsFiles were going to be replaced by the merged files when the system crashed and
+      // the process was interrupted before the merged files could be named
+      continueFailedRenames(fileFolder, MERGE_SUFFIX);
+
       Collections
           .addAll(tsFiles, fileFolder.listFiles(file -> file.getName().endsWith(TSFILE_SUFFIX)));
     }
-    return tsFiles;
+    tsFiles.sort(this::compareFileName);
+    List<TsFileResource> ret = new ArrayList<>();
+    tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
+    return ret;
   }
 
-  private void recoverSeqFiles(List<File> tsFiles) throws ProcessorException {
-    tsFiles.sort(this::compareFileName);
-    for (File tsFile : tsFiles) {
-      TsFileResource tsFileResource = new TsFileResource(tsFile);
+  private void continueFailedRenames(File fileFolder, String suffix) {
+    File[] files = fileFolder.listFiles(file -> file.getName().endsWith(suffix));
+    if (files != null) {
+      for (File tempResource : files) {
+        File originResource = new File(tempResource.getPath().replace(suffix, ""));
+        if (originResource.exists()) {
+          tempResource.delete();
+        } else {
+          tempResource.renameTo(originResource);
+        }
+      }
+    }
+  }
+
+  private void recoverSeqFiles(List<TsFileResource> tsFiles) throws ProcessorException {
+
+    for (TsFileResource tsFileResource : tsFiles) {
       sequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
           , fileSchema, versionController, tsFileResource, false);
@@ -222,10 +260,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverUnseqFiles(List<File> tsFiles) throws ProcessorException {
-    tsFiles.sort(this::compareFileName);
-    for (File tsFile : tsFiles) {
-      TsFileResource tsFileResource = new TsFileResource(tsFile);
+  private void recoverUnseqFiles(List<TsFileResource> tsFiles) throws ProcessorException {
+    for (TsFileResource tsFileResource : tsFiles) {
       unSequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
           fileSchema,
@@ -660,6 +696,7 @@ public class StorageGroupProcessor {
       }
       if (unSequenceFileList.isEmpty() || sequenceFileList.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
+        return;
       }
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
@@ -672,12 +709,15 @@ public class StorageGroupProcessor {
               budget);
           return;
         }
+        String taskName = storageGroupName + "-" + System.currentTimeMillis();
         MergeTask mergeTask = new MergeTask(mergeFiles[0], mergeFiles[1],
-            storageGroupSysDir.getPath(), this::mergeEndAction);
+            storageGroupSysDir.getPath(), this::mergeEndAction, taskName);
+        mergingModification = new ModificationFile(storageGroupSysDir + File.separator + "merge"
+            + ".mods");
         MergeManager.getINSTANCE().submit(mergeTask);
         if (logger.isInfoEnabled()) {
-          logger.info("{} submits a merge task, merging {} seqFiles, {} unseqFiles",
-              storageGroupName, mergeFiles[0].size(), mergeFiles[1].size());
+          logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
+              storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
         }
         isMerging = true;
         mergeStartTime = System.currentTimeMillis();
@@ -693,6 +733,15 @@ public class StorageGroupProcessor {
   }
 
   private void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+    logger.info("{} a merge task is ending...", storageGroupName);
+
+    if (seqFiles.isEmpty()) {
+      // merge runtime exception arose, just end this merge
+      isMerging = false;
+      logger.info("{} a merge task abnormally ends", storageGroupName);
+      return;
+    }
+
     mergeLock.writeLock().lock();
     try {
       unSequenceFileList.removeAll(unseqFiles);
@@ -700,32 +749,47 @@ public class StorageGroupProcessor {
       mergeLock.writeLock().unlock();
     }
 
+    for (int i = 0; i < unseqFiles.size(); i++) {
+      TsFileResource unseqFile = unseqFiles.get(i);
+      unseqFile.getMergeQueryLock().writeLock().lock();
+      try {
+        unseqFile.remove();
+      } finally {
+        unseqFile.getMergeQueryLock().writeLock().unlock();
+      }
+    }
+
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
       seqFile.getMergeQueryLock().writeLock().lock();
       mergeLock.writeLock().lock();
       try {
-        // remove old modifications and write modifications generated during merge
-        seqFile.removeModFile();
-        for (Modification modification : mergingModification.getModifications()) {
-          seqFile.getModFile().write(modification);
-        }
-      } catch (IOException e) {
-        logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
-            seqFile.getFile(), e);
-      }
-      if (i == seqFiles.size() - 1) {
+        logger.debug("{} is updating the {} merged file's modification file", storageGroupName, i);
         try {
-          mergingModification.remove();
+          // remove old modifications and write modifications generated during merge
+          seqFile.removeModFile();
+          for (Modification modification : mergingModification.getModifications()) {
+            seqFile.getModFile().write(modification);
+          }
         } catch (IOException e) {
-          logger.error("{} cannot remove merging modification ", storageGroupName, e);
+          logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
+              seqFile.getFile(), e);
         }
-        mergingModification = null;
-        isMerging = false;
+        if (i == seqFiles.size() - 1) {
+          try {
+            mergingModification.remove();
+          } catch (IOException e) {
+            logger.error("{} cannot remove merging modification ", storageGroupName, e);
+          }
+          mergingModification = null;
+          isMerging = false;
+        }
+      } finally {
+        seqFile.getMergeQueryLock().writeLock().unlock();
+        mergeLock.writeLock().unlock();
       }
-      seqFile.getMergeQueryLock().writeLock().unlock();
-      mergeLock.writeLock().unlock();
     }
+    logger.info("{} a merge task ends", storageGroupName);
   }
 
 

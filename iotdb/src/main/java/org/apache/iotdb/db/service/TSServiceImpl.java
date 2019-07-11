@@ -400,6 +400,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return true;
       case "merge":
          StorageEngine.getInstance().mergeAll();
+         return true;
       default:
         return false;
     }
