@@ -105,11 +105,12 @@ public class ListPublicBAOS extends PublicBAOS {
 
   @Override
   public synchronized void write(int b) {
-    ensureCapacity(dataSize + 1);
-    int arrayIndex = dataSize / ARRAY_SIZE;
-    int elementIndex = dataSize % ARRAY_SIZE;
-    values.get(arrayIndex)[elementIndex] = (byte) b;
-    dataSize++;
+//    ensureCapacity(dataSize + 1);
+//    int arrayIndex = dataSize / ARRAY_SIZE;
+//    int elementIndex = dataSize % ARRAY_SIZE;
+//    values.get(arrayIndex)[elementIndex] = (byte) b;
+//    dataSize++;
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -125,11 +126,13 @@ public class ListPublicBAOS extends PublicBAOS {
   }
 
   public synchronized void reset() {
+    System.out.println("**** " + "chunk release capacity: " + capacity + "Byte (" + capacity / 1024.0 + "KB)" + " ****");
     dataSize = 0;
     if (values != null) {
       for (byte[] dataArray : values) {
         ByteArrayPool.getInstance().release(dataArray);
       }
+      capacity = 0;
       values.clear();
     }
   }
