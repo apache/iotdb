@@ -62,8 +62,8 @@ public class DeviceMetaDataCache {
    */
   public List<ChunkMetaData> get(String filePath, Path seriesPath)
       throws IOException {
-
-    Object jointPathObject = filePath.intern();
+    String jointPath = filePath+"."+seriesPath.getDevice();
+    Object jointPathObject = jointPath.intern();
     synchronized (lruCache) {
       cacheRequestNum.incrementAndGet();
       if (lruCache.containsKey(filePath) && lruCache.get(filePath).containsKey(seriesPath)) {
