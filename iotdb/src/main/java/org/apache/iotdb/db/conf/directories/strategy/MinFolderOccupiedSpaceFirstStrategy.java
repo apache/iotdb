@@ -20,7 +20,7 @@ package org.apache.iotdb.db.conf.directories.strategy;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
@@ -35,13 +35,13 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
     for (int i = 0; i < folders.size(); i++) {
       String folder = folders.get(i);
-      if (!FileUtils.hasSpace(folder)) {
+      if (!CommonUtils.hasSpace(folder)) {
         continue;
       }
 
       long space = 0;
       try {
-        space = FileUtils.getOccupiedSpace(folder);
+        space = CommonUtils.getOccupiedSpace(folder);
       } catch (IOException e) {
         logger.error("Cannot calculate occupied space for path {}.", folder, e);
       }
