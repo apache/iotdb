@@ -123,8 +123,10 @@ public class TsFileResource {
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
-    FileUtils.moveFile(new File(file + RESOURCE_SUFFIX + TEMP_SUFFIX),
-        new File(file + RESOURCE_SUFFIX));
+    File src = new File(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
+    File dest = new File(file + RESOURCE_SUFFIX);
+    dest.delete();
+    FileUtils.moveFile(src, dest);
   }
 
   public void deSerialize() throws IOException {
@@ -239,5 +241,10 @@ public class TsFileResource {
   public void removeModFile() throws IOException {
     getModFile().remove();
     modFile = null;
+  }
+
+  public void remove() {
+    file.delete();
+    new File(file.getPath() + RESOURCE_SUFFIX).delete();
   }
 }

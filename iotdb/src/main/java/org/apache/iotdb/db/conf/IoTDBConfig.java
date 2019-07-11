@@ -184,6 +184,8 @@ public class IoTDBConfig {
 
   private int mergeThreadNum = 2;
 
+  private boolean mergeAfterReboot = true;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -506,5 +508,13 @@ public class IoTDBConfig {
 
   public void setMergeThreadNum(int mergeThreadNum) {
     this.mergeThreadNum = mergeThreadNum;
+  }
+
+  public boolean isMergeAfterReboot() {
+    return mergeAfterReboot;
+  }
+
+  public void setMergeAfterReboot(boolean mergeAfterReboot) {
+    this.mergeAfterReboot = mergeAfterReboot;
   }
 }

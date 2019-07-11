@@ -36,8 +36,12 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RecoverMergeTask extends MergeTask {
+
+  private static final Logger logger = LoggerFactory.getLogger(RecoverMergeTask.class);
 
   private String currLine;
   private List<TsFileResource> mergeSeqFiles = new ArrayList<>();
@@ -53,19 +57,21 @@ public class RecoverMergeTask extends MergeTask {
   public RecoverMergeTask(
       List<TsFileResource> allSeqFiles,
       List<TsFileResource> allUnseqFiles,
-      String storageGroupDir, MergeCallback callback) throws IOException {
-    super(allSeqFiles, allUnseqFiles, storageGroupDir, callback);
+      String storageGroupDir, MergeCallback callback, String taskName) throws IOException {
+    super(allSeqFiles, allUnseqFiles, storageGroupDir, callback, taskName);
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException, MetadataErrorException {
     File logFile = new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
+      logger.info("{} no merge.log, merge recovery ends", taskName);
       return;
     }
     mergeSeqFiles = new ArrayList<>();
     mergeUnseqFiles = new ArrayList<>();
 
     Status status = determineStatus(logFile);
+    logger.info("{} merge recovery status determined: {}", taskName, status);
     switch (status) {
       case NONE:
         logFile.delete();
@@ -98,12 +104,14 @@ public class RecoverMergeTask extends MergeTask {
         cleanUp(continueMerge);
         break;
     }
+    logger.info("{} merge recovery ends", taskName);
   }
 
 
   // scan metadata to compute how many chunks are merged/unmerged so at last we can decide to
   // move the merged chunks or the unmerged chunks
   private void recoverChunkCounts() throws IOException {
+    logger.debug("{} recovering chunk counts", taskName);
     for (TsFileResource tsFileResource : seqFiles) {
       RestorableTsFileIOWriter mergeFileWriter = getMergeFileWriter(tsFileResource);
       mergeFileWriter.makeMetadataVisible();
@@ -150,6 +158,7 @@ public class RecoverMergeTask extends MergeTask {
   }
 
   private void truncateFiles() throws IOException {
+    logger.debug("{} truncating {} files", taskName, fileLastPositions.size());
     for (Entry<File, Long> entry : fileLastPositions.entrySet()) {
       File file = entry.getKey();
       Long lastPosition = entry.getValue();

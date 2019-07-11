@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
@@ -62,8 +63,8 @@ public class MergeFileSelector {
   public MergeFileSelector(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, long memoryBudget) {
-    this.seqFiles = seqFiles;
-    this.unseqFiles = unseqFiles;
+    this.seqFiles = seqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
+    this.unseqFiles = unseqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
     this.memoryBudget = memoryBudget;
   }
 
