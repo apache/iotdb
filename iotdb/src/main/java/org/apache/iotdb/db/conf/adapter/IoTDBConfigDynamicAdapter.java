@@ -25,6 +25,9 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 
+/**
+ *
+ */
 public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
 
@@ -32,6 +35,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   // static parameter section
 
+  /**
+   *
+   */
   private static final double FLUSH_THRESHOLD = 0.2;
 
   /**
@@ -76,7 +82,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   @Override
   public synchronized boolean tryToAdaptParameters() {
-    boolean shouldAdjust = true;
+    boolean canAdjust = true;
     int memtableSizeInByte = calcMemTableSize();
     int memTableSizeFloorThreshold = getMemTableSizeFloorThreshold();
     boolean shouldClose = false;
@@ -86,11 +92,11 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       tsFileSize = calcTsFileSize(memTableSizeFloorThreshold);
       memtableSizeInByte = (int) tsFileSize;
       if (tsFileSize < memTableSizeFloorThreshold) {
-        shouldAdjust = false;
+        canAdjust = false;
       }
     }
 
-    if (shouldAdjust) {
+    if (canAdjust) {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       CONFIG.setTsFileSizeThreshold(tsFileSize);
       CONFIG.setMemtableSizeThreshold(memtableSizeInByte);
@@ -108,7 +114,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return true;
     }
-    return shouldAdjust;
+    return canAdjust;
   }
 
   /**
@@ -121,14 +127,14 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     // when unit is byte, it's likely to cause Long type overflow. so use the unit KB.
     double a = (long) (ratio * maxMemTableNum);
     double b = (long) ((ALLOCATE_MEMORY_FOR_WRITE - staticMemory) * ratio);
-    int times = b > Integer.MAX_VALUE ? 1024 : 1;
-    b /= times;
+    int magnification = b > Integer.MAX_VALUE ? 1024 : 1;
+    b /= magnification;
     double c = (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
         * MManager
-        .getInstance().getMaximalSeriesNumberAmongStorageGroups() / times / times;
+        .getInstance().getMaximalSeriesNumberAmongStorageGroups() / magnification / magnification;
     double tempValue = b * b - 4 * a * c;
     double memTableSize = ((b + Math.sqrt(tempValue)) / (2 * a));
-    return tempValue < 0 ? -1 : (int) (memTableSize * times);
+    return tempValue < 0 ? -1 : (int) (memTableSize * magnification);
   }
 
   /**
