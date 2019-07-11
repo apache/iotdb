@@ -24,7 +24,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,25 +33,25 @@ public class CompressionRatio {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  public static final String COMPRESSION_RATIO_NAME = "compression_ratio";
+  static final String COMPRESSION_RATIO_DIR = "compression_ratio";
 
-  public static final String FILE_PREFIX = "Ratio-";
+  private static final String FILE_PREFIX = "Ratio-";
 
-  public static final String SEPARATOR = "-";
+  private static final String SEPARATOR = "-";
 
-  public static final String RATIO_FILE_PATH_FORMAT = FILE_PREFIX + "%f" + SEPARATOR + "%d";
+  static final String RATIO_FILE_PATH_FORMAT = FILE_PREFIX + "%f" + SEPARATOR + "%d";
 
   private static final double DEFAULT_COMPRESSION_RATIO = 2.0f;
 
   private double compressionRatioSum;
 
-  private long calcuTimes;
+  private long calcTimes;
 
   private File directory;
 
   private CompressionRatio() {
     directory = new File(
-        FilePathUtils.regularizePath(CONFIG.getSystemDir()) + COMPRESSION_RATIO_NAME);
+        FilePathUtils.regularizePath(CONFIG.getSystemDir()) + COMPRESSION_RATIO_DIR);
     try {
       restore();
     } catch (IOException e) {
@@ -62,19 +61,19 @@ public class CompressionRatio {
 
   public synchronized void updateRatio(double currentCompressionRatio) throws IOException {
     File oldFile = new File(directory,
-        String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcuTimes));
+        String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
     compressionRatioSum += currentCompressionRatio;
-    calcuTimes++;
+    calcTimes++;
     File newFile = new File(directory,
-        String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcuTimes));
+        String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
     persist(oldFile, newFile);
     if (CONFIG.isEnableParameterAdapter()) {
       IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters();
     }
   }
 
-  public synchronized double getRatio() {
-    return calcuTimes == 0 ? DEFAULT_COMPRESSION_RATIO : compressionRatioSum / calcuTimes;
+  synchronized double getRatio() {
+    return calcTimes == 0 ? DEFAULT_COMPRESSION_RATIO : compressionRatioSum / calcTimes;
   }
 
   private void persist(File oldFile, File newFile) throws IOException {
@@ -110,7 +109,7 @@ public class CompressionRatio {
           maxRatioIndex = i;
         }
       }
-      calcuTimes = maxTimes;
+      calcTimes = maxTimes;
       for (int i = 0; i < ratioFiles.length; i++) {
         if (i != maxRatioIndex) {
           ratioFiles[i].delete();
@@ -118,7 +117,7 @@ public class CompressionRatio {
       }
     } else {
       restoreFile = new File(directory,
-          String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcuTimes));
+          String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
       restoreFile.createNewFile();
     }
   }
@@ -127,7 +126,7 @@ public class CompressionRatio {
    * Only for test
    */
   void reset() {
-    calcuTimes = 0;
+    calcTimes = 0;
     compressionRatioSum = 0;
   }
 
@@ -135,8 +134,8 @@ public class CompressionRatio {
     return compressionRatioSum;
   }
 
-  public long getCalcuTimes() {
-    return calcuTimes;
+  long getCalcTimes() {
+    return calcTimes;
   }
 
   public static CompressionRatio getInstance() {

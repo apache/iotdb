@@ -23,7 +23,8 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 public interface IDynamicAdapter {
 
   /**
-   * Adjust parameters of memTableNumber, memTableSize and maximum tsfile size.
+   * Adjust parameters of maxMemtableNumber, memtableSizeThreshold and tsFileSizeThreshold.
+   * @return should adjust or not
    */
   boolean tryToAdaptParameters();
 

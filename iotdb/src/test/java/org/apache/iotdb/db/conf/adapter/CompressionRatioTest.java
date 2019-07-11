@@ -27,14 +27,11 @@ import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class CompressionRatioTest {
@@ -46,7 +43,7 @@ public class CompressionRatioTest {
   private CompressionRatio compressionRatio = CompressionRatio.getInstance();
 
   private static final String directory = FilePathUtils.regularizePath(CONFIG.getSystemDir())
-      + CompressionRatio.COMPRESSION_RATIO_NAME;
+      + CompressionRatio.COMPRESSION_RATIO_DIR;
 
   @Before
   public void setUp() throws Exception {
@@ -111,7 +108,7 @@ public class CompressionRatioTest {
           .compare(compressionRatioSum / calcuTimes, this.compressionRatio.getRatio()));
     }
     this.compressionRatio.restore();
-    assertEquals(10, this.compressionRatio.getCalcuTimes());
+    assertEquals(10, this.compressionRatio.getCalcTimes());
     assertEquals(0, Double
         .compare(compressionRatioSum / calcuTimes, this.compressionRatio.getRatio()));
   }

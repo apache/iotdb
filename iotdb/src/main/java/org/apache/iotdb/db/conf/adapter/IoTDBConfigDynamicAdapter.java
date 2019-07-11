@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
@@ -43,22 +42,22 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   /**
    * Metadata size of per timeseries, the default value is 2KB.
    */
-  private static final long TIMESERIES_METADATA_SIZE_B = 2L * 1024;
+  private static final long TIMESERIES_METADATA_SIZE_IN_BYTE = 2L * 1024;
 
   /**
    * Metadata size of per chunk, the default value is 1.5 KB.
    */
-  private static final long CHUNK_METADATA_SIZE_B = 1536L;
+  private static final long CHUNK_METADATA_SIZE_IN_BYTE = 1536L;
 
   /**
    * Average queue length in memtable pool
    */
-  public static final int MEM_TABLE_AVERAGE_QUEUE_LEN = 5;
+  static final int MEM_TABLE_AVERAGE_QUEUE_LEN = 5;
 
   // static memory section
 
   /**
-   * Static memory, includes all timeseries metadata, which equals to TIMESERIES_METADATA_SIZE_B *
+   * Static memory, includes all timeseries metadata, which equals to TIMESERIES_METADATA_SIZE_IN_BYTE *
    * totalTimeseriesNum, the unit is byte
    */
   private long staticMemory;
@@ -78,13 +77,13 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   @Override
   public synchronized boolean tryToAdaptParameters() {
     boolean shouldAdjust = true;
-    int memtableSizeInByte = calcuMemTableSize();
+    int memtableSizeInByte = calcMemTableSize();
     int memTableSizeFloorThreshold = getMemTableSizeFloorThreshold();
     boolean shouldClose = false;
     long tsFileSize = CONFIG.getTsFileSizeThreshold();
     if (memtableSizeInByte < memTableSizeFloorThreshold) {
       shouldClose = true;
-      tsFileSize = calcuTsFileSize(memTableSizeFloorThreshold);
+      tsFileSize = calcTsFileSize(memTableSizeFloorThreshold);
       memtableSizeInByte = (int) tsFileSize;
       if (tsFileSize < memTableSizeFloorThreshold) {
         shouldAdjust = false;
@@ -119,14 +118,15 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    *
    * @return MemTable size. If the value is -1, there is no valid solution.
    */
-  private int calcuMemTableSize() {
+  private int calcMemTableSize() {
     double ratio = CompressionRatio.getInstance().getRatio();
     // when unit is byte, it's likely to cause Long type overflow. so use the unit KB.
     double a = (long) (ratio * maxMemTableNum);
     double b = (long) ((ALLOCATE_MEMORY_FOR_WRITE - staticMemory) * ratio);
     int times = b > Integer.MAX_VALUE ? 1024 : 1;
     b /= times;
-    double c = (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_B * MManager
+    double c = (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
+        * MManager
         .getInstance().getMaximalSeriesNumberAmongStorageGroups() / times / times;
     double tempValue = b * b - 4 * a * c;
     double memTableSize = ((b + Math.sqrt(tempValue)) / (2 * a));
@@ -139,10 +139,10 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * @param memTableSize MemTable size
    * @return Tsfile threshold
    */
-  private int calcuTsFileSize(int memTableSize) {
+  private int calcTsFileSize(int memTableSize) {
     return (int) ((ALLOCATE_MEMORY_FOR_WRITE - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
         .getInstance().getRatio()
-        * memTableSize / (maxMemTableNum * CHUNK_METADATA_SIZE_B * MManager.getInstance()
+        * memTableSize / (maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
         .getMaximalSeriesNumberAmongStorageGroups()));
   }
 
@@ -177,10 +177,10 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       return;
     }
     totalTimeseries += diff;
-    staticMemory += diff * TIMESERIES_METADATA_SIZE_B;
+    staticMemory += diff * TIMESERIES_METADATA_SIZE_IN_BYTE;
     if (!tryToAdaptParameters()) {
       totalTimeseries -= diff;
-      staticMemory -= diff * TIMESERIES_METADATA_SIZE_B;
+      staticMemory -= diff * TIMESERIES_METADATA_SIZE_IN_BYTE;
       throw new ConfigAdjusterException("The IoTDB system load is too large to add timeseries.");
     }
   }
@@ -189,11 +189,11 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     this.initialized = initialized;
   }
 
-  public int getCurrentMemTableSize() {
+  int getCurrentMemTableSize() {
     return currentMemTableSize;
   }
 
-  public int getTotalTimeseries() {
+  int getTotalTimeseries() {
     return totalTimeseries;
   }
 
