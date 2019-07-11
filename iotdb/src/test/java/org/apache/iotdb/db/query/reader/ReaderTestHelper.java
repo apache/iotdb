@@ -44,8 +44,8 @@ public abstract class ReaderTestHelper {
 
   @Before
   public void setUp() throws Exception {
-    MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
+    MetadataManagerHelper.initMetadata();
     storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup);
     insertData();
   }

@@ -96,6 +96,10 @@ public class MemTablePool {
     }
   }
 
+  public int getSize() {
+    return size;
+  }
+
   public static MemTablePool getInstance() {
     return InstanceHolder.INSTANCE;
   }
