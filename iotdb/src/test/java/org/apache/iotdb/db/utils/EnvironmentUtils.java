@@ -67,7 +67,7 @@ public class EnvironmentUtils {
 
   private static int oldMaxMemTableNumber = config.getMaxMemtableNumber();
 
-  private static int oldGroupSizeInByte = TSFileConfig.groupSizeInByte;
+  private static int oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   public static void cleanEnv() throws IOException, StorageEngineException {
 
@@ -96,7 +96,7 @@ public class EnvironmentUtils {
 
     config.setMaxMemtableNumber(oldMaxMemTableNumber);
     config.setTsFileSizeThreshold(oldTsFileThreshold);
-    TSFileConfig.groupSizeInByte = oldGroupSizeInByte;
+    config.setMemtableSizeThreshold(oldGroupSizeInByte);
     IoTDBConfigDynamicAdapter.getInstance().reset();
   }
 

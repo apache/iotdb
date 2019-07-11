@@ -168,16 +168,28 @@ public class IoTDBDescriptor {
       conf.setFetchSize(Integer.parseInt(properties.getProperty("fetch_size",
           Integer.toString(conf.getFetchSize()))));
 
-      conf.setTsFileSizeThreshold(Long.parseLong(properties
+      long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
-              Long.toString(conf.getTsFileSizeThreshold())).trim()));
+              Long.toString(conf.getTsFileSizeThreshold())).trim());
+      if(tsfileSizeThreshold > 0) {
+        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+      }
+
+      int memTableSizeThreshold = Integer.parseInt(properties
+          .getProperty("memtable_size_threshold",
+              Integer.toString(conf.getMemtableSizeThreshold())).trim());
+      if(memTableSizeThreshold > 0) {
+        conf.setMemtableSizeThreshold(memTableSizeThreshold);
+      }
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));
+
       conf.setSyncServerPort(Integer
           .parseInt(properties.getProperty("sync_server_port",
               Integer.toString(conf.getSyncServerPort())).trim()));
+
       conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
           properties.getProperty("update_historical_data_possibility",
               Boolean.toString(conf.isSyncEnable()))));
@@ -186,6 +198,7 @@ public class IoTDBDescriptor {
       conf.setConcurrentFlushThread(Integer
           .parseInt(properties.getProperty("concurrent_flush_thread",
               Integer.toString(conf.getConcurrentFlushThread()))));
+
       if (conf.getConcurrentFlushThread() <= 0) {
         conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
       }

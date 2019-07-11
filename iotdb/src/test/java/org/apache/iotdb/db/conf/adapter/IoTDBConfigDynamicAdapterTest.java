@@ -42,7 +42,7 @@ public class IoTDBConfigDynamicAdapterTest {
 
   private int oldMaxMemTableNumber = CONFIG.getMaxMemtableNumber();
 
-  private int oldGroupSizeInByte = TSFileConfig.groupSizeInByte;
+  private int oldGroupSizeInByte = CONFIG.getMemtableSizeThreshold();
 
   @Before
   public void setUp() throws Exception {
@@ -59,7 +59,7 @@ public class IoTDBConfigDynamicAdapterTest {
     EnvironmentUtils.cleanEnv();
     CONFIG.setMaxMemtableNumber(oldMaxMemTableNumber);
     CONFIG.setTsFileSizeThreshold(oldTsFileThreshold);
-    TSFileConfig.groupSizeInByte = oldGroupSizeInByte;
+    CONFIG.setMemtableSizeThreshold(oldGroupSizeInByte);
     MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(0);
     IoTDBConfigDynamicAdapter.getInstance().reset();
   }
@@ -79,7 +79,7 @@ public class IoTDBConfigDynamicAdapterTest {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
         memTableNum += 2;
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getCurrentMemTableSize(),
-            TSFileConfig.groupSizeInByte);
+            CONFIG.getMemtableSizeThreshold());
         assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
       } catch (ConfigAdjusterException e) {
         assertEquals("The IoTDB system load is too large to create storage group.", e.getMessage());
@@ -109,7 +109,7 @@ public class IoTDBConfigDynamicAdapterTest {
         }
         totalTimeseries += 1;
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getCurrentMemTableSize(),
-            TSFileConfig.groupSizeInByte);
+            CONFIG.getMemtableSizeThreshold());
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
             totalTimeseries);
       } catch (ConfigAdjusterException e) {

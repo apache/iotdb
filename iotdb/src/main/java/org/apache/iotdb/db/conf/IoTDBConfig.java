@@ -140,6 +140,11 @@ public class IoTDBConfig {
   private long tsFileSizeThreshold = 512 * 1024 * 1024L;
 
   /**
+   * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
+   */
+  private int memtableSizeThreshold = 128 * 1024 * 1024;
+
+  /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
    * value is 5s.
    */
@@ -566,5 +571,13 @@ public class IoTDBConfig {
 
   public void setPerformance_stat_memory_in_kb(int performance_stat_memory_in_kb) {
     this.performance_stat_memory_in_kb = performance_stat_memory_in_kb;
+  }
+
+  public int getMemtableSizeThreshold() {
+    return memtableSizeThreshold;
+  }
+
+  public void setMemtableSizeThreshold(int memtableSizeThreshold) {
+    this.memtableSizeThreshold = memtableSizeThreshold;
   }
 }

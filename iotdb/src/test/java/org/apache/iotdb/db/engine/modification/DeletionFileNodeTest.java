@@ -56,7 +56,6 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-@Ignore
 public class DeletionFileNodeTest {
 
   private String processorName = "root.test";

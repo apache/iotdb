@@ -49,7 +49,6 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-@Ignore
 public class  DeletionQueryTest {
 
   private String processorName = "root.test";

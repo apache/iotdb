@@ -194,7 +194,8 @@ public class TsFileProcessor {
 
 
   boolean shouldFlush() {
-    return workMemTable != null && workMemTable.memSize() > TSFileConfig.groupSizeInByte;
+    return workMemTable != null && workMemTable.memSize() > IoTDBDescriptor.getInstance()
+        .getConfig().getMemtableSizeThreshold();
   }
 
 
