@@ -24,7 +24,8 @@ public interface IDynamicAdapter {
 
   /**
    * Adjust parameters of maxMemtableNumber, memtableSizeThreshold and tsFileSizeThreshold.
-   * @return should adjust or not
+   * @return {@code true} if it has appropriate parameters and set them successfully
+   *         {@code false} otherwise
    */
   boolean tryToAdaptParameters();
 

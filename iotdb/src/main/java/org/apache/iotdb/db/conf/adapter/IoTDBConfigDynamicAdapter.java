@@ -88,8 +88,6 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       if (tsFileSize < memTableSizeFloorThreshold) {
         shouldAdjust = false;
       }
-    } else if (memtableSizeInByte > tsFileSize) {
-      memtableSizeInByte = (int) tsFileSize;
     }
 
     if (shouldAdjust) {
