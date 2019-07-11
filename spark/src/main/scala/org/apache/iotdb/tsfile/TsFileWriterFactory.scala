@@ -27,9 +27,12 @@ private[tsfile] class TsFileWriterFactory(options: Map[String, String]) extends 
 
   override def newInstance(
                             path: String,
-                            bucketId: Option[Int],
                             dataSchema: StructType,
                             context: TaskAttemptContext): OutputWriter = {
     new TsFileOutputWriter(path, dataSchema, options, context)
+  }
+
+  override def getFileExtension(context: TaskAttemptContext): String = {
+    null
   }
 }
