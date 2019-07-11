@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -117,4 +118,10 @@ public class ModificationFile {
   public void setFilePath(String filePath) {
     this.filePath = filePath;
   }
+
+  public void remove() throws IOException {
+    close();
+    new File(filePath).delete();
+  }
+
 }
