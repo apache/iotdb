@@ -22,8 +22,7 @@ package org.apache.iotdb.db.engine.cache;
 import java.util.LinkedHashMap;
 import java.util.Map;
 /**
- * This class is a map used to cache the <code>RowGroupBlockMetaData</code>. The caching strategy
- * is LRU.
+ *  This class is a LRU cache. <b>Note: It's not thread safe.</b>
  */
 public class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 

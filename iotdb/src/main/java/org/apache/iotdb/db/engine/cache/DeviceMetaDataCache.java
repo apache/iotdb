@@ -34,7 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class is used to cache <code>DeviceMetaDataCache</code> of tsfile in IoTDB.
+ * This class is used to cache <code>List<ChunkMetaData></code> of tsfile in IoTDB.
+ * The caching strategy is LRU.
  */
 public class DeviceMetaDataCache {
 
