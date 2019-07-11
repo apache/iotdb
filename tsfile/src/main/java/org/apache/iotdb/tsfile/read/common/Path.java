@@ -189,7 +189,7 @@ public class Path implements Serializable {
 
   @Override
   public boolean equals(Object obj) {
-    return obj != null && obj instanceof Path && this.fullPath.equals(((Path) obj).fullPath);
+    return obj instanceof Path && this.fullPath.equals(((Path) obj).fullPath);
   }
 
   public boolean equals(String obj) {

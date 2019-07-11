@@ -21,17 +21,13 @@ package org.apache.iotdb.tsfile.write.writer;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -41,6 +37,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class ForceAppendTsFileWriter extends TsFileIOWriter{
 
   private Map<String, MeasurementSchema> knownSchemas = new HashMap<>();
+  private long truncatePosition;
 
   public ForceAppendTsFileWriter(File file) throws IOException {
     this.out = new DefaultTsFileOutput(file, true);
@@ -48,14 +45,14 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter{
 
     // file doesn't exist
     if (file.length() == 0 || !file.exists()) {
-      throw new IOException("File " + file.getPath() + " is not a complete TsFile");
+      throw new TsFileNotCompleteException("File " + file.getPath() + " is not a complete TsFile");
     }
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), true)) {
 
       // this tsfile is not complete
       if (!reader.isComplete()) {
-        throw new IOException("File " + file.getPath() + " is not a complete TsFile");
+        throw new TsFileNotCompleteException("File " + file.getPath() + " is not a complete TsFile");
       }
       TsFileMetaData fileMetaData = reader.readFileMetadata();
       Map<String, TsDeviceMetadataIndex> deviceMap = fileMetaData.getDeviceMap();
@@ -69,45 +66,18 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter{
             deviceMetadataIndex.getOffset() : firstDeviceMetaPos;
       }
       // truncate metadata and marker
-      out.truncate(firstDeviceMetaPos - 1);
+      truncatePosition = firstDeviceMetaPos - 1;
       knownSchemas = fileMetaData.getMeasurementSchema();
+
     }
   }
 
-  /**
-   * Remove such ChunkMetadata that its startTime is not in chunkStartTimes
-   * @param chunkStartTimes
-   */
-  public void filterChunks(Map<Path, List<Long>> chunkStartTimes) {
-    Map<Path, Integer> startTimeIdxes = new HashMap<>();
-    chunkStartTimes.forEach((p, t) -> startTimeIdxes.put(p, 0));
+  public void doTruncate() throws IOException {
+    out.truncate(truncatePosition);
+  }
 
-    Iterator<ChunkGroupMetaData> chunkGroupMetaDataIterator = chunkGroupMetaDataList.iterator();
-    while (chunkGroupMetaDataIterator.hasNext()) {
-      ChunkGroupMetaData chunkGroupMetaData = chunkGroupMetaDataIterator.next();
-      String deviceId = chunkGroupMetaData.getDeviceID();
-      int chunkNum = chunkGroupMetaData.getChunkMetaDataList().size();
-      Iterator<ChunkMetaData> chunkMetaDataIterator =
-          chunkGroupMetaData.getChunkMetaDataList().iterator();
-      while (chunkMetaDataIterator.hasNext()) {
-        ChunkMetaData chunkMetaData = chunkMetaDataIterator.next();
-        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
-        int startTimeIdx = startTimeIdxes.get(path);
-        List<Long> pathChunkStartTimes = chunkStartTimes.get(path);
-        boolean chunkValid = startTimeIdx < pathChunkStartTimes.size()
-            && pathChunkStartTimes.get(startTimeIdx) == chunkMetaData.getStartTime();
-        if (!chunkValid) {
-          chunkGroupMetaDataIterator.remove();
-          chunkNum--;
-          invalidChunkNum++;
-        } else {
-          startTimeIdxes.put(path, startTimeIdx + 1);
-        }
-      }
-      if (chunkNum == 0) {
-        chunkGroupMetaDataIterator.remove();
-      }
-    }
+  public long getTruncatePosition() {
+    return truncatePosition;
   }
 
   @Override
