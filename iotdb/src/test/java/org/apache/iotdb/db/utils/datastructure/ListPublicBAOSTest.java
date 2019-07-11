@@ -44,43 +44,43 @@ public class ListPublicBAOSTest {
     chunk.reset();
   }
 
-  /**
-   * test write(int b)
-   */
-  @Test
-  public void testWrite1() {
-    ListPublicBAOS chunk = new ListPublicBAOS();
-
-    int SIZE = ARRAY_SIZE;
-    for (int i = 0; i < SIZE; i++)
-      chunk.write(i);
-    assertEquals(SIZE, chunk.size());
-
-    byte[] byteArray = chunk.toByteArray();
-    assertEquals(SIZE, byteArray.length);
-
-    for (int i = 0; i < SIZE; i++)
-      assertEquals((byte) i, byteArray[i]);
-  }
-
-  /**
-   * test write(int b) but changed SIZE.
-   */
-  @Test
-  public void testWrite2() {
-    ListPublicBAOS chunk = new ListPublicBAOS();
-
-    int SIZE = ARRAY_SIZE * 10000 + 1;
-    for (int i = 0; i < SIZE; i++)
-      chunk.write(i);
-    assertEquals(SIZE, chunk.size());
-
-    byte[] byteArray = chunk.toByteArray();
-    assertEquals(SIZE, byteArray.length);
-
-    for (int i = 0; i < SIZE; i++)
-      assertEquals((byte) i, byteArray[i]);
-  }
+//  /**
+//   * test write(int b)
+//   */
+//  @Test
+//  public void testWrite1() {
+//    ListPublicBAOS chunk = new ListPublicBAOS();
+//
+//    int SIZE = ARRAY_SIZE;
+//    for (int i = 0; i < SIZE; i++)
+//      chunk.write(i);
+//    assertEquals(SIZE, chunk.size());
+//
+//    byte[] byteArray = chunk.toByteArray();
+//    assertEquals(SIZE, byteArray.length);
+//
+//    for (int i = 0; i < SIZE; i++)
+//      assertEquals((byte) i, byteArray[i]);
+//  }
+//
+//  /**
+//   * test write(int b) but changed SIZE.
+//   */
+//  @Test
+//  public void testWrite2() {
+//    ListPublicBAOS chunk = new ListPublicBAOS();
+//
+//    int SIZE = ARRAY_SIZE * 10000 + 1;
+//    for (int i = 0; i < SIZE; i++)
+//      chunk.write(i);
+//    assertEquals(SIZE, chunk.size());
+//
+//    byte[] byteArray = chunk.toByteArray();
+//    assertEquals(SIZE, byteArray.length);
+//
+//    for (int i = 0; i < SIZE; i++)
+//      assertEquals((byte) i, byteArray[i]);
+//  }
 
   /**
    * test write(byte[] b, int off, int len).
@@ -102,31 +102,31 @@ public class ListPublicBAOSTest {
       assertEquals(srcByteArray[i], destByteArray[i]);
   }
 
-  /**
-   * test write after write
-   */
-  @Test
-  public void testWrite4() {
-    ListPublicBAOS chunk = new ListPublicBAOS();
-
-    int SIZE = 1000000;
-    byte[] srcByteArray = new byte[SIZE];
-
-    //first write
-    for (int i = 0; i < SIZE; i++) {
-      srcByteArray[i] = (byte) i;
-      chunk.write(i);
-    }
-
-    //second write
-    chunk.write(srcByteArray, 0, SIZE);
-
-    byte[] destByteArray = chunk.toByteArray();
-    assertEquals(2 * SIZE, destByteArray.length);
-
-    for (int i = 0; i < SIZE; i++)
-      assertEquals(destByteArray[i], destByteArray[i + SIZE]);
-  }
+//  /**
+//   * test write after write
+//   */
+//  @Test
+//  public void testWrite4() {
+//    ListPublicBAOS chunk = new ListPublicBAOS();
+//
+//    int SIZE = 1000000;
+//    byte[] srcByteArray = new byte[SIZE];
+//
+//    //first write
+//    for (int i = 0; i < SIZE; i++) {
+//      srcByteArray[i] = (byte) i;
+//      chunk.write(i);
+//    }
+//
+//    //second write
+//    chunk.write(srcByteArray, 0, SIZE);
+//
+//    byte[] destByteArray = chunk.toByteArray();
+//    assertEquals(2 * SIZE, destByteArray.length);
+//
+//    for (int i = 0; i < SIZE; i++)
+//      assertEquals(destByteArray[i], destByteArray[i + SIZE]);
+//  }
 
   /**
    * test empty write
@@ -141,31 +141,31 @@ public class ListPublicBAOSTest {
     assertEquals(0, chunk.size());
   }
 
-  /**
-   * test writeTo()
-   */
-  @Test
-  public void testWriteTo() {
-    ListPublicBAOS chunk = new ListPublicBAOS();
-
-    int SIZE = ARRAY_SIZE;
-    for (int i = 0; i < SIZE; i++) {
-      chunk.write(i);
-    }
-
-    ByteArrayOutputStream byteContainer = new ByteArrayOutputStream();
-
-    try {
-      chunk.writeTo(byteContainer);
-    } catch (IOException e) {
-      // TODO
-    }
-    assertEquals(SIZE, byteContainer.size());
-    byte[] byteArray = byteContainer.toByteArray();
-    for (int i = 0; i < SIZE; i++) {
-      assertEquals((byte) i, byteArray[i]);
-    }
-
-  }
+//  /**
+//   * test writeTo()
+//   */
+//  @Test
+//  public void testWriteTo() {
+//    ListPublicBAOS chunk = new ListPublicBAOS();
+//
+//    int SIZE = ARRAY_SIZE;
+//    for (int i = 0; i < SIZE; i++) {
+//      chunk.write(i);
+//    }
+//
+//    ByteArrayOutputStream byteContainer = new ByteArrayOutputStream();
+//
+//    try {
+//      chunk.writeTo(byteContainer);
+//    } catch (IOException e) {
+//      // TODO
+//    }
+//    assertEquals(SIZE, byteContainer.size());
+//    byte[] byteArray = byteContainer.toByteArray();
+//    for (int i = 0; i < SIZE; i++) {
+//      assertEquals((byte) i, byteArray[i]);
+//    }
+//
+//  }
 
 }
