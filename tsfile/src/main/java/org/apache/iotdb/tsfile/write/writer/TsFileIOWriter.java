@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -42,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -356,7 +358,6 @@ public class TsFileIOWriter {
 
   /**
    * close the outputStream or file channel without writing FileMetadata.
-   * This is just used for Testing.
    */
   public void close() throws IOException {
     canWrite = false;
@@ -388,5 +389,41 @@ public class TsFileIOWriter {
 
   public File getFile() {
     return file;
+  }
+
+  /**
+   * Remove such ChunkMetadata that its startTime is not in chunkStartTimes
+   * @param chunkStartTimes
+   */
+  public void filterChunks(Map<Path, List<Long>> chunkStartTimes) {
+    Map<Path, Integer> startTimeIdxes = new HashMap<>();
+    chunkStartTimes.forEach((p, t) -> startTimeIdxes.put(p, 0));
+
+    Iterator<ChunkGroupMetaData> chunkGroupMetaDataIterator = chunkGroupMetaDataList.iterator();
+    while (chunkGroupMetaDataIterator.hasNext()) {
+      ChunkGroupMetaData chunkGroupMetaData = chunkGroupMetaDataIterator.next();
+      String deviceId = chunkGroupMetaData.getDeviceID();
+      int chunkNum = chunkGroupMetaData.getChunkMetaDataList().size();
+      Iterator<ChunkMetaData> chunkMetaDataIterator =
+          chunkGroupMetaData.getChunkMetaDataList().iterator();
+      while (chunkMetaDataIterator.hasNext()) {
+        ChunkMetaData chunkMetaData = chunkMetaDataIterator.next();
+        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
+        int startTimeIdx = startTimeIdxes.get(path);
+        List<Long> pathChunkStartTimes = chunkStartTimes.get(path);
+        boolean chunkValid = startTimeIdx < pathChunkStartTimes.size()
+            && pathChunkStartTimes.get(startTimeIdx) == chunkMetaData.getStartTime();
+        if (!chunkValid) {
+          chunkGroupMetaDataIterator.remove();
+          chunkNum--;
+          invalidChunkNum++;
+        } else {
+          startTimeIdxes.put(path, startTimeIdx + 1);
+        }
+      }
+      if (chunkNum == 0) {
+        chunkGroupMetaDataIterator.remove();
+      }
+    }
   }
 }

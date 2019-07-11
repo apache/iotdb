@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -42,6 +43,7 @@ public class TsFileResource {
   private File file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
+  public static final String TEMP_SUFFIX = ".temp";
 
   /**
    * device -> start time
@@ -109,7 +111,7 @@ public class TsFileResource {
 
   public void serialize() throws IOException {
     try (OutputStream outputStream = new BufferedOutputStream(
-        new FileOutputStream(file + RESOURCE_SUFFIX))) {
+        new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX))) {
       ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
       for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
@@ -121,6 +123,8 @@ public class TsFileResource {
         ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
+    FileUtils.moveFile(new File(file + RESOURCE_SUFFIX + TEMP_SUFFIX),
+        new File(file + RESOURCE_SUFFIX));
   }
 
   public void deSerialize() throws IOException {
