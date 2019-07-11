@@ -28,7 +28,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * This class is used to count, compute and persist the compression ratio of tsfiles. Whenever the
+ * task of closing a file ends, the compression ratio of the file is calculated based on the total
+ * MemTable size and the total size of the tsfile on disk. {@code compressionRatioSum} records the
+ * sum of these compression ratios, and {@Code calcTimes} records the number of closed file tasks.
+ * When the compression rate of the current system is obtained, the average compression ratio is
+ * returned as the result, that is {@code compressionRatioSum}/{@Code calcTimes}. At the same time,
+ * each time the compression ratio statistics are updated, these two parameters are persisted on
+ * disk for system recovery.
  */
 public class CompressionRatio {
 
@@ -46,8 +53,14 @@ public class CompressionRatio {
 
   private static final double DEFAULT_COMPRESSION_RATIO = 2.0f;
 
+  /**
+   * The total sum of all compression ratios.
+   */
   private double compressionRatioSum;
 
+  /**
+   * The number of compression ratios.
+   */
   private long calcTimes;
 
   private File directory;
@@ -62,6 +75,12 @@ public class CompressionRatio {
     }
   }
 
+  /**
+   * Whenever the task of closing a file ends, the compression ratio of the file is calculated and
+   * call this method.
+   *
+   * @param currentCompressionRatio the compression ratio of the closing file.
+   */
   public synchronized void updateRatio(double currentCompressionRatio) throws IOException {
     File oldFile = new File(directory,
         String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
@@ -75,6 +94,9 @@ public class CompressionRatio {
     }
   }
 
+  /**
+   * Get the average compression ratio for all closed files
+   */
   synchronized double getRatio() {
     return calcTimes == 0 ? DEFAULT_COMPRESSION_RATIO : compressionRatioSum / calcTimes;
   }
@@ -98,6 +120,9 @@ public class CompressionRatio {
     }
   }
 
+  /**
+   * Restore compression ratio statistics from disk when system restart
+   */
   void restore() throws IOException {
     checkDirectoryExist();
     File[] ratioFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
