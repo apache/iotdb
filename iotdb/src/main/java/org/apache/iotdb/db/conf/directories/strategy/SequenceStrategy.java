@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf.directories.strategy;
 
 import java.util.List;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 public class SequenceStrategy extends DirectoryStrategy {
 
@@ -29,17 +30,14 @@ public class SequenceStrategy extends DirectoryStrategy {
   public void init(List<String> folders) throws DiskSpaceInsufficientException {
     super.init(folders);
 
+    // super.init() ensures at least one folder is not full,
+    // so currentIndex will not be -1 after loop
     currentIndex = -1;
     for (int i = 0; i < folders.size(); i++) {
-      if (hasSpace(folders.get(i))) {
+      if (CommonUtils.hasSpace(folders.get(i))) {
         currentIndex = i;
         break;
       }
-    }
-
-    if (currentIndex == -1) {
-      throw new DiskSpaceInsufficientException(
-          String.format("All disks of folders %s are full, can't init.", folders));
     }
   }
 
@@ -53,7 +51,7 @@ public class SequenceStrategy extends DirectoryStrategy {
 
   private int tryGetNextIndex(int start) throws DiskSpaceInsufficientException {
     int index = (start + 1) % folders.size();
-    while (!hasSpace(folders.get(index))) {
+    while (!CommonUtils.hasSpace(folders.get(index))) {
       index = (index + 1) % folders.size();
       if (index == start) {
         throw new DiskSpaceInsufficientException(folders);

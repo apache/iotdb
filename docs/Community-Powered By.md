@@ -21,9 +21,11 @@
 
 <!-- TOC -->
 
-- [Powered By](#powered-by)
-    - [Project and Product names using "IoTDB"](#project-and-product-names-using-iotdb)
-    - [Companies and Organizations](#companies-and-organizations)
+## Outline
+
+- Powered By
+    - Project and Product names using "IoTDB"
+    - Companies and Organizations
 
 <!-- /TOC -->
 ## Powered By

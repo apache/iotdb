@@ -37,7 +37,7 @@ public class Binary implements Comparable<Binary>, Serializable {
   private String textEncodingType = TSFileConfig.STRING_ENCODING;
 
   /**
-   * if the bytes v is modified, the modification is visable to this binary.
+   * if the bytes v is modified, the modification is visible to this binary.
    */
   public Binary(byte[] v) {
     this.values = v;

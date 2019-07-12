@@ -21,23 +21,25 @@
 
 <!-- TOC -->
 
-- [Have Questions](#have-questions)
-    - [Mailing Lists](#mailing-lists)
-    - [JIRA issues](#jira-issues)
-- [How to contribute](#how-to-contribute)
-    - [Becoming a committer](#becoming-a-committer)
-        - [Contributing by Helping Other Users](#contributing-by-helping-other-users)
-        - [Contributing by Testing Releases](#contributing-by-testing-releases)
-        - [Contributing by Reviewing Changes](#contributing-by-reviewing-changes)
-        - [Contributing by Documentation Changes](#contributing-by-documentation-changes)
-        - [Contributing Bug Reports](#contributing-bug-reports)
-        - [Contributing Code Changes](#contributing-code-changes)
-            - [Cloning source code](#cloning-source-code)
-            - [JIRA](#jira)
-            - [Pull Request](#pull-request)
-            - [The Review Process](#the-review-process)
-            - [Closing Your Pull Request / JIRA](#closing-your-pull-request--jira)
-            - [Code Style](#code-style)
+## Outline
+
+- Have Questions
+    - Mailing Lists
+    - JIRA issues
+- How to contribute
+    - Becoming a committer
+        - Contributing by Helping Other Users
+        - Contributing by Testing Releases
+        - Contributing by Reviewing Changes
+        - Contributing by Documentation Changes
+        - Contributing Bug Reports
+        - Contributing Code Changes
+            - Cloning source code
+            - JIRA
+            - Pull Request
+            - The Review Process
+            - Closing Your Pull Request / JIRA
+            - Code Style
 
 <!-- /TOC -->
 
@@ -46,8 +48,7 @@
 ## Mailing Lists
 
 It is recommended to use our mailing lists to ask for help, report issues or contribute to the project.
-
-* dev@iotdb.apache.org is for anyone who want to contribute codes to IoTDB or have usage questions for IoTDB.
+dev@iotdb.apache.org is for anyone who want to contribute codes to IoTDB or have usage questions for IoTDB.
 
 Some quick tips when using email:
 * For error logs or long code examples, please use GitHub gist and include only few lines of the pertinent code / log within the email.
