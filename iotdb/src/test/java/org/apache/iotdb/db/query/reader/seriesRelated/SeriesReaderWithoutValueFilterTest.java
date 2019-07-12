@@ -28,18 +28,18 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class SeqAndUnseqMergeReaderTest {
+public class SeriesReaderWithoutValueFilterTest {
 
-  private SeqAndUnseqMergeReader reader1;
-  private SeqAndUnseqMergeReader reader2;
+  private SeriesReaderWithoutValueFilter reader1;
+  private SeriesReaderWithoutValueFilter reader2;
 
   private void init() {
     IBatchReader batchReader1 = new FakedIBatchPoint(100, 1000, 7, 11);
     IBatchReader batchReader2 = new FakedIBatchPoint(100, 1000, 7, 11);
     IPointReader pointReader = new FakedIPointReader(20, 500, 11, 19);
 
-    reader1 = new SeqAndUnseqMergeReader(batchReader1, pointReader);
-    reader2 = new SeqAndUnseqMergeReader(batchReader2, null);
+    reader1 = new SeriesReaderWithoutValueFilter(batchReader1, pointReader);
+    reader2 = new SeriesReaderWithoutValueFilter(batchReader2, null);
   }
 
   @Test

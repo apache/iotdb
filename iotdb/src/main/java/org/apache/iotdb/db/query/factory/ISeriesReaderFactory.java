@@ -30,12 +30,4 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public interface ISeriesReaderFactory {
 
-  IPointReader createSeriesReaderWithoutValueFilter(Path path, Filter timeFilter,
-      QueryContext context) throws StorageEngineException, IOException;
-
-  IPointReader createSeriesReaderWithValueFilter(Path path, Filter filter, QueryContext context)
-      throws StorageEngineException, IOException;
-
-  List<IReaderByTimestamp> createSeriesReadersByTimestamp(List<Path> paths,
-      QueryContext context) throws StorageEngineException, IOException;
 }

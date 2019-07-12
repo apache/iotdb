@@ -29,8 +29,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -77,8 +77,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     QueryResourceManager
         .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
     this.timestampGenerator = new EngineTimeGenerator(expression, context);
-    this.allDataReaderList = SeriesReaderFactoryImpl.getInstance()
-        .createSeriesReadersByTimestamp(selectedSeries, context);
+    this.allDataReaderList = new ArrayList<>();
+    for (Path path : selectedSeries) {
+      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
+      allDataReaderList.add(seriesReaderByTimestamp);
+    }
   }
 
   @Override

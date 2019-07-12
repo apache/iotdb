@@ -1,20 +1,21 @@
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IBatchReader;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class SeqAndUnseqMergeReaderWithExtFilter extends SeqAndUnseqMergeReader {
+public class SeriesReaderWithValueFilter extends SeriesReaderWithoutValueFilter {
 
   private Filter filter;
   private boolean hasCachedValue;
   private TimeValuePair timeValuePair;
 
-  public SeqAndUnseqMergeReaderWithExtFilter(IBatchReader seqSeriesReader, IPointReader unseqSeriesReader,
-      Filter filter) {
-    super(seqSeriesReader, unseqSeriesReader);
+  public SeriesReaderWithValueFilter(Path path, Filter filter, QueryContext context)
+      throws StorageEngineException, IOException {
+    super(path, filter, context, false);
     this.filter = filter;
   }
 

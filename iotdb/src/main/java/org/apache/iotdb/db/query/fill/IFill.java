@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -53,8 +54,7 @@ public abstract class IFill {
   void constructReaders(Path path, QueryContext context, long beforeRange)
       throws IOException, StorageEngineException {
     Filter timeFilter = constructFilter(beforeRange);
-    allDataReader = SeriesReaderFactoryImpl.getInstance()
-        .createSeriesReaderWithoutValueFilter(path, timeFilter, context);
+    allDataReader = new SeriesReaderWithoutValueFilter(path, timeFilter, context);
   }
 
   public abstract IPointReader getFillResult() throws IOException;

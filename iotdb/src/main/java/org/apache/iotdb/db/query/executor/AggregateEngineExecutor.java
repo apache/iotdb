@@ -37,12 +37,12 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -263,8 +263,11 @@ public class AggregateEngineExecutor {
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
-    List<IReaderByTimestamp> readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
-        .createSeriesReadersByTimestamp(selectedSeries, context);
+    List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
+    for (Path path : selectedSeries) {
+      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
+      readersOfSelectedSeries.add(seriesReaderByTimestamp);
+    }
 
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
