@@ -39,7 +39,7 @@
             - Pull Request
             - The Review Process
             - Closing Your Pull Request / JIRA
-            - Code Style]
+            - Code Style
 
 <!-- /TOC -->
 
@@ -48,8 +48,7 @@
 ## Mailing Lists
 
 It is recommended to use our mailing lists to ask for help, report issues or contribute to the project.
-
-* dev@iotdb.apache.org is for anyone who want to contribute codes to IoTDB or have usage questions for IoTDB.
+dev@iotdb.apache.org is for anyone who want to contribute codes to IoTDB or have usage questions for IoTDB.
 
 Some quick tips when using email:
 * For error logs or long code examples, please use GitHub gist and include only few lines of the pertinent code / log within the email.
