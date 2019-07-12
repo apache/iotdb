@@ -129,15 +129,19 @@ public class CompressionRatio {
     File restoreFile;
     if (ratioFiles != null && ratioFiles.length > 0) {
       long maxTimes = 0;
+      double maxCompressionRatioSum = 0;
       int maxRatioIndex = 0;
       for (int i = 0; i < ratioFiles.length; i++) {
-        long times = Long.parseLong(ratioFiles[i].getName().split("-")[2]);
+        String[] splits = ratioFiles[i].getName().split("-");
+        long times = Long.parseLong(splits[2]);
         if (times > maxTimes) {
           maxTimes = times;
+          maxCompressionRatioSum = Double.parseDouble(splits[1]);
           maxRatioIndex = i;
         }
       }
       calcTimes = maxTimes;
+      compressionRatioSum = maxCompressionRatioSum;
       for (int i = 0; i < ratioFiles.length; i++) {
         if (i != maxRatioIndex) {
           ratioFiles[i].delete();
