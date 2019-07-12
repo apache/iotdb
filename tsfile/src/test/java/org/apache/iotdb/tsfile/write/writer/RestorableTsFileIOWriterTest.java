@@ -327,4 +327,26 @@ public class RestorableTsFileIOWriterTest {
     reader.close();
     assertTrue(file.delete());
   }
+
+  @Test
+  public void testAppendDataOnCompletedFile() throws Exception {
+    File file = new File(FILE_NAME);
+    TsFileWriter writer = new TsFileWriter(file);
+    writer.addMeasurement(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    writer.addMeasurement(new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+    writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
+        .addTuple(new FloatDataPoint("s2", 4)));
+    writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
+        .addTuple(new FloatDataPoint("s2", 4)));
+    writer.close();
+
+    long size = file.length();
+    RestorableTsFileIOWriter rWriter = RestorableTsFileIOWriter
+        .getWriterForAppendingDataOnCompletedTsFile(file);
+    TsFileWriter write = new TsFileWriter(rWriter);
+    write.close();
+    assertEquals(size, file.length());
+    assertTrue(file.delete());
+
+  }
 }

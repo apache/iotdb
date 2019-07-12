@@ -170,7 +170,7 @@ public class EnvironmentUtils {
     }
     // create unsequential files
     for (String path : directoryManager.getAllUnSequenceFileFolders()) {
-      cleanDir(path);
+      createDir(path);
     }
     // create storage group
     createDir(config.getSystemDir());
