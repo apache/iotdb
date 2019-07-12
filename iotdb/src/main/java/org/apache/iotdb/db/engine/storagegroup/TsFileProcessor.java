@@ -406,11 +406,7 @@ public class TsFileProcessor {
         writer.mark();
         try {
           double compressionRatio = totalMemTableSize / writer.getPos();
-          if (totalMemTableSize < writer.getPos()) {
-            logger.error("Compression ratio {} has been less than 1.0.", compressionRatio);
-          } else {
-            CompressionRatio.getInstance().updateRatio(compressionRatio);
-          }
+          CompressionRatio.getInstance().updateRatio(compressionRatio);
         } catch (IOException e) {
           logger.error("update compression ratio failed", e);
         }
