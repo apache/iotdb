@@ -108,7 +108,8 @@ public class RecoverMergeTask extends MergeTask {
         break;
     }
     if (logger.isInfoEnabled()) {
-      logger.info("{} merge recovery ends after", taskName, (System.currentTimeMillis() - startTime));
+      logger.info("{} merge recovery ends after {}ms", taskName,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
