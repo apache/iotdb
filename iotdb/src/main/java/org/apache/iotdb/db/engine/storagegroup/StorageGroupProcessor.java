@@ -198,7 +198,7 @@ public class StorageGroupProcessor {
       RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
           storageGroupSysDir.getPath(), this::mergeEndAction, taskName);
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
-      recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isMergeAfterReboot());
+      recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
     } catch (IOException | MetadataErrorException e) {
       throw new ProcessorException(e);
     }

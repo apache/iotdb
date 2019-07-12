@@ -37,7 +37,7 @@ public class MergeManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(MergeManager.class);
   private static final MergeManager INSTANCE = new MergeManager();
 
-  private AtomicInteger threadNum = new AtomicInteger();
+  private AtomicInteger threadCnt = new AtomicInteger();
   private ThreadPoolExecutor mergeTaskPool;
   private ScheduledExecutorService timedMergeThreadPool;
 
@@ -56,13 +56,19 @@ public class MergeManager implements IService {
   @Override
   public void start() {
     if (mergeTaskPool == null) {
+      int threadNum = IoTDBDescriptor.getInstance().getConfig().getMergeConcurrentThreads();
+      if (threadNum <= 0) {
+        threadNum = 1;
+      }
       mergeTaskPool =
-          (ThreadPoolExecutor) Executors.newFixedThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getMergeConcurrentThreads(),
-              r -> new Thread(r, "mergeThread-" + threadNum.getAndIncrement()));
-      timedMergeThreadPool = (ScheduledExecutorService) Executors.newSingleThreadExecutor();
-      timedMergeThreadPool.scheduleAtFixedRate(this::flushAll, 0,
-          IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec(), TimeUnit.SECONDS);
+          (ThreadPoolExecutor) Executors.newFixedThreadPool(threadNum,
+              r -> new Thread(r, "mergeThread-" + threadCnt.getAndIncrement()));
+      long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
+      if (mergeInterval > 0) {
+        timedMergeThreadPool = (ScheduledExecutorService) Executors.newSingleThreadExecutor();
+        timedMergeThreadPool.scheduleAtFixedRate(this::flushAll, 0,
+            mergeInterval, TimeUnit.SECONDS);
+      }
     }
     logger.info("MergeManager started");
   }
@@ -70,14 +76,16 @@ public class MergeManager implements IService {
   @Override
   public void stop() {
     if (mergeTaskPool != null) {
-      timedMergeThreadPool.shutdownNow();
+      if (timedMergeThreadPool != null) {
+        timedMergeThreadPool.shutdownNow();
+        timedMergeThreadPool = null;
+      }
       mergeTaskPool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
       while (!mergeTaskPool.isShutdown()) {
         // wait
       }
       mergeTaskPool = null;
-      timedMergeThreadPool = null;
     }
     logger.info("MergeManager stopped");
   }
