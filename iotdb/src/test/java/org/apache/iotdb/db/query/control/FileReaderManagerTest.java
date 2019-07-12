@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.fail;
 
 import java.io.File;

@@ -135,7 +135,7 @@ public class IoTDBLargeDataIT {
       }
 
       statement.execute("flush");
-      // statement.execute("merge");
+       statement.execute("merge");
 
       Thread.sleep(5000);
 

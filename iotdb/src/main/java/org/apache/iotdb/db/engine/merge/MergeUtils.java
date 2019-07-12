@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
 class MergeUtils {
@@ -62,22 +69,36 @@ class MergeUtils {
         chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
         break;
       case DOUBLE:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i));
         break;
       case BOOLEAN:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i));
         break;
       case INT64:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i));
         break;
       case INT32:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i));
         break;
       case FLOAT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i));
         break;
       default:
         throw new UnsupportedOperationException("Unknown data type " + dataType);
     }
   }
+
+  static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
+    TsFileMetaData metaData = sequenceReader.readFileMetadata();
+    Set<String> deviceIds = metaData.getDeviceMap().keySet();
+    Set<String> measurements = metaData.getMeasurementSchema().keySet();
+    List<Path> paths = new ArrayList<>();
+    for (String deviceId : deviceIds) {
+      for (String measurement : measurements) {
+        paths.add(new Path(deviceId, measurement));
+      }
+    }
+    return paths;
+  }
+
 }

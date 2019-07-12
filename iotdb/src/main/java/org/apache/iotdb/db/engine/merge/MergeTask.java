@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import static org.apache.iotdb.db.engine.merge.MergeUtils.collectFileSeries;
 import static org.apache.iotdb.db.engine.merge.MergeUtils.writeBatchPoint;
 import static org.apache.iotdb.db.engine.merge.MergeUtils.writeTVPair;
 import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
@@ -38,8 +39,6 @@ import java.util.concurrent.Callable;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -74,7 +73,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MergeTask implements Callable<Void> {
 
-  private static final int MIN_CHUNK_POINT_NUM = 4096;
+  private static final int MIN_CHUNK_POINT_NUM = 4*1024*1024;
   public static final String MERGE_SUFFIX = ".merge";
   private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
 
@@ -89,6 +88,7 @@ public class MergeTask implements Callable<Void> {
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Map<TsFileResource, MetadataQuerier> metadataQuerierCache = new HashMap<>();
+  private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
 
   Map<TsFileResource, Integer> mergedChunkCnt = new HashMap<>();
   Map<TsFileResource, Integer> unmergedChunkCnt = new HashMap<>();
@@ -128,13 +128,13 @@ public class MergeTask implements Callable<Void> {
     return null;
   }
 
-  private void doMerge() throws MetadataErrorException, IOException {
+  private void doMerge() throws IOException {
     logger.info("{} starts", taskName);
     long startTime = System.currentTimeMillis();
     this.mergeLogger = new MergeLogger(storageGroupDir);
     logFiles();
 
-    List<Path> unmergedSeries = collectPathsInUnseqFiles();
+    List<Path> unmergedSeries = collectPaths();
     mergeSeries(unmergedSeries);
 
     List<TsFileResource> unmergedFiles = seqFiles;
@@ -235,15 +235,17 @@ public class MergeTask implements Callable<Void> {
     unmergedChunkStartTimes.clear();
 
     mergeLogger.close();
-    File logFile = new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME);
-    logFile.delete();
+
     for (TsFileResource seqFile : seqFiles) {
       File mergeFile = new File(seqFile.getFile().getPath() + MERGE_SUFFIX);
       mergeFile.delete();
     }
 
+    File logFile = new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME);
     if (executeCallback) {
-      callback.call(seqFiles, unseqFiles);
+      callback.call(seqFiles, unseqFiles, logFile);
+    } else {
+      logFile.delete();
     }
   }
 
@@ -387,7 +389,9 @@ public class MergeTask implements Callable<Void> {
     IPointReader unseqReader = getUnseqReader(path);
     MeasurementSchema schema = getSchema(path);
     try {
-      currTimeValuePair = unseqReader.next();
+      if (unseqReader.hasNext()) {
+        currTimeValuePair = unseqReader.next();
+      }
       for (int i = 0; i < seqFiles.size(); i++) {
         mergeOneFile(path, i, unseqReader, schema);
       }
@@ -594,30 +598,23 @@ public class MergeTask implements Callable<Void> {
     return pathModifications;
   }
 
-  List<Path> collectPathsInUnseqFiles() throws MetadataErrorException {
-    Set<String> devices = new HashSet<>();
+  List<Path> collectPaths() throws IOException {
+    Set<Path> pathSet = new HashSet<>();
     for (TsFileResource tsFileResource : unseqFiles) {
-      devices.addAll(tsFileResource.getEndTimeMap().keySet());
+      TsFileSequenceReader sequenceReader = getFileReader(tsFileResource);
+      measurementSchemaMap.putAll(sequenceReader.readFileMetadata().getMeasurementSchema());
+      pathSet.addAll(collectFileSeries(sequenceReader));
     }
-    List<Path> paths = new ArrayList<>();
-    for (String deviceId : devices) {
-      List<String> strPaths = MManager.getInstance().getPaths(deviceId + ".*");
-      for (String strPath : strPaths) {
-        paths.add(new Path(strPath));
-      }
+    for (TsFileResource tsFileResource : seqFiles) {
+      TsFileSequenceReader sequenceReader = getFileReader(tsFileResource);
+      measurementSchemaMap.putAll(sequenceReader.readFileMetadata().getMeasurementSchema());
+      pathSet.addAll(collectFileSeries(sequenceReader));
     }
-    return paths;
+    return new ArrayList<>(pathSet);
   }
 
   private MeasurementSchema getSchema(Path path) {
-    List<MeasurementSchema> measurementSchemas =
-        MManager.getInstance().getSchemaForStorageGroup(path.getDevice());
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      if (measurementSchema.getMeasurementId().equals(path.getMeasurement())) {
-        return measurementSchema;
-      }
-    }
-    return null;
+    return measurementSchemaMap.get(path.getMeasurement());
   }
 
   RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
