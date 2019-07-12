@@ -169,7 +169,7 @@ IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestam
 
 * Value
 
-The value of a time series is actually the value sent by a sensor to IoTDB. This value can be stored by IoTDB according to the data type. At the same time, users can select the compression mode and the corresponding encoding mode according to the data type of this value. See [Data Type](#data-type) and [Encoding](#encoding) of this document for details on data type and corresponding encoding.
+The value of a time series is actually the value sent by a sensor to IoTDB. This value can be stored by IoTDB according to the data type. At the same time, users can select the compression mode and the corresponding encoding mode according to the data type of this value. See [Data Type](/#/Documents/latest/chap2/sec2) and [Encoding](/#/Documents/latest/chap2/sec3) of this document for details on data type and corresponding encoding.
 
 * Point
 

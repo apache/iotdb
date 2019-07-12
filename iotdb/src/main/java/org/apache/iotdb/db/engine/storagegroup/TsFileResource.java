@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -165,6 +166,10 @@ public class TsFileResource {
     }
   }
 
+  public boolean fileExists() {
+    return new File(file+RESOURCE_SUFFIX).exists();
+  }
+
   public void forceUpdateEndTime(String device, long time) {
       endTimeMap.put(device, time);
   }
@@ -251,5 +256,22 @@ public class TsFileResource {
   @Override
   public String toString() {
     return file.toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TsFileResource that = (TsFileResource) o;
+    return Objects.equals(file, that.file);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(file);
   }
 }

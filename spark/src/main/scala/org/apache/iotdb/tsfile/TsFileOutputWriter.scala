@@ -22,9 +22,9 @@ import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapreduce.{RecordWriter, TaskAttemptContext}
 import org.apache.iotdb.tsfile.io.TsFileOutputFormat
 import org.apache.iotdb.tsfile.write.record.TSRecord
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.execution.datasources.OutputWriter
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.catalyst.InternalRow
 
 private[tsfile] class TsFileOutputWriter(
                                           pathStr: String,
@@ -37,9 +37,9 @@ private[tsfile] class TsFileOutputWriter(
     new TsFileOutputFormat(fileSchema).getRecordWriter(context)
   }
 
-  override def write(row: Row): Unit = {
+  override def write(row: InternalRow): Unit = {
     if (row != null) {
-      val tsRecord = Converter.toTsRecord(row)
+      val tsRecord = Converter.toTsRecord(row, dataSchema)
       tsRecord.foreach(r => {
         recordWriter.write(NullWritable.get(), r)
       })

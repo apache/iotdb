@@ -120,20 +120,19 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @param dataType the value type
    * @return chunks' metadata
    */
-  public List<ChunkMetaData> getVisibleMetadatas(String deviceId, String measurementId,
-      TSDataType dataType) {
-    List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
+  public List<ChunkMetaData> getVisibleMetadataList(String deviceId, String measurementId, TSDataType dataType) {
+    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
       for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
         // filter: if a device'sensor is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
         // all the stale data.
         if (dataType == null || dataType.equals(chunkMetaData.getTsDataType())) {
-          chunkMetaDatas.add(chunkMetaData);
+          chunkMetaDataList.add(chunkMetaData);
         }
       }
     }
-    return chunkMetaDatas;
+    return chunkMetaDataList;
   }
 
 
@@ -143,10 +142,10 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
   public void makeMetadataVisible() {
 
-    List<ChunkGroupMetaData> newlyFlushedMetadatas = getAppendedRowGroupMetadata();
+    List<ChunkGroupMetaData> newlyFlushedMetadataList = getAppendedRowGroupMetadata();
 
-    if (!newlyFlushedMetadatas.isEmpty()) {
-      for (ChunkGroupMetaData rowGroupMetaData : newlyFlushedMetadatas) {
+    if (!newlyFlushedMetadataList.isEmpty()) {
+      for (ChunkGroupMetaData rowGroupMetaData : newlyFlushedMetadataList) {
         String deviceId = rowGroupMetaData.getDeviceID();
         for (ChunkMetaData chunkMetaData : rowGroupMetaData.getChunkMetaDataList()) {
           String measurementId = chunkMetaData.getMeasurementUid();
@@ -171,7 +170,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * get all the chunkGroups' metadata which are appended after the last calling of this method, or
    * after the class instance is initialized if this is the first time to call the method.
    *
-   * @return a list of chunkgroup metadata
+   * @return a list of ChunkGroupMetadata
    */
   private List<ChunkGroupMetaData> getAppendedRowGroupMetadata() {
     List<ChunkGroupMetaData> append = new ArrayList<>();

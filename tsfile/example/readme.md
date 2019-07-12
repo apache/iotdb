@@ -39,28 +39,31 @@ The example is to show how to write and read a TsFile File.
 
 ## Run TsFileWrite.java
 
-  This class is to show how to write a Tsfile. It provided two ways:
+
+  This class is to show how to write a TsFile. It provided two ways:
   
-   The first one is using a JSON file for measurement(s). The JSON file is an array of JSON objects(schema). The object
-   must include the *measurement_id*, *datatype*, *encoding*, and *compressor*. 
+   The first one is using a JSON string for measurement(s). The JSON string is an array of JSON 
+   objects(schema). The object must include the *measurement_id*, *datatype*, *encoding*, and 
+   *compressor*. 
    
-   An example JSON file is provided in the comments in 
+   An example JSON string is provided in the comments in 
    the method
    
-        `public static void tsFileWriteWithJson() throws IOException,WriteProcessException`
+        public static void tsFileWriteWithJson() throws IOException,WriteProcessException
    It uses this interface
    
-        `public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException`  
+        public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException  
    An alternative way is to add these measurements directly(manually) by the second interface: 
    
-         `public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException`
+         public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
    
    The method
    
-         `public static void tsFileWriteDirect() throws IOException,WriteProcessException` 
+         public static void tsFileWriteDirect() throws IOException,WriteProcessException
    shows how to use that interface.
    
-   Note that the measurements in the two methods are the same therefore there output Tsfile should also be identical.
+   Note that the measurements in the two methods are the same therefore there output TsFile should also be identical.
+
 
   
 ## Run TsFileRead.java

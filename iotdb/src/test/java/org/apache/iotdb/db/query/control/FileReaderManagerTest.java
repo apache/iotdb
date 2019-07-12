@@ -58,9 +58,12 @@ public class FileReaderManagerTest {
     FileReaderManager manager = FileReaderManager.getInstance();
     JobFileManager testManager = new JobFileManager();
 
+    TsFileResource[] tsFileResources = new TsFileResource[MAX_FILE_SIZE + 1];
+
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
       File file = new File(filePath + i);
       file.createNewFile();
+      tsFileResources[i] = new TsFileResource(file);
     }
 
     Thread t1 = new Thread(() -> {
@@ -68,11 +71,15 @@ public class FileReaderManagerTest {
         testManager.addJobId(1L);
 
         for (int i = 1; i <= 6; i++) {
-          TsFileResource tsFile = new TsFileResource(new File(filePath + i));
+          TsFileResource tsFile = tsFileResources[i];
           testManager.addFilePathToMap(1L, tsFile,
               false);
           manager.get(tsFile, false);
           Assert.assertTrue(manager.contains(tsFile, false));
+        }
+        for (int i = 1; i <= 6; i++) {
+          TsFileResource tsFile = tsFileResources[i];
+          manager.decreaseFileReaderReference(tsFile, false);
         }
 
       } catch (IOException e) {
@@ -87,11 +94,15 @@ public class FileReaderManagerTest {
         testManager.addJobId(2L);
 
         for (int i = 4; i <= MAX_FILE_SIZE; i++) {
-          TsFileResource tsFile = new TsFileResource(new File(filePath + i));
+          TsFileResource tsFile = tsFileResources[i];
           testManager.addFilePathToMap(2L, tsFile,
               false);
           manager.get(tsFile, false);
           Assert.assertTrue(manager.contains(tsFile, false));
+        }
+        for (int i = 4; i <= MAX_FILE_SIZE; i++) {
+          TsFileResource tsFile = tsFileResources[i];
+          manager.decreaseFileReaderReference(tsFile, false);
         }
 
       } catch (IOException e) {
@@ -109,10 +120,6 @@ public class FileReaderManagerTest {
       Assert.assertTrue(manager.contains(tsFile, false));
     }
 
-    for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      TsFileResource tsFile = new TsFileResource(new File(filePath + i));
-      manager.decreaseFileReaderReference(tsFile, true);
-    }
 
     // the code below is not valid because the cacheFileReaderClearPeriod config in this class is not valid
 

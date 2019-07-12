@@ -19,12 +19,8 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.io.Serializable;
-import org.apache.iotdb.tsfile.common.constant.SystemConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 /**
  * This class define an Object named Path to represent a series in IoTDB. AndExpression in batch read, this definition
@@ -44,7 +40,7 @@ public class Path implements Serializable {
     if (pathSc == null) {
       throw new IllegalArgumentException("input pathSc is null!");
     }
-    String[] splits = pathSc.toString().split(SystemConstant.PATH_SEPARATER_NO_REGEX);
+    String[] splits = pathSc.toString().split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
   }
 
@@ -52,7 +48,7 @@ public class Path implements Serializable {
     if (pathSc == null) {
       throw new IllegalArgumentException(illegalPathArgument);
     }
-    String[] splits = pathSc.split(SystemConstant.PATH_SEPARATER_NO_REGEX);
+    String[] splits = pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
   }
 
@@ -60,15 +56,15 @@ public class Path implements Serializable {
     if (pathSc == null) {
       throw new IllegalArgumentException(illegalPathArgument);
     }
-    String[] splits = new StringContainer(pathSc, SystemConstant.PATH_SEPARATOR).toString()
-        .split(SystemConstant.PATH_SEPARATER_NO_REGEX);
+    String[] splits = new StringContainer(pathSc, TsFileConstant.PATH_SEPARATOR).toString()
+        .split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
   }
 
   /**
    * construct a Path directly using device and measurement, no need to reformat the path
    * @param device root.deviceType.d1
-   * @param measurement s1 , does not contain SystemConstant.PATH_SEPARATOR
+   * @param measurement s1 , does not contain TsFileConstant.PATH_SEPARATOR
    */
   public Path(String device, String measurement) {
     if (device == null || measurement == null) {
@@ -76,11 +72,11 @@ public class Path implements Serializable {
     }
     this.device = device;
     this.measurement = measurement;
-    this.fullPath = device + SystemConstant.PATH_SEPARATOR + measurement;
+    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
   }
 
   public static Path mergePath(Path prefix, Path suffix) {
-    StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
+    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
     sc.addTail(prefix);
     sc.addTail(suffix);
     return new Path(sc);
@@ -96,7 +92,7 @@ public class Path implements Serializable {
    * @return if this path start with prefix
    */
   public static Path addPrefixPath(Path src, String prefix) {
-    StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
+    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
     sc.addTail(prefix);
     sc.addTail(src);
     return new Path(sc);
@@ -131,12 +127,12 @@ public class Path implements Serializable {
     if ("".equals(srcPrefix) || descPrefix.startWith(srcPrefix)) {
       return descPrefix;
     }
-    int prefixSize = srcPrefix.split(SystemConstant.PATH_SEPARATER_NO_REGEX).length;
-    String[] descArray = descPrefix.fullPath.split(SystemConstant.PATH_SEPARATER_NO_REGEX);
+    int prefixSize = srcPrefix.split(TsFileConstant.PATH_SEPARATER_NO_REGEX).length;
+    String[] descArray = descPrefix.fullPath.split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
     if (descArray.length <= prefixSize) {
       return new Path(srcPrefix);
     }
-    StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
+    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
     sc.addTail(srcPrefix);
     for (int i = prefixSize; i < descArray.length; i++) {
       sc.addTail(descArray[i]);
@@ -159,7 +155,7 @@ public class Path implements Serializable {
   }
 
   private void init(String[] splitedPathArray) {
-    StringContainer sc = new StringContainer(splitedPathArray, SystemConstant.PATH_SEPARATOR);
+    StringContainer sc = new StringContainer(splitedPathArray, TsFileConstant.PATH_SEPARATOR);
     if (sc.size() <= 1) {
       device = "";
       fullPath = measurement = sc.toString();
