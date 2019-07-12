@@ -174,8 +174,13 @@ public class MergeFileSelector {
   }
 
   // this method uses the total size of a seqFile's metadata as the maximum memory it may occupy
-  // (when the file contains only one series)
+  // (when the file contains only one series), and writing those chunks to a new file creating
+  // new metadata, so it is doubled in the worst case
   private long calculateSeqMemoryCost(TsFileResource seqFile) throws IOException {
+    return 2 * calculateMetadataSize(seqFile);
+  }
+
+  private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
     long minPos = Long.MAX_VALUE;
     try (TsFileSequenceReader sequenceReader =
         new TsFileSequenceReader(seqFile.getFile().getPath())) {
@@ -190,19 +195,21 @@ public class MergeFileSelector {
 
   // the worst case is when the file contains only one series and all chunks and chunkMetadata
   // will be read into memory to perform a merge, so almost the whole file will be loaded into
-  // memory
-  private long calculateUnseqMemoryCost(TsFileResource unseqFile) {
-    return unseqFile.getFileSize();
+  // memory and writing those chunks to a new file creating new metadata, so the metadata is doubled
+  // in the worst case
+  private long calculateUnseqMemoryCost(TsFileResource unseqFile) throws IOException {
+    return unseqFile.getFileSize() + calculateMetadataSize(unseqFile);
   }
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
-  // its proportion among all series to get a maximum estimation
+  // its proportion among all series to get a maximum estimation and writing those chunks to a new
+  // file creating new metadata, so it is doubled in the worst case
   private long calculateTightSeqMemoryCost(TsFileResource seqFile)
       throws IOException, MetadataErrorException {
     long[] chunkNums = findLargestSeriesChunkNum(seqFile);
     long totalChunkNum = chunkNums[0];
     long maxChunkNum = chunkNums[1];
-    return calculateSeqMemoryCost(seqFile) * maxChunkNum / totalChunkNum;
+    return 2 * calculateMetadataSize(seqFile) * maxChunkNum / totalChunkNum;
   }
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
