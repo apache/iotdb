@@ -54,6 +54,7 @@ public class MergeLogger {
     logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
       logStream.write(tsFileResource.getFile().getAbsolutePath());
+      logStream.newLine();
     }
     logStream.flush();
   }
@@ -63,6 +64,7 @@ public class MergeLogger {
     logStream.newLine();
     for (TsFileResource tsFileResource : unseqFiles) {
       logStream.write(tsFileResource.getFile().getAbsolutePath());
+      logStream.newLine();
     }
     logStream.flush();
   }

@@ -36,7 +36,7 @@ import org.junit.Test;
 
 public class MergeTaskTest extends MergeTest {
 
-  private File tempSGDir;
+  File tempSGDir;
 
   @Before
   public void setUp() throws IOException, WriteProcessException {
