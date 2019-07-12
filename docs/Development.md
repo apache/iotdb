@@ -21,23 +21,25 @@
 
 <!-- TOC -->
 
-- [Have Questions](#have-questions)
-    - [Mailing Lists](#mailing-lists)
-    - [JIRA issues](#jira-issues)
-- [How to contribute](#how-to-contribute)
-    - [Becoming a committer](#becoming-a-committer)
-        - [Contributing by Helping Other Users](#contributing-by-helping-other-users)
-        - [Contributing by Testing Releases](#contributing-by-testing-releases)
-        - [Contributing by Reviewing Changes](#contributing-by-reviewing-changes)
-        - [Contributing by Documentation Changes](#contributing-by-documentation-changes)
-        - [Contributing Bug Reports](#contributing-bug-reports)
-        - [Contributing Code Changes](#contributing-code-changes)
-            - [Cloning source code](#cloning-source-code)
-            - [JIRA](#jira)
-            - [Pull Request](#pull-request)
-            - [The Review Process](#the-review-process)
-            - [Closing Your Pull Request / JIRA](#closing-your-pull-request--jira)
-            - [Code Style](#code-style)
+## Outline
+
+- Have Questions
+    - Mailing Lists
+    - JIRA issues
+- How to contribute
+    - Becoming a committer
+        - Contributing by Helping Other Users
+        - Contributing by Testing Releases
+        - Contributing by Reviewing Changes
+        - Contributing by Documentation Changes
+        - Contributing Bug Reports
+        - Contributing Code Changes
+            - Cloning source code
+            - JIRA
+            - Pull Request
+            - The Review Process
+            - Closing Your Pull Request / JIRA
+            - Code Style]
 
 <!-- /TOC -->
 
