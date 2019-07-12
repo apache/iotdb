@@ -55,7 +55,7 @@ public class MergeFileSelector {
   private List<TsFileResource> selectedUnseqFiles = new ArrayList<>();
   private List<TsFileResource> selectedSeqFiles = new ArrayList<>();
 
-  List<Integer> tmpSelectedSeqFiles;
+  private List<Integer> tmpSelectedSeqFiles;
 
   private boolean[] seqSelected;
   private boolean[] unseqSelected;

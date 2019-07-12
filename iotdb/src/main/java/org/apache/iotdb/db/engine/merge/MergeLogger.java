@@ -29,19 +29,19 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class MergeLogger {
 
-  public static final String MERGE_LOG_NAME = "merge.log";
+  static final String MERGE_LOG_NAME = "merge.log";
 
-  public static final String STR_SEQ_FILES = "seqFiles";
-  public static final String STR_UNSEQ_FILES = "unseqFiles";
-  public static final String STR_START = "start";
-  public static final String STR_END = "end";
-  public static final String STR_ALL_TS_END = "all ts end";
-  public static final String STR_MERGE_START = "merge start";
-  public static final String STR_MERGE_END = "merge end";
+  static final String STR_SEQ_FILES = "seqFiles";
+  static final String STR_UNSEQ_FILES = "unseqFiles";
+  static final String STR_START = "start";
+  static final String STR_END = "end";
+  static final String STR_ALL_TS_END = "all ts end";
+  static final String STR_MERGE_START = "merge start";
+  static final String STR_MERGE_END = "merge end";
 
   private BufferedWriter logStream;
 
-  public MergeLogger(String storageGroupDir) throws IOException {
+  MergeLogger(String storageGroupDir) throws IOException {
     logStream = new BufferedWriter(new FileWriter(new File(storageGroupDir, MERGE_LOG_NAME), true));
   }
 
@@ -49,7 +49,7 @@ public class MergeLogger {
     logStream.close();
   }
 
-  public void logSeqFiles(List<TsFileResource> seqFiles) throws IOException {
+  void logSeqFiles(List<TsFileResource> seqFiles) throws IOException {
     logStream.write(STR_SEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
@@ -58,7 +58,7 @@ public class MergeLogger {
     logStream.flush();
   }
 
-  public void logUnseqFiles(List<TsFileResource> unseqFiles) throws IOException {
+  void logUnseqFiles(List<TsFileResource> unseqFiles) throws IOException {
     logStream.write(STR_UNSEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : unseqFiles) {
@@ -67,49 +67,49 @@ public class MergeLogger {
     logStream.flush();
   }
 
-  public void logMergeStart() throws IOException {
+  void logMergeStart() throws IOException {
     logStream.write(STR_MERGE_START);
     logStream.newLine();
     logStream.flush();
   }
 
-  public void logTSStart(Path path) throws IOException {
+  void logTSStart(Path path) throws IOException {
     logStream.write(path.getFullPath() + " " + STR_START);
     logStream.newLine();
     logStream.flush();
   }
 
-  public void logFilePositionUpdate(File file) throws IOException {
+  void logFilePositionUpdate(File file) throws IOException {
     logStream.write(String.format("%s %d", file.getAbsolutePath(), file.length()));
     logStream.newLine();
     logStream.flush();
   }
 
-  public void logTSEnd(Path path) throws IOException {
+  void logTSEnd(Path path) throws IOException {
     logStream.write(path.getFullPath() + " " + STR_END);
     logStream.newLine();
     logStream.flush();
   }
 
-  public void logAllTsEnd() throws IOException {
+  void logAllTsEnd() throws IOException {
     logStream.write(STR_ALL_TS_END);
     logStream.newLine();
     logStream.flush();
   }
 
-  public void logFileMergeStart(File file, long position) throws IOException {
+  void logFileMergeStart(File file, long position) throws IOException {
     logStream.write(String.format("%s %d", file.getAbsolutePath(), position));
     logStream.newLine();
     logStream.flush();
   }
 
-  public void logFileMergeEnd(File file) throws IOException {
+  void logFileMergeEnd(File file) throws IOException {
     logStream.write(file.getAbsolutePath() + " " + STR_END);
     logStream.newLine();
     logStream.flush();
   }
 
-  public void logMergeEnd() throws IOException {
+  void logMergeEnd() throws IOException {
     logStream.write(STR_MERGE_END);
     logStream.newLine();
     logStream.flush();

@@ -78,21 +78,21 @@ public class MergeTask implements Callable<Void> {
   public static final String MERGE_SUFFIX = ".merge";
   private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
 
-  protected List<TsFileResource> seqFiles;
-  protected List<TsFileResource> unseqFiles;
-  protected String storageGroupDir;
-  protected MergeLogger mergeLogger;
+  List<TsFileResource> seqFiles;
+  List<TsFileResource> unseqFiles;
+  String storageGroupDir;
+  MergeLogger mergeLogger;
 
   private TimeValuePair currTimeValuePair;
 
-  protected Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
-  protected Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
-  protected Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  protected Map<TsFileResource, MetadataQuerier> metadataQuerierCache = new HashMap<>();
+  private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
+  private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
+  private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
+  private Map<TsFileResource, MetadataQuerier> metadataQuerierCache = new HashMap<>();
 
-  protected Map<TsFileResource, Integer> mergedChunkCnt = new HashMap<>();
-  protected Map<TsFileResource, Integer> unmergedChunkCnt = new HashMap<>();
-  protected Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes = new HashMap<>();
+  Map<TsFileResource, Integer> mergedChunkCnt = new HashMap<>();
+  Map<TsFileResource, Integer> unmergedChunkCnt = new HashMap<>();
+  Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes = new HashMap<>();
 
   private QueryContext mergeContext = new QueryContext();
 
@@ -100,9 +100,9 @@ public class MergeTask implements Callable<Void> {
 
   private long currDeviceMaxTime;
 
-  protected MergeCallback callback;
+  private MergeCallback callback;
 
-  protected String taskName;
+  String taskName;
 
   public MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
@@ -141,7 +141,7 @@ public class MergeTask implements Callable<Void> {
     cleanUp(true);
   }
 
-  protected void mergeFiles(List<TsFileResource> unmergedFiles) throws IOException {
+  void mergeFiles(List<TsFileResource> unmergedFiles) throws IOException {
     // decide whether to write the unmerged chunks to the merge files or to move the merged data
     // back to the origin seqFile's
     if (logger.isInfoEnabled()) {
@@ -175,13 +175,13 @@ public class MergeTask implements Callable<Void> {
     mergeLogger.logMergeEnd();
   }
 
-  protected void logFiles() throws IOException {
+  private void logFiles() throws IOException {
     mergeLogger.logSeqFiles(seqFiles);
     mergeLogger.logUnseqFiles(unseqFiles);
     mergeLogger.logMergeStart();
   }
 
-  protected void mergeSeries(List<Path> unmergedSeries) throws IOException {
+  void mergeSeries(List<Path> unmergedSeries) throws IOException {
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
     }
@@ -209,7 +209,7 @@ public class MergeTask implements Callable<Void> {
   }
 
 
-  protected void cleanUp(boolean executeCallback) throws IOException {
+  void cleanUp(boolean executeCallback) throws IOException {
     logger.info("{} is cleaning up", taskName);
     for (TsFileSequenceReader sequenceReader : fileReaderCache.values()) {
       sequenceReader.close();
@@ -572,7 +572,7 @@ public class MergeTask implements Callable<Void> {
     return pathModifications;
   }
 
-  protected List<Path> collectPathsInUnseqFiles() throws MetadataErrorException {
+  List<Path> collectPathsInUnseqFiles() throws MetadataErrorException {
     Set<String> devices = new HashSet<>();
     for (TsFileResource tsFileResource : unseqFiles) {
       devices.addAll(tsFileResource.getEndTimeMap().keySet());
@@ -598,7 +598,7 @@ public class MergeTask implements Callable<Void> {
     return null;
   }
 
-  protected RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
+  RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
     RestorableTsFileIOWriter writer = fileWriterCache.get(resource);
     if (writer == null) {
       writer = new RestorableTsFileIOWriter(new File(resource.getFile().getPath() + MERGE_SUFFIX));
@@ -607,7 +607,7 @@ public class MergeTask implements Callable<Void> {
     return writer;
   }
 
-  protected MetadataQuerier getMetadataQuerier(TsFileResource seqFile) throws IOException {
+  private MetadataQuerier getMetadataQuerier(TsFileResource seqFile) throws IOException {
     MetadataQuerier metadataQuerier = metadataQuerierCache.get(seqFile);
     if (metadataQuerier == null) {
       metadataQuerier = new MetadataQuerierByFileImpl(getFileReader(seqFile));
@@ -616,7 +616,7 @@ public class MergeTask implements Callable<Void> {
     return metadataQuerier;
   }
 
-  protected List<ChunkMetaData> queryChunkMetadata(Path path, TsFileResource seqFile)
+  List<ChunkMetaData> queryChunkMetadata(Path path, TsFileResource seqFile)
       throws IOException {
     MetadataQuerier metadataQuerier = getMetadataQuerier(seqFile);
     List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);

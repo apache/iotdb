@@ -24,12 +24,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
-public class MergeUtils {
+class MergeUtils {
   private MergeUtils() {
     // util class
   }
   
-  public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter,
+  static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter,
       TSDataType dataType) {
     switch (dataType) {
       case TEXT:
@@ -55,7 +55,7 @@ public class MergeUtils {
     }
   }
 
-  public static void writeBatchPoint(BatchData batchData, int i, TSDataType dataType,
+  static void writeBatchPoint(BatchData batchData, int i, TSDataType dataType,
       IChunkWriter chunkWriter) {
     switch (dataType) {
       case TEXT:
