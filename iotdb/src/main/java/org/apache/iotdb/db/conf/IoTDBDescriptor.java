@@ -200,6 +200,15 @@ public class IoTDBDescriptor {
       conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
       logger.info("Time zone has been set to {}", conf.getZoneID());
 
+      conf.setMergeMemoryBudget(Long.parseLong(properties.getProperty("merge_memory_budget",
+          Long.toString(conf.getMergeMemoryBudget()))));
+      conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",
+          Integer.toString(conf.getMergeThreadNum()))));
+      conf.setContinueMergeAfterReboot(Boolean.parseBoolean(properties.getProperty(
+          "continue_merge_after_reboot", Boolean.toString(conf.isContinueMergeAfterReboot()))));
+      conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
+          Long.toString(conf.getMergeIntervalSec()))));
+
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

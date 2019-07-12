@@ -182,9 +182,9 @@ public class IoTDBConfig {
 
   private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
 
-  private int mergeThreadNum = 2;
+  private int mergeThreadNum = 1;
 
-  private boolean mergeAfterReboot = true;
+  private boolean continueMergeAfterReboot = true;
 
   private long mergeIntervalSec = 2 * 3600L;
 
@@ -512,12 +512,12 @@ public class IoTDBConfig {
     this.mergeThreadNum = mergeThreadNum;
   }
 
-  public boolean isMergeAfterReboot() {
-    return mergeAfterReboot;
+  public boolean isContinueMergeAfterReboot() {
+    return continueMergeAfterReboot;
   }
 
-  public void setMergeAfterReboot(boolean mergeAfterReboot) {
-    this.mergeAfterReboot = mergeAfterReboot;
+  public void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
+    this.continueMergeAfterReboot = continueMergeAfterReboot;
   }
 
   public long getMergeIntervalSec() {
