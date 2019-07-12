@@ -21,6 +21,9 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +31,8 @@ import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -178,5 +183,41 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return append;
   }
 
+
+  /**
+   * Given a TsFile, generate a writable RestorableTsFileIOWriter. That is, for a complete TsFile,
+   * the function erases all FileMetadata and supports writing new data; For a incomplete TsFile,
+   * the function supports writing new data directly. However, it is more efficient using the
+   * construction function of RestorableTsFileIOWriter, if the tsfile is incomplete.
+   *
+   * @param file a TsFile
+   * @return a writable RestorableTsFileIOWriter
+   */
+  public static RestorableTsFileIOWriter getWriterForAppendingDataOnCompletedTsFile(File file)
+      throws IOException {
+    long position = file.length();
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+      // this tsfile is complete
+      if (reader.isComplete()) {
+        reader.loadMetadataSize();
+        TsFileMetaData metaData = reader.readFileMetadata();
+        for (TsDeviceMetadataIndex deviceMetadata : metaData.getDeviceMap().values()) {
+          if (position > deviceMetadata.getOffset()) {
+            position = deviceMetadata.getOffset();
+          }
+        }
+      }
+    }
+
+    if (position != file.length()) {
+      // if the file is complete, we will remove all file metadatas
+      try (FileChannel channel = FileChannel
+          .open(Paths.get(file.getAbsolutePath()), StandardOpenOption.WRITE)) {
+        channel.truncate(position - 1);//remove the last marker.
+      }
+    }
+    return new RestorableTsFileIOWriter(file);
+  }
 
 }
