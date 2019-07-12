@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -610,7 +611,9 @@ public class MergeTask implements Callable<Void> {
       measurementSchemaMap.putAll(sequenceReader.readFileMetadata().getMeasurementSchema());
       pathSet.addAll(collectFileSeries(sequenceReader));
     }
-    return new ArrayList<>(pathSet);
+    List<Path> ret = new ArrayList<>(pathSet);
+    ret.sort(Comparator.comparing(Path::getFullPath));
+    return ret;
   }
 
   private MeasurementSchema getSchema(Path path) {
