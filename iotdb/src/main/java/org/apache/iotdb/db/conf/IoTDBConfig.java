@@ -186,6 +186,8 @@ public class IoTDBConfig {
 
   private boolean mergeAfterReboot = true;
 
+  private long mergeIntervalSec = 2 * 3600L;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -516,5 +518,13 @@ public class IoTDBConfig {
 
   public void setMergeAfterReboot(boolean mergeAfterReboot) {
     this.mergeAfterReboot = mergeAfterReboot;
+  }
+
+  public long getMergeIntervalSec() {
+    return mergeIntervalSec;
+  }
+
+  public void setMergeIntervalSec(long mergeIntervalSec) {
+    this.mergeIntervalSec = mergeIntervalSec;
   }
 }

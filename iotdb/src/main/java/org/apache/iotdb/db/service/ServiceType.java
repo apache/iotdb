@@ -31,7 +31,8 @@ public enum ServiceType {
   AUTHORIZATION_SERVICE("Authorization ServerService", ""),
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
   SYNC_SERVICE("SYNC ServerService", ""),
-  TVLIST_ALLOCATOR_SERVICE("TVList Allocator", "");
+  TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
+  MERGE_SERVICE("Merge Manager", "");
 
   private String name;
   private String jmxName;
