@@ -62,10 +62,11 @@ public class MergeManager implements IService {
       }
       mergeTaskPool =
           (ThreadPoolExecutor) Executors.newFixedThreadPool(threadNum,
-              r -> new Thread(r, "mergeThread-" + threadCnt.getAndIncrement()));
+              r -> new Thread(r, "MergeThread-" + threadCnt.getAndIncrement()));
       long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
       if (mergeInterval > 0) {
-        timedMergeThreadPool = (ScheduledExecutorService) Executors.newSingleThreadExecutor();
+        timedMergeThreadPool = Executors.newSingleThreadScheduledExecutor( r -> new Thread(r,
+            "TimedMergeThread"));
         timedMergeThreadPool.scheduleAtFixedRate(this::flushAll, 0,
             mergeInterval, TimeUnit.SECONDS);
       }

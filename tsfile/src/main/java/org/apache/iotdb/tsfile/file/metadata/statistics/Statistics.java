@@ -78,18 +78,22 @@ public abstract class Statistics<T> {
       throws IOException {
     Statistics statistics = getStatsByType(dataType);
     statistics.fill(inputStream);
+    statistics.isEmpty = false;
     return statistics;
   }
 
   public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
     Statistics statistics = getStatsByType(dataType);
     statistics.fill(buffer);
+    statistics.isEmpty = false;
     return statistics;
   }
 
-  public static Statistics deserialize(TsFileInput input, long offset, TSDataType dataType) throws IOException {
+  public static Statistics deserialize(TsFileInput input, long offset, TSDataType dataType)
+      throws IOException {
     Statistics statistics = getStatsByType(dataType);
     statistics.fill(input, offset);
+    statistics.isEmpty = false;
     return statistics;
   }
 
@@ -157,6 +161,10 @@ public abstract class Statistics<T> {
     return isEmpty;
   }
 
+  public void setEmpty(boolean empty) {
+    isEmpty = empty;
+  }
+
   public void updateStats(boolean value) {
     throw new UnsupportedOperationException();
   }
@@ -170,8 +178,8 @@ public abstract class Statistics<T> {
   }
 
   /**
-   * This method with two parameters is only used by {@code unsequence} which updates/inserts/deletes
-   * timestamp.
+   * This method with two parameters is only used by {@code unsequence} which
+   * updates/inserts/deletes timestamp.
    *
    * @param min min timestamp
    * @param max max timestamp

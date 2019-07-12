@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.engine.merge.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.SystemConstant.TSFILE_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,8 +39,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.merge.MergeFileSelector;
-import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.MergeManager;
+import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.RecoverMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -52,8 +52,8 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -273,8 +273,8 @@ public class StorageGroupProcessor {
   // TsFileNameComparator compares TsFiles by the version number in its name
   // ({systemTime}-{versionNum}.tsfile)
   public int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().split("-");
-    String[] items2 = o2.getName().split("-");
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split("-");
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split("-");
     if (Long.valueOf(items1[0]) - Long.valueOf(items2[0]) == 0) {
       return Long.compare(Long.valueOf(items1[1]), Long.valueOf(items2[1]));
     } else {
@@ -564,7 +564,6 @@ public class StorageGroupProcessor {
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
     writeLock();
-    mergeLock.writeLock().lock();
     mergeLock.writeLock().lock();
 
     // record files which are updated so that we can roll back them in case of exception

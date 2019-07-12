@@ -134,7 +134,7 @@ public class RecoverMergeTask extends MergeTask {
 
     List<ChunkMetaData> seqFileChunks = queryChunkMetadata(path, tsFileResource);
     List<ChunkMetaData> mergeFileChunks =
-        mergeFileWriter.getVisibleMetadatas(path.getDevice(), path.getMeasurement(), null);
+        mergeFileWriter.getVisibleMetadataList(path.getDevice(), path.getMeasurement(), null);
     mergedChunkCnt.compute(tsFileResource, (k, v) -> v == null ? mergeFileChunks.size() :
         v + mergeFileChunks.size());
     int seqIndex = 0;

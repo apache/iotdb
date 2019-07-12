@@ -16,6 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
+package org.apache.iotdb.tsfile;
+
 import java.io.File;
 import java.io.IOException;
 import com.alibaba.fastjson.JSONArray;
@@ -109,21 +112,19 @@ public class TsFileWrite {
    *             "measurement_id": "sensor_1",
    *             "data_type": "FLOAT",
    *             "encoding": "RLE",
-   * 		       "compressor" : "UNCOMPRESSED"
+   * 		         "compressor" : "UNCOMPRESSED"
    *         },
    *         {
    *             "measurement_id": "sensor_2",
    *             "data_type": "INT32",
    *             "encoding": "TS_2DIFF",
-   * 	            "compressor" : "UNCOMPRESSED"
-   *
+   * 	           "compressor" : "UNCOMPRESSED"
    *         },
    *         {
    *             "measurement_id": "sensor_3",
    *             "data_type": "INT32",
    *             "encoding": "TS_2DIFF",
    * 	           "compressor" : "UNCOMPRESSED"
-   *
    *        }
    *     ]
    * }
@@ -194,7 +195,7 @@ public class TsFileWrite {
 
   public static void main(String args[]) {
     try {
-        // Use a json string for all the measurements to write a TsFile
+      // Use a json string for all the measurements to write a TsFile
       tsFileWriteWithJson();
       // Write a TsFile by adding the measurements directly in the method
       tsFileWriteDirect();

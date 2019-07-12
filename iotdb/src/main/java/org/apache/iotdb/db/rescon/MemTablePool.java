@@ -74,7 +74,7 @@ public class MemTablePool {
           logger.error("{} fails to wait fot memtables {}, continue to wait", applier, e);
           Thread.currentThread().interrupt();
         }
-        logger.debug("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
+        logger.info("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
       }
     }
   }
