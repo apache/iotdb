@@ -121,7 +121,7 @@ public class StorageGroupProcessor {
    */
   private Map<String, Long> latestTimeForEachDevice = new HashMap<>();
   /**
-   * device -> largest timestamp of the latest memtable to be submitted to asyncFlush
+   * device -> largest timestamp of the latest memtable to be submitted to asyncTryToFlush
    * latestFlushedTimeForEachDevice determines whether a data point should be put into a sequential
    * file or an unsequential file. Data of some device with timestamp less than or equals to the
    * device's latestFlushedTime should go into an unsequential file.
@@ -315,7 +315,7 @@ public class StorageGroupProcessor {
       latestTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // check memtable size and may asyncFlush the work memtable
+    // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
           tsFileProcessor.getWorkMemTableMemory(),
@@ -456,7 +456,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void asyncFlush() {
+  public void asyncTryToFlush() {
     if (workSequenceTsFileProcessor == null && workUnSequenceTsFileProcessor == null) {
       return;
     }

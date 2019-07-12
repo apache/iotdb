@@ -187,7 +187,7 @@ public class StorageEngine implements IService {
 
   public void asyncFlushAllProcessor() {
     for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-      storageGroupProcessor.asyncFlush();
+      storageGroupProcessor.asyncTryToFlush();
     }
   }
 

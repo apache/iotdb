@@ -87,7 +87,7 @@ public class TsFileProcessor {
   private IMemTable workMemTable;
 
   /**
-   * sync this object in query() and asyncFlush()
+   * sync this object in query() and asyncTryToFlush()
    */
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
 
