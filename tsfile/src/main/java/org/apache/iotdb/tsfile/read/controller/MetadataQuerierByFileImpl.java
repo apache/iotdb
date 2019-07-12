@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.controller;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -195,6 +196,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
         }
       }
     }
+    chunkMetaDataList.sort(Comparator.comparingLong(ChunkMetaData::getStartTime));
     return chunkMetaDataList;
   }
 
