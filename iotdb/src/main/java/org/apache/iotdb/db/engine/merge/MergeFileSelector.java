@@ -38,6 +38,8 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MergeFileSelector selects the most files from given seqFiles and unseqFiles which can be
@@ -45,8 +47,13 @@ import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
  */
 public class MergeFileSelector {
 
+  private static final Logger logger = LoggerFactory.getLogger(MergeFileSelector.class);
+  private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
+
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
+
+  private long totalCost;
   private long memoryBudget;
 
   private Map<TsFileResource, Long> costMap = new HashMap<>();
@@ -54,6 +61,8 @@ public class MergeFileSelector {
 
   private List<TsFileResource> selectedUnseqFiles = new ArrayList<>();
   private List<TsFileResource> selectedSeqFiles = new ArrayList<>();
+
+  private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
 
   private List<Integer> tmpSelectedSeqFiles;
 
@@ -70,17 +79,29 @@ public class MergeFileSelector {
 
   public List[] doSelect() throws MergeException {
     try {
+      logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles", seqFiles.size(),
+          unseqFiles.size());
       doSelect(false);
       if (selectedUnseqFiles.isEmpty()) {
         doSelect(true);
       }
+      clean();
       if (selectedUnseqFiles.isEmpty()) {
         return new List[0];
       }
     } catch (IOException | MetadataErrorException e) {
       throw new MergeException(e);
     }
+    logger.info("Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}",
+        selectedSeqFiles.size(), selectedUnseqFiles.size(), totalCost);
     return new List[]{selectedSeqFiles, selectedUnseqFiles};
+  }
+
+  private void clean() throws IOException {
+    for (TsFileSequenceReader reader : fileReaderCache.values()) {
+      reader.close();
+    }
+    fileReaderCache.clear();
   }
 
   private void doSelect(boolean useTightBound) throws IOException, MetadataErrorException {
@@ -89,7 +110,7 @@ public class MergeFileSelector {
     seqSelected = new boolean[seqFiles.size()];
     unseqSelected = new boolean[unseqFiles.size()];
 
-    long totalCost = 0;
+    totalCost = 0;
 
     int unseqIndex = 0;
     while (unseqIndex < unseqFiles.size()) {
@@ -113,6 +134,10 @@ public class MergeFileSelector {
           seqSelected[seqIdx] = true;
           selectedSeqFiles.add(seqFiles.get(seqIdx));
         }
+        totalCost += newCost;
+        logger.debug("Adding a new unseqFile {} and seqFiles {} as candidates, new cost {}, total"
+                + " cost {}",
+            unseqFile, tmpSelectedSeqFiles, newCost, totalCost);
       }
       tmpSelectedSeqFiles.clear();
       unseqIndex++;
@@ -177,18 +202,18 @@ public class MergeFileSelector {
   // (when the file contains only one series), and writing those chunks to a new file creating
   // new metadata, so it is doubled in the worst case
   private long calculateSeqMemoryCost(TsFileResource seqFile) throws IOException {
-    return 2 * calculateMetadataSize(seqFile);
+    long cost = 2 * calculateMetadataSize(seqFile);
+    logger.debug(LOG_FILE_COST, seqFile, cost);
+    return cost;
   }
 
   private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
     long minPos = Long.MAX_VALUE;
-    try (TsFileSequenceReader sequenceReader =
-        new TsFileSequenceReader(seqFile.getFile().getPath())) {
-      TsFileMetaData fileMetaData = sequenceReader.readFileMetadata();
-      Map<String, TsDeviceMetadataIndex> deviceMap = fileMetaData.getDeviceMap();
-      for (TsDeviceMetadataIndex metadataIndex : deviceMap.values()) {
-        minPos = metadataIndex.getOffset() < minPos ? metadataIndex.getOffset() : minPos;
-      }
+    TsFileSequenceReader sequenceReader = getReader(seqFile);
+    TsFileMetaData fileMetaData = sequenceReader.readFileMetadata();
+    Map<String, TsDeviceMetadataIndex> deviceMap = fileMetaData.getDeviceMap();
+    for (TsDeviceMetadataIndex metadataIndex : deviceMap.values()) {
+      minPos = metadataIndex.getOffset() < minPos ? metadataIndex.getOffset() : minPos;
     }
     return seqFile.getFileSize() - minPos;
   }
@@ -198,7 +223,9 @@ public class MergeFileSelector {
   // memory and writing those chunks to a new file creating new metadata, so the metadata is doubled
   // in the worst case
   private long calculateUnseqMemoryCost(TsFileResource unseqFile) throws IOException {
-    return unseqFile.getFileSize() + calculateMetadataSize(unseqFile);
+    long cost = unseqFile.getFileSize() + calculateMetadataSize(unseqFile);
+    logger.debug(LOG_FILE_COST, unseqFile, cost);
+    return cost;
   }
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
@@ -209,7 +236,9 @@ public class MergeFileSelector {
     long[] chunkNums = findLargestSeriesChunkNum(seqFile);
     long totalChunkNum = chunkNums[0];
     long maxChunkNum = chunkNums[1];
-    return 2 * calculateMetadataSize(seqFile) * maxChunkNum / totalChunkNum;
+    long cost = 2 * calculateMetadataSize(seqFile) * maxChunkNum / totalChunkNum;
+    logger.debug(LOG_FILE_COST, seqFile, cost);
+    return cost;
   }
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
@@ -219,7 +248,9 @@ public class MergeFileSelector {
     long[] chunkNums = findLargestSeriesChunkNum(unseqFile);
     long totalChunkNum = chunkNums[0];
     long maxChunkNum = chunkNums[1];
-    return calculateUnseqMemoryCost(unseqFile) * maxChunkNum / totalChunkNum;
+    long cost = calculateUnseqMemoryCost(unseqFile) * maxChunkNum / totalChunkNum;
+    logger.debug(LOG_FILE_COST, unseqFile, cost);
+    return cost;
   }
 
   // returns totalChunkNum of a file and the max number of chunks of a series
@@ -227,25 +258,25 @@ public class MergeFileSelector {
       throws IOException, MetadataErrorException {
     long totalChunkNum = 0;
     long maxChunkNum = Long.MIN_VALUE;
-    try (TsFileSequenceReader sequenceReader =
-        new TsFileSequenceReader(tsFileResource.getFile().getPath())) {
-      List<Path> paths = new ArrayList<>();
-      for (String deviceId : tsFileResource.getEndTimeMap().keySet()) {
-        List<String> strPaths = MManager.getInstance().getPaths(deviceId + ".*");
-        for (String strPath : strPaths) {
-          paths.add(new Path(strPath));
-        }
-      }
-
-      MetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(sequenceReader);
-      for (Path path : paths) {
-        List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
-        metadataQuerier.clear();
-        totalChunkNum += chunkMetaDataList.size();
-        maxChunkNum = chunkMetaDataList.size() > maxChunkNum ? chunkMetaDataList.size() :
-            maxChunkNum;
+    TsFileSequenceReader sequenceReader = getReader(tsFileResource);
+    List<Path> paths = new ArrayList<>();
+    for (String deviceId : tsFileResource.getEndTimeMap().keySet()) {
+      List<String> strPaths = MManager.getInstance().getPaths(deviceId + ".*");
+      for (String strPath : strPaths) {
+        paths.add(new Path(strPath));
       }
     }
+
+    MetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(sequenceReader);
+    for (Path path : paths) {
+      List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
+      metadataQuerier.clear();
+      totalChunkNum += chunkMetaDataList.size();
+      maxChunkNum = chunkMetaDataList.size() > maxChunkNum ? chunkMetaDataList.size() :
+          maxChunkNum;
+    }
+    logger.debug("In file {}, total chunk num {}, series max chunk num {}", tsFileResource,
+        totalChunkNum, maxChunkNum);
     return new long[] {totalChunkNum, maxChunkNum};
   }
 
@@ -278,5 +309,13 @@ public class MergeFileSelector {
         (l2 <= l1 && l1 <= r2) ||
         (l2 <= r1 && r1 <= r2);
   }
-  
+
+  private TsFileSequenceReader getReader(TsFileResource tsFileResource) throws IOException {
+    TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
+    if (reader == null) {
+      reader = new TsFileSequenceReader(tsFileResource.getFile().getPath());
+      fileReaderCache.put(tsFileResource, reader);
+    }
+    return reader;
+  }
 }

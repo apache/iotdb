@@ -247,4 +247,9 @@ public class TsFileResource {
     file.delete();
     new File(file.getPath() + RESOURCE_SUFFIX).delete();
   }
+
+  @Override
+  public String toString() {
+    return file.toString();
+  }
 }

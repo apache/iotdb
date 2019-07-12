@@ -69,9 +69,13 @@ public class RecoverMergeTask extends MergeTask {
     }
     mergeSeqFiles = new ArrayList<>();
     mergeUnseqFiles = new ArrayList<>();
+    long startTime = System.currentTimeMillis();
 
     Status status = determineStatus(logFile);
-    logger.info("{} merge recovery status determined: {}", taskName, status);
+    if (logger.isInfoEnabled()) {
+      logger.info("{} merge recovery status determined: {} after {}ms", taskName, status,
+          (System.currentTimeMillis() - startTime));
+    }
     switch (status) {
       case NONE:
         logFile.delete();
@@ -104,7 +108,9 @@ public class RecoverMergeTask extends MergeTask {
         cleanUp(continueMerge);
         break;
     }
-    logger.info("{} merge recovery ends", taskName);
+    if (logger.isInfoEnabled()) {
+      logger.info("{} merge recovery ends after", taskName, (System.currentTimeMillis() - startTime));
+    }
   }
 
 
@@ -209,9 +215,10 @@ public class RecoverMergeTask extends MergeTask {
   }
 
   private void analyzeSeqFiles(BufferedReader bufferedReader) throws IOException {
+    long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (currLine.equals(MergeLogger.STR_UNSEQ_FILES)) {
-        return;
+        break;
       }
       Iterator<TsFileResource> iterator = seqFiles.iterator();
       while (iterator.hasNext()) {
@@ -223,12 +230,17 @@ public class RecoverMergeTask extends MergeTask {
         }
       }
     }
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} found {} seq files after {}ms", taskName, mergeSeqFiles.size(),
+          (System.currentTimeMillis() - startTime));
+    }
   }
 
   private void analyzeUnseqFiles(BufferedReader bufferedReader) throws IOException {
+    long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (currLine.equals(MergeLogger.STR_MERGE_START)) {
-        return;
+        break;
       }
       Iterator<TsFileResource> iterator = unseqFiles.iterator();
       while (iterator.hasNext()) {
@@ -240,13 +252,18 @@ public class RecoverMergeTask extends MergeTask {
         }
       }
     }
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} found {} seq files after {}ms", taskName, mergeUnseqFiles.size(),
+          (System.currentTimeMillis() - startTime));
+    }
   }
 
   private void analyzeMergedSeries(BufferedReader bufferedReader, List<Path> unmergedPaths) throws IOException {
     Path currTS = null;
+    long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (currLine.equals(MergeLogger.STR_ALL_TS_END)) {
-        return;
+        break;
       }
       if (currLine.contains(MergeLogger.STR_START)) {
         // a TS starts to merge
@@ -268,13 +285,19 @@ public class RecoverMergeTask extends MergeTask {
         mergedPaths.add(currTS);
       }
     }
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} found {} series have already been merged after {}ms", taskName,
+          mergeSeqFiles.size(), (System.currentTimeMillis() - startTime));
+    }
   }
 
   private void analyzeMergedFiles(BufferedReader bufferedReader) throws IOException {
     File currFile = null;
+    long startTime = System.currentTimeMillis();
+    int mergedCnt = 0;
     while ((currLine = bufferedReader.readLine()) != null) {
       if (currLine.equals(MergeLogger.STR_MERGE_END)) {
-        return;
+         break;
       }
       if (currLine.contains(MergeLogger.STR_START)) {
         String[] splits = currLine.split(" ");
@@ -288,11 +311,16 @@ public class RecoverMergeTask extends MergeTask {
         while (unmergedFileIter.hasNext()) {
           TsFileResource seqFile = unmergedFileIter.next();
           if (seqFile.getFile().getAbsolutePath().equals(seqFilePath)) {
+            mergedCnt ++;
             unmergedFileIter.remove();
             break;
           }
         }
       }
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} found {} files have already been merged after {}ms", taskName,
+         mergedCnt, (System.currentTimeMillis() - startTime));
     }
   }
 

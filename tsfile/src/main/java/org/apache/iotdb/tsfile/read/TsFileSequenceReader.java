@@ -62,6 +62,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected String file;
 
   private int totalChunkNum;
+  private TsFileMetaData tsFileMetaData;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -210,7 +211,10 @@ public class TsFileSequenceReader implements AutoCloseable {
    * this function does not modify the position of the file reader.
    */
   public TsFileMetaData readFileMetadata() throws IOException {
-    return TsFileMetaData.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+    if (tsFileMetaData == null) {
+      tsFileMetaData = TsFileMetaData.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+    }
+    return tsFileMetaData;
   }
 
   /**
