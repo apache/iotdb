@@ -94,6 +94,7 @@ import org.slf4j.LoggerFactory;
  */
 public class StorageGroupProcessor {
 
+  private static final String MERGING_MODIFICAITON_FILE_NAME = "merge.mods";
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -195,11 +196,18 @@ public class StorageGroupProcessor {
 
     String taskName = storageGroupName + System.currentTimeMillis();
     try {
+      File mergingMods = new File(storageGroupSysDir, MERGING_MODIFICAITON_FILE_NAME);
+      if (mergingMods.exists()) {
+        mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
+      }
       RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
           storageGroupSysDir.getPath(), this::mergeEndAction, taskName);
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
       recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
-    } catch (IOException | MetadataErrorException e) {
+      if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
+        mergingMods.delete();
+      }
+    } catch (IOException e) {
       throw new ProcessorException(e);
     }
 
@@ -711,8 +719,7 @@ public class StorageGroupProcessor {
         String taskName = storageGroupName + "-" + System.currentTimeMillis();
         MergeTask mergeTask = new MergeTask(mergeFiles[0], mergeFiles[1],
             storageGroupSysDir.getPath(), this::mergeEndAction, taskName);
-        mergingModification = new ModificationFile(storageGroupSysDir + File.separator + "merge"
-            + ".mods");
+        mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
         MergeManager.getINSTANCE().submit(mergeTask);
         if (logger.isInfoEnabled()) {
           logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
@@ -731,7 +738,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  private void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
+      File mergeLog) {
     logger.info("{} a merge task is ending...", storageGroupName);
 
     if (seqFiles.isEmpty()) {
@@ -784,6 +792,7 @@ public class StorageGroupProcessor {
           isMerging = false;
         }
       } finally {
+        mergeLog.delete();
         seqFile.getMergeQueryLock().writeLock().unlock();
         mergeLock.writeLock().unlock();
       }

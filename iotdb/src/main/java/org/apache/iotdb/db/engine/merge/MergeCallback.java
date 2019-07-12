@@ -19,11 +19,21 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import java.io.File;
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 @FunctionalInterface
 public interface MergeCallback {
 
-  void call(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles);
+  /**
+   * On calling this method, the callee should:
+   *    1. replace the modification files of seqFiles with merging modifications since the old
+   *    modifications have been merged into the new files.
+   *    2. remove the unseqFiles since they have been merged into new files.
+   *    3. remove the merge log file
+   * @param seqFiles
+   * @param unseqFiles
+   */
+  void call(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File logFile);
 }

@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -61,7 +60,7 @@ public class RecoverMergeTask extends MergeTask {
     super(allSeqFiles, allUnseqFiles, storageGroupDir, callback, taskName);
   }
 
-  public void recoverMerge(boolean continueMerge) throws IOException, MetadataErrorException {
+  public void recoverMerge(boolean continueMerge) throws IOException {
     File logFile = new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
       logger.info("{} no merge.log, merge recovery ends", taskName);
@@ -178,7 +177,7 @@ public class RecoverMergeTask extends MergeTask {
     }
   }
 
-  private Status determineStatus(File logFile) throws IOException, MetadataErrorException {
+  private Status determineStatus(File logFile) throws IOException {
     Status status = Status.NONE;
     try (BufferedReader bufferedReader =
         new BufferedReader(new FileReader(logFile))) {
@@ -198,7 +197,7 @@ public class RecoverMergeTask extends MergeTask {
             File mergeFile = new File(seqFile.getFile().getPath() + MergeTask.MERGE_SUFFIX);
             fileLastPositions.put(mergeFile, 0L);
           }
-          unmergedPaths = collectPathsInUnseqFiles();
+          unmergedPaths = collectPaths();
           analyzeMergedSeries(bufferedReader, unmergedPaths);
         }
         if (currLine.equals(MergeLogger.STR_ALL_TS_END)) {

@@ -877,7 +877,7 @@ public class IoTDBAggregationLargeDataIT {
         d0s2sum += time % 123;
       }
 
-//      statement.execute("merge");
+      statement.execute("merge");
 
       System.out.println("large insert cnt = " + cnt);
       System.out

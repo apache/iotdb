@@ -19,24 +19,107 @@
 
 package org.apache.iotdb.db.engine.merge;
 
-import static org.junit.Assert.*;
-
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.junit.After;
+import org.junit.Before;
 
-public class MergeFileSelectorTest {
+abstract class MergeTest {
 
+  private int measurementNum = 10;
+  private int deviceNum = 10;
+  private long ptNum = 100;
+  private long flushInterval = 20;
 
-  private void prepareFiles(int seqFileNum, int unseqFileNum) {
-    List<TsFileResource> seqResources = new ArrayList<>();
-    List<TsFileResource> unseqResources = new ArrayList<>();
+  String[] deviceIds;
+  MeasurementSchema[] measurementSchemas;
+
+  List<TsFileResource> seqResources = new ArrayList<>();
+  List<TsFileResource> unseqResources = new ArrayList<>();
+
+  @Before
+  public void setUp() throws IOException, WriteProcessException {
+    prepareSeries();
+    prepareFiles(5, 5);
+  }
+
+  @After
+  public void tearDown() throws IOException {
+    removeFiles();
+  }
+
+  private void prepareSeries() {
+    measurementSchemas = new MeasurementSchema[measurementNum];
+    for (int i = 0; i < measurementNum; i++) {
+      measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
+          TSEncoding.PLAIN, CompressionType.UNCOMPRESSED);
+    }
+    deviceIds = new String[deviceNum];
+    for (int i = 0; i < deviceNum; i++) {
+      deviceIds[i] = "device" + i;
+    }
+  }
+
+  private void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(i + "seq.tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
-      TsFileWriter fileWriter = new TsFileWriter(file);
+      seqResources.add(tsFileResource);
+      prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file = new File(i + "unseq.tsfile");
+      TsFileResource tsFileResource = new TsFileResource(file);
+      unseqResources.add(tsFileResource);
+      prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
+    }
+    File file = new File(unseqFileNum + "unseq.tsfile");
+    TsFileResource tsFileResource = new TsFileResource(file);
+    unseqResources.add(tsFileResource);
+    prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
+  }
+
+  private void removeFiles() {
+    for (TsFileResource tsFileResource : seqResources) {
+      tsFileResource.remove();
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      tsFileResource.remove();
+    }
+  }
+
+  private void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
+      long valueOffset)
+      throws IOException, WriteProcessException {
+    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
+      fileWriter.addMeasurement(measurementSchema);
+    }
+    for (long i = timeOffset; i < timeOffset + ptNum; i++) {
+      for (int j = 0; j < deviceNum; j++) {
+        TSRecord record = new TSRecord(i, deviceIds[j]);
+        for (int k = 0; k < measurementNum; k++) {
+          record.addTuple(DataPoint.getDataPoint(measurementSchemas[k].getType(),
+              measurementSchemas[k].getMeasurementId(), String.valueOf(i + valueOffset)));
+        }
+        fileWriter.write(record);
+        tsFileResource.updateTime(deviceIds[j], i);
+      }
+      if ((i + 1) % flushInterval == 0) {
+        fileWriter.flushForTest();
+      }
+    }
+    fileWriter.close();
   }
 }

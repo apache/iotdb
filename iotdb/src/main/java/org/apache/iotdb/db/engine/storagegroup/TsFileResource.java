@@ -251,6 +251,7 @@ public class TsFileResource {
   public void remove() {
     file.delete();
     new File(file.getPath() + RESOURCE_SUFFIX).delete();
+    new File(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
   @Override
