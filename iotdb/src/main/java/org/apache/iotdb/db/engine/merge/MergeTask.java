@@ -129,6 +129,8 @@ public class MergeTask implements Callable<Void> {
   }
 
   private void doMerge() throws MetadataErrorException, IOException {
+    logger.info("{} starts", taskName);
+    long startTime = System.currentTimeMillis();
     this.mergeLogger = new MergeLogger(storageGroupDir);
     logFiles();
 
@@ -139,6 +141,9 @@ public class MergeTask implements Callable<Void> {
     mergeFiles(unmergedFiles);
 
     cleanUp(true);
+    if (logger.isInfoEnabled()) {
+      logger.info("{} ends after {}ms", taskName, System.currentTimeMillis() - startTime);
+    }
   }
 
   void mergeFiles(List<TsFileResource> unmergedFiles) throws IOException {
@@ -147,6 +152,7 @@ public class MergeTask implements Callable<Void> {
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge {} files", taskName, unmergedFiles.size());
     }
+    long startTime = System.currentTimeMillis();
     int cnt = 0;
     for (TsFileResource seqFile : unmergedFiles) {
       int mergedChunkNum = mergedChunkCnt.getOrDefault(seqFile, 0);
@@ -171,7 +177,9 @@ public class MergeTask implements Callable<Void> {
         logger.debug("{} has merged {}/{} files", taskName, cnt, unmergedFiles.size());
       }
     }
-    logger.info("{} has merged all files", taskName);
+    if (logger.isInfoEnabled()) {
+      logger.info("{} has merged all files after {}ms", taskName, System.currentTimeMillis() - startTime);
+    }
     mergeLogger.logMergeEnd();
   }
 
@@ -185,6 +193,7 @@ public class MergeTask implements Callable<Void> {
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
     }
+    long startTime = System.currentTimeMillis();
     for (TsFileResource seqFile : seqFiles) {
       unmergedChunkStartTimes.put(seqFile, new HashMap<>());
     }
@@ -204,7 +213,9 @@ public class MergeTask implements Callable<Void> {
         }
       }
     }
-    logger.info("{} all series are merged", taskName);
+    if (logger.isInfoEnabled()) {
+      logger.info("{} all series are merged after {}ms", taskName, System.currentTimeMillis() - startTime);
+    }
     mergeLogger.logAllTsEnd();
   }
 
@@ -252,6 +263,7 @@ public class MergeTask implements Callable<Void> {
       try {
         oldFileWriter = new ForceAppendTsFileWriter(seqFile.getFile());
         mergeLogger.logFileMergeStart(seqFile.getFile(), ((ForceAppendTsFileWriter) oldFileWriter).getTruncatePosition());
+        logger.debug("{} moving merged chunks of {} to the old file", taskName, seqFile);
         ((ForceAppendTsFileWriter) oldFileWriter).doTruncate();
       } catch (TsFileNotCompleteException e) {
         // this file may already be truncated if this merge is a system reboot merge
@@ -266,6 +278,9 @@ public class MergeTask implements Callable<Void> {
           new TsFileSequenceReader(newFileWriter.getFile().getPath())) {
         ChunkLoader chunkLoader = new ChunkLoaderImpl(newFileReader);
         List<ChunkGroupMetaData> chunkGroupMetaDatas = newFileWriter.getChunkGroupMetaDatas();
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} find {} merged chunk groups", taskName, chunkGroupMetaDatas.size());
+        }
         for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDatas) {
           writeMergedChunkGroup(chunkGroupMetaData, chunkLoader, oldFileWriter);
         }
@@ -274,6 +289,7 @@ public class MergeTask implements Callable<Void> {
 
       seqFile.serialize();
       mergeLogger.logFileMergeEnd(seqFile.getFile());
+      logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
 
       newFileWriter.getFile().delete();
     } finally {
@@ -305,6 +321,7 @@ public class MergeTask implements Callable<Void> {
     ChunkLoader chunkLoader = new ChunkLoaderImpl(getFileReader(seqFile));
 
     mergeLogger.logFileMergeStart(fileWriter.getFile(), fileWriter.getFile().length());
+    logger.debug("{} moving unmerged chunks of {} to the new file", taskName, seqFile);
 
     int unmergedChunkNum = unmergedChunkCnt.getOrDefault(seqFile, 0);
 
@@ -320,6 +337,10 @@ public class MergeTask implements Callable<Void> {
         MeasurementSchema measurementSchema = getSchema(path);
         IChunkWriter chunkWriter = getChunkWriter(measurementSchema);
 
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} find {} unmerged chunks", taskName, chunkMetaDataList.size());
+        }
+
         fileWriter.startChunkGroup(path.getDevice());
         long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetaDataList, chunkLoader,
             chunkWriter, measurementSchema, fileWriter);
@@ -331,6 +352,7 @@ public class MergeTask implements Callable<Void> {
 
     seqFile.serialize();
     mergeLogger.logFileMergeEnd(fileWriter.getFile());
+    logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
 
     seqFile.getMergeQueryLock().writeLock().lock();
     try {
