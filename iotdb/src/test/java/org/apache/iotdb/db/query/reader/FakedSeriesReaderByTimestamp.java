@@ -27,7 +27,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class FakedSeriesReaderByTimestamp implements IReaderByTimeStamp {
+public class FakedSeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private Iterator<TimeValuePair> iterator;
   private boolean hasCachedTimeValuePair = false;

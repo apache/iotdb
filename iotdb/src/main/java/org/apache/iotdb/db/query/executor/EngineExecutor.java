@@ -30,7 +30,7 @@ import org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -103,7 +103,7 @@ public class EngineExecutor {
         .beginQueryOfGivenExpression(context.getJobId(), queryExpression.getExpression());
 
     EngineTimeGenerator timestampGenerator;
-    List<IReaderByTimeStamp> readersOfSelectedSeries;
+    List<IReaderByTimestamp> readersOfSelectedSeries;
 
     timestampGenerator = new EngineTimeGenerator(queryExpression.getExpression(), context);
     readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()

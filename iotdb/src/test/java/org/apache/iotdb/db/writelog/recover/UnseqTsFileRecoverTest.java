@@ -28,8 +28,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.query.reader.unsequence.UnsequenceSeriesReader;
-import org.apache.iotdb.db.query.reader.unsequence.DiskChunkReader;
+import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -135,18 +136,16 @@ public class UnseqTsFileRecoverTest {
 
     Path path = new Path("device1", "sensor1");
 
-    UnsequenceSeriesReader unSeqMergeReader = new UnsequenceSeriesReader();
+    PriorityMergeReader unSeqMergeReader = new PriorityMergeReader();
     int priorityValue = 1;
-
     for (ChunkMetaData chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
       Chunk chunk = chunkLoader.getChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
 
-      unSeqMergeReader
-          .addReaderWithPriority(new DiskChunkReader(chunkReader),
-              priorityValue);
+      unSeqMergeReader.addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
       priorityValue++;
     }
+
     for (int i = 0; i < 10; i++) {
       TimeValuePair timeValuePair = unSeqMergeReader.current();
       assertEquals(i, timeValuePair.getTimestamp());
