@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.cost.statistic;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StartupException;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +30,16 @@ import org.slf4j.LoggerFactory;
 public class PerformanceStatTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PerformanceStatTest.class);
+
+  @Before
+  public void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceStat(true);
+  }
+
+  @After
+  public void tearDown() {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceStat(false);
+  }
 
   @Test
   public void test() {
@@ -39,33 +53,55 @@ public class PerformanceStatTest {
     Assert.assertEquals(0L, batchOpCnt);
     try {
       measurement.start();
-      measurement.startContinuousStatistics();
+      measurement.startContinuousPrintStatistics();
       measurement.addOperationLatency(operation, System.currentTimeMillis());
       measurement
           .addOperationLatency(operation, System.currentTimeMillis() - 8000000);
       Thread.currentThread().sleep(1000);
       batchOpCnt = measurement.getOperationCnt()[operation.ordinal()];
       Assert.assertEquals(2L, batchOpCnt);
-      measurement.stopStatistic();
-      measurement.stopStatistic();
-      measurement.stopStatistic();
-      LOGGER.info("After stopStatistic!");
+      measurement.stopPrintStatistic();
+      measurement.stopPrintStatistic();
+      measurement.stopPrintStatistic();
+      LOGGER.info("After stopPrintStatistic!");
       Thread.currentThread().sleep(1000);
       measurement.clearStatisticalState();
       batchOpCnt = measurement.getOperationCnt()[operation.ordinal()];
       Assert.assertEquals(0L, batchOpCnt);
-      measurement.startContinuousStatistics();
+      measurement.startContinuousPrintStatistics();
       LOGGER.info("ReStart!");
       Thread.currentThread().sleep(1000);
-      measurement.startContinuousStatistics();
+      measurement.startContinuousPrintStatistics();
       LOGGER.info("ReStart2!");
       Thread.currentThread().sleep(1000);
-      measurement.stopStatistic();
+      measurement.stopPrintStatistic();
       LOGGER.info("After stopStatistic2!");
     } catch (Exception e) {
       LOGGER.error("find error in stat performance, the message is {}", e.getMessage());
     } finally {
       measurement.stop();
     }
+  }
+
+  @Test
+  public void testSwitch() {
+    Measurement measurement = Measurement.INSTANCE;
+    try {
+      measurement.start();
+      measurement.startStatistics();
+      measurement.startStatistics();
+      measurement.startContinuousPrintStatistics();
+      measurement.stopPrintStatistic();
+      measurement.stopStatistic();
+      measurement.clearStatisticalState();
+      measurement.startPrintStatisticsOnce();
+      measurement.startContinuousPrintStatistics();
+      measurement.startStatistics();
+    } catch (StartupException e) {
+      e.printStackTrace();
+    } finally {
+      measurement.stop();
+    }
+
   }
 }
