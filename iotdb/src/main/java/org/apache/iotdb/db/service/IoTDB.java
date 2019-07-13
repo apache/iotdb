@@ -116,7 +116,6 @@ public class IoTDB implements IoTDBMBean {
   private void initMManager(){
     MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
-
   }
 
   @Override

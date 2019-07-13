@@ -123,8 +123,9 @@ public class IoTDBDescriptor {
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
-      conf.setEnableParameterAdapter(Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
-          Boolean.toString(conf.isEnableParameterAdapter()))));
+      conf.setEnableParameterAdapter(
+          Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
+              Boolean.toString(conf.isEnableParameterAdapter()))));
 
       initMemoryAllocate(properties);
 
@@ -150,7 +151,7 @@ public class IoTDBDescriptor {
 
       int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",
           Integer.toString(conf.getWalBufferSize())));
-      if(walBufferSize > 0) {
+      if (walBufferSize > 0) {
         conf.setWalBufferSize(walBufferSize);
       }
 
@@ -171,14 +172,14 @@ public class IoTDBDescriptor {
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if(tsfileSizeThreshold > 0) {
+      if (tsfileSizeThreshold > 0) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 
       int memTableSizeThreshold = Integer.parseInt(properties
           .getProperty("memtable_size_threshold",
               Integer.toString(conf.getMemtableSizeThreshold())).trim());
-      if(memTableSizeThreshold > 0) {
+      if (memTableSizeThreshold > 0) {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 
@@ -243,19 +244,19 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void initMemoryAllocate(Properties properties){
+  private void initMemoryAllocate(Properties properties) {
     String memoryAllocateProportion = properties.getProperty("write_read_free_memory_proportion");
-    if(memoryAllocateProportion != null) {
+    if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
       for (String proportion : proportions) {
-        proportionSum += Integer.valueOf(proportion.trim());
+        proportionSum += Integer.parseInt(proportion.trim());
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       conf.setAllocateMemoryForWrite(
-          maxMemoryAvailable * Integer.valueOf(proportions[0].trim()) / proportionSum);
+          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
       conf.setAllocateMemoryForRead(
-          maxMemoryAvailable * Integer.valueOf(proportions[1].trim()) / proportionSum);
+          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
     }
   }
 
