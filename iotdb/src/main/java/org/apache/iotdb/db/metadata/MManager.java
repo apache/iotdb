@@ -289,7 +289,7 @@ public class MManager {
     boolean isNewMeasurement = true;
     // Thread safety: just one thread can access/modify the schemaMap
     synchronized (schemaMap) {
-      // Need to check the path again to avoid duplicated inserting by multi concurrent thread
+      // Need to check the path again to avoid duplicated inserting by multi concurrent threads
       if (pathExist(path.getFullPath())) {
         throw new MetadataErrorException(
             String.format("Timeseries %s already exist", path.getFullPath()));
