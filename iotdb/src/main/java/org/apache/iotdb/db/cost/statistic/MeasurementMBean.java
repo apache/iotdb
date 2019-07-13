@@ -24,17 +24,27 @@ import java.util.Map;
 public interface MeasurementMBean {
 
   /**
+   * start calculating the statistic.
+   */
+  void startStatistics();
+
+  /**
    * start display performance statistic every interval of displayIntervalInMs.
    */
-  void startContinuousStatistics();
+  void startContinuousPrintStatistics();
 
   /**
    * start display performance statistic after interval of displayIntervalInMs.
    */
-  void startOneTimeStatistics();
+  void startPrintStatisticsOnce();
 
   /**
    * stop display performance statistic.
+   */
+  void stopPrintStatistic();
+
+  /**
+   * stop calculating the statistic
    */
   void stopStatistic();
 
