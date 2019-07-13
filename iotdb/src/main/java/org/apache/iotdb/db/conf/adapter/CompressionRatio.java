@@ -142,6 +142,9 @@ public class CompressionRatio {
       }
       calcTimes = maxTimes;
       compressionRatioSum = maxCompressionRatioSum;
+      LOGGER.debug(
+          "After restoring from compression ratio file, compressionRatioSum = {}, calcTimes = {}",
+          compressionRatioSum, calcTimes);
       for (int i = 0; i < ratioFiles.length; i++) {
         if (i != maxRatioIndex) {
           ratioFiles[i].delete();

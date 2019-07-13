@@ -28,8 +28,8 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.rescon.TVListAllocator;
+import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,6 +116,13 @@ public class IoTDB implements IoTDBMBean {
   private void initMManager(){
     MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
+    logger.debug("After initializing, ");
+    logger.debug(
+        "After initializing, max memTable num is {}, tsFile threshold is {}, memtableSize is {}",
+        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber(),
+        IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
+        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
+
   }
 
   @Override

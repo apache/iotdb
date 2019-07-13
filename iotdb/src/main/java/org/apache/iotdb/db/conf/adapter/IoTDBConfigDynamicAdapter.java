@@ -24,6 +24,8 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is to dynamically adjust some important parameters of the system, determine the speed
@@ -67,6 +69,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
  */
 public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigDynamicAdapter.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -130,6 +133,8 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     boolean shouldClose = false;
     long tsFileSize = CONFIG.getTsFileSizeThreshold();
     if (memtableSizeInByte < memTableSizeFloorThreshold) {
+      LOGGER.debug("memtableSizeInByte {} is smaller than memTableSizeFloorThreshold {}",
+          memtableSizeInByte, memTableSizeFloorThreshold);
       shouldClose = true;
       tsFileSize = calcTsFileSize(memTableSizeFloorThreshold);
       memtableSizeInByte = (int) tsFileSize;
@@ -142,7 +147,10 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       CONFIG.setTsFileSizeThreshold(tsFileSize);
       CONFIG.setMemtableSizeThreshold(memtableSizeInByte);
-      if(initialized) {
+      LOGGER.debug(
+          "After adjusting, max memTable num is {}, tsFile threshold is {}, memtableSize is {}, memTableSizeFloorThreshold is {}",
+          maxMemTableNum, tsFileSize, memtableSizeInByte, memTableSizeFloorThreshold);
+      if (initialized) {
         if (shouldClose) {
           StorageEngine.getInstance().asyncFlushAndSealAllFiles();
         } else if (memtableSizeInByte < currentMemTableSize
@@ -210,13 +218,13 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    */
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
-    maxMemTableNum += 2 * diff;
+    maxMemTableNum += 4 * diff;
     if(!CONFIG.isEnableParameterAdapter()){
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return;
     }
     if (!tryToAdaptParameters()) {
-      maxMemTableNum -= 2 * diff;
+      maxMemTableNum -= 4 * diff;
       throw new ConfigAdjusterException(
           "The IoTDB system load is too large to create storage group.");
     }
