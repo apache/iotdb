@@ -44,6 +44,11 @@ public interface MeasurementMBean {
   void stopPrintStatistic();
 
   /**
+   * stop calculating the statistic
+   */
+  void stopStatistic();
+
+  /**
    * clear current stat result, reset statistical state.
    */
   void clearStatisticalState();

@@ -215,6 +215,7 @@ public class Measurement implements MeasurementMBean, IService {
     }
   }
 
+  @Override
   public void stopStatistic() {
     stateChangeLock.lock();
     try {
