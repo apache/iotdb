@@ -161,6 +161,9 @@ public class StorageGroupProcessor {
       if (storageGroupSysDir.mkdirs()) {
         logger.info("Storage Group system Directory {} doesn't exist, create it",
             storageGroupSysDir.getPath());
+      } else if(!storageGroupSysDir.exists()) {
+        logger.error("craete Storage Group system Directory {} failed",
+            storageGroupSysDir.getPath());
       }
 
       versionController = new SimpleFileVersionController(storageGroupSysDir.getPath());

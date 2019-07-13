@@ -84,7 +84,11 @@ public class MManager {
 
     File systemFolder = new File(schemaDir);
     if (!systemFolder.exists()) {
-      systemFolder.mkdirs();
+      if (systemFolder.mkdirs()) {
+        logger.info("create system folder {}", systemFolder.getAbsolutePath());
+      } else {
+        logger.info("create system folder {} failed.", systemFolder.getAbsolutePath());
+      }
     }
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
     writeToLog = false;
@@ -242,7 +246,11 @@ public class MManager {
       File logFile = new File(logFilePath);
       File metadataDir = new File(schemaDir);
       if (!metadataDir.exists()) {
-        metadataDir.mkdirs();
+        if (metadataDir.mkdirs()) {
+          logger.info("create schema folder {}.", metadataDir);
+        } else {
+          logger.info("create schema folder {} failed.", metadataDir);
+        }
       }
       FileWriter fileWriter;
       fileWriter = new FileWriter(logFile, true);
