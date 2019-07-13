@@ -104,7 +104,7 @@ public class Measurement implements MeasurementMBean, IService {
   private ScheduledFuture<?> consumeFuture;
 
   /**
-   * lock for change state: start() and stopPrintStatistic().
+   * lock for modifying isEnableStat, displayFuture and consumeFuture.
    */
   private ReentrantLock stateChangeLock = new ReentrantLock();
 
@@ -209,7 +209,7 @@ public class Measurement implements MeasurementMBean, IService {
       }
       displayFuture = cancelFuture(displayFuture);
     } catch (Exception e) {
-      LOGGER.error("Find error when stopPrintStatistic time cost statstic thread, because {}", e);
+      LOGGER.error("Find error when stop display thread, because {}", e);
     } finally {
       stateChangeLock.unlock();
     }
@@ -226,7 +226,7 @@ public class Measurement implements MeasurementMBean, IService {
       displayFuture = cancelFuture(displayFuture);
       consumeFuture = cancelFuture(consumeFuture);
     } catch (Exception e) {
-      LOGGER.error("Find error when stopPrintStatistic time cost statstic thread, because {}", e);
+      LOGGER.error("Find error when stop display and consuming threads, because {}", e);
     } finally {
       stateChangeLock.unlock();
     }
