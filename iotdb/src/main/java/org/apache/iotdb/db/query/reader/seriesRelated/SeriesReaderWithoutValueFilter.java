@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.io.IOException;
@@ -15,59 +33,61 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+/**
+ * To read series data without value filter, this class implements {@link IPointReader} for the
+ * data.
+ * <p>
+ * Note that filters include value filter and time filter. "without value filter" is equivalent to
+ * "with global time filter or simply without any filter".
+ */
 public class SeriesReaderWithoutValueFilter implements IPointReader {
 
   private boolean hasCachedBatchData;
   private BatchData batchData;
 
-  protected IBatchReader seqResourceIterateReader;
-  protected IPointReader unseqResourceMergeReader;
+  private IBatchReader seqResourceIterateReader;
+  private IPointReader unseqResourceMergeReader;
 
-  public SeriesReaderWithoutValueFilter(Path path, Filter timeFilter, QueryContext context)
-      throws StorageEngineException, IOException {
-    this(path, timeFilter, context, true);
-  }
-
-  protected SeriesReaderWithoutValueFilter(Path path, Filter timeFilter, QueryContext context,
-      boolean pushdownUnseq) throws StorageEngineException, IOException {
-    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(path, context);
-
-    // reader for sequence resources
-    IBatchReader seqResourceIterateReader = new SeqResourceIterateReader(
-        queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context);
-
-    // reader for unsequence resources
-    IPointReader unseqResourceMergeReader;
-    if (pushdownUnseq) {
-      unseqResourceMergeReader = new UnseqResourceMergeReader(path,
-          queryDataSource.getUnseqResources(), context, timeFilter);
-    } else {
-      unseqResourceMergeReader = new UnseqResourceMergeReader(path,
-          queryDataSource.getUnseqResources(), context, null);
-    }
-
+  public SeriesReaderWithoutValueFilter(IBatchReader seqResourceIterateReader,
+      IPointReader unseqResourceMergeReader) {
     this.seqResourceIterateReader = seqResourceIterateReader;
     this.unseqResourceMergeReader = unseqResourceMergeReader;
     this.hasCachedBatchData = false;
   }
-  /*
-    // TODO 原来的SeriesReaderFactoryImpl的createSeriesReaderWithoutValueFilter里最后有这么一段，
-        现在我把它去掉了，需要确认原来这样设计是否有道理，去掉是否能正确工作，以及我认为
-        这种判断应该是SeriesReaderWithoutValueFilter内部处理，而不要依赖外界Impl来摘掉。
 
-    if (!seqResourceIterateReader.hasNext()) { //TODO here need more considerartion
-      // only have unsequence data.
-      return unseqResourceMergeReader;
+  public SeriesReaderWithoutValueFilter(Path seriesPath, Filter timeFilter, QueryContext context)
+      throws StorageEngineException, IOException {
+    this(seriesPath, timeFilter, context, true);
+  }
+
+  /**
+   * Constructor function.
+   *
+   * @param seriesPath the path of the series data
+   * @param filter filter condition
+   * @param context query context
+   * @param pushdownUnseq True to push down the filter on the unsequence TsFile resource; False not
+   * to.
+   */
+  protected SeriesReaderWithoutValueFilter(Path seriesPath, Filter filter, QueryContext context,
+      boolean pushdownUnseq) throws StorageEngineException, IOException {
+    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+        .getQueryDataSource(seriesPath, context);
+
+    // reader for sequence resources
+    IBatchReader seqResourceIterateReader = new SeqResourceIterateReader(
+        queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), filter, context);
+
+    // reader for unsequence resources
+    IPointReader unseqResourceMergeReader;
+    if (pushdownUnseq) {
+      unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
+          queryDataSource.getUnseqResources(), context, filter);
     } else {
-      // merge sequence data with unsequence data.
-      return new SeriesReaderWithoutValueFilter(seqResourceIterateReader, unseqResourceMergeReader);
+      unseqResourceMergeReader = new UnseqResourceMergeReader(seriesPath,
+          queryDataSource.getUnseqResources(), context, null);
     }
-     */
 
-
-  public SeriesReaderWithoutValueFilter(IBatchReader seqResourceIterateReader,
-      IPointReader unseqResourceMergeReader) {
     this.seqResourceIterateReader = seqResourceIterateReader;
     this.unseqResourceMergeReader = unseqResourceMergeReader;
     this.hasCachedBatchData = false;
@@ -78,15 +98,16 @@ public class SeriesReaderWithoutValueFilter implements IPointReader {
     if (hasNextInBatchDataOrBatchReader()) {
       return true;
     }
-    // has value in pointReader
     return unseqResourceMergeReader != null && unseqResourceMergeReader.hasNext();
   }
 
   @Override
   public TimeValuePair next() throws IOException {
-    // TODO 这里会不会有重复判断 hasNextInBothReader里已经判断了hasNextInBatchDataOrBatchReader
+    boolean hasNextBatch = hasNextInBatchDataOrBatchReader();
+    boolean hasNextPoint = unseqResourceMergeReader != null && unseqResourceMergeReader.hasNext();
+
     // has next in both batch reader and point reader
-    if (hasNextInBothReader()) {
+    if (hasNextBatch && hasNextPoint) {
       long timeInPointReader = unseqResourceMergeReader.current().getTimestamp();
       long timeInBatchData = batchData.currentTime();
       if (timeInPointReader > timeInBatchData) {
@@ -94,6 +115,8 @@ public class SeriesReaderWithoutValueFilter implements IPointReader {
         batchData.next();
         return timeValuePair;
       } else if (timeInPointReader == timeInBatchData) {
+        // Note that batchData here still moves next even though the current data to be read is
+        // overwritten by unsequence data source. Only in this way can hasNext() work correctly.
         batchData.next();
         return unseqResourceMergeReader.next();
       } else {
@@ -102,24 +125,18 @@ public class SeriesReaderWithoutValueFilter implements IPointReader {
     }
 
     // only has next in batch reader
-    if (hasNextInBatchDataOrBatchReader()) {
+    if (hasNextBatch) {
       TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(batchData);
       batchData.next();
       return timeValuePair;
     }
 
     // only has next in point reader
-    if (unseqResourceMergeReader != null && unseqResourceMergeReader.hasNext()) {
+    if (hasNextPoint) {
       return unseqResourceMergeReader.next();
     }
-    return null;
-  }
 
-  private boolean hasNextInBothReader() throws IOException {
-    if (!hasNextInBatchDataOrBatchReader()) {
-      return false;
-    }
-    return unseqResourceMergeReader != null && unseqResourceMergeReader.hasNext();
+    return null;
   }
 
   private boolean hasNextInBatchDataOrBatchReader() throws IOException {

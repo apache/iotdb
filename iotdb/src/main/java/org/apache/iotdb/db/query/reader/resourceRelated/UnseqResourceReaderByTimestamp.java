@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
@@ -18,6 +36,15 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
+/**
+ * To read a list of unsequence TsFiles by timestamp, this class extends {@link
+ * PriorityMergeReaderByTimestamp} to implement <code>IReaderByTimestamp</code> for the TsFiles.
+ * <p>
+ * Note that an unsequence TsFile can be either closed or unclosed. An unclosed unsequence TsFile
+ * consists of data on disk and data in memtables that will be flushed to this unclosed TsFile.
+ * <p>
+ * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp}.
+ */
 public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimestamp {
 
   public UnseqResourceReaderByTimestamp(Path seriesPath,
@@ -25,19 +52,16 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
     int priorityValue = 1;
 
     for (TsFileResource tsFileResource : unseqResources) {
-
-      // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
           .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
 
+      // prepare metaDataList
       List<ChunkMetaData> metaDataList;
       if (tsFileResource.isClosed()) {
         MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
         metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
-        // mod
         List<Modification> pathModifications = context
-            .getPathModifications(tsFileResource.getModFile(),
-                seriesPath.getFullPath());
+            .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
@@ -45,7 +69,7 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
-      // add reader for chunk
+      // create and add ChunkReaderByTimestamp with priority
       ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
@@ -58,8 +82,8 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
         priorityValue++;
       }
 
-      // add reader for MemTable
       if (!tsFileResource.isClosed()) {
+        // create and add MemChunkReader with priority
         addReaderWithPriority(
             new MemChunkReaderByTimestamp(tsFileResource.getReadOnlyMemChunk()), priorityValue++);
       }

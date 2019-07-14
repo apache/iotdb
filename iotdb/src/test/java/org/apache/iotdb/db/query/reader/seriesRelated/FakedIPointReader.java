@@ -17,19 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader;
+package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+/**
+ * This is a test utility class.
+ */
 public class FakedIPointReader implements IPointReader {
 
   private Iterator<TimeValuePair> iterator;
-  private boolean hasCachedTimeValuePair = false;
+  private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
   public FakedIPointReader(long startTime, int size, int interval, int modValue) {
@@ -41,6 +45,7 @@ public class FakedIPointReader implements IPointReader {
       time += interval;
     }
     iterator = list.iterator();
+    hasCachedTimeValuePair = false;
   }
 
   @Override

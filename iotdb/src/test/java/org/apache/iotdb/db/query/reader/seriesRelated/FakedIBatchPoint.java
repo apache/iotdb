@@ -17,18 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader;
+package org.apache.iotdb.db.query.reader.seriesRelated;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
 
+/**
+ * This is a test utility class.
+ */
 public class FakedIBatchPoint implements IBatchReader {
 
   private Iterator<TimeValuePair> iterator;
@@ -37,22 +41,19 @@ public class FakedIBatchPoint implements IBatchReader {
   private boolean hasEmptyBatch;
   private Random random;
 
-  private TimeValuePair timeValuePair;
-
   public FakedIBatchPoint(long startTime, int size, int interval, int modValue,
       boolean hasEmptyBatch) {
     long time = startTime;
     List<TimeValuePair> list = new ArrayList<>();
     for (int i = 0; i < size; i++) {
       list.add(
-          new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64,
-              time % modValue)));
+          new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, time % modValue)));
       time += interval;
     }
     iterator = list.iterator();
+    this.hasCachedBatchData = false;
     this.hasEmptyBatch = hasEmptyBatch;
     this.random = new Random();
-    this.hasCachedBatchData = false;
   }
 
   public FakedIBatchPoint(long startTime, int size, int interval, int modValue) {
@@ -84,11 +85,6 @@ public class FakedIBatchPoint implements IBatchReader {
 
   }
 
-  @Override
-  public void close() {
-
-  }
-
   private void constructBatchData() {
     int num = random.nextInt(10);
     if (!hasEmptyBatch) {
@@ -96,7 +92,7 @@ public class FakedIBatchPoint implements IBatchReader {
     }
     batchData = new BatchData(TSDataType.INT64, true);
     while (num > 0 && iterator.hasNext()) {
-      timeValuePair = iterator.next();
+      TimeValuePair timeValuePair = iterator.next();
       batchData.putTime(timeValuePair.getTimestamp());
       batchData.putLong(timeValuePair.getValue().getLong());
       num--;
@@ -105,4 +101,10 @@ public class FakedIBatchPoint implements IBatchReader {
       Assert.assertTrue(batchData.hasNext());
     }
   }
+
+  @Override
+  public void close() {
+
+  }
+
 }

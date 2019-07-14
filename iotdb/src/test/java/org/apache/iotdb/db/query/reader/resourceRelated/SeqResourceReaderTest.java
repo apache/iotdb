@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
@@ -28,17 +29,16 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class SeqDataReaderTest extends ReaderTestHelper {
+public class SeqResourceReaderTest extends ReaderTestHelper {
 
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   @Test
-  public void testSeqReader() throws IOException {
+  public void testSeqResourceIterateReader() throws IOException {
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
     Path path = new Path(deviceId, measurementId);
     SeqResourceIterateReader reader = new SeqResourceIterateReader(path,
-        queryDataSource.getSeqResources(), null,
-        EnvironmentUtils.TEST_QUERY_CONTEXT);
+        queryDataSource.getSeqResources(), null, EnvironmentUtils.TEST_QUERY_CONTEXT);
     long time = 999;
     while (reader.hasNext()) {
       BatchData batchData = reader.nextBatch();
@@ -52,23 +52,23 @@ public class SeqDataReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testSeqByTimestampReader() throws IOException {
+  public void testSeqResourceReaderByTimestamp() throws IOException {
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
     Path path = new Path(deviceId, measurementId);
     SeqResourceReaderByTimestamp reader = new SeqResourceReaderByTimestamp(path,
         queryDataSource.getSeqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);
 
-    for (int time = 1000; time <= 3020; time += 10) {
+    for (int time = 1000; time <= 3019; time += 1) {
       int value = (int) reader.getValueInTimestamp(time);
       Assert.assertEquals(time, value);
     }
+    Assert.assertTrue(reader.hasNext());
 
-    Assert.assertEquals(true, reader.hasNext());
     for (int time = 3050; time <= 3080; time += 10) {
       Integer value = (Integer) reader.getValueInTimestamp(time);
-      Assert.assertEquals(null, value);
+      Assert.assertNull(value);
     }
-    Assert.assertEquals(false, reader.hasNext());
+    Assert.assertFalse(reader.hasNext());
   }
 
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.chunkRelated;
 
 import java.io.IOException;
@@ -28,12 +29,12 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class UnsealedSeqReaderTest extends ReaderTestHelper {
+public class UnSealedTsFileReaderTest extends ReaderTestHelper {
 
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   @Test
-  public void testUnSealedReader() throws IOException {
+  public void testUnSealedTsFileIterateReader() throws IOException {
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resource.isClosed());
@@ -51,19 +52,27 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
   }
 
   @Test
-  public void testUnSealedByTimestampReader() throws IOException {
+  public void testUnSealedTsFileReaderByTimestamp() throws IOException {
     QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
     TsFileResource resource = queryDataSource.getSeqResources().get(0);
     Assert.assertEquals(false, resource.isClosed());
     UnSealedTsFileReaderByTimestamp reader = new UnSealedTsFileReaderByTimestamp(
         resource);
 
-    for (int time = 1000; time <= 3020; time += 10) {
+    // unSealedTsFileDiskReaderByTs
+    for (int time = 1000; time <= 3019; time += 10) {
       int value = (int) reader.getValueInTimestamp(time);
       Assert.assertEquals(time, value);
     }
 
+    // unSealedTsFileMemReaderByTs
+    for (int time = 3020; time <= 3029; time += 5) {
+      int value = (int) reader.getValueInTimestamp(time);
+      Assert.assertEquals(time, value);
+
+    }
     Assert.assertEquals(true, reader.hasNext());
+
     for (int time = 3050; time <= 3080; time += 10) {
       Integer value = (Integer) reader.getValueInTimestamp(time);
       Assert.assertEquals(null, value);
@@ -86,7 +95,7 @@ public class UnsealedSeqReaderTest extends ReaderTestHelper {
       insertOneRecord(j, j);
     }
     storageGroupProcessor.getWorkSequenceTsFileProcessor().syncFlush();
-    for (int j = 3020; j <= 3029; j++) {
+    for (int j = 3020; j <= 3029; j = j + 1) {
       insertOneRecord(j, j);
     }
   }

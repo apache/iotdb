@@ -22,8 +22,6 @@ package org.apache.iotdb.db.query.reader.seriesRelated;
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.FakedIBatchPoint;
-import org.apache.iotdb.db.query.reader.FakedIPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.junit.Assert;
 import org.junit.Test;
@@ -35,21 +33,21 @@ public class SeriesReaderWithoutValueFilterTest {
 
   private void init() {
     IBatchReader batchReader1 = new FakedIBatchPoint(100, 1000, 7, 11);
-    IBatchReader batchReader2 = new FakedIBatchPoint(100, 1000, 7, 11);
     IPointReader pointReader = new FakedIPointReader(20, 500, 11, 19);
-
     reader1 = new SeriesReaderWithoutValueFilter(batchReader1, pointReader);
+
+    IBatchReader batchReader2 = new FakedIBatchPoint(100, 1000, 7, 11);
     reader2 = new SeriesReaderWithoutValueFilter(batchReader2, null);
   }
 
   @Test
   public void test() throws IOException {
     init();
-    testWithOutNullReader();
+    testWithoutNullReader();
     testWithNullPointReader();
   }
 
-  private void testWithOutNullReader() throws IOException {
+  private void testWithoutNullReader() throws IOException {
     int cnt = 0;
     while (reader1.hasNext()) {
       TimeValuePair timeValuePair = reader1.next();
@@ -64,7 +62,6 @@ public class SeriesReaderWithoutValueFilterTest {
       }
     }
     Assert.assertEquals(1430, cnt);
-    System.out.println("testWithOutNullReader-cnt:" + cnt);
   }
 
   private void testWithNullPointReader() throws IOException {
@@ -75,6 +72,5 @@ public class SeriesReaderWithoutValueFilterTest {
       cnt++;
     }
     Assert.assertEquals(1000, cnt);
-    System.out.println("testWithNullPointReader-cnt:" + cnt);
   }
 }

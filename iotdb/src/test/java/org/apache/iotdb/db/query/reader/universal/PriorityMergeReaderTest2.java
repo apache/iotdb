@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
@@ -29,9 +30,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
-/**
- * Test {@code UnsequenceSeriesReader}
- */
 public class PriorityMergeReaderTest2 {
 
   @Test

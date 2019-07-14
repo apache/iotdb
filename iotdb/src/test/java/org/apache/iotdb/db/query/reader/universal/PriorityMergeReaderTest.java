@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
@@ -53,8 +54,7 @@ public class PriorityMergeReaderTest {
   private void test(long[] retTimestamp, long[] retValue, long[]... sources) throws IOException {
     PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
     for (int i = 0; i < sources.length; i++) {
-      priorityMergeReader.addReaderWithPriority(
-          new FakedSeriesReader(sources[i], i + 1), i + 1);
+      priorityMergeReader.addReaderWithPriority(new FakedSeriesReader(sources[i], i + 1), i + 1);
     }
 
     int i = 0;
