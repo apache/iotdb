@@ -26,6 +26,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -203,6 +204,10 @@ public class LocalFileUserAccessor implements IUserAccessor {
 
   @Override
   public void reset() {
-    new File(userDirPath).mkdirs();
+    if (new File(userDirPath).mkdirs()) {
+      logger.info("user info dir {} is created", userDirPath);
+    } else if (!new File(userDirPath).exists()) {
+      logger.error("user info dir {} can not be created", userDirPath);
+    }
   }
 }

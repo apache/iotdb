@@ -84,7 +84,7 @@ public class PerformanceStatTest {
   }
 
   @Test
-  public void testSwith() {
+  public void testSwitch() {
     Measurement measurement = Measurement.INSTANCE;
     try {
       measurement.start();

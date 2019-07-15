@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.db.cost.statistic;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -158,15 +155,12 @@ public class Measurement implements MeasurementMBean, IService {
   public void startStatistics() {
     stateChangeLock.lock();
     try {
-      if (isEnableStat) {
-        return;
-      }
       isEnableStat = true;
-      if (consumeFuture != null) {
+      if (consumeFuture != null && !consumeFuture.isCancelled()) {
+        logger.info("The consuming task in measurement stat module is already running...");
+      } else {
         consumeFuture = service.scheduleWithFixedDelay(
             new Measurement.DisplayRunnable(), 20, displayIntervalInMs, TimeUnit.MILLISECONDS);
-      } else {
-        logger.info("The consuming task in measurement stat module is already running...");
       }
     } catch (Exception e) {
       LOGGER.error("Find error when start performance statistic thread, because {}", e);
@@ -179,11 +173,10 @@ public class Measurement implements MeasurementMBean, IService {
   public void startContinuousPrintStatistics() {
     stateChangeLock.lock();
     try {
-      if (isEnableStat) {
-        return;
-      }
       isEnableStat = true;
-      if (displayFuture != null) {
+      if (displayFuture != null && !displayFuture.isCancelled()) {
+        logger.info("The display task in measurement stat module is already running...");
+      } else {
         displayFuture = service.scheduleWithFixedDelay(
             new Measurement.DisplayRunnable(), 20, displayIntervalInMs, TimeUnit.MILLISECONDS);
       }
@@ -204,9 +197,6 @@ public class Measurement implements MeasurementMBean, IService {
   public void stopPrintStatistic() {
     stateChangeLock.lock();
     try {
-      if (!isEnableStat) {
-        return;
-      }
       displayFuture = cancelFuture(displayFuture);
     } catch (Exception e) {
       LOGGER.error("Find error when stop display thread, because {}", e);
@@ -219,9 +209,6 @@ public class Measurement implements MeasurementMBean, IService {
   public void stopStatistic() {
     stateChangeLock.lock();
     try {
-      if (!isEnableStat) {
-        return;
-      }
       isEnableStat = false;
       displayFuture = cancelFuture(displayFuture);
       consumeFuture = cancelFuture(consumeFuture);
@@ -261,11 +248,13 @@ public class Measurement implements MeasurementMBean, IService {
   public void start() throws StartupException {
     // start display thread and consumer threads.
     logger.info("start the consuming task in the measurement stats module...");
+    this.clearStatisticalState();
     if (service.isShutdown()) {
       service = IoTDBThreadPoolFactory.newScheduledThreadPool(
           2, ThreadName.TIME_COST_STATSTIC.getName());
     }
-    this.clearStatisticalState();
+    //we have to check again because someone may channge the value.
+    isEnableStat = IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceStat();
     if (isEnableStat) {
       consumeFuture = service.schedule(new QueueConsumerThread(), 0, TimeUnit.MILLISECONDS);
     }

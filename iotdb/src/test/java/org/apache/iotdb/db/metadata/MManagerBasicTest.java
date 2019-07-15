@@ -46,6 +46,7 @@ public class MManagerBasicTest {
   @Before
   public void setUp() throws Exception {
     compressionType = CompressionType.valueOf(TSFileConfig.compressor);
+    EnvironmentUtils.envSetUp();
   }
 
   @After

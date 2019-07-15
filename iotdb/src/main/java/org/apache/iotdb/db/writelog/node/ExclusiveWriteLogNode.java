@@ -70,7 +70,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.identifier = identifier;
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
-    new File(logDirectory).mkdirs();
+    if (new File(logDirectory).mkdirs()) {
+      logger.info("create the WAL folder {}." + logDirectory);
+    }
   }
 
   @Override
@@ -237,7 +239,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void nextFileWriter() {
     fileId++;
     File newFile = new File(logDirectory, WAL_FILE_NAME + fileId);
-    newFile.getParentFile().mkdirs();
+    if (newFile.getParentFile().mkdirs()) {
+      logger.info("create WAL parent folder {}.", newFile.getParent());
+    }
     currentFileWriter = new LogWriter(newFile);
   }
 

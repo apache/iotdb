@@ -128,7 +128,7 @@ public class IoTDBAggregationSmallDataIT {
     daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(5000);
+    //Thread.sleep(5000);
     insertSQL();
   }
 
