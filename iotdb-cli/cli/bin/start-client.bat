@@ -47,7 +47,11 @@ goto :eof
 REM -----------------------------------------------------------------------------
 :okClasspath
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp "%CLASSPATH%" %MAIN_CLASS% %*
+set PARAMETERS=%*
+
+if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root
+
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp "%CLASSPATH%" %MAIN_CLASS% %PARAMETERS%
 
 goto finally
 

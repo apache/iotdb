@@ -36,6 +36,7 @@ public class MetadataManagerHelper {
 
   public static void initMetadata() {
     mmanager = MManager.getInstance();
+    mmanager.init();
     mmanager.clear();
     try {
       mmanager.setStorageLevelToMTree("root.vehicle.d0");
