@@ -133,7 +133,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     boolean shouldClose = false;
     long tsFileSize = CONFIG.getTsFileSizeThreshold();
     if (memtableSizeInByte < memTableSizeFloorThreshold) {
-      LOGGER.info("memtableSizeInByte {} is smaller than memTableSizeFloorThreshold {}",
+      LOGGER.debug("memtableSizeInByte {} is smaller than memTableSizeFloorThreshold {}",
           memtableSizeInByte, memTableSizeFloorThreshold);
       shouldClose = true;
       tsFileSize = calcTsFileSize(memTableSizeFloorThreshold);
@@ -147,12 +147,12 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       CONFIG.setTsFileSizeThreshold(tsFileSize);
       CONFIG.setMemtableSizeThreshold(memtableSizeInByte);
-      LOGGER.info(
+      LOGGER.debug(
           "After adjusting, max memTable num is {}, tsFile threshold is {}, memtableSize is {}, memTableSizeFloorThreshold is {}",
           maxMemTableNum, tsFileSize, memtableSizeInByte, memTableSizeFloorThreshold);
       if (initialized) {
         if (shouldClose) {
-          StorageEngine.getInstance().asyncFlushAndSealAllFiles();
+          StorageEngine.getInstance().asyncTryToCloseAllProcessor();
         } else if (memtableSizeInByte < currentMemTableSize
             && currentMemTableSize - memtableSizeInByte > currentMemTableSize * FLUSH_THRESHOLD) {
           StorageEngine.getInstance().asyncTryToFlushAllProcessor();

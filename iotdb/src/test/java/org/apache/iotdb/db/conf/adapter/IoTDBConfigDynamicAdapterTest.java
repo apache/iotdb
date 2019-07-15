@@ -121,4 +121,20 @@ public class IoTDBConfigDynamicAdapterTest {
     }
   }
 
+
+  @Test
+  public void addOrDeleteTimeSeriesSyso() throws IOException, ConfigAdjusterException {
+    int sgNum = 1;
+    for (int i = 0; i < 30; i++) {
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(sgNum);
+    }int i = 1;
+    try {
+      for (; i <= 280 * 3200; i++) {
+        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+        MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(i / 30 + 1);
+      }
+    } catch (ConfigAdjusterException e) {
+    }
+  }
+
 }
