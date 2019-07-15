@@ -31,7 +31,8 @@ public class TsFileMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileMetaDataCache.class);
 
-  private static final int CACHE_SIZE = 100;
+
+  private static final int MEMORY_THRESHOLD_IN_B = (int) (50*0.3*1024*1024*1024);
   /**
    * key: The file seriesPath of tsfile.
    */
@@ -40,7 +41,7 @@ public class TsFileMetaDataCache {
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   private TsFileMetaDataCache() {
-    cache = new LruLinkedHashMap<>(CACHE_SIZE, true);
+    cache = new LruLinkedHashMap<>(MEMORY_THRESHOLD_IN_B, true);
   }
 
   public static TsFileMetaDataCache getInstance() {

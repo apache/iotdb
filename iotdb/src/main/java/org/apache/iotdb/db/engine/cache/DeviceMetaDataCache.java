@@ -20,12 +20,12 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
@@ -34,18 +34,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class is used to cache <code>List<ChunkMetaData></code> of tsfile in IoTDB.
- * The caching strategy is LRU.
+ * This class is used to cache <code>List<ChunkMetaData></code> of tsfile in IoTDB. The caching
+ * strategy is LRU.
  */
 public class DeviceMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(DeviceMetaDataCache.class);
 
-  private static final int CACHE_SIZE = 100;
+  private static StorageEngine storageEngine = StorageEngine.getInstance();
+
+  private static final int MEMORY_THRESHOLD_IN_B = (int) (50*0.3*1024*1024*1024);
   /**
    * key: the file path. value: key: series path, value: list of chunkMetaData.
    */
-  private LinkedHashMap<String, ConcurrentHashMap<Path, List<ChunkMetaData>>> lruCache;
+  private LruLinkedHashMap<String, ConcurrentHashMap<Path, List<ChunkMetaData>>> lruCache;
 
   private AtomicLong cacheHintNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
@@ -63,7 +65,7 @@ public class DeviceMetaDataCache {
    */
   public List<ChunkMetaData> get(String filePath, Path seriesPath)
       throws IOException {
-    String jointPath = filePath+"."+seriesPath.getDevice();
+    String jointPath = filePath + "." + seriesPath.getDevice();
     Object jointPathObject = jointPath.intern();
     synchronized (lruCache) {
       cacheRequestNum.incrementAndGet();
@@ -93,33 +95,33 @@ public class DeviceMetaDataCache {
           .getTsRowGroupBlockMetaData(filePath, seriesPath.getDevice(),
               fileMetaData);
       ConcurrentHashMap<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
-          .getChunkMetaDataList(blockMetaData);
+          .getChunkMetaDataList(calHotSensorSet(seriesPath), blockMetaData);
       synchronized (lruCache) {
         lruCache.putIfAbsent(filePath, new ConcurrentHashMap<>());
         lruCache.get(filePath).putAll(chunkMetaData);
-        if (lruCache.get(filePath).containsKey(seriesPath)) {
-          return new ArrayList<>(lruCache.get(filePath).get(seriesPath));
+        if (chunkMetaData.containsKey(seriesPath)) {
+          return chunkMetaData.get(seriesPath);
         }
         return new ArrayList<>();
       }
     }
   }
 
-  /**
-   * the num of chunkMetaData cached in the class.
-   * @return num of chunkMetaData cached in the LRUCache
-   */
-  public int calChunkMetaDataNum() {
-    int cnt = 0;
-    synchronized (lruCache) {
-      for (ConcurrentHashMap<Path, List<ChunkMetaData>> map : lruCache.values()) {
-        for(List<ChunkMetaData> metaDataList: map.values()){
-          cnt+=metaDataList.size();
-        }
+  private Set<String> calHotSensorSet(Path seriesPath) throws IOException {
+    double porportion = lruCache.getUsedMemoryProportion();
+    if (porportion < 0.6) {
+      return null;
+    } else {
+      try {
+        return storageEngine.calTopKSensor(seriesPath.getDevice(), seriesPath.getMeasurement(), 0.1);
       }
+      catch (Exception e){
+        throw new IOException(e);
+      }
+
     }
-    return cnt;
   }
+
 
   /**
    * clear LRUCache.
@@ -136,6 +138,6 @@ public class DeviceMetaDataCache {
   private static class RowGroupBlockMetaDataCacheSingleton {
 
     private static final DeviceMetaDataCache INSTANCE = new
-        DeviceMetaDataCache(CACHE_SIZE);
+        DeviceMetaDataCache(MEMORY_THRESHOLD_IN_B);
   }
 }

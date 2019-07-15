@@ -23,6 +23,7 @@ package org.apache.iotdb.db.query.reader.sequence;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
@@ -135,7 +136,7 @@ public class SequenceSeriesReaderByTimestamp implements IReaderByTimeStamp {
   }
 
   private void initSealedTsFileReader(TsFileResource fileNode, QueryContext context)
-          throws IOException {
+      throws IOException {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()

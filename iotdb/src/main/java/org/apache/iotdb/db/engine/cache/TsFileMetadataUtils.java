@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -75,24 +76,26 @@ public class TsFileMetadataUtils {
   }
 
   /**
-   * get all ChunkMetaData List included in all ChunkGroups of this device.
+   * get ChunkMetaData List of sensors in sensorSet included in all ChunkGroups of this device. If
+   * sensorSet is null, then return metadata of all sensor included in this device.
    */
   public static ConcurrentHashMap<Path, List<ChunkMetaData>> getChunkMetaDataList(
-      TsDeviceMetadata tsDeviceMetadata) {
+      Set<String> sensorSet, TsDeviceMetadata tsDeviceMetadata) {
     ConcurrentHashMap<Path, List<ChunkMetaData>> pathToChunkMetaDataList = new ConcurrentHashMap<>();
     for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
       List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
           .getChunkMetaDataList();
       String deviceId = chunkGroupMetaData.getDeviceID();
       for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-        Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
-        pathToChunkMetaDataList.putIfAbsent(path, new ArrayList<>());
-        chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-        pathToChunkMetaDataList.get(path).add(chunkMetaData);
+        if (sensorSet == null || sensorSet.contains(chunkMetaData.getMeasurementUid())) {
+          Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
+          pathToChunkMetaDataList.putIfAbsent(path, new ArrayList<>());
+          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+          pathToChunkMetaDataList.get(path).add(chunkMetaData);
+        }
       }
     }
     return pathToChunkMetaDataList;
   }
-
 
 }

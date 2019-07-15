@@ -24,7 +24,7 @@ import java.util.Map;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
- *  This class is a LRU cache. <b>Note: It's not thread safe.</b>
+ * This class is a LRU cache. <b>Note: It's not thread safe.</b>
  */
 public class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
@@ -47,19 +47,22 @@ public class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
   @Override
   protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-    if(usedMemInB > maxMemInB){
+    if (usedMemInB > maxMemInB) {
       usedMemInB -= RamUsageEstimator.sizeOf(eldest);
       return true;
-    }
-    else {
+    } else {
       return false;
     }
   }
 
   @Override
   public V put(K key, V value) {
-    usedMemInB += RamUsageEstimator.sizeOf(key)+RamUsageEstimator.sizeOf(value);
+    usedMemInB += RamUsageEstimator.sizeOf(key) + RamUsageEstimator.sizeOf(value);
     return super.put(key, value);
+  }
+
+  public double getUsedMemoryProportion() {
+    return usedMemInB * 1.0 / maxMemInB;
   }
 
   @Override

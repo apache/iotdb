@@ -26,14 +26,16 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -44,8 +46,8 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -147,6 +149,11 @@ public class StorageGroupProcessor {
    * may be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   private ModificationFile mergingModification;
+
+  /**
+   * This linked hash set records the access order of sensors used by query.
+   */
+  private LinkedHashSet<String> lruForSensorUsedInQuery = new LinkedHashSet<>();
 
 
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName)
@@ -445,6 +452,9 @@ public class StorageGroupProcessor {
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context) {
     insertLock.readLock().lock();
+    synchronized (lruForSensorUsedInQuery){
+      lruForSensorUsedInQuery.add(measurementId);
+    }
     try {
       List<TsFileResource> seqResources = getFileReSourceListForQuery(sequenceFileList,
           deviceId, measurementId, context);
@@ -454,6 +464,22 @@ public class StorageGroupProcessor {
     } finally {
       insertLock.readLock().unlock();
     }
+  }
+
+  /**
+   * returns the top k% sensors most frequently used in queries.
+   */
+  public Set calTopKSensor(String sensorId, double k) {
+    int num = (int) (lruForSensorUsedInQuery.size() * k);
+    Set<String> sensorSet = new HashSet<>(num);
+    sensorSet.add(sensorId);
+
+    for (String sensor : lruForSensorUsedInQuery) {
+      if (num-- >= 0) {
+        sensorSet.add(sensor);
+      }
+    }
+    return sensorSet;
   }
 
   private void writeLock() {
