@@ -20,8 +20,9 @@
 -->
 
 <!-- TOC -->
+## Outline
 
-- [TsFile-Hadoop-Connector User Guide](#tsfile-hadoop-connector-user-guide)
+- TsFile-Hadoop-Connector User Guide
 
 <!-- /TOC -->
 # TsFile-Hadoop-Connector User Guide

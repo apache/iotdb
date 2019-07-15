@@ -200,6 +200,16 @@ public class IoTDBDescriptor {
       conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
       logger.info("Time zone has been set to {}", conf.getZoneID());
 
+      conf.setEnablePerformanceStat(Boolean
+          .parseBoolean(properties.getProperty("enable_performance_stat",
+              Boolean.toString(conf.isEnablePerformanceStat())).trim()));
+
+      conf.setPerformanceStatDisplayInterval(Long
+          .parseLong(properties.getProperty("performance_stat_display_interval",
+              Long.toString(conf.getPerformanceStatDisplayInterval())).trim()));
+      conf.setPerformance_stat_memory_in_kb(Integer
+          .parseInt(properties.getProperty("performance_stat_memory_in_kb",
+              Integer.toString(conf.getPerformance_stat_memory_in_kb())).trim()));
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

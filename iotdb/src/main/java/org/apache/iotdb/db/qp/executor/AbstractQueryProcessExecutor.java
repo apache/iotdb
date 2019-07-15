@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecutor {
 
-  protected ThreadLocal<Integer> fetchSize = new ThreadLocal<>();
   protected IEngineQueryRouter queryRouter = new EngineQueryRouter();
 
   @Override
@@ -89,18 +88,6 @@ public abstract class AbstractQueryProcessExecutor implements IQueryProcessExecu
     return queryRouter.query(queryExpression, context);
   }
 
-  @Override
-  public int getFetchSize() {
-    if (fetchSize.get() == null) {
-      return 100;
-    }
-    return fetchSize.get();
-  }
-
-  @Override
-  public void setFetchSize(int fetchSize) {
-    this.fetchSize.set(fetchSize);
-  }
 
   @Override
   public boolean delete(DeletePlan deletePlan) throws ProcessorException {

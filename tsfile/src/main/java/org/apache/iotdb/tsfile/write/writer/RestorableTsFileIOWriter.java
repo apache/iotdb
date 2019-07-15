@@ -21,6 +21,9 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +31,8 @@ import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -117,19 +122,19 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @param dataType the value type
    * @return chunks' metadata
    */
-  public List<ChunkMetaData> getVisibleMetadatas(String deviceId, String measurementId, TSDataType dataType) {
-    List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
+  public List<ChunkMetaData> getVisibleMetadataList(String deviceId, String measurementId, TSDataType dataType) {
+    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
       for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
         // filter: if a device'sensor is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
         // all the stale data.
         if (dataType.equals(chunkMetaData.getTsDataType())) {
-          chunkMetaDatas.add(chunkMetaData);
+          chunkMetaDataList.add(chunkMetaData);
         }
       }
     }
-    return chunkMetaDatas;
+    return chunkMetaDataList;
   }
 
 
@@ -139,10 +144,10 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
   public void makeMetadataVisible() {
 
-    List<ChunkGroupMetaData> newlyFlushedMetadatas = getAppendedRowGroupMetadata();
+    List<ChunkGroupMetaData> newlyFlushedMetadataList = getAppendedRowGroupMetadata();
 
-    if (!newlyFlushedMetadatas.isEmpty()) {
-      for (ChunkGroupMetaData rowGroupMetaData : newlyFlushedMetadatas) {
+    if (!newlyFlushedMetadataList.isEmpty()) {
+      for (ChunkGroupMetaData rowGroupMetaData : newlyFlushedMetadataList) {
         String deviceId = rowGroupMetaData.getDeviceID();
         for (ChunkMetaData chunkMetaData : rowGroupMetaData.getChunkMetaDataList()) {
           String measurementId = chunkMetaData.getMeasurementUid();
@@ -167,7 +172,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * get all the chunkGroups' metadata which are appended after the last calling of this method, or
    * after the class instance is initialized if this is the first time to call the method.
    *
-   * @return a list of chunkgroup metadata
+   * @return a list of ChunkGroupMetadata
    */
   private List<ChunkGroupMetaData> getAppendedRowGroupMetadata() {
     List<ChunkGroupMetaData> append = new ArrayList<>();
@@ -178,5 +183,41 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return append;
   }
 
+
+  /**
+   * Given a TsFile, generate a writable RestorableTsFileIOWriter. That is, for a complete TsFile,
+   * the function erases all FileMetadata and supports writing new data; For a incomplete TsFile,
+   * the function supports writing new data directly. However, it is more efficient using the
+   * construction function of RestorableTsFileIOWriter, if the tsfile is incomplete.
+   *
+   * @param file a TsFile
+   * @return a writable RestorableTsFileIOWriter
+   */
+  public static RestorableTsFileIOWriter getWriterForAppendingDataOnCompletedTsFile(File file)
+      throws IOException {
+    long position = file.length();
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+      // this tsfile is complete
+      if (reader.isComplete()) {
+        reader.loadMetadataSize();
+        TsFileMetaData metaData = reader.readFileMetadata();
+        for (TsDeviceMetadataIndex deviceMetadata : metaData.getDeviceMap().values()) {
+          if (position > deviceMetadata.getOffset()) {
+            position = deviceMetadata.getOffset();
+          }
+        }
+      }
+    }
+
+    if (position != file.length()) {
+      // if the file is complete, we will remove all file metadatas
+      try (FileChannel channel = FileChannel
+          .open(Paths.get(file.getAbsolutePath()), StandardOpenOption.WRITE)) {
+        channel.truncate(position - 1);//remove the last marker.
+      }
+    }
+    return new RestorableTsFileIOWriter(file);
+  }
 
 }
