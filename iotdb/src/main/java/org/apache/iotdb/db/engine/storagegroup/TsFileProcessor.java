@@ -405,7 +405,7 @@ public class TsFileProcessor {
         writer.mark();
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
-          logger.info("totalMemTableSize: {}, writer.getPos(): {}", totalMemTableSize,
+          logger.debug("totalMemTableSize: {}, writer.getPos(): {}", totalMemTableSize,
               writer.getPos());
           if (compressionRatio == 0) {
             logger.error("compressionRatio = 0, please check the log.");

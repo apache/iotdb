@@ -67,7 +67,7 @@ public class EnvironmentUtils {
 
   private static int oldMaxMemTableNumber = config.getMaxMemtableNumber();
 
-  private static int oldGroupSizeInByte = config.getMemtableSizeThreshold();
+  private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   public static void cleanEnv() throws IOException, StorageEngineException {
 

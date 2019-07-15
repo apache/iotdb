@@ -119,7 +119,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   private int maxMemTableNum = MEM_TABLE_AVERAGE_QUEUE_LEN;
 
-  private int currentMemTableSize;
+  private long currentMemTableSize;
 
   // Adapter section
 
@@ -128,8 +128,8 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   @Override
   public synchronized boolean tryToAdaptParameters() {
     boolean canAdjust = true;
-    int memtableSizeInByte = calcMemTableSize();
-    int memTableSizeFloorThreshold = getMemTableSizeFloorThreshold();
+    long memtableSizeInByte = calcMemTableSize();
+    long memTableSizeFloorThreshold = getMemTableSizeFloorThreshold();
     boolean shouldClose = false;
     long tsFileSize = CONFIG.getTsFileSizeThreshold();
     if (memtableSizeInByte < memTableSizeFloorThreshold) {
@@ -137,7 +137,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
           memtableSizeInByte, memTableSizeFloorThreshold);
       shouldClose = true;
       tsFileSize = calcTsFileSize(memTableSizeFloorThreshold);
-      memtableSizeInByte = (int) tsFileSize;
+      memtableSizeInByte = tsFileSize;
       if (tsFileSize < memTableSizeFloorThreshold) {
         canAdjust = false;
       }
@@ -147,7 +147,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       CONFIG.setTsFileSizeThreshold(tsFileSize);
       CONFIG.setMemtableSizeThreshold(memtableSizeInByte);
-      LOGGER.info(
+      LOGGER.debug(
           "After adjusting, max memTable num is {}, tsFile threshold is {}, memtableSize is {}, memTableSizeFloorThreshold is {}",
           maxMemTableNum, tsFileSize, memtableSizeInByte, memTableSizeFloorThreshold);
       if (initialized) {
@@ -177,8 +177,8 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     double ratio = CompressionRatio.getInstance().getRatio();
     // when unit is byte, it's likely to cause Long type overflow.
     // so when b is larger than Integer.MAC_VALUE use the unit KB.
-    double a = (long) (ratio * maxMemTableNum);
-    double b = (long) ((ALLOCATE_MEMORY_FOR_WRITE - staticMemory) * ratio);
+    double a = ratio * maxMemTableNum;
+    double b = (ALLOCATE_MEMORY_FOR_WRITE - staticMemory) * ratio;
     int magnification = b > Integer.MAX_VALUE ? 1024 : 1;
     b /= magnification;
     double c = (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
@@ -196,11 +196,11 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * @param memTableSize MemTable size
    * @return Tsfile byte threshold
    */
-  private int calcTsFileSize(int memTableSize) {
-    return (int) ((ALLOCATE_MEMORY_FOR_WRITE - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
-        .getInstance().getRatio()
-        * memTableSize / (maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
-        .getMaximalSeriesNumberAmongStorageGroups()));
+  private long calcTsFileSize(long memTableSize) {
+    return (long) ((ALLOCATE_MEMORY_FOR_WRITE - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
+            .getInstance().getRatio()
+            * memTableSize / (maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
+            .getMaximalSeriesNumberAmongStorageGroups()));
   }
 
   /**
@@ -248,7 +248,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     this.initialized = initialized;
   }
 
-  int getCurrentMemTableSize() {
+  long getCurrentMemTableSize() {
     return currentMemTableSize;
   }
 

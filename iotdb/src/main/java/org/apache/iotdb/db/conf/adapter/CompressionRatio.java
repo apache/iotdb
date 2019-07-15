@@ -107,10 +107,11 @@ public class CompressionRatio {
       newFile.createNewFile();
       LOGGER.debug("Old ratio file {} doesn't exist, force create ratio file {}",
           oldFile.getAbsolutePath(), newFile.getAbsolutePath());
+    } else {
+      FileUtils.moveFile(oldFile, newFile);
+      LOGGER.debug("Compression ratio file updated, previous: {}, current: {}",
+          oldFile.getAbsolutePath(), newFile.getAbsolutePath());
     }
-    FileUtils.moveFile(oldFile, newFile);
-    LOGGER.debug("Compression ratio file updated, previous: {}, current: {}",
-        oldFile.getAbsolutePath(), newFile.getAbsolutePath());
   }
 
   private void checkDirectoryExist() throws IOException {

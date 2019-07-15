@@ -67,7 +67,7 @@ public class CompressionRatioTest {
   public void testCompressionRatio() throws IOException {
     double compressionRatioSum = 0;
     int calcuTimes = 0;
-    if (!new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
+    if (new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
       fail();
     }
     double compressionRatio = 10;
@@ -90,7 +90,7 @@ public class CompressionRatioTest {
   public void testRestore() throws IOException {
     double compressionRatioSum = 0;
     int calcuTimes = 0;
-    if (!new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
+    if (new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
       fail();
     }
     int compressionRatio = 10;

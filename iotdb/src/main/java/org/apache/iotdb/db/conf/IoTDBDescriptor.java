@@ -176,9 +176,9 @@ public class IoTDBDescriptor {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 
-      int memTableSizeThreshold = Integer.parseInt(properties
+      long memTableSizeThreshold = Long.parseLong(properties
           .getProperty("memtable_size_threshold",
-              Integer.toString(conf.getMemtableSizeThreshold())).trim());
+              Long.toString(conf.getMemtableSizeThreshold())).trim());
       if (memTableSizeThreshold > 0) {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
