@@ -32,6 +32,7 @@ public class MetadataTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
   }
 
   @After

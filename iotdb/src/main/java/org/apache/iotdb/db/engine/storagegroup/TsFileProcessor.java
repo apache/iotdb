@@ -30,12 +30,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.memtable.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
-import org.apache.iotdb.db.rescon.MemTablePool;
+import org.apache.iotdb.db.engine.memtable.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -46,10 +46,10 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -78,16 +78,15 @@ public class TsFileProcessor {
   private ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
 
   /**
-   * It is set by the StorageGroupProcessor and checked by flush threads.
-   * (If shouldClose == true and its flushingMemTables are all flushed, then the flush thread will
-   * close this file.)
+   * It is set by the StorageGroupProcessor and checked by flush threads. (If shouldClose == true
+   * and its flushingMemTables are all flushed, then the flush thread will close this file.)
    */
   private volatile boolean shouldClose;
 
   private IMemTable workMemTable;
 
   /**
-   * sync this object in query() and asyncFlush()
+   * sync this object in query() and asyncTryToFlush()
    */
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
 
@@ -107,6 +106,8 @@ public class TsFileProcessor {
   private WriteLogNode logNode;
 
   private boolean sequence;
+
+  private long totalMemTableSize;
 
   TsFileProcessor(String storageGroupName, File tsfile, FileSchema fileSchema,
       VersionController versionController,
@@ -192,7 +193,8 @@ public class TsFileProcessor {
 
 
   boolean shouldFlush() {
-    return workMemTable.memSize() > TSFileConfig.groupSizeInByte;
+    return workMemTable != null && workMemTable.memSize() > IoTDBDescriptor.getInstance()
+        .getConfig().getMemtableSizeThreshold();
   }
 
 
@@ -274,7 +276,6 @@ public class TsFileProcessor {
       flushQueryLock.writeLock().unlock();
     }
 
-
     synchronized (tmpMemTable) {
       try {
         long startWait = System.currentTimeMillis();
@@ -333,6 +334,9 @@ public class TsFileProcessor {
     tobeFlushed.setVersion(versionController.nextVersion());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       getLogNode().notifyStartFlush();
+    }
+    if (!tobeFlushed.isSignalMemTable()) {
+      totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
     FlushManager.getInstance().registerTsFileProcessor(this);
@@ -400,6 +404,17 @@ public class TsFileProcessor {
     if (shouldClose && flushingMemTables.isEmpty()) {
       try {
         writer.mark();
+        try {
+          double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
+          logger.debug("totalMemTableSize: {}, writer.getPos(): {}", totalMemTableSize,
+              writer.getPos());
+          if (compressionRatio == 0) {
+            logger.error("compressionRatio = 0, please check the log.");
+          }
+          CompressionRatio.getInstance().updateRatio(compressionRatio);
+        } catch (IOException e) {
+          logger.error("update compression ratio failed", e);
+        }
         endFile();
       } catch (IOException | TsFileProcessorException e) {
         logger.error("meet error when flush FileMetadata to {}, change system mode to read-only", tsFileResource.getFile().getAbsolutePath());
@@ -504,7 +519,8 @@ public class TsFileProcessor {
         if (flushingMemTable.isSignalMemTable()) {
           continue;
         }
-        ReadOnlyMemChunk memChunk = flushingMemTable.query(deviceId, measurementId, dataType, props);
+        ReadOnlyMemChunk memChunk = flushingMemTable
+            .query(deviceId, measurementId, dataType, props);
         if (memChunk != null) {
           memSeriesLazyMerger.addMemSeries(memChunk);
         }

@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.dao.BasicDao;
@@ -56,7 +57,7 @@ public class BasicDaoImpl implements BasicDao {
     ConnectionCallback<Object> connectionCallback = new ConnectionCallback<Object>() {
       public Object doInConnection(Connection connection) throws SQLException {
         DatabaseMetaData databaseMetaData = connection.getMetaData();
-        ResultSet resultSet = databaseMetaData.getColumns(null, null, "root.*", null);
+        ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, "root.*", "root.*", null);
         logger.info("Start to get timeseries");
         List<String> columnsName = new ArrayList<>();
         while (resultSet.next()) {
