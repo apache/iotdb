@@ -130,7 +130,10 @@ public class MergeTask implements Callable<Void> {
   }
 
   private void doMerge() throws IOException {
-    logger.info("{} starts", taskName);
+    if (logger.isInfoEnabled()) {
+      logger.info("{} starts to merge {} seqFiles, {} unseqFiles", taskName, seqFiles.size(),
+          unseqFiles.size());
+    }
     long startTime = System.currentTimeMillis();
     this.mergeLogger = new MergeLogger(storageGroupDir);
     logFiles();
