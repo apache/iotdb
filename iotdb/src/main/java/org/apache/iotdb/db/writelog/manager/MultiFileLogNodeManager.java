@@ -48,6 +48,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   private final Runnable forceTask = () -> {
       while (true) {
         if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+          logger.warn("system mode is read-only, the force flush WAL task is stopped");
           return;
         }
         if (Thread.interrupted()) {

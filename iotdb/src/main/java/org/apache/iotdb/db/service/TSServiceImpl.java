@@ -771,7 +771,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new ProcessorException(
-          "Current system mode is read only, does not support none query operation");
+          "Current system mode is read-only, does not support non-query operation");
     }
     return processor.getExecutor().processNonQuery(plan);
   }
