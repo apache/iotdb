@@ -125,7 +125,6 @@ public class CompressionRatio {
   void restore() throws IOException {
     checkDirectoryExist();
     File[] ratioFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
-    File restoreFile;
     if (ratioFiles != null && ratioFiles.length > 0) {
       long maxTimes = 0;
       double maxCompressionRatioSum = 0;
@@ -149,10 +148,6 @@ public class CompressionRatio {
           ratioFiles[i].delete();
         }
       }
-    } else {
-      restoreFile = new File(directory,
-          String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
-      restoreFile.createNewFile();
     }
   }
 

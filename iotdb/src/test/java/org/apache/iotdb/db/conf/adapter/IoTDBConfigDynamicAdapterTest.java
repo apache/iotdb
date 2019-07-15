@@ -17,16 +17,15 @@ package org.apache.iotdb.db.conf.adapter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import com.sun.org.apache.bcel.internal.generic.FADD;
 import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -127,13 +126,23 @@ public class IoTDBConfigDynamicAdapterTest {
     int sgNum = 1;
     for (int i = 0; i < 30; i++) {
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(sgNum);
-    }int i = 1;
+    }
+    int i = 1;
     try {
       for (; i <= 280 * 3200; i++) {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
         MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(i / 30 + 1);
       }
     } catch (ConfigAdjusterException e) {
+      assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
+    }
+    try {
+      while (true) {
+        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+        MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() + 1);
+      }
+    } catch (ConfigAdjusterException e ) {
+      assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
     }
   }
 
