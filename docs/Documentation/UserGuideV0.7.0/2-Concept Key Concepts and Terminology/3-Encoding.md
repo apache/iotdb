@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -46,9 +46,9 @@ GORILLA encoding is more suitable for floating-point sequence with similar value
 
 * REGULAR
 
-Regular data encoding is more suitable for encoding regular sequence increasing data (e.g. the timeseries with the same time elapsed between each data point), which its performance would be better than TS_2DIFF in this situation.
+Regular data encoding is more suitable for encoding regular sequence increasing data (e.g. the timeseries with the same time elapsed between each data point), in which case it's better than TS_2DIFF.
 
-Regular data encoding method is not suitable for the data with fluctuations (irregular data), which is recommended to use the TS_2DIFF encoder to deal with it.
+Regular data encoding method is not suitable for the data with fluctuations (irregular data), and TS_2DIFF is recommended to deal with it.
 
 * Correspondence between data type and encoding
 
