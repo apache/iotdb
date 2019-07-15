@@ -21,6 +21,8 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.apache.lucene.util.RamUsageEstimator;
+
 /**
  *  This class is a LRU cache. <b>Note: It's not thread safe.</b>
  */
@@ -28,17 +30,36 @@ public class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
   private static final long serialVersionUID = 1290160928914532649L;
   private static final float LOAD_FACTOR_MAP = 0.75f;
-  private int maxCapacity;
+  private static final int initialCapacity = 128;
+  /**
+   * maximum memory threshold.
+   */
+  private int maxMemInB;
+  /**
+   * current used memory.
+   */
+  private int usedMemInB;
 
-  public LruLinkedHashMap(int maxCapacity, boolean isLru) {
-    super(maxCapacity, LOAD_FACTOR_MAP, isLru);
-    this.maxCapacity = maxCapacity;
+  public LruLinkedHashMap(int maxMemInB, boolean isLru) {
+    super(initialCapacity, LOAD_FACTOR_MAP, isLru);
+    this.maxMemInB = maxMemInB;
   }
 
   @Override
-  protected boolean removeEldestEntry(
-      Map.Entry<K, V> eldest) {
-    return size() > maxCapacity;
+  protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+    if(usedMemInB > maxMemInB){
+      usedMemInB -= RamUsageEstimator.sizeOf(eldest);
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  @Override
+  public V put(K key, V value) {
+    usedMemInB += RamUsageEstimator.sizeOf(key)+RamUsageEstimator.sizeOf(value);
+    return super.put(key, value);
   }
 
   @Override
