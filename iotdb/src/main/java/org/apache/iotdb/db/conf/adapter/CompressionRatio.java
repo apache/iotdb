@@ -51,7 +51,7 @@ public class CompressionRatio {
 
   static final String RATIO_FILE_PATH_FORMAT = FILE_PREFIX + "%f" + SEPARATOR + "%d";
 
-  private static final double DEFAULT_COMPRESSION_RATIO = 2.0f;
+  private static final double DEFAULT_COMPRESSION_RATIO = 2.0;
 
   /**
    * The total sum of all compression ratios.
