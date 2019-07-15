@@ -105,14 +105,18 @@ public class MergeTask implements Callable<Void> {
 
   String taskName;
 
+  // future feature
+  private boolean fullMerge;
+
   public MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
-      String taskName) throws IOException {
+      String taskName, boolean fullMerge) throws IOException {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.storageGroupDir = storageGroupDir;
     this.callback = callback;
     this.taskName = taskName;
+    this.fullMerge = fullMerge;
   }
 
   @Override
@@ -509,7 +513,7 @@ public class MergeTask implements Callable<Void> {
     boolean chunkModified = currMeta.getDeletedAt() > Long.MIN_VALUE;
     int newPtWritten = ptWritten;
 
-    if (!chunkOverlap && (chunkTooSmall || chunkModified)) {
+    if (!chunkOverlap && (chunkTooSmall || chunkModified || fullMerge)) {
       // just rewrite the (modified) chunk
       Chunk chunk = chunkLoader.getChunk(currMeta);
       newPtWritten += writeChunkWithoutUnseq(chunk, chunkWriter, measurementSchema);

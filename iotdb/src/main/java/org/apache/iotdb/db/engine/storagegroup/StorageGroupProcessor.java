@@ -200,7 +200,8 @@ public class StorageGroupProcessor {
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
       }
-      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(storageGroupSysDir.getPath(), this::mergeEndAction, taskName);
+      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(storageGroupSysDir.getPath(),
+          this::mergeEndAction, taskName, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
       recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
@@ -690,7 +691,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void merge() {
+  public void merge(boolean fullMerge) {
     writeLock();
     try {
       if (isMerging) {
@@ -717,7 +718,7 @@ public class StorageGroupProcessor {
         }
         String taskName = storageGroupName + "-" + System.currentTimeMillis();
         MergeTask mergeTask = new MergeTask(mergeFiles[0], mergeFiles[1],
-            storageGroupSysDir.getPath(), this::mergeEndAction, taskName);
+            storageGroupSysDir.getPath(), this::mergeEndAction, taskName, fullMerge);
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
         MergeManager.getINSTANCE().submit(mergeTask);
         if (logger.isInfoEnabled()) {

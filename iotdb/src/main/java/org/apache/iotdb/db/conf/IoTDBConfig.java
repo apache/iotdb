@@ -202,6 +202,8 @@ public class IoTDBConfig {
 
   private long mergeIntervalSec = 2 * 3600L;
 
+  private boolean forceFullMerge = false;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -565,5 +567,13 @@ public class IoTDBConfig {
 
   public void setPerformance_stat_memory_in_kb(int performance_stat_memory_in_kb) {
     this.performance_stat_memory_in_kb = performance_stat_memory_in_kb;
+  }
+
+  public boolean isForceFullMerge() {
+    return forceFullMerge;
+  }
+
+  public void setForceFullMerge(boolean forceFullMerge) {
+    this.forceFullMerge = forceFullMerge;
   }
 }

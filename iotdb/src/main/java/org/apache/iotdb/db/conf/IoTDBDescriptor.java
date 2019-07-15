@@ -208,6 +208,8 @@ public class IoTDBDescriptor {
           "continue_merge_after_reboot", Boolean.toString(conf.isContinueMergeAfterReboot()))));
       conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
           Long.toString(conf.getMergeIntervalSec()))));
+      conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
+          Boolean.toString(conf.isForceFullMerge()))));
 
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
