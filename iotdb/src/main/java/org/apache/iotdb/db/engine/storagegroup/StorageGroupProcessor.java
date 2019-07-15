@@ -458,58 +458,6 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void asyncTryToFlush() {
-    if (workSequenceTsFileProcessor == null && workUnSequenceTsFileProcessor == null) {
-      return;
-    }
-    writeLock();
-    try {
-      if (workSequenceTsFileProcessor != null && workSequenceTsFileProcessor.shouldFlush()) {
-        logger.debug("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
-            workSequenceTsFileProcessor.getWorkMemTableMemory(),
-            workSequenceTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
-
-        workSequenceTsFileProcessor.asyncFlush();
-      }
-      if (workUnSequenceTsFileProcessor != null && workUnSequenceTsFileProcessor.shouldFlush()) {
-        logger.debug("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
-            workUnSequenceTsFileProcessor.getWorkMemTableMemory(),
-            workUnSequenceTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
-
-        workUnSequenceTsFileProcessor.asyncFlush();
-      }
-    } finally {
-      writeUnlock();
-    }
-  }
-
-  public void asyncTryToClose() {
-    if (workSequenceTsFileProcessor == null && workUnSequenceTsFileProcessor == null) {
-      return;
-    }
-    writeLock();
-    try {
-      if (workSequenceTsFileProcessor != null && workSequenceTsFileProcessor.shouldClose()) {
-        logger.debug("The tsfile size {} reaches the threshold {}, async close it.",
-            workSequenceTsFileProcessor.getWorkMemTableMemory(),
-            IoTDBDescriptor.getInstance().getConfig()
-                .getTsFileSizeThreshold());
-
-        moveOneWorkProcessorToClosingList(true);
-      }
-      if (workUnSequenceTsFileProcessor != null && workUnSequenceTsFileProcessor.shouldClose()) {
-        logger.debug("The tsfile size {} reaches the threshold {}, async close it.",
-            workUnSequenceTsFileProcessor.getWorkMemTableMemory(),
-            IoTDBDescriptor.getInstance().getConfig()
-                .getTsFileSizeThreshold());
-
-        moveOneWorkProcessorToClosingList(false);
-      }
-    } finally {
-      writeUnlock();
-    }
-  }
-
   private void writeLock() {
     insertLock.writeLock().lock();
   }

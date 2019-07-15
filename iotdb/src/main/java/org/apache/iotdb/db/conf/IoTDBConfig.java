@@ -142,7 +142,7 @@ public class IoTDBConfig {
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
    */
-  private long memtableSizeThreshold = 128 * 1024 * 1024;
+  private long memtableSizeThreshold = 128 * 1024 * 1024L;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default

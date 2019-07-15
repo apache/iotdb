@@ -15,10 +15,7 @@
 package org.apache.iotdb.db.conf.adapter;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
-import com.sun.org.apache.bcel.internal.generic.FADD;
-import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -148,5 +145,4 @@ public class IoTDBConfigDynamicAdapterTest {
       assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
     }
   }
-
 }
