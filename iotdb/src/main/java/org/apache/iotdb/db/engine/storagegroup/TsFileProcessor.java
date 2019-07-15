@@ -50,7 +50,6 @@ import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -405,10 +404,10 @@ public class TsFileProcessor {
       try {
         writer.mark();
         try {
-          double compressionRatio = totalMemTableSize / writer.getPos();
+          double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
           logger.info("totalMemTableSize: {}", totalMemTableSize);
           logger.info("writer.getPos(): {}", writer.getPos());
-          if(compressionRatio == 0){
+          if (compressionRatio == 0) {
             logger.error("compressionRatio = 0, please check the log.");
           }
           CompressionRatio.getInstance().updateRatio(compressionRatio);

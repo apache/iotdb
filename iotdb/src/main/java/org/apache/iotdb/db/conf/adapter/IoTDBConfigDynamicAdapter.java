@@ -155,7 +155,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
           StorageEngine.getInstance().asyncFlushAndSealAllFiles();
         } else if (memtableSizeInByte < currentMemTableSize
             && currentMemTableSize - memtableSizeInByte > currentMemTableSize * FLUSH_THRESHOLD) {
-          StorageEngine.getInstance().asyncFlushAllProcessor();
+          StorageEngine.getInstance().asyncTryToFlushAllProcessor();
         }
       }
       currentMemTableSize = memtableSizeInByte;

@@ -33,7 +33,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -466,18 +465,45 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       if (workSequenceTsFileProcessor != null && workSequenceTsFileProcessor.shouldFlush()) {
-        logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+        logger.debug("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
             workSequenceTsFileProcessor.getWorkMemTableMemory(),
             workSequenceTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
         workSequenceTsFileProcessor.asyncFlush();
       }
       if (workUnSequenceTsFileProcessor != null && workUnSequenceTsFileProcessor.shouldFlush()) {
-        logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
+        logger.debug("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
             workUnSequenceTsFileProcessor.getWorkMemTableMemory(),
             workUnSequenceTsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
 
         workUnSequenceTsFileProcessor.asyncFlush();
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void asyncTryToClose() {
+    if (workSequenceTsFileProcessor == null && workUnSequenceTsFileProcessor == null) {
+      return;
+    }
+    writeLock();
+    try {
+      if (workSequenceTsFileProcessor != null && workSequenceTsFileProcessor.shouldClose()) {
+        logger.debug("The tsfile size {} reaches the threshold {}, async close it.",
+            workSequenceTsFileProcessor.getWorkMemTableMemory(),
+            IoTDBDescriptor.getInstance().getConfig()
+                .getTsFileSizeThreshold());
+
+        moveOneWorkProcessorToClosingList(true);
+      }
+      if (workUnSequenceTsFileProcessor != null && workUnSequenceTsFileProcessor.shouldClose()) {
+        logger.debug("The tsfile size {} reaches the threshold {}, async close it.",
+            workUnSequenceTsFileProcessor.getWorkMemTableMemory(),
+            IoTDBDescriptor.getInstance().getConfig()
+                .getTsFileSizeThreshold());
+
+        moveOneWorkProcessorToClosingList(false);
       }
     } finally {
       writeUnlock();
