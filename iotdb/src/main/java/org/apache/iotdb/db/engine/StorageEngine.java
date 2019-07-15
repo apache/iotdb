@@ -303,12 +303,12 @@ public class StorageEngine implements IService {
    *
    * @throws StorageEngineException StorageEngineException
    */
-  public void mergeAll() throws StorageEngineException {
+  public void mergeAll(boolean fullMerge) throws StorageEngineException {
     if (readOnly) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
     for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-      storageGroupProcessor.merge();
+      storageGroupProcessor.merge(fullMerge);
     }
   }
 

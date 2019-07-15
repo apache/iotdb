@@ -401,8 +401,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         StorageEngine.getInstance().syncCloseAllProcessor();
         return true;
       case "merge":
-         StorageEngine.getInstance().mergeAll();
-         return true;
+        StorageEngine.getInstance()
+            .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+        return true;
+      case "full merge":
+        StorageEngine.getInstance().mergeAll(true);
+        return true;
       default:
         return false;
     }

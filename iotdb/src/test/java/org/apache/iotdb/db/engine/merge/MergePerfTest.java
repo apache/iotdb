@@ -37,6 +37,7 @@ public class MergePerfTest extends MergeTaskTest{
   private Random random = new Random(System.currentTimeMillis());
 
   private long timeConsumption;
+  private boolean fullMerge;
 
   @Before
   @Override
@@ -70,7 +71,8 @@ public class MergePerfTest extends MergeTaskTest{
     setUp();
     timeConsumption = System.currentTimeMillis();
     MergeTask mergeTask =
-        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test");
+        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
+            fullMerge);
     mergeTask.call();
     timeConsumption = System.currentTimeMillis() - timeConsumption;
     tearDown();
@@ -88,21 +90,22 @@ public class MergePerfTest extends MergeTaskTest{
     perfTest.unseqRatio = 0.2;
     perfTest.ptNum = 10000;
     perfTest.flushInterval = 1000;
+    perfTest.fullMerge = true;
 
     for (int i = 0; i < 3; i++) {
       // cache warm-up
       perfTest.test();
     }
 
-//    int[] intParameters = new int[10];
-//    for (int i = 1; i <= 10; i++) {
-//      intParameters[i-1] = i;
-//    }
-//    for (int param : intParameters) {
-//      perfTest.seqFileNum = param;
-//      perfTest.test();
-//      timeConsumptions.add(perfTest.timeConsumption);
-//    }
+    int[] intParameters = new int[10];
+    for (int i = 1; i <= 10; i++) {
+      intParameters[i-1] = i;
+    }
+    for (int param : intParameters) {
+      perfTest.unseqFileNum = param;
+      perfTest.test();
+      timeConsumptions.add(perfTest.timeConsumption);
+    }
 //    long[] longParameters = new long[10];
 //    for (int i = 1; i <= 10; i++) {
 //      longParameters[i-1] = i * 2000;
@@ -112,15 +115,15 @@ public class MergePerfTest extends MergeTaskTest{
 //      perfTest.test();
 //      timeConsumptions.add(perfTest.timeConsumption);
 //    }
-    double[] doubleParameters = new double[10];
-    for (int i = 1; i <= 10; i++) {
-      doubleParameters[i-1] = 0.1 * i;
-    }
-    for (double param : doubleParameters) {
-      perfTest.unseqRatio = param;
-      perfTest.test();
-      timeConsumptions.add(perfTest.timeConsumption);
-    }
+//    double[] doubleParameters = new double[10];
+//    for (int i = 1; i <= 10; i++) {
+//      doubleParameters[i-1] = 0.1 * i;
+//    }
+//    for (double param : doubleParameters) {
+//      perfTest.unseqRatio = param;
+//      perfTest.test();
+//      timeConsumptions.add(perfTest.timeConsumption);
+//    }
 
     System.out.println(timeConsumptions);
   }

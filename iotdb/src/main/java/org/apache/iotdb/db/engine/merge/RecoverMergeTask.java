@@ -53,8 +53,9 @@ public class RecoverMergeTask extends MergeTask {
   private List<Path> mergedPaths = new ArrayList<>();
   private List<TsFileResource> unmergedFiles;
 
-  public RecoverMergeTask(String storageGroupDir, MergeCallback callback, String taskName) throws IOException {
-    super(null, null, storageGroupDir, callback, taskName);
+  public RecoverMergeTask(String storageGroupDir, MergeCallback callback, String taskName,
+      boolean fullMerge) throws IOException {
+    super(null, null, storageGroupDir, callback, taskName, fullMerge);
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException {

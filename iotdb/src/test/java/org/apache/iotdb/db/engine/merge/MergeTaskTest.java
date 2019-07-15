@@ -54,9 +54,31 @@ public class MergeTaskTest extends MergeTest {
   }
 
   @Test
+  public void testMerge() throws Exception {
+    MergeTask mergeTask =
+        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
+            false);
+    mergeTask.call();
+
+    QueryContext context = new QueryContext();
+    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    SequenceSeriesReader tsFilesReader = new SequenceSeriesReader(path,
+        Collections.singletonList(seqResources.get(0)),
+        null, context);
+    while (tsFilesReader.hasNext()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
+      }
+    }
+    tsFilesReader.close();
+  }
+
+  @Test
   public void testFullMerge() throws Exception {
     MergeTask mergeTask =
-        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test");
+        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
+            true);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -77,8 +99,7 @@ public class MergeTaskTest extends MergeTest {
   public void testPartialMerge1() throws Exception {
     MergeTask mergeTask =
         new MergeTask(seqResources, unseqResources.subList(0, 1), tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test");
+            (k, v, l) -> {}, "test", false);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -103,8 +124,7 @@ public class MergeTaskTest extends MergeTest {
   public void testPartialMerge2() throws Exception {
     MergeTask mergeTask =
         new MergeTask(seqResources, unseqResources.subList(5, 6), tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test");
+            (k, v, l) -> {}, "test", false);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -129,7 +149,8 @@ public class MergeTaskTest extends MergeTest {
 
 
     MergeTask mergeTask =
-        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test");
+        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
+            false);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
