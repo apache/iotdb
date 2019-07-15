@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.chunkRelated;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
 /**

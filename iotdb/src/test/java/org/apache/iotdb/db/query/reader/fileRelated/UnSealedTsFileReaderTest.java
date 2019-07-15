@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader.chunkRelated;
+package org.apache.iotdb.db.query.reader.fileRelated;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.reader.chunkRelated;
+package org.apache.iotdb.db.query.reader.fileRelated;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
+import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.IterateReader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;

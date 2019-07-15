@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;

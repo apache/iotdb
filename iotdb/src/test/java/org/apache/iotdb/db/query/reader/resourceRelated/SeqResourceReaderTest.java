@@ -48,7 +48,7 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
         batchData.next();
       }
     }
-    Assert.assertEquals(3029L, time);
+    Assert.assertEquals(5049L, time);
   }
 
   @Test
@@ -62,15 +62,18 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
       int value = (int) reader.getValueInTimestamp(time);
       Assert.assertEquals(time, value);
     }
+
+    for (int time = 5040; time <= 5049; time += 2) {
+      int value = (int) reader.getValueInTimestamp(time);
+      Assert.assertEquals(time, value);
+    }
     Assert.assertTrue(reader.hasNext());
 
-    for (int time = 3050; time <= 3080; time += 10) {
-      Integer value = (Integer) reader.getValueInTimestamp(time);
-      Assert.assertNull(value);
+    for (int time = 5050; time <= 5059; time += 1) {
+      Assert.assertNull(reader.getValueInTimestamp(time));
     }
-    Assert.assertFalse(reader.hasNext());
-  }
 
+  }
 
   @Override
   protected void insertData() throws IOException {
@@ -91,7 +94,17 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
 
     assert storageGroupProcessor.getWorkSequenceTsFileProcessor() == null;
 
-    for (int j = 3020; j <= 3029; j++) {
+    for (int j = 3020; j <= 5029; j++) {
+      insertOneRecord(j, j);
+    }
+    storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
+
+    for (int j = 5030; j <= 5039; j++) { // usually this is unsealed
+      insertOneRecord(j, j);
+    }
+    storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
+
+    for (int j = 5040; j <= 5049; j++) {
       insertOneRecord(j, j);
     }
   }

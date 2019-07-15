@@ -25,8 +25,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.chunkRelated.FileSeriesReaderByTimestampAdapter;
-import org.apache.iotdb.db.query.reader.chunkRelated.UnSealedTsFileReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.fileRelated.FileSeriesReaderByTimestampAdapter;
+import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -47,8 +47,6 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
  * <p>
  * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp}.
  */
-// TODO need confirm that whether there can be at most one unsealed TsFile in the end.
-//  especially because getValueInTimestamp can only function correctly based on this assumption.
 
 public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
 
@@ -78,6 +76,7 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
     Object value = null;
+
     if (seriesReader != null) {
       value = seriesReader.getValueInTimestamp(timestamp);
       // if get value or no value in this timestamp but has next, return.
@@ -86,13 +85,16 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
       }
     }
 
-    constructReader(timestamp);
-    // TODO need confirm that whether there can be at most one unsealed TsFile in the end.
-    //  especially because getValueInTimestamp can only function correctly based on this assumption.
-    if (seriesReader != null) {
-      value = seriesReader.getValueInTimestamp(timestamp);
-      if (value != null || seriesReader.hasNext()) {
-        return value;
+    // Because the sequence TsFile resources are chronologically globally ordered, there exists at
+    // most one TsFile resource that overlaps this timestamp.
+    while (nextIntervalFileIndex < seqResources.size()) {
+      boolean isConstructed = constructNextReader(nextIntervalFileIndex++, timestamp);
+      if (isConstructed) {
+        value = seriesReader.getValueInTimestamp(timestamp);
+        // if get value or no value in this timestamp but has next, return.
+        if (value != null || seriesReader.hasNext()) {
+          return value;
+        }
       }
     }
     return value;
@@ -119,30 +121,34 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
   }
 
   /**
-   * Iterates through the chronologically ordered list of sequence TsFiles according to this
-   * timestamp to find the next TsFile resource to create reader for.
+   * Constructs <code>IReaderByTimestamp</code> for this TsFile if it might overlap this
+   * <code>timestamp</code>.
    * <p>
-   * Because the data in these TsFile resources is chronologically globally ordered, there exists at
-   * most one TsFile resource that overlaps this timestamp. Therefore, the iterate strategy is to
-   * find the sealed TsFile that overlaps this timestamp. If no such sealed TsFile exists, use the
-   * last unsealed TsFile if exists.
+   * If this TsFile is sealed, then use <code>sealedTsFileSatisfied</code> to check whether it
+   * overlaps this timestamp. If it overlaps, then create a reader for it and return true. If not,
+   * return false.
+   * <p>
+   * If this TsFile is unsealed, then it is conservatively considered as having the possibility of
+   * overlapping this timestamp. Thus create a reader for it and return true.
    *
-   * @param timestamp get value in this timestamp
+   * @param idx the id of the TsFile in the resource list
+   * @param timestamp For a sealed sequence TsFile, check whether it overlaps this timestamp. If
+   * not, then do not construct reader for it.
+   * @return True if
    */
-  // TODO need confirm that whether there can be at most one unsealed TsFile in the end.
-  //  especially because getValueInTimestamp can only function correctly based on this assumption.
-  private void constructReader(long timestamp) throws IOException {
-    while (nextIntervalFileIndex < seqResources.size()) {
-      TsFileResource tsFileResource = seqResources.get(nextIntervalFileIndex++);
-      if (tsFileResource.isClosed()) {
-        if (sealedTsFileSatisfied(tsFileResource, timestamp)) {
-          seriesReader = initSealedTsFileReaderByTimestamp(tsFileResource, context);
-          return;
-        }
+  private boolean constructNextReader(int idx, long timestamp) throws IOException {
+    TsFileResource tsFileResource = seqResources.get(idx);
+    if (tsFileResource.isClosed()) {
+      if (sealedTsFileSatisfied(tsFileResource, timestamp)) {
+        seriesReader = initSealedTsFileReaderByTimestamp(tsFileResource, context);
+        return true;
       } else {
-        seriesReader = new UnSealedTsFileReaderByTimestamp(tsFileResource);
-        return;
+        return false;
       }
+    } else {
+      // TODO endTimeMap is not maintained in an unsealed sequence TsFile.
+      seriesReader = new UnSealedTsFileReaderByTimestamp(tsFileResource);
+      return true;
     }
   }
 

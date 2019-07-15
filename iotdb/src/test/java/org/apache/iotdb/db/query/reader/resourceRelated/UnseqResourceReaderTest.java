@@ -53,7 +53,7 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
     storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
 
     for (int j = 21; j <= 30; j += 2) {
-      insertOneRecord(j, 0); // will be covered
+      insertOneRecord(j, 0); // will be covered when read
     }
     storageGroupProcessor.waitForAllCurrentTsFileProcessorsClosed();
 
