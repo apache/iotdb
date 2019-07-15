@@ -32,7 +32,6 @@ import org.junit.Test;
 
 public class MergeLogTest extends MergeTaskTest {
 
-
   @Test
   public void testMergeLog() throws Exception {
     MergeTask mergeTask =
