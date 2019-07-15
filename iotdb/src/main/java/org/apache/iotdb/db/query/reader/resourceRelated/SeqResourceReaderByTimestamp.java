@@ -123,37 +123,41 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
   /**
    * Constructs <code>IReaderByTimestamp</code> for this TsFile if it might overlap this
    * <code>timestamp</code>.
-   * <p>
-   * If this TsFile is sealed, then use <code>sealedTsFileSatisfied</code> to check whether it
-   * overlaps this timestamp. If it overlaps, then create a reader for it and return true. If not,
-   * return false.
-   * <p>
-   * If this TsFile is unsealed, then it is conservatively considered as having the possibility of
-   * overlapping this timestamp. Thus create a reader for it and return true.
    *
    * @param idx the id of the TsFile in the resource list
-   * @param timestamp For a sealed sequence TsFile, check whether it overlaps this timestamp. If
-   * not, then do not construct reader for it.
-   * @return True if
+   * @param timestamp For a sequence TsFile whose endTimeMap is not null, check whether it overlaps
+   * this timestamp. If definitely not, do not construct the reader for it.
+   * @return True if the reader is constructed; False if not.
    */
   private boolean constructNextReader(int idx, long timestamp) throws IOException {
     TsFileResource tsFileResource = seqResources.get(idx);
     if (tsFileResource.isClosed()) {
-      if (sealedTsFileSatisfied(tsFileResource, timestamp)) {
+      // a sealed sequence TsFile's endTimeMap size is greater than 0
+      if (isTsFileSatisfied(tsFileResource, timestamp)) {
         seriesReader = initSealedTsFileReaderByTimestamp(tsFileResource, context);
         return true;
       } else {
         return false;
       }
-    } else {
-      // TODO endTimeMap is not maintained in an unsealed sequence TsFile.
-      seriesReader = new UnSealedTsFileReaderByTimestamp(tsFileResource);
-      return true;
+    } else { // an unsealed sequence TsFile's endTimeMap size may be equal to 0 or greater than 0
+      // If endTimeMap size is 0, conservatively assume that this TsFile might overlap this timestamp.
+      if (tsFileResource.getEndTimeMap().size() == 0) {
+        seriesReader = new UnSealedTsFileReaderByTimestamp(tsFileResource);
+        return true;
+      } else {
+        // If endTimeMap size is not 0, use it to check whether this TsFile overlaps this timestamp.
+        if (isTsFileSatisfied(tsFileResource, timestamp)) {
+          seriesReader = new UnSealedTsFileReaderByTimestamp(tsFileResource);
+          return true;
+        } else {
+          return false;
+        }
+      }
     }
   }
 
-  private boolean sealedTsFileSatisfied(TsFileResource sealedTsFile, long timestamp) {
-    return sealedTsFile.getEndTimeMap().get(seriesPath.getDevice()) >= timestamp;
+  private boolean isTsFileSatisfied(TsFileResource tsFile, long timestamp) {
+    return tsFile.getEndTimeMap().get(seriesPath.getDevice()) >= timestamp;
   }
 
   private IReaderByTimestamp initSealedTsFileReaderByTimestamp(TsFileResource sealedTsFile,

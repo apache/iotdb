@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
@@ -62,7 +61,7 @@ public class SeqResourceReaderTest extends ReaderTestHelper {
       int value = (int) reader.getValueInTimestamp(time);
       Assert.assertEquals(time, value);
     }
-
+    // skip reading
     for (int time = 5040; time <= 5049; time += 2) {
       int value = (int) reader.getValueInTimestamp(time);
       Assert.assertEquals(time, value);
