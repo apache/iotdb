@@ -48,7 +48,7 @@ else
     JAVA=java
 fi
 
-PARAMETERS=$@
+PARAMETERS="$@"
 
 if [ $# == 0 ]
 then
