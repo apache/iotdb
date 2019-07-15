@@ -42,7 +42,6 @@ public class MergeManager implements IService {
   private ScheduledExecutorService timedMergeThreadPool;
 
   private MergeManager() {
-    start();
   }
 
   public static MergeManager getINSTANCE() {
@@ -67,11 +66,11 @@ public class MergeManager implements IService {
       if (mergeInterval > 0) {
         timedMergeThreadPool = Executors.newSingleThreadScheduledExecutor( r -> new Thread(r,
             "TimedMergeThread"));
-        timedMergeThreadPool.scheduleAtFixedRate(this::flushAll, 0,
+        timedMergeThreadPool.scheduleAtFixedRate(this::flushAll, mergeInterval,
             mergeInterval, TimeUnit.SECONDS);
       }
+      logger.info("MergeManager started");
     }
-    logger.info("MergeManager started");
   }
 
   @Override
@@ -87,8 +86,8 @@ public class MergeManager implements IService {
         // wait
       }
       mergeTaskPool = null;
+      logger.info("MergeManager stopped");
     }
-    logger.info("MergeManager stopped");
   }
 
   @Override
