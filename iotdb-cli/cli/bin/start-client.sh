@@ -52,10 +52,8 @@ PARAMETERS="$@"
 
 if [ $# -eq 0 ]
 then
-    echo 111
 	PARAMETERS="-h 127.0.0.1 -p 6667 -u root -pw root"
 fi
-echo "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 
 exit $?
