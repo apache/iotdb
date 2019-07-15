@@ -147,7 +147,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       CONFIG.setTsFileSizeThreshold(tsFileSize);
       CONFIG.setMemtableSizeThreshold(memtableSizeInByte);
-      LOGGER.debug(
+      LOGGER.info(
           "After adjusting, max memTable num is {}, tsFile threshold is {}, memtableSize is {}, memTableSizeFloorThreshold is {}",
           maxMemTableNum, tsFileSize, memtableSizeInByte, memTableSizeFloorThreshold);
       if (initialized) {
