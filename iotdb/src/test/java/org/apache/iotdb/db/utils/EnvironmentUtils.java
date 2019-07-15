@@ -73,6 +73,7 @@ public class EnvironmentUtils {
       Assert.fail();
     }
     StorageEngine.getInstance().reset();
+    IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
 
     StatMonitor.getInstance().close();
     // clean wal

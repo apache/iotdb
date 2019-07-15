@@ -77,28 +77,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     storageEngine = StorageEngine.getInstance();
   }
 
-  public static String checkValue(TSDataType dataType, String value) throws ProcessorException {
-    if (dataType == TSDataType.BOOLEAN) {
-      value = value.toLowerCase();
-      if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
-        value = "false";
-      } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
-        value = "true";
-      } else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE
-          .equals(value)) {
-        throw new ProcessorException("The BOOLEAN data type should be true/TRUE or false/FALSE");
-      }
-    } else if (dataType == TSDataType.TEXT) {
-      if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-          || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-        value = value.substring(1, value.length() - 1);
-      } else {
-        throw new ProcessorException("The TEXT data type should be covered by \" or '");
-      }
-    }
-    return value;
-  }
-
   @Override
   public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
     switch (plan.getOperatorType()) {
@@ -126,14 +104,6 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case DELETE_USER:
         AuthorPlan author = (AuthorPlan) plan;
         return operateAuthor(author);
-      case LIST_ROLE:
-      case LIST_USER:
-      case LIST_ROLE_PRIVILEGE:
-      case LIST_ROLE_USERS:
-      case LIST_USER_PRIVILEGE:
-      case LIST_USER_ROLES:
-        throw new ProcessorException(String.format("Author query %s is now allowed"
-            + " in processNonQuery", plan.getOperatorType()));
       case DELETE_TIMESERIES:
       case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
@@ -269,6 +239,30 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return MManager.getInstance().getPaths(originPath);
   }
 
+
+  private static String checkValue(TSDataType dataType, String value) throws ProcessorException {
+    if (dataType == TSDataType.BOOLEAN) {
+      value = value.toLowerCase();
+      if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
+        value = "false";
+      } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
+        value = "true";
+      } else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE
+          .equals(value)) {
+        throw new ProcessorException("The BOOLEAN data type should be true/TRUE or false/FALSE");
+      }
+    } else if (dataType == TSDataType.TEXT) {
+      if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
+          || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
+        value = value.substring(1, value.length() - 1);
+      } else {
+        throw new ProcessorException("The TEXT data type should be covered by \" or '");
+      }
+    }
+    return value;
+  }
+
+
   private boolean operateAuthor(AuthorPlan author) throws ProcessorException {
     AuthorOperator.AuthorType authorType = author.getAuthorType();
     String userName = author.getUserName();
@@ -346,16 +340,14 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     try {
       switch (namespaceType) {
         case ADD_PATH:
-          boolean isNewMeasurement = mManager.addPathToMTree(path, dataType, encoding, compressor
-              , props);
-          if (isNewMeasurement) {
+          boolean result = mManager.addPathToMTree(path, dataType, encoding, compressor, props);
+          if (result) {
             storageEngine.addTimeSeries(path, dataType, encoding, compressor, props);
           }
           break;
         case DELETE_PATH:
           deleteDataOfTimeSeries(deletePathList);
-          Set<String> emptyStorageGroups =
-              mManager.deletePaths(deletePathList);
+          Set<String> emptyStorageGroups = mManager.deletePaths(deletePathList);
           for (String deleteStorageGroup : emptyStorageGroups) {
             storageEngine.deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
           }
