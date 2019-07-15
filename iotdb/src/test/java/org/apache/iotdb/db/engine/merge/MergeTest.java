@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -37,10 +38,10 @@ import org.junit.Before;
 
 abstract class MergeTest {
 
-  private int measurementNum = 10;
-  private int deviceNum = 10;
-  private long ptNum = 100;
-  private long flushInterval = 20;
+  int measurementNum = 10;
+  int deviceNum = 10;
+  long ptNum = 100;
+  long flushInterval = 20;
 
   String[] deviceIds;
   MeasurementSchema[] measurementSchemas;
@@ -57,9 +58,11 @@ abstract class MergeTest {
   @After
   public void tearDown() throws IOException {
     removeFiles();
+    seqResources.clear();
+    unseqResources.clear();
   }
 
-  private void prepareSeries() {
+  void prepareSeries() {
     measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
@@ -97,9 +100,10 @@ abstract class MergeTest {
     for (TsFileResource tsFileResource : unseqResources) {
       tsFileResource.remove();
     }
+    FileReaderManager.getInstance().stop();
   }
 
-  private void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
+  void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
       long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());

@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -49,6 +50,7 @@ public class MergeTaskTest extends MergeTest {
   public void tearDown() throws IOException {
     super.tearDown();
     FileUtils.deleteDirectory(tempSGDir);
+
   }
 
   @Test
@@ -116,6 +118,34 @@ public class MergeTaskTest extends MergeTest {
         assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
       }
     }
+    tsFilesReader.close();
+  }
+
+  @Test
+  public void mergeWithDeletionTest() throws Exception {
+    seqResources.get(0).getModFile().write(new Deletion(new Path(deviceIds[0],
+        measurementSchemas[0].getMeasurementId()), 10000, 50));
+    seqResources.get(0).getModFile().close();
+
+
+    MergeTask mergeTask =
+        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test");
+    mergeTask.call();
+
+    QueryContext context = new QueryContext();
+    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    SequenceSeriesReader tsFilesReader = new SequenceSeriesReader(path,
+        Collections.singletonList(seqResources.get(0)),
+        null, context);
+    int count = 0;
+    while (tsFilesReader.hasNext()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
+        count ++;
+      }
+    }
+    assertEquals(49, count);
     tsFilesReader.close();
   }
 }
