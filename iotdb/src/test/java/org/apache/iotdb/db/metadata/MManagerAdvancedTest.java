@@ -41,6 +41,7 @@ public class MManagerAdvancedTest {
   @Before
   public void setUp() throws Exception {
 
+    EnvironmentUtils.envSetUp();
     mmanager = MManager.getInstance();
 
     mmanager.setStorageLevelToMTree("root.vehicle.d0");
@@ -60,6 +61,7 @@ public class MManagerAdvancedTest {
     mmanager.addPathToMTree("root.vehicle.d1.s3", "DOUBLE", "RLE");
     mmanager.addPathToMTree("root.vehicle.d1.s4", "BOOLEAN", "PLAIN");
     mmanager.addPathToMTree("root.vehicle.d1.s5", "TEXT", "PLAIN");
+
   }
 
   @After

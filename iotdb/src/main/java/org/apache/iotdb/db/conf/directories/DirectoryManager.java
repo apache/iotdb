@@ -77,6 +77,9 @@ public class DirectoryManager {
       File file = new File(folder);
       if (file.mkdirs()) {
         logger.info("folder {} doesn't exist, create it", file.getPath());
+      } else {
+        logger.info("create folder {} failed. Is the folder existed: {}", file.getPath(),
+            file.exists());
       }
     }
   }

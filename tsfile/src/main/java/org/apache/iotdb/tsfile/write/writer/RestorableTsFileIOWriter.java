@@ -41,7 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * a restorable tsfile which do not depend on a restore file.
+ * a restorable tsfile.
  */
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
@@ -182,7 +182,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
     return append;
   }
-
 
   /**
    * Given a TsFile, generate a writable RestorableTsFileIOWriter. That is, for a complete TsFile,

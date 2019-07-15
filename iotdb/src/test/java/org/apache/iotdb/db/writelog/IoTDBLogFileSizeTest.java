@@ -25,6 +25,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -62,6 +63,7 @@ public class IoTDBLogFileSizeTest {
     }
     groupSize = TSFileConfig.groupSizeInByte;
     TSFileConfig.groupSizeInByte = 8 * 1024 * 1024;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(8 * 1024 * 1024);
     EnvironmentUtils.closeStatMonitor();
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -75,6 +77,7 @@ public class IoTDBLogFileSizeTest {
       return;
     }
     TSFileConfig.groupSizeInByte = groupSize;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSize);
     executeSQL(tearDownSqls);
     daemon.stop();
     Thread.sleep(5000);
