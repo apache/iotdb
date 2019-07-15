@@ -374,7 +374,7 @@ public class TsFileProcessor {
         writer.mark();
         flushTask.syncFlushMemTable();
       } catch (ExecutionException | InterruptedException | IOException e) {
-        StorageEngine.getInstance().setReadOnly(true);
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           logger.error("IOTask meets error, truncate the corrupted data", e);
           writer.reset();
@@ -401,7 +401,7 @@ public class TsFileProcessor {
         writer.mark();
         endFile();
       } catch (IOException | TsFileProcessorException e) {
-        StorageEngine.getInstance().setReadOnly(true);
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           writer.reset();
         } catch (IOException e1) {

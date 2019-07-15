@@ -47,7 +47,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private final Runnable forceTask = () -> {
       while (true) {
-        if (StorageEngine.getInstance().isReadOnly()) {
+        if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
           return;
         }
         if (Thread.interrupted()) {

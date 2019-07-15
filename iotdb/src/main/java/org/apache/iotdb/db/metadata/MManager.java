@@ -511,9 +511,6 @@ public class MManager {
    * function for setting storage level of the given path to mTree.
    */
   public void setStorageLevelToMTree(String path) throws MetadataErrorException {
-    if (initialized && StorageEngine.getInstance().isReadOnly()) {
-      throw new MetadataErrorException("Current system mode is read only, does not support creating Storage Group");
-    }
 
     lock.writeLock().lock();
     try {

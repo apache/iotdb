@@ -303,7 +303,7 @@ public class StorageGroupProcessor {
       }
     } catch (DiskSpaceInsufficientException e) {
       logger.error("disk space is insufficient", e);
-      StorageEngine.getInstance().setReadOnly(true);
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       return false;
     }
 
