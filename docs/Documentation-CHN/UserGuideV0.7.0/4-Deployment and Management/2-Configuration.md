@@ -394,7 +394,7 @@
 |改后生效方式|重启服务器生效|
 
 
-* stat\_monitor\_detect\_freq\_sec
+* stat\_monitor\_detect\_freq\_in\_second
 
 |名字| concurrent\_flush\_thread |
 |:---:|:---|
@@ -404,9 +404,9 @@
 |改后生效方式|重启服务器生效|
 
 
-* stat\_monitor\_retain\_interval\_sec
+* stat\_monitor\_retain\_interval\_in\_second
 
-|名字| stat\_monitor\_retain\_interval\_sec |
+|名字| stat\_monitor\_retain\_interval\_in\_second |
 |:---:|:---|
 |描述| 系统统计信息的保留时间（以秒为单位），超过保留时间范围的统计数据将被定时清理。|
 |类型| Int32 |
