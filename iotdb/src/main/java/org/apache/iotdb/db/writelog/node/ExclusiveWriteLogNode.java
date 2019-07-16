@@ -217,8 +217,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       try {
         getCurrentFileWriter().write(logBuffer);
       } catch (IOException e) {
-        StorageEngine.getInstance().setReadOnly(true);
-        logger.error("Log node {} sync failed", identifier, e);
+        logger.error("Log node {} sync failed, change system mode to read-only", identifier, e);
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         return;
       }
       logBuffer.clear();

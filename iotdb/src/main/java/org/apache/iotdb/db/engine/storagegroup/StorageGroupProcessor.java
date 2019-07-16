@@ -304,8 +304,8 @@ public class StorageGroupProcessor {
         tsFileProcessor = workUnSequenceTsFileProcessor;
       }
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("disk space is insufficient", e);
-      StorageEngine.getInstance().setReadOnly(true);
+      logger.error("disk space is insufficient when creating TsFile processor, change system mode to read-only", e);
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       return false;
     }
 
