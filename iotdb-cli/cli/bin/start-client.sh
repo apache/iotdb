@@ -48,13 +48,13 @@ else
     JAVA=java
 fi
 
-PARAMETERS=$@
+PARAMETERS="$@"
 
-if [ $# == 0 ]
+if [ $# -eq 0 ]
 then
 	PARAMETERS="-h 127.0.0.1 -p 6667 -u root -pw root"
 fi
+exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 
-exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$PARAMETERS"
 
 exit $?
