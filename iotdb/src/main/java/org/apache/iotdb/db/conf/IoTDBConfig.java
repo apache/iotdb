@@ -194,15 +194,42 @@ public class IoTDBConfig {
    */
   private boolean chunkBufferPoolEnable = false;
 
+  /**
+   * How much memory (in byte) can be used by a single merge task.
+   */
   private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
 
+  /**
+   * How many thread will be set up to perform merges.
+   */
   private int mergeThreadNum = 1;
 
+  /**
+   * When set to true, if some crashed merges are detected during system rebooting, such merges will
+   * be continued, otherwise, the unfinished parts of such merges will not be continued while the
+   * finished parts still remain as they are.
+   */
   private boolean continueMergeAfterReboot = true;
 
+  /**
+   * A global merge will be performed each such interval, that is, each storage group will be merged
+   * (if proper merge candidates can be found). Unit: second.
+   */
   private long mergeIntervalSec = 2 * 3600L;
 
+  /**
+   * When set to true, all merges becomes full merge (the whole SeqFiles are re-written despite how
+   * much they are overflowed). This may increase merge overhead depending on how much the SeqFiles
+   * are overflowed.
+   */
   private boolean forceFullMerge = false;
+
+  /**
+   * During a merge, if a chunk with less number of chunks than this parameter, the chunk will be
+   * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
+   * this threshold and the new chunk will be flushed.
+   */
+  private int chunkMergePointThreshold = 512;
 
   public IoTDBConfig() {
     // empty constructor
@@ -575,5 +602,13 @@ public class IoTDBConfig {
 
   public void setForceFullMerge(boolean forceFullMerge) {
     this.forceFullMerge = forceFullMerge;
+  }
+
+  public int getChunkMergePointThreshold() {
+    return chunkMergePointThreshold;
+  }
+
+  public void setChunkMergePointThreshold(int chunkMergePointThreshold) {
+    this.chunkMergePointThreshold = chunkMergePointThreshold;
   }
 }

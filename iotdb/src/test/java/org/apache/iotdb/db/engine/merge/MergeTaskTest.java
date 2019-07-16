@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
@@ -79,6 +80,28 @@ public class MergeTaskTest extends MergeTest {
     MergeTask mergeTask =
         new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
             true);
+    mergeTask.call();
+
+    QueryContext context = new QueryContext();
+    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    SequenceSeriesReader tsFilesReader = new SequenceSeriesReader(path,
+        Collections.singletonList(seqResources.get(0)),
+        null, context);
+    while (tsFilesReader.hasNext()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
+      }
+    }
+    tsFilesReader.close();
+  }
+
+  @Test
+  public void testChunkNumThreshold() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
+    MergeTask mergeTask =
+        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
+            false);
     mergeTask.call();
 
     QueryContext context = new QueryContext();

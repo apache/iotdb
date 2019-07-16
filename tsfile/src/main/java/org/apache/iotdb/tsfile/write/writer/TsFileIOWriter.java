@@ -414,7 +414,7 @@ public class TsFileIOWriter {
         boolean chunkValid = startTimeIdx < pathChunkStartTimes.size()
             && pathChunkStartTimes.get(startTimeIdx) == chunkMetaData.getStartTime();
         if (!chunkValid) {
-          chunkGroupMetaDataIterator.remove();
+          chunkMetaDataIterator.remove();
           chunkNum--;
           invalidChunkNum++;
         } else {
