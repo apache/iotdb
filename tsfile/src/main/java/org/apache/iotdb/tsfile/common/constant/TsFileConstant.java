@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile.common.constant;
 
-public class SystemConstant {
+public class TsFileConstant {
 
   public static final String TSFILE_SUFFIX = ".tsfile";
   public static final String TSFILE_HOME = "TSFILE_HOME";
@@ -27,5 +27,5 @@ public class SystemConstant {
   public static final String PATH_SEPARATER_NO_REGEX = "\\.";
   public static final String DEFAULT_DELTA_TYPE = "default_delta_type";
 
-  private SystemConstant(){}
+  private TsFileConstant(){}
 }

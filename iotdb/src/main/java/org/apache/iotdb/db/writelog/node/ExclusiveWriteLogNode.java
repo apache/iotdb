@@ -70,7 +70,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.identifier = identifier;
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
-    new File(logDirectory).mkdirs();
+    if (new File(logDirectory).mkdirs()) {
+      logger.info("create the WAL folder {}." + logDirectory);
+    }
   }
 
   @Override
@@ -215,8 +217,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       try {
         getCurrentFileWriter().write(logBuffer);
       } catch (IOException e) {
-        StorageEngine.getInstance().setReadOnly(true);
-        logger.error("Log node {} sync failed", identifier, e);
+        logger.error("Log node {} sync failed, change system mode to read-only", identifier, e);
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         return;
       }
       logBuffer.clear();
@@ -237,7 +239,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void nextFileWriter() {
     fileId++;
     File newFile = new File(logDirectory, WAL_FILE_NAME + fileId);
-    newFile.getParentFile().mkdirs();
+    if (newFile.getParentFile().mkdirs()) {
+      logger.info("create WAL parent folder {}.", newFile.getParent());
+    }
     currentFileWriter = new LogWriter(newFile);
   }
 

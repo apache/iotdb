@@ -37,7 +37,7 @@ import org.apache.iotdb.db.sql.ParseGenerator;
 import org.apache.iotdb.db.sql.parse.AstNode;
 import org.apache.iotdb.db.sql.parse.ParseException;
 import org.apache.iotdb.db.sql.parse.ParseUtils;
-import org.apache.iotdb.tsfile.common.constant.SystemConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.junit.Assert;
@@ -143,16 +143,16 @@ public class LogicalPlanSmallTest {
     MemIntQpExecutor executor = new MemIntQpExecutor();
     Path path1 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d1", "s1"},
-            SystemConstant.PATH_SEPARATOR));
+            TsFileConstant.PATH_SEPARATOR));
     Path path2 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d2", "s1"},
-            SystemConstant.PATH_SEPARATOR));
+            TsFileConstant.PATH_SEPARATOR));
     Path path3 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d3", "s1"},
-            SystemConstant.PATH_SEPARATOR));
+            TsFileConstant.PATH_SEPARATOR));
     Path path4 = new Path(
         new StringContainer(new String[]{"root", "vehicle", "d4", "s1"},
-            SystemConstant.PATH_SEPARATOR));
+            TsFileConstant.PATH_SEPARATOR));
     executor.insert(new InsertPlan(path1.getDevice(), 10, path1.getMeasurement(), "10"));
     executor.insert(new InsertPlan(path2.getDevice(), 10, path2.getMeasurement(), "10"));
     executor.insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));

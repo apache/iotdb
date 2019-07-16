@@ -62,10 +62,6 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   private TreeSet<Long> timeStampUnion = new TreeSet<>();
   private Map<String, List<String>> fakeAllPaths;
 
-  public MemIntQpExecutor() {
-    this.fetchSize.set(5);
-  }
-
   public void setFakeAllPaths(Map<String, List<String>> fakeAllPaths) {
     this.fakeAllPaths = fakeAllPaths;
   }

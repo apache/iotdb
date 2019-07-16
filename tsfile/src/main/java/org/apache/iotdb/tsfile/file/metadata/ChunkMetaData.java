@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -47,9 +48,8 @@ public class ChunkMetaData {
   private TSDataType tsDataType;
 
   /**
-   * version is used to define the order of operations(insertion, deletion, update).
-   * version is set according to its belonging ChunkGroup only when being queried, so it is not
-   * persisted.
+   * version is used to define the order of operations(insertion, deletion, update). version is set
+   * according to its belonging ChunkGroup only when being queried, so it is not persisted.
    */
   private long version;
 
@@ -263,5 +263,25 @@ public class ChunkMetaData {
 
   public void setDeletedAt(long deletedAt) {
     this.deletedAt = deletedAt;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ChunkMetaData that = (ChunkMetaData) o;
+    return offsetOfChunkHeader == that.offsetOfChunkHeader &&
+        numOfPoints == that.numOfPoints &&
+        startTime == that.startTime &&
+        endTime == that.endTime &&
+        version == that.version &&
+        deletedAt == that.deletedAt &&
+        Objects.equals(measurementUid, that.measurementUid) &&
+        tsDataType == that.tsDataType &&
+        Objects.equals(valuesStatistics, that.valuesStatistics);
   }
 }

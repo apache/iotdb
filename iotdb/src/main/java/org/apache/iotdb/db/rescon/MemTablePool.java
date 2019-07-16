@@ -20,6 +20,7 @@ package org.apache.iotdb.db.rescon;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -28,15 +29,11 @@ import org.slf4j.LoggerFactory;
 
 public class MemTablePool {
 
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
   private static final Logger logger = LoggerFactory.getLogger(MemTablePool.class);
 
   private static final Deque<IMemTable> availableMemTables = new ArrayDeque<>();
-
-  /**
-   * >= number of storage group * 2
-   * TODO check this parameter to ensure that capaity * MaxMemTable Size < JVM memory / 2
-   */
-  private static int capacity = IoTDBDescriptor.getInstance().getConfig().getMemtableNumber();
 
   private int size = 0;
 
@@ -47,7 +44,7 @@ public class MemTablePool {
 
   public IMemTable getAvailableMemTable(Object applier) {
     synchronized (availableMemTables) {
-      if (availableMemTables.isEmpty() && size < capacity) {
+      if (availableMemTables.isEmpty() && size < CONFIG.getMaxMemtableNumber()) {
         size++;
         logger.info("generated a new memtable for {}, system memtable size: {}, stack size: {}",
             applier, size, availableMemTables.size());
@@ -74,7 +71,7 @@ public class MemTablePool {
           logger.error("{} fails to wait fot memtables {}, continue to wait", applier, e);
           Thread.currentThread().interrupt();
         }
-        logger.debug("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
+        logger.info("{} has waited for a memtable for {}ms", applier, waitCount++ * WAIT_TIME);
       }
     }
   }
@@ -84,11 +81,23 @@ public class MemTablePool {
       return;
     }
     synchronized (availableMemTables) {
+      // because of dynamic parameter adjust, the max number of memtable may decrease.
+      if (size > CONFIG.getMaxMemtableNumber()) {
+        logger.debug(
+            "Currently the size of available MemTables is {}, the maxmin size of MemTables is {}, discard this MemTable.",
+            CONFIG.getMaxMemtableNumber(), size);
+        size--;
+        return;
+      }
       memTable.clear();
       availableMemTables.push(memTable);
       availableMemTables.notify();
       logger.debug("{} return a memtable, stack size {}", storageGroup, availableMemTables.size());
     }
+  }
+
+  public int getSize() {
+    return size;
   }
 
   public static MemTablePool getInstance() {

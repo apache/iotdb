@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -217,5 +218,28 @@ public class TsDigest {
       reCalculateSerializedSize();
     }
     return serializedSize;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TsDigest digest = (TsDigest) o;
+    if (serializedSize != digest.serializedSize || sizeOfList != digest.sizeOfList
+        || statistics.size() != digest.statistics.size()) {
+      return false;
+    }
+    for (Entry<String, ByteBuffer> entry : statistics.entrySet()) {
+      String key = entry.getKey();
+      ByteBuffer value = entry.getValue();
+      if (!digest.statistics.containsKey(key) || !value.equals(digest.statistics.get(key))) {
+        return false;
+      }
+    }
+    return true;
   }
 }
