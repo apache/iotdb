@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -38,6 +39,8 @@ import org.junit.Before;
 
 abstract class MergeTest {
 
+  int seqFileNum = 5;
+  int unseqFileNum = 5;
   int measurementNum = 10;
   int deviceNum = 10;
   long ptNum = 100;
@@ -49,10 +52,15 @@ abstract class MergeTest {
   List<TsFileResource> seqResources = new ArrayList<>();
   List<TsFileResource> unseqResources = new ArrayList<>();
 
+  private int prevMergeChunkThreshold;
+
   @Before
   public void setUp() throws IOException, WriteProcessException {
+    prevMergeChunkThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getChunkMergePointThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(-1);
     prepareSeries();
-    prepareFiles(5, 5);
+    prepareFiles(seqFileNum, unseqFileNum);
   }
 
   @After
@@ -60,6 +68,7 @@ abstract class MergeTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
+    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(prevMergeChunkThreshold);
   }
 
   void prepareSeries() {
@@ -74,7 +83,7 @@ abstract class MergeTest {
     }
   }
 
-  private void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
+  void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(i + "seq.tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);

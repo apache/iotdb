@@ -24,14 +24,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.junit.Before;
 
 public class MergePerfTest extends MergeTaskTest{
 
-  private int seqFileNum;
-  private int unseqFileNum;
   private double unseqRatio;
 
   private Random random = new Random(System.currentTimeMillis());
@@ -39,16 +37,8 @@ public class MergePerfTest extends MergeTaskTest{
   private long timeConsumption;
   private boolean fullMerge;
 
-  @Before
   @Override
-  public void setUp() throws IOException, WriteProcessException {
-    tempSGDir = new File("tempSG");
-    tempSGDir.mkdirs();
-    prepareSeries();
-    prepareFiles();
-  }
-
-  private void prepareFiles() throws IOException, WriteProcessException {
+  void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(i + "seq.tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
@@ -59,7 +49,7 @@ public class MergePerfTest extends MergeTaskTest{
     long unseqLength = (long) (timeRange * unseqRatio);
     for (int i = 0; i < unseqFileNum; i++) {
       long unseqOffset = (long) ((1.0 - unseqRatio) * random.nextDouble() * timeRange);
-      System.out.println(unseqOffset + "  " + unseqLength);
+      //System.out.println(unseqOffset + "  " + unseqLength);
       File file = new File(i + "unseq.tsfile");
       TsFileResource tsFileResource = new TsFileResource(file);
       unseqResources.add(tsFileResource);
@@ -79,6 +69,7 @@ public class MergePerfTest extends MergeTaskTest{
   }
 
   public static void main(String[] args) throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(-1);
 
     List<Long> timeConsumptions = new ArrayList<>();
     MergePerfTest perfTest = new MergePerfTest();
@@ -90,7 +81,7 @@ public class MergePerfTest extends MergeTaskTest{
     perfTest.unseqRatio = 0.2;
     perfTest.ptNum = 10000;
     perfTest.flushInterval = 1000;
-    perfTest.fullMerge = true;
+    perfTest.fullMerge = false;
 
     for (int i = 0; i < 3; i++) {
       // cache warm-up
@@ -117,7 +108,7 @@ public class MergePerfTest extends MergeTaskTest{
 //    }
 //    double[] doubleParameters = new double[10];
 //    for (int i = 1; i <= 10; i++) {
-//      doubleParameters[i-1] = 0.1 * i;
+//      doubleParameters[i-1] = 0.01 * i;
 //    }
 //    for (double param : doubleParameters) {
 //      perfTest.unseqRatio = param;

@@ -173,7 +173,7 @@ public class ChunkGroupMetaData {
   }
 
   public List<ChunkMetaData> getChunkMetaDataList() {
-    return chunkMetaDataList == null ? null : Collections.unmodifiableList(chunkMetaDataList);
+    return chunkMetaDataList;
   }
 
   @Override

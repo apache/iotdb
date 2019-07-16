@@ -38,12 +38,14 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -74,7 +76,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MergeTask implements Callable<Void> {
 
-  private static final int MIN_CHUNK_POINT_NUM = 4*1024*1024;
+  private static int minChunkPointNum = IoTDBDescriptor.getInstance().getConfig().getChunkMergePointThreshold();
   public static final String MERGE_SUFFIX = ".merge";
   private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
 
@@ -167,16 +169,16 @@ public class MergeTask implements Callable<Void> {
       int unmergedChunkNum = unmergedChunkCnt.getOrDefault(seqFile, 0);
       if (mergedChunkNum >= unmergedChunkNum) {
         // move the unmerged data to the new file
-        if (logger.isDebugEnabled()) {
-          logger.debug("{} moving unmerged data of {} to the merged file", taskName,
-              seqFile.getFile().getName());
+        if (logger.isInfoEnabled()) {
+          logger.info("{} moving unmerged data of {} to the merged file, {} merged chunks, {} "
+                  + "unmerged chunks", taskName, seqFile.getFile().getName(), mergedChunkNum, unmergedChunkNum);
         }
         moveUnmergedToNew(seqFile);
       } else {
         // move the merged data to the old file
-        if (logger.isDebugEnabled()) {
-          logger.debug("{} moving merged data of {} to the old file", taskName,
-              seqFile.getFile().getName());
+        if (logger.isInfoEnabled()) {
+          logger.info("{} moving merged data of {} to the old file {} merged chunks, {} "
+                  + "unmerged chunks", taskName, seqFile.getFile().getName(), mergedChunkNum, unmergedChunkNum);
         }
         moveMergedToOld(seqFile);
       }
@@ -401,7 +403,7 @@ public class MergeTask implements Callable<Void> {
         currTimeValuePair = unseqReader.next();
       }
       for (int i = 0; i < seqFiles.size(); i++) {
-        mergeOneFile(path, i, unseqReader, schema);
+        pathMergeOneFile(path, i, unseqReader, schema);
       }
     } catch (IOException e) {
       logger.error("Cannot read unseq data of {} during merge", path, e);
@@ -414,7 +416,7 @@ public class MergeTask implements Callable<Void> {
     }
   }
 
-  private void mergeOneFile(Path path, int seqFileIdx, IPointReader unseqReader,
+  private void pathMergeOneFile(Path path, int seqFileIdx, IPointReader unseqReader,
       MeasurementSchema measurementSchema)
       throws IOException {
     TsFileResource currTsFile = seqFiles.get(seqFileIdx);
@@ -480,13 +482,13 @@ public class MergeTask implements Callable<Void> {
         unmergedChunkStartTimes.get(currFile).get(path).add(currMeta.getStartTime());
       }
 
-      if (ptWritten >= MIN_CHUNK_POINT_NUM) {
+      if (minChunkPointNum >= 0 && ptWritten >= minChunkPointNum || ptWritten > 0 && minChunkPointNum < 0) {
         // the new chunk's size is large enough and it should be flushed
         chunkWriter.writeToFileWriter(mergeFileWriter);
         ptWritten = 0;
       }
     }
-    if (ptWritten >= 0) {
+    if (ptWritten > 0) {
       // the last merged chunk may still be smaller than the threshold, flush it anyway
       chunkWriter.writeToFileWriter(mergeFileWriter);
     }
@@ -509,7 +511,7 @@ public class MergeTask implements Callable<Void> {
     // a small chunk has been written, this chunk merge with it to create a larger chunk
     // or this chunk is too small and it is not the last chunk, merge it with the next chunk
     boolean chunkTooSmall =
-        ptWritten > 0 || (currMeta.getNumOfPoints() < MIN_CHUNK_POINT_NUM && !isLastChunk);
+        ptWritten > 0 || (minChunkPointNum >= 0 && currMeta.getNumOfPoints() < minChunkPointNum && !isLastChunk);
     boolean chunkModified = currMeta.getDeletedAt() > Long.MIN_VALUE;
     int newPtWritten = ptWritten;
 
@@ -662,6 +664,6 @@ public class MergeTask implements Callable<Void> {
 
   private IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
     return  new ChunkWriterImpl(measurementSchema,
-        new ChunkBuffer(measurementSchema), MIN_CHUNK_POINT_NUM);
+        new ChunkBuffer(measurementSchema), TSFileConfig.pageCheckSizeThreshold);
   }
 }
