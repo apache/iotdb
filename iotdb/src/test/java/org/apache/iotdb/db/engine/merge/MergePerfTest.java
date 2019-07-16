@@ -102,24 +102,24 @@ public class MergePerfTest extends MergeTest{
 //      perfTest.test();
 //      timeConsumptions.add(perfTest.timeConsumption);
 //    }
-    long[] longParameters = new long[10];
-    for (int i = 1; i <= 10; i++) {
-      longParameters[i-1] = i * 200;
-    }
-    for (long param : longParameters) {
-      perfTest.flushInterval = param;
-      perfTest.test();
-      timeConsumptions.add(perfTest.timeConsumption);
-    }
-//    double[] doubleParameters = new double[10];
+//    long[] longParameters = new long[10];
 //    for (int i = 1; i <= 10; i++) {
-//      doubleParameters[i-1] = 0.1 * i;
+//      longParameters[i-1] = i * 200;
 //    }
-//    for (double param : doubleParameters) {
-//      perfTest.unseqRatio = param;
+//    for (long param : longParameters) {
+//      perfTest.flushInterval = param;
 //      perfTest.test();
 //      timeConsumptions.add(perfTest.timeConsumption);
 //    }
+    double[] doubleParameters = new double[10];
+    for (int i = 1; i <= 10; i++) {
+      doubleParameters[i-1] = 0.1 * i;
+    }
+    for (double param : doubleParameters) {
+      perfTest.unseqRatio = param;
+      perfTest.test();
+      timeConsumptions.add(perfTest.timeConsumption);
+    }
 
     System.out.println(timeConsumptions);
   }

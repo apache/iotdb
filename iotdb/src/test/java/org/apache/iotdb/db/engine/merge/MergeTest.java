@@ -102,13 +102,14 @@ abstract class MergeTest {
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
 
-  private void removeFiles() {
+  private void removeFiles() throws IOException {
     for (TsFileResource tsFileResource : seqResources) {
       tsFileResource.remove();
     }
     for (TsFileResource tsFileResource : unseqResources) {
       tsFileResource.remove();
     }
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     FileReaderManager.getInstance().stop();
   }
 

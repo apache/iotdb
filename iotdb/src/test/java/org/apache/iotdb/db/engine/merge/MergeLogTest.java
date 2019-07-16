@@ -27,10 +27,29 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
-public class MergeLogTest extends MergeTaskTest {
+public class MergeLogTest extends MergeTest {
+
+  File tempSGDir;
+
+  @Before
+  public void setUp() throws IOException, WriteProcessException {
+    super.setUp();
+    tempSGDir = new File("tempSG");
+    tempSGDir.mkdirs();
+  }
+
+  @After
+  public void tearDown() throws IOException {
+    super.tearDown();
+    FileUtils.deleteDirectory(tempSGDir);FileUtils.deleteDirectory(tempSGDir);
+  }
 
   @Test
   public void testMergeLog() throws Exception {

@@ -67,7 +67,7 @@ public class MergeFileSelectorTest extends MergeTest{
   @Test
   public void testRestrictedSelection() throws MergeException {
     MergeFileSelector mergeFileSelector = new MergeFileSelector(seqResources, unseqResources,
-        5000);
+        400000);
     List[] result = mergeFileSelector.doSelect();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
