@@ -135,8 +135,6 @@ public class WinClient extends AbstractClient {
         .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-
-      //wmx
       TIMESTAMP_PRECISION = properties.getTimestampPrecision();
 
       displayLogo(properties.getVersion());

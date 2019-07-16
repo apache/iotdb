@@ -892,10 +892,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
-
-    //wmx
     properties.setTimestampPrecision(IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
-
     return properties;
   }
 

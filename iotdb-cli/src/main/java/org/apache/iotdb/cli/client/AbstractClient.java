@@ -92,8 +92,6 @@ public abstract class AbstractClient {
   protected static int maxTimeLength = ISO_DATETIME_LEN;
   protected static int maxValueLength = 15;
   protected static boolean isQuit = false;
-
-  //wmx
   protected static String TIMESTAMP_PRECISION = "ms";
 
   /**
@@ -223,7 +221,6 @@ public abstract class AbstractClient {
     printCount(isShow, res, cnt);
   }
 
-  //wmx
   protected static String getTimestampPrecision() {
     return TIMESTAMP_PRECISION;
   }
@@ -350,7 +347,6 @@ public abstract class AbstractClient {
     return options;
   }
 
-  //wmx
   public static String getInstantWithPrecision(DateTimeFormatter formatter,
                                                long timestamp, String timestampPrecision, ZoneId zoneid){
 

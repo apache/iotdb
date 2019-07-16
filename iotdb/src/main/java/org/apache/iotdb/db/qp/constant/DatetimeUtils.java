@@ -81,7 +81,6 @@ public class DatetimeUtils {
             .appendValue(ChronoField.MILLI_OF_SECOND, 3).optionalEnd().toFormatter();
   }
 
-  //wmx
   /**
    *  such as '10:15:30' or '10:15:30.123456'.
    */
@@ -94,7 +93,6 @@ public class DatetimeUtils {
             .appendValue(ChronoField.MICRO_OF_SECOND, 6).optionalEnd().toFormatter();
   }
 
-  //wmx
   /**
    *  such as '10:15:30' or '10:15:30.123456789'.
    */
@@ -119,7 +117,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011-12-03T10:15:30+01:00' or '2011-12-03T10:15:30.123456+01:00'.
    */
@@ -132,7 +129,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011-12-03T10:15:30+01:00' or '2011-12-03T10:15:30.123456789+01:00'.
    */
@@ -157,7 +153,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011/12/03T10:15:30+01:00' or '2011/12/03T10:15:30.123456+01:00'.
    */
@@ -170,7 +165,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011/12/03T10:15:30+01:00' or '2011/12/03T10:15:30.123456789+01:00'.
    */
@@ -195,7 +189,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011.12.03T10:15:30+01:00' or '2011.12.03T10:15:30.123456+01:00'.
    */
@@ -208,7 +201,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011.12.03T10:15:30+01:00' or '2011.12.03T10:15:30.123456789+01:00'.
    */
@@ -232,7 +224,6 @@ public class DatetimeUtils {
             .appendOffsetId().toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011-12-03 10:15:30+01:00' or '2011-12-03 10:15:30.123456+01:00'.
    */
@@ -244,7 +235,6 @@ public class DatetimeUtils {
             .appendOffsetId().toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011-12-03 10:15:30+01:00' or '2011-12-03 10:15:30.123456789+01:00'.
    */
@@ -269,7 +259,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011/12/03 10:15:30+01:00' or '2011/12/03 10:15:30.123456+01:00'.
    */
@@ -283,7 +272,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011/12/03 10:15:30+01:00' or '2011/12/03 10:15:30.123456789+01:00'.
    */
@@ -309,7 +297,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011.12.03 10:15:30+01:00' or '2011.12.03 10:15:30.123456+01:00'.
    */
@@ -322,7 +309,6 @@ public class DatetimeUtils {
             .toFormatter();
   }
 
-  //wmx
   /**
    * such as '2011.12.03 10:15:30+01:00' or '2011.12.03 10:15:30.123456789+01:00'.
    */
@@ -342,13 +328,11 @@ public class DatetimeUtils {
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_MS)
 
-          //wmx
           /**
            * such as '2011-12-03T10:15:30+01:00' or '2011-12-03T10:15:30.123456+01:00'.
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_US)
 
-          //wmx
           /**
            * such as '2011-12-03T10:15:30+01:00' or '2011-12-03T10:15:30.123456789+01:00'.
            */
@@ -359,13 +343,11 @@ public class DatetimeUtils {
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_SLASH)
 
-          //wmx
           /**
            * such as '2011/12/03T10:15:30+01:00' or '2011/12/03T10:15:30.123456+01:00'.
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_SLASH_US)
 
-          //wmx
           /**
            * such as '2011/12/03T10:15:30+01:00' or '2011/12/03T10:15:30.123456789+01:00'.
            */
@@ -376,13 +358,11 @@ public class DatetimeUtils {
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT)
 
-          //wmx
           /**
            * such as '2011.12.03T10:15:30+01:00' or '2011.12.03T10:15:30.123456+01:00'.
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_US)
 
-          //wmx
           /**
            * such as '2011.12.03T10:15:30+01:00' or '2011.12.03T10:15:30.123456789+01:00'.
            */
@@ -393,13 +373,11 @@ public class DatetimeUtils {
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_SPACE)
 
-          //wmx
           /**
            * such as '2011-12-03 10:15:30+01:00' or '2011-12-03 10:15:30.123456+01:00'.
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_SPACE_US)
 
-          //wmx
           /**
            * such as '2011-12-03 10:15:30+01:00' or '2011-12-03 10:15:30.123456789+01:00'.
            */
@@ -410,13 +388,11 @@ public class DatetimeUtils {
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_SLASH_WITH_SPACE)
 
-          //wmx
           /**
            * such as '2011/12/03 10:15:30+01:00' or '2011/12/03 10:15:30.123456+01:00'.
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_SLASH_WITH_SPACE_US)
 
-          //wmx
           /**
            * such as '2011/12/03 10:15:30+01:00' or '2011/12/03 10:15:30.123456789+01:00'.
            */
@@ -427,13 +403,11 @@ public class DatetimeUtils {
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE)
 
-          //wmx
           /**
            * such as '2011.12.03 10:15:30+01:00' or '2011.12.03 10:15:30.123456+01:00'.
            */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE_US)
 
-          //wmx
           /**
            * such as '2011.12.03 10:15:30+01:00' or '2011.12.03 10:15:30.123456789+01:00'.
            */
@@ -444,7 +418,6 @@ public class DatetimeUtils {
     return convertDatetimeStrToMillisecond(str, toZoneOffset(zoneId), 0);
   }
 
-  //wmx
   public static long getInstantWithPrecision(String str, String timestampPrecision){
     /* str have dot */
     if (str.substring(20) != "") {
@@ -483,13 +456,11 @@ public class DatetimeUtils {
   }
 
   /**
-   * //wmx
    * convert date time string to millisecond, microsecond or nanosecond.
    */
   public static long convertDatetimeStrToMillisecond(String str, ZoneOffset offset, int depth)
           throws LogicalOperatorException {
 
-    //wmx
     String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
 
     if (depth >= 2){
@@ -506,7 +477,6 @@ public class DatetimeUtils {
               String.format("%s with [time-region] at end is not supported now, "
                       + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00", str));
     }
-    //wmx
     return getInstantWithPrecision(str, timestampPrecision);
   }
 
