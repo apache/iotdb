@@ -39,10 +39,9 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:git://github.com/thulab/iotdb.git</connection>
-        <developerConnection>scm:git:ssh://github.com:thulab/iotdb.git</developerConnection>
-        <url>http://github.com/thulab/iotdb/tree/master</url>
-        <tag>v0.8.0</tag>
+        <connection>scm:git:https://github.com/apache/incubator-iotdb.git</connection>
+        <developerConnection>scm:git:https://github.com/apache/incubator-iotdb.git</developerConnection>
+        <url>https://github.com/apache/incubator-iotdb</url>
     </scm>
     <!-- Properties Management -->
     <properties>
