@@ -103,6 +103,7 @@
                     <excludes>
                         <exclude>example/data/kafka_data.csv</exclude>
                         <exclude>**/*.iml</exclude>
+                        <exclude>**/*.log</exclude>
                     </excludes>
                 </configuration>
             </plugin>
@@ -136,7 +137,7 @@
                                                 </goals>
                                             </pluginExecutionFilter>
                                             <action>
-                                                <ignore />
+                                                <ignore/>
                                             </action>
                                         </pluginExecution>
                                     </pluginExecutions>
