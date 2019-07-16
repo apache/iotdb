@@ -42,7 +42,8 @@
         <connection>scm:git:https://github.com/apache/incubator-iotdb.git</connection>
         <developerConnection>scm:git:https://github.com/apache/incubator-iotdb.git</developerConnection>
         <url>https://github.com/apache/incubator-iotdb</url>
-    </scm>
+      <tag>rel/0.8</tag>
+  </scm>
     <!-- Properties Management -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -242,7 +243,7 @@
                                 </requireJavaVersion>
                                 <!-- Disabled for now as it breaks the ability to build single modules -->
                                 <!--reactorModuleConvergence/-->
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
+                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies" />
                             </rules>
                         </configuration>
                     </execution>
