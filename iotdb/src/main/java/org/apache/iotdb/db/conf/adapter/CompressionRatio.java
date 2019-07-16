@@ -20,6 +20,8 @@ package org.apache.iotdb.db.conf.adapter;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -83,11 +85,11 @@ public class CompressionRatio {
    */
   public synchronized void updateRatio(double currentCompressionRatio) throws IOException {
     File oldFile = new File(directory,
-        String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
+        String.format(Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
     compressionRatioSum += currentCompressionRatio;
     calcTimes++;
     File newFile = new File(directory,
-        String.format(RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
+        String.format(Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
     persist(oldFile, newFile);
     if (CONFIG.isEnableParameterAdapter()) {
       IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters();
