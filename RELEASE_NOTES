@@ -43,9 +43,7 @@ Recover when resource file does not exist while tsfile is complete
 Incompatible changes
 --------------------
 
-Data folder structures
-Unsequence file structure
-Merge unsupported
+If you use the previous unofficial version 0.7.0. It is incompatible with 0.8.0.
 
 
 Miscellaneous changes
