@@ -130,6 +130,10 @@ public class Client extends AbstractClient {
       String s;
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+
+      //wmx
+      TIMESTAMP_PRECISION  = properties.getTimestampPrecision();
+
       displayLogo(properties.getVersion());
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {

@@ -71,6 +71,12 @@ public class IoTDBConfig {
    */
   private int flushWalThreshold = 10000;
 
+  //wmx
+  /**
+   * this variable set timestamp precision as millisecond, microsecond or nanosecond
+   */
+  private String timestampPrecision = "ms";
+
   /**
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call outputStream.force(true) after every each insert
@@ -302,6 +308,10 @@ public class IoTDBConfig {
   void setRpcPort(int rpcPort) {
     this.rpcPort = rpcPort;
   }
+
+  //wmx
+  public void setTimestampPrecision(String timestampPrecision) { this.timestampPrecision = timestampPrecision; }
+  public String getTimestampPrecision(){return timestampPrecision;}
 
   public boolean isEnableWal() {
     return enableWal;

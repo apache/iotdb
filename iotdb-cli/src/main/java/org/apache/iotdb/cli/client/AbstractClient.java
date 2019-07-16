@@ -82,7 +82,7 @@ public abstract class AbstractClient {
   protected static final String SHOW_METADATA_COMMAND = "show timeseries";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 88;
   protected static final String TIMESTAMP_STR = "Time";
-  protected static final int ISO_DATETIME_LEN = 26;
+  protected static final int ISO_DATETIME_LEN = 35;
   protected static final String IMPORT_CMD = "import";
   private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
   private static final String DEFAULT_TIME_FORMAT = "default";
@@ -92,6 +92,10 @@ public abstract class AbstractClient {
   protected static int maxTimeLength = ISO_DATETIME_LEN;
   protected static int maxValueLength = 15;
   protected static boolean isQuit = false;
+
+  //wmx
+  protected static String TIMESTAMP_PRECISION = "ms";
+
   /**
    * control the width of columns for 'show timeseries path' and 'show storage group'.
    * <p>
@@ -219,6 +223,11 @@ public abstract class AbstractClient {
     printCount(isShow, res, cnt);
   }
 
+  //wmx
+  protected static String getTimestampPrecision() {
+    return TIMESTAMP_PRECISION;
+  }
+
   protected static void printCount(boolean isShow, ResultSet res, int cnt) throws SQLException {
     if (isShow) {
       int type = res.getType();
@@ -341,6 +350,45 @@ public abstract class AbstractClient {
     return options;
   }
 
+  //wmx
+  public static String getInstantWithPrecision(DateTimeFormatter formatter,
+                                               long timestamp, String timestampPrecision, ZoneId zoneid){
+
+    if(timestampPrecision.equals("us")){
+      long integer = timestamp / 1000_000;
+      String micros = Long.toString(timestamp % 1000_000);
+      ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(integer), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = micros.length();
+      if(length != 6)
+        for(int i = 0; i < 6 - length; i++)
+          micros = "0" + micros;
+      return datetime.substring(0, 19) + "." + micros + datetime.substring(19);
+    }
+    else if(timestampPrecision.equals("ns")){
+      long integer = timestamp / 1000_000_000;
+      String nanos = Long.toString(timestamp % 1000_000_000);
+      ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(integer), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = nanos.length();
+      if(length != 9)
+        for(int i = 0; i < 9 - length; i++)
+          nanos = "0" + nanos;
+      return datetime.substring(0, 19) + "." + nanos + datetime.substring(19);
+    }
+    else{
+      long integer = timestamp / 1000;
+      String millis = Long.toString(timestamp % 1000);
+      ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(integer), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = millis.length();
+      if(length != 3)
+        for(int i = 0; i < 3 - length; i++)
+          millis= "0" + millis;
+      return datetime.substring(0, 19) + "." + millis + datetime.substring(19);
+    }
+  }
+
   private static String formatDatetime(long timestamp, ZoneId zoneId) {
     ZonedDateTime dateTime;
     switch (timeFormat) {
@@ -349,8 +397,8 @@ public abstract class AbstractClient {
         return Long.toString(timestamp);
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
-        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
-        return dateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        return getInstantWithPrecision(
+                DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, getTimestampPrecision(), zoneId);
       default:
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
         return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));

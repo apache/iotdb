@@ -123,6 +123,9 @@ public class IoTDBDescriptor {
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
+      //wmx
+      conf.setTimestampPrecision(properties.getProperty("timestamp_precision", conf.getTimestampPrecision()));
+
       conf.setEnableParameterAdapter(
           Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
               Boolean.toString(conf.isEnableParameterAdapter()))));
