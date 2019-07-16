@@ -289,11 +289,11 @@ public class MergeTask implements Callable<Void> {
       try ( TsFileSequenceReader newFileReader =
           new TsFileSequenceReader(newFileWriter.getFile().getPath())) {
         ChunkLoader chunkLoader = new ChunkLoaderImpl(newFileReader);
-        List<ChunkGroupMetaData> chunkGroupMetaDatas = newFileWriter.getChunkGroupMetaDatas();
+        List<ChunkGroupMetaData> chunkGroupMetadataList = newFileWriter.getChunkGroupMetaDatas();
         if (logger.isDebugEnabled()) {
-          logger.debug("{} find {} merged chunk groups", taskName, chunkGroupMetaDatas.size());
+          logger.debug("{} find {} merged chunk groups", taskName, chunkGroupMetadataList.size());
         }
-        for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDatas) {
+        for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetadataList) {
           writeMergedChunkGroup(chunkGroupMetaData, chunkLoader, oldFileWriter);
         }
       }
@@ -492,13 +492,17 @@ public class MergeTask implements Callable<Void> {
       // the last merged chunk may still be smaller than the threshold, flush it anyway
       chunkWriter.writeToFileWriter(mergeFileWriter);
     }
-    int finalMergedChunkNum = mergedChunkNum;
-    int finalUnmergedChunkNum = unmergedChunkNum;
-    mergedChunkCnt.compute(currFile, (tsFileResource, anInt) -> anInt == null ? finalMergedChunkNum
-        : anInt + finalMergedChunkNum);
-    unmergedChunkCnt.compute(currFile, (tsFileResource, anInt) -> anInt == null ? finalUnmergedChunkNum
-        : anInt + finalUnmergedChunkNum);
+    updateChunkCounts(currFile, mergedChunkNum, unmergedChunkNum);
+
     return mergedChunkNum > 0;
+  }
+
+  private void updateChunkCounts(TsFileResource currFile, int newMergedChunkNum,
+      int newUnmergedChunkNum) {
+    mergedChunkCnt.compute(currFile, (tsFileResource, anInt) -> anInt == null ? newMergedChunkNum
+        : anInt + newMergedChunkNum);
+    unmergedChunkCnt.compute(currFile, (tsFileResource, anInt) -> anInt == null ? newUnmergedChunkNum
+        : anInt + newUnmergedChunkNum);
   }
 
   private int writeChunk(long chunkLimitTime, int ptWritten, ChunkLoader chunkLoader,

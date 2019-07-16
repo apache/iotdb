@@ -58,8 +58,8 @@ public class MergeFileSelector {
   private long maxSeqFileCost;
   private long tempMaxSeqFileCost;
 
-  private Map<TsFileResource, Long> costMap = new HashMap<>();
-  private Map<TsFileResource, Long> tightCostMap = new HashMap<>();
+  private Map<TsFileResource, Long> fileMetaCostMap = new HashMap<>();
+  private Map<TsFileResource, Long> maxSeriesCostMap = new HashMap<>();
 
   private List<TsFileResource> selectedUnseqFiles = new ArrayList<>();
   private List<TsFileResource> selectedSeqFiles = new ArrayList<>();
@@ -70,7 +70,6 @@ public class MergeFileSelector {
 
   private boolean[] seqSelected;
   private boolean[] unseqSelected;
-
 
   public MergeFileSelector(
       List<TsFileResource> seqFiles,
@@ -95,7 +94,7 @@ public class MergeFileSelector {
    *    when reading a timeseries from the seqFiles) is the total estimation of all seqFiles; for
    *    an unseqFile, since the merge reader may read all its chunks to perform a merge read, the
    *    whole file may be loaded into memory and for the same reason of writing series, so we use
-   *    the file's length pluses its metadata size as the maximum estimation.
+   *    the file's length as the maximum estimation.
    *    The tight estimation: based on the rough estimation, we scan the file's meta data to
    *    count the number of chunks for each series, and the series which have the most chunks in
    *    the file and its chunk proportion to shrink the rough estimation.
@@ -195,19 +194,12 @@ public class MergeFileSelector {
   private long calculateMemoryCost(TsFileResource tmpSelectedUnseqFile,
       List<Integer> tmpSelectedSeqFiles) throws IOException {
     long cost = 0;
-    Long fileCost = costMap.get(tmpSelectedUnseqFile);
-    if (fileCost == null) {
-      fileCost = calculateUnseqMemoryCost(tmpSelectedUnseqFile);
-      costMap.put(tmpSelectedUnseqFile, fileCost);
-    }
+    Long fileCost = calculateUnseqMemoryCost(tmpSelectedUnseqFile);
     cost += fileCost;
+
     for (Integer seqFileIdx : tmpSelectedSeqFiles) {
       TsFileResource seqFile = seqFiles.get(seqFileIdx);
-      fileCost = costMap.get(seqFile);
-      if (fileCost == null) {
-        fileCost = calculateSeqMemoryCost(seqFile);
-        costMap.put(seqFile, fileCost);
-      }
+      fileCost = calculateSeqMemoryCost(seqFile);
       if (fileCost > tempMaxSeqFileCost) {
         // only one file will be read at the same time, so only the largest one is recorded here
         cost -= tempMaxSeqFileCost;
@@ -223,19 +215,12 @@ public class MergeFileSelector {
   private long calculateTightMemoryCost(TsFileResource tmpSelectedUnseqFile,
       List<Integer> tmpSelectedSeqFiles) throws IOException {
     long cost = 0;
-    Long fileCost = tightCostMap.get(tmpSelectedUnseqFile);
-    if (fileCost == null) {
-      fileCost = calculateTightUnseqMemoryCost(tmpSelectedUnseqFile);
-      tightCostMap.put(tmpSelectedUnseqFile, fileCost);
-    }
+    Long fileCost = calculateTightUnseqMemoryCost(tmpSelectedUnseqFile);
     cost += fileCost;
+
     for (Integer seqFileIdx : tmpSelectedSeqFiles) {
       TsFileResource seqFile = seqFiles.get(seqFileIdx);
-      fileCost = tightCostMap.get(seqFile);
-      if (fileCost == null) {
-        fileCost = calculateTightSeqMemoryCost(seqFile);
-        tightCostMap.put(seqFile, fileCost);
-      }
+      fileCost = calculateTightSeqMemoryCost(seqFile);
       if (fileCost > tempMaxSeqFileCost) {
         // only one file will be read at the same time, so only the largest one is recorded here
         cost -= tempMaxSeqFileCost;
@@ -243,7 +228,8 @@ public class MergeFileSelector {
         tempMaxSeqFileCost = fileCost;
       }
       // but writing data into a new file may generate the same amount of metadata
-      cost += fileCost;
+      long fileMetaSize = fileMetaCostMap.get(seqFile);
+      cost += fileMetaSize;
     }
     return cost;
   }
@@ -257,22 +243,26 @@ public class MergeFileSelector {
   }
 
   private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
-    long minPos = Long.MAX_VALUE;
-    TsFileSequenceReader sequenceReader = getReader(seqFile);
-    TsFileMetaData fileMetaData = sequenceReader.readFileMetadata();
-    Map<String, TsDeviceMetadataIndex> deviceMap = fileMetaData.getDeviceMap();
-    for (TsDeviceMetadataIndex metadataIndex : deviceMap.values()) {
-      minPos = metadataIndex.getOffset() < minPos ? metadataIndex.getOffset() : minPos;
+    Long cost = fileMetaCostMap.get(seqFile);
+    if (cost == null) {
+      long minPos = Long.MAX_VALUE;
+      TsFileSequenceReader sequenceReader = getReader(seqFile);
+      TsFileMetaData fileMetaData = sequenceReader.readFileMetadata();
+      Map<String, TsDeviceMetadataIndex> deviceMap = fileMetaData.getDeviceMap();
+      for (TsDeviceMetadataIndex metadataIndex : deviceMap.values()) {
+        minPos = metadataIndex.getOffset() < minPos ? metadataIndex.getOffset() : minPos;
+      }
+      cost = seqFile.getFileSize() - minPos;
+      fileMetaCostMap.put(seqFile, cost);
     }
-    return seqFile.getFileSize() - minPos;
+    return cost;
   }
 
   // the worst case is when the file contains only one series and all chunks and chunkMetadata
   // will be read into memory to perform a merge, so almost the whole file will be loaded into
-  // memory and writing those chunks to a new file creating new metadata, so the metadata is doubled
-  // in the worst case
+  // memory
   private long calculateUnseqMemoryCost(TsFileResource unseqFile) throws IOException {
-    long cost = unseqFile.getFileSize() + calculateMetadataSize(unseqFile);
+    long cost = unseqFile.getFileSize();
     logger.debug(LOG_FILE_COST, unseqFile, cost);
     return cost;
   }
@@ -281,10 +271,14 @@ public class MergeFileSelector {
   // its proportion among all series to get a maximum estimation
   private long calculateTightSeqMemoryCost(TsFileResource seqFile)
       throws IOException {
-    long[] chunkNums = findLargestSeriesChunkNum(seqFile);
-    long totalChunkNum = chunkNums[0];
-    long maxChunkNum = chunkNums[1];
-    long cost = calculateMetadataSize(seqFile) * maxChunkNum / totalChunkNum;
+    Long cost = maxSeriesCostMap.get(seqFile);
+    if (cost == null) {
+      long[] chunkNums = findLargestSeriesChunkNum(seqFile);
+      long totalChunkNum = chunkNums[0];
+      long maxChunkNum = chunkNums[1];
+      cost = calculateMetadataSize(seqFile) * maxChunkNum / totalChunkNum;
+      maxSeriesCostMap.put(seqFile, cost);
+    }
     logger.debug(LOG_FILE_COST, seqFile, cost);
     return cost;
   }
@@ -293,10 +287,14 @@ public class MergeFileSelector {
   // its proportion among all series to get a maximum estimation
   private long calculateTightUnseqMemoryCost(TsFileResource unseqFile)
       throws IOException {
-    long[] chunkNums = findLargestSeriesChunkNum(unseqFile);
-    long totalChunkNum = chunkNums[0];
-    long maxChunkNum = chunkNums[1];
-    long cost = calculateUnseqMemoryCost(unseqFile) * maxChunkNum / totalChunkNum;
+    Long cost = maxSeriesCostMap.get(unseqFile);
+    if (cost == null) {
+      long[] chunkNums = findLargestSeriesChunkNum(unseqFile);
+      long totalChunkNum = chunkNums[0];
+      long maxChunkNum = chunkNums[1];
+      cost = calculateUnseqMemoryCost(unseqFile) * maxChunkNum / totalChunkNum;
+      maxSeriesCostMap.put(unseqFile, cost);
+    }
     logger.debug(LOG_FILE_COST, unseqFile, cost);
     return cost;
   }
