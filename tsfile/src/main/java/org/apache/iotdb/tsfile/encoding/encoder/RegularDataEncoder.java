@@ -46,6 +46,7 @@ public abstract class RegularDataEncoder extends Encoder {
   private static final Logger LOGGER = LoggerFactory.getLogger(RegularDataEncoder.class);
   protected ByteArrayOutputStream out;
   protected int blockSize;
+  protected boolean isMissingPoint;
 
   protected int writeIndex = -1;
 
@@ -63,11 +64,34 @@ public abstract class RegularDataEncoder extends Encoder {
 
   protected abstract void reset();
 
-  protected abstract void flushBlockBuffer(ByteArrayOutputStream out) throws IOException;
+  protected abstract void checkMissingPoint(ByteArrayOutputStream out) throws IOException;
+
+  protected abstract void writeBitmap(ByteArrayOutputStream out) throws IOException;
 
   protected void writeHeaderToBytes() throws IOException {
     out.write(BytesUtils.intToBytes(writeIndex));
     writeHeader();
+  }
+
+  protected void flushBlockBuffer(ByteArrayOutputStream out) throws IOException {
+    if (writeIndex == -1) {
+      return;
+    }
+    this.out = out;
+
+    // check if the missing point exists
+    checkMissingPoint(out);
+    // write identifier
+    out.write(BytesUtils.boolToBytes(isMissingPoint));
+    // write bitmap if missing points exist
+    if (isMissingPoint) {
+      writeBitmap(out);
+    }
+    // write header
+    writeHeaderToBytes();
+
+    reset();
+    writeIndex = -1;
   }
 
   /**
@@ -85,15 +109,17 @@ public abstract class RegularDataEncoder extends Encoder {
   public static class IntRegularEncoder extends RegularDataEncoder {
 
     private int[] data;
-    private int[] missingPointData;
-    private int[] regularData;
     private int firstValue;
     private int previousValue;
     private int minDeltaBase;
-    private boolean isMissingPoint;
-    private boolean isLastPack;
+    private int newBlockSize;
     private BitSet bitmap;
 
+    /**
+     * constructor of IntRegularEncoder which is a sub-class of RegularDataEncoder.
+     *
+     * @param size - the number how many numbers to be packed into a block.
+     */
     public IntRegularEncoder() {
       this(BLOCK_DEFAULT_SIZE);
     }
@@ -109,36 +135,9 @@ public abstract class RegularDataEncoder extends Encoder {
     }
 
     @Override
-    protected void flushBlockBuffer(ByteArrayOutputStream out) throws IOException {
-      if (writeIndex == -1) {
-        return;
-      }
-
-      this.out = out;
-      // write last pack
-      if (writeIndex < blockSize) {
-        isLastPack = true;
-        checkMissingPoint(out);
-      }
-      // write identifier
-      out.write(BytesUtils.boolToBytes(isMissingPoint));
-      // write bitmap if missing points exist
-      if (isMissingPoint) {
-        writeBitmap(out);
-      }
-      // write header
-      writeHeaderToBytes();
-
-      reset();
-      writeIndex = -1;
-    }
-
-    @Override
     protected void reset() {
-      blockSize = BLOCK_DEFAULT_SIZE;
       minDeltaBase = Integer.MAX_VALUE;
       isMissingPoint = false;
-      isLastPack = false;
       firstValue = 0;
       previousValue = 0;
     }
@@ -169,6 +168,40 @@ public abstract class RegularDataEncoder extends Encoder {
       return (long) 20 + (writeIndex * 2 / 8) + (writeIndex * 4);
     }
 
+    @Override
+    protected void checkMissingPoint(ByteArrayOutputStream out) throws IOException {
+      // get the new regular data if the missing point exists in the original data
+      if (writeIndex > 1) {
+        previousValue = data[0];
+        minDeltaBase = data[1] - data[0];
+        // calculate minimum elapsed of the data and check whether the missing point exists
+        for (int i = 1; i < writeIndex; i++) {
+          int delta = data[i] - previousValue; // calculate delta
+          if (delta != minDeltaBase) {
+            isMissingPoint = true;
+          }
+          if (delta < minDeltaBase) {
+            minDeltaBase = delta;
+          }
+          previousValue = data[i];
+        }
+      }
+      firstValue = data[0];
+      if (isMissingPoint) {
+        newBlockSize = ((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1;
+        writeIndex = newBlockSize;
+      }
+    }
+
+    @Override
+    protected void writeBitmap(ByteArrayOutputStream out) throws IOException {
+      // generate bitmap
+      data2Diff(data);
+      byte[] bsArr = bitmap.toByteArray();
+      out.write(BytesUtils.intToBytes(bsArr.length));
+      out.write(bsArr);
+    }
+
     /**
      * input a integer or long value.
      *
@@ -182,73 +215,16 @@ public abstract class RegularDataEncoder extends Encoder {
       }
       data[writeIndex++] = value;
       if (writeIndex == blockSize) {
-        checkMissingPoint(out);
-      }
-    }
-
-    private void checkMissingPoint(ByteArrayOutputStream out) throws IOException {
-      // get the new regular data if the missing point exists in the original data
-      data = getRegularData(data);
-      firstValue = data[0];
-      if (isMissingPoint) {
-        writeIndex = data.length;
-      }
-      if (!isLastPack) {
         flush(out);
       }
     }
 
-    private void writeBitmap(ByteArrayOutputStream out) throws IOException {
-      // generate bitmap
-      data2Diff(missingPointData);
-      byte[] bsArr = bitmap.toByteArray();
-      out.write(BytesUtils.intToBytes(bsArr.length));
-      out.write(bsArr);
-    }
-
-    private int[] getRegularData(int[] data) {
-      if (writeIndex > 1) {
-        previousValue = data[0];
-        minDeltaBase = data[1] - data[0];
-        // calculate minimum elapsed of the data and check whether the missing point exists
-        for (int i = 1; i < writeIndex; i++) {
-          calcDelta(data[i]);
-          previousValue = data[i];
-        }
-      }
-      // generate the continious data when the missing point exists
-      if (isMissingPoint) {
-        generateRegularData(data);
-        return regularData;
-      }
-      return data;
-    }
-
-    private void generateRegularData(int[] data) {
-      missingPointData = data;
-      blockSize = (int) (((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1);
-      regularData = new int[blockSize];
-      for (int i = 0; i < blockSize; i++) {
-        regularData[i] = (data[0] + minDeltaBase * i);
-      }
-    }
-
-    private void calcDelta(int value) {
-      int delta = value - previousValue; // calculate delta
-      if (delta != minDeltaBase) {
-        isMissingPoint = true;
-      }
-      if (delta < minDeltaBase) {
-        minDeltaBase = delta;
-      }
-    }
-
     private void data2Diff(int[] missingPointData) {
-      bitmap = new BitSet(regularData.length);
-      bitmap.flip(0, regularData.length);
+      bitmap = new BitSet(newBlockSize);
+      bitmap.flip(0, newBlockSize);
       int offset = 0;
       for (int i = 1; i < missingPointData.length; i++) {
-        long delta = missingPointData[i] - missingPointData[i - 1];
+        int delta = missingPointData[i] - missingPointData[i - 1];
         if (delta != minDeltaBase) {
           int missingPointNum = (int) (delta / minDeltaBase) - 1;
           for (int j = 0; j < missingPointNum; j++) {
@@ -262,13 +238,10 @@ public abstract class RegularDataEncoder extends Encoder {
   public static class LongRegularEncoder extends RegularDataEncoder {
 
     private long[] data;
-    private long[] missingPointData;
-    private long[] regularData;
     private long firstValue;
     private long previousValue;
     private long minDeltaBase;
-    private boolean isMissingPoint;
-    private boolean isLastPack;
+    private int newBlockSize;
     private BitSet bitmap;
 
     public LongRegularEncoder() {
@@ -286,36 +259,9 @@ public abstract class RegularDataEncoder extends Encoder {
     }
 
     @Override
-    protected void flushBlockBuffer(ByteArrayOutputStream out) throws IOException {
-      if (writeIndex == -1) {
-        return;
-      }
-
-      this.out = out;
-      // write last pack
-      if (writeIndex < blockSize) {
-        isLastPack = true;
-        checkMissingPoint(out);
-      }
-      // write identifier
-      out.write(BytesUtils.boolToBytes(isMissingPoint));
-      // write bitmap if missing points exist
-      if (isMissingPoint) {
-        writeBitmap(out);
-      }
-      // write header
-      writeHeaderToBytes();
-
-      reset();
-      writeIndex = -1;
-    }
-
-    @Override
     protected void reset() {
-      blockSize = BLOCK_DEFAULT_SIZE;
       minDeltaBase = Long.MAX_VALUE;
       isMissingPoint = false;
-      isLastPack = false;
       firstValue = 0L;
       previousValue = 0L;
     }
@@ -346,6 +292,40 @@ public abstract class RegularDataEncoder extends Encoder {
       return (long) 28 + (writeIndex * 2 / 8) + (writeIndex * 8);
     }
 
+    @Override
+    protected void checkMissingPoint(ByteArrayOutputStream out) throws IOException {
+      // get the new regular data if the missing point exists in the original data
+      if (writeIndex > 1) {
+        previousValue = data[0];
+        minDeltaBase = data[1] - data[0];
+        // calculate minimum elapsed of the data and check whether the missing point exists
+        for (int i = 1; i < writeIndex; i++) {
+          long delta = data[i] - previousValue; // calculate delta
+          if (delta != minDeltaBase) {
+            isMissingPoint = true;
+          }
+          if (delta < minDeltaBase) {
+            minDeltaBase = delta;
+          }
+          previousValue = data[i];
+        }
+      }
+      firstValue = data[0];
+      if (isMissingPoint) {
+        newBlockSize = (int) (((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1);
+        writeIndex = newBlockSize;
+      }
+    }
+
+    @Override
+    protected void writeBitmap(ByteArrayOutputStream out) throws IOException {
+      // generate bitmap
+      data2Diff(data);
+      byte[] bsArr = bitmap.toByteArray();
+      out.write(BytesUtils.intToBytes(bsArr.length));
+      out.write(bsArr);
+    }
+
     /**
      * input a integer or long value.
      *
@@ -359,70 +339,13 @@ public abstract class RegularDataEncoder extends Encoder {
       }
       data[writeIndex++] = value;
       if (writeIndex == blockSize) {
-        checkMissingPoint(out);
-      }
-    }
-
-    private void checkMissingPoint(ByteArrayOutputStream out) throws IOException {
-      // get the new regular data if the missing point exists in the original data
-      data = getRegularData(data);
-      firstValue = data[0];
-      if (isMissingPoint) {
-        writeIndex = data.length;
-      }
-      if (!isLastPack) {
         flush(out);
       }
     }
 
-    private void writeBitmap(ByteArrayOutputStream out) throws IOException {
-      // generate bitmap
-      data2Diff(missingPointData);
-      byte[] bsArr = bitmap.toByteArray();
-      out.write(BytesUtils.intToBytes(bsArr.length));
-      out.write(bsArr);
-    }
-
-    private long[] getRegularData(long[] data) {
-      if (writeIndex > 1) {
-        previousValue = data[0];
-        minDeltaBase = data[1] - data[0];
-        // calculate minimum elapsed of the data and check whether the missing point exists
-        for (int i = 1; i < writeIndex; i++) {
-          calcDelta(data[i]);
-          previousValue = data[i];
-        }
-      }
-      // generate the continious data when the missing point exists
-      if (isMissingPoint) {
-        generateRegularData(data);
-        return regularData;
-      }
-      return data;
-    }
-
-    private void generateRegularData(long[] data) {
-      missingPointData = data;
-      blockSize = (int) (((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1);
-      regularData = new long[blockSize];
-      for (int i = 0; i < blockSize; i++) {
-        regularData[i] = (data[0] + minDeltaBase * i);
-      }
-    }
-
-    private void calcDelta(long value) {
-      long delta = value - previousValue; // calculate delta
-      if (delta != minDeltaBase) {
-        isMissingPoint = true;
-      }
-      if (delta < minDeltaBase) {
-        minDeltaBase = delta;
-      }
-    }
-
     private void data2Diff(long[] missingPointData) {
-      bitmap = new BitSet(regularData.length);
-      bitmap.flip(0, regularData.length);
+      bitmap = new BitSet(newBlockSize);
+      bitmap.flip(0, newBlockSize);
       int offset = 0;
       for (int i = 1; i < missingPointData.length; i++) {
         long delta = missingPointData[i] - missingPointData[i - 1];
