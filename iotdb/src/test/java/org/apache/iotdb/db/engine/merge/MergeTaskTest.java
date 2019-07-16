@@ -38,7 +38,7 @@ import org.junit.Test;
 
 public class MergeTaskTest extends MergeTest {
 
-  File tempSGDir;
+  private File tempSGDir;
 
   @Before
   public void setUp() throws IOException, WriteProcessException {
@@ -50,7 +50,7 @@ public class MergeTaskTest extends MergeTest {
   @After
   public void tearDown() throws IOException {
     super.tearDown();
-    FileUtils.deleteDirectory(tempSGDir);FileUtils.deleteDirectory(tempSGDir);
+    FileUtils.deleteDirectory(tempSGDir);
   }
 
   @Test
