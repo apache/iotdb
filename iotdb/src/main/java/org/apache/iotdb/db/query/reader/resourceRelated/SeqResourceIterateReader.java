@@ -106,34 +106,43 @@ public class SeqResourceIterateReader extends IterateReader {
   public boolean constructNextReader(int idx) throws IOException {
     TsFileResource tsFileResource = seqResources.get(idx);
     if (tsFileResource.isClosed()) {
-      if (sealedTsFileSatisfied(tsFileResource, filter)) {
-        currentSeriesReader = initSealedTsFileReader(tsFileResource, filter, context);
-        return true;
-      } else {
+      if (isTsFileNotSatisfied(tsFileResource, filter)) {
         return false;
       }
+      currentSeriesReader = initSealedTsFileReader(tsFileResource, filter, context);
+      return true;
     } else {
-      currentSeriesReader = new UnSealedTsFileIterateReader(tsFileResource, filter, enableReverse);
+      // an unsealed sequence TsFile's endTimeMap size may be equal to 0 or greater than 0
+      // If endTimeMap size is 0, conservatively assume that this TsFile might satisfy this filter.
+      // If endTimeMap size is not 0, call isTsFileNotSatisfied to check.
+      if (tsFileResource.getEndTimeMap().size() != 0) {
+        if (isTsFileNotSatisfied(tsFileResource, filter)) {
+          return false;
+        }
+      }
+      currentSeriesReader = new UnSealedTsFileIterateReader(tsFileResource, filter,
+          enableReverse);
       return true;
     }
   }
 
   /**
-   * Returns true if this sealed sequence TsFile's start and end time satisfy the filter condition.
-   * Returns false if not. This method is used to in <code>constructNextReader</code> to check
-   * whether this TsFile can be skipped.
+   * Returns true if the start and end time of the series data in this sequence TsFile do not
+   * satisfy the filter condition. Returns false if satisfy. This method is used to in
+   * <code>constructNextReader</code> to check whether this TsFile can be skipped.
    *
-   * @param sealedTsFile the TsFileResource corresponding to the sealed sequence TsFile
+   * @param tsFile the TsFileResource corresponding to the TsFile
    * @param filter filter condition. Null if no filter.
-   * @return True if the TsFile's start and end time satisfy the filter condition; False if not.
+   * @return True if the TsFile's start and end time do not satisfy the filter condition; False if
+   * satisfy.
    */
-  private boolean sealedTsFileSatisfied(TsFileResource sealedTsFile, Filter filter) {
+  private boolean isTsFileNotSatisfied(TsFileResource tsFile, Filter filter) {
     if (filter == null) {
-      return true;
+      return false;
     }
-    long startTime = sealedTsFile.getStartTimeMap().get(seriesPath.getDevice());
-    long endTime = sealedTsFile.getEndTimeMap().get(seriesPath.getDevice());
-    return filter.satisfyStartEndTime(startTime, endTime);
+    long startTime = tsFile.getStartTimeMap().get(seriesPath.getDevice());
+    long endTime = tsFile.getEndTimeMap().get(seriesPath.getDevice());
+    return !filter.satisfyStartEndTime(startTime, endTime);
   }
 
   private IAggregateReader initSealedTsFileReader(TsFileResource sealedTsFile, Filter filter,

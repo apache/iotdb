@@ -123,6 +123,9 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
   /**
    * Constructs <code>IReaderByTimestamp</code> for this TsFile if it might overlap this
    * <code>timestamp</code>.
+   * <p>
+   * Note that the list of sequence TsFiles is chronologically ordered, so there will be at most one
+   * TsFile that overlaps this timestamp.
    *
    * @param idx the id of the TsFile in the resource list
    * @param timestamp For a sequence TsFile whose endTimeMap is not null, check whether it overlaps
@@ -132,32 +135,37 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
   private boolean constructNextReader(int idx, long timestamp) throws IOException {
     TsFileResource tsFileResource = seqResources.get(idx);
     if (tsFileResource.isClosed()) {
-      // a sealed sequence TsFile's endTimeMap size is greater than 0
-      if (isTsFileSatisfied(tsFileResource, timestamp)) {
-        seriesReader = initSealedTsFileReaderByTimestamp(tsFileResource, context);
-        return true;
-      } else {
+      if (isTsFileNotSatisfied(tsFileResource, timestamp)) {
         return false;
       }
-    } else { // an unsealed sequence TsFile's endTimeMap size may be equal to 0 or greater than 0
+      seriesReader = initSealedTsFileReaderByTimestamp(tsFileResource, context);
+      return true;
+    } else {
+      // an unsealed sequence TsFile's endTimeMap size may be equal to 0 or greater than 0
       // If endTimeMap size is 0, conservatively assume that this TsFile might overlap this timestamp.
-      if (tsFileResource.getEndTimeMap().size() == 0) {
-        seriesReader = new UnSealedTsFileReaderByTimestamp(tsFileResource);
-        return true;
-      } else {
-        // If endTimeMap size is not 0, use it to check whether this TsFile overlaps this timestamp.
-        if (isTsFileSatisfied(tsFileResource, timestamp)) {
-          seriesReader = new UnSealedTsFileReaderByTimestamp(tsFileResource);
-          return true;
-        } else {
+      // If endTimeMap size is not 0, call isTsFileNotSatisfied to check.
+      if (tsFileResource.getEndTimeMap().size() != 0) {
+        if (isTsFileNotSatisfied(tsFileResource, timestamp)) {
           return false;
         }
       }
+      seriesReader = new UnSealedTsFileReaderByTimestamp(tsFileResource);
+      return true;
     }
   }
 
-  private boolean isTsFileSatisfied(TsFileResource tsFile, long timestamp) {
-    return tsFile.getEndTimeMap().get(seriesPath.getDevice()) >= timestamp;
+  /**
+   * Returns true if the end time of the series data in this sequence TsFile is smaller than this
+   * timestamp.
+   * <p>
+   * Note that the list of sequence TsFiles is chronologically ordered, so there will be at most one
+   * TsFile that overlaps this timestamp.
+   * <p>
+   * This method is used to in <code>constructNextReader</code> to check whether this TsFile can be
+   * skipped.
+   */
+  private boolean isTsFileNotSatisfied(TsFileResource tsFile, long timestamp) {
+    return tsFile.getEndTimeMap().get(seriesPath.getDevice()) < timestamp;
   }
 
   private IReaderByTimestamp initSealedTsFileReaderByTimestamp(TsFileResource sealedTsFile,

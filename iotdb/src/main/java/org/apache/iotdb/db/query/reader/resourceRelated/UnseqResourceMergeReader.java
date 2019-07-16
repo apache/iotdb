@@ -53,10 +53,13 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
  */
 public class UnseqResourceMergeReader extends PriorityMergeReader {
 
+  private Path seriesPath;
+
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
       QueryContext context, Filter filter) throws IOException {
-    int priorityValue = 1;
+    this.seriesPath = seriesPath;
 
+    int priorityValue = 1;
     for (TsFileResource tsFileResource : unseqResources) {
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
           .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
@@ -64,6 +67,9 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
       // prepare metaDataList
       List<ChunkMetaData> metaDataList;
       if (tsFileResource.isClosed()) {
+        if (isTsFileNotSatisfied(tsFileResource, filter)) {
+          continue;
+        }
         MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
         metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
         List<Modification> pathModifications = context
@@ -72,6 +78,11 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
       } else {
+        if (tsFileResource.getEndTimeMap().size() != 0) {
+          if (isTsFileNotSatisfied(tsFileResource, filter)) {
+            continue;
+          }
+        }
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
@@ -104,6 +115,25 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
             new MemChunkReader(tsFileResource.getReadOnlyMemChunk(), filter), priorityValue++);
       }
     }
+  }
 
+  /**
+   * Returns true if the start and end time of the series data in this unsequence TsFile do not
+   * satisfy the filter condition. Returns false if satisfy. This method is used to in the
+   * constructor to check whether this TsFile can be skipped.
+   *
+   * @param tsFile the TsFileResource corresponding to the TsFile
+   * @param filter filter condition. Null if no filter.
+   * @return True if the TsFile's start and end time do not satisfy the filter condition; False if
+   * satisfy.
+   */
+  // TODO future work: deduplicate code. See SeqResourceIterateReader.
+  private boolean isTsFileNotSatisfied(TsFileResource tsFile, Filter filter) {
+    if (filter == null) {
+      return false;
+    }
+    long startTime = tsFile.getStartTimeMap().get(seriesPath.getDevice());
+    long endTime = tsFile.getEndTimeMap().get(seriesPath.getDevice());
+    return !filter.satisfyStartEndTime(startTime, endTime);
   }
 }

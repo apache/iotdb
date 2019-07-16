@@ -90,5 +90,8 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
     }
 
     // TODO add external sort when needed
+
+    // TODO future work: create reader when getValueInTimestamp so that resources
+    //  whose start and end time do not satisfy can be skipped.
   }
 }
