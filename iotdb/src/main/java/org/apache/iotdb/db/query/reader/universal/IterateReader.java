@@ -60,8 +60,11 @@ public abstract class IterateReader implements IAggregateReader {
   }
 
   /**
-   * Constructs <code>IAggregateReader</code> for the next data source in order and assigns it to
-   * <code>currentSeriesReader</code>.
+   * If the idx-th data source in order needs reading, construct <code>IAggregateReader</code> for
+   * it, assign to <code>currentSeriesReader</code> and return true. Otherwise, return false.
+   *
+   * @param idx the index of the data source
+   * @return True if the reader is constructed; False if not.
    */
   protected abstract boolean constructNextReader(int idx) throws IOException;
 

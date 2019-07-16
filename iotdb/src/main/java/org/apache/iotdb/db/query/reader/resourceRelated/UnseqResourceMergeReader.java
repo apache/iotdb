@@ -119,10 +119,12 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
 
   /**
    * Returns true if the start and end time of the series data in this unsequence TsFile do not
-   * satisfy the filter condition. Returns false if satisfy. This method is used to in the
-   * constructor to check whether this TsFile can be skipped.
+   * satisfy the filter condition. Returns false if satisfy.
+   * <p>
+   * This method is used to in the constructor function to check whether this TsFile can be
+   * skipped.
    *
-   * @param tsFile the TsFileResource corresponding to the TsFile
+   * @param tsFile the TsFileResource corresponding to this TsFile
    * @param filter filter condition. Null if no filter.
    * @return True if the TsFile's start and end time do not satisfy the filter condition; False if
    * satisfy.

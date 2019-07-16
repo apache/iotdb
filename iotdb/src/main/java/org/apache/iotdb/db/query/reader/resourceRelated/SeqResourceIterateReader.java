@@ -102,6 +102,14 @@ public class SeqResourceIterateReader extends IterateReader {
     this(seriesPath, seqResources, timeFilter, context, false);
   }
 
+  /**
+   * If the idx-th TsFile in the <code>seqResources</code> might satisfy this <code>filter</code>,
+   * then construct <code>IAggregateReader</code> for it, assign to <code>currentSeriesReader</code>
+   * and return true. Otherwise, return false.
+   *
+   * @param idx the index of the TsFile in the resource list
+   * @return True if the reader is constructed; False if not.
+   */
   @Override
   public boolean constructNextReader(int idx) throws IOException {
     TsFileResource tsFileResource = seqResources.get(idx);
@@ -128,10 +136,12 @@ public class SeqResourceIterateReader extends IterateReader {
 
   /**
    * Returns true if the start and end time of the series data in this sequence TsFile do not
-   * satisfy the filter condition. Returns false if satisfy. This method is used to in
-   * <code>constructNextReader</code> to check whether this TsFile can be skipped.
+   * satisfy the filter condition. Returns false if satisfy.
+   * <p>
+   * This method is used to in <code>constructNextReader</code> to check whether this TsFile can be
+   * skipped.
    *
-   * @param tsFile the TsFileResource corresponding to the TsFile
+   * @param tsFile the TsFileResource corresponding to this TsFile
    * @param filter filter condition. Null if no filter.
    * @return True if the TsFile's start and end time do not satisfy the filter condition; False if
    * satisfy.

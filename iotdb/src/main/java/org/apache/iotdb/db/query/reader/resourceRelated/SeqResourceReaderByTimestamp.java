@@ -121,15 +121,15 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
   }
 
   /**
-   * Constructs <code>IReaderByTimestamp</code> for this TsFile if it might overlap this
-   * <code>timestamp</code>.
+   * If the idx-th TsFile in the <code>seqResources</code> might overlap this
+   * <code>timestamp</code>, then construct <code>IReaderByTimestamp</code> for it, assign to the
+   * <code>currentSeriesReader</code> and return true. Otherwise, return false.
    * <p>
    * Note that the list of sequence TsFiles is chronologically ordered, so there will be at most one
    * TsFile that overlaps this timestamp.
    *
-   * @param idx the id of the TsFile in the resource list
-   * @param timestamp For a sequence TsFile whose endTimeMap is not null, check whether it overlaps
-   * this timestamp. If definitely not, do not construct the reader for it.
+   * @param idx the index of the TsFile in the resource list
+   * @param timestamp check whether or not to construct the reader according to this timestamp
    * @return True if the reader is constructed; False if not.
    */
   private boolean constructNextReader(int idx, long timestamp) throws IOException {
@@ -158,8 +158,8 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
    * Returns true if the end time of the series data in this sequence TsFile is smaller than this
    * timestamp.
    * <p>
-   * Note that the list of sequence TsFiles is chronologically ordered, so there will be at most one
-   * TsFile that overlaps this timestamp.
+   * Note that <code>seqResources</code> is a list of chronologically ordered sequence TsFiles, so
+   * there will be at most one TsFile that overlaps this timestamp.
    * <p>
    * This method is used to in <code>constructNextReader</code> to check whether this TsFile can be
    * skipped.
