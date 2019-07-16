@@ -50,8 +50,7 @@ public class MergeTaskTest extends MergeTest {
   @After
   public void tearDown() throws IOException {
     super.tearDown();
-    FileUtils.deleteDirectory(tempSGDir);
-
+    FileUtils.deleteDirectory(tempSGDir);FileUtils.deleteDirectory(tempSGDir);
   }
 
   @Test
