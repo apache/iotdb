@@ -48,3 +48,6 @@
 * 2-Reference
 # Chapter 6: JDBC API
 * 1-JDBC API
+# Chapter 7: TsFile Usage
+* 1-Installation
+* 2-Usage
