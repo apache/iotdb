@@ -24,6 +24,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -60,7 +61,7 @@ public class ExceptionBuilder {
    */
   public void loadInfo(String filePath) {
     try(InputStream in = new BufferedInputStream(new FileInputStream(filePath))){
-      properties.load(new InputStreamReader(in, "utf-8"));
+      properties.load(new InputStreamReader(in, StandardCharsets.UTF_8));
     } catch (IOException e) {
       logger.error(
           "Read file error. File does not exist or file is broken. "
