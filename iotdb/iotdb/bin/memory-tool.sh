@@ -22,15 +22,15 @@ if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
-
-MAIN_CLASS=org.apache.iotdb.cluster.service.nodetool.NodeTool
-
+IOTDB_CONF=${IOTDB_HOME}/conf
+# IOTDB_LOGS=${IOTDB_HOME}/logs
 
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib_cluster/*.jar; do
+for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
+MAIN_CLASS=org.apache.iotdb.db.tools.MemEst.MemEstTool
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
@@ -43,6 +43,6 @@ else
     JAVA=java
 fi
 
-exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback-tool.xml"
 
-exit $?
+exec "$JAVA" $iotdb_parms -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
