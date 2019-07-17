@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
@@ -43,17 +42,32 @@ public class DeviceMetaDataCache {
 
   private static StorageEngine storageEngine = StorageEngine.getInstance();
 
-  private static final int MEMORY_THRESHOLD_IN_B = (int) (50*0.3*1024*1024*1024);
+  private static final int MEMORY_THRESHOLD_IN_B = (int) (50 * 0.3 * 1024 * 1024 * 1024);
   /**
-   * key: the file path. value: key: series path, value: list of chunkMetaData.
+   * key: file path dot deviceId dot sensorId.
+   * <p>
+   * value: chunkMetaData list of one timeseries in the file.
    */
-  private LruLinkedHashMap<String, ConcurrentHashMap<Path, List<ChunkMetaData>>> lruCache;
+  private LruLinkedHashMap<String, List<ChunkMetaData>> lruCache;
 
   private AtomicLong cacheHintNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
-  private DeviceMetaDataCache(int cacheSize) {
-    lruCache = new LruLinkedHashMap(cacheSize, true);
+  /**
+   * approximate estimate of chunkMetaData size
+   */
+  private long chunkMetaDataSize = 0;
+
+  private DeviceMetaDataCache(int memoryThreshold) {
+    lruCache = new LruLinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
+      @Override
+      protected long calEntrySize(String key, List<ChunkMetaData> value) {
+        if (chunkMetaDataSize == 0 && value.size() > 0) {
+          chunkMetaDataSize = RamUsageEstimator.sizeOf(value.get(0));
+        }
+        return value.size() * chunkMetaDataSize + key.length();
+      }
+    };
   }
 
   public static DeviceMetaDataCache getInstance() {
@@ -65,11 +79,14 @@ public class DeviceMetaDataCache {
    */
   public List<ChunkMetaData> get(String filePath, Path seriesPath)
       throws IOException {
-    String jointPath = filePath + "." + seriesPath.getDevice();
-    Object jointPathObject = jointPath.intern();
+    StringBuilder builder = new StringBuilder(filePath).append(".").append(seriesPath.getDevice());
+    String devicePathStr = builder.toString();
+    String key = builder.append(".").append(seriesPath.getMeasurement()).toString();
+    Object devicePathObject = devicePathStr.intern();
+
     synchronized (lruCache) {
       cacheRequestNum.incrementAndGet();
-      if (lruCache.containsKey(filePath) && lruCache.get(filePath).containsKey(seriesPath)) {
+      if (lruCache.containsKey(key)) {
         cacheHintNum.incrementAndGet();
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -77,13 +94,14 @@ public class DeviceMetaDataCache {
                   + "the number of hints for cache is {}",
               cacheRequestNum.get(), cacheHintNum.get());
         }
-        return new ArrayList<>(lruCache.get(filePath).get(seriesPath));
+        return new ArrayList<>(lruCache.get(key));
       }
     }
-    synchronized (jointPathObject) {
+    synchronized (devicePathObject) {
       synchronized (lruCache) {
-        if (lruCache.containsKey(filePath) && lruCache.get(filePath).containsKey(seriesPath)) {
-          return new ArrayList<>(lruCache.get(filePath).get(seriesPath));
+        if (lruCache.containsKey(key)) {
+          cacheHintNum.incrementAndGet();
+          return new ArrayList<>(lruCache.get(key));
         }
       }
       if (logger.isDebugEnabled()) {
@@ -97,31 +115,45 @@ public class DeviceMetaDataCache {
       ConcurrentHashMap<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
           .getChunkMetaDataList(calHotSensorSet(seriesPath), blockMetaData);
       synchronized (lruCache) {
-        lruCache.putIfAbsent(filePath, new ConcurrentHashMap<>());
-        lruCache.get(filePath).putAll(chunkMetaData);
+        chunkMetaData.forEach((path, chunkMetaDataList) -> {
+          String k = devicePathStr + "." + path.getMeasurement();
+          if (!lruCache.containsKey(k)) {
+            lruCache.put(k, chunkMetaDataList);
+          }
+        });
         if (chunkMetaData.containsKey(seriesPath)) {
-          return chunkMetaData.get(seriesPath);
+          return new ArrayList<>(chunkMetaData.get(seriesPath));
         }
         return new ArrayList<>();
       }
     }
   }
 
+  /**
+   * calculate the most frequently query sensors set.
+   *
+   * @param seriesPath the series to be queried in a query statements.
+   */
   private Set<String> calHotSensorSet(Path seriesPath) throws IOException {
-    double porportion = lruCache.getUsedMemoryProportion();
-    if (porportion < 0.6) {
+    double usedMemProportion = lruCache.getUsedMemoryProportion();
+
+    if (usedMemProportion < 0.6) {
       return null;
     } else {
-      try {
-        return storageEngine.calTopKSensor(seriesPath.getDevice(), seriesPath.getMeasurement(), 0.1);
+      double hotSensorProportion;
+      if (usedMemProportion < 0.8) {
+        hotSensorProportion = 0.1;
+      } else {
+        hotSensorProportion = 0.05;
       }
-      catch (Exception e){
+      try {
+        return storageEngine
+            .calTopKSensor(seriesPath.getDevice(), seriesPath.getMeasurement(), hotSensorProportion);
+      } catch (Exception e) {
         throw new IOException(e);
       }
-
     }
   }
-
 
   /**
    * clear LRUCache.
@@ -133,7 +165,7 @@ public class DeviceMetaDataCache {
   }
 
   /**
-   * the default LRU cache size is 100. The singleton pattern.
+   * singleton pattern.
    */
   private static class RowGroupBlockMetaDataCacheSingleton {
 

@@ -32,16 +32,45 @@ public class TsFileMetaDataCache {
   private static final Logger logger = LoggerFactory.getLogger(TsFileMetaDataCache.class);
 
 
-  private static final int MEMORY_THRESHOLD_IN_B = (int) (50*0.3*1024*1024*1024);
+  private static final int MEMORY_THRESHOLD_IN_B = (int) (50 * 0.3 * 1024 * 1024 * 1024);
   /**
-   * key: The file seriesPath of tsfile.
+   * key: The file seriesPath of tsfile. value: TsFileMetaData
    */
   private LruLinkedHashMap<String, TsFileMetaData> cache;
   private AtomicLong cacheHintNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
+  /**
+   * estimate size of a deviceIndexMap entry in TsFileMetaData.
+   */
+  private long deviceIndexMapEntrySize = 0;
+  /**
+   * estimate size of measurementSchema entry in TsFileMetaData.
+   */
+  private long measurementSchemaEntrySize = 0;
+  /**
+   * estimate size of version and CreateBy in TsFileMetaData.
+   */
+  private long versionAndCreatebySize = 10;
+
   private TsFileMetaDataCache() {
-    cache = new LruLinkedHashMap<>(MEMORY_THRESHOLD_IN_B, true);
+    cache = new LruLinkedHashMap<String, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
+      @Override
+      protected long calEntrySize(String key, TsFileMetaData value) {
+        if (deviceIndexMapEntrySize == 0 && value.getDeviceMap().size() > 0) {
+          deviceIndexMapEntrySize = RamUsageEstimator
+              .sizeOf(value.getDeviceMap().entrySet().iterator().next());
+        }
+        if (measurementSchemaEntrySize == 0 && value.getMeasurementSchema().size() > 0) {
+          measurementSchemaEntrySize = RamUsageEstimator
+              .sizeOf(value.getMeasurementSchema().entrySet().iterator().next());
+        }
+        long valueSize = value.getDeviceMap().size() * deviceIndexMapEntrySize
+            + measurementSchemaEntrySize * value.getMeasurementSchema().size()
+            + versionAndCreatebySize;
+        return key.length() + valueSize;
+      }
+    };
   }
 
   public static TsFileMetaDataCache getInstance() {
@@ -49,7 +78,7 @@ public class TsFileMetaDataCache {
   }
 
   /**
-   * get the TsFileMetaData for the given path.
+   * get the TsFileMetaData for given path.
    *
    * @param path -given path
    */
@@ -100,7 +129,7 @@ public class TsFileMetaDataCache {
     }
   }
 
-  /*
+  /**
    * Singleton pattern
    */
   private static class TsFileMetaDataCacheHolder {

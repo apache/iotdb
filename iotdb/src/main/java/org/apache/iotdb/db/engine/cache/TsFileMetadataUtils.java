@@ -58,7 +58,7 @@ public class TsFileMetadataUtils {
    *
    * @param filePath -file path
    * @param deviceId -device id
-   * @param fileMetaData -ts file meta data
+   * @param fileMetaData -tsfile meta data
    * @return -device meta data
    */
   public static TsDeviceMetadata getTsRowGroupBlockMetaData(String filePath, String deviceId,

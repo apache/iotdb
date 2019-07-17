@@ -470,15 +470,15 @@ public class StorageGroupProcessor {
    * returns the top k% sensors most frequently used in queries.
    */
   public Set calTopKSensor(String sensorId, double k) {
-    int num = (int) (lruForSensorUsedInQuery.size() * k);
+    int num = (int) (lruForSensorUsedInQuery.size() * k) + 1;
     Set<String> sensorSet = new HashSet<>(num);
-    sensorSet.add(sensorId);
 
     for (String sensor : lruForSensorUsedInQuery) {
-      if (num-- >= 0) {
+      if (--num > 0) {
         sensorSet.add(sensor);
       }
     }
+    sensorSet.add(sensorId);
     return sensorSet;
   }
 

@@ -21,12 +21,11 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * This class is a LRU cache. <b>Note: It's not thread safe.</b>
  */
-public class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
+public abstract class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
   private static final long serialVersionUID = 1290160928914532649L;
   private static final float LOAD_FACTOR_MAP = 0.75f;
@@ -48,7 +47,7 @@ public class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
   @Override
   protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
     if (usedMemInB > maxMemInB) {
-      usedMemInB -= RamUsageEstimator.sizeOf(eldest);
+      usedMemInB -= calEntrySize(eldest.getKey(), eldest.getValue());
       return true;
     } else {
       return false;
@@ -57,10 +56,18 @@ public class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
   @Override
   public V put(K key, V value) {
-    usedMemInB += RamUsageEstimator.sizeOf(key) + RamUsageEstimator.sizeOf(value);
+    usedMemInB += calEntrySize(key, value);
     return super.put(key, value);
   }
 
+  /**
+   * approximate estimate addition size of key and value.
+   */
+  protected abstract long calEntrySize(K key, V value);
+
+  /**
+   * calculate the proportion of used memory.
+   */
   public double getUsedMemoryProportion() {
     return usedMemInB * 1.0 / maxMemInB;
   }
