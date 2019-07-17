@@ -24,7 +24,7 @@ import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithValueFilter;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -52,9 +52,7 @@ public class EngineNodeConstructor extends AbstractNodeConstructor {
       try {
         Filter filter = ((SingleSeriesExpression) expression).getFilter();
         Path path = ((SingleSeriesExpression) expression).getSeriesPath();
-        return new EngineLeafNode(
-            SeriesReaderFactoryImpl.getInstance()
-                .createSeriesReaderWithValueFilter(path, filter, context));
+        return new EngineLeafNode(new SeriesReaderWithValueFilter(path, filter, context));
       } catch (IOException e) {
         throw new StorageEngineException(e);
       }
