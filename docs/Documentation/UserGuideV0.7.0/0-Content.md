@@ -48,6 +48,7 @@
 * 2-Reference
 # Chapter 6: JDBC API
 * 1-JDBC API
-# Chapter 7: TsFile Usage
+# Chapter 7: TsFile
 * 1-Installation
 * 2-Usage
+* 3-Hierarchy
