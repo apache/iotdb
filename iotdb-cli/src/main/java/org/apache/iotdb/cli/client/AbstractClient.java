@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.cli.client;
@@ -46,6 +42,7 @@ import org.apache.iotdb.jdbc.IoTDBQueryResultSet;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.thrift.TException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 public abstract class AbstractClient {
 
@@ -189,7 +186,8 @@ public abstract class AbstractClient {
 
     boolean isShow = res instanceof IoTDBMetadataResultSet;
     if (!isShow && resultSetMetaData.getColumnTypeName(0) != null) {
-      printTimestamp = !res.getMetaData().getColumnTypeName(0).equalsIgnoreCase(NEED_NOT_TO_PRINT_TIMESTAMP);
+      printTimestamp = !res.getMetaData().getColumnTypeName(0)
+          .equalsIgnoreCase(NEED_NOT_TO_PRINT_TIMESTAMP);
     }
     if (res instanceof IoTDBQueryResultSet) {
       printTimestamp = printTimestamp && !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
@@ -347,42 +345,20 @@ public abstract class AbstractClient {
     return options;
   }
 
-  public static String getInstantWithPrecision(DateTimeFormatter formatter,
-                                               long timestamp, String timestampPrecision, ZoneId zoneid){
+  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
+      long timestamp, ZoneId zoneid, TSFileConfig.PrecisionType precisionType) {
 
-    if(timestampPrecision.equals("us")){
-      long integer = timestamp / 1000_000;
-      String micros = Long.toString(timestamp % 1000_000);
-      ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(integer), zoneid);
-      String datetime = dateTime.format(formatter);
-      int length = micros.length();
-      if(length != 6)
-        for(int i = 0; i < 6 - length; i++)
-          micros = "0" + micros;
-      return datetime.substring(0, 19) + "." + micros + datetime.substring(19);
+    long integerofDate = timestamp / precisionType.getOrder();
+    String digits = Long.toString(timestamp % precisionType.getOrder());
+    ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+    String datetime = dateTime.format(formatter);
+    int length = digits.length();
+    if (length != precisionType.getDigit()) {
+      for (int i = 0; i < precisionType.getDigit() - length; i++) {
+        digits = "0" + digits;
+      }
     }
-    else if(timestampPrecision.equals("ns")){
-      long integer = timestamp / 1000_000_000;
-      String nanos = Long.toString(timestamp % 1000_000_000);
-      ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(integer), zoneid);
-      String datetime = dateTime.format(formatter);
-      int length = nanos.length();
-      if(length != 9)
-        for(int i = 0; i < 9 - length; i++)
-          nanos = "0" + nanos;
-      return datetime.substring(0, 19) + "." + nanos + datetime.substring(19);
-    }
-    else{
-      long integer = timestamp / 1000;
-      String millis = Long.toString(timestamp % 1000);
-      ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(integer), zoneid);
-      String datetime = dateTime.format(formatter);
-      int length = millis.length();
-      if(length != 3)
-        for(int i = 0; i < 3 - length; i++)
-          millis= "0" + millis;
-      return datetime.substring(0, 19) + "." + millis + datetime.substring(19);
-    }
+    return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
   }
 
   private static String formatDatetime(long timestamp, ZoneId zoneId) {
@@ -393,8 +369,10 @@ public abstract class AbstractClient {
         return Long.toString(timestamp);
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
-        return getInstantWithPrecision(
-                DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, getTimestampPrecision(), zoneId);
+        TSFileConfig.PrecisionType precisionType = TSFileConfig.PrecisionType
+            .valueofKey(getTimestampPrecision());
+        return parseLongToDateWithPrecision(
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId, precisionType);
       default:
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
         return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));
@@ -756,11 +734,11 @@ public abstract class AbstractClient {
   enum OperationResult {
     STOP_OPER, CONTINUE_OPER, NO_OPER
   }
-  
-  protected static void printf(String format, Object ... args) {
+
+  protected static void printf(String format, Object... args) {
     SCREEN_PRINTER.printf(format, args);
   }
-  
+
   protected static void print(String msg) {
     SCREEN_PRINTER.println(msg);
   }
