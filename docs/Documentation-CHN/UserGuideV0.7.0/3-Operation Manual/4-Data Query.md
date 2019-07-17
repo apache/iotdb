@@ -39,7 +39,7 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 
 该SQL语句的执行结果如下：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577402-b049f080-1ef4-11e9-9741-e0055379baca.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280074-da1c0a00-a7e9-11e9-8eb8-3809428043a8.png"></center>
 
 #### 根据一个时间区间选择多列数据
 
@@ -54,7 +54,7 @@ select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:
 
 该SQL语句的执行结果如下：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577407-b8a22b80-1ef4-11e9-8e7a-c655fcd94912.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280328-40a12800-a7ea-11e9-85b9-3b8db67673a3.png"></center>
 
 #### 按照多个时间区间选择同一设备的多列数据
 
@@ -70,7 +70,7 @@ select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:
 被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为“供电状态（status）”和“温度传感器（temperature）”；该语句指定了两个不同的时间区间，分别为“2017-11-01T00:05:00.000至2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000至2017-11-01T16:37:00.000”；该语句要求选择出满足任意时间区间的被选时间序列的值。
 
 该SQL语句的执行结果如下：
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577418-c657b100-1ef4-11e9-8886-768ec3cda119.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280449-780fd480-a7ea-11e9-8ed0-70fa9dfda80f.png"></center>
 
 
 #### 按照多个时间区间选择不同设备的多列数据
