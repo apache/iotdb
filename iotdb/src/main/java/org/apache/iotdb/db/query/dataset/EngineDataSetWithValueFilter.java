@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 public class EngineDataSetWithValueFilter extends QueryDataSet {
 
   private EngineTimeGenerator timeGenerator;
-  private List<IReaderByTimeStamp> seriesReaderByTimestampList;
+  private List<IReaderByTimestamp> seriesReaderByTimestampList;
   private boolean hasCachedRowRecord;
   private RowRecord cachedRowRecord;
 
@@ -44,7 +44,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
    * @param readers readers in List(IReaderByTimeStamp) structure
    */
   public EngineDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-                                      EngineTimeGenerator timeGenerator, List<IReaderByTimeStamp> readers) {
+      EngineTimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;
@@ -78,7 +78,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
       long timestamp = timeGenerator.next();
       RowRecord rowRecord = new RowRecord(timestamp);
       for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
-        IReaderByTimeStamp reader = seriesReaderByTimestampList.get(i);
+        IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
         Object value = reader.getValueInTimestamp(timestamp);
         if (value == null) {
           rowRecord.addField(new Field(null));
@@ -100,7 +100,7 @@ public class EngineDataSetWithValueFilter extends QueryDataSet {
     return timeGenerator;
   }
 
-  public List<IReaderByTimeStamp> getReaders() {
+  public List<IReaderByTimestamp> getReaders() {
     return seriesReaderByTimestampList;
   }
 }
