@@ -64,9 +64,6 @@ public class EngineExecutor {
     List<IPointReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
-    QueryResourceManager.getInstance()
-        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
-
     for (Path path : queryExpression.getSelectedSeries()) {
 
       // add data type
@@ -96,11 +93,6 @@ public class EngineExecutor {
    * @throws StorageEngineException StorageEngineException
    */
   public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException, IOException {
-
-    QueryResourceManager.getInstance()
-        .beginQueryOfGivenQueryPaths(context.getJobId(), queryExpression.getSelectedSeries());
-    QueryResourceManager.getInstance()
-        .beginQueryOfGivenExpression(context.getJobId(), queryExpression.getExpression());
 
     EngineTimeGenerator timestampGenerator;
     List<IReaderByTimeStamp> readersOfSelectedSeries;

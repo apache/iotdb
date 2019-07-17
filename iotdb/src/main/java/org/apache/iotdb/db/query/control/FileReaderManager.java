@@ -35,7 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FileReaderManager is a singleton, which is used to manage
+ * resource.getSeqFiles()ager is a singleton, which is used to manage
  * all file readers(opened file streams) to ensure that each file is opened at most once.
  */
 public class FileReaderManager implements IService {
