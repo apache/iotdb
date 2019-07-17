@@ -109,52 +109,6 @@ public class QueryResourceManager {
     return jobId;
   }
 
-  /**
-   * Begin query and set query tokens of queryPaths. This method is used for projection
-   * calculation.
-   */
-  public void beginQueryOfGivenQueryPaths(long jobId, List<Path> queryPaths)
-      throws StorageEngineException {
-    Set<String> deviceIdSet = new HashSet<>();
-    queryPaths.forEach(path -> deviceIdSet.add(path.getDevice()));
-
-    for (String deviceId : deviceIdSet) {
-      putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          StorageEngine.getInstance().beginQuery(deviceId));
-    }
-  }
-
-  /**
-   * Begin query and set query tokens of all paths in expression. This method is used in filter
-   * calculation.
-   */
-  public void beginQueryOfGivenExpression(long jobId, IExpression expression)
-      throws StorageEngineException {
-    Set<String> deviceIdSet = new HashSet<>();
-    getUniquePaths(expression, deviceIdSet);
-    for (String deviceId : deviceIdSet) {
-      putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          StorageEngine.getInstance().beginQuery(deviceId));
-    }
-  }
-
-  /**
-   * Begin query and set query tokens of all filter paths in expression. This method is used in
-   * filter calculation.
-   * @param remoteDeviceIdSet device id set which can not handle locally
-   * Note : the method is for cluster
-   */
-  public void beginQueryOfGivenExpression(long jobId, IExpression expression,
-      Set<String> remoteDeviceIdSet) throws StorageEngineException {
-    Set<String> deviceIdSet = new HashSet<>();
-    getUniquePaths(expression, deviceIdSet);
-    deviceIdSet.removeAll(remoteDeviceIdSet);
-    for (String deviceId : deviceIdSet) {
-      putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          StorageEngine.getInstance().beginQuery(deviceId));
-    }
-  }
-
 
   public QueryDataSource getQueryDataSource(Path selectedPath,
       QueryContext context) throws StorageEngineException {
@@ -177,11 +131,6 @@ public class QueryResourceManager {
     if (queryTokensMap.get(jobId) == null) {
       // no resource need to be released.
       return;
-    }
-    for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
-      for (int token : entry.getValue()) {
-        StorageEngine.getInstance().endQuery(entry.getKey(), token);
-      }
     }
     queryTokensMap.remove(jobId);
     // remove usage of opened file paths of current thread

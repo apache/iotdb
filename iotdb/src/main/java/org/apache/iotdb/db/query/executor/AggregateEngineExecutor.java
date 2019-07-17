@@ -86,8 +86,6 @@ public class AggregateEngineExecutor {
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
-    QueryResourceManager
-        .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
 
     List<IAggregateReader> readersOfSequenceData = new ArrayList<>();
     List<IPointReader> readersOfUnSequenceData = new ArrayList<>();
@@ -259,9 +257,6 @@ public class AggregateEngineExecutor {
    */
   public QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, PathErrorException, IOException, ProcessorException {
-    QueryResourceManager
-        .getInstance().beginQueryOfGivenQueryPaths(context.getJobId(), selectedSeries);
-    QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
     List<IReaderByTimeStamp> readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
