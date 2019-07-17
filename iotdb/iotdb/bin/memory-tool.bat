@@ -17,32 +17,41 @@
 @REM under the License.
 @REM
 
+
+@echo off
 if "%OS%" == "Windows_NT" setlocal
 
 pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.service.nodetool.NodeTool
+set IOTDB_CONF=%IOTDB_HOME%\conf
+
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.MemEst.MemEstTool
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
+ -Dlogback.configurationFile="%IOTDB_CONF%\logback-tool.xml"^
  -DIOTDB_HOME=%IOTDB_HOME%
 
-REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%IOTDB_HOME%\lib_cluster\*.jar") do call :append "%%i"
+@REM ***** CLASSPATH library setting *****
+@REM Ensure that any user defined CLASSPATH variables are not used on startup
+set CLASSPATH="%IOTDB_HOME%\lib"
+
+@REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
+for %%i in ("%IOTDB_HOME%\lib\*.jar") do call :append "%%i"
 goto okClasspath
 
 :append
 set CLASSPATH=%CLASSPATH%;%1
 goto :eof
 
-REM -----------------------------------------------------------------------------
+@REM -----------------------------------------------------------------------------
 :okClasspath
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp "%CLASSPATH%" %MAIN_CLASS% %*
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% %JAVA_OPTS% -cp "%CLASSPATH%" %MAIN_CLASS% %*
 
 goto finally
 
