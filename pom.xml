@@ -126,6 +126,11 @@
             <artifactId>jaxb-runtime</artifactId>
             <version>2.4.0-b180725.0644</version>
         </dependency>
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>airline</artifactId>
+            <version>0.8</version>
+        </dependency>
     </dependencies>
     <modules>
         <module>tsfile</module>

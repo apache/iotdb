@@ -131,6 +131,7 @@ public class IoTDBConfigDynamicAdapterTest {
         MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(i / 30 + 1);
       }
     } catch (ConfigAdjusterException e) {
+      System.out.println(i);
       assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
     }
     int j =0;
@@ -144,5 +145,45 @@ public class IoTDBConfigDynamicAdapterTest {
       System.out.println(j);
       assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
     }
+  }
+
+  @Test
+  public void addOrDeleteTimeSeriesSyso2() {
+    int sgNum = 1;
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    long memTableSize = config.getMemtableSizeThreshold();
+    int maxMemtableNumber = config.getMaxMemtableNumber();
+    long tsFileSize = config.getTsFileSizeThreshold();
+    long memory = 1024 * 1024 * 1024L;
+    while (true) {
+      config.setAllocateMemoryForWrite(memory);
+      config.setMemtableSizeThreshold(memTableSize);
+      config.setMaxMemtableNumber(maxMemtableNumber);
+      config.setTsFileSizeThreshold(tsFileSize);
+      IoTDBConfigDynamicAdapter.getInstance().reset();
+      IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
+      MManager.getInstance().clear();
+      for (int i = 1; i <= 50 ; i++) {
+        try {
+          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(sgNum);
+        } catch (ConfigAdjusterException e) {
+          e.printStackTrace();
+        }
+      }
+      int i = 1;
+      try {
+        for (; i <= 10000000; i++) {
+          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+          MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(i / 50 + 1);
+        }
+      } catch (ConfigAdjusterException e) {
+//        System.out.println(i);
+        memory += 1024 * 1024 * 1024L;
+//        System.out.println("Memory for writing: " + memory / 1024 / 1024 / 1024 + "GB");
+        continue;
+      }
+      break;
+    }
+    System.out.println("Memory for writing: " + memory / 1024 / 1024 / 1024 + "GB");
   }
 }
