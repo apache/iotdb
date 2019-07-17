@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.engine.merge.selector;
 
 
-import static org.apache.iotdb.db.engine.merge.MergeUtils.collectFileSeries;
+import static org.apache.iotdb.db.utils.MergeUtils.collectFileSeries;
 
 import java.io.IOException;
 import java.util.ArrayList;

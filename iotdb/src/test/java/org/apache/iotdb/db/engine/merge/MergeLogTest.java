@@ -28,6 +28,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
