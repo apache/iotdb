@@ -89,11 +89,11 @@ public class WriteLogNodeManagerTest {
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
-    logNode.write(bwInsertPlan);
-    logNode.write(deletePlan);
-
     File walFile = new File(logNode.getLogDirectory() + File.separator + "wal1");
     assertTrue(!walFile.exists());
+
+    logNode.write(bwInsertPlan);
+    logNode.write(deletePlan);
 
     Thread.sleep(config.getForceWalPeriodInMs() + 1000);
     assertTrue(walFile.exists());

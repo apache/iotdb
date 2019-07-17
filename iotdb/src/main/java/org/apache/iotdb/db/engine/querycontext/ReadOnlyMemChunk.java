@@ -53,7 +53,7 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
     this.initialized = false;
     this.props = props;
     if (props.containsKey(Encoder.MAX_POINT_NUMBER)) {
-      this.floatPrecision = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
+      this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
     }
   }
 

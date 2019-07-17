@@ -145,7 +145,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     this.fileMetadataSize = fileMetadataSize;
   }
 
-  protected void loadMetadataSize() throws IOException {
+  public void loadMetadataSize() throws IOException {
     ByteBuffer metadataSize = ByteBuffer.allocate(Integer.BYTES);
     tsFileInput.read(metadataSize,
         tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES);

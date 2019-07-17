@@ -21,15 +21,17 @@
 
 <!-- TOC -->
 
-- [Introduction](#introduction)
-- [Configuration](#configuration)
-    - [Sync Receiver](#sync-receiver)
-    - [Sync Sender](#sync-sender)
-- [Usage](#usage)
-    - [Start Sync Receiver](#start-sync-receiver)
-    - [Stop Sync Receiver](#stop-sync-receiver)
-    - [Start Sync Sender](#start-sync-sender)
-    - [Stop Sync Sender](#stop-sync-sender)
+## Outline
+
+- Introduction
+- Configuration
+    - Sync Receiver
+    - Sync Sender
+- Usage
+    - Start Sync Receiver
+    - Stop Sync Receiver
+    - Start Sync Sender
+    - Stop Sync Sender
 
 <!-- /TOC -->
 # Introduction

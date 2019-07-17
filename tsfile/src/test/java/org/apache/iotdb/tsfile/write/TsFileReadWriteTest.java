@@ -25,6 +25,8 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -70,25 +72,25 @@ public class TsFileReadWriteTest {
 
   @Test
   public void intTest() throws IOException, WriteProcessException {
-    writeData(TSDataType.INT32, (i) -> new IntDataPoint("sensor_1", (int) i));
+    writeData(TSDataType.INT32, (i) -> new IntDataPoint("sensor_1", (int) i), TSEncoding.RLE);
     readData((i, field, delta) -> assertEquals(i, field.getIntV()));
   }
 
   @Test
   public void longTest() throws IOException, WriteProcessException {
-    writeData(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i));
+    writeData(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i), TSEncoding.RLE);
     readData((i, field, delta) -> assertEquals(i, field.getLongV()));
   }
 
   @Test
   public void floatTest() throws IOException, WriteProcessException {
-    writeData(TSDataType.FLOAT, (i) -> new FloatDataPoint("sensor_1", (float) i));
+    writeData(TSDataType.FLOAT, (i) -> new FloatDataPoint("sensor_1", (float) i), TSEncoding.RLE);
     readData((i, field, delta) -> assertEquals(i, field.getFloatV(), delta));
   }
 
   @Test
   public void doubleTest() throws IOException, WriteProcessException {
-    writeData(TSDataType.DOUBLE, (i) -> new DoubleDataPoint("sensor_1", (double) i));
+    writeData(TSDataType.DOUBLE, (i) -> new DoubleDataPoint("sensor_1", (double) i), TSEncoding.RLE);
     readData((i, field, delta) -> assertEquals(i, field.getDoubleV(), delta));
   }
 
@@ -120,12 +122,21 @@ public class TsFileReadWriteTest {
     assertTrue(f.delete());
   }
 
-  private void writeData(TSDataType dataType, DataPointProxy proxy) throws IOException, WriteProcessException {
+  @Test
+  public void readMeasurementWithRegularEncodingTest() throws IOException, WriteProcessException {
+    TSFileConfig.timeEncoder = "REGULAR";
+    writeData(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i), TSEncoding.REGULAR);
+    readData((i, field, delta) -> assertEquals(i, field.getLongV()));
+    TSFileConfig.timeEncoder = "TS_2DIFF";
+  }
+
+  private void writeData(TSDataType dataType, DataPointProxy proxy, TSEncoding encodingType)
+          throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_1", dataType, TSEncoding.RLE));
+          .addMeasurement(new MeasurementSchema("sensor_1", dataType, encodingType));
       for (long i = 1; i < floatCount; i++) {
         // construct TSRecord
         TSRecord tsRecord = new TSRecord(i, "device_1");
@@ -163,6 +174,5 @@ public class TsFileReadWriteTest {
   }
   private interface ReadDataPointProxy {
     void assertEqualProxy(long i, Field field, double delta);
-
   }
 }

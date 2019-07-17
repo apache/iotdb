@@ -37,15 +37,33 @@ public class IoTDBConfig {
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
   private String rpcAddress = "0.0.0.0";
+
   /**
    * Port which the JDBC server listens to.
    */
   private int rpcPort = 6667;
 
   /**
+   * Memory allocated for the read process
+   */
+  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 6 / 10;
+
+  /**
+   * Memory allocated for the write process
+   */
+  private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
+
+  /**
+   * Is dynamic parameter adapter enable.
+   */
+  private boolean enableParameterAdapter = true;
+
+  /**
    * Is the write ahead log enable.
    */
   private boolean enableWal = true;
+
+  private volatile boolean readOnly = false;
 
   /**
    * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
@@ -95,8 +113,10 @@ public class IoTDBConfig {
    */
   private String indexFileDir = "data/index";
 
-
-  private int memtableNumber = 20;
+  /**
+   * Maximum MemTable number in MemTable pool.
+   */
+  private int maxMemtableNumber = 20;
 
   /**
    * The maximum concurrent thread number for merging. When the value <=0 or > CPU core number, use
@@ -120,6 +140,11 @@ public class IoTDBConfig {
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
   private long tsFileSizeThreshold = 512 * 1024 * 1024L;
+
+  /**
+   * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
+   */
+  private long memtableSizeThreshold = 128 * 1024 * 1024L;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -391,12 +416,12 @@ public class IoTDBConfig {
     this.fetchSize = fetchSize;
   }
 
-  public int getMemtableNumber() {
-    return memtableNumber;
+  public int getMaxMemtableNumber() {
+    return maxMemtableNumber;
   }
 
-  void setMemtableNumber(int memtableNumber) {
-    this.memtableNumber = memtableNumber;
+  public void setMaxMemtableNumber(int maxMemtableNumber) {
+    this.maxMemtableNumber = maxMemtableNumber;
   }
 
   public int getConcurrentFlushThread() {
@@ -415,7 +440,7 @@ public class IoTDBConfig {
     return tsFileSizeThreshold;
   }
 
-  void setTsFileSizeThreshold(long tsFileSizeThreshold) {
+  public void setTsFileSizeThreshold(long tsFileSizeThreshold) {
     this.tsFileSizeThreshold = tsFileSizeThreshold;
   }
 
@@ -515,6 +540,14 @@ public class IoTDBConfig {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
   }
 
+  public boolean isReadOnly() {
+    return readOnly;
+  }
+
+  public void setReadOnly(boolean readOnly) {
+    this.readOnly = readOnly;
+  }
+
   public String getRpcImplClassName() {
     return rpcImplClassName;
   }
@@ -538,7 +571,6 @@ public class IoTDBConfig {
   void setChunkBufferPoolEnable(boolean chunkBufferPoolEnable) {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
-
 
   public long getMergeMemoryBudget() {
     return mergeMemoryBudget;
@@ -570,6 +602,30 @@ public class IoTDBConfig {
 
   public void setMergeIntervalSec(long mergeIntervalSec) {
     this.mergeIntervalSec = mergeIntervalSec;
+  }
+
+  public boolean isEnableParameterAdapter() {
+    return enableParameterAdapter;
+  }
+
+  public void setEnableParameterAdapter(boolean enableParameterAdapter) {
+    this.enableParameterAdapter = enableParameterAdapter;
+  }
+
+  public long getAllocateMemoryForWrite() {
+    return allocateMemoryForWrite;
+  }
+
+  public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
+    this.allocateMemoryForWrite = allocateMemoryForWrite;
+  }
+
+  public long getAllocateMemoryForRead() {
+    return allocateMemoryForRead;
+  }
+
+  public void setAllocateMemoryForRead(long allocateMemoryForRead) {
+    this.allocateMemoryForRead = allocateMemoryForRead;
   }
 
   public boolean isEnablePerformanceStat() {
@@ -610,5 +666,13 @@ public class IoTDBConfig {
 
   public void setChunkMergePointThreshold(int chunkMergePointThreshold) {
     this.chunkMergePointThreshold = chunkMergePointThreshold;
+  }
+
+  public long getMemtableSizeThreshold() {
+    return memtableSizeThreshold;
+  }
+
+  public void setMemtableSizeThreshold(long memtableSizeThreshold) {
+    this.memtableSizeThreshold = memtableSizeThreshold;
   }
 }

@@ -27,6 +27,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -66,6 +67,7 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.maxNumberOfPointsInPage = 1000;
     tsFileConfig.pageSizeInByte = 1024 * 150;
     tsFileConfig.groupSizeInByte = 1024 * 1000;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
 
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -82,6 +84,7 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     tsFileConfig.pageSizeInByte = pageSizeInByte;
     tsFileConfig.groupSizeInByte = groupSizeInByte;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();
   }

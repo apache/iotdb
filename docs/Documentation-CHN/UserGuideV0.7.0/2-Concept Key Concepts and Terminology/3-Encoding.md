@@ -45,6 +45,12 @@ PLAIN编码，默认的编码方式，即不编码，支持多种数据类型，
 
 GORILLA编码，比较适合编码前后值比较接近的浮点数序列，不适合编码前后波动较大的数据。
 
+* 定频数据编码 (REGULAR)
+
+定频数据编码，仅适用于整形（INT32）和长整型（INT64）的定频数据，且允许数据中有一些点缺失，使用此方法编码定频数据优于二阶差分编码（TS_2DIFF）。
+
+定频数据编码无法用于非定频数据，建议使用二阶差分编码（TS_2DIFF）进行处理。
+
 * 数据类型与编码的对应关系
 
 前文介绍的四种编码适用于不同的数据类型，若对应关系错误，则无法正确创建时间序列。数据类型与支持其编码的编码方式对应关系总结如表格2-3。
@@ -54,8 +60,8 @@ GORILLA编码，比较适合编码前后值比较接近的浮点数序列，不�
 |数据类型	|支持的编码|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF|
-|INT64	|PLAIN, RLE, TS_2DIFF|
+|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR|
+|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN|
