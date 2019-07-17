@@ -110,6 +110,8 @@ public class MergeTask implements Callable<Void> {
   // future feature
   private boolean fullMerge;
 
+  private int totalChunkWritten;
+
   public MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
       String taskName, boolean fullMerge) throws IOException {
@@ -141,6 +143,7 @@ public class MergeTask implements Callable<Void> {
           unseqFiles.size());
     }
     long startTime = System.currentTimeMillis();
+    long totalFileSize = collectFileSizes(seqFiles, unseqFiles);
     this.mergeLogger = new MergeLogger(storageGroupDir);
     logFiles();
 
@@ -152,8 +155,26 @@ public class MergeTask implements Callable<Void> {
 
     cleanUp(true);
     if (logger.isInfoEnabled()) {
-      logger.info("{} ends after {}ms", taskName, System.currentTimeMillis() - startTime);
+      double elapsedTime = (double) (System.currentTimeMillis() - startTime);
+      double byteRate = totalFileSize / elapsedTime / 1024;
+      double seriesRate = unmergedSeries.size() / elapsedTime;
+      double chunkRate = totalChunkWritten / elapsedTime;
+      double fileRate = (seqFiles.size() + unseqFiles.size()) / elapsedTime;
+      logger.info("{} ends after {}ms, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
+              + "fileRate: {}/s",
+          taskName, elapsedTime, byteRate, seriesRate, chunkRate, fileRate);
     }
+  }
+
+  private long collectFileSizes(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+    long totalSize = 0;
+    for (TsFileResource tsFileResource : seqFiles) {
+      totalSize += tsFileResource.getFileSize();
+    }
+    for (TsFileResource tsFileResource : unseqFiles) {
+      totalSize += tsFileResource.getFileSize();
+    }
+    return totalSize;
   }
 
   void mergeFiles(List<TsFileResource> unmergedFiles) throws IOException {
@@ -215,11 +236,11 @@ public class MergeTask implements Callable<Void> {
       mergeOnePath(path);
       mergeLogger.logTSEnd(path);
       mergedCnt ++;
-      if (logger.isDebugEnabled()) {
+      if (logger.isInfoEnabled()) {
         double newProgress = 100 * mergedCnt / (double) (unmergedSeries.size());
         if (newProgress - progress >= 0.01) {
           progress = newProgress;
-          logger.debug("{} has merged {}% series", taskName, progress);
+          logger.info("{} has merged {}% series", taskName, progress);
         }
       }
     }
@@ -548,6 +569,7 @@ public class MergeTask implements Callable<Void> {
       currTimeValuePair = unseqReader.hasNext() ? unseqReader.next() : null;
       cnt ++;
     }
+    totalChunkWritten ++;
     return cnt;
   }
 
@@ -584,6 +606,7 @@ public class MergeTask implements Callable<Void> {
         writeBatchPoint(batchData, i, dataType, chunkWriter);
       }
     }
+    totalChunkWritten ++;
     return chunk.getHeader().getNumOfPages();
   }
 
