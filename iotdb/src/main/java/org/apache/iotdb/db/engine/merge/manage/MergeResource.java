@@ -45,12 +45,18 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+/**
+ * MergeResource manages files and caches of readers, writers, MeasurementSchemas and
+ * modifications to avoid unnecessary object creations and file openings.
+ */
 public class MergeResource {
 
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
 
   // future feature
+  // keeping ChunkMetadata in memory avoids reading them again when we need to move unmerged
+  // chunks to the merged file, but this may consume memory considerably
   private boolean keepChunkMetadata = false;
 
   private QueryContext mergeContext = new QueryContext();
@@ -60,6 +66,7 @@ public class MergeResource {
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Map<TsFileResource, MetadataQuerier> metadataQuerierCache = new HashMap<>();
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
+  private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new HashMap<>();
 
   public MergeResource(
       List<TsFileResource> seqFiles,
@@ -77,10 +84,12 @@ public class MergeResource {
     fileWriterCache.clear();
     modificationCache.clear();
     metadataQuerierCache.clear();
+    measurementSchemaMap.clear();
+    chunkWriterCache.clear();
   }
 
-  public  MeasurementSchema getSchema(Path path) {
-    return measurementSchemaMap.get(path.getMeasurement());
+  public  MeasurementSchema getSchema(String measurementId) {
+    return measurementSchemaMap.get(measurementId);
   }
 
   public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
@@ -117,8 +126,8 @@ public class MergeResource {
   }
 
   public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
-    return  new ChunkWriterImpl(measurementSchema,
-        new ChunkBuffer(measurementSchema), TSFileConfig.pageCheckSizeThreshold);
+    return chunkWriterCache.computeIfAbsent(measurementSchema,
+        k -> new ChunkWriterImpl(k, new ChunkBuffer(k), TSFileConfig.pageCheckSizeThreshold));
   }
 
   public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {

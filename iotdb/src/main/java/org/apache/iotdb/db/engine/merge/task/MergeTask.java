@@ -35,7 +35,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * MergeTask merges given SeqFiles and UnseqFiles into a new one.
+ * MergeTask merges given seqFiles and unseqFiles into a new one, which basically consists of three
+ * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files
+ *        2. move the merged chunks in the temp files back to the seqFiles or move the unmerged
+ *        chunks in the seqFiles int temp files and replace the seqFiles with the temp files.
+ *        3. remove unseqFiles
  */
 public class MergeTask implements Callable<Void> {
 
@@ -51,9 +55,7 @@ public class MergeTask implements Callable<Void> {
   Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes = new HashMap<>();
 
   private MergeCallback callback;
-
   String taskName;
-
   boolean fullMerge;
 
   public MergeTask(List<TsFileResource> seqFiles,
@@ -72,9 +74,10 @@ public class MergeTask implements Callable<Void> {
       doMerge();
     } catch (Exception e) {
       logger.error("Runtime exception in merge {}", taskName, e);
-      resource.setSeqFiles(Collections.emptyList());
-      resource.setUnseqFiles(Collections.emptyList());
-      cleanUp(true);
+      cleanUp(false);
+      // call the callback to make sure the StorageGroup exit merging status, but passing 2
+      // empty file lists to avoid files being deleted.
+      callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME));
       throw e;
     }
     return null;
@@ -89,12 +92,13 @@ public class MergeTask implements Callable<Void> {
     long totalFileSize = MergeUtils.collectFileSizes(resource.getSeqFiles(),
         resource.getUnseqFiles());
     mergeLogger = new MergeLogger(storageGroupDir);
+
     mergeLogger.logFiles(resource);
 
     List<Path> unmergedSeries = MergeUtils.collectPaths(resource);
-    MergeSeriesTask mergeSeriesTask = new MergeSeriesTask(mergedChunkCnt, unmergedChunkCnt,
+    MergeChunkTask mergeChunkTask = new MergeChunkTask(mergedChunkCnt, unmergedChunkCnt,
         unmergedChunkStartTimes, taskName, mergeLogger, resource, fullMerge, unmergedSeries);
-    mergeSeriesTask.mergeSeries();
+    mergeChunkTask.mergeSeries();
 
     MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
         unmergedChunkStartTimes, mergeLogger, resource, resource.getSeqFiles());
@@ -102,19 +106,17 @@ public class MergeTask implements Callable<Void> {
 
     cleanUp(true);
     if (logger.isInfoEnabled()) {
-      double elapsedTime = (double) (System.currentTimeMillis() - startTime);
+      double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
       double byteRate = totalFileSize / elapsedTime / 1024 / 1024 * 1000;
       double seriesRate = unmergedSeries.size() / elapsedTime * 1000;
-      double chunkRate = mergeSeriesTask.totalChunkWritten / elapsedTime * 1000;
+      double chunkRate = mergeChunkTask.totalChunkWritten / elapsedTime * 1000;
       double fileRate =
           (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime * 1000;
-      logger.info("{} ends after {}ms, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
+      logger.info("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
               + "fileRate: {}/s",
           taskName, elapsedTime, byteRate, seriesRate, chunkRate, fileRate);
     }
   }
-
-
 
   void cleanUp(boolean executeCallback) throws IOException {
     logger.info("{} is cleaning up", taskName);
@@ -134,12 +136,11 @@ public class MergeTask implements Callable<Void> {
 
     File logFile = new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME);
     if (executeCallback) {
-      // make sure merge.log is not deleted before unseqFiles are cleared
+      // make sure merge.log is not deleted until unseqFiles are cleared so that when system
+      // reboots, the undeleted files can be deleted again
       callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile);
     } else {
       logFile.delete();
     }
   }
-
-
 }

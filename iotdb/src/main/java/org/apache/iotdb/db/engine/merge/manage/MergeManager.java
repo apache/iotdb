@@ -33,6 +33,10 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * MergeManager provides a ThreadPool to queue and run all merge tasks to restrain the total
+ * resources occupied by merge and manages a Timer to periodically issue a global merge.
+ */
 public class MergeManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MergeManager.class);

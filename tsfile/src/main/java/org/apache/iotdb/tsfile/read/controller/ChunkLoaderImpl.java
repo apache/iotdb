@@ -69,4 +69,8 @@ public class ChunkLoaderImpl implements ChunkLoader {
     reader.close();
   }
 
+  @Override
+  public void clear() {
+    chunkCache.clear();
+  }
 }
