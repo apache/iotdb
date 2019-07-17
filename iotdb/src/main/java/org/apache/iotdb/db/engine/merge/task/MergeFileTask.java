@@ -121,6 +121,7 @@ class MergeFileTask {
 
     seqFile.getMergeQueryLock().writeLock().lock();
     try {
+      resource.removeFileReader(seqFile);
       TsFileIOWriter oldFileWriter;
       try {
         oldFileWriter = new ForceAppendTsFileWriter(seqFile.getFile());
