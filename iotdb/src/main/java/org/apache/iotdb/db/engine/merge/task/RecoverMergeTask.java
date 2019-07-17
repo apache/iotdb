@@ -37,12 +37,15 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * RecoverMergeTask is an extension of MergeTask, which resumes the last merge progress by
+ * scanning merge.log using LogAnalyzer and continue the unfinished merge.
+ */
 public class RecoverMergeTask extends MergeTask {
 
   private static final Logger logger = LoggerFactory.getLogger(RecoverMergeTask.class);
 
   private LogAnalyzer analyzer;
-
 
   public RecoverMergeTask(String storageGroupDir, MergeCallback callback, String taskName,
       boolean fullMerge) throws IOException {
@@ -87,10 +90,10 @@ public class RecoverMergeTask extends MergeTask {
 
   private void resumeAfterFilesLogged(boolean continueMerge) throws IOException {
     if (continueMerge) {
-      resumeMerge();
-      MergeSeriesTask mergeSeriesTask = new MergeSeriesTask(mergedChunkCnt, unmergedChunkCnt,
+      resumeMergeProgress();
+      MergeChunkTask mergeChunkTask = new MergeChunkTask(mergedChunkCnt, unmergedChunkCnt,
           unmergedChunkStartTimes, taskName, mergeLogger, resource, fullMerge, analyzer.getUnmergedPaths());
-      mergeSeriesTask.mergeSeries();
+      mergeChunkTask.mergeSeries();
 
       MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
           unmergedChunkStartTimes, mergeLogger, resource, resource.getSeqFiles());
@@ -101,26 +104,25 @@ public class RecoverMergeTask extends MergeTask {
 
   private void resumeAfterAllTsMerged(boolean continueMerge) throws IOException {
     if (continueMerge) {
-      resumeMerge();
+      resumeMergeProgress();
       MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
           unmergedChunkStartTimes, mergeLogger, resource, analyzer.getUnmergedFiles());
       mergeFileTask.mergeFiles();
     } else {
-      // NOTICE: although some of the seqFiles may have been truncated, later TsFile recovery
-      // will recover them, so they are not a concern here
+      // NOTICE: although some of the seqFiles may have been truncated in last merge, we do not
+      // recover them here because later TsFile recovery will recover them
       truncateFiles();
     }
     cleanUp(continueMerge);
   }
 
-  private void resumeMerge() throws IOException {
+  private void resumeMergeProgress() throws IOException {
     mergeLogger = new MergeLogger(storageGroupDir);
     truncateFiles();
     recoverChunkCounts();
   }
 
-
-  // scan metadata to compute how many chunks are merged/unmerged so at last we can decide to
+  // scan the metadata to compute how many chunks are merged/unmerged so at last we can decide to
   // move the merged chunks or the unmerged chunks
   private void recoverChunkCounts() throws IOException {
     logger.debug("{} recovering chunk counts", taskName);
@@ -143,25 +145,25 @@ public class RecoverMergeTask extends MergeTask {
         mergeFileWriter.getVisibleMetadataList(path.getDevice(), path.getMeasurement(), null);
     mergedChunkCnt.compute(tsFileResource, (k, v) -> v == null ? mergeFileChunks.size() :
         v + mergeFileChunks.size());
-    int seqIndex = 0;
-    int mergeIndex = 0;
+    int seqChunkIndex = 0;
+    int mergeChunkIndex = 0;
     int unmergedCnt = 0;
-    while (seqIndex < seqFileChunks.size() && mergeIndex < mergeFileChunks.size()) {
-      ChunkMetaData seqChunk = seqFileChunks.get(seqIndex);
-      ChunkMetaData mergedChunk = mergeFileChunks.get(mergeIndex);
+    while (seqChunkIndex < seqFileChunks.size() && mergeChunkIndex < mergeFileChunks.size()) {
+      ChunkMetaData seqChunk = seqFileChunks.get(seqChunkIndex);
+      ChunkMetaData mergedChunk = mergeFileChunks.get(mergeChunkIndex);
       if (seqChunk.getStartTime() < mergedChunk.getStartTime()) {
         // this seqChunk is unmerged
         unmergedCnt ++;
-        seqIndex ++;
+        seqChunkIndex ++;
         unmergedChunkStartTimes.get(tsFileResource).get(path).add(seqChunk.getStartTime());
       } else if (mergedChunk.getStartTime() <= seqChunk.getStartTime() &&
           seqChunk.getStartTime() <= mergedChunk.getEndTime()) {
         // this seqChunk is merged
-        seqIndex ++;
+        seqChunkIndex ++;
       } else {
         // seqChunk.startTime > mergeChunk.endTime, find next mergedChunk that may cover the
         // seqChunk
-        mergeIndex ++;
+        mergeChunkIndex ++;
       }
     }
     int finalUnmergedCnt = unmergedCnt;
@@ -183,8 +185,4 @@ public class RecoverMergeTask extends MergeTask {
       }
     }
   }
-
-
-
-
 }

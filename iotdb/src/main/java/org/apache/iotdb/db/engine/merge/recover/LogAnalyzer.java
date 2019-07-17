@@ -37,6 +37,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge,
+ * the last available positions of each file and how many timeseries and files have been merged.
+ */
 public class LogAnalyzer {
 
   private static final Logger logger = LoggerFactory.getLogger(LogAnalyzer.class);
@@ -59,6 +63,12 @@ public class LogAnalyzer {
     this.logFile = logFile;
   }
 
+  /**
+   * Scan through the logs to find out where the last merge has stopped and store the information
+   * about the progress in the fields.
+   * @return a Status indicating the completed stage of the last merge.
+   * @throws IOException
+   */
   public Status analyze() throws IOException {
     Status status = Status.NONE;
     try (BufferedReader bufferedReader =
@@ -135,7 +145,7 @@ public class LogAnalyzer {
       }
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} seq files after {}ms", taskName, mergeUnseqFiles.size(),
+      logger.debug("{} found {} unseq files after {}ms", taskName, mergeUnseqFiles.size(),
           (System.currentTimeMillis() - startTime));
     }
     resource.setUnseqFiles(mergeUnseqFiles);
@@ -208,7 +218,14 @@ public class LogAnalyzer {
   }
 
   public enum Status {
-    NONE, FILES_LOGGED, ALL_TS_MERGED, MERGE_END
+    // almost nothing has been done
+    NONE,
+    // at least the files to be merged are known
+    FILES_LOGGED,
+    // all the timeseries have been merged (merged chunks are generated)
+    ALL_TS_MERGED,
+    // all the merge files are merged with the origin files and the job is almost done
+    MERGE_END
   }
 
   public List<Path> getUnmergedPaths() {

@@ -34,4 +34,8 @@ public interface ChunkLoader {
    */
   void close() throws IOException;
 
+  /**
+   * clear Chunk cache if used.
+   */
+  void clear();
 }

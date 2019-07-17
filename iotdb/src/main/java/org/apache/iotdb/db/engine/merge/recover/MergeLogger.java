@@ -28,17 +28,20 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
 
+/**
+ * MergeLogger records the progress of a merge in file "merge.log" as text lines.
+ */
 public class MergeLogger {
 
   public static final String MERGE_LOG_NAME = "merge.log";
 
-  public static final String STR_SEQ_FILES = "seqFiles";
-  public static final String STR_UNSEQ_FILES = "unseqFiles";
-  public static final String STR_START = "start";
-  public static final String STR_END = "end";
-  public static final String STR_ALL_TS_END = "all ts end";
-  public static final String STR_MERGE_START = "merge start";
-  public static final String STR_MERGE_END = "merge end";
+  static final String STR_SEQ_FILES = "seqFiles";
+  static final String STR_UNSEQ_FILES = "unseqFiles";
+  static final String STR_START = "start";
+  static final String STR_END = "end";
+  static final String STR_ALL_TS_END = "all ts end";
+  static final String STR_MERGE_START = "merge start";
+  static final String STR_MERGE_END = "merge end";
 
   private BufferedWriter logStream;
 

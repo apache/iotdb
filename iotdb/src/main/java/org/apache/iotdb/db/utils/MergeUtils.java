@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -149,5 +151,34 @@ public class MergeUtils {
       }
     }
     return chunk.getHeader().getNumOfPages();
+  }
+
+  public static boolean fileOverlap(TsFileResource seqFile, TsFileResource unseqFile) {
+    Map<String, Long> seqStartTimes = seqFile.getStartTimeMap();
+    Map<String, Long> seqEndTimes = seqFile.getEndTimeMap();
+    Map<String, Long> unseqStartTimes = unseqFile.getStartTimeMap();
+    Map<String, Long> unseqEndTimes = unseqFile.getEndTimeMap();
+
+    for (Entry<String, Long> seqEntry : seqStartTimes.entrySet()) {
+      Long unseqStartTime = unseqStartTimes.get(seqEntry.getKey());
+      if (unseqStartTime == null) {
+        continue;
+      }
+      Long unseqEndTime = unseqEndTimes.get(seqEntry.getKey());
+      Long seqStartTime = seqEntry.getValue();
+      Long seqEndTime = seqEndTimes.get(seqEntry.getKey());
+
+      if (intervalOverlap(seqStartTime, seqEndTime, unseqStartTime, unseqEndTime)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean intervalOverlap(long l1, long r1, long l2, long r2) {
+   return  (l1 <= l2 && l2 <= r1) ||
+        (l1 <= r2 && r2 <= r1) ||
+        (l2 <= l1 && l1 <= r2) ||
+        (l2 <= r1 && r1 <= r2);
   }
 }

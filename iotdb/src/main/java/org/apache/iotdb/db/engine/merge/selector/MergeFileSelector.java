@@ -27,10 +27,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
@@ -56,7 +56,6 @@ public class MergeFileSelector {
   private long totalCost;
   private long memoryBudget;
   private long maxSeqFileCost;
-  private long tempMaxSeqFileCost;
 
   private Map<TsFileResource, Long> fileMetaCostMap = new HashMap<>();
   private Map<TsFileResource, Long> maxSeriesCostMap = new HashMap<>();
@@ -67,9 +66,9 @@ public class MergeFileSelector {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
 
   private List<Integer> tmpSelectedSeqFiles;
+  private long tempMaxSeqFileCost;
 
   private boolean[] seqSelected;
-  private boolean[] unseqSelected;
 
   public MergeFileSelector(
       List<TsFileResource> seqFiles,
@@ -86,22 +85,22 @@ public class MergeFileSelector {
    * pluses the new cost is still under the budget, accept the unseqFile and the seqFiles as
    * candidates, otherwise go to the next iteration.
    * The memory cost of a file is calculated in two ways:
-   *    The rough estimation: for a seqFile, the size of its metadata is the estimation. Since in
-   *    the worst case, the file only contains one timeseries and all its metadata will be loaded
-   *    into memory with at most one actual data chunk (which is negligible) and writing the
-   *    timeseries into a new file generate metadata of the similar size, so the size of all
+   *    The rough estimation: for a seqFile, the size of its metadata is used for estimation.
+   *    Since in the worst case, the file only contains one timeseries and all its metadata will
+   *    be loaded into memory with at most one actual data page (which is negligible) and writing
+   *    the timeseries into a new file generate metadata of the similar size, so the size of all
    *    seqFiles' metadata (generated when writing new chunks) pluses the largest one (loaded
    *    when reading a timeseries from the seqFiles) is the total estimation of all seqFiles; for
-   *    an unseqFile, since the merge reader may read all its chunks to perform a merge read, the
-   *    whole file may be loaded into memory and for the same reason of writing series, so we use
-   *    the file's length as the maximum estimation.
-   *    The tight estimation: based on the rough estimation, we scan the file's meta data to
-   *    count the number of chunks for each series, and the series which have the most chunks in
-   *    the file and its chunk proportion to shrink the rough estimation.
+   *    an unseqFile, since the merge reader may read all chunks of a series to perform a merge
+   *    read, the whole file may be loaded into memory, so we use the file's length as the
+   *    maximum estimation.
+   *    The tight estimation: based on the rough estimation, we scan the file's metadata to
+   *    count the number of chunks for each series, find the series which have the most
+   *    chunks in the file and use its chunk proportion to refine the rough estimation.
    * The rough estimation is performed first, if no candidates can be found using rough
    * estimation, we run the selection again with tight estimation.
    * @return two lists of TsFileResource, the former is selected seqFiles and the latter is
-   * selected unseqFiles or an empty array if there is no proper candidates by the budget.
+   * selected unseqFiles or an empty array if there are no proper candidates by the budget.
    * @throws MergeException
    */
   public List[] doSelect() throws MergeException {
@@ -113,7 +112,7 @@ public class MergeFileSelector {
       if (selectedUnseqFiles.isEmpty()) {
         doSelect(true);
       }
-      clean();
+      clear();
       if (selectedUnseqFiles.isEmpty()) {
         logger.info("No merge candidates are found");
         return new List[0];
@@ -130,7 +129,7 @@ public class MergeFileSelector {
     return new List[]{selectedSeqFiles, selectedUnseqFiles};
   }
 
-  private void clean() throws IOException {
+  private void clear() throws IOException {
     for (TsFileSequenceReader reader : fileReaderCache.values()) {
       reader.close();
     }
@@ -141,17 +140,12 @@ public class MergeFileSelector {
 
     tmpSelectedSeqFiles = new ArrayList<>();
     seqSelected = new boolean[seqFiles.size()];
-    unseqSelected = new boolean[unseqFiles.size()];
 
     totalCost = 0;
 
     int unseqIndex = 0;
     while (unseqIndex < unseqFiles.size()) {
       // select next unseq files
-      if (unseqSelected[unseqIndex]) {
-        unseqIndex++;
-        continue;
-      }
       TsFileResource unseqFile = unseqFiles.get(unseqIndex);
 
       selectOverlappedSeqFiles(unseqFile);
@@ -162,7 +156,6 @@ public class MergeFileSelector {
 
       if (totalCost + newCost < memoryBudget) {
         selectedUnseqFiles.add(unseqFile);
-        unseqSelected[unseqIndex] = true;
         maxSeqFileCost = tempMaxSeqFileCost;
 
         for (Integer seqIdx : tmpSelectedSeqFiles) {
@@ -185,7 +178,7 @@ public class MergeFileSelector {
         continue;
       }
       TsFileResource seqFile = seqFiles.get(i);
-      if (fileOverlap(seqFile, unseqFile)) {
+      if (MergeUtils.fileOverlap(seqFile, unseqFile)) {
         tmpSelectedSeqFiles.add(i);
       }
     }
@@ -206,7 +199,7 @@ public class MergeFileSelector {
         cost += fileCost;
         tempMaxSeqFileCost = fileCost;
       }
-      // but writing data into a new file may generate the same amount of metadata
+      // but writing data into a new file may generate the same amount of metadata in memory
       cost += fileCost;
     }
     return cost;
@@ -320,35 +313,6 @@ public class MergeFileSelector {
     return new long[] {totalChunkNum, maxChunkNum};
   }
 
-
-  private boolean fileOverlap(TsFileResource seqFile, TsFileResource unseqFile) {
-    Map<String, Long> seqStartTimes = seqFile.getStartTimeMap();
-    Map<String, Long> seqEndTimes = seqFile.getEndTimeMap();
-    Map<String, Long> unseqStartTimes = unseqFile.getStartTimeMap();
-    Map<String, Long> unseqEndTimes = unseqFile.getEndTimeMap();
-
-    for (Entry<String, Long> seqEntry : seqStartTimes.entrySet()) {
-      Long unseqStartTime = unseqStartTimes.get(seqEntry.getKey());
-      if (unseqStartTime == null) {
-        continue;
-      }
-      Long unseqEndTime = unseqEndTimes.get(seqEntry.getKey());
-      Long seqStartTime = seqEntry.getValue();
-      Long seqEndTime = seqEndTimes.get(seqEntry.getKey());
-      
-      if (intervalOverlap(seqStartTime, seqEndTime, unseqStartTime, unseqEndTime)) {
-        return true;
-      }
-    }
-    return false;
-  }
-  
-  private boolean intervalOverlap(long l1, long r1, long l2, long r2) {
-   return  (l1 <= l2 && l2 <= r1) ||
-        (l1 <= r2 && r2 <= r1) ||
-        (l2 <= l1 && l1 <= r2) ||
-        (l2 <= r1 && r1 <= r2);
-  }
 
   private TsFileSequenceReader getReader(TsFileResource tsFileResource) throws IOException {
     TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
