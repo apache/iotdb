@@ -42,9 +42,9 @@ The environment configuration file is mainly used to configure the Java environm
 
 The detail of each variables are as follows:
 
-* JMX\_LOCAL
+* LOCAL\_JMX
 
-|Name|JMX\_LOCAL|
+|Name|LOCAL\_JMX|
 |:---:|:---|
 |Description|JMX monitoring mode, configured as yes to allow only local monitoring, no to allow remote monitoring|
 |Type|Enum String: "yes", "no"|
@@ -107,7 +107,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
 |Type|Int32|
-|Default| 134217728 |
+|Default| 65536 |
 |Effective|Immediately|
 
 * max\_number\_of\_points\_in\_page
@@ -280,7 +280,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description| THe max threads which can be used when unsequence data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the unsequence data is too large, the reading will be slower. |
 |Type|Int32|
-|Default| 10 |
+|Default| 0 |
 |Effective|After restart system|
 
 * enable\_stat\_monitor
@@ -289,7 +289,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description| Whether to enable background statistics|
 |Type| Boolean |
-|Default| true |
+|Default| false |
 |Effective|After restart system|
 
 * back\_loop\_period_in_second
@@ -310,18 +310,18 @@ The detail of each variables are as follows:
 |Default| 0 |
 |Effective|After restart system|
 
-* stat\_monitor\_detect\_freq\_sec
+* stat\_monitor\_detect\_freq\_in\_second
 
-|Name| concurrent\_flush\_thread |
+|Name| stat\_monitor\_detect\_freq\_in\_second |
 |:---:|:---|
 |Description| The time interval which the system check whether the current record statistic time range exceeds stat_monitor_retain_interval every time (in seconds) and perform regular cleaning|
 |Type| Int32 |
 |Default|600 |
 |Effective|After restart system|
 
-* stat\_monitor\_retain\_interval\_sec
+* stat\_monitor\_retain\_interval\_in\_second
 
-|Name| stat\_monitor\_retain\_interval\_sec |
+|Name| stat\_monitor\_retain\_interval\_in\_second |
 |:---:|:---|
 |Description| The retention time of system statistics data(in seconds). Statistics data over the retention time range will be cleaned regularly.|
 |Type| Int32 |

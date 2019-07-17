@@ -39,9 +39,9 @@
 
 环境配置项主要用于对IoTDB Server运行的Java环境相关参数进行配置，如JVM相关配置。IoTDB Server启动时，此部分配置会被传给JVM。用户可以通过查看 `iotdb-env.sh`(或`iotdb-env.bat`)文件查看环境配置项内容。详细配置项说明如下：
 
-* JMX\_LOCAL
+* LOCAL\_JMX
 
-|名字|JMX\_LOCAL|
+|名字|LOCAL\_JMX|
 |:---:|:---|
 |描述|JMX监控模式，配置为yes表示仅允许本地监控，设置为no的时候表示允许远程监控|
 |类型|枚举String : “yes”, “no”|
@@ -124,7 +124,7 @@
 |:---:|:---|
 |描述|内存中每个列写出时，写成的页单页最大的大小，单位为字节|
 |类型|Int32|
-|默认值| 134217728 |
+|默认值| 65536 |
 |改后生效方式|即时生效|
 
 * time\_series\_data\_类型
@@ -223,9 +223,9 @@
 
 |名字| merge\_concurrent\_threads |
 |:---:|:---|
-|描述| overflow数据进行合并的时候最多可以用来进行merge的线程数。值越大，对IO和CPU消耗越多。值越小，当overflow数据过多时，磁盘占用量越大，读取会变慢。 |
+|描述| 乱序数据进行合并的时候最多可以用来进行merge的线程数。值越大，对IO和CPU消耗越多。值越小，当乱序数据过多时，磁盘占用量越大，读取会变慢。 |
 |类型|Int32|
-|默认值| 10 |
+|默认值| 0 |
 |改后生效方式|重启服务器生效|
 
 * mult\_dir\_strategy
@@ -315,7 +315,7 @@
 |:---:|:---|
 |描述| 选择是否启动后台统计功能|
 |类型| Boolean |
-|默认值| true |
+|默认值| false |
 |改后生效方式|重启服务器生效|
 
 
@@ -394,7 +394,7 @@
 |改后生效方式|重启服务器生效|
 
 
-* stat\_monitor\_detect\_freq\_sec
+* stat\_monitor\_detect\_freq\_in\_second
 
 |名字| concurrent\_flush\_thread |
 |:---:|:---|
@@ -404,9 +404,9 @@
 |改后生效方式|重启服务器生效|
 
 
-* stat\_monitor\_retain\_interval\_sec
+* stat\_monitor\_retain\_interval\_in\_second
 
-|名字| stat\_monitor\_retain\_interval\_sec |
+|名字| stat\_monitor\_retain\_interval\_in\_second |
 |:---:|:---|
 |描述| 系统统计信息的保留时间（以秒为单位），超过保留时间范围的统计数据将被定时清理。|
 |类型| Int32 |
