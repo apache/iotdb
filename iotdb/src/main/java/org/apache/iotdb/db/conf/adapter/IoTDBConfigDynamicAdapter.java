@@ -129,8 +129,13 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       LOGGER.debug("memtableSizeInByte {} is smaller than memTableSizeFloorThreshold {}",
           memtableSizeInByte, memTableSizeFloorThreshold);
       tsFileSize = calcTsFileSize(memTableSizeFloorThreshold);
-      memtableSizeInByte = memTableSizeFloorThreshold + ((tsFileSize - memTableSizeFloorThreshold) >> 1);
-      if (tsFileSize < memTableSizeFloorThreshold) {
+      if(tsFileSize > memTableSizeFloorThreshold) {
+        memtableSizeInByte =
+            memTableSizeFloorThreshold + ((tsFileSize - memTableSizeFloorThreshold) >> 1);
+      } else {
+        memtableSizeInByte = memTableSizeFloorThreshold;
+      }
+      if (tsFileSize * CompressionRatio.getInstance().getRatio() < memTableSizeFloorThreshold) {
         canAdjust = false;
       }
     }
@@ -192,7 +197,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * occupied by each value is 8 bytes. The reason for multiplying 2 is that the timestamp also
    * takes 8 bytes.
    */
-  private int getMemTableSizeFloorThreshold() {
+  private long getMemTableSizeFloorThreshold() {
     return MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()
         * PrimitiveArrayPool.ARRAY_SIZE * Long.BYTES * 2;
   }

@@ -23,7 +23,6 @@ if [ -z "${IOTDB_HOME}" ]; then
 fi
 
 IOTDB_CONF=${IOTDB_HOME}/conf
-# IOTDB_LOGS=${IOTDB_HOME}/logs
 
 CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do

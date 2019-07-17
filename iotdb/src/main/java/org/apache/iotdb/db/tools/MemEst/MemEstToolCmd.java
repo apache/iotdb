@@ -31,16 +31,16 @@ import org.apache.iotdb.db.metadata.MManager;
 @Command(name = "calmem", description = "calculate minimum memory required for writing based on the number of storage groups and timeseries")
 public class MemEstToolCmd implements Runnable {
 
-  @Option(type = OptionType.GLOBAL, title = "storage group number", name = {"-sg",
+  @Option(title = "storage group number", name = {"-sg",
       "--storagegroup"}, description = "Storage group number")
   private String sgNumString = "10";
 
-  @Option(type = OptionType.GLOBAL, title = "total timeseries number", name = {"-ts",
-      "--tsNum"}, description = "Total timeseries number")
+  @Option(title = "total timeseries number", name = {"-ts",
+      "--timeseries"}, description = "Total timeseries number")
   private String tsNumString = "1000";
 
   @Option(title = "max timeseries", name = {"-mts",
-      "--mtsNum"}, description = "Maximum timeseries number among storage groups, make sure that it's smaller than total timeseries number")
+      "--maxtimeseries"}, description = "Maximum timeseries number among storage groups, make sure that it's smaller than total timeseries number")
   private String maxTsNumString = "0";
 
   @Override
@@ -50,9 +50,10 @@ public class MemEstToolCmd implements Runnable {
     int maxMemtableNumber = config.getMaxMemtableNumber();
     long tsFileSize = config.getTsFileSizeThreshold();
     long memory = IoTDBConstant.GB;
-    int sgNum = Integer.parseInt(sgNumString);
-    int tsNum = Integer.parseInt(tsNumString);
-    int maxTsNum = Integer.parseInt(maxTsNumString);
+    long sgNum = Long.parseLong(sgNumString);
+    long tsNum = Long.parseLong(tsNumString);
+    long maxTsNum = Long.parseLong(maxTsNumString);
+    long maxTsNumValid = maxTsNum;
     while (true) {
       // init parameter
       config.setAllocateMemoryForWrite(memory);
@@ -71,8 +72,13 @@ public class MemEstToolCmd implements Runnable {
         }
         for (; tsCnt <= tsNum; tsCnt++) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
-          MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(
-              maxTsNum == 0 ? tsCnt / sgNum + 1 : Math.min(tsCnt, maxTsNum));
+          if(maxTsNum == 0){
+            maxTsNumValid = tsCnt / sgNum + 1;
+          } else {
+            maxTsNumValid = Math.min(tsCnt, maxTsNum);
+            maxTsNumValid = Math.max(maxTsNumValid, tsCnt / sgNum + 1);
+          }
+          MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(maxTsNumValid);
         }
 
       } catch (ConfigAdjusterException e) {
@@ -85,7 +91,8 @@ public class MemEstToolCmd implements Runnable {
       }
       break;
     }
-    System.out.println(String.format("SG: %d, TS: %d, MTS: %d, Memory for writing: %dGB", sgNum,
-        tsNum, maxTsNum == 0 ? tsNum / sgNum + 1 : maxTsNum, memory / IoTDBConstant.GB));
+    System.out.println(String
+        .format("Memory for writing: %dGB, SG: %d, TS: %d, MTS: %d", memory / IoTDBConstant.GB,
+            sgNum, tsNum, maxTsNumValid));
   }
 }

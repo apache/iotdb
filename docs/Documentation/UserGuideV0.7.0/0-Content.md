@@ -48,3 +48,6 @@
 * 2-Reference
 # Chapter 6: JDBC API
 * 1-JDBC API
+# Chapter 8: System Tools
+* 1-Sync.md
+* 2-Memory estimation tool.md
