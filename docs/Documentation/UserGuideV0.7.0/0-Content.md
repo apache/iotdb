@@ -40,9 +40,10 @@
 * 1-Deployment
 * 2-Configuration
 * 3-System Monitor
-* 4-System log
-* 5-Data Management
-* 6-Build and use IoTDB by Dockerfile
+* 4-Performance Monitor
+* 5-System log
+* 6-Data Management
+* 7-Build and use IoTDB by Dockerfile
 # Chapter 5: IoTDB SQL Documentation
 * 1-IoTDB Query Statement
 * 2-Reference
