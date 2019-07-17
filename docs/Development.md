@@ -23,6 +23,10 @@
 
 ## Outline
 
+- How to develop IoTDB in IDE
+    - IDEA
+    - Eclipse
+    - Debugging IoTDB
 - Have Questions
     - Mailing Lists
     - JIRA issues
@@ -42,6 +46,41 @@
             - Code Style
 
 <!-- /TOC -->
+# How to develop IoTDB in IDE
+
+There are many ways to compile the source code of IoTDB,
+e.g., modify and compile with IDEA or Eclipse.
+
+Once all UTs are passed after you modify codes, your modification basically works! 
+
+## IDEA
+
+Using IDEA to develop IoTDB is very simple: just click menu as follows: "File" -> 
+"Open" -> choose the pom.xml from the root path of IoTDB source code -> "Open as a project". 
+
+Everything is done.
+
+## Eclipse
+Using Eclipse to develop IoTDB is also simple but requires some plugins of Eclipse.
+
+- If your Eclipse version is released before 2019, Antlr plguin may be not work in Eclipse. In this 
+way, you have to run the command in your console first: `mvn eclipse:eclipse -DskipTests`. 
+After the command is done, you can import IoTDB as an existing project:
+  - Choose menu "import" -> "General" -> "Existing Projects into Workspace" -> Choose IoTDB
+   root path;
+  - Done.
+
+- If your Eclipse version is fashion enough (e.g., you are using the latest version of Eclipse),
+you can just choose menu "import" -> "Maven" -> "Existing Maven Projects".
+ 
+## Debugging IoTDB
+The main class of IoTDB server is `org.apache.iotdb.db.service.IoTDB`.
+The main class of IoTDB client is `org.apache.iotdb.cli.client.Client` 
+(or `org.apache.iotdb.cli.client.WinClient` on Win OS).
+
+You can run/debug IoTDB by using the two classes as the entrance.
+
+Another way to understand IoTDB is to read and try Unit Tests.
 
 # Have Questions
 
