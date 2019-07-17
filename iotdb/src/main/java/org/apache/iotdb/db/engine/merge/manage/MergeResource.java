@@ -160,7 +160,13 @@ public class MergeResource {
     if (newFileWriter != null) {
       newFileWriter.close();
       newFileWriter.getFile().delete();
-      fileWriterCache.remove(tsFileResource);
+    }
+  }
+
+  public void removeFileReader(TsFileResource resource) throws IOException {
+    TsFileSequenceReader sequenceReader = fileReaderCache.remove(resource);
+    if (sequenceReader != null) {
+      sequenceReader.close();
     }
   }
 
