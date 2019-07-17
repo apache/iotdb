@@ -20,7 +20,6 @@ package org.apache.iotdb.db.conf.adapter;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
@@ -37,10 +36,11 @@ import org.slf4j.LoggerFactory;
  *
  * 1. maxMemTableNum. This parameter represents the size of the MemTable available in the MemTable
  * pool, which is closely related to the number of storage groups. When adding or deleting a storage
- * group, the parameter also adds or deletes two MemTables. The reason why adding or deleting two
+ * group, the parameter also adds or deletes four MemTables. The reason why adding or deleting four
  * MemTables is that when the system is running stably, the speed of the flush operation is faster
  * than that of data writing, so one is used for the Flush process and the other is used for data
- * writing. Otherwise, the system should limit the speed of data writing to maintain stability.
+ * writing. Otherwise, the system should limit the speed of data writing to maintain stability. And
+ * two for sequence data, two for unsequence data.
  *
  * 2. memtableSize. This parameter determines the threshold value for the MemTable in memory to be
  * flushed into disk. When the system load increases, the parameter should be set smaller so that
@@ -76,15 +76,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   // static parameter section
 
   /**
-   * When the size of the adjusted MemTable decreases more than this parameter, trigger the global
-   * flush operation and flush all MemTable that meets the flush condition to disk.
-   */
-  private static final double FLUSH_THRESHOLD = 0.2;
-
-  /**
    * Maximum amount of memory allocated for write process.
    */
-  private static final long ALLOCATE_MEMORY_FOR_WRITE = CONFIG.getAllocateMemoryForWrite();
+  private static long allocateMemoryForWrite = CONFIG.getAllocateMemoryForWrite();
 
   /**
    * Metadata size of per timeseries, the default value is 2KB.
@@ -168,7 +162,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     // when unit is byte, it's likely to cause Long type overflow.
     // so when b is larger than Integer.MAC_VALUE use the unit KB.
     double a = ratio * maxMemTableNum;
-    double b = (ALLOCATE_MEMORY_FOR_WRITE - staticMemory) * ratio;
+    double b = (allocateMemoryForWrite - staticMemory) * ratio;
     int magnification = b > Integer.MAX_VALUE ? 1024 : 1;
     b /= magnification;
     double c = (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
@@ -187,7 +181,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * @return Tsfile byte threshold
    */
   private long calcTsFileSize(long memTableSize) {
-    return (long) ((ALLOCATE_MEMORY_FOR_WRITE - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
+    return (long) ((allocateMemoryForWrite - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
             .getInstance().getRatio()
             * memTableSize / (maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
             .getMaximalSeriesNumberAmongStorageGroups()));
@@ -253,6 +247,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     totalTimeseries = 0;
     staticMemory = 0;
     maxMemTableNum = MEM_TABLE_AVERAGE_QUEUE_LEN;
+    allocateMemoryForWrite = CONFIG.getAllocateMemoryForWrite();
     initialized = false;
   }
 
