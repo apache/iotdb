@@ -40,6 +40,10 @@ public class QueryProcessorTest {
   private MManager mManager = MManager.getInstance();
   private QueryProcessor processor = new QueryProcessor(new QueryProcessExecutor());
 
+  static {
+    MManager.getInstance().init();
+  }
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();

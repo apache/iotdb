@@ -142,10 +142,11 @@ public class TestHelper {
   }
 
   public static PageHeader createSimplePageHeader() {
+    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    statistics.setEmpty(false);
     PageHeader header = new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,
         PageHeaderTest.COMPRESSED_SIZE, PageHeaderTest.NUM_OF_VALUES,
-        Statistics.getStatsByType(PageHeaderTest.DATA_TYPE),
-        PageHeaderTest.MAX_TIMESTAMO, PageHeaderTest.MIN_TIMESTAMO);
+        statistics, PageHeaderTest.MAX_TIMESTAMO, PageHeaderTest.MIN_TIMESTAMO);
     return header;
   }
 }

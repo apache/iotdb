@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader;
 
 import java.io.IOException;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -37,10 +39,14 @@ public abstract class ReaderTestHelper {
   protected StorageGroupProcessor storageGroupProcessor;
   private String systemDir = "data/info";
 
+  static {
+    MManager.getInstance().init();
+  }
+
   @Before
   public void setUp() throws Exception {
-    MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
+    MetadataManagerHelper.initMetadata();
     storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup);
     insertData();
   }

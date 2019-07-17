@@ -27,6 +27,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
+
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -202,24 +204,24 @@ public class IoTDBDeletionIT {
       Statement statement = connection.createStatement();
       // prepare BufferWrite file
       for (int i = 201; i <= 300; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
 //      statement.execute("merge");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
 //      statement.execute("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
       // prepare Overflow cache
       for (int i = 101; i <= 200; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
 

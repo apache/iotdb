@@ -123,6 +123,12 @@ public class IoTDBDescriptor {
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
+      conf.setEnableParameterAdapter(
+          Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
+              Boolean.toString(conf.isEnableParameterAdapter()))));
+
+      initMemoryAllocate(properties);
+
       conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
           Boolean.toString(conf.isEnableWal()))));
 
@@ -135,10 +141,6 @@ public class IoTDBDescriptor {
 
       conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
 
-      conf.setMemtableNumber(Integer
-          .parseInt(properties.getProperty("memtable_number",
-              Integer.toString(conf.getMemtableNumber()))));
-
       conf.setFlushWalThreshold(Integer
           .parseInt(properties.getProperty("flush_wal_threshold",
               Integer.toString(conf.getFlushWalThreshold()))));
@@ -146,8 +148,12 @@ public class IoTDBDescriptor {
       conf.setForceWalPeriodInMs(Long
           .parseLong(properties.getProperty("force_wal_period_in_ms",
               Long.toString(conf.getForceWalPeriodInMs()))));
-      conf.setWalBufferSize(Integer.parseInt(properties.getProperty("wal_buffer_size",
-          Integer.toString(conf.getWalBufferSize()))));
+
+      int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",
+          Integer.toString(conf.getWalBufferSize())));
+      if (walBufferSize > 0) {
+        conf.setWalBufferSize(walBufferSize);
+      }
 
       conf.setMultiDirStrategyClassName(properties.getProperty("mult_dir_strategy",
           conf.getMultiDirStrategyClassName()));
@@ -163,16 +169,28 @@ public class IoTDBDescriptor {
       conf.setFetchSize(Integer.parseInt(properties.getProperty("fetch_size",
           Integer.toString(conf.getFetchSize()))));
 
-      conf.setTsFileSizeThreshold(Long.parseLong(properties
+      long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
-              Long.toString(conf.getTsFileSizeThreshold())).trim()));
+              Long.toString(conf.getTsFileSizeThreshold())).trim());
+      if (tsfileSizeThreshold > 0) {
+        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+      }
+
+      long memTableSizeThreshold = Long.parseLong(properties
+          .getProperty("memtable_size_threshold",
+              Long.toString(conf.getMemtableSizeThreshold())).trim());
+      if (memTableSizeThreshold > 0) {
+        conf.setMemtableSizeThreshold(memTableSizeThreshold);
+      }
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));
+
       conf.setSyncServerPort(Integer
           .parseInt(properties.getProperty("sync_server_port",
               Integer.toString(conf.getSyncServerPort())).trim()));
+
       conf.setUpdateHistoricalDataPossibility(Boolean.parseBoolean(
           properties.getProperty("update_historical_data_possibility",
               Boolean.toString(conf.isSyncEnable()))));
@@ -181,6 +199,7 @@ public class IoTDBDescriptor {
       conf.setConcurrentFlushThread(Integer
           .parseInt(properties.getProperty("concurrent_flush_thread",
               Integer.toString(conf.getConcurrentFlushThread()))));
+
       if (conf.getConcurrentFlushThread() <= 0) {
         conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
       }
@@ -200,6 +219,16 @@ public class IoTDBDescriptor {
       conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
       logger.info("Time zone has been set to {}", conf.getZoneID());
 
+      conf.setEnablePerformanceStat(Boolean
+          .parseBoolean(properties.getProperty("enable_performance_stat",
+              Boolean.toString(conf.isEnablePerformanceStat())).trim()));
+
+      conf.setPerformanceStatDisplayInterval(Long
+          .parseLong(properties.getProperty("performance_stat_display_interval",
+              Long.toString(conf.getPerformanceStatDisplayInterval())).trim()));
+      conf.setPerformance_stat_memory_in_kb(Integer
+          .parseInt(properties.getProperty("performance_stat_memory_in_kb",
+              Integer.toString(conf.getPerformance_stat_memory_in_kb())).trim()));
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {
@@ -212,6 +241,22 @@ public class IoTDBDescriptor {
       } catch (IOException e) {
         logger.error("Fail to close config file input stream because ", e);
       }
+    }
+  }
+
+  private void initMemoryAllocate(Properties properties) {
+    String memoryAllocateProportion = properties.getProperty("write_read_free_memory_proportion");
+    if (memoryAllocateProportion != null) {
+      String[] proportions = memoryAllocateProportion.split(":");
+      int proportionSum = 0;
+      for (String proportion : proportions) {
+        proportionSum += Integer.parseInt(proportion.trim());
+      }
+      long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
+      conf.setAllocateMemoryForWrite(
+          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+      conf.setAllocateMemoryForRead(
+          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
     }
   }
 

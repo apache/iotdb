@@ -62,15 +62,15 @@ public class MemTableFlushTaskTest {
         MemTableTestUtils.dataType0);
     MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, MemTableTestUtils.getFileSchema(), writer, storageGroup);
     assertTrue(writer
-        .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
+        .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).isEmpty());
     memTableFlushTask.syncFlushMemTable();
     writer.makeMetadataVisible();
     assertEquals(1, writer
-        .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
+        .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());
     ChunkMetaData chunkMetaData = writer
-        .getVisibleMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
+        .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).get(0);
     assertEquals(MemTableTestUtils.measurementId0, chunkMetaData.getMeasurementUid());
     assertEquals(startTime, chunkMetaData.getStartTime());

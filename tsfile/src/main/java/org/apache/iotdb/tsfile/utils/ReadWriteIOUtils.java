@@ -229,8 +229,8 @@ public class ReadWriteIOUtils {
    */
   public static int write(String s, OutputStream outputStream) throws IOException {
     int len = 0;
-    len += write(s.length(), outputStream);
     byte[] bytes = s.getBytes();
+    len += write(bytes.length, outputStream);
     outputStream.write(bytes);
     len += bytes.length;
     return len;
@@ -243,8 +243,8 @@ public class ReadWriteIOUtils {
    */
   public static int write(String s, ByteBuffer buffer) {
     int len = 0;
-    len += write(s.length(), buffer);
     byte[] bytes = s.getBytes();
+    len += write(bytes.length, buffer);
     buffer.put(bytes);
     len += bytes.length;
     return len;
