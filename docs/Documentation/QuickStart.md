@@ -21,16 +21,18 @@
 
 <!-- TOC -->
 
-- [Quick Start](#quick-start)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-        - [Installation from source code](#installation-from-source-code)
-    - [Configure](#configure)
-    - [Start](#start)
-        - [Start Server](#start-server)
-        - [Start Client](#start-client)
-        - [Have a try](#have-a-try)
-        - [Stop Server](#stop-server)
+## Outline
+
+- Quick Start
+ - Prerequisites
+    - Installation
+        - Installation from source code
+    - Configure
+    - Start
+        - Start Server
+        - Start Client
+        - Have a try
+        - Stop Server
 
 <!-- /TOC -->
 # Quick Start

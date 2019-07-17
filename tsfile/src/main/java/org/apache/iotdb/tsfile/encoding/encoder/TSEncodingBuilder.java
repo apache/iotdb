@@ -62,6 +62,8 @@ public abstract class TSEncodingBuilder {
         return new TS_2DIFF();
       case GORILLA:
         return new GORILLA();
+      case REGULAR:
+        return new REGULAR();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -236,8 +238,31 @@ public abstract class TSEncodingBuilder {
 
     @Override
     public void initFromProps(Map<String, String> props) {
-      //allowed do nothing
+      // allowed do nothing
     }
 
+  }
+
+  /**
+   * for INT32, INT64
+   */
+  public static class REGULAR extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new RegularDataEncoder.IntRegularEncoder();
+        case INT64:
+          return new RegularDataEncoder.LongRegularEncoder();
+        default:
+          throw new UnSupportedDataTypeException("REGULAR doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // allowed do nothing
+    }
   }
 }

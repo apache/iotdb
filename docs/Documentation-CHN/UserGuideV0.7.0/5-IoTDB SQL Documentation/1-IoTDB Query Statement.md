@@ -39,7 +39,7 @@ Note: PrefixPath can not include `*`
 CREATE TIMESERIES <Timeseries> WITH <AttributeClauses>
 AttributeClauses : DATATYPE=<DataTypeValue> COMMA ENCODING=<EncodingValue> [COMMA <ExtraAttributeClause>]*
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
-EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF
+EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
 ExtraAttributeClause: {
 	COMPRESSOR = <CompressorValue>
 	MAX_POINT_NUMBER = Integer
