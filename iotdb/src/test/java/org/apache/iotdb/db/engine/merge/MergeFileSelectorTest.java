@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.merge;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.junit.Test;

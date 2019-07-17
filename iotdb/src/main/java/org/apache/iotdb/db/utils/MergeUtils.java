@@ -17,26 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.utils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-class MergeUtils {
+public class MergeUtils {
   private MergeUtils() {
     // util class
   }
   
-  static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter,
+  public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter,
       TSDataType dataType) {
     switch (dataType) {
       case TEXT:
@@ -62,7 +70,7 @@ class MergeUtils {
     }
   }
 
-  static void writeBatchPoint(BatchData batchData, int i, TSDataType dataType,
+  public static void writeBatchPoint(BatchData batchData, int i, TSDataType dataType,
       IChunkWriter chunkWriter) {
     switch (dataType) {
       case TEXT:
@@ -88,7 +96,7 @@ class MergeUtils {
     }
   }
 
-  static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
+  public static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
     TsFileMetaData metaData = sequenceReader.readFileMetadata();
     Set<String> deviceIds = metaData.getDeviceMap().keySet();
     Set<String> measurements = metaData.getMeasurementSchema().keySet();
@@ -101,4 +109,45 @@ class MergeUtils {
     return paths;
   }
 
+  public static List<Path> collectPaths(MergeResource resource)
+      throws IOException {
+    Set<Path> pathSet = new HashSet<>();
+    for (TsFileResource tsFileResource : resource.getUnseqFiles()) {
+      TsFileSequenceReader sequenceReader = resource.getFileReader(tsFileResource);
+      resource.getMeasurementSchemaMap().putAll(sequenceReader.readFileMetadata().getMeasurementSchema());
+      pathSet.addAll(collectFileSeries(sequenceReader));
+    }
+    for (TsFileResource tsFileResource : resource.getSeqFiles()) {
+      TsFileSequenceReader sequenceReader = resource.getFileReader(tsFileResource);
+      resource.getMeasurementSchemaMap().putAll(sequenceReader.readFileMetadata().getMeasurementSchema());
+      pathSet.addAll(collectFileSeries(sequenceReader));
+    }
+    List<Path> ret = new ArrayList<>(pathSet);
+    ret.sort(Comparator.comparing(Path::getFullPath));
+    return ret;
+  }
+
+  public static long collectFileSizes(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+    long totalSize = 0;
+    for (TsFileResource tsFileResource : seqFiles) {
+      totalSize += tsFileResource.getFileSize();
+    }
+    for (TsFileResource tsFileResource : unseqFiles) {
+      totalSize += tsFileResource.getFileSize();
+    }
+    return totalSize;
+  }
+
+  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter,
+      MeasurementSchema measurementSchema) throws IOException {
+    ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
+    TSDataType dataType = measurementSchema.getType();
+    while (chunkReader.hasNextBatch()) {
+      BatchData batchData = chunkReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        writeBatchPoint(batchData, i, dataType, chunkWriter);
+      }
+    }
+    return chunk.getHeader().getNumOfPages();
+  }
 }

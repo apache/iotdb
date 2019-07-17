@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.engine.merge.task;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -31,6 +31,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
+import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -82,9 +84,13 @@ public class RecoverMergeTask extends MergeTask {
           mergeLogger = new MergeLogger(storageGroupDir);
           truncateFiles();
           recoverChunkCounts();
-          mergeSeries(unmergedPaths);
+          MergeSeriesTask mergeSeriesTask = new MergeSeriesTask(mergedChunkCnt, unmergedChunkCnt,
+              unmergedChunkStartTimes, taskName, mergeLogger, resource, fullMerge, unmergedPaths);
+          mergeSeriesTask.mergeSeries();
 
-          mergeFiles(seqFiles);
+          MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
+              unmergedChunkStartTimes, mergeLogger, resource, resource.getSeqFiles());
+          mergeFileTask.mergeFiles();
         }
         cleanUp(continueMerge);
         break;
@@ -93,7 +99,10 @@ public class RecoverMergeTask extends MergeTask {
           mergeLogger = new MergeLogger(storageGroupDir);
           truncateFiles();
           recoverChunkCounts();
-          mergeFiles(unmergedFiles);
+          resource.setSeqFiles(unmergedFiles);
+          MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
+              unmergedChunkStartTimes, mergeLogger, resource, unmergedFiles);
+          mergeFileTask.mergeFiles();
         } else {
           // NOTICE: although some of the seqFiles may have been truncated, later TsFile recovery
           // will recover them, so they are not a concern here
@@ -116,8 +125,8 @@ public class RecoverMergeTask extends MergeTask {
   // move the merged chunks or the unmerged chunks
   private void recoverChunkCounts() throws IOException {
     logger.debug("{} recovering chunk counts", taskName);
-    for (TsFileResource tsFileResource : seqFiles) {
-      RestorableTsFileIOWriter mergeFileWriter = getMergeFileWriter(tsFileResource);
+    for (TsFileResource tsFileResource : resource.getSeqFiles()) {
+      RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
       mergeFileWriter.makeMetadataVisible();
       unmergedChunkStartTimes.put(tsFileResource, new HashMap<>());
       for(Path path : mergedPaths) {
@@ -130,7 +139,7 @@ public class RecoverMergeTask extends MergeTask {
       RestorableTsFileIOWriter mergeFileWriter) throws IOException {
     unmergedChunkStartTimes.get(tsFileResource).put(path, new ArrayList<>());
 
-    List<ChunkMetaData> seqFileChunks = queryChunkMetadata(path, tsFileResource);
+    List<ChunkMetaData> seqFileChunks = resource.queryChunkMetadata(path, tsFileResource);
     List<ChunkMetaData> mergeFileChunks =
         mergeFileWriter.getVisibleMetadataList(path.getDevice(), path.getMeasurement(), null);
     mergedChunkCnt.compute(tsFileResource, (k, v) -> v == null ? mergeFileChunks.size() :
@@ -190,18 +199,18 @@ public class RecoverMergeTask extends MergeTask {
         }
         if (currLine.equals(MergeLogger.STR_MERGE_START)) {
           status = Status.FILES_LOGGED;
-          seqFiles = mergeSeqFiles;
-          unseqFiles = mergeUnseqFiles;
-          for (TsFileResource seqFile : seqFiles) {
+          resource.setSeqFiles(mergeSeqFiles);
+          resource.setUnseqFiles(mergeUnseqFiles);
+          for (TsFileResource seqFile : resource.getSeqFiles()) {
             File mergeFile = new File(seqFile.getFile().getPath() + MergeTask.MERGE_SUFFIX);
             fileLastPositions.put(mergeFile, 0L);
           }
-          unmergedPaths = collectPaths();
+          unmergedPaths = MergeUtils.collectPaths(resource);
           analyzeMergedSeries(bufferedReader, unmergedPaths);
         }
         if (currLine.equals(MergeLogger.STR_ALL_TS_END)) {
           status = Status.ALL_TS_MERGED;
-          unmergedFiles = seqFiles;
+          unmergedFiles = resource.getSeqFiles();
           analyzeMergedFiles(bufferedReader);
         }
         if (currLine.equals(MergeLogger.STR_MERGE_END)) {
@@ -218,7 +227,7 @@ public class RecoverMergeTask extends MergeTask {
       if (currLine.equals(MergeLogger.STR_UNSEQ_FILES)) {
         break;
       }
-      Iterator<TsFileResource> iterator = seqFiles.iterator();
+      Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
         if (seqFile.getFile().getAbsolutePath().equals(currLine)) {
@@ -240,7 +249,7 @@ public class RecoverMergeTask extends MergeTask {
       if (currLine.equals(MergeLogger.STR_MERGE_START)) {
         break;
       }
-      Iterator<TsFileResource> iterator = unseqFiles.iterator();
+      Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
         if (unseqFile.getFile().getAbsolutePath().equals(currLine)) {
