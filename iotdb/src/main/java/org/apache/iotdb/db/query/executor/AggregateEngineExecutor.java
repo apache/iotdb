@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
@@ -34,11 +37,12 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.AggreResultDataPointReader;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.factory.AggreFuncFactory;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimeStamp;
-import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -48,10 +52,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class AggregateEngineExecutor {
 
@@ -104,22 +104,21 @@ public class AggregateEngineExecutor {
           .getQueryDataSource(selectedSeries.get(i), context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SequenceSeriesReader sequenceReader;
+      IAggregateReader seqResourceIterateReader;
       if (function instanceof MaxTimeAggrFunc || function instanceof LastAggrFunc) {
-        sequenceReader = new SequenceSeriesReader(queryDataSource.getSeriesPath(),
+        seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, true);
       } else {
-        sequenceReader = new SequenceSeriesReader(queryDataSource.getSeriesPath(),
+        seqResourceIterateReader = new SeqResourceIterateReader(queryDataSource.getSeriesPath(),
             queryDataSource.getSeqResources(), timeFilter, context, false);
       }
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      IPointReader unSeqMergeReader = SeriesReaderFactoryImpl.getInstance()
-              .createUnseqSeriesReader(queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context,
-                      timeFilter);
+      IPointReader unseqResourceMergeReader= new UnseqResourceMergeReader(queryDataSource.getSeriesPath(),
+          queryDataSource.getUnseqResources(), context, timeFilter);
 
-      readersOfSequenceData.add(sequenceReader);
-      readersOfUnSequenceData.add(unSeqMergeReader);
+      readersOfSequenceData.add(seqResourceIterateReader);
+      readersOfUnSequenceData.add(unseqResourceMergeReader);
     }
     List<AggreResultData> aggreResultDataList = new ArrayList<>();
     //TODO use multi-thread
@@ -264,8 +263,11 @@ public class AggregateEngineExecutor {
     QueryResourceManager.getInstance().beginQueryOfGivenExpression(context.getJobId(), expression);
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(expression, context);
-    List<IReaderByTimeStamp> readersOfSelectedSeries = SeriesReaderFactoryImpl.getInstance()
-        .createSeriesReadersByTimestamp(selectedSeries, context);
+    List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
+    for (Path path : selectedSeries) {
+      SeriesReaderByTimestamp seriesReaderByTimestamp = new SeriesReaderByTimestamp(path, context);
+      readersOfSelectedSeries.add(seriesReaderByTimestamp);
+    }
 
     List<AggregateFunction> aggregateFunctions = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
@@ -286,7 +288,7 @@ public class AggregateEngineExecutor {
   private List<AggreResultData> aggregateWithValueFilter(
       List<AggregateFunction> aggregateFunctions,
       EngineTimeGenerator timestampGenerator,
-      List<IReaderByTimeStamp> readersOfSelectedSeries)
+      List<IReaderByTimestamp> readersOfSelectedSeries)
       throws IOException {
 
     while (timestampGenerator.hasNext()) {
