@@ -214,6 +214,7 @@ class MergeFileTask {
 
     seqFile.getMergeQueryLock().writeLock().lock();
     try {
+      resource.removeFileReader(seqFile);
       seqFile.getFile().delete();
       FileUtils.moveFile(fileWriter.getFile(), seqFile.getFile());
     } finally {
