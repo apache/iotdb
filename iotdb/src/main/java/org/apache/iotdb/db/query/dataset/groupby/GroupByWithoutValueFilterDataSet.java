@@ -19,18 +19,21 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.aggregation.AggreResultData;
 import org.apache.iotdb.db.query.aggregation.AggregateFunction;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -40,10 +43,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -85,17 +84,17 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           .getQueryDataSource(path, context);
 
       // sequence reader for sealed tsfile, unsealed tsfile, memory
-      SequenceSeriesReader sequenceReader = new SequenceSeriesReader(
+      IAggregateReader seqResourceIterateReader = new SeqResourceIterateReader(
           queryDataSource.getSeriesPath(), queryDataSource.getSeqResources(), timeFilter, context,
           false);
 
       // unseq reader for all chunk groups in unSeqFile, memory
-      IPointReader unSeqMergeReader = SeriesReaderFactoryImpl.getInstance()
-              .createUnseqSeriesReader(queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context,
-                      timeFilter);
+      IPointReader unseqResourceMergeReader = new UnseqResourceMergeReader(
+          queryDataSource.getSeriesPath(), queryDataSource.getUnseqResources(), context,
+          timeFilter);
 
-      sequenceReaderList.add(sequenceReader);
-      unSequenceReaderList.add(unSeqMergeReader);
+      sequenceReaderList.add(seqResourceIterateReader);
+      unSequenceReaderList.add(unseqResourceMergeReader);
     }
 
   }

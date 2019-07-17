@@ -73,7 +73,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) values(1,"v1")
 由于`root.ln.wf02.wt02. temperature`时间序列不存在，系统将会返回以下ERROR告知该Timeseries路径不存在：
 
 ```
-error: Timeseries root.ln.wf02.wt02.temperature does not exist.
+Msg: Current deviceId[root.ln.wf02.wt02] does not contains measurement:temperature
 ```
 若用户插入的数据类型与该Timeseries对应的数据类型不一致，例如执行以下命令：
 ```

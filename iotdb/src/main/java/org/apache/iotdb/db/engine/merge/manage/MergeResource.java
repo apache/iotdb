@@ -31,8 +31,8 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactoryImpl;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -121,8 +121,7 @@ public class MergeResource {
   }
 
   public IPointReader getUnseqReader(Path path) throws IOException {
-    return SeriesReaderFactoryImpl.getInstance().createUnseqSeriesReader(path, unseqFiles,
-        mergeContext, null);
+    return new UnseqResourceMergeReader(path, unseqFiles, mergeContext, null);
   }
 
   public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
