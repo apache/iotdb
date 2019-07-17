@@ -20,18 +20,19 @@
 -->
 
 <!-- TOC -->
+## Outline
 
-- [IoTDB-Grafana](#iotdb-grafana)
-    - [Grafana installation](#grafana-installation)
-        - [Install Grafana](#install-grafana)
-        - [Install data source plugin](#install-data-source-plugin)
-        - [Start Grafana](#start-grafana)
-    - [IoTDB installation](#iotdb-installation)
-    - [IoTDB-Grafana installation](#iotdb-grafana-installation)
-        - [Start IoTDB-Grafana](#start-iotdb-grafana)
-    - [Explore in Grafana](#explore-in-grafana)
-        - [Add data source](#add-data-source)
-        - [Design in dashboard](#design-in-dashboard)
+- IoTDB-Grafana
+    - Grafana installation
+        - Install Grafana
+        - Install data source plugin
+        - Start Grafana
+    - IoTDB installation
+    - IoTDB-Grafana installation
+        - Start IoTDB-Grafana
+    - Explore in Grafana
+        - Add data source
+        - Design in dashboard
 
 <!-- /TOC -->
 # IoTDB-Grafana

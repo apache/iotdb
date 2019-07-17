@@ -40,6 +40,7 @@ public class MTreeTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
   }
 
   @After

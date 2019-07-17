@@ -30,6 +30,7 @@ public class MGraphTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
   }
 
   @After

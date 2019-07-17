@@ -93,7 +93,7 @@ public class TsFileWrite {
       tsRecord.addTuple(dPoint2);
       tsRecord.addTuple(dPoint3);
       tsFileWriter.write(tsRecord);
-
+      
       tsRecord = new TSRecord(7, "device_1");
       dPoint1 = new FloatDataPoint("sensor_1", 6.2f);
       dPoint2 = new IntDataPoint("sensor_2", 20);
@@ -111,7 +111,7 @@ public class TsFileWrite {
       tsRecord.addTuple(dPoint2);
       tsRecord.addTuple(dPoint3);
       tsFileWriter.write(tsRecord);
-
+    
       // close TsFile
       tsFileWriter.close();
     } catch (Throwable e) {

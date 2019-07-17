@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
 import org.apache.iotdb.tsfile.write.schema.{FileSchema, MeasurementSchema, SchemaBuilder}
-import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 
@@ -297,12 +297,12 @@ object Converter {
     * @param row given spark sql row
     * @return TSRecord
     */
-  def toTsRecord(row: Row): List[TSRecord] = {
-    val schema = row.schema
-    val time = row.getAs[Long](QueryConstant.RESERVED_TIME)
+  def toTsRecord(row: InternalRow, dataSchema: StructType): List[TSRecord] = {
+    val time = row.getLong(0)
     val deviceToRecord = scala.collection.mutable.Map[String, TSRecord]()
+    var index = 1
 
-    schema.fields.filter(f => {
+    dataSchema.fields.filter(f => {
       !QueryConstant.RESERVED_TIME.equals(f.name)
     }).foreach(f => {
       val name = f.name
@@ -315,20 +315,20 @@ object Converter {
       val tsRecord: TSRecord = deviceToRecord.getOrElse(device, new TSRecord(time, device))
 
       val dataType = getTsDataType(f.dataType)
-      val index = row.fieldIndex(name)
       if (!row.isNullAt(index)) {
         val value = f.dataType match {
-          case BooleanType => row.getAs[Boolean](name)
-          case IntegerType => row.getAs[Int](name)
-          case LongType => row.getAs[Long](name)
-          case FloatType => row.getAs[Float](name)
-          case DoubleType => row.getAs[Double](name)
-          case StringType => row.getAs[String](name)
+          case BooleanType => row.getBoolean(index)
+          case IntegerType => row.getInt(index)
+          case LongType => row.getLong(index)
+          case FloatType => row.getFloat(index)
+          case DoubleType => row.getDouble(index)
+          case StringType => row.getString(index)
           case other => throw new UnsupportedOperationException(s"Unsupported type $other")
         }
         val dataPoint = DataPoint.getDataPoint(dataType, measurement, value.toString)
         tsRecord.addTuple(dataPoint)
       }
+      index += 1
     })
     deviceToRecord.values.toList
   }

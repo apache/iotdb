@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public class CommonUtils {
 
   private CommonUtils(){}
@@ -34,5 +40,19 @@ public class CommonUtils {
     } else {
       return Integer.parseInt(javaVersionElements[0]);
     }
+  }
+
+  public static long getUsableSpace(String dir) {
+    return new File(dir).getFreeSpace();
+  }
+
+  public static boolean hasSpace(String dir) {
+    return getUsableSpace(dir) > 0;
+  }
+
+  public static long getOccupiedSpace(String folderPath) throws IOException {
+    Path folder = Paths.get(folderPath);
+    return Files.walk(folder).filter(p -> p.toFile().isFile())
+        .mapToLong(p -> p.toFile().length()).sum();
   }
 }

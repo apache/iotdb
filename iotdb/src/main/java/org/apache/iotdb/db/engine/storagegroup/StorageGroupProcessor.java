@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.tsfile.common.constant.SystemConstant.TSFILE_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,8 +43,8 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -72,8 +72,8 @@ import org.slf4j.LoggerFactory;
  * (1) when inserting data into the TsFileProcessor, and the TsFileProcessor shouldFlush() (or
  * shouldClose())<br/>
  *
- * (2) someone calls waitForAllCurrentTsFileProcessorsClosed().
- * (up to now, only flush command from cli will call this method)<br/>
+ * (2) someone calls waitForAllCurrentTsFileProcessorsClosed(). (up to now, only flush command from
+ * cli will call this method)<br/>
  *
  * UnSequence data has the similar process as above.
  *
@@ -114,13 +114,13 @@ public class StorageGroupProcessor {
   private TsFileProcessor workUnSequenceTsFileProcessor = null;
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   /**
-   * device -> global latest timestamp of each device
-   * latestTimeForEachDevice caches non-flushed changes upon timestamps of each device, and is used
-   * to update latestFlushedTimeForEachDevice when a flush is issued.
+   * device -> global latest timestamp of each device latestTimeForEachDevice caches non-flushed
+   * changes upon timestamps of each device, and is used to update latestFlushedTimeForEachDevice
+   * when a flush is issued.
    */
   private Map<String, Long> latestTimeForEachDevice = new HashMap<>();
   /**
-   * device -> largest timestamp of the latest memtable to be submitted to asyncFlush
+   * device -> largest timestamp of the latest memtable to be submitted to asyncTryToFlush
    * latestFlushedTimeForEachDevice determines whether a data point should be put into a sequential
    * file or an unsequential file. Data of some device with timestamp less than or equals to the
    * device's latestFlushedTime should go into an unsequential file.
@@ -128,22 +128,22 @@ public class StorageGroupProcessor {
   private Map<String, Long> latestFlushedTimeForEachDevice = new HashMap<>();
   private String storageGroupName;
   /**
-   * versionController assigns a version for each MemTable and deletion/update such that after
-   * they are persisted, the order of insertions, deletions and updates can be re-determined.
+   * versionController assigns a version for each MemTable and deletion/update such that after they
+   * are persisted, the order of insertions, deletions and updates can be re-determined.
    */
   private VersionController versionController;
 
   /**
    * mergeDeleteLock is to be used in the merge process. Concurrent deletion and merge may result in
-   * losing some deletion in the merged new file, so a lock is necessary.
-   * TODO reconsidering this when implementing the merge process.
+   * losing some deletion in the merged new file, so a lock is necessary. TODO reconsidering this
+   * when implementing the merge process.
    */
   @SuppressWarnings("unused") // to be used in merge
   private ReentrantLock mergeDeleteLock = new ReentrantLock();
 
   /**
-   * This is the modification file of the result of the current merge. Because the merged file
-   * may be invisible at this moment, without this, deletion/update during merge could be lost.
+   * This is the modification file of the result of the current merge. Because the merged file may
+   * be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   private ModificationFile mergingModification;
 
@@ -159,6 +159,9 @@ public class StorageGroupProcessor {
       File storageGroupSysDir = new File(systemInfoDir, storageGroupName);
       if (storageGroupSysDir.mkdirs()) {
         logger.info("Storage Group system Directory {} doesn't exist, create it",
+            storageGroupSysDir.getPath());
+      } else if(!storageGroupSysDir.exists()) {
+        logger.error("craete Storage Group system Directory {} failed",
             storageGroupSysDir.getPath());
       }
 
@@ -226,8 +229,8 @@ public class StorageGroupProcessor {
   // TsFileNameComparator compares TsFiles by the version number in its name
   // ({systemTime}-{versionNum}.tsfile)
   public int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().split("-");
-    String[] items2 = o2.getName().split("-");
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split("-");
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split("-");
     if (Long.valueOf(items1[0]) - Long.valueOf(items2[0]) == 0) {
       return Long.compare(Long.valueOf(items1[1]), Long.valueOf(items2[1]));
     } else {
@@ -301,8 +304,8 @@ public class StorageGroupProcessor {
         tsFileProcessor = workUnSequenceTsFileProcessor;
       }
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("disk space is insufficient", e);
-      StorageEngine.getInstance().setReadOnly(true);
+      logger.error("disk space is insufficient when creating TsFile processor, change system mode to read-only", e);
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       return false;
     }
 
@@ -314,7 +317,7 @@ public class StorageGroupProcessor {
       latestTimeForEachDevice.put(insertPlan.getDeviceId(), insertPlan.getTime());
     }
 
-    // check memtable size and may asyncFlush the work memtable
+    // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
           tsFileProcessor.getWorkMemTableMemory(),
@@ -489,8 +492,8 @@ public class StorageGroupProcessor {
             // left: in-memory data, right: meta of disk data
             Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair;
             pair = tsFileResource
-                  .getUnsealedFileProcessor()
-                  .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
+                .getUnsealedFileProcessor()
+                .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
             tsfileResourcesForQuery
                 .add(new TsFileResource(tsFileResource.getFile(),
                     tsFileResource.getStartTimeMap(),
@@ -506,7 +509,8 @@ public class StorageGroupProcessor {
 
 
   /**
-   * Delete data whose timestamp <= 'timestamp' and belongs to the timeseries deviceId.measurementId.
+   * Delete data whose timestamp <= 'timestamp' and belongs to the timeseries
+   * deviceId.measurementId.
    *
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
@@ -639,6 +643,7 @@ public class StorageGroupProcessor {
 
   @FunctionalInterface
   public interface CloseTsFileCallBack {
+
     void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
 

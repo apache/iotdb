@@ -28,23 +28,23 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 
 In total, we provide users three kinds of configurations module: 
 
-* environment configuration file (iotdb-env.bat, iotdb-env.sh). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
-* system configuration file (tsfile-format.properties, iotdb-engine.properties). 
-	* tsfile-format.properties: The default configuration file for the IoTDB file layer configuration item. Users can configure the information about the TsFile, such as the data size written to the disk per time(group\_size\_in_byte). 
-	* iotdb-engine.properties: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (rpc\_port), unsequence data storage directory (unsequence\_data\_dir), etc.
-* log configuration file (logback.xml)
+* environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
+* system configuration file (`tsfile-format.properties`, `iotdb-engine.properties`). 
+	* `tsfile-format.properties`: The default configuration file for the IoTDB file layer configuration item. Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
+	* `iotdb-engine.properties`: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (`rpc_port`), unsequence data storage directory (`unsequence_data_dir`), etc.
+* log configuration file (`logback.xml`)
 
-The configuration files of the three configuration items are located in the IoTDB installation directory: $IOTDB_HOME/conf folder.
+The configuration files of the three configuration items are located in the IoTDB installation directory: `$IOTDB_HOME/conf` folder.
 
 ### IoTDB Environment Configuration File
 
-The environment configuration file is mainly used to configure the Java environment related parameters when IoTDB Server is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the IoTDB Server starts. Users can view the contents of the environment configuration file by viewing the iotdb-env.sh (or iotdb-env.bat) file.
+The environment configuration file is mainly used to configure the Java environment related parameters when IoTDB Server is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the IoTDB Server starts. Users can view the contents of the environment configuration file by viewing the `iotdb-env.sh` (or `iotdb-env.bat`) file.
 
 The detail of each variables are as follows:
 
-* JMX\_LOCAL
+* LOCAL\_JMX
 
-|Name|JMX\_LOCAL|
+|Name|LOCAL\_JMX|
 |:---:|:---|
 |Description|JMX monitoring mode, configured as yes to allow only local monitoring, no to allow remote monitoring|
 |Type|Enum String: "yes", "no"|
@@ -107,7 +107,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
 |Type|Int32|
-|Default| 134217728 |
+|Default| 65536 |
 |Effective|Immediately|
 
 * max\_number\_of\_points\_in\_page
@@ -206,7 +206,7 @@ The detail of each variables are as follows:
 
 |Name| data\_dirs |
 |:---:|:---|
-|Description| The directories of data files. Multiple directories are separated by comma. See the [mult\_dir\_strategy](chapter4,multdirstrategy) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
+|Description| The directories of data files. Multiple directories are separated by comma. See the [mult\_dir\_strategy](/#/Documents/latest/chap4/sec2) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
 |Type|String[]|
 |Default| data/data |
 |Effective|After restart system|
@@ -280,7 +280,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description| THe max threads which can be used when unsequence data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the unsequence data is too large, the reading will be slower. |
 |Type|Int32|
-|Default| 10 |
+|Default| 0 |
 |Effective|After restart system|
 
 * enable\_stat\_monitor
@@ -289,7 +289,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description| Whether to enable background statistics|
 |Type| Boolean |
-|Default| true |
+|Default| false |
 |Effective|After restart system|
 
 * back\_loop\_period_in_second
@@ -310,18 +310,18 @@ The detail of each variables are as follows:
 |Default| 0 |
 |Effective|After restart system|
 
-* stat\_monitor\_detect\_freq\_sec
+* stat\_monitor\_detect\_freq\_in\_second
 
-|Name| concurrent\_flush\_thread |
+|Name| stat\_monitor\_detect\_freq\_in\_second |
 |:---:|:---|
 |Description| The time interval which the system check whether the current record statistic time range exceeds stat_monitor_retain_interval every time (in seconds) and perform regular cleaning|
 |Type| Int32 |
 |Default|600 |
 |Effective|After restart system|
 
-* stat\_monitor\_retain\_interval\_sec
+* stat\_monitor\_retain\_interval\_in\_second
 
-|Name| stat\_monitor\_retain\_interval\_sec |
+|Name| stat\_monitor\_retain\_interval\_in\_second |
 |:---:|:---|
 |Description| The retention time of system statistics data(in seconds). Statistics data over the retention time range will be cleaned regularly.|
 |Type| Int32 |

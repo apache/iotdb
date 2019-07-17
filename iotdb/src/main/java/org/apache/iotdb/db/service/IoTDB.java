@@ -21,12 +21,15 @@ package org.apache.iotdb.db.service;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.rescon.TVListAllocator;
+import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,12 +88,14 @@ public class IoTDB implements IoTDBMBean {
       StatMonitor.getInstance().recovery();
     }
 
+    initMManager();
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(JMXService.getInstance());
     registerManager.register(JDBCService.getInstance());
     registerManager.register(Monitor.getInstance());
     registerManager.register(StatMonitor.getInstance());
+    registerManager.register(Measurement.INSTANCE);
     registerManager.register(SyncServerManager.getInstance());
     registerManager.register(TVListAllocator.getInstance());
 
@@ -106,6 +111,18 @@ public class IoTDB implements IoTDBMBean {
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB is deactivated.");
+  }
+
+  private void initMManager(){
+    MManager.getInstance().init();
+    IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
+    logger.debug("After initializing, ");
+    logger.debug(
+        "After initializing, max memTable num is {}, tsFile threshold is {}, memtableSize is {}",
+        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber(),
+        IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
+        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
+
   }
 
   @Override

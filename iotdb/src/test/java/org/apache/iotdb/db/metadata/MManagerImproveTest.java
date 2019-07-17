@@ -41,6 +41,7 @@ public class MManagerImproveTest {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
     mManager = MManager.getInstance();
     mManager.setStorageLevelToMTree("root.t1.v2");
 

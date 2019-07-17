@@ -166,8 +166,8 @@ public class JDBCService implements JDBCServiceMBean, IService {
       reset();
       logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
       logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
+      Thread.currentThread().interrupt();
     }
   }
 

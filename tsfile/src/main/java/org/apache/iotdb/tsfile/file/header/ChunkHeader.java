@@ -69,7 +69,7 @@ public class ChunkHeader {
   }
 
   public static int getSerializedSize(String measurementID) {
-    return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.length());
+    return Byte.BYTES + Integer.BYTES + getSerializedSize(measurementID.getBytes().length);
   }
 
   private static int getSerializedSize(int measurementIdLength) {
