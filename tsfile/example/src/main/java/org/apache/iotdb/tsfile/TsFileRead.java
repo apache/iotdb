@@ -32,10 +32,9 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 /**
- * The class is to show how to read TsFile file named "testDirect.tsfile".
- * The TsFile file "testDirect.tsfile" is generated from class TsFileWrite.
- * It generates the same TsFile(testDirect.tsfile and testWithJson.tsfile) file by two different ways
- * Run TsFileWrite to generate the testDirect.tsfile first
+ * The class is to show how to read TsFile file named "test.tsfile".
+ * The TsFile file "test.tsfile" is generated from class TsFileWrite.
+ * Run TsFileWrite to generate the test.tsfile first
  */
 public class TsFileRead {
   private static void queryAndPrint(ArrayList<Path> paths, ReadOnlyTsFile readTsFile, IExpression statement)
@@ -51,7 +50,7 @@ public class TsFileRead {
   public static void main(String[] args) throws IOException {
 
     // file path
-    String path = "testDirect.tsfile";
+    String path = "test.tsfile";
 
     // create reader and get the readTsFile interface
     TsFileSequenceReader reader = new TsFileSequenceReader(path);
