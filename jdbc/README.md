@@ -48,32 +48,139 @@ In root directory:
 </dependencies>
 ```
 
-## Example
-(for more detailes, please see example/src/main/java/org/apache/iotdb/jdbc/jdbcDemo/SendDataToIotdb.java)
-```Java
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 
-public class Example {
-    public static void main(String[] args) throws ClassNotFoundException, SQLException {
-        Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-        Connection connection = null;
-        Statement statement = null;
-        try {
-            connection =  DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-            statement = connection.createStatement();
-            statement.execute("select s1 from root.laptop.d1");
-            ResultSet resultSet = statement.getResultSet();
-            while(resultSet.next()){
-                System.out.println(String.format("timestamp %s, value %s", resultSet.getString(1), resultSet.getString(2)));
-            }
-        } finally {
-            if(statement != null) statement.close();
-            if(connection != null) connection.close();
-        }
-    }
-}
+## Examples
+
+This chapter provides an example of how to open a database connection, execute a SQL query, and display the results.
+
+* ### Import required packages
+
+Requires that you include the packages containing the JDBC classes needed for database programming.
+
+```Java
+import java.sql.*;
 ```
+
+* ### Get Connection
+We can use **DriverManager.getConnection()** method to create a Connection object
+
+```Java
+  public static Connection getConnection() {
+    // JDBC driver name and database URL
+    String driver = "org.apache.iotdb.jdbc.IoTDBDriver";
+    String url = "jdbc:iotdb://127.0.0.1:6667/";
+
+    // Database credentials
+    String username = "root";
+    String password = "root";
+
+    Connection connection = null;
+    try {
+      Class.forName(driver);
+      connection = DriverManager.getConnection(url, username, password);
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+
+    return connection;
+  }
+```
+
+* ### Execute SQL Statements
+Before executing an SQL statement with a Statement object, you need to create a Statement object using the **createStatement()** method of the Connection object.
+
+After creating a Statement object, you can use its **execute()** method to execute an SQL statement
+
+Finally, remember to close the 'statement' and 'connection' objects by using their **close()** method
+
+For statements with query results, we can use the **getResultSet()** method of the Statement object to get the result set. 
+```Java
+ public static void main(String[] args) throws SQLException {
+    Connection connection = getConnection();
+    if (connection == null) {
+      System.out.println("get connection defeat");
+      return;
+    }
+    Statement statement = connection.createStatement();
+    //Create storage group
+    statement.execute("SET STORAGE GROUP TO root.demo");
+
+    //Show storage group
+    statement.execute("SHOW STORAGE GROUP");
+    outputResult(statement.getResultSet(), System.out);
+
+    //Create time series.
+    //Different data type has different encoding methods. Here use INT32 as an example.
+    statement.execute("CREATE TIMESERIES root.demo.s0 WITH DATATYPE=INT32,ENCODING=RLE;");
+
+    //Show time series
+    statement.execute("SHOW TIMESERIES root.demo");
+    outputResult(statement.getResultSet(), System.out);
+
+    //Execute insert statements
+    statement.execute("insert into root.demo(timestamp,s0) values(1,1);");
+    statement.execute("insert into root.demo(timestamp,s0) values(1,1);");
+    statement.execute("insert into root.demo(timestamp,s0) values(2,15);");
+    statement.execute("insert into root.demo(timestamp,s0) values(2,17);");
+    statement.execute("insert into root.demo(timestamp,s0) values(4,12);");
+
+    //Full query statement
+    statement.execute("select * from root.demo");
+    outputResult(statement.getResultSet(), System.out);
+
+    //Exact query statement
+    statement.execute("select s0 from root.demo where time = 4;");
+    outputResult(statement.getResultSet(), System.out);
+
+    //Time range query
+    statement.execute("select s0 from root.demo where time >= 2 and time < 5;");
+    outputResult(statement.getResultSet(), System.out);
+
+    //Aggregate query
+    statement.execute("select count(s0) from root.demo;");
+    outputResult(statement.getResultSet(), System.out);
+
+    //Latest time point query
+    statement.execute("select max_time(s0) from root.demo;");
+    outputResult(statement.getResultSet(), System.out);
+
+    //Delete time series
+    statement.execute("delete timeseries root.demo.s0");
+
+    //close connection
+    statement.close();
+    connection.close();
+  }
+```
+
+* ### Get execution results
+This is an example of outputting the results in the ResultSet
+
+``` Java
+private static void outputResult(ResultSet resultSet, PrintStream out) throws SQLException {
+    if (resultSet != null) {
+      out.println("--------------------------");
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int columnCount = metaData.getColumnCount();
+      for (int i = 0; i < columnCount; i++) {
+        out.print(metaData.getColumnLabel(i + 1) + " ");
+      }
+      out.println();
+      while (resultSet.next()) {
+        for (int i = 1; ; i++) {
+          out.print(resultSet.getString(i));
+          if (i < columnCount) {
+            out.print(", ");
+          } else {
+            out.println();
+            break;
+          }
+        }
+      }
+      out.println("--------------------------\n");
+    }
+  }
+```
+

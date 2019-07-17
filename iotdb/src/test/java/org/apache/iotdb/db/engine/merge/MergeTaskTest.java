@@ -29,7 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.sequence.SequenceSeriesReader;
+import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -63,7 +63,7 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
-    SequenceSeriesReader tsFilesReader = new SequenceSeriesReader(path,
+    SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
     while (tsFilesReader.hasNext()) {
@@ -84,7 +84,7 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
-    SequenceSeriesReader tsFilesReader = new SequenceSeriesReader(path,
+    SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
     while (tsFilesReader.hasNext()) {
@@ -106,7 +106,7 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
-    SequenceSeriesReader tsFilesReader = new SequenceSeriesReader(path,
+    SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
     while (tsFilesReader.hasNext()) {
@@ -127,7 +127,7 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
-    SequenceSeriesReader tsFilesReader = new SequenceSeriesReader(path,
+    SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
     while (tsFilesReader.hasNext()) {
@@ -152,7 +152,7 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
-    SequenceSeriesReader tsFilesReader = new SequenceSeriesReader(path,
+    SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
     while (tsFilesReader.hasNext()) {
@@ -178,7 +178,7 @@ public class MergeTaskTest extends MergeTest {
 
     QueryContext context = new QueryContext();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
-    SequenceSeriesReader tsFilesReader = new SequenceSeriesReader(path,
+    SeqResourceIterateReader tsFilesReader = new SeqResourceIterateReader(path,
         Collections.singletonList(seqResources.get(0)),
         null, context);
     int count = 0;
