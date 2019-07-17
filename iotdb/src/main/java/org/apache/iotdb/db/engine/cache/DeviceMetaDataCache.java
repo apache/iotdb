@@ -20,10 +20,13 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
@@ -39,10 +42,12 @@ import org.slf4j.LoggerFactory;
 public class DeviceMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(DeviceMetaDataCache.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static StorageEngine storageEngine = StorageEngine.getInstance();
 
-  private static final int MEMORY_THRESHOLD_IN_B = (int) (50 * 0.3 * 1024 * 1024 * 1024);
+  private static final long MEMORY_THRESHOLD_IN_B = (long) (0.3 * config
+      .getAllocateMemoryForRead());
   /**
    * key: file path dot deviceId dot sensorId.
    * <p>
@@ -58,11 +63,11 @@ public class DeviceMetaDataCache {
    */
   private long chunkMetaDataSize = 0;
 
-  private DeviceMetaDataCache(int memoryThreshold) {
+  private DeviceMetaDataCache(long memoryThreshold) {
     lruCache = new LruLinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
       @Override
       protected long calEntrySize(String key, List<ChunkMetaData> value) {
-        if (chunkMetaDataSize == 0 && value.size() > 0) {
+        if (chunkMetaDataSize == 0 && !value.isEmpty()) {
           chunkMetaDataSize = RamUsageEstimator.sizeOf(value.get(0));
         }
         return value.size() * chunkMetaDataSize + key.length();
@@ -112,7 +117,7 @@ public class DeviceMetaDataCache {
       TsDeviceMetadata blockMetaData = TsFileMetadataUtils
           .getTsRowGroupBlockMetaData(filePath, seriesPath.getDevice(),
               fileMetaData);
-      ConcurrentHashMap<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
+      Map<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
           .getChunkMetaDataList(calHotSensorSet(seriesPath), blockMetaData);
       synchronized (lruCache) {
         chunkMetaData.forEach((path, chunkMetaDataList) -> {
@@ -138,7 +143,7 @@ public class DeviceMetaDataCache {
     double usedMemProportion = lruCache.getUsedMemoryProportion();
 
     if (usedMemProportion < 0.6) {
-      return null;
+      return new HashSet<>();
     } else {
       double hotSensorProportion;
       if (usedMemProportion < 0.8) {
@@ -148,7 +153,8 @@ public class DeviceMetaDataCache {
       }
       try {
         return storageEngine
-            .calTopKSensor(seriesPath.getDevice(), seriesPath.getMeasurement(), hotSensorProportion);
+            .calTopKSensor(seriesPath.getDevice(), seriesPath.getMeasurement(),
+                hotSensorProportion);
       } catch (Exception e) {
         throw new IOException(e);
       }

@@ -29,18 +29,18 @@ public abstract class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
   private static final long serialVersionUID = 1290160928914532649L;
   private static final float LOAD_FACTOR_MAP = 0.75f;
-  private static final int initialCapacity = 128;
+  private static final int INITIAL_CAPACITY = 128;
   /**
    * maximum memory threshold.
    */
-  private int maxMemInB;
+  private long maxMemInB;
   /**
    * current used memory.
    */
-  private int usedMemInB;
+  private long usedMemInB;
 
-  public LruLinkedHashMap(int maxMemInB, boolean isLru) {
-    super(initialCapacity, LOAD_FACTOR_MAP, isLru);
+  public LruLinkedHashMap(long maxMemInB, boolean isLru) {
+    super(INITIAL_CAPACITY, LOAD_FACTOR_MAP, isLru);
     this.maxMemInB = maxMemInB;
   }
 

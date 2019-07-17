@@ -20,6 +20,8 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,9 +32,10 @@ import org.slf4j.LoggerFactory;
 public class TsFileMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileMetaDataCache.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-
-  private static final int MEMORY_THRESHOLD_IN_B = (int) (50 * 0.3 * 1024 * 1024 * 1024);
+  private static final long MEMORY_THRESHOLD_IN_B = (long) (0.25 * config
+      .getAllocateMemoryForRead());
   /**
    * key: The file seriesPath of tsfile. value: TsFileMetaData
    */

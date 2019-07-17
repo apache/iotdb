@@ -55,8 +55,6 @@ public class StorageEngine implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private volatile boolean readOnly = false;
-
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
    * will have a subfolder under the systemDir.
@@ -129,9 +127,7 @@ public class StorageEngine implements IService {
             logger.debug("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroupName, Thread.currentThread().getId());
             processor = new StorageGroupProcessor(systemDir, storageGroupName);
-            synchronized (processorMap) {
-              processorMap.put(storageGroupName, processor);
-            }
+            processorMap.put(storageGroupName, processor);
           }
         }
       }
@@ -146,9 +142,8 @@ public class StorageEngine implements IService {
   /**
    * This function is just for unit test.
    */
-  public synchronized void reset() throws IOException {
+  public synchronized void reset() {
     processorMap.clear();
-    readOnly = false;
   }
 
 
@@ -159,11 +154,6 @@ public class StorageEngine implements IService {
    * @return true if and only if this insertion succeeds
    */
   public boolean insert(InsertPlan insertPlan) throws StorageEngineException {
-
-    if (readOnly) {
-      throw new StorageEngineException(
-          "Current system mode is read only, does not support insertion");
-    }
 
     StorageGroupProcessor storageGroupProcessor;
     try {
@@ -183,13 +173,10 @@ public class StorageEngine implements IService {
    * only for unit test
    */
   public void asyncFlushAndSealAllFiles() {
-    synchronized (processorMap) {
-      for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
-        storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
-      }
+    for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
+      storageGroupProcessor.putAllWorkingTsFileProcessorIntoClosingList();
     }
   }
-
 
   /**
    * flush command Sync asyncCloseOneProcessor all file node processors.
@@ -216,12 +203,6 @@ public class StorageEngine implements IService {
    */
   public void delete(String deviceId, String measurementId, long timestamp)
       throws StorageEngineException {
-
-    if (readOnly) {
-      throw new StorageEngineException(
-          "Current system mode is read only, does not support deletion");
-    }
-
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
       storageGroupProcessor.delete(deviceId, measurementId, timestamp);
@@ -300,23 +281,12 @@ public class StorageEngine implements IService {
     return Collections.emptyList();
   }
 
-  public boolean isReadOnly() {
-    return readOnly;
-  }
-
-  public void setReadOnly(boolean readOnly) {
-    this.readOnly = readOnly;
-  }
-
   /**
    * merge all storage groups.
    *
    * @throws StorageEngineException StorageEngineException
    */
   public void mergeAll() throws StorageEngineException {
-    if (readOnly) {
-      throw new StorageEngineException("Current system mode is read only, does not support merge");
-    }
     // TODO
   }
 

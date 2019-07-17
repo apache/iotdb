@@ -28,6 +28,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.db.service.IoTDB;
@@ -75,6 +76,7 @@ public class IoTDBEngineTimeGeneratorIT {
     tsFileConfig.maxNumberOfPointsInPage = 100;
     tsFileConfig.pageSizeInByte = 1024 * 1024 * 150;
     tsFileConfig.groupSizeInByte = 1024 * 1024 * 100;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1024 * 100);
 
     daemon = IoTDB.getInstance();
     daemon.active();
@@ -92,6 +94,7 @@ public class IoTDBEngineTimeGeneratorIT {
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     tsFileConfig.pageSizeInByte = pageSizeInByte;
     tsFileConfig.groupSizeInByte = groupSizeInByte;
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -70,8 +71,7 @@ public class TsFileMetadataUtils {
       TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(deviceId);
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
       // read TsDeviceMetadata from file
-      TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
-      return tsDeviceMetadata;
+      return tsFileReader.readTsDeviceMetaData(index);
     }
   }
 
@@ -79,15 +79,15 @@ public class TsFileMetadataUtils {
    * get ChunkMetaData List of sensors in sensorSet included in all ChunkGroups of this device. If
    * sensorSet is null, then return metadata of all sensor included in this device.
    */
-  public static ConcurrentHashMap<Path, List<ChunkMetaData>> getChunkMetaDataList(
+  public static Map<Path, List<ChunkMetaData>> getChunkMetaDataList(
       Set<String> sensorSet, TsDeviceMetadata tsDeviceMetadata) {
-    ConcurrentHashMap<Path, List<ChunkMetaData>> pathToChunkMetaDataList = new ConcurrentHashMap<>();
+    Map<Path, List<ChunkMetaData>> pathToChunkMetaDataList = new ConcurrentHashMap<>();
     for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
       List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
           .getChunkMetaDataList();
       String deviceId = chunkGroupMetaData.getDeviceID();
       for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-        if (sensorSet == null || sensorSet.contains(chunkMetaData.getMeasurementUid())) {
+        if (sensorSet.isEmpty() || sensorSet.contains(chunkMetaData.getMeasurementUid())) {
           Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
           pathToChunkMetaDataList.putIfAbsent(path, new ArrayList<>());
           chunkMetaData.setVersion(chunkGroupMetaData.getVersion());

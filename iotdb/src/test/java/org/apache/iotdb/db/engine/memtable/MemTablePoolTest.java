@@ -29,6 +29,7 @@ public class MemTablePoolTest {
 
   private ConcurrentLinkedQueue<IMemTable> memTables;
   private Thread thread = new ReturnThread();
+  private volatile boolean isFinished = false;
 
   @Before
   public void setUp() throws Exception {
@@ -38,7 +39,9 @@ public class MemTablePoolTest {
 
   @After
   public void tearDown() throws Exception {
-    thread.interrupt();
+    isFinished = true;
+    thread.join();
+    System.out.println(MemTablePool.getInstance().getSize());
   }
 
   @Test
@@ -57,34 +60,31 @@ public class MemTablePoolTest {
     long start = System.currentTimeMillis();
     TreeMap<Long, Long> treeMap = new TreeMap<>();
     for (int i = 0; i < 1000000; i++) {
-      treeMap.put((long)i, (long)i);
+      treeMap.put((long) i, (long) i);
     }
     start = System.currentTimeMillis() - start;
     System.out.println("time cost: " + start);
   }
 
 
-  class ReturnThread extends Thread{
+  class ReturnThread extends Thread {
 
     @Override
     public void run() {
       while (true) {
-        if(isInterrupted()){
+        if (isInterrupted()) {
           break;
         }
         IMemTable memTable = memTables.poll();
         if (memTable == null) {
+          if (isFinished) {
+            break;
+          }
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
-            e.printStackTrace();
           }
           continue;
-        }
-        try {
-          Thread.sleep(10);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
         }
         memTables.remove(memTable);
         MemTablePool.getInstance().putBack(memTable, "test case");
