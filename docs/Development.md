@@ -55,12 +55,12 @@ Once all UTs are passed after you modify codes, your modification basically work
 
 ## IDEA
 
-Using IDEA to develop IoTDB is very simple: just click menu as follows: "File" -> 
-"Open" -> choose the pom.xml from the root path of IoTDB source code -> "Open as a project". 
-
-Everything is done.
+* "File" -> "Open" -> choose the root path of IoTDB source code. 
+* mark directory ***iotdb/target/generated-sources/antlr3*** as source code
+* mark directory ***service-rpc/target/generated-sources/thrift*** as source code 
 
 ## Eclipse
+
 Using Eclipse to develop IoTDB is also simple but requires some plugins of Eclipse.
 
 - If your Eclipse version is released before 2019, Antlr plguin may be not work in Eclipse. In this 
