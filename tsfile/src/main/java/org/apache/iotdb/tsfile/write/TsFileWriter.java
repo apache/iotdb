@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
@@ -34,7 +33,6 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.apache.iotdb.tsfile.write.schema.JsonConverter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
@@ -166,9 +164,6 @@ public class TsFileWriter implements AutoCloseable{
    * "encoding": "RLE" "compressor":"SNAPPY" }
    * @throws WriteProcessException if the json is illegal or the measurement exists
    */
-  public void addMeasurementByJson(JSONObject measurement) throws WriteProcessException {
-    addMeasurement(JsonConverter.convertJsonToMeasurementSchema(measurement));
-  }
 
   /**
    * Confirm whether the record is legal. If legal, add it into this RecordWriter.
