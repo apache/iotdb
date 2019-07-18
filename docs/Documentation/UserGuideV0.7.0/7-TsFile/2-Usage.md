@@ -264,7 +264,7 @@ The set of time-series data in section "Time-series Data" is used here for a con
 
 A path is a dot-separated string which uniquely identifies a time-series in TsFile, e.g., "root.area_1.device_1.sensor_1". 
 The last section "sensor_1" is called "measurementId" while the remaining parts "root.area_1.device_1" is called deviceId. 
-As mentioned above, the same measurement in different devices has the same data type and ending, and devices are also unique.
+As mentioned above, the same measurement in different devices has the same data type and encoding, and devices are also unique.
 
 In read interfaces, The parameter ```paths``` indicates the measurements to be selected.
 
