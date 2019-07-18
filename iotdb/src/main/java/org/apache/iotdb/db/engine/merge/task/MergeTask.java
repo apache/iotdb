@@ -107,11 +107,11 @@ public class MergeTask implements Callable<Void> {
     cleanUp(true);
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
-      double byteRate = totalFileSize / elapsedTime / 1024 / 1024 * 1000;
-      double seriesRate = unmergedSeries.size() / elapsedTime * 1000;
-      double chunkRate = mergeChunkTask.totalChunkWritten / elapsedTime * 1000;
+      double byteRate = totalFileSize / elapsedTime / 1024 / 1024;
+      double seriesRate = unmergedSeries.size() / elapsedTime;
+      double chunkRate = mergeChunkTask.totalChunkWritten / elapsedTime;
       double fileRate =
-          (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime * 1000;
+          (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
       logger.info("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
               + "fileRate: {}/s",
           taskName, elapsedTime, byteRate, seriesRate, chunkRate, fileRate);
