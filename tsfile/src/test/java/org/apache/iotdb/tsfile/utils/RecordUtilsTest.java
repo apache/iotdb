@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,51 +45,24 @@ import org.junit.Test;
 public class RecordUtilsTest {
 
   FileSchema schema;
-  JSONObject jsonSchema = generateTestData();
 
-  private static JSONObject generateTestData() {
+  private static FileSchema generateTestData() {
+    FileSchema fileSchema = new FileSchema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    JSONObject s1 = new JSONObject();
-    s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
-    s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-    JSONObject s2 = new JSONObject();
-    s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
-    s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-    JSONObject s3 = new JSONObject();
-    s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
-    s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.FLOAT.toString());
-    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-    JSONObject s4 = new JSONObject();
-    s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
-    s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.DOUBLE.toString());
-    s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-    JSONObject s5 = new JSONObject();
-    s5.put(JsonFormatConstant.MEASUREMENT_UID, "s5");
-    s5.put(JsonFormatConstant.DATA_TYPE, TSDataType.BOOLEAN.toString());
-    s5.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    JSONObject s6 = new JSONObject();
-    s6.put(JsonFormatConstant.MEASUREMENT_UID, "s6");
-    s6.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-    s6.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    JSONArray columnGroup1 = new JSONArray();
-    columnGroup1.add(s1);
-    columnGroup1.add(s2);
-    columnGroup1.add(s3);
-    columnGroup1.add(s4);
-    columnGroup1.add(s5);
-    columnGroup1.add(s6);
-
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, columnGroup1);
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "1");
-    return jsonSchema;
+    fileSchema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
+    fileSchema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    fileSchema.registerMeasurement(new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.valueEncoder)));
+    fileSchema.registerMeasurement(new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.valueEncoder)));
+    fileSchema.registerMeasurement(new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    fileSchema.registerMeasurement(new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
+    return fileSchema;
   }
+
 
   @Before
   public void prepare() throws WriteProcessException {
-    schema = new FileSchema(jsonSchema);
+    schema = new FileSchema();
+    schema = generateTestData();
   }
 
   @Test
