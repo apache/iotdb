@@ -347,7 +347,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by (1d
 ```
 其含义为：
 
-回查询结果的第3行到第7行（首行为第0行）。
+返回查询结果的第3行到第7行（首行为第0行）。
 
 该SQL语句的执行结果如下：
 

@@ -22,6 +22,9 @@
 # 第3章 IoTDB操作指南
 
 ## 数据维护
+
+<!-- > 
+
 ### 数据更新
 
 用户使用[UPDATE语句](/#/Documents/latest/chap5/sec1)可以更新指定的时间序列中一段时间的数据。在更新数据时，用户可以选择需要更新的一个时间序列（0.7.0版本暂不支持多个时间序列的更新）并指定更新某个时间点或时间段的数据（0.7.0版本必须有时间过滤条件）。
@@ -47,6 +50,8 @@ error: The BOOLEAN data type should be true/TRUE or false/FALSE
 IoTDB> update root.ln.wf02 set wt02.sta = false where time < now()
 Msg: do not select any existing series
 ```
+-->
+
 ### 数据删除
 
 用户使用[DELETE语句](/#/Documents/latest/chap5/sec1)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带*路径对某时间之前的数据进行删除（0.7.0版本暂不支持删除某一闭时间区间范围内的数据）。
