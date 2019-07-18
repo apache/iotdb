@@ -417,9 +417,9 @@ public class DatetimeUtils {
        */
       .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE_NS).toFormatter();
 
-  public static long convertDatetimeStrToMillisecond(String str, ZoneId zoneId)
+  public static long convertDatetimeStrToLong(String str, ZoneId zoneId)
       throws LogicalOperatorException {
-    return convertDatetimeStrToMillisecond(str, toZoneOffset(zoneId), 0);
+    return convertDatetimeStrToLong(str, toZoneOffset(zoneId), 0);
   }
 
   public static long getInstantWithPrecision(String str, TSFileConfig.PrecisionType precisionType)
@@ -446,7 +446,7 @@ public class DatetimeUtils {
   /**
    * convert date time string to millisecond, microsecond or nanosecond.
    */
-  public static long convertDatetimeStrToMillisecond(String str, ZoneOffset offset, int depth)
+  public static long convertDatetimeStrToLong(String str, ZoneOffset offset, int depth)
       throws LogicalOperatorException {
 
     String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
@@ -457,11 +457,11 @@ public class DatetimeUtils {
               + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00", str, offset));
     }
     if (str.contains("Z")) {
-      return convertDatetimeStrToMillisecond(str.substring(0, str.indexOf('Z')) + "+00:00", offset,
+      return convertDatetimeStrToLong(str.substring(0, str.indexOf('Z')) + "+00:00", offset,
           depth);
     } else if (str.length() - str.lastIndexOf('+') != 6
         && str.length() - str.lastIndexOf('-') != 6) {
-      return convertDatetimeStrToMillisecond(str + offset, offset, depth + 1);
+      return convertDatetimeStrToLong(str + offset, offset, depth + 1);
     } else if (str.contains("[") || str.contains("]")) {
       throw new DateTimeException(
           String.format("%s with [time-region] at end is not supported now, "
