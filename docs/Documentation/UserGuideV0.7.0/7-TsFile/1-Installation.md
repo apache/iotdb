@@ -32,7 +32,7 @@ There are two ways to use TsFile in your own project.
 		cd tsfile/
 		sh package.sh
 		```
-		Then, all the jars can be get in folder named `lib/`. Import `lib/tsfile-0.8.0-SNAPSHOT-jar-with-dependencies.jar` to your project.
+		Then, all the jars can be get in folder named `lib/`. Import `lib/tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar` to your project.
 	
 * Using as a maven dependency: 
 
@@ -55,7 +55,7 @@ There are two ways to use TsFile in your own project.
 		 <dependency>
 		   <groupId>org.apache.iotdb</groupId>
 		   <artifactId>tsfile</artifactId>
-		   <version>0.8.0-SNAPSHOT</version>
+		   <version>0.9.0-SNAPSHOT</version>
 		 </dependency>
 	  ```
 	  
@@ -69,16 +69,16 @@ There are two ways to use TsFile in your own project.
               <activation><activeByDefault>true</activeByDefault></activation>
            <repositories>
              <repository>  
-      	<id>apache.snapshots</id>
-            <name>Apache Development Snapshot Repository</name>
-            <url>https://repository.apache.org/content/repositories/snapshots/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
+                <id>apache.snapshots</id>
+                <name>Apache Development Snapshot Repository</name>
+                <url>https://repository.apache.org/content/repositories/snapshots/</url>
+                <releases>
+                    <enabled>false</enabled>
+                </releases>
+                <snapshots>
+                    <enabled>true</enabled>
+                </snapshots>
+              </repository>
            </repositories>
          </profile>
 	  ```
@@ -88,6 +88,6 @@ There are two ways to use TsFile in your own project.
 		 <dependency>
 		   <groupId>org.apache.iotdb</groupId>
 		   <artifactId>tsfile</artifactId>
-		   <version>0.8.0-SNAPSHOT</version>
+		   <version>0.9.0-SNAPSHOT</version>
 		 </dependency>
 	  ```
