@@ -45,7 +45,7 @@ error: The BOOLEAN data type should be true/TRUE or false/FALSE
 当更新的列不存在时，IoTDB给出没有存在的路径的错误提示：
 ```
 IoTDB> update root.ln.wf02 set wt02.sta = false where time < now()
-error: do not select any existing path
+Msg: do not select any existing series
 ```
 ### 数据删除
 
@@ -65,7 +65,7 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 
 #### 多传感器时间序列值删除	
 
-当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的前缀路径（参见本文第3.1.6节）或带`*`路径（参见本文第3.1.7节）进行删除操作，进行此操作的SQL语句为：
+当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](/#/Documents/latest/chap2/sec1)进行删除操作，进行此操作的SQL语句为：
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
@@ -79,5 +79,5 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 需要注意的是，当删除的路径不存在时，IoTDB会提示路径不存在，无法删除数据，如下所示。
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-error: TimeSeries does not exist and cannot be delete data
+Msg: TimeSeries does not exist and its data cannot be deleted
 ```
