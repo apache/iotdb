@@ -46,7 +46,6 @@ import org.apache.iotdb.jdbc.IoTDBQueryResultSet;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.thrift.TException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 public abstract class AbstractClient {
 
@@ -350,19 +349,47 @@ public abstract class AbstractClient {
   }
 
   public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
-      long timestamp, ZoneId zoneid, TSFileConfig.PrecisionType precisionType) {
-
-    long integerofDate = timestamp / precisionType.getOrder();
-    String digits = Long.toString(timestamp % precisionType.getOrder());
-    ZonedDateTime dateTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
-    String datetime = dateTime.format(formatter);
-    int length = digits.length();
-    if (length != precisionType.getDigit()) {
-      for (int i = 0; i < precisionType.getDigit() - length; i++) {
-        digits = "0" + digits;
+      long timestamp, ZoneId zoneid, String timestampPrecision) {
+    if (timestampPrecision.equals("ms")) {
+      long integerofDate = timestamp / 1000;
+      String digits = Long.toString(timestamp % 1000);
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 3) {
+        for (int i = 0; i < 3 - length; i++) {
+          digits = "0" + digits;
+        }
       }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    } else if (timestampPrecision.equals("us")) {
+      long integerofDate = timestamp / 1000_000;
+      String digits = Long.toString(timestamp % 1000_000);
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 6) {
+        for (int i = 0; i < 6 - length; i++) {
+          digits = "0" + digits;
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    } else {
+      long integerofDate = timestamp / 1000_000_000L;
+      String digits = Long.toString(timestamp % 1000_000_000L);
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 9) {
+        for (int i = 0; i < 9 - length; i++) {
+          digits = "0" + digits;
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
     }
-    return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
   }
 
   private static String formatDatetime(long timestamp, ZoneId zoneId) {
@@ -373,10 +400,8 @@ public abstract class AbstractClient {
         return Long.toString(timestamp);
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
-        TSFileConfig.PrecisionType precisionType = TSFileConfig.PrecisionType
-            .valueofKey(getTimestampPrecision());
         return parseLongToDateWithPrecision(
-            DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId, precisionType);
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId, getTimestampPrecision());
       default:
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
         return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));

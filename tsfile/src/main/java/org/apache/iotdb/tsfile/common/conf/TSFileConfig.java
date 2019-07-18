@@ -50,44 +50,6 @@ public class TSFileConfig {
   public static final String STRING_ENCODING = "UTF-8";
   public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
   public static final String MAGIC_STRING = "TsFilev0.8.0";
-
-  public enum PrecisionType {
-    MS("ms", 1000, 3),
-    US("us", 1000_000, 6),
-    NS("ns", 1000_000_000, 9);
-
-    private String precisionName;
-    private int orderOfnum;
-    private int decimalNum;
-
-    PrecisionType(String precisionName, int orderOfnum, int decimalNum) {
-      this.precisionName = precisionName;
-      this.orderOfnum = orderOfnum;
-      this.decimalNum = decimalNum;
-    }
-
-    public static PrecisionType valueofKey(String precisionName) {
-      for (PrecisionType precisiontype : PrecisionType.values()) {
-        if (precisiontype.precisionName.equals(precisionName)) {
-          return precisiontype;
-        }
-      }
-      throw new IllegalArgumentException("No element matches " + precisionName);
-    }
-
-    public String getName() {
-      return precisionName;
-    }
-
-    public int getOrder() {
-      return orderOfnum;
-    }
-
-    public int getDigit() {
-      return decimalNum;
-    }
-  }
-
   /**
    * Current version is 3.
    */

@@ -30,7 +30,6 @@ import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 public class DatetimeUtils {
 
@@ -422,22 +421,28 @@ public class DatetimeUtils {
     return convertDatetimeStrToLong(str, toZoneOffset(zoneId), 0);
   }
 
-  public static long getInstantWithPrecision(String str, TSFileConfig.PrecisionType precisionType)
+  public static long getInstantWithPrecision(String str, String timestampPrecision)
       throws LogicalOperatorException {
     try {
       ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
       Instant instant = zonedDateTime.toInstant();
-
-      if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
-        /* adjustment can reduce loss of division */
-        long digits = Math.multiplyExact(instant.getEpochSecond() + 1, precisionType.getOrder());
-        long adjustment = instant.getNano() / 1000 - 1;
-        return Math.addExact(digits, adjustment);
-      } else {
-        long digits = Math.multiplyExact(instant.getEpochSecond(), precisionType.getOrder());
+      if (timestampPrecision.equals("us")) {
+        if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
+          // adjustment can reduce the loss of the division
+          long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000);
+          long adjustment = instant.getNano() / 1000 - 1;
+          return Math.addExact(millis, adjustment);
+        } else {
+          long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000);
+          return Math
+              .addExact(millis, instant.getNano() / 1000);
+        }
+      } else if (timestampPrecision.equals("ns")) {
+        long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000_000L);
         return Math
-            .addExact(digits, instant.getNano() / (1000_000_000L / precisionType.getOrder()));
+            .addExact(millis, instant.getNano());
       }
+      return instant.toEpochMilli();
     } catch (DateTimeParseException e) {
       throw new LogicalOperatorException(e);
     }
@@ -467,8 +472,7 @@ public class DatetimeUtils {
           String.format("%s with [time-region] at end is not supported now, "
               + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00", str));
     }
-    return getInstantWithPrecision(str,
-        TSFileConfig.PrecisionType.valueofKey(timestampPrecision));
+    return getInstantWithPrecision(str, timestampPrecision);
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
