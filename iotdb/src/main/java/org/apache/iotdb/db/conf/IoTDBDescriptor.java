@@ -155,7 +155,7 @@ public class IoTDBDescriptor {
         conf.setWalBufferSize(walBufferSize);
       }
 
-      conf.setMultiDirStrategyClassName(properties.getProperty("mult_dir_strategy",
+      conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
           conf.getMultiDirStrategyClassName()));
 
       conf.setMergeConcurrentThreads(Integer
