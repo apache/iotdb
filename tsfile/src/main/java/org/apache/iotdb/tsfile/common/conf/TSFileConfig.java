@@ -57,13 +57,13 @@ public class TSFileConfig {
     NS("ns", 1000_000_000, 9);
 
     private String precisionName;
-    private int orderofnum;
-    private int digit;
+    private int orderOfnum;
+    private int decimalNum;
 
-    PrecisionType(String precisionName, int orderofnum, int digit) {
+    PrecisionType(String precisionName, int orderOfnum, int decimalNum) {
       this.precisionName = precisionName;
-      this.orderofnum = orderofnum;
-      this.digit = digit;
+      this.orderOfnum = orderOfnum;
+      this.decimalNum = decimalNum;
     }
 
     public static PrecisionType valueofKey(String precisionName) {
@@ -80,11 +80,11 @@ public class TSFileConfig {
     }
 
     public int getOrder() {
-      return orderofnum;
+      return orderOfnum;
     }
 
     public int getDigit() {
-      return digit;
+      return decimalNum;
     }
   }
 

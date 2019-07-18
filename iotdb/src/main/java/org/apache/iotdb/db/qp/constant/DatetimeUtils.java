@@ -25,6 +25,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -421,33 +422,24 @@ public class DatetimeUtils {
     return convertDatetimeStrToMillisecond(str, toZoneOffset(zoneId), 0);
   }
 
-  public static long getInstantWithPrecision(String str, String timestampPrecision,
-      TSFileConfig.PrecisionType precisionType) {
-    /* split str with dot */
-    if (str.substring(20) != "") {
-      char[] st = str.substring(20).toCharArray();
-      for (char s : st) {
-        if (s == '.') {
-          if (str.substring(20).length() != precisionType.getDigit() && timestampPrecision
-              .equals(precisionType.getName())) {
-            System.out.println(str.substring(20));
-            System.exit(-1);
-          }
-        }
+  public static long getInstantWithPrecision(String str, TSFileConfig.PrecisionType precisionType)
+      throws LogicalOperatorException {
+    try {
+      ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
+      Instant instant = zonedDateTime.toInstant();
+
+      if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
+        /* adjustment can reduce loss of division */
+        long digits = Math.multiplyExact(instant.getEpochSecond() + 1, precisionType.getOrder());
+        long adjustment = instant.getNano() / 1000 - 1;
+        return Math.addExact(digits, adjustment);
+      } else {
+        long digits = Math.multiplyExact(instant.getEpochSecond(), precisionType.getOrder());
+        return Math
+            .addExact(digits, instant.getNano() / (1000_000_000L / precisionType.getOrder()));
       }
-    }
-
-    ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
-    Instant instant = zonedDateTime.toInstant();
-
-    if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
-      /* adjustment can reduce loss of division */
-      long digits = Math.multiplyExact(instant.getEpochSecond() + 1, precisionType.getOrder());
-      long adjustment = instant.getNano() / 1000 - 1;
-      return Math.addExact(digits, adjustment);
-    } else {
-      long digits = Math.multiplyExact(instant.getEpochSecond(), precisionType.getOrder());
-      return Math.addExact(digits, instant.getNano() / (1000_000_000L / precisionType.getOrder()));
+    } catch (DateTimeParseException e) {
+      throw new LogicalOperatorException(e);
     }
   }
 
@@ -475,7 +467,7 @@ public class DatetimeUtils {
           String.format("%s with [time-region] at end is not supported now, "
               + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00", str));
     }
-    return getInstantWithPrecision(str, timestampPrecision,
+    return getInstantWithPrecision(str,
         TSFileConfig.PrecisionType.valueofKey(timestampPrecision));
   }
 
