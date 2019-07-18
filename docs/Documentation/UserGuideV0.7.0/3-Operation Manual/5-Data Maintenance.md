@@ -46,7 +46,7 @@ When the updated path does not exist, IoTDB will give the corresponding error pr
 
 ```
 IoTDB> update root.ln.wf02 set wt02.sta = false where time < now()
-error: do not select any existing path
+Msg: do not select any existing series
 ```
 ### Data Deletion
 
@@ -64,7 +64,7 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 
 #### Delete Multiple Timeseries
-When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, the prefix path with broader meaning (see Section 3.1.6 of this manual) or the path with star can be used to delete the data. The SQL statement for this operation is:
+When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](/#/Documents/latest/chap2/sec1) can be used to delete the data. The SQL statement for this operation is:
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
@@ -78,5 +78,5 @@ It should be noted that when the deleted path does not exist, IoTDB will give th
 
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-error: TimeSeries does not exist and cannot be delete data
+Msg: TimeSeries does not exist and its data cannot be deleted
 ```

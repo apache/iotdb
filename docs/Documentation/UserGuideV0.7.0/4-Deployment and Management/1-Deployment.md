@@ -166,4 +166,4 @@ $IOTDB_HOME/
 
 ### Installation by Docker (Dockerfile)
 
-You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](#build-and-use-iotdb-by-dockerfile)
+You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](/#/Documents/latest/chap4/sec7)
