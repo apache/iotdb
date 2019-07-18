@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +47,7 @@ public class FileGenerator {
   public static String inputDataFile;
   public static String outputDataFile = "target/perTestOutputData.tsfile";
   public static String errorOutputDataFile;
-  public static JSONObject jsonSchema;
+  public static FileSchema schema;
   public static int oldMaxNumberOfPointsInPage;
 
   public static void generateFile(int rowCount, int maxNumberOfPointsInPage)
@@ -69,7 +70,7 @@ public class FileGenerator {
   public static void prepare() throws IOException {
     inputDataFile = "target/perTestInputData";
     errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
-    jsonSchema = generateTestData();
+    generateTestData();
     generateSampleInputDataFile();
   }
 
@@ -156,8 +157,6 @@ public class FileGenerator {
       errorFile.delete();
     }
 
-    // LOG.info(jsonSchema.toString());
-    FileSchema schema = new FileSchema(jsonSchema);
 
     // TSFileDescriptor.conf.chunkGroupSize = 2000;
     // TSFileDescriptor.conf.pageSizeInByte = 100;
@@ -172,51 +171,16 @@ public class FileGenerator {
     LOG.info("write to file successfully!!");
   }
 
-  private static JSONObject generateTestData() {
+  private static void generateTestData() {
+    schema = new FileSchema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    JSONObject s1 = new JSONObject();
-    s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
-    s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-    JSONObject s2 = new JSONObject();
-    s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
-    s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-    JSONObject s3 = new JSONObject();
-    s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
-    s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-    JSONObject s4 = new JSONObject();
-    s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
-    s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-    s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    JSONObject s5 = new JSONObject();
-    s5.put(JsonFormatConstant.MEASUREMENT_UID, "s5");
-    s5.put(JsonFormatConstant.DATA_TYPE, TSDataType.BOOLEAN.toString());
-    s5.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    JSONObject s6 = new JSONObject();
-    s6.put(JsonFormatConstant.MEASUREMENT_UID, "s6");
-    s6.put(JsonFormatConstant.DATA_TYPE, TSDataType.FLOAT.toString());
-    s6.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
-    JSONObject s7 = new JSONObject();
-    s7.put(JsonFormatConstant.MEASUREMENT_UID, "s7");
-    s7.put(JsonFormatConstant.DATA_TYPE, TSDataType.DOUBLE.toString());
-    s7.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
-
-    JSONArray measureGroup1 = new JSONArray();
-    measureGroup1.add(s1);
-    measureGroup1.add(s2);
-    measureGroup1.add(s3);
-    measureGroup1.add(s4);
-    measureGroup1.add(s5);
-    measureGroup1.add(s6);
-    measureGroup1.add(s7);
-
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, measureGroup1);
-    // System.out.println(jsonSchema);
-    return jsonSchema;
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerMeasurement(new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema.registerMeasurement(new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
   }
 
   static public void writeToFile(FileSchema schema)

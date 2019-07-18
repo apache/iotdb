@@ -24,6 +24,8 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -67,18 +69,18 @@ public class CompressionRatioTest {
   public void testCompressionRatio() throws IOException {
     double compressionRatioSum = 0;
     int calcuTimes = 0;
-    if (new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
+    if (new File(directory, String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
       fail();
     }
     double compressionRatio = 10;
     for(int i = 0; i < 500 ; i+= compressionRatio){
       this.compressionRatio.updateRatio(compressionRatio);
-      if (new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
+      if (new File(directory, String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
         fail();
       }
       calcuTimes++;
       compressionRatioSum += compressionRatio;
-      if (!new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
+      if (!new File(directory, String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
         fail();
       }
       assertEquals(0, Double
@@ -90,18 +92,18 @@ public class CompressionRatioTest {
   public void testRestore() throws IOException {
     double compressionRatioSum = 0;
     int calcuTimes = 0;
-    if (new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
+    if (new File(directory, String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
       fail();
     }
     int compressionRatio = 10;
     for(int i = 0; i < 100 ; i+= compressionRatio){
       this.compressionRatio.updateRatio(compressionRatio);
-      if (new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
+      if (new File(directory, String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
         fail();
       }
       calcuTimes++;
       compressionRatioSum += compressionRatio;
-      if (!new File(directory, String.format(CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
+      if (!new File(directory, String.format(Locale.ENGLISH, CompressionRatio.RATIO_FILE_PATH_FORMAT, compressionRatioSum , calcuTimes)).exists()) {
         fail();
       }
       assertEquals(0, Double

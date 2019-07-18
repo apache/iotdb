@@ -109,18 +109,18 @@ import org.slf4j.LoggerFactory;
 public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
-  protected static final String INFO_NOT_LOGIN = "{}: Not login.";
-  protected static final String ERROR_NOT_LOGIN = "Not login";
+  private static final String INFO_NOT_LOGIN = "{}: Not login.";
+  private static final String ERROR_NOT_LOGIN = "Not login";
 
   protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
   // login is failed.
   protected ThreadLocal<String> username = new ThreadLocal<>();
-  protected ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
-  protected ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
-  protected ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
+  private ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
+  private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
+  private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  protected ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
+  private ThreadLocal<Map<Long, QueryContext>> contextMapLocal = new ThreadLocal<>();
 
   private AtomicLong globalStmtId = new AtomicLong(0L);
   // (statementId) -> (statement)
@@ -178,7 +178,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSCloseSessionResp closeSession(TSCloseSessionReq req) throws TException {
+  public TSCloseSessionResp closeSession(TSCloseSessionReq req) {
     logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
     TS_Status tsStatus;
     if (username.get() == null) {
@@ -198,13 +198,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSCancelOperationResp cancelOperation(TSCancelOperationReq req) throws TException {
+  public TSCancelOperationResp cancelOperation(TSCancelOperationReq req) {
     return new TSCancelOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
   }
 
   @Override
-  public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
-    logger.debug("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
+  public TSCloseOperationResp closeOperation(TSCloseOperationReq req) {
+    logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
 
       if (req != null && req.isSetStmtId()) {
@@ -221,7 +221,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
   }
 
-  protected void releaseQueryResource(TSCloseOperationReq req) throws StorageEngineException {
+  private void releaseQueryResource(TSCloseOperationReq req) throws StorageEngineException {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       return;
@@ -254,7 +254,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) throws TException {
+  public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
     TS_Status status;
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -320,16 +320,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  protected Set<String> getAllStorageGroups() throws PathErrorException {
+  private Set<String> getAllStorageGroups() throws PathErrorException {
     return MManager.getInstance().getAllStorageGroup();
   }
 
-  protected List<List<String>> getTimeSeriesForPath(String path)
+  private List<List<String>> getTimeSeriesForPath(String path)
       throws PathErrorException {
     return MManager.getInstance().getShowTimeseriesPath(path);
   }
 
-  protected String getMetadataInString() {
+  private String getMetadataInString() {
     return MManager.getInstance().getMetadataInString();
   }
 
@@ -409,8 +409,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req)
-      throws TException {
+  public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req) {
     long t1 = System.currentTimeMillis();
     String currStmt = null;
     List<Integer> result = new ArrayList<>();
@@ -440,9 +439,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             batchErrorMessage.toString(),
             result);
       }
-    } catch (QueryInBatchStmtException e) {
-      return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-          "statement is query :" + currStmt, result);
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
@@ -454,7 +450,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // execute one statement of a batch. Currently, query is not allowed in a batch statement and
   // on finding queries in a batch, such query will be ignored and an error will be generated
   private boolean executeStatementInBatch(String statement, StringBuilder batchErrorMessage,
-      List<Integer> result) throws QueryInBatchStmtException {
+      List<Integer> result) {
     try {
       PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
@@ -483,7 +479,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 
   @Override
-  public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) throws TException {
+  public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     try {
       if (!checkLogin()) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -520,7 +516,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * Set consistency level
    */
-  public boolean execSetConsistencyLevel(String statement) throws SQLException {
+  private boolean execSetConsistencyLevel(String statement) throws SQLException {
     if (statement == null) {
       return false;
     }
@@ -534,7 +530,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) throws TException {
+  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
     long t1 = System.currentTimeMillis();
     try {
       if (!checkLogin()) {
@@ -654,12 +650,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  protected void checkFileLevelSet(List<Path> paths) throws PathErrorException {
+  private void checkFileLevelSet(List<Path> paths) throws PathErrorException {
     MManager.getInstance().checkFileLevel(paths);
   }
 
   @Override
-  public TSFetchResultsResp fetchResults(TSFetchResultsReq req) throws TException {
+  public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     try {
       if (!checkLogin()) {
         return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, "Not login.");
@@ -697,7 +693,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  protected QueryDataSet createNewDataSet(String statement, TSFetchResultsReq req)
+  private QueryDataSet createNewDataSet(String statement, TSFetchResultsReq req)
       throws PathErrorException, QueryFilterOptimizationException, StorageEngineException,
       ProcessorException, IOException {
     PhysicalPlan physicalPlan = queryStatus.get().get(statement);
@@ -715,7 +711,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return queryDataSet;
   }
 
-  protected void initContextMap() {
+  private void initContextMap() {
     Map<Long, QueryContext> contextMap = contextMapLocal.get();
     if (contextMap == null) {
       contextMap = new HashMap<>();
@@ -724,8 +720,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req)
-      throws TException {
+  public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) {
     try {
       if (!checkLogin()) {
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
@@ -773,7 +768,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  protected boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
+  private boolean executeNonQuery(PhysicalPlan plan) throws ProcessorException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new ProcessorException(
+          "Current system mode is read-only, does not support non-query operation");
+    }
     return processor.getExecutor().processNonQuery(plan);
   }
 
@@ -806,11 +805,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    *
    * @return true: If logged in; false: If not logged in
    */
-  protected boolean checkLogin() {
+  private boolean checkLogin() {
     return username.get() != null;
   }
 
-  protected boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
+  private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
       targetUser = ((AuthorPlan) plan).getUserName();
@@ -831,7 +830,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  protected TSExecuteBatchStatementResp getTSBathExecuteStatementResp(TS_StatusCode code,
+  private TSExecuteBatchStatementResp getTSBathExecuteStatementResp(TS_StatusCode code,
       String msg,
       List<Integer> result) {
     TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
@@ -850,13 +849,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  protected void handleClientExit() throws TException {
+  void handleClientExit() throws TException {
     closeOperation(null);
     closeSession(null);
   }
 
   @Override
-  public TSGetTimeZoneResp getTimeZone() throws TException {
+  public TSGetTimeZoneResp getTimeZone() {
     TS_Status tsStatus;
     TSGetTimeZoneResp resp;
     try {
@@ -872,7 +871,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSSetTimeZoneResp setTimeZone(TSSetTimeZoneReq req) throws TException {
+  public TSSetTimeZoneResp setTimeZone(TSSetTimeZoneReq req) {
     TS_Status tsStatus;
     try {
       String timeZoneID = req.getTimeZone();
@@ -887,7 +886,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public ServerProperties getProperties() throws TException {
+  public ServerProperties getProperties() {
     ServerProperties properties = new ServerProperties();
     properties.setVersion(IoTDBConstant.VERSION);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());

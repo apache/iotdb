@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.reader;
 
 import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
-public interface IPointReader{
+public interface IPointReader {
 
   boolean hasNext() throws IOException;
 

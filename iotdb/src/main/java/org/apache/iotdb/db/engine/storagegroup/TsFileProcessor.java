@@ -378,7 +378,8 @@ public class TsFileProcessor {
         writer.mark();
         flushTask.syncFlushMemTable();
       } catch (ExecutionException | InterruptedException | IOException e) {
-        StorageEngine.getInstance().setReadOnly(true);
+        logger.error("meet error when flushing a memtable, change system mode to read-only", e);
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           logger.error("IOTask meets error, truncate the corrupted data", e);
           writer.reset();
@@ -416,7 +417,8 @@ public class TsFileProcessor {
         }
         endFile();
       } catch (IOException | TsFileProcessorException e) {
-        StorageEngine.getInstance().setReadOnly(true);
+        logger.error("meet error when flush FileMetadata to {}, change system mode to read-only", tsFileResource.getFile().getAbsolutePath());
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           writer.reset();
         } catch (IOException e1) {

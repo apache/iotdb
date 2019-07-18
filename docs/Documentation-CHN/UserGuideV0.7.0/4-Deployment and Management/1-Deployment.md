@@ -50,13 +50,13 @@ iotdb-<version>.zip # For Windows
 
 下载后，您可使用以下操作对IoTDB的压缩包进行解压: 
 
-如果您使用的操作系统是Linux或MacOS，则使用如下解压命令：
+如果您使用的操作系统是Windows，则使用解压缩工具解压或使用如下解压命令：
 
 ```
 Shell > uzip iotdb-<version>.zip
 ```
 
-如果您使用的操作系统是Windows，则使用解压缩工具解压或使用如下解压命令：
+如果您使用的操作系统是Linux或MacOS，则使用如下解压命令：
 
 ```
 Shell > tar -zxf iotdb-<version>.tar.gz # For Linux or MacOS
