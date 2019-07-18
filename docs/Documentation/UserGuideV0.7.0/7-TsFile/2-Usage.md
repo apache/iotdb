@@ -18,7 +18,7 @@
     under the License.
 
 -->
-Now, you’re ready to start doing some awesome things with TsFile. This section demonstrates the detailed usage of TsFile.
+Now, you are ready to start doing some awesome things with TsFile. This section demonstrates the detailed usage of TsFile.
 
 ### Time-series Data
 A time-series is considered as a set of quadruples. A quadruple is defined as (deltaObject, measurement, time, value).
