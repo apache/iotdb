@@ -85,7 +85,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
           }
         }
         tsFileReader = FileReaderManager.getInstance()
-            .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
+            .get(tsFileResource, tsFileResource.isClosed());
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
