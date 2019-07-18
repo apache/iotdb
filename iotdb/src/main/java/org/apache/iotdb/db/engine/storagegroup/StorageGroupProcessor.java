@@ -167,7 +167,7 @@ public class StorageGroupProcessor {
       if (storageGroupSysDir.mkdirs()) {
         logger.info("Storage Group system Directory {} doesn't exist, create it",
             storageGroupSysDir.getPath());
-      } else if(!storageGroupSysDir.exists()) {
+      } else if (!storageGroupSysDir.exists()) {
         logger.error("craete Storage Group system Directory {} failed",
             storageGroupSysDir.getPath());
       }
@@ -311,7 +311,9 @@ public class StorageGroupProcessor {
         tsFileProcessor = workUnSequenceTsFileProcessor;
       }
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("disk space is insufficient when creating TsFile processor, change system mode to read-only", e);
+      logger.error(
+          "disk space is insufficient when creating TsFile processor, change system mode to read-only",
+          e);
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       return false;
     }
@@ -454,7 +456,7 @@ public class StorageGroupProcessor {
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context) {
     insertLock.readLock().lock();
-    synchronized (lruForSensorUsedInQuery){
+    synchronized (lruForSensorUsedInQuery) {
       lruForSensorUsedInQuery.add(measurementId);
     }
     try {
@@ -469,15 +471,17 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * returns the top k% sensors most frequently used in queries.
+   * returns the top k% measurements which are most frequently used in queries.
    */
-  public Set calTopKSensor(String sensorId, double k) {
+  public Set calTopKMeasurement(String sensorId, double k) {
     int num = (int) (lruForSensorUsedInQuery.size() * k) + 1;
     Set<String> sensorSet = new HashSet<>(num);
 
     for (String sensor : lruForSensorUsedInQuery) {
       if (--num > 0) {
         sensorSet.add(sensor);
+      } else {
+        break;
       }
     }
     sensorSet.add(sensorId);

@@ -37,22 +37,22 @@ public class TsFileMetaDataCache {
   private static final long MEMORY_THRESHOLD_IN_B = (long) (0.25 * config
       .getAllocateMemoryForRead());
   /**
-   * key: The file seriesPath of tsfile. value: TsFileMetaData
+   * key: Tsfile path. value: TsFileMetaData
    */
   private LruLinkedHashMap<String, TsFileMetaData> cache;
   private AtomicLong cacheHintNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   /**
-   * estimate size of a deviceIndexMap entry in TsFileMetaData.
+   * estimated size of a deviceIndexMap entry in TsFileMetaData.
    */
   private long deviceIndexMapEntrySize = 0;
   /**
-   * estimate size of measurementSchema entry in TsFileMetaData.
+   * estimated size of measurementSchema entry in TsFileMetaData.
    */
   private long measurementSchemaEntrySize = 0;
   /**
-   * estimate size of version and CreateBy in TsFileMetaData.
+   * estimated size of version and CreateBy in TsFileMetaData.
    */
   private long versionAndCreatebySize = 10;
 
@@ -71,7 +71,7 @@ public class TsFileMetaDataCache {
         long valueSize = value.getDeviceMap().size() * deviceIndexMapEntrySize
             + measurementSchemaEntrySize * value.getMeasurementSchema().size()
             + versionAndCreatebySize;
-        return key.length() + valueSize;
+        return key.length() * 2 + valueSize;
       }
     };
   }
@@ -94,7 +94,7 @@ public class TsFileMetaDataCache {
         cacheHintNum.incrementAndGet();
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "Cache hint: the number of requests for cache is {}, "
+              "Cache hit: the number of requests for cache is {}, "
                   + "the number of hints for cache is {}",
               cacheRequestNum.get(), cacheHintNum.get());
         }
@@ -109,7 +109,7 @@ public class TsFileMetaDataCache {
         }
       }
       if (logger.isDebugEnabled()) {
-        logger.debug("Cache didn't hint: the number of requests for cache is {}",
+        logger.debug("Cache didn't hit: the number of requests for cache is {}",
             cacheRequestNum.get());
       }
       TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(path);

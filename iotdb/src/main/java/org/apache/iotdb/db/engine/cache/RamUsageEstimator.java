@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 /**
- * This class is copy from apache lucene, version 4.6.1. Estimates the size (memory representation)
+ * This class is copied from apache lucene, version 4.6.1. Estimates the size(memory representation)
  * of Java objects. https://github.com/apache/lucene-solr/blob/releases/lucene-solr/4.6.1/lucene/core/src/java/org/apache/lucene/util/RamUsageEstimator.java
  *
  * @lucene.internal

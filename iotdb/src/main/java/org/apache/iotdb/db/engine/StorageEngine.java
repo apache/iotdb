@@ -243,12 +243,12 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * returns the top k% sensors most frequently used in queries.
+   * returns the top k% measurements that are most frequently used in queries.
    */
-  public Set calTopKSensor(String deviceId, String sensorId, double k)
+  public Set calTopKMeasurement(String deviceId, String sensorId, double k)
       throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.calTopKSensor(sensorId, k);
+    return storageGroupProcessor.calTopKMeasurement(sensorId, k);
   }
 
   /**

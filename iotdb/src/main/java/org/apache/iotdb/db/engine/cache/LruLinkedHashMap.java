@@ -23,7 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * This class is a LRU cache. <b>Note: It's not thread safe.</b>
+ * This class is an LRU cache. <b>Note: It's not thread safe.</b>
  */
 public abstract class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
@@ -61,7 +61,7 @@ public abstract class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
   }
 
   /**
-   * approximate estimate addition size of key and value.
+   * approximately estimate the additional size of key and value.
    */
   protected abstract long calEntrySize(K key, V value);
 

@@ -59,7 +59,7 @@ public class DeviceMetaDataCache {
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   /**
-   * approximate estimate of chunkMetaData size
+   * approximate estimation of chunkMetaData size
    */
   private long chunkMetaDataSize = 0;
 
@@ -70,7 +70,7 @@ public class DeviceMetaDataCache {
         if (chunkMetaDataSize == 0 && !value.isEmpty()) {
           chunkMetaDataSize = RamUsageEstimator.sizeOf(value.get(0));
         }
-        return value.size() * chunkMetaDataSize + key.length();
+        return value.size() * chunkMetaDataSize + key.length() * 2;
       }
     };
   }
@@ -85,9 +85,9 @@ public class DeviceMetaDataCache {
   public List<ChunkMetaData> get(String filePath, Path seriesPath)
       throws IOException {
     StringBuilder builder = new StringBuilder(filePath).append(".").append(seriesPath.getDevice());
-    String devicePathStr = builder.toString();
+    String pathDeviceStr = builder.toString();
     String key = builder.append(".").append(seriesPath.getMeasurement()).toString();
-    Object devicePathObject = devicePathStr.intern();
+    Object devicePathObject = pathDeviceStr.intern();
 
     synchronized (lruCache) {
       cacheRequestNum.incrementAndGet();
@@ -95,7 +95,7 @@ public class DeviceMetaDataCache {
         cacheHintNum.incrementAndGet();
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "Cache hint: the number of requests for cache is {}, "
+              "Cache hit: the number of requests for cache is {}, "
                   + "the number of hints for cache is {}",
               cacheRequestNum.get(), cacheHintNum.get());
         }
@@ -110,7 +110,7 @@ public class DeviceMetaDataCache {
         }
       }
       if (logger.isDebugEnabled()) {
-        logger.debug("Cache didn't hint: the number of requests for cache is {}",
+        logger.debug("Cache didn't hit: the number of requests for cache is {}",
             cacheRequestNum.get());
       }
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
@@ -121,7 +121,7 @@ public class DeviceMetaDataCache {
           .getChunkMetaDataList(calHotSensorSet(seriesPath), blockMetaData);
       synchronized (lruCache) {
         chunkMetaData.forEach((path, chunkMetaDataList) -> {
-          String k = devicePathStr + "." + path.getMeasurement();
+          String k = pathDeviceStr + "." + path.getMeasurement();
           if (!lruCache.containsKey(k)) {
             lruCache.put(k, chunkMetaDataList);
           }
@@ -153,7 +153,7 @@ public class DeviceMetaDataCache {
       }
       try {
         return storageEngine
-            .calTopKSensor(seriesPath.getDevice(), seriesPath.getMeasurement(),
+            .calTopKMeasurement(seriesPath.getDevice(), seriesPath.getMeasurement(),
                 hotSensorProportion);
       } catch (Exception e) {
         throw new IOException(e);

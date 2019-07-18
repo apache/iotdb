@@ -77,7 +77,7 @@ public class TsFileMetadataUtils {
 
   /**
    * get ChunkMetaData List of sensors in sensorSet included in all ChunkGroups of this device. If
-   * sensorSet is null, then return metadata of all sensor included in this device.
+   * sensorSet is empty, then return metadata of all sensor included in this device.
    */
   public static Map<Path, List<ChunkMetaData>> getChunkMetaDataList(
       Set<String> sensorSet, TsDeviceMetadata tsDeviceMetadata) {
