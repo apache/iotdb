@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -239,6 +240,15 @@ public class StorageEngine implements IService {
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     return storageGroupProcessor.query(deviceId, measurementId, context);
+  }
+
+  /**
+   * returns the top k% sensors most frequently used in queries.
+   */
+  public Set calTopKSensor(String deviceId, String sensorId, double k)
+      throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    return storageGroupProcessor.calTopKSensor(sensorId, k);
   }
 
   /**
