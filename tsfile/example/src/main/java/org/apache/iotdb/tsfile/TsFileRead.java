@@ -17,7 +17,6 @@
  * under the License.
  */
 package org.apache.iotdb.tsfile;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
@@ -34,84 +33,55 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 /**
  * The class is to show how to read TsFile file named "test.tsfile".
- * The TsFile file "test.tsfile" is generated from class TsFileWrite2 or class TsFileWrite,
- * they generate the same TsFile file by two different ways
- * <p>
- * Run TsFileWrite1 or TsFileWrite to generate the test.tsfile first
+ * The TsFile file "test.tsfile" is generated from class TsFileWrite.
+ * Run TsFileWrite to generate the test.tsfile first
  */
 public class TsFileRead {
+  private static void queryAndPrint(ArrayList<Path> paths, ReadOnlyTsFile readTsFile, IExpression statement)
+          throws IOException {
+    QueryExpression queryExpression = QueryExpression.create(paths, statement);
+    QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+    while (queryDataSet.hasNext()) {
+      System.out.println(queryDataSet.next());
+    }
+    System.out.println("------------");
+  }
 
   public static void main(String[] args) throws IOException {
 
     // file path
     String path = "test.tsfile";
 
-    // read example : no filter
+    // create reader and get the readTsFile interface
     TsFileSequenceReader reader = new TsFileSequenceReader(path);
     ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+    // use these paths(all sensors) for all the queries
     ArrayList<Path> paths = new ArrayList<>();
     paths.add(new Path("device_1.sensor_1"));
     paths.add(new Path("device_1.sensor_2"));
     paths.add(new Path("device_1.sensor_3"));
-    QueryExpression queryExpression = QueryExpression.create(paths, null);
-    QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-    while (queryDataSet.hasNext()) {
-      System.out.println(queryDataSet.next());
-    }
-    System.out.println("------------");
-    reader.close();
 
-    // time filter : 4 <= time <= 10
+    // no filter, should select 1 2 3 4 6 7 8
+    queryAndPrint(paths, readTsFile, null);
+
+    // time filter : 4 <= time <= 10, should select 4 6 7 8
     IExpression timeFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(4L)),
-        new GlobalTimeExpression(TimeFilter.ltEq(10L)));
-    reader = new TsFileSequenceReader(path);
-    readTsFile = new ReadOnlyTsFile(reader);
-    paths = new ArrayList<>();
-    paths.add(new Path("device_1.sensor_1"));
-    paths.add(new Path("device_1.sensor_2"));
-    paths.add(new Path("device_1.sensor_3"));
-    queryExpression = QueryExpression.create(paths, timeFilter);
-    queryDataSet = readTsFile.query(queryExpression);
-    while (queryDataSet.hasNext()) {
-      System.out.println(queryDataSet.next());
-    }
-    System.out.println("------------");
-    reader.close();
+            new GlobalTimeExpression(TimeFilter.ltEq(10L)));
+    queryAndPrint(paths, readTsFile, timeFilter);
 
-    // value filter : device_1.sensor_2 <= 20
+    // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
     IExpression valueFilter = new SingleSeriesExpression(new Path("device_1.sensor_2"),
-        ValueFilter.ltEq(20));
-    reader = new TsFileSequenceReader(path);
-    readTsFile = new ReadOnlyTsFile(reader);
-    paths = new ArrayList<>();
-    paths.add(new Path("device_1.sensor_1"));
-    paths.add(new Path("device_1.sensor_2"));
-    paths.add(new Path("device_1.sensor_3"));
-    queryExpression = QueryExpression.create(paths, valueFilter);
-    queryDataSet = readTsFile.query(queryExpression);
-    while (queryDataSet.hasNext()) {
-      System.out.println(queryDataSet.next());
-    }
-    System.out.println("------------");
-    reader.close();
+            ValueFilter.ltEq(20));
+    queryAndPrint(paths, readTsFile, valueFilter);
 
-    // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20
+    // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should select 4 7 8
     timeFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(4L)),
-        new GlobalTimeExpression(TimeFilter.ltEq(10L)));
+            new GlobalTimeExpression(TimeFilter.ltEq(10L)));
     valueFilter = new SingleSeriesExpression(new Path("device_1.sensor_3"), ValueFilter.gtEq(20));
-    reader = new TsFileSequenceReader(path);
-    readTsFile = new ReadOnlyTsFile(reader);
-    paths = new ArrayList<>();
-    paths.add(new Path("device_1.sensor_1"));
-    paths.add(new Path("device_1.sensor_2"));
-    paths.add(new Path("device_1.sensor_3"));
     IExpression finalFilter = BinaryExpression.and(timeFilter, valueFilter);
-    queryExpression = QueryExpression.create(paths, finalFilter);
-    queryDataSet = readTsFile.query(queryExpression);
-    while (queryDataSet.hasNext()) {
-      System.out.println(queryDataSet.next());
-    }
+    queryAndPrint(paths, readTsFile, finalFilter);
+
+    //close the reader when you left
     reader.close();
   }
-
 }
