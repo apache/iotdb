@@ -213,7 +213,7 @@ public class IoTDBConfig {
   /**
    * The memory used for stat performance.
    */
-  private int performance_stat_memory_in_kb = 20;
+  private int performanceStatMemoryInKB = 20;
   /**
    * whether use chunkBufferPool.
    */
@@ -575,12 +575,12 @@ public class IoTDBConfig {
     this.performanceStatDisplayInterval = performanceStatDisplayInterval;
   }
 
-  public int getPerformance_stat_memory_in_kb() {
-    return performance_stat_memory_in_kb;
+  public int getPerformanceStatMemoryInKB() {
+    return performanceStatMemoryInKB;
   }
 
-  public void setPerformance_stat_memory_in_kb(int performance_stat_memory_in_kb) {
-    this.performance_stat_memory_in_kb = performance_stat_memory_in_kb;
+  public void setPerformanceStatMemoryInKB(int performanceStatMemoryInKB) {
+    this.performanceStatMemoryInKB = performanceStatMemoryInKB;
   }
 
   public long getMemtableSizeThreshold() {

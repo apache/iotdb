@@ -114,8 +114,14 @@ Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 > pwd
 /workspace/incubator-iotdb
 
+# Unix/OS X
 > mvn clean package -pl iotdb -am -Dmaven.test.skip=true
+
+# Windows
+> mvn clean package -pl iotdb -am '-Dmaven.test.skip=true'
 ```
+
+Note: If you are a Windows user, you should use quoting `'-Dmaven.test.skip=true'` in the following commands.
 
 If successful, you will see the the following text in the terminal:
 

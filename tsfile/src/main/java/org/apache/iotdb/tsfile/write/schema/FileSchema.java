@@ -21,8 +21,6 @@ package org.apache.iotdb.tsfile.write.schema;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.alibaba.fastjson.JSONObject;
-import org.apache.iotdb.tsfile.exception.write.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -45,21 +43,6 @@ public class FileSchema {
    */
   public FileSchema() {
     this.measurementSchema = new HashMap<>();
-  }
-
-  /**
-   * @deprecated
-   * example: { "measurement_id": "sensor_cpu_50", "data_type": "INT32", "encoding": "RLE" }.
-   * {"schema": [ { "measurement_id": "sensor_1", "data_type": "FLOAT", "encoding": "RLE" },
-   * { "measurement_id": "sensor_2", "data_type": "INT32", "encoding": "TS_2DIFF" },
-   * { "measurement_id": "sensor_3", "data_type": "INT32","encoding": "TS_2DIFF" } ] };
-   *
-   * @param jsonSchema
-   *            file schema in json format
-   */
-  @Deprecated
-  public FileSchema(JSONObject jsonSchema) throws InvalidJsonSchemaException {
-    this(JsonConverter.converterJsonToMeasurementSchemas(jsonSchema));
   }
 
   /**

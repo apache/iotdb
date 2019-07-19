@@ -61,8 +61,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
 
     int priorityValue = 1;
     for (TsFileResource tsFileResource : unseqResources) {
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-          .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
+      TsFileSequenceReader tsFileReader;
 
       // prepare metaDataList
       List<ChunkMetaData> metaDataList;
@@ -70,6 +69,8 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
         if (isTsFileNotSatisfied(tsFileResource, filter)) {
           continue;
         }
+        tsFileReader = FileReaderManager.getInstance()
+            .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
         MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
         metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
         List<Modification> pathModifications = context
@@ -83,6 +84,8 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
             continue;
           }
         }
+        tsFileReader = FileReaderManager.getInstance()
+            .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
@@ -90,23 +93,22 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
       ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
-        DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
-            chunkMetaData.getEndTime(),
-            chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
-            chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
-            chunkMetaData.getTsDataType());
-
-        if (filter != null && !filter.satisfy(digest)) {
-          continue;
+        if (filter != null) {
+          DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
+              chunkMetaData.getEndTime(),
+              chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
+              chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
+              chunkMetaData.getTsDataType());
+          if (!filter.satisfy(digest)) {
+            continue;
+          }
         }
 
         Chunk chunk = chunkLoader.getChunk(chunkMetaData);
         ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
             : new ChunkReaderWithoutFilter(chunk);
 
-        addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue);
-
-        priorityValue++;
+        addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue++);
       }
 
       if (!tsFileResource.isClosed()) {

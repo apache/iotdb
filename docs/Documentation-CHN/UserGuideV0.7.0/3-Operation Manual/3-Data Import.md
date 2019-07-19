@@ -24,7 +24,7 @@
 ## 数据接入
 ### 历史数据导入
 
-0.7.0版本中暂不支持此功能。
+0.8.0版本中暂不支持此功能。
 
 ### 实时数据接入
 
@@ -43,7 +43,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
 IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
 ```
 
-以上示例代码将长整型的timestamp以及值为true的数据插入到时间序列`root.ln.wf02.wt02.status`中和将长整型的timestamp以及值为”v1”的数据插入到时间序列`root.ln.wf02.wt02.hardware`中。执行成功后会出现execute successfully的提示，代表数据插入已完成。 
+以上示例代码将长整型的timestamp以及值为true的数据插入到时间序列`root.ln.wf02.wt02.status`中和将长整型的timestamp以及值为”v1”的数据插入到时间序列`root.ln.wf02.wt02.hardware`中。执行成功后会返回执行时间，代表数据插入已完成。 
 
 > 注意：在IoTDB中，TEXT类型的数据单双引号都可以来表示,上面的插入语句是用的是双引号表示TEXT类型数据，下面的示例将使用单引号表示TEXT类型数据。
 
@@ -73,7 +73,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) values(1,"v1")
 由于`root.ln.wf02.wt02. temperature`时间序列不存在，系统将会返回以下ERROR告知该Timeseries路径不存在：
 
 ```
-error: Timeseries root.ln.wf02.wt02.temperature does not exist.
+Msg: Current deviceId[root.ln.wf02.wt02] does not contains measurement:temperature
 ```
 若用户插入的数据类型与该Timeseries对应的数据类型不一致，例如执行以下命令：
 ```

@@ -22,10 +22,16 @@
 # Chapter 2: Concept
 
 ## Data Type
-IoTDB supports six data types in total: BOOLEAN (Boolean), INT32 (Integer), INT64 (Long Integer), FLOAT (Single Precision Floating Point), DOUBLE (Double Precision Floating Point), TEXT (String).
+IoTDB supports six data types in total:
+* BOOLEAN (Boolean)
+* INT32 (Integer)
+* INT64 (Long Integer)
+* FLOAT (Single Precision Floating Point)
+* DOUBLE (Double Precision Floating Point)
+* TEXT (String).
 
 
-The time series of FLOAT and DOUBLE type can specify (MAX\_POINT\_NUMBER, see [this page](/#/Documents/latest/chap5/sec1) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](/#/Documents/latest/chap2/sec3) or [TS\_2DIFF](/#/Documents/latest/chap2/sec3) (Refer to [Create Timeseries Statement](/#/Documents/latest/chap5/sec1) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](/#/Documents/latest/chap2/sec3) in the configuration file "tsfile-format.properties" for configuration for the configuration method.
+The time series of **FLOAT** and **DOUBLE** type can specify (MAX\_POINT\_NUMBER, see [this page](/#/Documents/latest/chap5/sec1) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](/#/Documents/latest/chap2/sec3) or [TS\_2DIFF](/#/Documents/latest/chap2/sec3) (Refer to [Create Timeseries Statement](/#/Documents/latest/chap5/sec1) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](/#/Documents/latest/chap4/sec2) in the configuration file "tsfile-format.properties".
 
 * For Float data value, The data range is (-Integer.MAX_VALUE, Integer.MAX_VALUE), rather than Float.MAX_VALUE, and the max_point_number is 19, it is because of the limition of function Math.round(float) in Java.
 * For Double data value, The data range is (-Long.MAX_VALUE, Long.MAX_VALUE), rather than Double.MAX_VALUE, and the max_point_number is 19, it is because of the limition of function Math.round(double) in Java (Long.MAX_VALUE=9.22E18).
