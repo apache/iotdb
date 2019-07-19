@@ -190,13 +190,13 @@ public class StorageGroupProcessor {
   private void recover() throws ProcessorException {
     logger.info("recover Storage Group  {}", storageGroupName);
 
-    // collect TsFiles from sequential and unsequential data directory
-    List<TsFileResource> seqTsFiles = getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
-    List<TsFileResource> unseqTsFiles =
-        getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
-
-    String taskName = storageGroupName + System.currentTimeMillis();
     try {
+      // collect TsFiles from sequential and unsequential data directory
+      List<TsFileResource> seqTsFiles = getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
+      List<TsFileResource> unseqTsFiles =
+          getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+
+      String taskName = storageGroupName + System.currentTimeMillis();
       File mergingMods = new File(storageGroupSysDir, MERGING_MODIFICAITON_FILE_NAME);
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
@@ -209,12 +209,12 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
+
+      recoverSeqFiles(seqTsFiles);
+      recoverUnseqFiles(unseqTsFiles);
     } catch (IOException e) {
       throw new ProcessorException(e);
     }
-
-    recoverSeqFiles(seqTsFiles);
-    recoverUnseqFiles(unseqTsFiles);
 
     for (TsFileResource resource : sequenceFileList) {
       latestTimeForEachDevice.putAll(resource.getEndTimeMap());
@@ -222,7 +222,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private List<TsFileResource> getAllFiles(List<String> folders) {
+  private List<TsFileResource> getAllFiles(List<String> folders) throws IOException {
     List<File> tsFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = new File(baseDir, storageGroupName);
@@ -243,6 +243,9 @@ public class StorageGroupProcessor {
     tsFiles.sort(this::compareFileName);
     List<TsFileResource> ret = new ArrayList<>();
     tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
+    for (TsFileResource resource : ret) {
+      resource.deSerialize();
+    }
     return ret;
   }
 
