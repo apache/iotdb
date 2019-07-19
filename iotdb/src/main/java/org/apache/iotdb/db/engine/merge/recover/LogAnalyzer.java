@@ -75,13 +75,13 @@ public class LogAnalyzer {
         new BufferedReader(new FileReader(logFile))) {
       currLine = bufferedReader.readLine();
       if (currLine != null) {
-        if (currLine.equals(MergeLogger.STR_SEQ_FILES)) {
+        if (MergeLogger.STR_SEQ_FILES.equals(currLine)) {
           analyzeSeqFiles(bufferedReader);
         }
-        if (currLine.equals(MergeLogger.STR_UNSEQ_FILES)) {
+        if (MergeLogger.STR_UNSEQ_FILES.equals(currLine)) {
           analyzeUnseqFiles(bufferedReader);
         }
-        if (currLine.equals(MergeLogger.STR_MERGE_START)) {
+        if (MergeLogger.STR_MERGE_START.equals(currLine)) {
           status = Status.FILES_LOGGED;
           for (TsFileResource seqFile : resource.getSeqFiles()) {
             File mergeFile = new File(seqFile.getFile().getPath() + MergeTask.MERGE_SUFFIX);
@@ -90,12 +90,12 @@ public class LogAnalyzer {
           unmergedPaths = MergeUtils.collectPaths(resource);
           analyzeMergedSeries(bufferedReader, unmergedPaths);
         }
-        if (currLine.equals(MergeLogger.STR_ALL_TS_END)) {
+        if (MergeLogger.STR_ALL_TS_END.equals(currLine)) {
           status = Status.ALL_TS_MERGED;
           unmergedFiles = resource.getSeqFiles();
           analyzeMergedFiles(bufferedReader);
         }
-        if (currLine.equals(MergeLogger.STR_MERGE_END)) {
+        if (MergeLogger.STR_MERGE_END.equals(currLine)) {
           status = Status.MERGE_END;
         }
       }
