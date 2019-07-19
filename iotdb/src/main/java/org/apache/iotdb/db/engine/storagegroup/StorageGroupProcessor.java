@@ -201,8 +201,9 @@ public class StorageGroupProcessor {
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
       }
-      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(storageGroupSysDir.getPath(),
-          this::mergeEndAction, taskName, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+      RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
+          storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
+          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
       recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {

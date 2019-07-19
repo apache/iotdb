@@ -47,9 +47,11 @@ public class RecoverMergeTask extends MergeTask {
 
   private LogAnalyzer analyzer;
 
-  public RecoverMergeTask(String storageGroupDir, MergeCallback callback, String taskName,
+  public RecoverMergeTask(List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles, String storageGroupDir,
+      MergeCallback callback, String taskName,
       boolean fullMerge) throws IOException {
-    super(null, null, storageGroupDir, callback, taskName, fullMerge);
+    super(seqFiles, unseqFiles, storageGroupDir, callback, taskName, fullMerge);
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException {
