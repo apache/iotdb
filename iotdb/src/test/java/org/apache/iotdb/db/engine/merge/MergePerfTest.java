@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class MergePerfTest extends MergeTest{
 
@@ -88,6 +89,7 @@ public class MergePerfTest extends MergeTest{
     perfTest.ptNum = 10000;
     perfTest.flushInterval = 1000;
     perfTest.fullMerge = true;
+    perfTest.encoding = TSEncoding.PLAIN;
 
     for (int i = 0; i < 1; i++) {
       // cache warm-up
