@@ -127,13 +127,26 @@ public class RecoverMergeTask extends MergeTask {
   // scan the metadata to compute how many chunks are merged/unmerged so at last we can decide to
   // move the merged chunks or the unmerged chunks
   private void recoverChunkCounts() throws IOException {
-    logger.debug("{} recovering chunk counts", taskName);
+    logger.info("{} recovering chunk counts", taskName);
     for (TsFileResource tsFileResource : resource.getSeqFiles()) {
+      logger.info("{} recovering {}", taskName, tsFileResource.getFile().getName());
       RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
       mergeFileWriter.makeMetadataVisible();
       unmergedChunkStartTimes.put(tsFileResource, new HashMap<>());
-      for(Path path : analyzer.getMergedPaths()) {
+      List<Path> pathsToRecover = analyzer.getMergedPaths();
+      int cnt = 0;
+      double progress = 0.0;
+      for(Path path : pathsToRecover) {
         recoverChunkCounts(path, tsFileResource, mergeFileWriter);
+        if (logger.isInfoEnabled()) {
+          cnt += 1.0;
+          double newProgress = 100.0 * cnt / pathsToRecover.size();
+          if (newProgress - progress >= 1.0) {
+            progress = newProgress;
+            logger.info("{} {}% series count of {} are recovered", taskName, progress,
+                tsFileResource.getFile().getName());
+          }
+        }
       }
     }
   }
@@ -174,7 +187,7 @@ public class RecoverMergeTask extends MergeTask {
   }
 
   private void truncateFiles() throws IOException {
-    logger.debug("{} truncating {} files", taskName, analyzer.getFileLastPositions().size());
+    logger.info("{} truncating {} files", taskName, analyzer.getFileLastPositions().size());
     for (Entry<File, Long> entry : analyzer.getFileLastPositions().entrySet()) {
       File file = entry.getKey();
       Long lastPosition = entry.getValue();
