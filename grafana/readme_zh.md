@@ -38,13 +38,13 @@ Grafana下载地址：https://grafana.com/grafana/download
 启动 Grafana
 
 # IoTDB安装
-参考：https://github.com/thulab/iotdb
+参考：https://github.com/apache/incubator-iotdb
 
 # 后端数据源连接器安装
 下载源代码
 
 ```shell
-git clone https://github.com/thulab/iotdb.git
+git clone https://github.com/apache/incubator-iotdb.git
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```
