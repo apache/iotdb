@@ -46,9 +46,8 @@ public class MergeUtils {
     // util class
   }
   
-  public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter,
-      TSDataType dataType) {
-    switch (dataType) {
+  public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
+    switch (chunkWriter.getDataType()) {
       case TEXT:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
         break;
@@ -68,13 +67,12 @@ public class MergeUtils {
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
         break;
       default:
-        throw new UnsupportedOperationException("Unknown data type " + dataType);
+        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
     }
   }
 
-  public static void writeBatchPoint(BatchData batchData, int i, TSDataType dataType,
-      IChunkWriter chunkWriter) {
-    switch (dataType) {
+  public static void writeBatchPoint(BatchData batchData, int i, IChunkWriter chunkWriter) {
+    switch (chunkWriter.getDataType()) {
       case TEXT:
         chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
         break;
@@ -94,7 +92,7 @@ public class MergeUtils {
         chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i));
         break;
       default:
-        throw new UnsupportedOperationException("Unknown data type " + dataType);
+        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
     }
   }
 
@@ -140,14 +138,12 @@ public class MergeUtils {
     return totalSize;
   }
 
-  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter,
-      MeasurementSchema measurementSchema) throws IOException {
+  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter) throws IOException {
     ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
-    TSDataType dataType = measurementSchema.getType();
     while (chunkReader.hasNextBatch()) {
       BatchData batchData = chunkReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
-        writeBatchPoint(batchData, i, dataType, chunkWriter);
+        writeBatchPoint(batchData, i, chunkWriter);
       }
     }
     return chunk.getHeader().getNumOfPages();

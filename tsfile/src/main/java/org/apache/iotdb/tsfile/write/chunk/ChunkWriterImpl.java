@@ -293,4 +293,9 @@ public class ChunkWriterImpl implements IChunkWriter {
   public ChunkBuffer getChunkBuffer() {
     return chunkBuffer;
   }
+
+  @Override
+  public TSDataType getDataType() {
+    return dataType;
+  }
 }

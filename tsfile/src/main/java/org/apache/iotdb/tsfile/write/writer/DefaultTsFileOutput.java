@@ -52,7 +52,7 @@ public class DefaultTsFileOutput implements TsFileOutput {
 
   @Override
   public void write(ByteBuffer b) throws IOException {
-    throw new UnsupportedOperationException();
+    outputStream.write(b.array());
   }
 
   @Override

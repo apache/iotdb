@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -185,8 +186,7 @@ public class TsFileIOWriter {
     LOG.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
 
     currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType,
-        out.getPosition(), minTime,
-        maxTime);
+        out.getPosition(), minTime, maxTime);
 
     ChunkHeader header = new ChunkHeader(descriptor.getMeasurementId(), dataSize, tsDataType,
         compressionCodecName,
@@ -211,6 +211,21 @@ public class TsFileIOWriter {
     return header.getSerializedSize();
   }
 
+  /**
+   * Write a whole chunk in another file into this file. Providing fast merge for IoTDB.
+   * @param chunk
+   */
+  public void writeChunk(Chunk chunk, ChunkMetaData chunkMetadata) throws IOException {
+    ChunkHeader chunkHeader = chunk.getHeader();
+    currentChunkMetaData = new ChunkMetaData(chunkHeader.getMeasurementID(),
+        chunkHeader.getDataType(), out.getPosition(), chunkMetadata.getStartTime(),
+        chunkMetadata.getEndTime());
+    currentChunkMetaData.setDigest(chunkMetadata.getDigest());
+    chunkHeader.serializeTo(out.wrapAsStream());
+    out.write(chunk.getData());
+    endChunk(chunkMetadata.getNumOfPoints());
+  }
+  
   /**
    * end chunk and write some log.
    *

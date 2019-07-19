@@ -84,12 +84,12 @@ public class MergePerfTest extends MergeTest{
     perfTest.unseqFileNum = 5;
     perfTest.measurementNum = 100;
     perfTest.deviceNum = 10;
-    perfTest.unseqRatio = 0.2;
+    perfTest.unseqRatio = 0.1;
     perfTest.ptNum = 10000;
     perfTest.flushInterval = 1000;
     perfTest.fullMerge = true;
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 1; i++) {
       // cache warm-up
       perfTest.test();
     }
@@ -112,15 +112,15 @@ public class MergePerfTest extends MergeTest{
 //      perfTest.test();
 //      timeConsumptions.add(perfTest.timeConsumption);
 //    }
-    double[] doubleParameters = new double[10];
-    for (int i = 1; i <= 10; i++) {
-      doubleParameters[i-1] = 0.1 * i;
-    }
-    for (double param : doubleParameters) {
-      perfTest.unseqRatio = param;
-      perfTest.test();
-      timeConsumptions.add(perfTest.timeConsumption);
-    }
+//    double[] doubleParameters = new double[10];
+//    for (int i = 1; i <= 10; i++) {
+//      doubleParameters[i-1] = 0.1 * i;
+//    }
+//    for (double param : doubleParameters) {
+//      perfTest.unseqRatio = param;
+//      perfTest.test();
+//      timeConsumptions.add(perfTest.timeConsumption);
+//    }
 
     System.out.println(timeConsumptions);
   }
