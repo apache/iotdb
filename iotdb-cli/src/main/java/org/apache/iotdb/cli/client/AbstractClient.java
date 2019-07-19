@@ -82,7 +82,7 @@ public abstract class AbstractClient {
   protected static final String SHOW_METADATA_COMMAND = "show timeseries";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 88;
   protected static final String TIMESTAMP_STR = "Time";
-  protected static final int ISO_DATETIME_LEN = 26;
+  protected static final int ISO_DATETIME_LEN = 35;
   protected static final String IMPORT_CMD = "import";
   private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
   private static final String DEFAULT_TIME_FORMAT = "default";
@@ -92,6 +92,8 @@ public abstract class AbstractClient {
   protected static int maxTimeLength = ISO_DATETIME_LEN;
   protected static int maxValueLength = 15;
   protected static boolean isQuit = false;
+  protected static String TIMESTAMP_PRECISION = "ms";
+
   /**
    * control the width of columns for 'show timeseries path' and 'show storage group'.
    * <p>
@@ -187,7 +189,8 @@ public abstract class AbstractClient {
 
     boolean isShow = res instanceof IoTDBMetadataResultSet;
     if (!isShow && resultSetMetaData.getColumnTypeName(0) != null) {
-      printTimestamp = !res.getMetaData().getColumnTypeName(0).equalsIgnoreCase(NEED_NOT_TO_PRINT_TIMESTAMP);
+      printTimestamp = !res.getMetaData().getColumnTypeName(0)
+          .equalsIgnoreCase(NEED_NOT_TO_PRINT_TIMESTAMP);
     }
     if (res instanceof IoTDBQueryResultSet) {
       printTimestamp = printTimestamp && !((IoTDBQueryResultSet) res).isIgnoreTimeStamp();
@@ -217,6 +220,10 @@ public abstract class AbstractClient {
 
     println(StringUtils.repeat('-', DIVIDING_LINE_LENGTH));
     printCount(isShow, res, cnt);
+  }
+
+  protected static String getTimestampPrecision() {
+    return TIMESTAMP_PRECISION;
   }
 
   protected static void printCount(boolean isShow, ResultSet res, int cnt) throws SQLException {
@@ -341,6 +348,50 @@ public abstract class AbstractClient {
     return options;
   }
 
+  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
+      long timestamp, ZoneId zoneid, String timestampPrecision) {
+    if (timestampPrecision.equals("ms")) {
+      long integerofDate = timestamp / 1000;
+      String digits = Long.toString(timestamp % 1000);
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 3) {
+        for (int i = 0; i < 3 - length; i++) {
+          digits = "0" + digits;
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    } else if (timestampPrecision.equals("us")) {
+      long integerofDate = timestamp / 1000_000;
+      String digits = Long.toString(timestamp % 1000_000);
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 6) {
+        for (int i = 0; i < 6 - length; i++) {
+          digits = "0" + digits;
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    } else {
+      long integerofDate = timestamp / 1000_000_000L;
+      String digits = Long.toString(timestamp % 1000_000_000L);
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 9) {
+        for (int i = 0; i < 9 - length; i++) {
+          digits = "0" + digits;
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    }
+  }
+
   private static String formatDatetime(long timestamp, ZoneId zoneId) {
     ZonedDateTime dateTime;
     switch (timeFormat) {
@@ -349,8 +400,8 @@ public abstract class AbstractClient {
         return Long.toString(timestamp);
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
-        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
-        return dateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        return parseLongToDateWithPrecision(
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId, getTimestampPrecision());
       default:
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
         return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));
@@ -712,11 +763,11 @@ public abstract class AbstractClient {
   enum OperationResult {
     STOP_OPER, CONTINUE_OPER, NO_OPER
   }
-  
+
   protected static void printf(String format, Object ... args) {
     SCREEN_PRINTER.printf(format, args);
   }
-  
+
   protected static void print(String msg) {
     SCREEN_PRINTER.println(msg);
   }
