@@ -243,11 +243,6 @@ public class StorageGroupProcessor {
     tsFiles.sort(this::compareFileName);
     List<TsFileResource> ret = new ArrayList<>();
     tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
-    for (TsFileResource resource : ret) {
-      if (resource.getFile().exists()) {
-        resource.deSerialize();
-      }
-    }
     return ret;
   }
 
