@@ -45,6 +45,7 @@ abstract class MergeTest {
   int deviceNum = 10;
   long ptNum = 100;
   long flushInterval = 20;
+  TSEncoding encoding = TSEncoding.PLAIN;
 
   String[] deviceIds;
   MeasurementSchema[] measurementSchemas;
@@ -75,7 +76,7 @@ abstract class MergeTest {
     measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
-          TSEncoding.PLAIN, CompressionType.UNCOMPRESSED);
+          encoding, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
