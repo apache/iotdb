@@ -25,7 +25,6 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.rescon.TVListAllocator;
@@ -101,8 +100,6 @@ public class IoTDB implements IoTDBMBean {
 
     JMXService.registerMBean(getInstance(), mbeanName);
 
-    initErrorInformation();
-
     logger.info("IoTDB is set up.");
   }
 
@@ -132,10 +129,6 @@ public class IoTDB implements IoTDBMBean {
 
   private void setUncaughtExceptionHandler() {
     Thread.setDefaultUncaughtExceptionHandler(new IoTDBDefaultThreadExceptionHandler());
-  }
-
-  private void initErrorInformation() {
-    ExceptionBuilder.getInstance().loadInfo();
   }
 
   private static class IoTDBHolder {
