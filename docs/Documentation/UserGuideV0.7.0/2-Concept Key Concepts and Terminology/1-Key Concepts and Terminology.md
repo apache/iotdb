@@ -95,9 +95,9 @@ When `*` appears in the middle of the path, it represents `*` itself, i.e., a la
 
 * Timestamp
 
-The timestamp is the time point at which a data arrives. IoTDB timestamps are divided into two types: LONG and DATETIME (including DATETIME-INPUT and DATETIME-DISPLAY). When a user enters a timestamp, he can use a LONG type timestamp or a DATETIME-INPUT type timestamp, where the support format of the DATETIME-INPUT type timestamp is shown in table:
+The timestamp is the time point at which data is produced. IoTDB timestamps are divided into two types: LONG and DATETIME (including DATETIME-INPUT and DATETIME-DISPLAY). When a user inputs a timestamp, he can use a LONG type timestamp or a DATETIME-INPUT type timestamp, and the supported formats of the DATETIME-INPUT type timestamp are shown in the table below:
 
-<center>**Support format of DATETIME-INPUT type timestamp**
+<center>**Supported formats of DATETIME-INPUT type timestamp**
 
 |format|
 |:---|
@@ -129,7 +129,7 @@ The timestamp is the time point at which a data arrives. IoTDB timestamps are di
 
 </center>
 
-IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestamps. The DATETIME-DISPLAY type can support user-defined time formats. The syntax of the custom time format is shown in table:
+IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestamps. The DATETIME-DISPLAY type can support user-defined time formats. The syntax of the custom time format is shown in the table below:
 
 <center>**The syntax of the custom time format**
 

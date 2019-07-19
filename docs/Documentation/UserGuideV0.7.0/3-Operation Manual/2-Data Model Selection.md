@@ -99,7 +99,7 @@ The results are shown below respectly:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
 
-It is worth noting that when the path queries does not exist, the system will return no timeseries.  
+It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
 ### Precautions
 
