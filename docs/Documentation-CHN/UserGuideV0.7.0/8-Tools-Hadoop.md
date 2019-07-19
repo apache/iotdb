@@ -19,12 +19,6 @@
 
 -->
 
-<!-- TOC -->
-## Outline
-
-- TsFile-Hadoop-Connector User Guide
-
-<!-- /TOC -->
 # TsFile-Hadoop-Connector User Guide
 
-Comming Soon.
+Coming Soon.

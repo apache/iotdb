@@ -120,7 +120,7 @@ public class Measurement implements MeasurementMBean, IService {
     IoTDBConfig tdbConfig = IoTDBDescriptor.getInstance().getConfig();
     isEnableStat = tdbConfig.isEnablePerformanceStat();
     displayIntervalInMs = tdbConfig.getPerformanceStatDisplayInterval();
-    int memoryInKb = tdbConfig.getPerformance_stat_memory_in_kb();
+    int memoryInKb = tdbConfig.getPerformanceStatMemoryInKB();
 
     queueSize = memoryInKb * 1000 / Operation.values().length / 8;
     operationLatenciesQueue = new ConcurrentCircularArray[Operation.values().length];
