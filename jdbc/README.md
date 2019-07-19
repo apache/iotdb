@@ -57,6 +57,7 @@ Requires that you include the packages containing the JDBC classes needed for da
 
 ```Java
 import java.sql.*;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 
   /**
    * Before executing a SQL statement with a Statement object, you need to create a Statement object using the createStatement() method of the Connection object.
@@ -72,16 +73,24 @@ import java.sql.*;
     }
     Statement statement = connection.createStatement();
     //Create storage group
-    statement.execute("SET STORAGE GROUP TO root.demo");
+    try {
+      statement.execute("SET STORAGE GROUP TO root.demo");
+    }catch (IoTDBSQLException e){
+      System.out.println(e.getMessage());
+    }
+
 
     //Show storage group
     statement.execute("SHOW STORAGE GROUP");
     outputResult(statement.getResultSet());
 
     //Create time series
-    //Different data type has different encoding methods. Here use INT32 as an example.
-    statement.execute("CREATE TIMESERIES root.demo.s0 WITH DATATYPE=INT32,ENCODING=RLE;");
-
+    //Different data type has different encoding methods. Here use INT32 as an example
+    try {
+      statement.execute("CREATE TIMESERIES root.demo.s0 WITH DATATYPE=INT32,ENCODING=RLE;");
+    }catch (IoTDBSQLException e){
+      System.out.println(e.getMessage());
+    }
     //Show time series
     statement.execute("SHOW TIMESERIES root.demo");
     outputResult(statement.getResultSet());
@@ -96,24 +105,28 @@ import java.sql.*;
     statement.clearBatch();
 
     //Full query statement
-    statement.execute("select * from root.demo");
-    outputResult(statement.getResultSet());
+    String sql = "select * from root.demo";
+    ResultSet resultSet = statement.executeQuery(sql);
+    System.out.println("sql: " + sql);
+    outputResult(resultSet);
 
     //Exact query statement
-    statement.execute("select s0 from root.demo where time = 4;");
-    outputResult(statement.getResultSet());
+    sql = "select s0 from root.demo where time = 4;";
+    resultSet= statement.executeQuery(sql);
+    System.out.println("sql: " + sql);
+    outputResult(resultSet);
 
     //Time range query
-    statement.execute("select s0 from root.demo where time >= 2 and time < 5;");
-    outputResult(statement.getResultSet());
+    sql = "select s0 from root.demo where time >= 2 and time < 5;";
+    resultSet = statement.executeQuery(sql);
+    System.out.println("sql: " + sql);
+    outputResult(resultSet);
 
     //Aggregate query
-    statement.execute("select count(s0) from root.demo;");
-    outputResult(statement.getResultSet());
-
-    //Latest time point query
-    statement.execute("select max_time(s0) from root.demo;");
-    outputResult(statement.getResultSet());
+    sql = "select count(s0) from root.demo;";
+    resultSet = statement.executeQuery(sql);
+    System.out.println("sql: " + sql);
+    outputResult(resultSet);
 
     //Delete time series
     statement.execute("delete timeseries root.demo.s0");
@@ -171,4 +184,3 @@ import java.sql.*;
     }
   }
 ```
-
