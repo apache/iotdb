@@ -170,7 +170,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 where time >
 
 需要注意的是，GROUP BY语句中SELECT后面的路径必须全部为聚合函数，否则系统会给出相应的错误提示。如图所示。
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577596-4d0c8e00-1ef5-11e9-9386-cc71f5d90905.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517091-fbbf0080-aa38-11e9-8623-cdadf1ccf5d6.png"></center>
 
 ### 查询结果自动补值
 
@@ -361,7 +361,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 该SQL语句将进行无法执行，并给出相应的错误提示，提示如下：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577806-28fd7c80-1ef6-11e9-938a-f32ae6abdc55.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517266-6e2fe080-aa39-11e9-8015-154a8e8ace30.png"></center>
 
 #### 查询结果的列数控制
 
@@ -471,7 +471,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 ```
 该SQL语句将进行无法执行，并给出相应的错误提示，错误提示如下：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578206-b7263280-1ef7-11e9-8607-17ef3602338a.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517469-e696a180-aa39-11e9-8ca5-42ea991d520e.png"></center>
 
 当LIMIT/SLIMIT的参数N/SN不为正整数时，系统会给出相应的错误提示，例如执行如下错误语句：
 
@@ -481,7 +481,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 
 该SQL语句将进行无法执行，并给出相应的错误提示，错误提示如下：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578217-bdb4aa00-1ef7-11e9-9a60-1effd6b6196c.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61518094-68d39580-aa3b-11e9-993c-fc73c27540f7.png"></center>
 
 当OFFSET的参数OffsetValue超出结果集大小时，返回结果将为空。例如执行如下SQL语句：
 
