@@ -196,6 +196,9 @@ public class StorageGroupProcessor {
       List<TsFileResource> unseqTsFiles =
           getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
+      recoverSeqFiles(seqTsFiles);
+      recoverUnseqFiles(unseqTsFiles);
+
       String taskName = storageGroupName + System.currentTimeMillis();
       File mergingMods = new File(storageGroupSysDir, MERGING_MODIFICAITON_FILE_NAME);
       if (mergingMods.exists()) {
@@ -209,9 +212,6 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
-
-      recoverSeqFiles(seqTsFiles);
-      recoverUnseqFiles(unseqTsFiles);
     } catch (IOException e) {
       throw new ProcessorException(e);
     }
@@ -244,7 +244,9 @@ public class StorageGroupProcessor {
     List<TsFileResource> ret = new ArrayList<>();
     tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
     for (TsFileResource resource : ret) {
-      resource.deSerialize();
+      if (resource.getFile().exists()) {
+        resource.deSerialize();
+      }
     }
     return ret;
   }
@@ -270,6 +272,7 @@ public class StorageGroupProcessor {
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
           , fileSchema, versionController, tsFileResource, false);
       recoverPerformer.recover();
+      tsFileResource.setClosed(true);
     }
   }
 
@@ -280,6 +283,7 @@ public class StorageGroupProcessor {
           fileSchema,
           versionController, tsFileResource, true);
       recoverPerformer.recover();
+      tsFileResource.setClosed(true);
     }
   }
 
