@@ -165,11 +165,8 @@ class MergeFileTask {
     fileWriter.startChunkGroup(chunkGroupMetaData.getDeviceID());
     long version = chunkGroupMetaData.getVersion();
     for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-      MeasurementSchema measurementSchema = resource.getSchema(chunkMetaData.getMeasurementUid());
-      IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
       Chunk chunk = reader.readMemChunk(chunkMetaData);
-      writeChunkWithoutUnseq(chunk, chunkWriter, measurementSchema);
-      chunkWriter.writeToFileWriter(fileWriter);
+      fileWriter.writeChunk(chunk, chunkMetaData);
     }
     fileWriter.endChunkGroup(version + 1);
   }
@@ -192,8 +189,6 @@ class MergeFileTask {
         }
 
         List<ChunkMetaData> chunkMetaDataList = resource.queryChunkMetadata(path, seqFile);
-        MeasurementSchema measurementSchema = resource.getSchema(path.getMeasurement());
-        IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
 
         if (logger.isDebugEnabled()) {
           logger.debug("{} find {} unmerged chunks", taskName, chunkMetaDataList.size());
@@ -201,7 +196,7 @@ class MergeFileTask {
 
         fileWriter.startChunkGroup(path.getDevice());
         long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetaDataList,
-            resource.getFileReader(seqFile), chunkWriter, measurementSchema, fileWriter);
+            resource.getFileReader(seqFile), fileWriter);
         fileWriter.endChunkGroup(maxVersion + 1);
       }
     }
@@ -223,8 +218,8 @@ class MergeFileTask {
   }
 
   private long writeUnmergedChunks(List<Long> chunkStartTimes,
-      List<ChunkMetaData> chunkMetaDataList, TsFileSequenceReader reader, IChunkWriter chunkWriter,
-      MeasurementSchema measurementSchema, RestorableTsFileIOWriter fileWriter) throws IOException {
+      List<ChunkMetaData> chunkMetaDataList, TsFileSequenceReader reader,
+      RestorableTsFileIOWriter fileWriter) throws IOException {
     long maxVersion = 0;
     int chunkIdx = 0;
     for (Long startTime : chunkStartTimes) {
@@ -232,8 +227,7 @@ class MergeFileTask {
         ChunkMetaData metaData = chunkMetaDataList.get(chunkIdx);
         if (metaData.getStartTime() == startTime) {
           Chunk chunk = reader.readMemChunk(metaData);
-          writeChunkWithoutUnseq(chunk, chunkWriter, measurementSchema);
-          chunkWriter.writeToFileWriter(fileWriter);
+          fileWriter.writeChunk(chunk, metaData);
           maxVersion = metaData.getVersion() > maxVersion ? metaData.getVersion() : maxVersion;
           break;
         }

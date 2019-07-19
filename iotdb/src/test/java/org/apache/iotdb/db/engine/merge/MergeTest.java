@@ -71,7 +71,7 @@ abstract class MergeTest {
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(prevMergeChunkThreshold);
   }
 
-  void prepareSeries() {
+  private void prepareSeries() {
     measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,

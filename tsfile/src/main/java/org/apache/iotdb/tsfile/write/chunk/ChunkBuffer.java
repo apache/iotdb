@@ -193,7 +193,10 @@ public class ChunkBuffer {
         writer.getPos());
 
     long size = writer.getPos() - totalByteSize;
-    assert size == pageBuffer.size();
+    if (size != pageBuffer.size()) {
+      throw new IOException("Bytes written is inconsistent with the size of data: " + size  +" !="
+          + " " + pageBuffer.size());
+    }
 
     writer.endChunk(totalValueCount);
     return headerSize + size;
