@@ -92,7 +92,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 
 #### List of Priviledges Included in the System
 
-<center>**Table 3-8 List of Priviledges Included in the System**
+<center>**List of Priviledges Included in the System**
 
 |Priviledge Name|Interpretation|
 |:---|:---|

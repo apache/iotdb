@@ -97,7 +97,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 
 #### 系统所含权限列表
 
-<center>**表格3-8 系统所含权限列表**
+<center>**系统所含权限列表**
 
 |权限名称|说明|
 |:---|:---|
