@@ -112,7 +112,7 @@ class MergeChunkTask {
       mergedCnt ++;
       if (logger.isInfoEnabled()) {
         double newProgress = 100 * mergedCnt / (double) (unmergedSeries.size());
-        if (newProgress - progress >= 0.01) {
+        if (newProgress - progress >= 1.0) {
           progress = newProgress;
           logger.info("{} has merged {}% series", taskName, progress);
         }
