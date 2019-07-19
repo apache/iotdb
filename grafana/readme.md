@@ -21,7 +21,7 @@
 
 # IoTDB-Grafana
 
-* [中文](https://github.com/thulab/iotdb/blob/master/grafana/readme_zh.md)
+* [中文](https://github.com/apache/incubator-iotdb/blob/master/grafana/readme_zh.md)
 
 This project provides a connector which reads data from iotdb and sends to grafana(https://grafana.com/). Before you use this tool, make sure grafana and iotdb are correctly installed and started.
 
@@ -47,12 +47,12 @@ Grafana will auto start after installing, or you can run `sudo service grafana-s
 
 ## IoTDB installation
 
-See https://github.com/thulab/iotdb
+See https://github.com/apache/incubator-iotdb
 
 ## IoTDB-Grafana installation
 
 ```shell
-git clone https://github.com/thulab/iotdb.git
+git clone https://github.com/apache/incubator-iotdb.git
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```
