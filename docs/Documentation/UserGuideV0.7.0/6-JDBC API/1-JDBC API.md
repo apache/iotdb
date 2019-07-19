@@ -61,8 +61,8 @@ Requires that you include the packages containing the JDBC classes needed for da
 import java.sql.*;
 
   /**
-   * Before executing an SQL statement with a Statement object, you need to create a Statement object using the createStatement() method of the Connection object.
-   * After creating a Statement object, you can use its execute() method to execute an SQL statement
+   * Before executing a SQL statement with a Statement object, you need to create a Statement object using the createStatement() method of the Connection object.
+   * After creating a Statement object, you can use its execute() method to execute a SQL statement
    * Finally, remember to close the 'statement' and 'connection' objects by using their close() method
    * For statements with query results, we can use the getResultSet() method of the Statement object to get the result set.
    */
