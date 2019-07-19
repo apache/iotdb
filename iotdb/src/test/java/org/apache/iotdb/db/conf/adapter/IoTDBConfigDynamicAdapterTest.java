@@ -117,7 +117,6 @@ public class IoTDBConfigDynamicAdapterTest {
     }
   }
 
-
   @Test
   public void addOrDeleteTimeSeriesSyso() throws ConfigAdjusterException {
     int sgNum = 1;
