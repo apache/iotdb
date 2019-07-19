@@ -780,8 +780,10 @@ public class StorageGroupProcessor {
         try {
           // remove old modifications and write modifications generated during merge
           seqFile.removeModFile();
-          for (Modification modification : mergingModification.getModifications()) {
-            seqFile.getModFile().write(modification);
+          if (mergingModification != null) {
+            for (Modification modification : mergingModification.getModifications()) {
+              seqFile.getModFile().write(modification);
+            }
           }
         } catch (IOException e) {
           logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
@@ -789,11 +791,13 @@ public class StorageGroupProcessor {
         }
         if (i == seqFiles.size() - 1) {
           try {
-            mergingModification.remove();
+            if (mergingModification != null) {
+              mergingModification.remove();
+              mergingModification = null;
+            }
           } catch (IOException e) {
             logger.error("{} cannot remove merging modification ", storageGroupName, e);
           }
-          mergingModification = null;
           isMerging = false;
         }
       } finally {
