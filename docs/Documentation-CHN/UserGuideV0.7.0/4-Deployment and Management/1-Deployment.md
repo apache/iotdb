@@ -50,13 +50,13 @@ iotdb-<version>.zip # For Windows
 
 下载后，您可使用以下操作对IoTDB的压缩包进行解压: 
 
-如果您使用的操作系统是Linux或MacOS，则使用如下解压命令：
+如果您使用的操作系统是Windows，则使用解压缩工具解压或使用如下解压命令：
 
 ```
 Shell > uzip iotdb-<version>.zip
 ```
 
-如果您使用的操作系统是Windows，则使用解压缩工具解压或使用如下解压命令：
+如果您使用的操作系统是Linux或MacOS，则使用如下解压命令：
 
 ```
 Shell > tar -zxf iotdb-<version>.tar.gz # For Linux or MacOS
@@ -97,3 +97,37 @@ Shell > git clone git@github.com:apache/incubator-iotdb.git
 ```
 > mvn clean package -pl iotdb -am -Dmaven.test.skip=true
 ```
+
+成功后，可以在终端看到如下信息:
+
+```
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary:
+[INFO]
+[INFO] IoTDB Root ......................................... SUCCESS [  7.020 s]
+[INFO] TsFile ............................................. SUCCESS [ 10.486 s]
+[INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
+[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
+[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+```
+
+否则，你需要检查错误语句，并修复问题。
+
+编译后，IoTDB项目会在名为iotdb的子文件夹下，该文件夹会包含以下内容：
+
+```
+$IOTDB_HOME/
+|
++- bin/       <-- script files
+|
++- conf/      <-- configuration files
+|
++- lib/       <-- project dependencies
+```
+
+### 通过Docker安装 (Dockerfile)
+
+你可以通过[这份指南](/#/Documents/latest/chap4/sec7)编译并运行一个IoTDB docker image。

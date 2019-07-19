@@ -50,7 +50,7 @@ IoTDB > set storage group to root.sgcc
 
 ```
 IoTDB> set storage group to root.ln.wf01
-error: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
 ### 查看存储组
@@ -103,15 +103,11 @@ IoTDB> show timeseries root.ln
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
 
-需要注意的是，当查询路径不存在时，系统会给出相应的错误提示，如下所示：
-```
-IoTDB> show timeseries root.ln.wf03
-Msg: Failed to fetch timeseries root.ln.wf03's metadata because: Timeseries does not exist.
-```
+需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
 
 ### 注意事项
 
-0.7.0版本对用户操作的数据规模进行一些限制：
+0.8.0版本对用户操作的数据规模进行一些限制：
 
 限制1：假设运行时IoTDB分配到的JVM内存大小为p，用户自定义的每次将内存中的数据写入到磁盘时的大小（[group_size_in_byte](/#/Documents/latest/chap4/sec2)）为q。存储组的数量不能超过p/q。
 

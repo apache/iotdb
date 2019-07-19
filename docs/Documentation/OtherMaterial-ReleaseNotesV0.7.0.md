@@ -23,7 +23,7 @@
 
 ## Outline
 
-- v0.7.0 Release Notes
+- v0.8.0 Release Notes
     - Features
         - IoTDB
         - IoTDB-Transfer-Tool
@@ -32,9 +32,9 @@
     - System Organization
 
 <!-- /TOC -->
-### v0.7.0 Release Notes
+### v0.8.0 Release Notes
 
-Add postback tools, multi-path data storage mechanism, ```SHOW TIMESERIES / STORAGE GROUP``` SQL extended expressions, and other new features. Fix several issues in version 0.6.0. Improve system stability.
+Add postback tools, multi-path data storage mechanism, ```SHOW TIMESERIES / STORAGE GROUP``` SQL extended expressions, and other new features. Fix several issues in version 0.7.0. Improve system stability.
 
 #### Features
 

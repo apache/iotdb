@@ -42,9 +42,9 @@ The environment configuration file is mainly used to configure the Java environm
 
 The detail of each variables are as follows:
 
-* JMX\_LOCAL
+* LOCAL\_JMX
 
-|Name|JMX\_LOCAL|
+|Name|LOCAL\_JMX|
 |:---:|:---|
 |Description|JMX monitoring mode, configured as yes to allow only local monitoring, no to allow remote monitoring|
 |Type|Enum String: "yes", "no"|
@@ -107,7 +107,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description|The maximum size of a single page written in memory when each column in memory is written (in bytes)|
 |Type|Int32|
-|Default| 134217728 |
+|Default| 65536 |
 |Effective|Immediately|
 
 * max\_number\_of\_points\_in\_page
@@ -206,7 +206,7 @@ The detail of each variables are as follows:
 
 |Name| data\_dirs |
 |:---:|:---|
-|Description| The directories of data files. Multiple directories are separated by comma. See the [mult\_dir\_strategy](/#/Documents/latest/chap4/sec2) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
+|Description| The directories of data files. Multiple directories are separated by comma. See the [multi\_dir\_strategy](/#/Documents/latest/chap4/sec2) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
 |Type|String[]|
 |Default| data/data |
 |Effective|After restart system|
@@ -229,9 +229,9 @@ The detail of each variables are as follows:
 |Default| true |
 |Effective|After restart system|
 
-* mult\_dir\_strategy
+* multi\_dir\_strategy
 
-|Name| mult\_dir\_strategy |
+|Name| multi\_dir\_strategy |
 |:---:|:---|
 |Description| IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. <UserDfineStrategyPackage> (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
 |Type|String|
@@ -256,7 +256,7 @@ The detail of each variables are as follows:
 |Default| 10000 |
 |Effective|After restart system|
 
-* flush\_wal\_period\_in\_ms
+* force\_wal\_period\_in\_ms
 
 |Name| force\_wal\_period\_in\_ms |
 |:---:|:---|
@@ -280,7 +280,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description| THe max threads which can be used when unsequence data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the unsequence data is too large, the reading will be slower. |
 |Type|Int32|
-|Default| 10 |
+|Default| 0 |
 |Effective|After restart system|
 
 * enable\_stat\_monitor
@@ -289,7 +289,7 @@ The detail of each variables are as follows:
 |:---:|:---|
 |Description| Whether to enable background statistics|
 |Type| Boolean |
-|Default| true |
+|Default| false |
 |Effective|After restart system|
 
 * back\_loop\_period_in_second
@@ -310,18 +310,18 @@ The detail of each variables are as follows:
 |Default| 0 |
 |Effective|After restart system|
 
-* stat\_monitor\_detect\_freq\_sec
+* stat\_monitor\_detect\_freq\_in\_second
 
-|Name| concurrent\_flush\_thread |
+|Name| stat\_monitor\_detect\_freq\_in\_second |
 |:---:|:---|
 |Description| The time interval which the system check whether the current record statistic time range exceeds stat_monitor_retain_interval every time (in seconds) and perform regular cleaning|
 |Type| Int32 |
 |Default|600 |
 |Effective|After restart system|
 
-* stat\_monitor\_retain\_interval\_sec
+* stat\_monitor\_retain\_interval\_in\_second
 
-|Name| stat\_monitor\_retain\_interval\_sec |
+|Name| stat\_monitor\_retain\_interval\_in\_second |
 |:---:|:---|
 |Description| The retention time of system statistics data(in seconds). Statistics data over the retention time range will be cleaned regularly.|
 |Type| Int32 |

@@ -39,9 +39,9 @@
 
 环境配置项主要用于对IoTDB Server运行的Java环境相关参数进行配置，如JVM相关配置。IoTDB Server启动时，此部分配置会被传给JVM。用户可以通过查看 `iotdb-env.sh`(或`iotdb-env.bat`)文件查看环境配置项内容。详细配置项说明如下：
 
-* JMX\_LOCAL
+* LOCAL\_JMX
 
-|名字|JMX\_LOCAL|
+|名字|LOCAL\_JMX|
 |:---:|:---|
 |描述|JMX监控模式，配置为yes表示仅允许本地监控，设置为no的时候表示允许远程监控|
 |类型|枚举String : “yes”, “no”|
@@ -71,14 +71,14 @@
 
 |名字|HEAP\_NEWSIZE|
 |:---:|:---|
-|描述|oTDB启动时能使用的最小堆内存大小。|
+|描述|IoTDB启动时能使用的最小堆内存大小。|
 |类型|String|
 |默认值|取决于操作系统和机器配置。在Linux或MacOS系统下默认值为机器CPU核数乘以100M的值与MAX\_HEAP\_SIZE四分之一这二者的最小值。在Windows系统下，32位系统的默认值是512M，64位系统默认值是2G。。|
 |改后生效方式|重启服务器生效|
 
 ### 系统配置项
 
-系统配置项是IoTDB Server运行的核心配置，它主要用于设置IoTDB Server文件层和引擎层的参数，便于用户根据自身需求调整Server的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过查看`tsfile-format.properties`, `iotdb-engine.properties`,文件查看和修改两种配置项的内容。在0.7.0版本中字符串类型的配置项大小写敏感。
+系统配置项是IoTDB Server运行的核心配置，它主要用于设置IoTDB Server文件层和引擎层的参数，便于用户根据自身需求调整Server的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过查看`tsfile-format.properties`, `iotdb-engine.properties`,文件查看和修改两种配置项的内容。在0.8.0版本中字符串类型的配置项大小写敏感。
 
 #### 文件层配置
 
@@ -122,23 +122,23 @@
 
 |名字| page\_size\_in\_byte |
 |:---:|:---|
-|描述|内存中每个列写出时，写成的页单页最大的大小，单位为字节|
+|描述|内存中每个列写出时，写成的单页最大的大小，单位为字节|
 |类型|Int32|
-|默认值| 134217728 |
+|默认值| 65536 |
 |改后生效方式|即时生效|
 
-* time\_series\_data\_类型
+* time\_series\_data\_type
 
-|名字| time\_series\_data\_类型 |
+|名字| time\_series\_data\_type |
 |:---:|:---|
 |描述|时间戳数据类型|
 |类型|枚举String: "INT32", "INT64"|
 |默认值| Int64 |
 |改后生效方式|即时生效|
 
-* time\_series\_encoder
+* time\_encoder
 
-|名字| time\_series\_data\_类型 |
+|名字| time\_encoder |
 |:---:|:---|
 |描述| 时间列编码方式|
 |类型|枚举String: “TS_2DIFF”,“PLAIN”,“RLE”|
@@ -162,7 +162,7 @@
 |:---:|:---|
 |描述| 系统统计量触发统计的频率，单位为秒。|
 |类型|Int32|
-|默认值| 10 |
+|默认值| 5 |
 |改后生效方式|重启服务器生效|
 
 * data\_dir
@@ -192,9 +192,9 @@
 |默认值| 10000 |
 |改后生效方式|重启服务器生效|
 
-* flush\_wal\_period\_in\_ms
+* force\_wal\_period\_in\_ms
 
-|名字| flush\_wal\_period\_in\_ms |
+|名字| force\_wal\_period\_in\_ms |
 |:---:|:---|
 |描述| 写前日志定期刷新到磁盘的周期，单位毫秒，有可能丢失至多flush\_wal\_period\_in\_ms毫秒的操作。 |
 |类型|Int32|
@@ -205,54 +205,27 @@
 
 |名字| flush\_wal\_threshold |
 |:---:|:---|
-|描述| A写前日志的条数达到该值之后，刷新到磁盘，有可能丢失至多flush\_wal\_threshold个操作 |
+|描述| 写前日志的条数达到该值之后，刷新到磁盘，有可能丢失至多flush\_wal\_threshold个操作 |
 |类型|Int32|
 |默认值| 10000 |
-|改后生效方式|重启服务器生效|
-
-* max\_opened\_folder
-
-|名字| max\_opened\_folder |
-|:---:|:---|
-|描述| 最大同时打开的文件夹个数。默认为100。该值变大，则占用内存变多，IO随机读写变小，文件分块(即group)更加整齐；该值越小，则占用内存越少，IO随机读写变多，文件块大小不足group的概率变大group\_size\_in\_byte * max\_opened\_folder = 内存的最大占用量理论值。对于一个应用，folder的总量等于storage\_group的数量 |
-|类型|Int32|
-|默认值| 100 |
 |改后生效方式|重启服务器生效|
 
 * merge\_concurrent\_threads
 
 |名字| merge\_concurrent\_threads |
 |:---:|:---|
-|描述| overflow数据进行合并的时候最多可以用来进行merge的线程数。值越大，对IO和CPU消耗越多。值越小，当overflow数据过多时，磁盘占用量越大，读取会变慢。 |
+|描述| 乱序数据进行合并的时候最多可以用来进行merge的线程数。值越大，对IO和CPU消耗越多。值越小，当乱序数据过多时，磁盘占用量越大，读取会变慢。 |
 |类型|Int32|
-|默认值| 10 |
+|默认值| 0 |
 |改后生效方式|重启服务器生效|
 
-* mult\_dir\_strategy
+* multi\_dir\_strategy
 
-|名字| mult\_dir\_strategy |
+|名字| multi\_dir\_strategy |
 |:---:|:---|
 |描述| IoTDB在tsfile\_dir中为TsFile选择目录时采用的策略。可使用简单类名或类名全称。系统提供以下三种策略：<br>1. SequenceStrategy：IoTDB按顺序从tsfile\_dir中选择目录，依次遍历tsfile\_dir中的所有目录，并不断轮循；<br>2. MaxDiskUsableSpaceFirstStrategy：IoTDB优先选择tsfile\_dir中对应磁盘空余空间最大的目录；<br>3. MinFolderOccupiedSpaceFirstStrategy：IoTDB优先选择tsfile\_dir中已使用空间最小的目录；<br>4. <UserDfineStrategyPackage>（用户自定义策略）<br>您可以通过以下方法完成用户自定义策略：<br>1. 继承cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy类并实现自身的Strategy方法；<br>2. 将实现的类的完整类名（包名加类名，UserDfineStrategyPackage）填写到该配置项；<br>3. 将该类jar包添加到工程中。|
 |类型|String|
 |默认值| MaxDiskUsableSpaceFirstStrategy |
-|改后生效方式|重启服务器生效|
-
-* period\_time\_for\_flush\_in\_second
-
-|名字| period\_time\_for\_flush\_in\_second |
-|:---:|:---|
-|描述| IoTDB定时关闭文件的间隔。单位为秒。每隔设置的时间，系统会自动将内存中的数据刷入磁盘，并将当前打开的所有文件流封口。|
-|类型|Int32|
-|默认值| 3600 |
-|改后生效方式|重启服务器生效|
-
-* period\_time\_for\_merge\_in\_second
-
-|名字| period\_time\_for\_merge\_in\_second |
-|:---:|:---|
-|描述| IoTDB在运行时有两部分数据存在于内存：overflow和bufferwrite，系统会自动每隔一段时间合并两部分数据。单位为秒。|
-|类型|Int32|
-|默认值| 7200 |
 |改后生效方式|重启服务器生效|
 
 * rpc_address
@@ -271,34 +244,7 @@
 |描述|jdbc服务监听端口。请确认该端口不是系统保留端口并且未被占用。|
 |类型|Short Int : [0,65535]|
 |默认值| 6667 |
-|改后生效方式|重启服务器生效|
-
-* tsfile_dir
-
-|名字| tsfile_dir |
-|:---:|:---|
-|描述| IoTDB TsFile的存储路径，默认存放在和bin目录同级的data目录下的settled1、settled2、settled3三个文件夹中（数据分配策略见mult\_dir\_strategy配置项）。相对路径的起始目录与操作系统相关，建议使用绝对路径。若路径不存在，系统会自动创建。|
-|类型|String[]|
-|默认值| settled1, settled2, settled3 |
-|改后生效方式|重启服务器生效|
-
-* wal\_cleanup\_threshold
-
-|名字| wal\_cleanup\_threshold |
-|:---:|:---|
-|描述| 当文件中和内存中的日志总条数达到该值后，对所有日志进行压缩并去掉无用的记录日志。该值过大会导致短暂的写入暂停，过小会增加IO和CPU消耗 |
-|类型|Int32|
-|默认值| 500000 |
-|改后生效方式|重启服务器生效|
-
-* sys\_dir
-
-|名字| sys\_dir |
-|:---:|:---|
-|描述| IIoTDB系统元数据存储路径，默认存放在和bin目录同级的data目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
-|类型|String|
-|默认值| system |
-|改后生效方式|重启服务器生效|
+|改后生效方式|重启服务器生效||
 
 * time_zone
 
@@ -315,73 +261,7 @@
 |:---:|:---|
 |描述| 选择是否启动后台统计功能|
 |类型| Boolean |
-|默认值| true |
-|改后生效方式|重启服务器生效|
-
-
-* mem\_threshold\_warning
-
-|名字| mem\_threshold\_warning |
-|:---:|:---|
-|描述| 百分比值，这个值乘以IoTDB运行时分配到的最大堆内存值后得到一个阈值。当IoTDB使用内存超过该阈值的时候，将触发把当前内存中的数据写入到磁盘上，并释放相应内存的操作。默认为IoTDB运行时能使用最大堆内存的80%。如果该值配置超过1，那么该配置项将不生效。如果该值小于等于0，那么使用默认值。|
-|类型| Float |
-|默认值| 0.8 |
-|改后生效方式|重启服务器生效|
-
-
-* mem\_threshold\_dangerous
-
-|名字| mem\_threshold\_dangerous |
-|:---:|:---|
-|描述| 百分比值，这个值乘以IoTDB运行时分配到的最大堆内存后得到一个阈值。当IoTDB使用内存超过该阈值的时候，将触发把当前内存中的数据写入到磁盘上，并释放相应内存的操作。同时，写入操作将被阻塞。默认为IoTDB运行时能使用最大堆内存的90%。如果该值配置超过1，那么该配置项将不生效。如果该值小于等于0，那么使用默认值。|
-|类型| Float |
-|默认值| 0.9 |
-|改后生效方式|重启服务器生效|
-
-* mem\_monitor\_interval
-
-|名字| mem\_monitor\_interval |
-|:---:|:---|
-|描述| IoTDB系统每隔一段时间检查当前内存使用情况，如果超过了根据mem\_threshold\_warning或者mem\_threshold\_dangerous计算出来的阈值，将触发相应的操作。单位是为毫秒，默认值是1000毫秒。|
-|类型| Int64 |
-|默认值| 1000 |
-|改后生效方式|重启服务器生效|
-
-* bufferwrite\_meta\_size\_threshold
-
-|名字| bufferwrite\_meta\_size\_threshold |
-|:---:|:---|
-|描述| 当内存中保存的TsFile文件元数据大小超过该阈值之后，会将元数据保存在TsFile文件尾部，然后关闭该文件，并释放元数据占用的内存空间。单位为byte，默认值为200M。|
-|类型| Int64 |
-|默认值| 209715200 |
-|改后生效方式|重启服务器生效|
-
-* bufferwrite\_file\_size\_threshold
-
-|名字| bufferwrite\_meta\_size\_threshold |
-|:---:|:---|
-|描述| 当磁盘上的一个TsFile文件大小超过该阈值时，会关闭该TsFile文件。并打开一个新的TsFile文件接受数据写入。单位为byte，默认值为2G。|
-|类型| Int64 |
-|默认值| 2147483648 |
-|改后生效方式|重启服务器生效|
-
-
-* overflow\_meta\_size\_threshold
-
-|名字| overflow\_meta\_size\_threshold |
-|:---:|:---|
-|描述| 当内存中保存的Overflow文件元数据大小超过该阈值之后，会将元数据保存在TsFile文件尾部，然后关闭该文件，并释放元数据占用的内存空间。单位为byte，默认值为200M。|
-|类型| Int64 |
-|默认值| 209715200 |
-|改后生效方式|重启服务器生效|
-
-* overflow\_file\_size\_threshold
-
-|名字| overflow\_file\_size\_threshold |
-|:---:|:---|
-|描述| 当磁盘上的一个Overflow文件大小超过该阈值时，会关闭该Overflow文件。并打开一个新的Overflow文件接受数据写入。单位为byte，默认值为2G。|
-|类型| Int64 |
-|默认值| 2147483648 |
+|默认值| false |
 |改后生效方式|重启服务器生效|
 
 * concurrent\_flush\_thread
@@ -394,9 +274,9 @@
 |改后生效方式|重启服务器生效|
 
 
-* stat\_monitor\_detect\_freq\_sec
+* stat\_monitor\_detect\_freq\_in\_second
 
-|名字| concurrent\_flush\_thread |
+|名字| stat\_monitor\_detect\_freq\_in\_second |
 |:---:|:---|
 |描述| 每隔一段时间（以秒为单位）检测当前记录统计量时间范围是否超过stat_monitor_retain_interval，并进行定时清理。|
 |类型| Int32 |
@@ -404,9 +284,9 @@
 |改后生效方式|重启服务器生效|
 
 
-* stat\_monitor\_retain\_interval\_sec
+* stat\_monitor\_retain\_interval\_in\_second
 
-|名字| stat\_monitor\_retain\_interval\_sec |
+|名字| stat\_monitor\_retain\_interval\_in\_second |
 |:---:|:---|
 |描述| 系统统计信息的保留时间（以秒为单位），超过保留时间范围的统计数据将被定时清理。|
 |类型| Int32 |

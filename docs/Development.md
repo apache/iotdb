@@ -23,6 +23,10 @@
 
 ## Outline
 
+- How to develop IoTDB in IDE
+    - IDEA
+    - Eclipse
+    - Debugging IoTDB
 - Have Questions
     - Mailing Lists
     - JIRA issues
@@ -42,33 +46,67 @@
             - Code Style
 
 <!-- /TOC -->
+# How to develop IoTDB in IDE
+
+There are many ways to compile the source code of IoTDB,
+e.g., modify and compile with IDEA or Eclipse.
+
+Once all UTs are passed after you modify codes, your modification basically works! 
+
+## IDEA
+
+* "File" -> "Open" -> choose the root path of IoTDB source code. 
+* mark directory ***iotdb/target/generated-sources/antlr3*** as source code
+* mark directory ***service-rpc/target/generated-sources/thrift*** as source code 
+
+## Eclipse
+
+Using Eclipse to develop IoTDB is also simple but requires some plugins of Eclipse.
+
+- If your Eclipse version is released before 2019, Antlr plugin maybe not work in Eclipse. In this way, you have to run the command in your console first: `mvn eclipse:eclipse -DskipTests`. 
+After the command is done, you can import IoTDB as an existing project:
+  - Choose menu "import" -> "General" -> "Existing Projects into Workspace" -> Choose IoTDB
+   root path;
+  - Done.
+
+- If your Eclipse version is fashion enough (e.g., you are using the latest version of Eclipse),
+you can just choose menu "import" -> "Maven" -> "Existing Maven Projects".
+ 
+## Debugging IoTDB
+The main class of IoTDB server is `org.apache.iotdb.db.service.IoTDB`.
+The main class of IoTDB client is `org.apache.iotdb.cli.client.Client` 
+(or `org.apache.iotdb.cli.client.WinClient` on Win OS).
+
+You can run/debug IoTDB by using the two classes as the entrance.
+
+Another way to understand IoTDB is to read and try Unit Tests.
 
 # Have Questions
 
 ## Mailing Lists
 
 It is recommended to use our mailing lists to ask for help, report issues or contribute to the project.
-dev@iotdb.apache.org is for anyone who want to contribute codes to IoTDB or have usage questions for IoTDB.
+dev@iotdb.apache.org is for anyone who wants to contribute codes to IoTDB or have usage questions for IoTDB.
 
 Some quick tips when using email:
-* For error logs or long code examples, please use GitHub gist and include only few lines of the pertinent code / log within the email.
+* For error logs or long code examples, please use GitHub gist and include only a few lines of the pertinent code/log within the email.
 * No jobs, sales, or solicitation is permitted on the Apache IoTDB mailing lists.
 
 PS. To subscribe our mail list, you can send an email to dev-subscribe@iotdb.incubator.apache.org and you will receive a "confirm subscribe to dev@iotdb.apache.org" email, following the steps to confirm your subscription.
 
 ## JIRA issues
 
-The project tracks issues and new features on [JIRA issues](https://issues.apache.org/jira/projects/IOTDB/issues). You can create a new issue to report a bug, request a new feature or provide your custmon issue.
+The project tracks issues and new features on [JIRA issues](https://issues.apache.org/jira/projects/IOTDB/issues). You can create a new issue to report a bug, request a new feature or provide your custom issue.
 
 # How to contribute
 
 ## Becoming a committer
 
-To become a committer, you should first be active in our community so that most of our existing committers recognize you. Pushing codes and creating pull requests is just one of committer's rights. Moreover, it is committer's duty to help new uesrs on mail list, test new releases and improve documentation.
+To become a committer, you should first be active in our community so that most of our existing committers recognize you. Pushing codes and creating pull requests is just one of the committer's rights. Moreover, it is committer's duty to help new users on the mail list, test new releases and improve documentation.
 
 ### Contributing by Helping Other Users
 
-Since Apache IoTDB always attracts new users, it would be great if you can help them by answering questions on the dev@iotdb.apache.org mail list. We regard it as a valuable contribution. Also, the more questions you answer, the more poeple know you. Popularity is one of the necessary conditions to be a committer.
+Since Apache IoTDB always attracts new users, it would be great if you can help them by answering questions on the dev@iotdb.apache.org mail list. We regard it as a valuable contribution. Also, the more questions you answer, the more people know you. Popularity is one of the necessary conditions to be a committer.
 
 Contributors should subscribe to our mailing list to catch up the latest progress.
 
@@ -78,13 +116,13 @@ IoTDB's new release is visible to everyone, members of the community can vote to
 
 ### Contributing by Reviewing Changes
 
-Changes to IoTDB source codes are made through Github pull request. Anyone can review and comment on these changes. Reviewing others' pull requests can help you comprehend how a bug is fixed or a new feature is added. Besides, Learning directly from source code will give you a deeper understanding of how IoTDB system works and where its bottlenecks lie. You can help by reviewing the changes, asking questions and pointing out issues.
+Changes to IoTDB source codes are made through Github pull request. Anyone can review and comment on these changes. Reviewing others' pull requests can help you comprehend how a bug is fixed or a new feature is added. Besides, Learning directly from the source code will give you a deeper understanding of how IoTDB system works and where its bottlenecks lie. You can help by reviewing the changes, asking questions and pointing out issues.
 
 ### Contributing by Documentation Changes
 
-To propose a change to release documentation (that is, docs that appear under <https://iotdb.apache.org/#/Documents>), edit the Markdown source files in Iotdb’s docs/ directory(`documentation-EN` branch). The process to propose a doc change is otherwise the same as the process for proposing code changes below.  
+To propose a change to release documentation (that is, docs that appear under <https://iotdb.apache.org/#/Documents>), edit the Markdown source files in IoTDB’s docs/ directory(`documentation-EN` branch). The process to propose a doc change is otherwise the same as the process for proposing code changes below.  
 
-Whenever updating **User Guide** documents, remember to update `0-Content.md` in the same time. Here are two brief examples to show how to add new documents or how to modify existing documents:
+Whenever updating **User Guide** documents, remember to update `0-Content.md` at the same time. Here are two brief examples to show how to add new documents or how to modify existing documents:
 
 1. Suppose we have "chapter 1:Overview" already, and want to add a new document `A.md` in chapter 1.
 Then,
@@ -110,7 +148,7 @@ Note that, data correctness/loss bugs are our first priority to solve. Please ma
 
 ### Contributing Code Changes
 
-> When you contribute code, you affirm that the contribution is your original work and that you license the work to the project under the project’s open source license. Whether or not you state this explicitly, by submitting any copyrighted material via pull request, email, or other means you agree to license the material under the project’s open source license and warrant that you have the legal authority to do so.  Any new files contributed should be under Apache 2.0 License with a header on top of it.
+> When you contribute code, you affirm that the contribution is your original work and that you license the work to the project under the project’s open-source license. Whether or not you state this explicitly, by submitting any copyrighted material via pull request, email, or other means you agree to license the material under the project’s open-source license and warrant that you have the legal authority to do so.  Any new files contributed should be under Apache 2.0 License with a header on top of it.
 
 #### Cloning source code
 
@@ -121,18 +159,18 @@ Following `README.md` to test, run or build IoTDB.
 
 #### JIRA
 
-Generally, IoTDB uses JIRA to track logical issues, including bugs and improvements, and uses Github pull requests to manage the review and merge specific code changes. That is, JIRAs are used to describe what should be fixed or changed, proposing high-level approaches. Pull requests describe how to implement that change in the project’s source code. For example, major design decisions discussed in JIRA.
+Generally, IoTDB uses JIRA to track logical issues, including bugs and improvements and uses Github pull requests to manage the review and merge specific code changes. That is, JIRAs are used to describe what should be fixed or changed, proposing high-level approaches. Pull requests describe how to implement that change in the project’s source code. For example, major design decisions discussed in JIRA.
 
 1. Find the existing IoTDB JIRA that the change pertains to.
     1. o not create a new JIRA if you send a PR to address an existing issue labeled in JIRA; add it to the existing discussion.
     2. Look for existing pull requests that are linked from the JIRA, to understand if someone is already working on the JIRA
-2. If the change is new, then it usually needs a new JIRA. However, trivial changes, such as changes are self-explained do not require a JIRA. Example: Fix spelling error in JavaDoc
+2. If the change is new, then it usually needs a new JIRA. However, trivial changes, such as changes are self-explained, do not require a JIRA. Example: Fix spelling error in JavaDoc
 3. If required, create a new JIRA:
     1. Provide a descriptive Title. “Problem in XXXManager” is not sufficient. “IoTDB failed to start on jdk11 because jdk11 does not support -XX:+PrintGCDetail” is good.
-    2. Write a detailed Description. For bug reports, this should ideally include a short reproduction of the problem. For new features, it may include a design document.
-    3. Set required fields:
+    2. Write a detailed description. For bug reports, this should ideally include a short reproduction of the problem. For new features, it may include a design document.
+    3. Set the required fields:
         1. Issue Type. Generally, Bug, Improvement and New Feature are the only types used in IoTDB.
-        2. Priority. Set to Major or below; higher priorities are generally reserved for committers to set. The main exception is correctness or data-loss issues, which can be flagged as Blockers. JIRA tends to unfortunately conflate “size” and “importance” in its Priority field values. Their meaning is roughly:
+        2. Priority. Set to Major or below; higher priorities are generally reserved for committers to set. The main exception is correctness or data-loss issues, which can be flagged as Blockers. JIRA tends to unfortunately conflate “size” and “importance” in its Priority field values. Their meaning is rough:
             1. Blocker: pointless to release without this change as the release would be unusable to a large minority of users. Correctness and data loss issues should be considered Blockers.
             2. Critical: a large minority of users are missing important functionality without this, and/or a workaround is difficult
             3. Major: a small minority of users are missing important functionality without this, and there is a workaround
@@ -176,9 +214,9 @@ Run all tests with [How to test](https://github.com/thulab/iotdb/wiki/How-to-tes
 #### The Review Process
 
 * Other reviewers, including committers, may comment on the changes and suggest modifications. Changes can be added by simply pushing more commits to the same branch.
-* Lively, polite, rapid technical debate is encouraged from everyone in the community. The outcome may be a rejection of the entire change.
+* Lively, polite, rapid technical debate is encouraged by everyone in the community. The outcome may be a rejection of the entire change.
 * Keep in mind that changes to more critical parts of IoTDB, like its read/write data from/to disk, will be subjected to more review, and may require more testing and proof of its correctness than other changes.
-* Reviewers can indicate that a change looks suitable for merging with a comment such as: “I think this patch looks good” or "LGTM". If you comment LGTM you will be expected to help with bugs or follow-up issues on the patch. Consistent, judicious use of LGTMs is a great way to gain credibility as a reviewer with the broader community.
+* Reviewers can indicate that a change looks suitable for merging with a comment such as: “I think this patch looks good” or "LGTM". If you comment LGTM, you will be expected to help with bugs or follow-up issues on the patch. Consistent, judicious use of LGTMs is a great way to gain credibility as a reviewer with the broader community.
 * Sometimes, other changes will be merged which conflict with your pull request’s changes. The PR can’t be merged until the conflict is resolved. This can be resolved by, for example, adding a remote to keep up with upstream changes by 
 
 ```shell
@@ -193,18 +231,16 @@ git rebase upstream/master
 * Try to be responsive to the discussion rather than let days pass between replies
 
 #### Closing Your Pull Request / JIRA
-* If a change is accepted, it will be merged and the pull request will automatically be closed, along with the associated JIRA if any
-    * Note that in the rare case you are asked to open a pull request against a branch beside master, you actually have to close the pull request manually
+* If a change is accepted, it will be merged, and the pull request will automatically be closed, along with the associated JIRA if any
+    * Note that in the rare case you are asked to open a pull request against a branch beside the master, you actually have to close the pull request manually
     * The JIRA will be Assigned to the primary contributor to the change as a way of giving credit. If the JIRA isn’t closed and/or Assigned promptly, comment on the JIRA.
 * If your pull request is ultimately rejected, please close it promptly
     * … because committers can’t close PRs directly
     * Pull requests will be automatically closed by an automated process at Apache after about a week if a committer has made a comment like “mind closing this PR?” This means that the committer is specifically requesting that it be closed.
 * If a pull request has gotten little or no attention, consider improving the description or the change itself and ping likely reviewers again after a few days. Consider proposing a change that’s easier to include, like a smaller and/or less invasive change.
 * If it has been reviewed but not taken up after weeks, after soliciting review from the most relevant reviewers, or, has met with neutral reactions, the outcome may be considered a “soft no”. It is helpful to withdraw and close the PR in this case.
-* If a pull request is closed because it is deemed not the right approach to resolve a JIRA, then leave the JIRA open. However if the review makes it clear that the issue identified in the JIRA is not going to be resolved by any pull request (not a problem, won’t fix) then also resolve the JIRA
+* If a pull request is closed because it is deemed not the right approach to resolve a JIRA, then leave the JIRA open. However, if the review makes it clear that the issue identified in the JIRA is not going to be resolved by any pull request (not a problem, won’t fix) then also resolve the JIRA
 
 #### Code Style
 
 For Java code, Apache IoTDB follows Google’s Java Style Guide.
-
-

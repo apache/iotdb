@@ -19,6 +19,6 @@
 
 -->
 
-### v0.7.0 Release Notes
+### v0.8.0 Release Notes
 
-Comming Soon.
+Coming Soon.

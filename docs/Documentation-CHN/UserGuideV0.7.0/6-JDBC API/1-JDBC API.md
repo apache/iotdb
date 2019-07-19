@@ -21,4 +21,4 @@
 
 # 第6章: JDBC API
 
-Comming Soon.
+Coming Soon.

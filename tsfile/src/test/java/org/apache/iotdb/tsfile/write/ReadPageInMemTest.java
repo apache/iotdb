@@ -30,9 +30,11 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,46 +45,21 @@ public class ReadPageInMemTest {
   private File file = new File(filePath);
   private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
   private TsFileWriter innerWriter;
-  private FileSchema fileSchema = null;
+  private FileSchema schema = null;
 
   private int pageSize;
   private int ChunkGroupSize;
   private int pageCheckSizeThreshold;
   private int defaultMaxStringLength;
 
-  private static JSONObject getJsonSchema() {
-
+  private static FileSchema getFileSchema() {
+    FileSchema fileSchema = new FileSchema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    JSONObject s1 = new JSONObject();
-    s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
-    s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-    s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONObject s2 = new JSONObject();
-    s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
-    s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-    s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONObject s3 = new JSONObject();
-    s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
-    s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.FLOAT.toString());
-    s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONObject s4 = new JSONObject();
-    s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
-    s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.DOUBLE.toString());
-    s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
-
-    JSONArray measureGroup = new JSONArray();
-    measureGroup.add(s1);
-    measureGroup.add(s2);
-    measureGroup.add(s3);
-    measureGroup.add(s4);
-
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, measureGroup);
-    return jsonSchema;
+    fileSchema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
+    fileSchema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
+    fileSchema.registerMeasurement(new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.valueEncoder)));
+    fileSchema.registerMeasurement(new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.valueEncoder)));
+    return fileSchema;
   }
 
   @Before
@@ -96,8 +73,8 @@ public class ReadPageInMemTest {
     conf.pageCheckSizeThreshold = 1;
     defaultMaxStringLength = conf.maxStringLength;
     conf.maxStringLength = 2;
-    fileSchema = new FileSchema(getJsonSchema());
-    innerWriter = new TsFileWriter(new File(filePath), fileSchema, conf);
+    schema = getFileSchema();
+    innerWriter = new TsFileWriter(new File(filePath), schema, conf);
   }
 
   @After
@@ -114,7 +91,7 @@ public class ReadPageInMemTest {
     String line = "";
     for (int i = 1; i <= 3; i++) {
       line = "root.car.d1," + i + ",s1,1,s2,1,s3,0.1,s4,0.1";
-      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, fileSchema);
+      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, schema);
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
@@ -124,7 +101,7 @@ public class ReadPageInMemTest {
     }
     for (int i = 4; i < 100; i++) {
       line = "root.car.d1," + i + ",s1,1,s2,1,s3,0.1,s4,0.1";
-      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, fileSchema);
+      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, schema);
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
@@ -146,7 +123,7 @@ public class ReadPageInMemTest {
     String line = "";
     for (int i = 1; i <= 3; i++) {
       line = "root.car.d1," + i + ",s1,1,s2,1,s3,0.1,s4,0.1";
-      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, fileSchema);
+      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, schema);
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
@@ -156,7 +133,7 @@ public class ReadPageInMemTest {
     }
     for (int i = 1; i <= 3; i++) {
       line = "root.car.d2," + i + ",s1,1,s2,1,s3,0.1,s4,0.1";
-      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, fileSchema);
+      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, schema);
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
@@ -167,7 +144,7 @@ public class ReadPageInMemTest {
 
     for (int i = 4; i < 100; i++) {
       line = "root.car.d1," + i + ",s1,1,s2,1,s3,0.1,s4,0.1";
-      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, fileSchema);
+      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, schema);
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
@@ -178,7 +155,7 @@ public class ReadPageInMemTest {
 
     for (int i = 4; i < 100; i++) {
       line = "root.car.d2," + i + ",s1,1,s2,1,s3,0.1,s4,0.1";
-      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, fileSchema);
+      TSRecord record = RecordUtils.parseSimpleTupleRecord(line, schema);
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {

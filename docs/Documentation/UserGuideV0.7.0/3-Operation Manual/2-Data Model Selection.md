@@ -48,7 +48,7 @@ It is worth noting that when the path itself or the parent/child layer of the pa
 
 ```
 IoTDB> set storage group to root.ln.wf01
-error: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
 ### Show Storage Group
@@ -99,16 +99,11 @@ The results are shown below respectly:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
 
-It is worth noting that when the path queries does not exist, the system will give the corresponding error prompt as shown below:
-
-```
-IoTDB> show timeseries root.ln.wf03
-Msg: Failed to fetch timeseries root.ln.wf03's metadata because: Timeseries does not exist.
-```
+It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
 ### Precautions
 
-Version 0.7.0 imposes some limitations on the scale of data that users can operate:
+Version 0.8.0 imposes some limitations on the scale of data that users can operate:
 
 Limit 1: Assuming that the JVM memory allocated to IoTDB at runtime is p and the user-defined size of data in memory written to disk ([group\_size\_in\_byte](/#/Documents/latest/chap4/sec2)) is Q, then the number of storage groups should not exceed p/q.
 
