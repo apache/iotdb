@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 import org.junit.After;
@@ -49,7 +50,7 @@ public class ExceptionBuilderTest {
       prop.setProperty("20130", "Statement not prepared");
       prop.setProperty("20220", "Fail to connect");
 
-      prop.store(new OutputStreamWriter(out1, "utf-8"), "english version");
+      prop.store(new OutputStreamWriter(out1, StandardCharsets.UTF_8), "english version");
 
       out2 = new FileOutputStream("err_info_cn.properties", true);
       prop.setProperty("20000", "未知错误");
@@ -62,7 +63,7 @@ public class ExceptionBuilderTest {
       prop.setProperty("20130", "语句未就绪");
       prop.setProperty("20220", "连接失败");
 
-      prop.store(new OutputStreamWriter(out2, "utf-8"), "chinese version");
+      prop.store(new OutputStreamWriter(out2, StandardCharsets.UTF_8), "chinese version");
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
