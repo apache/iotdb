@@ -43,7 +43,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
 IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
 ```
 
-以上示例代码将长整型的timestamp以及值为true的数据插入到时间序列`root.ln.wf02.wt02.status`中和将长整型的timestamp以及值为”v1”的数据插入到时间序列`root.ln.wf02.wt02.hardware`中。执行成功后会出现execute successfully的提示，代表数据插入已完成。 
+以上示例代码将长整型的timestamp以及值为true的数据插入到时间序列`root.ln.wf02.wt02.status`中和将长整型的timestamp以及值为”v1”的数据插入到时间序列`root.ln.wf02.wt02.hardware`中。执行成功后会返回执行时间，代表数据插入已完成。 
 
 > 注意：在IoTDB中，TEXT类型的数据单双引号都可以来表示,上面的插入语句是用的是双引号表示TEXT类型数据，下面的示例将使用单引号表示TEXT类型数据。
 

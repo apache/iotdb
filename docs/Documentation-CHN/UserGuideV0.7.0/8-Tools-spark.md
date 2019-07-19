@@ -21,4 +21,4 @@
 
 # TsFile-Spark-Connector User Guide
 
-Comming Soon.
+Coming Soon.

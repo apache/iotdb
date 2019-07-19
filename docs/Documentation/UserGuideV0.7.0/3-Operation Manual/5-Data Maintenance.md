@@ -22,6 +22,8 @@
 # Chapter 3: Operation Manual
 
 ## Data Maintenance
+
+<!-- > 
 ### Data Update
 
 Users can use [UPDATE statements](/#/Documents/latest/chap5/sec1) to update data over a period of time in a specified timeseries. When updating data, users can select a timeseries to be updated (version 0.7.0 does not support multiple timeseries updates) and specify a time point or period to be updated (version 0.7.0 must have time filtering conditions).
@@ -46,8 +48,10 @@ When the updated path does not exist, IoTDB will give the corresponding error pr
 
 ```
 IoTDB> update root.ln.wf02 set wt02.sta = false where time < now()
-error: do not select any existing path
+Msg: do not select any existing series
 ```
+-->
+
 ### Data Deletion
 
 Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](/#/Documents/latest/chap5/sec1). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data before a certain time (version 0.7.0 does not support the deletion of data within a closed time interval).
@@ -64,7 +68,7 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 
 #### Delete Multiple Timeseries
-When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, the prefix path with broader meaning (see Section 3.1.6 of this manual) or the path with star can be used to delete the data. The SQL statement for this operation is:
+When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](/#/Documents/latest/chap2/sec1) can be used to delete the data. The SQL statement for this operation is:
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
@@ -78,5 +82,5 @@ It should be noted that when the deleted path does not exist, IoTDB will give th
 
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-error: TimeSeries does not exist and cannot be delete data
+Msg: TimeSeries does not exist and its data cannot be deleted
 ```

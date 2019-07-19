@@ -43,7 +43,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
 IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
 ```
 
-The above example code inserts the long integer timestamp and the value "true" into the timeseries `root.ln.wf02.wt02.status` and inserts the long integer timestamp and the value "v1" into the timeseries `root.ln.wf02.wt02.hardware`. When the execution is successful, a prompt "execute successfully" will appear to indicate that the data insertion has been completed.
+The above example code inserts the long integer timestamp and the value "true" into the timeseries `root.ln.wf02.wt02.status` and inserts the long integer timestamp and the value "v1" into the timeseries `root.ln.wf02.wt02.hardware`. When the execution is successful, cost time is shown to indicate that the data insertion has been completed.
 
 > Note: In IoTDB, TEXT type data can be represented by single and double quotation marks. The insertion statement above uses double quotation marks for TEXT type data. The following example will use single quotation marks for TEXT type data.
 

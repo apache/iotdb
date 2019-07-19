@@ -375,9 +375,7 @@ The result is shown below:
 The SQL statement is:
 
 ```
-select * from root.ln.wf01.wt01 
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
-slimit 1 soffset 1
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 1
 ```
 which means:
 
@@ -394,9 +392,6 @@ The SQL statement is:
 ```
 select max_value(*) from root.ln.wf01.wt01 group by (1d, [2017-11-01T00:00:00, 2017-11-07T23:00:00]) slimit 1 soffset 1
 ```
-which means:
-
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is the second column under this device, i.e., the temperature.
 
 The result is shown below:
 
@@ -448,9 +443,7 @@ The result is shown below:
 When the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB will return all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
 
 ```
-select status,temperature from root.ln.wf01.wt01 
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
-limit 100
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
 ```
 The result is shown below:
 

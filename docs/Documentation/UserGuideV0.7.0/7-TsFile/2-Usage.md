@@ -18,6 +18,11 @@
     under the License.
 
 -->
+
+# Chaper7: TsFile
+
+## Usage
+
 Now, you are ready to start doing some awesome things with TsFile. This section demonstrates the detailed usages of TsFile.
 
 ### Time-series Data

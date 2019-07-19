@@ -206,7 +206,7 @@ The detail of each variables are as follows:
 
 |Name| data\_dirs |
 |:---:|:---|
-|Description| The directories of data files. Multiple directories are separated by comma. See the [mult\_dir\_strategy](/#/Documents/latest/chap4/sec2) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
+|Description| The directories of data files. Multiple directories are separated by comma. See the [multi\_dir\_strategy](/#/Documents/latest/chap4/sec2) configuration item for data distribution strategy. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
 |Type|String[]|
 |Default| data/data |
 |Effective|After restart system|
@@ -229,9 +229,9 @@ The detail of each variables are as follows:
 |Default| true |
 |Effective|After restart system|
 
-* mult\_dir\_strategy
+* multi\_dir\_strategy
 
-|Name| mult\_dir\_strategy |
+|Name| multi\_dir\_strategy |
 |:---:|:---|
 |Description| IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. <UserDfineStrategyPackage> (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
 |Type|String|
@@ -256,7 +256,7 @@ The detail of each variables are as follows:
 |Default| 10000 |
 |Effective|After restart system|
 
-* flush\_wal\_period\_in\_ms
+* force\_wal\_period\_in\_ms
 
 |Name| force\_wal\_period\_in\_ms |
 |:---:|:---|
