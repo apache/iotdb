@@ -128,8 +128,10 @@ public class RecoverMergeTask extends MergeTask {
   // move the merged chunks or the unmerged chunks
   private void recoverChunkCounts() throws IOException {
     logger.info("{} recovering chunk counts", taskName);
+    int fileCnt = 1;
     for (TsFileResource tsFileResource : resource.getSeqFiles()) {
-      logger.info("{} recovering {}", taskName, tsFileResource.getFile().getName());
+      logger.info("{} recovering {}  {}/{}", taskName, tsFileResource.getFile().getName(),
+          fileCnt, resource.getSeqFiles().size());
       RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
       mergeFileWriter.makeMetadataVisible();
       unmergedChunkStartTimes.put(tsFileResource, new HashMap<>());
@@ -148,6 +150,7 @@ public class RecoverMergeTask extends MergeTask {
           }
         }
       }
+      fileCnt++;
     }
   }
 
