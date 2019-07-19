@@ -199,7 +199,7 @@ public class StorageGroupProcessor {
       recoverSeqFiles(seqTsFiles);
       recoverUnseqFiles(unseqTsFiles);
 
-      String taskName = storageGroupName + System.currentTimeMillis();
+      String taskName = storageGroupName + "-" + System.currentTimeMillis();
       File mergingMods = new File(storageGroupSysDir, MERGING_MODIFICAITON_FILE_NAME);
       if (mergingMods.exists()) {
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
