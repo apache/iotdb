@@ -54,6 +54,8 @@ public class MemEstToolCmd implements Runnable {
     long tsNum = Long.parseLong(tsNumString);
     long maxTsNum = Long.parseLong(maxTsNumString);
     long maxTsNumValid = maxTsNum;
+    long maxProcess = 0;
+
     while (true) {
       // init parameter
       config.setAllocateMemoryForWrite(memory);
@@ -64,8 +66,8 @@ public class MemEstToolCmd implements Runnable {
       IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
       MManager.getInstance().clear();
 
-      int sgCnt = 1;
-      int tsCnt = 1;
+      long sgCnt = 1;
+      long tsCnt = 1;
       try {
         for (; sgCnt <= sgNum; sgCnt++) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
@@ -83,8 +85,9 @@ public class MemEstToolCmd implements Runnable {
 
       } catch (ConfigAdjusterException e) {
         if(sgCnt > sgNum) {
+          maxProcess = Math.max(maxProcess, tsCnt * 100 / tsNum);
           System.out
-              .print(String.format("Memory estimation progress : %d%%\r", tsCnt * 100 / tsNum));
+              .print(String.format("Memory estimation progress : %d%%\r", maxProcess));
         }
         memory += IoTDBConstant.GB;
         continue;
