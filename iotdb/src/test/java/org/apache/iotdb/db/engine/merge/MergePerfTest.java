@@ -33,33 +33,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class MergePerfTest extends MergeTest{
 
-  private double unseqRatio;
-
   private Random random = new Random(System.currentTimeMillis());
 
   private long timeConsumption;
   private boolean fullMerge;
   private File tempSGDir;
-
-  @Override
-  void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
-    for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(i + "seq.tsfile");
-      TsFileResource tsFileResource = new TsFileResource(file);
-      seqResources.add(tsFileResource);
-      prepareFile(tsFileResource, i * ptNum, ptNum, 0);
-    }
-    long timeRange = seqFileNum * ptNum;
-    long unseqLength = (long) (timeRange * unseqRatio);
-    for (int i = 0; i < unseqFileNum; i++) {
-      long unseqOffset = (long) ((1.0 - unseqRatio) * random.nextDouble() * timeRange);
-      //System.out.println(unseqOffset + "  " + unseqLength);
-      File file = new File(i + "unseq.tsfile");
-      TsFileResource tsFileResource = new TsFileResource(file);
-      unseqResources.add(tsFileResource);
-      prepareFile(tsFileResource, unseqOffset, unseqLength, 10000);
-    }
-  }
 
   public void test() throws Exception {
     tempSGDir = new File("tempSG");
@@ -85,8 +63,7 @@ public class MergePerfTest extends MergeTest{
     perfTest.unseqFileNum = 5;
     perfTest.measurementNum = 100;
     perfTest.deviceNum = 10;
-    perfTest.unseqRatio = 0.1;
-    perfTest.ptNum = 10000;
+    perfTest.ptNum = 5000;
     perfTest.flushInterval = 1000;
     perfTest.fullMerge = true;
     perfTest.encoding = TSEncoding.PLAIN;
