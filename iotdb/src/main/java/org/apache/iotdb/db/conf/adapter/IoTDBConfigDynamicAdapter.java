@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
  * 7 static memory: b
  * 8 allocate memory for write: S
  *
- * The equation: m * Nm + Nm * Ns * Sf / (m * a * c) + b = S
+ * The equation: m * Nm + Nm * Ns * Sf * a * c / m + b = S
  * Namely: MemTable data memory size + chunk metadata memory size + static memory size = memory size for write
  *
  */
@@ -129,7 +129,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     if (memtableSizeInByte < memTableSizeFloorThreshold) {
       LOGGER.debug("memtableSizeInByte {} is smaller than memTableSizeFloorThreshold {}",
           memtableSizeInByte, memTableSizeFloorThreshold);
-      tsFileSizeThreshold = calcTsFileSizeThreshold(memTableSizeFloorThreshold);
+      tsFileSizeThreshold = calcTsFileSizeThreshold(memTableSizeFloorThreshold, ratio);
       if ((long) (tsFileSizeThreshold * ratio) < memTableSizeFloorThreshold) {
         canAdjust = false;
       } else {
@@ -165,13 +165,14 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   private int calcMemTableSize(double ratio) {
     // when unit is byte, it's likely to cause Long type overflow.
     // so when b is larger than Integer.MAC_VALUE use the unit KB.
-    double a = ratio * maxMemTableNum;
-    double b = (allocateMemoryForWrite - staticMemory) * ratio;
+    double a = maxMemTableNum;
+    double b = allocateMemoryForWrite - staticMemory;
     int magnification = b > Integer.MAX_VALUE ? 1024 : 1;
     b /= magnification;
-    double c = (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
-        * MManager
-        .getInstance().getMaximalSeriesNumberAmongStorageGroups() / magnification / magnification;
+    double c =
+        (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
+            * MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() * ratio
+            / magnification / magnification;
     double tempValue = b * b - 4 * a * c;
     double memTableSize = ((b + Math.sqrt(tempValue)) / (2 * a));
     return tempValue < 0 ? -1 : (int) (memTableSize * magnification);
@@ -184,11 +185,11 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * @param memTableSize MemTable size
    * @return Tsfile byte threshold
    */
-  private long calcTsFileSizeThreshold(long memTableSize) {
-    return (long) ((allocateMemoryForWrite - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
-            .getInstance().getRatio()
-            * memTableSize / (maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
-            .getMaximalSeriesNumberAmongStorageGroups()));
+  private long calcTsFileSizeThreshold(long memTableSize, double ratio) {
+    return (long) (
+        (allocateMemoryForWrite - maxMemTableNum * memTableSize - staticMemory) * memTableSize / (
+            ratio * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
+                .getMaximalSeriesNumberAmongStorageGroups()));
   }
 
   /**
