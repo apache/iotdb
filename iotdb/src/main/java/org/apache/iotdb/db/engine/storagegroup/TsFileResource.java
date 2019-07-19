@@ -275,4 +275,8 @@ public class TsFileResource {
   public int hashCode() {
     return Objects.hash(file);
   }
+
+  public void setClosed(boolean closed) {
+    this.closed = closed;
+  }
 }
