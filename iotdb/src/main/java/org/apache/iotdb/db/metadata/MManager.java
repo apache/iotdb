@@ -74,7 +74,7 @@ public class MManager {
   private RandomDeleteCache<String, MNode> mNodeCache;
 
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
-  private int maxSeriesNumberAmongStorageGroup;
+  private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
 
   private MManager() {
@@ -1196,11 +1196,11 @@ public class MManager {
   /**
    * Only for test
    */
-  public void setMaxSeriesNumberAmongStorageGroup(int maxSeriesNumberAmongStorageGroup) {
+  public void setMaxSeriesNumberAmongStorageGroup(long maxSeriesNumberAmongStorageGroup) {
     this.maxSeriesNumberAmongStorageGroup = maxSeriesNumberAmongStorageGroup;
   }
 
-  public int getMaximalSeriesNumberAmongStorageGroups() {
+  public long getMaximalSeriesNumberAmongStorageGroups() {
     return maxSeriesNumberAmongStorageGroup;
   }
 

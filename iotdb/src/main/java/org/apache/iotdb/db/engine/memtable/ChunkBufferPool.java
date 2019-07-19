@@ -37,7 +37,7 @@ public class ChunkBufferPool {
 
   private static final Deque<ChunkBuffer> availableChunkBuffer = new ArrayDeque<>();
 
-  private int size = 0;
+  private long size = 0;
 
   private static final int WAIT_TIME = 2000;
 
@@ -52,7 +52,7 @@ public class ChunkBufferPool {
 
     synchronized (availableChunkBuffer) {
       //we use the memtable number * maximal series number in one StroageGroup * 2 as the capacity
-      int capacity  =
+      long capacity  =
           2 * MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() * IoTDBDescriptor
               .getInstance().getConfig().getMaxMemtableNumber() + 100000;
       if (availableChunkBuffer.isEmpty() && size < capacity) {
@@ -91,7 +91,7 @@ public class ChunkBufferPool {
     synchronized (availableChunkBuffer) {
       chunkBuffer.reset();
       //we use the memtable number * maximal series number in one StroageGroup as the capacity
-      int capacity  =
+      long capacity  =
           MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() * IoTDBDescriptor
               .getInstance().getConfig().getMaxMemtableNumber();
       if (size > capacity) {
