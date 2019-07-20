@@ -103,7 +103,7 @@ It is worth noting that when the queried path does not exist, the system will re
 
 ### Precautions
 
-Version 0.7.0 imposes some limitations on the scale of data that users can operate:
+Version 0.9.0 imposes some limitations on the scale of data that users can operate:
 
 Limit 1: Assuming that the JVM memory allocated to IoTDB at runtime is p and the user-defined size of data in memory written to disk ([group\_size\_in\_byte](/#/Documents/latest/chap4/sec2)) is Q, then the number of storage groups should not exceed p/q.
 

@@ -107,7 +107,7 @@ IoTDB> show timeseries root.ln
 
 ### 注意事项
 
-0.7.0版本对用户操作的数据规模进行一些限制：
+0.9.0版本对用户操作的数据规模进行一些限制：
 
 限制1：假设运行时IoTDB分配到的JVM内存大小为p，用户自定义的每次将内存中的数据写入到磁盘时的大小（[group_size_in_byte](/#/Documents/latest/chap4/sec2)）为q。存储组的数量不能超过p/q。
 

@@ -135,18 +135,46 @@
     </dependencies>
     <modules>
         <module>tsfile</module>
-        <module>jdbc</module>
-        <module>iotdb</module>
-        <module>grafana</module>
         <module>service-rpc</module>
+        <module>jdbc</module>
+        <module>iotdb-server</module>
         <module>iotdb-cli</module>
         <module>example</module>
+        <module>grafana</module>
         <!-- <module>hadoop</module> -->
         <module>spark</module>
     </modules>
     <build>
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <configuration>
+                        <filesets>
+                            <fileset>
+                                <directory>${project.basedir}/iotdb/lib</directory>
+                                <includes>
+                                    <include>**/*.jar</include>
+                                </includes>
+                                <followSymlinks>false</followSymlinks>
+                            </fileset>
+                            <fileset>
+                                <directory>${project.basedir}/iotdb/data</directory>
+                                <includes>
+                                    <include>**/*</include>
+                                </includes>
+                                <followSymlinks>false</followSymlinks>
+                            </fileset>
+                            <fileset>
+                                <directory>${project.basedir}/iotdb/logs</directory>
+                                <includes>
+                                    <include>**/*</include>
+                                </includes>
+                                <followSymlinks>false</followSymlinks>
+                            </fileset>
+                        </filesets>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
@@ -222,6 +250,27 @@
             </plugins>
         </pluginManagement>
         <plugins>
+            <!--<plugin>-->
+            <!--<groupId>org.commonjava.maven.plugins</groupId>-->
+            <!--<artifactId>directory-maven-plugin</artifactId>-->
+            <!--<version>0.1</version>-->
+            <!--<executions>-->
+            <!--<execution>-->
+            <!--<id>directories</id>-->
+            <!--<goals>-->
+            <!--<goal>directory-of</goal>-->
+            <!--</goals>-->
+            <!--<phase>initialize</phase>-->
+            <!--<configuration>-->
+            <!--<property>root.basedir</property>-->
+            <!--<project>-->
+            <!--<groupId>com.my.domain</groupId>-->
+            <!--<artifactId>my-root-artifact</artifactId>-->
+            <!--</project>-->
+            <!--</configuration>-->
+            <!--</execution>-->
+            <!--</executions>-->
+            <!--</plugin>-->
             <!--
               Strange xthings usually happen if you run with a too low Java version.
               This plugin not only checks the minimum java version of 1.8, but also

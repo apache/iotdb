@@ -48,7 +48,7 @@ public class TSFileConfig {
   public static final int BYTE_SIZE_PER_CHAR = 4;
   public static final String STRING_ENCODING = "UTF-8";
   public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
-  public static final String MAGIC_STRING = "TsFilev0.8.0";
+  public static final String MAGIC_STRING = "TsFilev0.9.0";
   /**
    * Current version is 3.
    */

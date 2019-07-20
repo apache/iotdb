@@ -148,7 +148,7 @@ Eg. IoTDB > SELECT MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.w
 Eg. IoTDB > SELECT MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
 Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
-Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be used.
+Note: In Version 0.9.0, if <WhereClause> includes `OR`, time filter can not be used.
 ```
 
 * Group By语句

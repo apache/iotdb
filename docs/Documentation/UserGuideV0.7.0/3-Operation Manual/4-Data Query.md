@@ -167,7 +167,7 @@ In the actual use of IoTDB, when doing the query operation of timeseries, situat
 
 Automated fill function refers to filling empty values according to the user's specified method and effective time range when performing timeseries queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
 
-> Note: In the current version 0.7.0, IoTDB provides users with two methods: Previous and Linear. The previous method fills blanks with previous value. The linear method fills blanks through linear fitting. And the fill function can only be used when performing point-in-time queries.
+> Note: In the current version 0.9.0, IoTDB provides users with two methods: Previous and Linear. The previous method fills blanks with previous value. The linear method fills blanks through linear fitting. And the fill function can only be used when performing point-in-time queries.
 
 #### Fill Function
 * Previous Function
@@ -269,7 +269,7 @@ When the fill method is not specified, each data type bears its own default fill
 |text|previous, 0|
 </center>
 
-> Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
+> Note: In version 0.9.0, at least one fill method should be specified in the Fill statement.
 
 ### Row and Column Control over Query Results
 

@@ -24,7 +24,7 @@
 ## Data Import
 ### Import Historical Data
 
-This feature is not supported in version 0.7.0.
+This feature is not supported in version 0.9.0.
 
 ### Import Real-time Data
 

@@ -178,7 +178,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 where time >
 
 自动补值功能是指在针对单列或多列的时间序列查询中，根据用户的指定方法以及有效时间范围填充空值，若查询的点有值则自动补值功能不生效。
 
-> 注：当前0.7.0版本中IoTDB为用户提供使用前一个数值填充（Previous）和使用线性拟合填充（Linear）两种方法。且填充仅可用在对某一个时间点进行查询传感器数值结果为空的情况。
+> 注：当前0.9.0版本中IoTDB为用户提供使用前一个数值填充（Previous）和使用线性拟合填充（Linear）两种方法。且填充仅可用在对某一个时间点进行查询传感器数值结果为空的情况。
 
 #### 填充方法
 * Previous方法
@@ -279,7 +279,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 |text|previous, 0|
 </center>
 
-> 注意: 0.7.0版本中Fill语句内至少指定一种填充类型。
+> 注意: 0.9.0版本中Fill语句内至少指定一种填充类型。
 
 ### 查询结果的分页控制
 为方便用户在对IoTDB进行查询时更好的进行结果阅读，IoTDB为用户提供了[LIMIT/SLIMIT](/#/Documents/latest/chap5/sec1)子句以及[OFFSET/SOFFSET](/#/Documents/latest/chap5/sec1)子句。使用LIMIT和SLIMIT子句可以允许用户对查询结果的行数和列数进行控制，使用OFFSET和SOFFSET子句可以允许用户设定结果展示的起始位置。
