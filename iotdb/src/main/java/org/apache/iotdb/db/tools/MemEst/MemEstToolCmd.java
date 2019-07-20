@@ -20,7 +20,6 @@ package org.apache.iotdb.db.tools.MemEst;
 
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
-import io.airlift.airline.OptionType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,20 +44,27 @@ public class MemEstToolCmd implements Runnable {
 
   @Override
   public void run() {
+    // backup origin config parameters
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     long memTableSize = config.getMemtableSizeThreshold();
     int maxMemtableNumber = config.getMaxMemtableNumber();
     long tsFileSize = config.getTsFileSizeThreshold();
-    long memory = IoTDBConstant.GB;
+
+    // parse input parameters
     long sgNum = Long.parseLong(sgNumString);
     long tsNum = Long.parseLong(tsNumString);
     long maxTsNum = Long.parseLong(maxTsNumString);
+
+    //
+    long stepMemory = calStepMemory(tsNum) * IoTDBConstant.GB;
+    long currentMemory = stepMemory;
     long maxTsNumValid = maxTsNum;
     long maxProcess = 0;
-
+    long start = System.currentTimeMillis();
     while (true) {
-      // init parameter
-      config.setAllocateMemoryForWrite(memory);
+
+      // recover config parameter
+      config.setAllocateMemoryForWrite(currentMemory);
       config.setMemtableSizeThreshold(memTableSize);
       config.setMaxMemtableNumber(maxMemtableNumber);
       config.setTsFileSizeThreshold(tsFileSize);
@@ -74,7 +80,7 @@ public class MemEstToolCmd implements Runnable {
         }
         for (; tsCnt <= tsNum; tsCnt++) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
-          if(maxTsNum == 0){
+          if (maxTsNum == 0) {
             maxTsNumValid = tsCnt / sgNum + 1;
           } else {
             maxTsNumValid = Math.min(tsCnt, maxTsNum);
@@ -84,18 +90,30 @@ public class MemEstToolCmd implements Runnable {
         }
 
       } catch (ConfigAdjusterException e) {
-        if(sgCnt > sgNum) {
+        if (sgCnt > sgNum) {
           maxProcess = Math.max(maxProcess, tsCnt * 100 / tsNum);
           System.out
               .print(String.format("Memory estimation progress : %d%%\r", maxProcess));
         }
-        memory += IoTDBConstant.GB;
+        currentMemory += stepMemory;
         continue;
       }
       break;
     }
     System.out.println(String
-        .format("Memory for writing: %dGB, SG: %d, TS: %d, MTS: %d", memory / IoTDBConstant.GB,
+        .format("Memory for writing: %dGB, SG: %d, TS: %d, MTS: %d", currentMemory / IoTDBConstant.GB,
             sgNum, tsNum, maxTsNumValid));
+    System.out.println(String.format("Calculating memory for writing consumes: %dms",
+        (System.currentTimeMillis() - start)));
+  }
+
+  private long calStepMemory(long maxTimeseriesNumber) {
+    maxTimeseriesNumber /= 10000000;
+    int step = 1;
+    while (maxTimeseriesNumber > 0) {
+      maxTimeseriesNumber /= 10;
+      step *= 10;
+    }
+    return step;
   }
 }
