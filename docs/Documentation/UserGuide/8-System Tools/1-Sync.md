@@ -268,7 +268,7 @@ For Linux and Mac OS X users:
 ```
 For Windows users:
 ```
-  Shell >$IOTDB_HOME/bin/start-sync-client.bat
+  Shell >$IOTDB_HOME\bin\start-sync-client.bat
 ```
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494951-dc283b80-8ec0-11e9-9575-5d8578c08ceb.png">
 
@@ -280,5 +280,6 @@ For Linux and Mac OS X users:
 ```
 For Windows users:
 ```
-  Shell >$IOTDB_HOME/bin/stop-sync-client.bat
+  Shell >$IOTDB_HOME\bin\stop-sync-client.bat
 ```
+
