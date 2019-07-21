@@ -166,38 +166,5 @@ object Transformer {
 
     res
   }
-
-  /**
-    * build dataframe for test
-    *
-    * @return datafram for test
-    */
-  def buildTestData(): DataFrame = {
-    //1. build rdd
-    val rddString = sc.textFile("test.txt")
-    //2. build schema
-    val schemaString = "timestamp root.ln.d1.m1 root.ln.d1.m2 root.ln.d2.m1 root.ln.d2.m2 root.ln.d2.m3"
-
-    val fields = new ListBuffer[StructField]()
-    fields += StructField("timestamp", StringType, nullable = false)
-    fields += StructField("root.ln.d1.m1", StringType, nullable = false)
-    fields += StructField("root.ln.d1.m2", StringType, nullable = false)
-    fields += StructField("root.ln.d2.m1", StringType, nullable = false)
-    fields += StructField("root.ln.d2.m2", StringType, nullable = false)
-    fields += StructField("root.ln.d2.m3", StringType, nullable = false)
-
-    val schema = StructType(fields)
-    //3 transform data to rdd
-    val rowRdd = rddString.map(_.split(",")).map(attributes => Row(attributes(0), attributes(1), attributes(2), attributes(3), attributes(4), attributes(5)))
-    //4 build df
-    var df = spark.createDataFrame(rowRdd, schema)
-    df.registerTempTable("test")
-
-    // this means to build df with different data type
-    var new_df = spark.sql("select 1L as timestamp, \"11\" as `root.ln.d1.m1`, \"12\" as `root.ln.d1.m2`, \"22\" as `root.ln.d2.m2`, 23L as `root.ln.d2.m3` from test")
-    new_df = new_df.union(spark.sql("select 2L as timestamp, \"101\" as `root.ln.d1.m1`, \"102\" as `root.ln.d1.m2`, \"202\" as `root.ln.d2.m2`, 203L as `root.ln.d2.m3` from test"))
-
-    new_df
-  }
 }
 
