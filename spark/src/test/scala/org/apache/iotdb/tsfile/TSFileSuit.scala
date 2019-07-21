@@ -20,8 +20,8 @@ package org.apache.iotdb.tsfile
 
 import java.io.File
 
+import org.apache.iotdb.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tool.TsFileWrite
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
 import org.junit.Assert
@@ -63,9 +63,9 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     }
     tsfile_folder2.mkdirs()
 
-    new TsFileWrite().create1(tsfile1)
-    new TsFileWrite().create2(tsfile2)
-    new TsFileWrite().create3(tsfile3)
+    new TsFileWriteTool().create1(tsfile1)
+    new TsFileWriteTool().create2(tsfile2)
+    new TsFileWriteTool().create3(tsfile3)
 
     val output = new File(outputPath)
     if (output.exists())
@@ -133,7 +133,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     df.createOrReplaceTempView("tsfile_table")
     val newDf = spark.sql("select * from tsfile_table")
     val count = newDf.count()
-    Assert.assertEquals(TsFileWrite.largeNum, count)
+    Assert.assertEquals(TsFileWriteTool.largeNum, count)
   }
 
   test("testCount") {
@@ -188,7 +188,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   test("testMultiFiles") {
     val df = spark.read.tsfile(tsfileFolder1)
     df.createOrReplaceTempView("tsfile_table")
-    Assert.assertEquals(TsFileWrite.largeNum + 7, df.count())
+    Assert.assertEquals(TsFileWriteTool.largeNum + 7, df.count())
   }
 
   test("testMultiFilesWithFilter1") {
