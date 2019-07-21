@@ -24,7 +24,7 @@ import java.util
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
-import org.apache.iotdb.tool.TsFileWrite
+import org.apache.iotdb.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
 import org.apache.iotdb.tsfile.io.HDFSInput
@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.read.common.Field
 import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.{GenericInternalRow, GenericRowWithSchema}
+import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.junit.Assert
@@ -53,8 +53,8 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
       deleteDir(tsfile_folder)
     }
     tsfile_folder.mkdirs()
-    new TsFileWrite().create1(tsfilePath1)
-    new TsFileWrite().create2(tsfilePath2)
+    new TsFileWriteTool().create1(tsfilePath1)
+    new TsFileWriteTool().create2(tsfilePath2)
     spark = SparkSession
       .builder()
       .config("spark.master", "local")

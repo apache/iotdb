@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
  * An example of writing data to TsFile
  */
-public class TsFileWrite {
+public class TsFileWriteTool {
 
   public static int largeNum = 1024 * 1024;
 

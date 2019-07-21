@@ -21,8 +21,8 @@ package org.apache.iotdb.tsfile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tool.TsFileWriteTool;
 import org.apache.iotdb.tsfile.io.HDFSInput;
-import org.apache.iotdb.tool.TsFileWrite;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -41,7 +41,7 @@ public class HDFSInputTest {
       deleteDir(tsfile_folder);
     }
     tsfile_folder.mkdirs();
-    TsFileWrite tsFileWrite = new TsFileWrite();
+    TsFileWriteTool tsFileWrite = new TsFileWriteTool();
     tsFileWrite.create1(path);
     in = new HDFSInput(path);
   }
