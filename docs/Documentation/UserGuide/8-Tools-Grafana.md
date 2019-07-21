@@ -59,7 +59,7 @@ grafana-cli plugins install grafana-simple-json-datasource
 
 Alternatively, you can manually download the .zip file and unpack it into your grafana plugins directory.
 
-* `{grafana-install-directory}/data/plugin/` (Windows)
+* `{grafana-install-directory}\data\plugin\` (Windows)
 * `/var/lib/grafana/plugins` (Linux)
 * `/usr/local/var/lib/grafana/plugins`(Mac)
 
