@@ -41,7 +41,6 @@ public class MemTablePoolTest {
   public void tearDown() throws Exception {
     isFinished = true;
     thread.join();
-    System.out.println(MemTablePool.getInstance().getSize());
   }
 
   @Test
@@ -55,7 +54,7 @@ public class MemTablePoolTest {
     System.out.println("memtable pool use deque and synchronized consume:" + time);
   }
 
-  @Test
+  //@Test
   public void testSort() {
     long start = System.currentTimeMillis();
     TreeMap<Long, Long> treeMap = new TreeMap<>();
@@ -63,7 +62,7 @@ public class MemTablePoolTest {
       treeMap.put((long) i, (long) i);
     }
     start = System.currentTimeMillis() - start;
-    System.out.println("time cost: " + start);
+    System.out.println("time cost of sort: " + start);
   }
 
 

@@ -93,7 +93,6 @@ public class PhysicalPlanTest {
     String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
     QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
-    System.out.println(plan.toString());
     assertEquals(
         "userName: null\n" + "roleName: xm\n" + "password: null\n" + "newPassword: null\n"
             + "permissions: [0, 5]\n" + "nodeName: root.vehicle.d1.s1\n" + "authorType: GRANT_ROLE",
