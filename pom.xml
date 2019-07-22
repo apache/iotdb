@@ -136,7 +136,7 @@
     <modules>
         <module>tsfile</module>
         <module>jdbc</module>
-        <module>iotdb</module>
+        <module>iotdb-server</module>
         <module>grafana</module>
         <module>service-rpc</module>
         <module>iotdb-cli</module>
