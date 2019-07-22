@@ -18,7 +18,8 @@
     under the License.
 
 -->
-# TsFile Hierarchy
+# Chapter 7: TsFile
+## TsFile Hierarchy
   Here is a brief introduction of the structure of a TsFile file.
   
 ## Variable Storage
