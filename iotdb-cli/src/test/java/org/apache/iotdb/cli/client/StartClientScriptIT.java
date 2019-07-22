@@ -64,7 +64,6 @@ public class StartClientScriptIT extends AbstractScript {
         "---------------------",
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
     String dir = getCurrentPath("pwd");
-    System.out.println(dir);
     ProcessBuilder builder = new ProcessBuilder("sh",
         dir + File.separator + "cli" + File.separator + "bin" + File.separator + "start-client.sh",
         "-h",

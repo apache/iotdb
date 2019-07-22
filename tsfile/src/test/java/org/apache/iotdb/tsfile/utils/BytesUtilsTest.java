@@ -284,7 +284,6 @@ public class BytesUtilsTest {
 
   @Test
   public void testLongToBytesWithWidth() {
-    System.out.println();
     int bitLen = 42;
     long basic = (1 << 30) * 2l;
     long b1 = (1 << (bitLen % 32)) * basic + r.nextInt();

@@ -32,8 +32,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MManagerImproveTest {
+  private static Logger logger = LoggerFactory.getLogger(MManagerImproveTest.class);
 
   private static final int TIMESERIES_NUM = 1000;
   private static final int DEVICE_NUM = 10;
@@ -120,11 +123,11 @@ public class MManagerImproveTest {
     endTime = System.currentTimeMillis();
     get_seriestype += endTime - startTime;
 
-    System.out.println("string combine:\t" + string_combine);
-    System.out.println("seriesPath exist:\t" + path_exist);
-    System.out.println("list init:\t" + list_init);
-    System.out.println("check file level:\t" + check_filelevel);
-    System.out.println("get series type:\t" + get_seriestype);
+    logger.debug("string combine:\t" + string_combine);
+    logger.debug("seriesPath exist:\t" + path_exist);
+    logger.debug("list init:\t" + list_init);
+    logger.debug("check file level:\t" + check_filelevel);
+    logger.debug("get series type:\t" + get_seriestype);
   }
 
   public void doOriginTest(String deviceId, List<String> measurementList)
@@ -239,42 +242,42 @@ public class MManagerImproveTest {
       doOriginTest(deviceId, measurementList);
     }
     endTime = System.currentTimeMillis();
-    System.out.println("origin:\t" + (endTime - startTime));
+    logger.debug("origin:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {
       doPathLoopOnceTest(deviceId, measurementList);
     }
     endTime = System.currentTimeMillis();
-    System.out.println("seriesPath loop once:\t" + (endTime - startTime));
+    logger.debug("seriesPath loop once:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {
       doDealdeviceIdOnceTest(deviceId, measurementList);
     }
     endTime = System.currentTimeMillis();
-    System.out.println("deal deviceId once:\t" + (endTime - startTime));
+    logger.debug("deal deviceId once:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {
       doRemoveListTest(deviceId, measurementList);
     }
     endTime = System.currentTimeMillis();
-    System.out.println("remove list:\t" + (endTime - startTime));
+    logger.debug("remove list:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {
       doAllImproveTest(deviceId, measurementList);
     }
     endTime = System.currentTimeMillis();
-    System.out.println("improve all:\t" + (endTime - startTime));
+    logger.debug("improve all:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {
       doCacheTest(deviceId, measurementList);
     }
     endTime = System.currentTimeMillis();
-    System.out.println("add cache:\t" + (endTime - startTime));
+    logger.debug("add cache:\t" + (endTime - startTime));
   }
 
   @After
