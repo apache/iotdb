@@ -20,7 +20,6 @@ package org.apache.iotdb.db.conf.adapter;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
@@ -37,10 +36,11 @@ import org.slf4j.LoggerFactory;
  *
  * 1. maxMemTableNum. This parameter represents the size of the MemTable available in the MemTable
  * pool, which is closely related to the number of storage groups. When adding or deleting a storage
- * group, the parameter also adds or deletes two MemTables. The reason why adding or deleting two
+ * group, the parameter also adds or deletes four MemTables. The reason why adding or deleting four
  * MemTables is that when the system is running stably, the speed of the flush operation is faster
  * than that of data writing, so one is used for the Flush process and the other is used for data
- * writing. Otherwise, the system should limit the speed of data writing to maintain stability.
+ * writing. Otherwise, the system should limit the speed of data writing to maintain stability. And
+ * two for sequence data, two for unsequence data.
  *
  * 2. memtableSize. This parameter determines the threshold value for the MemTable in memory to be
  * flushed into disk. When the system load increases, the parameter should be set smaller so that
@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
  * 7 static memory: b
  * 8 allocate memory for write: S
  *
- * The equation: m * Nm + Nm * Ns * Sf / (m * a * c) + b = S
+ * The equation: m * Nm + Nm * Ns * Sf * a * c / m + b = S
  * Namely: MemTable data memory size + chunk metadata memory size + static memory size = memory size for write
  *
  */
@@ -76,15 +76,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   // static parameter section
 
   /**
-   * When the size of the adjusted MemTable decreases more than this parameter, trigger the global
-   * flush operation and flush all MemTable that meets the flush condition to disk.
-   */
-  private static final double FLUSH_THRESHOLD = 0.2;
-
-  /**
    * Maximum amount of memory allocated for write process.
    */
-  private static final long ALLOCATE_MEMORY_FOR_WRITE = CONFIG.getAllocateMemoryForWrite();
+  private static long allocateMemoryForWrite = CONFIG.getAllocateMemoryForWrite();
 
   /**
    * Metadata size of per timeseries, the default value is 2KB.
@@ -128,26 +122,31 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   @Override
   public synchronized boolean tryToAdaptParameters() {
     boolean canAdjust = true;
-    long memtableSizeInByte = calcMemTableSize();
+    double ratio = CompressionRatio.getInstance().getRatio();
+    long memtableSizeInByte = calcMemTableSize(ratio);
     long memTableSizeFloorThreshold = getMemTableSizeFloorThreshold();
-    long tsFileSize = CONFIG.getTsFileSizeThreshold();
+    long tsFileSizeThreshold = CONFIG.getTsFileSizeThreshold();
     if (memtableSizeInByte < memTableSizeFloorThreshold) {
       LOGGER.debug("memtableSizeInByte {} is smaller than memTableSizeFloorThreshold {}",
           memtableSizeInByte, memTableSizeFloorThreshold);
-      tsFileSize = calcTsFileSize(memTableSizeFloorThreshold);
-      memtableSizeInByte = memTableSizeFloorThreshold + ((tsFileSize - memTableSizeFloorThreshold) >> 1);
-      if (tsFileSize < memTableSizeFloorThreshold) {
+      tsFileSizeThreshold = calcTsFileSizeThreshold(memTableSizeFloorThreshold, ratio);
+      if ((long) (tsFileSizeThreshold * ratio) < memTableSizeFloorThreshold) {
         canAdjust = false;
+      } else {
+        // memtableSizeInByte need to be larger than memTableSizeFloorThreshold
+        memtableSizeInByte = Math.max(memTableSizeFloorThreshold,
+            memTableSizeFloorThreshold + (((long) (tsFileSizeThreshold * ratio) - memTableSizeFloorThreshold)
+                >> 1));
       }
     }
 
     if (canAdjust) {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
-      CONFIG.setTsFileSizeThreshold(tsFileSize);
+      CONFIG.setTsFileSizeThreshold(tsFileSizeThreshold);
       CONFIG.setMemtableSizeThreshold(memtableSizeInByte);
       LOGGER.debug(
           "After adjusting, max memTable num is {}, tsFile threshold is {}, memtableSize is {}, memTableSizeFloorThreshold is {}",
-          maxMemTableNum, tsFileSize, memtableSizeInByte, memTableSizeFloorThreshold);
+          maxMemTableNum, tsFileSizeThreshold, memtableSizeInByte, memTableSizeFloorThreshold);
       currentMemTableSize = memtableSizeInByte;
     }
     if (!initialized) {
@@ -163,17 +162,17 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    *
    * @return MemTable byte size. If the value is -1, there is no valid solution.
    */
-  private int calcMemTableSize() {
-    double ratio = CompressionRatio.getInstance().getRatio();
+  private int calcMemTableSize(double ratio) {
     // when unit is byte, it's likely to cause Long type overflow.
     // so when b is larger than Integer.MAC_VALUE use the unit KB.
-    double a = ratio * maxMemTableNum;
-    double b = (ALLOCATE_MEMORY_FOR_WRITE - staticMemory) * ratio;
+    double a = maxMemTableNum;
+    double b = allocateMemoryForWrite - staticMemory;
     int magnification = b > Integer.MAX_VALUE ? 1024 : 1;
     b /= magnification;
-    double c = (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
-        * MManager
-        .getInstance().getMaximalSeriesNumberAmongStorageGroups() / magnification / magnification;
+    double c =
+        (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
+            * MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() * ratio
+            / magnification / magnification;
     double tempValue = b * b - 4 * a * c;
     double memTableSize = ((b + Math.sqrt(tempValue)) / (2 * a));
     return tempValue < 0 ? -1 : (int) (memTableSize * magnification);
@@ -186,11 +185,11 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * @param memTableSize MemTable size
    * @return Tsfile byte threshold
    */
-  private long calcTsFileSize(long memTableSize) {
-    return (long) ((ALLOCATE_MEMORY_FOR_WRITE - maxMemTableNum * memTableSize - staticMemory) * CompressionRatio
-            .getInstance().getRatio()
-            * memTableSize / (maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
-            .getMaximalSeriesNumberAmongStorageGroups()));
+  private long calcTsFileSizeThreshold(long memTableSize, double ratio) {
+    return (long) (
+        (allocateMemoryForWrite - maxMemTableNum * memTableSize - staticMemory) * memTableSize / (
+            ratio * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
+                .getMaximalSeriesNumberAmongStorageGroups()));
   }
 
   /**
@@ -198,7 +197,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * occupied by each value is 8 bytes. The reason for multiplying 2 is that the timestamp also
    * takes 8 bytes.
    */
-  private int getMemTableSizeFloorThreshold() {
+  private long getMemTableSizeFloorThreshold() {
     return MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()
         * PrimitiveArrayPool.ARRAY_SIZE * Long.BYTES * 2;
   }
@@ -253,6 +252,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     totalTimeseries = 0;
     staticMemory = 0;
     maxMemTableNum = MEM_TABLE_AVERAGE_QUEUE_LEN;
+    allocateMemoryForWrite = CONFIG.getAllocateMemoryForWrite();
     initialized = false;
   }
 

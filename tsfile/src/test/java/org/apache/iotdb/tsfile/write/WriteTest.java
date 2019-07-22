@@ -22,22 +22,24 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Random;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import org.apache.commons.io.IOUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -58,15 +60,15 @@ public class WriteTest {
   private String inputDataFile;
   private String outputDataFile;
   private String errorOutputDataFile;
-  private String schemaFile;
   private Random rm = new Random();
+  private ArrayList<MeasurementSchema> measurementArray;
   private FileSchema schema;
   private int stageSize = 4;
   private int stageState = -1;
   private int prePageSize;
   private int prePageCheckThres;
   private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-  private JSONArray measurementArray;
+
   private String[][] stageDeviceIds = {{"d1", "d2", "d3"}, {"d1"}, {"d2", "d3"}};
   private String[] measurementIds = {"s0", "s1", "s2", "s3", "s4", "s5"};
   private long longBase = System.currentTimeMillis() * 1000;
@@ -77,7 +79,6 @@ public class WriteTest {
     inputDataFile = "target/writeTestInputData";
     outputDataFile = "target/writeTestOutputData.tsfile";
     errorOutputDataFile = "target/writeTestErrorOutputData.tsfile";
-    schemaFile = "src/test/resources/test_write_schema.json";
     // for each row, flush page forcely
     prePageSize = conf.pageSizeInByte;
     conf.pageSizeInByte = 0;
@@ -97,14 +98,19 @@ public class WriteTest {
     if (errorFile.exists()) {
       errorFile.delete();
     }
-
-    JSONObject emptySchema = JSON.parseObject("{\"delta_type\": \"test_type\",\"properties\": {\n"
-        + "\"key1\": \"value1\",\n" + "\"key2\": \"value2\"\n" + "},\"schema\": [],}");
-    try (InputStream inputStream = new FileInputStream(schemaFile)){
-      String jsonStr = IOUtils.toString(inputStream, "utf8");
-      measurementArray = JSON.parseObject(jsonStr).getJSONArray(JsonFormatConstant.JSON_SCHEMA);
-    }
-    schema = new FileSchema(emptySchema);
+    measurementArray = new ArrayList<>();
+    measurementArray.add(new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.RLE));
+    measurementArray.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    HashMap<String,String> props = new HashMap<>();
+    props.put("max_point_number", "2");
+    measurementArray.add(new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE,
+                              CompressionType.valueOf(TSFileConfig.compressor), props));
+    props = new HashMap<>();
+    props.put("max_point_number", "3");
+    measurementArray.add(new MeasurementSchema("s3", TSDataType.DOUBLE, TSEncoding.TS_2DIFF,
+            CompressionType.valueOf(TSFileConfig.compressor), props));
+    measurementArray.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema = new FileSchema();
     LOG.info(schema.toString());
     tsFileWriter = new TsFileWriter(file, schema, conf);
   }
@@ -197,7 +203,7 @@ public class WriteTest {
     String[] strings;
     // add all measurement except the last one at before writing
     for (int i = 0; i < measurementArray.size() - 1; i++) {
-      tsFileWriter.addMeasurementByJson((JSONObject) measurementArray.get(i));
+      tsFileWriter.addMeasurement(measurementArray.get(i));
     }
     while (true) {
       if (lineCount % stageSize == 0) {
@@ -211,7 +217,7 @@ public class WriteTest {
       }
       if (lineCount == ROW_COUNT / 2) {
         tsFileWriter
-            .addMeasurementByJson((JSONObject) measurementArray.get(measurementArray.size() - 1));
+            .addMeasurement(measurementArray.get(measurementArray.size() - 1));
       }
       strings = getNextRecord(lineCount, stageState);
       for (String str : strings) {
@@ -222,12 +228,12 @@ public class WriteTest {
       lineCount++;
     }
     // test duplicate measurement adding
-    JSONObject dupMeasure = (JSONObject) measurementArray.get(measurementArray.size() - 1);
+    MeasurementSchema dupMeasure = measurementArray.get(measurementArray.size() - 1);
     try {
-      tsFileWriter.addMeasurementByJson(dupMeasure);
+      tsFileWriter.addMeasurement(dupMeasure);
     } catch (WriteProcessException e) {
       assertEquals("given measurement has exists! " + dupMeasure
-              .getString(JsonFormatConstant.MEASUREMENT_UID),
+              .getMeasurementId(),
           e.getMessage());
     }
     try {

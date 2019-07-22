@@ -1,3 +1,4 @@
+#!/bin/sh
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,12 +18,30 @@
 # under the License.
 #
 
-20000=Unknown error
-20001=No parameters exist in the statement
-20002=Invalid parameter number
-20003=Can't connect to server on %s(%s)
-20061=Authentication failed: %s
-20062=Insecure API function call: %s
-20064=Client ran out of memory
-20130=Statement not prepared
-20220=Fail to connect.
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+fi
+
+IOTDB_CONF=${IOTDB_HOME}/conf
+
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
+
+MAIN_CLASS=org.apache.iotdb.db.tools.MemEst.MemEstTool
+
+if [ -n "$JAVA_HOME" ]; then
+    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+        if [ -x "$java" ]; then
+            JAVA="$java"
+            break
+        fi
+    done
+else
+    JAVA=java
+fi
+
+iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback-tool.xml"
+
+exec "$JAVA" $iotdb_parms -cp "$CLASSPATH" "$MAIN_CLASS" "$@"

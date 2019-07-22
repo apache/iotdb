@@ -70,7 +70,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
           continue;
         }
         tsFileReader = FileReaderManager.getInstance()
-            .get(tsFileResource, tsFileResource.isClosed());
+            .get(tsFileResource, true);
         MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
         metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
         List<Modification> pathModifications = context
@@ -85,7 +85,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
           }
         }
         tsFileReader = FileReaderManager.getInstance()
-            .get(tsFileResource, tsFileResource.isClosed());
+            .get(tsFileResource, false);
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 

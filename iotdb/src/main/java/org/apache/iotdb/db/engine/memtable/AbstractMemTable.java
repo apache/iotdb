@@ -180,54 +180,6 @@ public abstract class AbstractMemTable implements IMemTable {
     this.modifications.add(deletion);
   }
 
-  /**
-   * If chunk contains data with timestamp less than 'timestamp', create a copy and delete all those
-   * data. Otherwise return null.
-   *
-   * @param chunk the source chunk.
-   * @param timestamp the upper-bound of deletion time.
-   * @return A reduced copy of chunk if chunk contains data with timestamp less than 'timestamp', of
-   * null.
-   */
-  private IWritableMemChunk filterChunk(IWritableMemChunk chunk, long timestamp) {
-
-    if (!chunk.isEmpty() && chunk.getMinTime() <= timestamp) {
-      //TODO we can avoid sorting data here by scanning data once.
-      List<TimeValuePair> timeValuePairs = chunk.getSortedTimeValuePairList();
-      TSDataType dataType = chunk.getType();
-      IWritableMemChunk newChunk = genMemSeries(dataType);
-      for (TimeValuePair pair : timeValuePairs) {
-        if (pair.getTimestamp() > timestamp) {
-          switch (dataType) {
-            case BOOLEAN:
-              newChunk.putBoolean(pair.getTimestamp(), pair.getValue().getBoolean());
-              break;
-            case DOUBLE:
-              newChunk.putDouble(pair.getTimestamp(), pair.getValue().getDouble());
-              break;
-            case INT64:
-              newChunk.putLong(pair.getTimestamp(), pair.getValue().getLong());
-              break;
-            case INT32:
-              newChunk.putInt(pair.getTimestamp(), pair.getValue().getInt());
-              break;
-            case FLOAT:
-              newChunk.putFloat(pair.getTimestamp(), pair.getValue().getFloat());
-              break;
-            case TEXT:
-              newChunk.putBinary(pair.getTimestamp(), pair.getValue().getBinary());
-              break;
-            default:
-                throw new UnsupportedOperationException("Unknown datatype: " + dataType);
-          }
-        }
-      }
-      TVListAllocator.getInstance().release(dataType, chunk.getTVList());
-      return newChunk;
-    }
-    return null;
-  }
-
   public void setVersion(long version) {
     this.version = version;
   }
