@@ -19,6 +19,8 @@
 
 -->
 
+# Chaper6: JDBC API
+
 # Usage
 
 ## Dependencies
