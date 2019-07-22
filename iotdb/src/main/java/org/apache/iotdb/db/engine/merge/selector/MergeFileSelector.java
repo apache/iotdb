@@ -36,8 +36,6 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -281,8 +279,7 @@ public class MergeFileSelector {
     for (Path path : paths) {
       List<ChunkMetaData> chunkMetaDataList = sequenceReader.getChunkMetadata(path);
       totalChunkNum += chunkMetaDataList.size();
-      maxChunkNum = chunkMetaDataList.size() > maxChunkNum ? chunkMetaDataList.size() :
-          maxChunkNum;
+      maxChunkNum = chunkMetaDataList.size() > maxChunkNum ? chunkMetaDataList.size() : maxChunkNum;
     }
     logger.debug("In file {}, total chunk num {}, series max chunk num {}", tsFileResource,
         totalChunkNum, maxChunkNum);
