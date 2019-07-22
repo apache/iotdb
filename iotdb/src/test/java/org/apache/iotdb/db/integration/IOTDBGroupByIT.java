@@ -274,7 +274,6 @@ public class IOTDBGroupByIT {
             + "," + resultSet.getString(min_time("root.ln.wf01.wt01.temperature"));
         Assert.assertEquals(retArray2[cnt], ans);
         cnt++;
-        //System.out.println(ans);
       }
       Assert.assertEquals(retArray2.length, cnt);
       statement.close();
@@ -331,7 +330,6 @@ public class IOTDBGroupByIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
             .getString(last("root.ln.wf01.wt01.temperature"))
             + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature"));
-        System.out.println(ans);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
       }
@@ -351,7 +349,6 @@ public class IOTDBGroupByIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
             .getString(last("root.ln.wf01.wt01.temperature"))
             + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature"));
-        System.out.println(ans);
         Assert.assertEquals(retArray2[cnt], ans);
         cnt++;
       }
@@ -423,7 +420,6 @@ public class IOTDBGroupByIT {
             + "," + resultSet.getString(min_time("root.ln.wf01.wt01.temperature"));
         Assert.assertEquals(retArray2[cnt], ans);
         cnt++;
-        //System.out.println(ans);
       }
       Assert.assertEquals(retArray2.length, cnt);
       statement.close();
@@ -468,7 +464,6 @@ public class IOTDBGroupByIT {
             .getString(last("root.ln.wf01.wt01.temperature"))
             + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature")) + ","
             + resultSet.getString(sum("root.ln.wf01.wt01.temperature"));
-        System.out.println(ans);
         Assert.assertEquals(retArray1[cnt], ans);
         cnt++;
       }
@@ -489,7 +484,6 @@ public class IOTDBGroupByIT {
             .getString(last("root.ln.wf01.wt01.temperature"))
             + "," + resultSet.getString(first("root.ln.wf01.wt01.temperature")) + ","
             + resultSet.getString(sum("root.ln.wf01.wt01.temperature"));
-        System.out.println(ans);
         Assert.assertEquals(retArray2[cnt], ans);
         cnt++;
       }
