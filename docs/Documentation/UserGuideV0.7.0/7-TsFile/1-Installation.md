@@ -19,7 +19,7 @@
 
 -->
 
-# Chaper7: TsFile
+# Chapter 7: TsFile
 
 ## Installation
 
