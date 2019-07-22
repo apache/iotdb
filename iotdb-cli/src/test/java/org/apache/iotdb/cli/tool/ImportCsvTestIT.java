@@ -54,7 +54,7 @@ public class ImportCsvTestIT extends AbstractScript {
             + "the network is available or the server has started."};
     String dir = getCurrentPath("cmd.exe", "/c", "echo %cd%");
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "cli" + File.separator + "bin" + File.separator + "import-csv.bat",
+        dir + File.separator + "cli" + File.separator + "tools" + File.separator + "import-csv.bat",
         "-h", "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root", "-f", "./");
     testOutput(builder, output);
   }
@@ -68,7 +68,7 @@ public class ImportCsvTestIT extends AbstractScript {
             + "the network is available or the server has started."};
     String dir = getCurrentPath("pwd");
     ProcessBuilder builder = new ProcessBuilder("sh",
-        dir + File.separator + "cli" + File.separator + "bin" + File.separator + "import-csv.sh",
+        dir + File.separator + "cli" + File.separator + "tools" + File.separator + "import-csv.sh",
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root", "-f", "./");
     testOutput(builder, output);
