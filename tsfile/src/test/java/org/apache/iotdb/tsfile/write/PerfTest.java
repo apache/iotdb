@@ -144,31 +144,13 @@ public class PerfTest {
   static private void writeToFile(FileSchema schema)
       throws InterruptedException, IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
-    long lineCount = 0;
-    long startTime = System.currentTimeMillis();
-    long endTime = System.currentTimeMillis();
     assert in != null;
     while (in.hasNextLine()) {
-      if (lineCount % 1000000 == 0) {
-        endTime = System.currentTimeMillis();
-        // logger.info("write line:{},inner space consumer:{},use
-        // time:{}",lineCount,innerWriter.calculateMemSizeForEachGroup(),endTime);
-        LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-      }
       String str = in.nextLine();
       TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
       innerWriter.write(record);
-      lineCount++;
     }
-    endTime = System.currentTimeMillis();
-    LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
     innerWriter.close();
-    endTime = System.currentTimeMillis();
-    LOG.info("write total:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-    LOG.info("write total:{},use time:{}ms", lineCount, (endTime - startTime));
-    LOG.info("src file size:{} GB", FileUtils.getLocalFileByte(inputDataFile, Unit.GB));
-    LOG.info("tsfile size:{} MB", FileUtils.getLocalFileByte(outputDataFile, Unit.MB));
-    LOG.info("tsfile size:{} B", FileUtils.getLocalFileByte(outputDataFile, Unit.B));
   }
 
   private static FileSchema generateTestData() {

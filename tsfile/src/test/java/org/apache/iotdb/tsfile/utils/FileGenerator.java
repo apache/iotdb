@@ -147,7 +147,7 @@ public class FileGenerator {
     fw.close();
   }
 
-  static public void write() throws IOException, InterruptedException, WriteProcessException {
+  static public void write() throws IOException {
     File file = new File(outputDataFile);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
@@ -157,9 +157,6 @@ public class FileGenerator {
       errorFile.delete();
     }
 
-
-    // TSFileDescriptor.conf.chunkGroupSize = 2000;
-    // TSFileDescriptor.conf.pageSizeInByte = 100;
     innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
@@ -184,7 +181,7 @@ public class FileGenerator {
   }
 
   static public void writeToFile(FileSchema schema)
-      throws InterruptedException, IOException, WriteProcessException {
+      throws IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     long lineCount = 0;
     long startTime = System.currentTimeMillis();
@@ -192,9 +189,6 @@ public class FileGenerator {
     assert in != null;
     while (in.hasNextLine()) {
       if (lineCount % 1000000 == 0) {
-        endTime = System.currentTimeMillis();
-        // logger.info("write line:{},inner space consumer:{},use
-        // time:{}",lineCount,innerWriter.calculateMemSizeForEachGroup(),endTime);
         LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
       }
       String str = in.nextLine();
@@ -206,10 +200,6 @@ public class FileGenerator {
     LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
     innerWriter.close();
     in.close();
-    endTime = System.currentTimeMillis();
-    LOG.info("write total:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-    LOG.info("src file size:{}GB", FileUtils.getLocalFileByte(inputDataFile, FileUtils.Unit.GB));
-    LOG.info("src file size:{}MB", FileUtils.getLocalFileByte(outputDataFile, FileUtils.Unit.MB));
   }
 
   static private Scanner getDataFile(String path) {
