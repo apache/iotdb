@@ -54,7 +54,7 @@ public class ExportCsvTestIT extends AbstractScript{
             + "please check whether the network is available or the server has started."};
     String dir = getCurrentPath("cmd.exe", "/c", "echo %cd%");
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "cli" + File.separator + "bin" + File.separator + "export-csv.bat",
+        dir + File.separator + "cli" + File.separator + "tools" + File.separator + "export-csv.bat",
         "-h", "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root", "-td", "./");
     testOutput(builder, output);
   }
@@ -68,7 +68,7 @@ public class ExportCsvTestIT extends AbstractScript{
             + "please check whether the network is available or the server has started."};
     String dir = getCurrentPath("pwd");
     ProcessBuilder builder = new ProcessBuilder("sh",
-        dir + File.separator + "cli" + File.separator + "bin" + File.separator + "export-csv.sh",
+        dir + File.separator + "cli" + File.separator + "tools" + File.separator + "export-csv.sh",
         "-h", "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root", "-td", "./");
     testOutput(builder, output);
   }
