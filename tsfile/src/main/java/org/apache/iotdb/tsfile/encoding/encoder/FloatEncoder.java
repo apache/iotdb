@@ -64,9 +64,9 @@ public class FloatEncoder extends Encoder {
     isMaxPointNumberSaved = false;
     if (encodingType == TSEncoding.RLE) {
       if (dataType == TSDataType.FLOAT) {
-        encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+        encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
       } else if (dataType == TSDataType.DOUBLE) {
-        encoder = new LongRleEncoder(EndianType.LITTLE_ENDIAN);
+        encoder = new LongRleEncoder(EndianType.BIG_ENDIAN);
       } else {
         throw new TsFileEncodingException(
             String.format("data type %s is not supported by FloatEncoder", dataType));

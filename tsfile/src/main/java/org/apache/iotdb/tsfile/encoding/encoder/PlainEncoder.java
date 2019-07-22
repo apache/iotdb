@@ -68,10 +68,8 @@ public class PlainEncoder extends Encoder {
       out.write(value & 0xFF);
       out.write((value >> 8) & 0xFF);
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
-      logger.error(
-          "tsfile-encoding PlainEncoder: current version does not support short value encoding");
-      throw new TsFileEncodingException(
-          "tsfile-encoding PlainEncoder: current version does not support short value encoding");
+      out.write((value >> 8) & 0xFF);
+      out.write(value & 0xFF);
     }
   }
 
@@ -83,10 +81,10 @@ public class PlainEncoder extends Encoder {
       out.write((value >> 16) & 0xFF);
       out.write((value >> 24) & 0xFF);
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
-      logger.error(
-          "tsfile-encoding PlainEncoder: current version does not support int value encoding");
-      throw new TsFileEncodingException(
-          "tsfile-encoding PlainEncoder: current version does not support int value encoding");
+      out.write((value >> 24) & 0xFF);
+      out.write((value >> 16) & 0xFF);
+      out.write((value >> 8) & 0xFF);
+      out.write(value & 0xFF);
     }
   }
 
@@ -97,10 +95,9 @@ public class PlainEncoder extends Encoder {
         out.write((byte) (((value) >> (i * 8)) & 0xFF));
       }
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
-      logger.error(
-          "tsfile-encoding PlainEncoder: current version does not support long value encoding");
-      throw new TsFileEncodingException(
-          "tsfile-encoding PlainEncoder: current version does not support long value encoding");
+      for (int i = 7; i >= 0; i--) {
+        out.write((byte) (((value) >> (i * 8)) & 0xFF));
+      }
     }
   }
 

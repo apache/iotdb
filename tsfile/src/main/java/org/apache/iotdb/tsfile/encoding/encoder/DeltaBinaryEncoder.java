@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,8 +86,8 @@ public abstract class DeltaBinaryEncoder extends Encoder {
   }
 
   private void writeHeaderToBytes() throws IOException {
-    out.write(BytesUtils.intToBytes(writeIndex));
-    out.write(BytesUtils.intToBytes(writeWidth));
+    ReadWriteIOUtils.write(writeIndex, out);
+    ReadWriteIOUtils.write(writeWidth, out);
     writeHeader();
   }
 
@@ -208,8 +209,8 @@ public abstract class DeltaBinaryEncoder extends Encoder {
 
     @Override
     protected void writeHeader() throws IOException {
-      out.write(BytesUtils.intToBytes(minDeltaBase));
-      out.write(BytesUtils.intToBytes(firstValue));
+      ReadWriteIOUtils.write(minDeltaBase, out);
+      ReadWriteIOUtils.write(firstValue, out);
     }
 
     @Override
