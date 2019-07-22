@@ -126,13 +126,12 @@ class MergeChunkTask {
 
   private void mergeOnePath(Path path) throws IOException {
     IPointReader unseqReader = resource.getUnseqReader(path);
-    MeasurementSchema schema = resource.getSchema(path.getMeasurement());
     try {
       if (unseqReader.hasNext()) {
         currTimeValuePair = unseqReader.next();
       }
       for (int i = 0; i < resource.getSeqFiles().size(); i++) {
-        pathMergeOneFile(path, i, unseqReader, schema);
+        pathMergeOneFile(path, i, unseqReader);
       }
     } catch (IOException e) {
       logger.error("Cannot read unseq data of {} during merge", path, e);
@@ -145,8 +144,7 @@ class MergeChunkTask {
     }
   }
 
-  private void pathMergeOneFile(Path path, int seqFileIdx, IPointReader unseqReader,
-      MeasurementSchema measurementSchema)
+  private void pathMergeOneFile(Path path, int seqFileIdx, IPointReader unseqReader)
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     unmergedChunkStartTimes.get(currTsFile).put(path, new ArrayList<>());
@@ -178,8 +176,8 @@ class MergeChunkTask {
     currDeviceMaxTime = currTsFile.getEndTimeMap().get(path.getDevice());
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
     mergeFileWriter.startChunkGroup(deviceId);
-    if (mergeChunks(seqChunkMeta, fileLimitTime, fileSequenceReader, measurementSchema,
-        unseqReader, mergeFileWriter, currTsFile, path)) {
+    if (mergeChunks(seqChunkMeta, fileLimitTime, fileSequenceReader, unseqReader, mergeFileWriter,
+        currTsFile, path)) {
       long version = !seqChunkMeta.isEmpty() ?
           seqChunkMeta.get(seqChunkMeta.size() - 1).getVersion() + 1 : 0;
       mergeFileWriter.endChunkGroup(version);
@@ -189,11 +187,11 @@ class MergeChunkTask {
   }
 
   private boolean mergeChunks(List<ChunkMetaData> seqChunkMeta, long fileLimitTime,
-      TsFileSequenceReader reader, MeasurementSchema measurementSchema,
-      IPointReader unseqReader, RestorableTsFileIOWriter mergeFileWriter, TsFileResource currFile
-      , Path path)
+      TsFileSequenceReader reader, IPointReader unseqReader, RestorableTsFileIOWriter mergeFileWriter,
+      TsFileResource currFile, Path path)
       throws IOException {
     int ptWritten = 0;
+    MeasurementSchema measurementSchema = resource.getSchema(path.getMeasurement());
     IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
     mergedChunkNum = 0;
     unmergedChunkNum = 0;

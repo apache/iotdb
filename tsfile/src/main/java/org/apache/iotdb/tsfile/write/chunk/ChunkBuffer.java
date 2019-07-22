@@ -248,4 +248,8 @@ public class ChunkBuffer {
   public void setSchema(MeasurementSchema schema) {
     this.schema = schema;
   }
+
+  public MeasurementSchema getSchema() {
+    return schema;
+  }
 }
