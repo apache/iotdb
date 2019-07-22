@@ -55,7 +55,7 @@ public class MemEstToolCmd implements Runnable {
     long tsNum = Long.parseLong(tsNumString);
     long maxTsNum = Long.parseLong(maxTsNumString);
 
-    //
+    // tool parameters
     long stepMemory = calStepMemory(tsNum) * IoTDBConstant.GB;
     long currentMemory = stepMemory;
     long maxTsNumValid = maxTsNum;
