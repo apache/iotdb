@@ -117,7 +117,6 @@ public class IoTDBConfigDynamicAdapterTest {
     }
   }
 
-
   @Test
   public void addOrDeleteTimeSeriesSyso() throws ConfigAdjusterException {
     int sgNum = 1;
@@ -131,6 +130,7 @@ public class IoTDBConfigDynamicAdapterTest {
         MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(i / 30 + 1);
       }
     } catch (ConfigAdjusterException e) {
+      System.out.println(i);
       assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
     }
     int j =0;

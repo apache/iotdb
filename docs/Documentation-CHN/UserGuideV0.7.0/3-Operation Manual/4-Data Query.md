@@ -35,7 +35,7 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 ```
 其含义为：
 
-被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看本文3.1.8节）时间点以前的所有温度传感器的值。
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](/#/Documents/latest/chap2/sec1)）时间点以前的所有温度传感器的值。
 
 该SQL语句的执行结果如下：
 
@@ -50,7 +50,7 @@ select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:
 ```
 其含义为：
 
-被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为“供电状态（status）”和“温度传感器（temperature）”；该语句要求选择出“2017-11-01T00:05:00.000”至“2017-11-01T00:12:00.000”之间的所选时间序列的值。
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为供电状态（status）和温度传感器（temperature）；该语句要求选择出“2017-11-01T00:05:00.000”至“2017-11-01T00:12:00.000”之间的所选时间序列的值。
 
 该SQL语句的执行结果如下：
 
@@ -67,7 +67,7 @@ select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:
 ```
 其含义为：
 
-被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为“供电状态（status）”和“温度传感器（temperature）”；该语句指定了两个不同的时间区间，分别为“2017-11-01T00:05:00.000至2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000至2017-11-01T16:37:00.000”；该语句要求选择出满足任意时间区间的被选时间序列的值。
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为“供电状态（status）”和“温度传感器（temperature）”；该语句指定了两个不同的时间区间，分别为“2017-11-01T00:05:00.000至2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000至2017-11-01T16:37:00.000”；该语句要求选择出满足任一时间区间的被选时间序列的值。
 
 该SQL语句的执行结果如下：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280449-780fd480-a7ea-11e9-8ed0-70fa9dfda80f.png"></center>
@@ -170,7 +170,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 where time >
 
 需要注意的是，GROUP BY语句中SELECT后面的路径必须全部为聚合函数，否则系统会给出相应的错误提示。如图所示。
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577596-4d0c8e00-1ef5-11e9-9386-cc71f5d90905.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517091-fbbf0080-aa38-11e9-8623-cdadf1ccf5d6.png"></center>
 
 ### 查询结果自动补值
 
@@ -347,7 +347,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by (1d
 ```
 其含义为：
 
-关于GROUP BY子句的具体含义请参见本文第4.4.2.1节，结合LIMIT子句之后该语句要求返回查询结果的第3行到第7行（首行为第0行）。
+返回查询结果的第3行到第7行（首行为第0行）。
 
 该SQL语句的执行结果如下：
 
@@ -361,7 +361,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 该SQL语句将进行无法执行，并给出相应的错误提示，提示如下：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577806-28fd7c80-1ef6-11e9-938a-f32ae6abdc55.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517266-6e2fe080-aa39-11e9-8015-154a8e8ace30.png"></center>
 
 #### 查询结果的列数控制
 
@@ -389,9 +389,7 @@ select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 
 SQL语句为：
 
 ```
-select * from root.ln.wf01.wt01 
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
-slimit 1 soffset 1
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 1
 ```
 其含义为：
 
@@ -408,9 +406,6 @@ SQL语句为：
 ```
 select max_value(*) from root.ln.wf01.wt01 group by (1d, [2017-11-01T00:00:00, 2017-11-07T23:00:00]) slimit 1 soffset 1
 ```
-其含义为：
-
-该GROUP BY子句的具体含义请参见4.4.2.1小节。
 
 该SQL语句的执行结果如下：
 
@@ -476,7 +471,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 ```
 该SQL语句将进行无法执行，并给出相应的错误提示，错误提示如下：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578206-b7263280-1ef7-11e9-8607-17ef3602338a.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517469-e696a180-aa39-11e9-8ca5-42ea991d520e.png"></center>
 
 当LIMIT/SLIMIT的参数N/SN不为正整数时，系统会给出相应的错误提示，例如执行如下错误语句：
 
@@ -486,7 +481,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 
 该SQL语句将进行无法执行，并给出相应的错误提示，错误提示如下：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578217-bdb4aa00-1ef7-11e9-9a60-1effd6b6196c.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61518094-68d39580-aa3b-11e9-993c-fc73c27540f7.png"></center>
 
 当OFFSET的参数OffsetValue超出结果集大小时，返回结果将为空。例如执行如下SQL语句：
 

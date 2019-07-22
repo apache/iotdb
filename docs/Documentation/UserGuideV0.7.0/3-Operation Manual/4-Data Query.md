@@ -160,7 +160,7 @@ Since there is  no data in the result range [2017-11-03T00:00:00, 2017-11-03T00:
 
 It is worth noting that the path after SELECT in GROUP BY statement must be aggregate function, otherwise the system will give the corresponding error prompt, as shown below:
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577596-4d0c8e00-1ef5-11e9-9386-cc71f5d90905.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517091-fbbf0080-aa38-11e9-8623-cdadf1ccf5d6.png"></center>
 
 ### Automated Fill
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
@@ -349,7 +349,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577806-28fd7c80-1ef6-11e9-938a-f32ae6abdc55.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517266-6e2fe080-aa39-11e9-8015-154a8e8ace30.png"></center>
 
 #### Column Control over Query Results
 
@@ -375,9 +375,7 @@ The result is shown below:
 The SQL statement is:
 
 ```
-select * from root.ln.wf01.wt01 
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
-slimit 1 soffset 1
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 1
 ```
 which means:
 
@@ -394,9 +392,6 @@ The SQL statement is:
 ```
 select max_value(*) from root.ln.wf01.wt01 group by (1d, [2017-11-01T00:00:00, 2017-11-07T23:00:00]) slimit 1 soffset 1
 ```
-which means:
-
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is the second column under this device, i.e., the temperature.
 
 The result is shown below:
 
@@ -448,9 +443,7 @@ The result is shown below:
 When the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB will return all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
 
 ```
-select status,temperature from root.ln.wf01.wt01 
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 
-limit 100
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
 ```
 The result is shown below:
 
@@ -463,7 +456,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 ```
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578206-b7263280-1ef7-11e9-8607-17ef3602338a.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517469-e696a180-aa39-11e9-8ca5-42ea991d520e.png"></center>
 
 When the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system will prompt errors. For example, executing the following SQL statement:
 
@@ -473,7 +466,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578217-bdb4aa00-1ef7-11e9-9a60-1effd6b6196c.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61518094-68d39580-aa3b-11e9-993c-fc73c27540f7.png"></center>
 
 When the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
 

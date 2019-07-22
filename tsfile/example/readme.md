@@ -68,10 +68,17 @@ The example is to show how to write and read a TsFile File.
   
 ## Run TsFileRead.java
 
-```
-  The class is to show how to read TsFile file named "test.tsfile".
-  The TsFile file "test.tsfile" is generated from class TsFileWrite1 or class TsFileWrite2, they generate the same TsFile file by two different ways
-```
+ This class is to show how to read TsFile file named "testDirect.tsfile".
+ 
+ The TsFile file "testDirect.tsfile" is generated from class TsFileWrite.
+ 
+ It generates the same TsFile(testDirect.tsfile and testWithJson.tsfile) file by two different ways
+ 
+ Run TsFileWrite to generate the testDirect.tsfile first
+ 
+## Run TsFileSequenceRead.java
+
+  This class is to show the structure of a TsFile.
 
 ### Notice 
   For detail, please refer to https://github.com/thulab/tsfile/wiki/Get-Started.
