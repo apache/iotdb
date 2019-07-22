@@ -92,8 +92,10 @@ public class MergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     List<Path> unmergedSeries = MergeUtils.collectPaths(resource);
-    MergeChunkTask mergeChunkTask = new MergeChunkTask(mergeContext, taskName, mergeLogger, resource,
-        fullMerge, unmergedSeries);
+//    MergeChunkTask mergeChunkTask = new MergeChunkTask(mergeContext, taskName, mergeLogger, resource,
+//        fullMerge, unmergedSeries);
+    MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
+        fullMerge, unmergedSeries, 100);
     mergeChunkTask.mergeSeries();
 
     MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
@@ -119,7 +121,6 @@ public class MergeTask implements Callable<Void> {
 
     resource.clear();
     mergeContext.clear();
-
 
     if (mergeLogger != null) {
       mergeLogger.close();
