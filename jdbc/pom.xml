@@ -27,7 +27,6 @@
         <version>0.8.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>iotdb-jdbc</artifactId>
     <name>IoTDB Jdbc</name>
     <description>A jdbc driver for a time series database, IoTDB, which uses TsFile as its storage format on disk.</description>
     <properties>
