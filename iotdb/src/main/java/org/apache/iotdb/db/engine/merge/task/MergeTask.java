@@ -51,6 +51,7 @@ public class MergeTask implements Callable<Void> {
   MergeContext mergeContext = new MergeContext();
 
   private MergeCallback callback;
+  private int concurrentMergeSeriesNum;
   String taskName;
   boolean fullMerge;
 
@@ -62,6 +63,18 @@ public class MergeTask implements Callable<Void> {
     this.callback = callback;
     this.taskName = taskName;
     this.fullMerge = fullMerge;
+    this.concurrentMergeSeriesNum = 1;
+  }
+
+  public MergeTask(List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
+      String taskName, boolean fullMerge, int concurrentMergeSeriesNum) {
+    this.resource = new MergeResource(seqFiles, unseqFiles);
+    this.storageGroupDir = storageGroupDir;
+    this.callback = callback;
+    this.taskName = taskName;
+    this.fullMerge = fullMerge;
+    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
   }
 
   @Override
@@ -92,10 +105,10 @@ public class MergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     List<Path> unmergedSeries = MergeUtils.collectPaths(resource);
-//    MergeChunkTask mergeChunkTask = new MergeChunkTask(mergeContext, taskName, mergeLogger, resource,
-//        fullMerge, unmergedSeries);
+    unmergedSeries.sort(null);
+
     MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
-        fullMerge, unmergedSeries, 100);
+        fullMerge, unmergedSeries, concurrentMergeSeriesNum);
     mergeChunkTask.mergeSeries();
 
     MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,

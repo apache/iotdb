@@ -723,7 +723,8 @@ public class StorageGroupProcessor {
         }
         String taskName = storageGroupName + "-" + System.currentTimeMillis();
         MergeTask mergeTask = new MergeTask(mergeFiles[0], mergeFiles[1],
-            storageGroupSysDir.getPath(), this::mergeEndAction, taskName, fullMerge);
+            storageGroupSysDir.getPath(), this::mergeEndAction, taskName, fullMerge,
+            fileSelector.getConcurrentMergeNum());
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
         MergeManager.getINSTANCE().submit(mergeTask);
         if (logger.isInfoEnabled()) {

@@ -55,6 +55,8 @@ public class MergeFileSelector {
   private long memoryBudget;
   private long maxSeqFileCost;
 
+  private int concurrentMergeNum = 1;
+
   /**
    * Total metadata size of each file.
    */
@@ -294,5 +296,9 @@ public class MergeFileSelector {
       fileReaderCache.put(tsFileResource, reader);
     }
     return reader;
+  }
+
+  public int getConcurrentMergeNum() {
+    return concurrentMergeNum;
   }
 }
