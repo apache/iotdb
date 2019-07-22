@@ -18,10 +18,10 @@
     under the License.
 
 -->
-#TsFile Hierarchy
+# TsFile Hierarchy
   Here is a brief introduction of the structure of a TsFile file.
   
-##Variable Storage
+## Variable Storage
  * **Big Endian**
         
      * For Example, the `int` `0x8` will be stored as `00 00 00 08`, not `08 00 00 00`
@@ -56,30 +56,36 @@
  * **Compressing Type Hardcode**
     * 0: UNCOMPRESSED
     * 1: SNAPPY
+    
+    
+## TsFile Overview
+Here is a graph about the TsFile structure.
 
-##Magic String
+![TsFile Breakdown](https://user-images.githubusercontent.com/40447846/61616997-6fad1300-ac9c-11e9-9c17-46785ebfbc88.png)
+
+## Magic String
 There is a 12 bytes magic string:
 
 `TsFilev0.8.0`
 
 It is in both the beginning and end of a TsFile file as signature.
 
-##Data
+## Data
 
 The content of a TsFile file can be divided as two parts: data and metadata. There is a byte `0x02` as the marker between
 data and metadata.
 
 The data section is an array of `ChunkGroup`, each ChuckGroup represents a *device*.
 
-####ChuckGroup
+#### ChuckGroup
 
 The `ChunkGroup` has an array of `Chunk`, a following byte `0x00` as the marker, and a `ChunkFooter`.
 
-#####Chunk
+##### Chunk
 
 A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
 
-######ChunkHeader
+###### ChunkHeader
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
@@ -93,7 +99,7 @@ A `Chunk` represents a *sensor*. There is a byte `0x01` as the marker, following
         </table>
 </center>
 
-######Page
+###### Page
 
 A `Page` represents some data in a `Chunk`. It contains a `PageHeader` and the actual data (The encoded time-value pair).
 
@@ -107,7 +113,6 @@ PageHeader Structure
         	<tr><td>Number of values</td><td>int</td>
         	<tr><td>Minimum time stamp</td><td>long</td>
         	<tr><td>Maximum time stamp</td><td>long</td>
-        	<tr><td>Encoding Type</td><td>short</td>
         	<tr><td>Minimum value of the page</td><td>Type of the page</td>
         	<tr><td>Maximum value of the page</td><td>Type of the page</td>
         	<tr><td>First value of the page</td><td>Type of the page</td>
@@ -116,21 +121,21 @@ PageHeader Structure
         </table>
 </center>
 
-######ChunkGroupFooter
+###### ChunkGroupFooter
 
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
         	<tr><td>Deviceid</td><td>String</td>
-        	<tr><td>Data size of the ChunkGroup</td><td>int</td>
+        	<tr><td>Data size of the ChunkGroup</td><td>long</td>
         	<tr><td>Number of chunks</td><td>int</td>
         </table>
 </center>
 
-##Metadata
+## Metadata
 
-###DeviceMetaData
-The first part of metadata is `DeviceMetaData` 
+### TsDeviceMetaData
+The first part of metadata is `TsDeviceMetaData` 
 
 <center>
         <table style="text-align:center">
@@ -141,8 +146,8 @@ The first part of metadata is `DeviceMetaData`
         </table>
 </center>
 
-Then there is an array of `ChunkGroupMetadata` after `DeviceMetadata`
-###ChunkGroupMetaData
+Then there is an array of `ChunkGroupMetaData` after `TsDeviceMetaData`
+### ChunkGroupMetaData
 
 <center>
         <table style="text-align:center">
@@ -157,7 +162,7 @@ Then there is an array of `ChunkGroupMetadata` after `DeviceMetadata`
 
 Then there is an array of `ChunkMetadata` for each `ChunkGroupMetadata`
 
-#####ChunkMetaData
+##### ChunkMetaData
 
 <center>
         <table style="text-align:center">
@@ -167,11 +172,13 @@ Then there is an array of `ChunkMetadata` for each `ChunkGroupMetadata`
         	<tr><td>Number of data points</td><td>long</td>
         	<tr><td>Start time</td><td>long</td>
         	<tr><td>End time</td><td>long</td>
+        	<tr><td>Data type</td><td>short</td>
+        	<tr><td>Number of statistics</td><td>int</td>
         	<tr><td>The statistics of this chunk</td><td>TsDigest</td>
         </table>
 </center>
 
-######TsDigest
+###### TsDigest
 
 There are five statistics: `min, last, sum, first, max`
 
@@ -180,7 +187,7 @@ The storage format is a name-value pair. The name is a string (remember the leng
 But for the value, there is also a size integer before the data even if it is not string. For example, if the `min` is 3, then it will be
 stored as 3 "min" 4 3 in the TsFile.
 
-####File Metadata
+#### File Metadata
 
 After the array of `ChunkGroupMetadata`, here is the last part of the metadata.
 
@@ -189,6 +196,7 @@ After the array of `ChunkGroupMetadata`, here is the last part of the metadata.
         	<tr><th>Member Description</th><th>Member Type</td></tr>
         	<tr><td>Number of Devices</td><td>int</td>
         	<tr><td>Array of DeviceIndexMetadata</td><td>DeviceIndexMetadata</td>
+        	<tr><td>Number of Measurements</td><td>int</td>
         	<tr><td>Array of Measurement name and schema</td><td>String, MeasurementSchema pair</td>
         	<tr><td>Current Version(3 for now)</td><td>int</td>
         	<tr><td>Author byte</td><td>byte</td>
@@ -197,19 +205,19 @@ After the array of `ChunkGroupMetadata`, here is the last part of the metadata.
         </table>
 </center>
 
-#####DeviceIndexMetadata
+##### DeviceIndexMetadata
 <center>
         <table style="text-align:center">
         	<tr><th>Member Description</th><th>Member Type</td></tr>
         	<tr><td>Deviceid</td><td>String</td>
-        	<tr><td>Offset</td><td>long</td>
+        	<tr><td>Start offset of ChunkGroupMetaData(Or TsDeviceMetaData if it's the first one)</td><td>long</td>
         	<tr><td>length</td><td>int</td>
         	<tr><td>Start time</td><td>long</td>
         	<tr><td>End time</td><td>long</td>
         </table>
 </center>
 
-#####MeasurementSchema
+##### MeasurementSchema
 <center>
         <table style="text-align:center">
             <tr><th>Member Description</th><th>Member Type</td></tr>
@@ -225,7 +233,7 @@ If size of props is greater than 0, there is an array of <String, String> pair a
 
 Such as "max_point_number""2".
 
-##Done
+## Done
 
 After the `FileMetaData`, there will be another Magic String and you have finished the journey of discovering TsFile!
 
