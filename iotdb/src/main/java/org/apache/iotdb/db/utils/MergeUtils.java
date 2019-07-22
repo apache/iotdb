@@ -106,6 +106,12 @@ public class MergeUtils {
     return paths;
   }
 
+  /**
+   * Collect all paths contained in the all SeqFiles and UnseqFiles in a merge.
+   * @param resource
+   * @return all paths contained in the merge.
+   * @throws IOException
+   */
   public static List<Path> collectPaths(MergeResource resource)
       throws IOException {
     Set<Path> pathSet = new HashSet<>();

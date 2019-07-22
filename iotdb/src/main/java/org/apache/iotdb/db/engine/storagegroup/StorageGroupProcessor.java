@@ -715,7 +715,7 @@ public class StorageGroupProcessor {
       MergeFileSelector fileSelector = new MergeFileSelector(sequenceFileList, unSequenceFileList,
            budget);
       try {
-        List[] mergeFiles = fileSelector.doSelect();
+        List[] mergeFiles = fileSelector.select();
         if (mergeFiles.length == 0) {
           logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
               budget);
