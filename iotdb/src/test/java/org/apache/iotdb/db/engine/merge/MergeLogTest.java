@@ -56,7 +56,7 @@ public class MergeLogTest extends MergeTest {
   public void testMergeLog() throws Exception {
     MergeTask mergeTask =
         new MergeTask(seqResources.subList(0, 1), unseqResources.subList(0, 1), tempSGDir.getPath(),
-            this::testCallBack, "test", false);
+            this::testCallBack, "test", false, 1);
     mergeTask.call();
   }
 

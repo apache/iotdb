@@ -46,7 +46,7 @@ public class MergePerfTest extends MergeTest{
     timeConsumption = System.currentTimeMillis();
     MergeTask mergeTask =
         new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
-            fullMerge);
+            fullMerge, 1);
     mergeTask.call();
     timeConsumption = System.currentTimeMillis() - timeConsumption;
     tearDown();
