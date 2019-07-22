@@ -735,8 +735,6 @@ public class StorageGroupProcessor {
 
       } catch (MergeException e) {
         logger.error("{} cannot select file for merge", storageGroupName, e);
-      } catch (IOException e) {
-        logger.error("{} cannot create a merge task", storageGroupName, e);
       }
     } finally {
       writeUnlock();

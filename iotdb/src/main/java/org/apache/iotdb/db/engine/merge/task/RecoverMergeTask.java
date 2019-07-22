@@ -50,7 +50,7 @@ public class RecoverMergeTask extends MergeTask {
   public RecoverMergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupDir,
       MergeCallback callback, String taskName,
-      boolean fullMerge) throws IOException {
+      boolean fullMerge) {
     super(seqFiles, unseqFiles, storageGroupDir, callback, taskName, fullMerge);
   }
 
@@ -93,13 +93,13 @@ public class RecoverMergeTask extends MergeTask {
   private void resumeAfterFilesLogged(boolean continueMerge) throws IOException {
     if (continueMerge) {
       resumeMergeProgress();
-      MergeChunkTask mergeChunkTask = new MergeChunkTask(mergedChunkCnt, unmergedChunkCnt,
-          unmergedChunkStartTimes, taskName, mergeLogger, resource, fullMerge, analyzer.getUnmergedPaths());
+      MergeChunkTask mergeChunkTask = new MergeChunkTask(mergeContext, taskName, mergeLogger, resource,
+          fullMerge, analyzer.getUnmergedPaths());
       analyzer.setUnmergedPaths(null);
       mergeChunkTask.mergeSeries();
 
-      MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
-          unmergedChunkStartTimes, mergeLogger, resource, resource.getSeqFiles());
+      MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
+          resource.getSeqFiles());
       mergeFileTask.mergeFiles();
     }
     cleanUp(continueMerge);
@@ -108,8 +108,8 @@ public class RecoverMergeTask extends MergeTask {
   private void resumeAfterAllTsMerged(boolean continueMerge) throws IOException {
     if (continueMerge) {
       resumeMergeProgress();
-      MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
-          unmergedChunkStartTimes, mergeLogger, resource, analyzer.getUnmergedFiles());
+      MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
+          analyzer.getUnmergedFiles());
       analyzer.setUnmergedFiles(null);
       mergeFileTask.mergeFiles();
     } else {
@@ -136,7 +136,7 @@ public class RecoverMergeTask extends MergeTask {
           fileCnt, resource.getSeqFiles().size());
       RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
       mergeFileWriter.makeMetadataVisible();
-      unmergedChunkStartTimes.put(tsFileResource, new HashMap<>());
+      mergeContext.getUnmergedChunkStartTimes().put(tsFileResource, new HashMap<>());
       List<Path> pathsToRecover = analyzer.getMergedPaths();
       int cnt = 0;
       double progress = 0.0;
@@ -159,13 +159,13 @@ public class RecoverMergeTask extends MergeTask {
 
   private void recoverChunkCounts(Path path, TsFileResource tsFileResource,
       RestorableTsFileIOWriter mergeFileWriter) throws IOException {
-    unmergedChunkStartTimes.get(tsFileResource).put(path, new ArrayList<>());
+    mergeContext.getUnmergedChunkStartTimes().get(tsFileResource).put(path, new ArrayList<>());
 
     List<ChunkMetaData> seqFileChunks = resource.queryChunkMetadata(path, tsFileResource);
     List<ChunkMetaData> mergeFileChunks =
         mergeFileWriter.getVisibleMetadataList(path.getDevice(), path.getMeasurement(), null);
-    mergedChunkCnt.compute(tsFileResource, (k, v) -> v == null ? mergeFileChunks.size() :
-        v + mergeFileChunks.size());
+    mergeContext.getMergedChunkCnt().compute(tsFileResource, (k, v) -> v == null ?
+        mergeFileChunks.size() : v + mergeFileChunks.size());
     int seqChunkIndex = 0;
     int mergeChunkIndex = 0;
     int unmergedCnt = 0;
@@ -176,7 +176,7 @@ public class RecoverMergeTask extends MergeTask {
         // this seqChunk is unmerged
         unmergedCnt ++;
         seqChunkIndex ++;
-        unmergedChunkStartTimes.get(tsFileResource).get(path).add(seqChunk.getStartTime());
+        mergeContext.getUnmergedChunkStartTimes().get(tsFileResource).get(path).add(seqChunk.getStartTime());
       } else if (mergedChunk.getStartTime() <= seqChunk.getStartTime() &&
           seqChunk.getStartTime() <= mergedChunk.getEndTime()) {
         // this seqChunk is merged
@@ -188,8 +188,8 @@ public class RecoverMergeTask extends MergeTask {
       }
     }
     int finalUnmergedCnt = unmergedCnt;
-    unmergedChunkCnt.compute(tsFileResource, (k, v) -> v == null ? finalUnmergedCnt :
-        v + finalUnmergedCnt);
+    mergeContext.getUnmergedChunkCnt().compute(tsFileResource, (k, v) -> v == null ?
+        finalUnmergedCnt : v + finalUnmergedCnt);
   }
 
   private void truncateFiles() throws IOException {

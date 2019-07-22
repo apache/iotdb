@@ -27,8 +27,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -62,9 +62,7 @@ class MergeChunkTask {
   private static final Logger logger = LoggerFactory.getLogger(MergeChunkTask.class);
   private static int minChunkPointNum = IoTDBDescriptor.getInstance().getConfig().getChunkMergePointThreshold();
 
-  private Map<TsFileResource, Integer> mergedChunkCnt;
-  private Map<TsFileResource, Integer> unmergedChunkCnt;
-  private Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes;
+
   private MergeLogger mergeLogger;
   private List<Path> unmergedSeries;
 
@@ -74,19 +72,15 @@ class MergeChunkTask {
   private long currDeviceMaxTime;
   private boolean fullMerge;
 
-  int totalChunkWritten;
+  private MergeContext mergeContext;
+
   private int mergedChunkNum = 0;
   private int unmergedChunkNum = 0;
 
-  MergeChunkTask(
-      Map<TsFileResource, Integer> mergedChunkCnt,
-      Map<TsFileResource, Integer> unmergedChunkCnt,
-      Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes,
+  MergeChunkTask(MergeContext context,
       String taskName, MergeLogger mergeLogger, MergeResource mergeResource, boolean fullMerge,
       List<Path> unmergedSeries) {
-    this.mergedChunkCnt = mergedChunkCnt;
-    this.unmergedChunkCnt = unmergedChunkCnt;
-    this.unmergedChunkStartTimes = unmergedChunkStartTimes;
+    this.mergeContext = context;
     this.taskName = taskName;
     this.mergeLogger = mergeLogger;
     this.resource = mergeResource;
@@ -100,7 +94,7 @@ class MergeChunkTask {
     }
     long startTime = System.currentTimeMillis();
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      unmergedChunkStartTimes.put(seqFile, new HashMap<>());
+      mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
     int mergedCnt = 0;
@@ -147,7 +141,7 @@ class MergeChunkTask {
   private void pathMergeOneFile(Path path, int seqFileIdx, IPointReader unseqReader)
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
-    unmergedChunkStartTimes.get(currTsFile).put(path, new ArrayList<>());
+    mergeContext.getUnmergedChunkStartTimes().get(currTsFile).put(path, new ArrayList<>());
 
     // if this TsFile receives data later than fileLimitTime, it will overlap the next TsFile,
     // which is forbidden
@@ -246,7 +240,7 @@ class MergeChunkTask {
         newPtWritten += chunkPtNum;
       } else {
         unmergedChunkNum ++;
-        unmergedChunkStartTimes.get(currFile).get(path).add(currMeta.getStartTime());
+        mergeContext.getUnmergedChunkStartTimes().get(currFile).get(path).add(currMeta.getStartTime());
       }
     }
 
@@ -274,9 +268,11 @@ class MergeChunkTask {
 
   private void updateChunkCounts(TsFileResource currFile, int newMergedChunkNum,
       int newUnmergedChunkNum) {
-    mergedChunkCnt.compute(currFile, (tsFileResource, anInt) -> anInt == null ? newMergedChunkNum
+    mergeContext.getMergedChunkCnt().compute(currFile, (tsFileResource, anInt) -> anInt == null ?
+        newMergedChunkNum
         : anInt + newMergedChunkNum);
-    unmergedChunkCnt.compute(currFile, (tsFileResource, anInt) -> anInt == null ? newUnmergedChunkNum
+    mergeContext.getMergedChunkCnt().compute(currFile, (tsFileResource, anInt) -> anInt == null ?
+        newUnmergedChunkNum
         : anInt + newUnmergedChunkNum);
   }
 
@@ -290,11 +286,11 @@ class MergeChunkTask {
     if (!chunkOverflowed && (chunkTooSmall || chunkModified || fullMerge)) {
       // just rewrite the (modified) chunk
       newPtWritten += MergeUtils.writeChunkWithoutUnseq(chunk, chunkWriter);
-      totalChunkWritten ++;
+      mergeContext.setTotalChunkWritten(mergeContext.getTotalChunkWritten() + 1);
     } else if (chunkOverflowed) {
       // this chunk may merge with the current point
       newPtWritten += writeChunkWithUnseq(chunk, chunkWriter, unseqReader, chunkLimitTime);
-      totalChunkWritten ++;
+      mergeContext.setTotalChunkWritten(mergeContext.getTotalChunkWritten() + 1);
     }
     return newPtWritten;
   }

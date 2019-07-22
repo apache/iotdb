@@ -22,14 +22,13 @@ package org.apache.iotdb.db.engine.merge.task;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
-import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.utils.MergeUtils;
+import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,10 +48,7 @@ public class MergeTask implements Callable<Void> {
   MergeResource resource;
   String storageGroupDir;
   MergeLogger mergeLogger;
-
-  Map<TsFileResource, Integer> mergedChunkCnt = new HashMap<>();
-  Map<TsFileResource, Integer> unmergedChunkCnt = new HashMap<>();
-  Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes = new HashMap<>();
+  MergeContext mergeContext = new MergeContext();
 
   private MergeCallback callback;
   String taskName;
@@ -60,7 +56,7 @@ public class MergeTask implements Callable<Void> {
 
   public MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
-      String taskName, boolean fullMerge) throws IOException {
+      String taskName, boolean fullMerge) {
     this.resource = new MergeResource(seqFiles, unseqFiles);
     this.storageGroupDir = storageGroupDir;
     this.callback = callback;
@@ -96,12 +92,12 @@ public class MergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     List<Path> unmergedSeries = MergeUtils.collectPaths(resource);
-    MergeChunkTask mergeChunkTask = new MergeChunkTask(mergedChunkCnt, unmergedChunkCnt,
-        unmergedChunkStartTimes, taskName, mergeLogger, resource, fullMerge, unmergedSeries);
+    MergeChunkTask mergeChunkTask = new MergeChunkTask(mergeContext, taskName, mergeLogger, resource,
+        fullMerge, unmergedSeries);
     mergeChunkTask.mergeSeries();
 
-    MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
-        unmergedChunkStartTimes, mergeLogger, resource, resource.getSeqFiles());
+    MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
+        resource.getSeqFiles());
     mergeFileTask.mergeFiles();
 
     cleanUp(true);
@@ -109,7 +105,7 @@ public class MergeTask implements Callable<Void> {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
       double byteRate = totalFileSize / elapsedTime / 1024 / 1024;
       double seriesRate = unmergedSeries.size() / elapsedTime;
-      double chunkRate = mergeChunkTask.totalChunkWritten / elapsedTime;
+      double chunkRate = mergeContext.getTotalChunkWritten() / elapsedTime;
       double fileRate =
           (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
       logger.info("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
@@ -122,10 +118,8 @@ public class MergeTask implements Callable<Void> {
     logger.info("{} is cleaning up", taskName);
 
     resource.clear();
+    mergeContext.clear();
 
-    mergedChunkCnt.clear();
-    unmergedChunkCnt.clear();
-    unmergedChunkStartTimes.clear();
 
     if (mergeLogger != null) {
       mergeLogger.close();
