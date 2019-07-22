@@ -127,7 +127,9 @@ public class MergeTask implements Callable<Void> {
     unmergedChunkCnt.clear();
     unmergedChunkStartTimes.clear();
 
-    mergeLogger.close();
+    if (mergeLogger != null) {
+      mergeLogger.close();
+    }
 
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       File mergeFile = new File(seqFile.getFile().getPath() + MERGE_SUFFIX);
