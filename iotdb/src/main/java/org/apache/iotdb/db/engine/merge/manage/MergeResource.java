@@ -38,8 +38,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -55,17 +53,11 @@ public class MergeResource {
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
 
-  // future feature
-  // keeping ChunkMetadata in memory avoids reading them again when we need to move unmerged
-  // chunks to the merged file, but this may consume memory considerably
-  private boolean keepChunkMetadata = false;
-
   private QueryContext mergeContext = new QueryContext();
 
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<TsFileResource, MetadataQuerier> metadataQuerierCache = new HashMap<>();
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new HashMap<>();
 
@@ -84,7 +76,6 @@ public class MergeResource {
     fileReaderCache.clear();
     fileWriterCache.clear();
     modificationCache.clear();
-    metadataQuerierCache.clear();
     measurementSchemaMap.clear();
     chunkWriterCache.clear();
   }
@@ -109,15 +100,6 @@ public class MergeResource {
     return writer;
   }
 
-  private MetadataQuerier getMetadataQuerier(TsFileResource seqFile) throws IOException {
-    MetadataQuerier metadataQuerier = metadataQuerierCache.get(seqFile);
-    if (metadataQuerier == null) {
-      metadataQuerier = new MetadataQuerierByFileImpl(getFileReader(seqFile));
-      metadataQuerierCache.put(seqFile, metadataQuerier);
-    }
-    return metadataQuerier;
-  }
-
   /**
    * Query ChunkMetadata of a timeseries from the given TsFile (seq or unseq). The ChunkMetadata
    * is not cached since it is usually huge.
@@ -128,12 +110,22 @@ public class MergeResource {
    */
   public List<ChunkMetaData> queryChunkMetadata(Path path, TsFileResource seqFile)
       throws IOException {
-    MetadataQuerier metadataQuerier = getMetadataQuerier(seqFile);
-    List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
-    if (!keepChunkMetadata) {
-      metadataQuerier.clear();
+    TsFileSequenceReader sequenceReader = getFileReader(seqFile);
+    return sequenceReader.getChunkMetadata(path);
+  }
+
+  /**
+   * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
+   * @param tsFileResource
+   * @return a TsFileSequenceReader
+   */
+  public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
+    TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
+    if (reader == null) {
+      reader = new TsFileSequenceReader(tsFileResource.getFile().getPath(), true, true);
+      fileReaderCache.put(tsFileResource, reader);
     }
-    return chunkMetaDataList;
+    return reader;
   }
 
   /**
@@ -157,20 +149,6 @@ public class MergeResource {
   public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
     return chunkWriterCache.computeIfAbsent(measurementSchema,
         schema -> new ChunkWriterImpl(new ChunkBuffer(schema), TSFileConfig.pageCheckSizeThreshold));
-  }
-
-  /**
-   * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
-   * @param tsFileResource
-   * @return a TsFileSequenceReader
-   */
-  public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
-    TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
-    if (reader == null) {
-      reader = new TsFileSequenceReader(tsFileResource.getFile().getPath());
-      fileReaderCache.put(tsFileResource, reader);
-    }
-    return reader;
   }
 
   /**
@@ -228,12 +206,12 @@ public class MergeResource {
     return seqFiles;
   }
 
-  public List<TsFileResource> getUnseqFiles() {
-    return unseqFiles;
-  }
-
   public void setSeqFiles(List<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
+  }
+
+  public List<TsFileResource> getUnseqFiles() {
+    return unseqFiles;
   }
 
   public void setUnseqFiles(

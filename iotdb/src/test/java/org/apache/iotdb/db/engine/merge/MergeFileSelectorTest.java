@@ -34,7 +34,7 @@ public class MergeFileSelectorTest extends MergeTest{
   public void testFullSelection() throws MergeException {
     MergeFileSelector mergeFileSelector = new MergeFileSelector(seqResources, unseqResources,
         Long.MAX_VALUE);
-    List[] result = mergeFileSelector.doSelect();
+    List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
     assertEquals(seqResources, seqSelected);
@@ -42,7 +42,7 @@ public class MergeFileSelectorTest extends MergeTest{
 
     mergeFileSelector = new MergeFileSelector(seqResources.subList(0, 1), unseqResources,
         Long.MAX_VALUE);
-    result = mergeFileSelector.doSelect();
+    result = mergeFileSelector.select();
     seqSelected = result[0];
     unseqSelected = result[1];
     assertEquals(seqResources.subList(0, 1), seqSelected);
@@ -50,7 +50,7 @@ public class MergeFileSelectorTest extends MergeTest{
 
     mergeFileSelector = new MergeFileSelector(seqResources, unseqResources.subList(0, 1),
         Long.MAX_VALUE);
-    result = mergeFileSelector.doSelect();
+    result = mergeFileSelector.select();
     seqSelected = result[0];
     unseqSelected = result[1];
     assertEquals(seqResources.subList(0, 1), seqSelected);
@@ -61,7 +61,7 @@ public class MergeFileSelectorTest extends MergeTest{
   public void testNonSelection() throws MergeException {
     MergeFileSelector mergeFileSelector = new MergeFileSelector(seqResources, unseqResources,
         1);
-    List[] result = mergeFileSelector.doSelect();
+    List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
   }
 
@@ -69,7 +69,7 @@ public class MergeFileSelectorTest extends MergeTest{
   public void testRestrictedSelection() throws MergeException {
     MergeFileSelector mergeFileSelector = new MergeFileSelector(seqResources, unseqResources,
         400000);
-    List[] result = mergeFileSelector.doSelect();
+    List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
     assertEquals(seqResources.subList(0, 2), seqSelected);

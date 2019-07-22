@@ -173,31 +173,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   }
 
   private List<ChunkMetaData> loadChunkMetadata(Path path) throws IOException {
-
-    if (!fileMetaData.containsDevice(path.getDevice())) {
-      return new ArrayList<>();
-    }
-
-    // get the index information of TsDeviceMetadata
-    TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(path.getDevice());
-
-    // read TsDeviceMetadata from file
-    TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
-
-    // get all ChunkMetaData of this path included in all ChunkGroups of this device
-    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-          .getChunkMetaDataList();
-      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-        if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
-          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-          chunkMetaDataList.add(chunkMetaData);
-        }
-      }
-    }
-    chunkMetaDataList.sort(Comparator.comparingLong(ChunkMetaData::getStartTime));
-    return chunkMetaDataList;
+    return tsFileReader.getChunkMetadata(path);
   }
 
   @Override
@@ -309,4 +285,6 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   public void clear() {
     chunkMetaDataCache.clear();
   }
+
+
 }

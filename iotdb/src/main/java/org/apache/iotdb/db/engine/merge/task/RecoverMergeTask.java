@@ -95,6 +95,7 @@ public class RecoverMergeTask extends MergeTask {
       resumeMergeProgress();
       MergeChunkTask mergeChunkTask = new MergeChunkTask(mergedChunkCnt, unmergedChunkCnt,
           unmergedChunkStartTimes, taskName, mergeLogger, resource, fullMerge, analyzer.getUnmergedPaths());
+      analyzer.setUnmergedPaths(null);
       mergeChunkTask.mergeSeries();
 
       MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
@@ -109,6 +110,7 @@ public class RecoverMergeTask extends MergeTask {
       resumeMergeProgress();
       MergeFileTask mergeFileTask = new MergeFileTask(taskName,mergedChunkCnt, unmergedChunkCnt,
           unmergedChunkStartTimes, mergeLogger, resource, analyzer.getUnmergedFiles());
+      analyzer.setUnmergedFiles(null);
       mergeFileTask.mergeFiles();
     } else {
       // NOTICE: although some of the seqFiles may have been truncated in last merge, we do not
@@ -152,6 +154,7 @@ public class RecoverMergeTask extends MergeTask {
       }
       fileCnt++;
     }
+    analyzer.setMergedPaths(null);
   }
 
   private void recoverChunkCounts(Path path, TsFileResource tsFileResource,
@@ -202,5 +205,6 @@ public class RecoverMergeTask extends MergeTask {
         }
       }
     }
+    analyzer.setFileLastPositions(null);
   }
 }

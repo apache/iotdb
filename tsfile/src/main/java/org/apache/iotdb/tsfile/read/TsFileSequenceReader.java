@@ -23,7 +23,6 @@ import static org.apache.iotdb.tsfile.write.writer.TsFileIOWriter.magicStringByt
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -48,6 +47,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -67,6 +67,9 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   private int totalChunkNum;
   private TsFileMetaData tsFileMetaData;
+
+  private boolean cacheDeviceMetadata = false;
+  private Map<TsDeviceMetadataIndex, TsDeviceMetadata> deviceMetadataMap;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -88,7 +91,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
-    final Path path = Paths.get(file);
+    final java.nio.file.Path path = Paths.get(file);
     tsFileInput = new DefaultTsFileInput(path);
     try {
       if (loadMetadataSize) {
@@ -97,6 +100,14 @@ public class TsFileSequenceReader implements AutoCloseable {
     } catch (Throwable e) {
       tsFileInput.close();
       throw e;
+    }
+  }
+
+  public TsFileSequenceReader(String file, boolean loadMetadata, boolean cacheDeviceMetadata) throws IOException {
+    this(file, loadMetadata);
+    this.cacheDeviceMetadata = cacheDeviceMetadata;
+    if (cacheDeviceMetadata) {
+      deviceMetadataMap = new HashMap<>();
     }
   }
 
@@ -241,7 +252,18 @@ public class TsFileSequenceReader implements AutoCloseable {
    * this function does not modify the position of the file reader.
    */
   public TsDeviceMetadata readTsDeviceMetaData(TsDeviceMetadataIndex index) throws IOException {
-    return TsDeviceMetadata.deserializeFrom(readData(index.getOffset(), index.getLen()));
+    TsDeviceMetadata deviceMetadata = null;
+    if (cacheDeviceMetadata) {
+      deviceMetadata = deviceMetadataMap.get(index);
+    }
+    if (deviceMetadata == null) {
+      deviceMetadata = TsDeviceMetadata.deserializeFrom(readData(index.getOffset()
+          , index.getLen()));
+      if (cacheDeviceMetadata) {
+       deviceMetadataMap.put(index, deviceMetadata);
+      }
+    }
+    return deviceMetadata;
   }
 
   /**
@@ -425,6 +447,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public void close() throws IOException {
     this.tsFileInput.close();
+    deviceMetadataMap = null;
   }
 
   public String getFileName() {
@@ -626,5 +649,35 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public int getTotalChunkNum() {
     return totalChunkNum;
+  }
+
+  public List<ChunkMetaData> getChunkMetadata(Path path) throws IOException {
+    if (tsFileMetaData == null) {
+      readFileMetadata();
+    }
+    if (!tsFileMetaData.containsDevice(path.getDevice())) {
+      return new ArrayList<>();
+    }
+
+    // get the index information of TsDeviceMetadata
+    TsDeviceMetadataIndex index = tsFileMetaData.getDeviceMetadataIndex(path.getDevice());
+
+    // read TsDeviceMetadata from file
+    TsDeviceMetadata tsDeviceMetadata = readTsDeviceMetaData(index);
+
+    // get all ChunkMetaData of this path included in all ChunkGroups of this device
+    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
+    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
+      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
+          .getChunkMetaDataList();
+      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
+        if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
+          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+          chunkMetaDataList.add(chunkMetaData);
+        }
+      }
+    }
+    chunkMetaDataList.sort(Comparator.comparingLong(ChunkMetaData::getStartTime));
+    return chunkMetaDataList;
   }
 }
