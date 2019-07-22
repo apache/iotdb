@@ -83,13 +83,11 @@ public class ChunkWriterImpl implements IChunkWriter {
   /**
    * constructor of ChunkWriterImpl.
    *
-   * @param measurementSchema measurement schema
    * @param chunkBuffer chunk in buffer
    * @param pageSizeThreshold page size threshold
    */
-  public ChunkWriterImpl(MeasurementSchema measurementSchema, ChunkBuffer chunkBuffer,
-      int pageSizeThreshold) {
-    this.measurementSchema = measurementSchema;
+  public ChunkWriterImpl(ChunkBuffer chunkBuffer, int pageSizeThreshold) {
+    this.measurementSchema = chunkBuffer.getSchema();
     this.dataType = measurementSchema.getType();
     this.chunkBuffer = chunkBuffer;
     this.psThres = pageSizeThreshold;
