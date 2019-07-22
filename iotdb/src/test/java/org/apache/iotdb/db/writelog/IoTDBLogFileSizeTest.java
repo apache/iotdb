@@ -105,7 +105,7 @@ public class IoTDBLogFileSizeTest {
         Statement statement = connection.createStatement();
         while (true) {
           if (Thread.interrupted()) {
-            System.out.println("Exit after " + cnt + " insertion");
+            //System.out.println("Exit after " + cnt + " insertion");
             break;
           }
           String sql = String.format(
@@ -139,9 +139,6 @@ public class IoTDBLogFileSizeTest {
     while (writeThread.isAlive()) {
 
     }
-    System.out.println(
-        "Max size of seq wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after "
-            + runtime + "ms continuous writing");
   }
 
   @Test
@@ -165,7 +162,7 @@ public class IoTDBLogFileSizeTest {
         Statement statement = connection.createStatement();
         while (true) {
           if (Thread.interrupted()) {
-            System.out.println("Exit after " + cnt + " insertion");
+            //System.out.println("Exit after " + cnt + " insertion");
             break;
           }
           String sql = String
@@ -199,9 +196,6 @@ public class IoTDBLogFileSizeTest {
     while (writeThread.isAlive()) {
 
     }
-    System.out.println(
-        "Max size of unsequence wal is " + MemUtils.bytesCntToStr(maxLength[0]) + " after " + runtime
-            + "ms continuous writing");
   }
 
   private void executeSQL(String[] sqls) throws ClassNotFoundException, SQLException {

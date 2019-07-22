@@ -241,7 +241,7 @@ public class IoTDBSeriesReaderIT {
   @Test
   public void selectAllTest() throws IOException, StorageEngineException {
     String selectSql = "select * from root";
-    System.out.println("Test >>> " + selectSql);
+    //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
     QueryExpression queryExpression = QueryExpression.create();
@@ -273,7 +273,7 @@ public class IoTDBSeriesReaderIT {
   public void selectOneSeriesWithValueFilterTest() throws IOException, StorageEngineException {
 
     String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
-    System.out.println("Test >>> " + selectSql);
+    //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
     QueryExpression queryExpression = QueryExpression.create();
@@ -302,7 +302,7 @@ public class IoTDBSeriesReaderIT {
   @Test
   public void seriesTimeDigestReadTest() throws IOException, StorageEngineException {
     String selectSql = "select s0 from root.vehicle.d0 where time >= 22987";
-    System.out.println("Test >>> " + selectSql);
+    //System.out.println("Test >>> " + selectSql);
 
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
     QueryExpression queryExpression = QueryExpression.create();
@@ -329,7 +329,7 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void crossSeriesReadUpdateTest() throws IOException, StorageEngineException {
-    System.out.println("Test >>> select s1 from root.vehicle.d0 where s0 < 111");
+    //System.out.println("Test >>> select s1 from root.vehicle.d0 where s0 < 111");
     EngineQueryRouter engineExecutor = new EngineQueryRouter();
     QueryExpression queryExpression = QueryExpression.create();
     Path path1 = new Path(Constant.d0s0);

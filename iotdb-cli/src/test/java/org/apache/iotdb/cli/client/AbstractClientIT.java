@@ -36,9 +36,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AbstractClientIT {
-
+  private static Logger logger = LoggerFactory.getLogger(AbstractClientIT.class);
   @Mock
   private IoTDBConnection connection;
 
@@ -66,7 +68,7 @@ public class AbstractClientIT {
         AbstractClient.MAX_PRINT_ROW_COUNT_ARGS,};
     for (String keyword : keywords) {
       if (!AbstractClient.keywordSet.contains("-" + keyword)) {
-        System.out.println(keyword);
+        logger.error(keyword);
         fail();
       }
     }

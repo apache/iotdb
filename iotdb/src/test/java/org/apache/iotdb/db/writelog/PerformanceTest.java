@@ -95,7 +95,7 @@ public class PerformanceTest {
           logNode.write(deletePlan);
         }
         logNode.forceSync();
-        System.out.println("forceWalPeriodInMs = " + config.getForceWalPeriodInMs());
+
         System.out.println(
             3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size "
                 + config.getFlushWalThreshold());

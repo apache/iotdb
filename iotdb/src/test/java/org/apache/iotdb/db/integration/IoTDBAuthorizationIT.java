@@ -34,12 +34,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
  * defined as integration test.
  */
 public class IoTDBAuthorizationIT {
+  private static Logger logger = LoggerFactory.getLogger(IoTDBAuthorizationIT.class);
 
   private IoTDB daemon;
 
@@ -626,9 +629,10 @@ public class IoTDBAuthorizationIT {
       userStmt.executeBatch();
       userStmt.clearBatch();
     }
-    System.out.println(
-        "User inserted " + insertCnt + " data points used " + (System.currentTimeMillis() - time)
-            + " ms with " + privilegeCnt + " privileges");
+    if (logger.isDebugEnabled()) {
+      logger.debug("User inserted {} data points used {} ms with {} privileges.", insertCnt,
+          System.currentTimeMillis() - time, privilegeCnt);
+    }
 
     time = System.currentTimeMillis();
     for (int i = 0; i < insertCnt; ) {
@@ -639,10 +643,10 @@ public class IoTDBAuthorizationIT {
       adminStmt.executeBatch();
       adminStmt.clearBatch();
     }
-    System.out.println(
-        "admin inserted " + insertCnt + " data points used " + (System.currentTimeMillis() - time)
-            + " ms with " + privilegeCnt + " privileges");
-
+    if (logger.isDebugEnabled()) {
+      logger.debug("User inserted {} data points used {} ms with {} privileges.", insertCnt,
+          System.currentTimeMillis() - time, privilegeCnt);
+    }
     adminCon.close();
     userCon.close();
   }

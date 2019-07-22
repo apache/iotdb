@@ -117,7 +117,6 @@ public class MTreeTest {
       assertEquals("root.a.d1.s0", result.get("root.a.d1").get(0));
       assertTrue(result.containsKey("root.a.d0"));
       assertEquals("root.a.d0.s0", result.get("root.a.d0").get(0));
-      System.out.println(result);
 
       result = root.getAllPath("root.a.*.*.s0");
       assertTrue(result.containsKey("root.a.b.d0"));
