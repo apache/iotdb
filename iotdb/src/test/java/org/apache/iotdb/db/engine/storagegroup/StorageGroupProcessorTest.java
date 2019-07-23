@@ -18,9 +18,15 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.junit.Assert.assertFalse;
+
+import java.io.File;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -40,12 +46,14 @@ public class StorageGroupProcessorTest {
   private String measurementId = "s0";
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
+  private AtomicLong mergeLock;
 
   @Before
   public void setUp() throws Exception {
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-    processor = new StorageGroupProcessor(systemDir, storageGroup);
+    processor = new DummySGP(systemDir, storageGroup);
+    MergeManager.getINSTANCE().start();
   }
 
   @After
@@ -53,6 +61,7 @@ public class StorageGroupProcessorTest {
     processor.syncDeleteDataFiles();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir("data");
+    MergeManager.getINSTANCE().stop();
   }
 
 
@@ -77,7 +86,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() throws StorageGroupProcessorException {
+  public void testSeqAndUnSeqSyncClose() {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -107,4 +116,54 @@ public class StorageGroupProcessorTest {
     }
   }
 
+  @Test
+  public void testMerge() {
+
+    mergeLock = new AtomicLong(0);
+    for (int j = 21; j <= 30; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertPlan(record));
+      processor.putAllWorkingTsFileProcessorIntoClosingList();
+    }
+    processor.waitForAllCurrentTsFileProcessorsClosed();
+
+    for (int j = 10; j >= 1; j--) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertPlan(record));
+      processor.putAllWorkingTsFileProcessorIntoClosingList();
+    }
+
+    processor.waitForAllCurrentTsFileProcessorsClosed();
+    processor.merge(true);
+    while (mergeLock.get() == 0) {
+      // wait
+    }
+
+    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context);
+    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+    for (TsFileResource resource : queryDataSource.getUnseqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+  }
+
+  class DummySGP extends StorageGroupProcessor {
+
+    DummySGP(String systemInfoDir, String storageGroupName) throws ProcessorException {
+      super(systemInfoDir, storageGroupName);
+    }
+
+    @Override
+    protected void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
+        File mergeLog) {
+      super.mergeEndAction(seqFiles, unseqFiles, mergeLog);
+      mergeLock.incrementAndGet();
+      assertFalse(mergeLog.exists());
+    }
+  }
 }

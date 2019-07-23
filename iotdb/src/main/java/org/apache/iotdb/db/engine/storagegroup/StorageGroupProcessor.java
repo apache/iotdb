@@ -755,11 +755,11 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
+  protected void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
       File mergeLog) {
     logger.info("{} a merge task is ending...", storageGroupName);
 
-    if (seqFiles.isEmpty()) {
+    if (unseqFiles.isEmpty()) {
       // merge runtime exception arose, just end this merge
       isMerging = false;
       logger.info("{} a merge task abnormally ends", storageGroupName);
@@ -778,6 +778,7 @@ public class StorageGroupProcessor {
       unseqFile.getMergeQueryLock().writeLock().lock();
       try {
         unseqFile.remove();
+        unseqFiles.remove(unseqFile);
       } finally {
         unseqFile.getMergeQueryLock().writeLock().unlock();
       }
