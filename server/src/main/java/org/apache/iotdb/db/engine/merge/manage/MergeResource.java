@@ -34,15 +34,19 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
+import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MergeResource manages files and caches of readers, writers, MeasurementSchemas and
@@ -50,12 +54,14 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
  */
 public class MergeResource {
 
+  private static final Logger logger = LoggerFactory.getLogger(MergeResource.class);
+
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
 
   private QueryContext mergeContext = new QueryContext();
 
-  private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
+  private Map<TsFileResource, TsFileSequenceReader> fileReaderCache;
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
@@ -66,6 +72,16 @@ public class MergeResource {
       List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
+    this.fileReaderCache = new HashMap<>();
+  }
+
+  public MergeResource(
+      List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles,
+      Map<TsFileResource, TsFileSequenceReader> fileReaderCache) {
+    this.seqFiles = seqFiles;
+    this.unseqFiles = unseqFiles;
+    this.fileReaderCache = fileReaderCache;
   }
 
   public void clear() throws IOException {
@@ -136,7 +152,11 @@ public class MergeResource {
    * @throws IOException
    */
   public IPointReader getUnseqReader(Path path) throws IOException {
-    return new UnseqResourceMergeReader(path, unseqFiles, mergeContext, null);
+    List<Chunk> chunks = MergeUtils.collectUnseqChunks(path, unseqFiles, this);
+    if (logger.isDebugEnabled()) {
+      logger.debug("Found {} unseq chunks of {}", chunks.size(), path);
+    }
+    return new UnseqResourceMergeReader(path, chunks, null);
   }
 
   /**
@@ -222,4 +242,6 @@ public class MergeResource {
   public Map<String, MeasurementSchema> getMeasurementSchemaMap() {
     return measurementSchemaMap;
   }
+
+
 }

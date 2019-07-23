@@ -38,6 +38,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
@@ -723,9 +724,11 @@ public class StorageGroupProcessor {
           return;
         }
         String taskName = storageGroupName + "-" + System.currentTimeMillis();
-        MergeTask mergeTask = new MergeTask(mergeFiles[0], mergeFiles[1],
-            storageGroupSysDir.getPath(), this::mergeEndAction, taskName, fullMerge,
-            fileSelector.getConcurrentMergeNum());
+        MergeResource mergeResource = new MergeResource(mergeFiles[0], mergeFiles[1],
+            fileSelector.getFileReaderCache());
+
+        MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
+            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum());
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
         MergeManager.getINSTANCE().submit(mergeTask);
         if (logger.isInfoEnabled()) {
