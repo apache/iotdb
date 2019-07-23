@@ -364,9 +364,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), false);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
-    Chunk chunk = new Chunk(header, buffer);
-    chunk.setDeletedAt(metaData.getDeletedAt());
-    return chunk;
+    return new Chunk(header, buffer, metaData.getDeletedAt());
   }
 
   /**

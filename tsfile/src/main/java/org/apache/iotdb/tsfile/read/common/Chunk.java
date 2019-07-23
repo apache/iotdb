@@ -28,11 +28,12 @@ public class Chunk {
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkData;
-  private long deletedAt = -1;
+  private long deletedAt;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer) {
+  public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt) {
     this.chunkHeader = header;
     this.chunkData = buffer;
+    this.deletedAt = deletedAt;
   }
 
   public ChunkHeader getHeader() {

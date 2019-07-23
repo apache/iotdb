@@ -54,6 +54,7 @@ class MergeMultiChunkTask {
 
   private int concurrentMergeSeriesNum;
   private List<Path> currMergingPaths = new ArrayList<>();
+  private long currDeviceMinTime;
 
   MergeMultiChunkTask(MergeContext context, String taskName, MergeLogger mergeLogger,
       MergeResource mergeResource, boolean fullMerge, List<Path> unmergedSeries,
@@ -150,6 +151,7 @@ class MergeMultiChunkTask {
     // if this TsFile receives data later than fileLimitTime, it will overlap the next TsFile,
     // which is forbidden
     String deviceId = currMergingPaths.get(0).getDevice();
+    currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
     boolean isLastFile = seqFileIdx + 1 == resource.getSeqFiles().size();
 
     TsFileSequenceReader fileSequenceReader = resource.getFileReader(currTsFile);
@@ -180,20 +182,23 @@ class MergeMultiChunkTask {
     mergeFileWriter.startChunkGroup(deviceId);
     boolean dataWritten = false;
     for (int pathIdx : unskippedPathIndices) {
+      currDeviceMinTime = currDeviceMinTime > currTimeValuePairs[pathIdx].getTimestamp() ?
+          currTimeValuePairs[pathIdx].getTimestamp() : currDeviceMinTime;
       dataWritten = mergeChunks(seqChunkMeta[pathIdx], isLastFile,
           fileSequenceReader, unseqReader.get(pathIdx), mergeFileWriter, currTsFile, pathIdx)
           || dataWritten;
+
     }
     if (dataWritten) {
       mergeFileWriter.endChunkGroup(0);
       mergeLogger.logFilePositionUpdate(mergeFileWriter.getFile());
+      currTsFile.getStartTimeMap().put(deviceId, currDeviceMinTime);
     }
   }
 
   private boolean mergeChunks(List<ChunkMetaData> seqChunkMeta, boolean isLastFile,
       TsFileSequenceReader reader, IPointReader unseqReader,
-      RestorableTsFileIOWriter mergeFileWriter,
-      TsFileResource currFile, int pathIdx)
+      RestorableTsFileIOWriter mergeFileWriter, TsFileResource currFile, int pathIdx)
       throws IOException {
     int ptWritten = 0;
     Path path = currMergingPaths.get(pathIdx);
