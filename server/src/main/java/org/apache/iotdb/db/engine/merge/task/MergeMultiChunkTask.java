@@ -163,16 +163,7 @@ class MergeMultiChunkTask {
       modifyChunkMetaData(seqChunkMeta[i], modifications[i]);
     }
 
-    List<Integer> unskippedPathIndices = new ArrayList<>();
-    // if the last seqFile does not contains this series but the unseqFiles do, data of this
-    // series should also be written into a new chunk
-    for (int i = 0; i < currMergingPaths.size(); i++) {
-      if (seqChunkMeta[i].isEmpty()
-          && !(seqFileIdx + 1 == resource.getSeqFiles().size() && currTimeValuePairs[i] != null)) {
-        continue;
-      }
-      unskippedPathIndices.add(i);
-    }
+    List<Integer> unskippedPathIndices = filterNoDataPaths(seqChunkMeta, seqFileIdx);
     if (unskippedPathIndices.isEmpty()) {
       return;
     }
@@ -183,19 +174,32 @@ class MergeMultiChunkTask {
     boolean dataWritten = false;
     for (int pathIdx : unskippedPathIndices) {
       if (currTimeValuePairs[pathIdx] != null) {
+        // update the min time of the device
         currDeviceMinTime = currDeviceMinTime > currTimeValuePairs[pathIdx].getTimestamp() ?
             currTimeValuePairs[pathIdx].getTimestamp() : currDeviceMinTime;
       }
-      dataWritten = mergeChunks(seqChunkMeta[pathIdx], isLastFile,
-          fileSequenceReader, unseqReader.get(pathIdx), mergeFileWriter, currTsFile, pathIdx)
-          || dataWritten;
-
+      dataWritten = mergeChunks(seqChunkMeta[pathIdx], isLastFile, fileSequenceReader,
+          unseqReader.get(pathIdx), mergeFileWriter, currTsFile, pathIdx) || dataWritten;
     }
     if (dataWritten) {
       mergeFileWriter.endChunkGroup(0);
       mergeLogger.logFilePositionUpdate(mergeFileWriter.getFile());
       currTsFile.getStartTimeMap().put(deviceId, currDeviceMinTime);
     }
+  }
+
+  private List<Integer> filterNoDataPaths(List[] seqChunkMeta, int seqFileIdx) {
+    // if the last seqFile does not contains this series but the unseqFiles do, data of this
+    // series should also be written into a new chunk
+    List<Integer> ret = new ArrayList<>();
+    for (int i = 0; i < currMergingPaths.size(); i++) {
+      if (seqChunkMeta[i].isEmpty()
+          && !(seqFileIdx + 1 == resource.getSeqFiles().size() && currTimeValuePairs[i] != null)) {
+        continue;
+      }
+      ret.add(i);
+    }
+    return ret;
   }
 
   private boolean mergeChunks(List<ChunkMetaData> seqChunkMeta, boolean isLastFile,
