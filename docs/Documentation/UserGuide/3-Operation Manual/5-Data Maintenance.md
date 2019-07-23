@@ -26,9 +26,9 @@
 <!-- > 
 ### Data Update
 
-Users can use [UPDATE statements](/#/Documents/latest/chap5/sec1) to update data over a period of time in a specified timeseries. When updating data, users can select a timeseries to be updated (version 0.7.0 does not support multiple timeseries updates) and specify a time point or period to be updated (version 0.7.0 must have time filtering conditions).
+Users can use [UPDATE statements](/#/Documents/0.8.0/chap5/sec1) to update data over a period of time in a specified timeseries. When updating data, users can select a timeseries to be updated (version 0.8.0 does not support multiple timeseries updates) and specify a time point or period to be updated (version 0.8.0 must have time filtering conditions).
 
-In a JAVA programming environment, you can use the [Java JDBC](/#/Documents/latest/chap6/sec1) to execute single or batch UPDATE statements.
+In a JAVA programming environment, you can use the [Java JDBC](/#/Documents/0.8.0/chap6/sec1) to execute single or batch UPDATE statements.
 
 #### Update Single Timeseries
 Taking the power supply status of ln group wf02 plant wt02 device as an example, there exists such a usage scenario:
@@ -54,9 +54,9 @@ Msg: do not select any existing series
 
 ### Data Deletion
 
-Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](/#/Documents/latest/chap5/sec1). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data before a certain time (version 0.7.0 does not support the deletion of data within a closed time interval).
+Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](/#/Documents/0.8.0/chap5/sec1). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data before a certain time (version 0.8.0 does not support the deletion of data within a closed time interval).
 
-In a JAVA programming environment, you can use the [Java JDBC](/#/Documents/latest/chap6/sec1) to execute single or batch UPDATE statements.
+In a JAVA programming environment, you can use the [Java JDBC](/#/Documents/0.8.0/chap6/sec1) to execute single or batch UPDATE statements.
 
 #### Delete Single Timeseries
 Taking ln Group as an example, there exists such a usage scenario:
@@ -68,7 +68,7 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 
 #### Delete Multiple Timeseries
-When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](/#/Documents/latest/chap2/sec1) can be used to delete the data. The SQL statement for this operation is:
+When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](/#/Documents/0.8.0/chap2/sec1) can be used to delete the data. The SQL statement for this operation is:
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
