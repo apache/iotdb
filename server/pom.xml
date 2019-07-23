@@ -27,8 +27,8 @@
         <version>0.9.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>iotdb</artifactId>
-    <name>IoTDB</name>
+    <artifactId>iotdb-server</artifactId>
+    <name>IoTDB Server</name>
     <properties>
         <antlr3.version>3.5.2</antlr3.version>
         <common.lang3.version>3.8.1</common.lang3.version>
