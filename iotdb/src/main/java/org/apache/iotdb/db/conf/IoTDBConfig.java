@@ -250,6 +250,7 @@ public class IoTDBConfig {
     List<String> dirs = new ArrayList<>();
     dirs.add(baseDir);
     dirs.add(systemDir);
+    dirs.add(schemaDir);
     dirs.add(walFolder);
     dirs.add(indexFileDir);
     dirs.addAll(Arrays.asList(dataDirs));
@@ -268,10 +269,11 @@ public class IoTDBConfig {
     }
     baseDir = dirs.get(0);
     systemDir = dirs.get(1);
-    walFolder = dirs.get(2);
-    indexFileDir = dirs.get(3);
+    schemaDir = dirs.get(2);
+    walFolder = dirs.get(3);
+    indexFileDir = dirs.get(4);
     for (int i = 0; i < dataDirs.length; i++) {
-      dataDirs[i] = dirs.get(i + 4);
+      dataDirs[i] = dirs.get(i + 5);
     }
   }
 
@@ -355,6 +357,10 @@ public class IoTDBConfig {
 
   public String getSchemaDir() {
     return schemaDir;
+  }
+
+  void setSchemaDir(String schemaDir) {
+    this.schemaDir = schemaDir;
   }
 
   public String getWalFolder() {

@@ -139,6 +139,8 @@ public class IoTDBDescriptor {
 
       conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "system");
 
+      conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + "schema");
+
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
