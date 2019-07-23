@@ -192,13 +192,19 @@ public class MergeTaskTest extends MergeTest {
   @Test
   public void mergeWithDeletionTest() throws Exception {
     seqResources.get(0).getModFile().write(new Deletion(new Path(deviceIds[0],
-        measurementSchemas[0].getMeasurementId()), 10000, 50));
+        measurementSchemas[0].getMeasurementId()), 10000, 49));
     seqResources.get(0).getModFile().close();
 
 
     MergeTask mergeTask =
-        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
-            false);
+        new MergeTask(seqResources, unseqResources.subList(0, 1), tempSGDir.getPath(),
+            (k, v, l) -> {
+              try {
+                seqResources.get(0).removeModFile();
+              } catch (IOException e) {
+                e.printStackTrace();
+              }
+            }, "test", false);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -210,11 +216,15 @@ public class MergeTaskTest extends MergeTest {
     while (tsFilesReader.hasNext()) {
       BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
+        if (batchData.getTimeByIndex(i) <= 20) {
+          assertEquals(batchData.getTimeByIndex(i) + 10000.0, batchData.getDoubleByIndex(i), 0.001);
+        } else {
+          assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        }
         count ++;
       }
     }
-    assertEquals(49, count);
+    assertEquals(70, count);
     tsFilesReader.close();
   }
 }

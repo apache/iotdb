@@ -59,9 +59,7 @@ public class ChunkLoaderImpl implements ChunkLoader {
   @Override
   public Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkCache.get(chunkMetaData);
-    Chunk chunkRet = new Chunk(chunk.getHeader(), chunk.getData().duplicate());
-    chunkRet.setDeletedAt(chunkMetaData.getDeletedAt());
-    return chunkRet;
+    return new Chunk(chunk.getHeader(), chunk.getData().duplicate());
   }
 
   @Override

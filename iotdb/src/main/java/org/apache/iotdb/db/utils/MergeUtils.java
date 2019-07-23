@@ -101,7 +101,7 @@ public class MergeUtils {
     }
   }
 
-  public static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
+  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
     TsFileMetaData metaData = sequenceReader.readFileMetadata();
     Set<String> deviceIds = metaData.getDeviceMap().keySet();
     Set<String> measurements = metaData.getMeasurementSchema().keySet();
@@ -151,42 +151,15 @@ public class MergeUtils {
 
   public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter) throws IOException {
     ChunkReader chunkReader = new ChunkReaderWithoutFilter(chunk);
+    int ptWritten = 0;
     while (chunkReader.hasNextBatch()) {
       BatchData batchData = chunkReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
         writeBatchPoint(batchData, i, chunkWriter);
       }
+      ptWritten += batchData.length();
     }
-    return chunk.getHeader().getNumOfPages();
-  }
-
-  public static boolean fileOverlap(TsFileResource seqFile, TsFileResource unseqFile) {
-    Map<String, Long> seqStartTimes = seqFile.getStartTimeMap();
-    Map<String, Long> seqEndTimes = seqFile.getEndTimeMap();
-    Map<String, Long> unseqStartTimes = unseqFile.getStartTimeMap();
-    Map<String, Long> unseqEndTimes = unseqFile.getEndTimeMap();
-
-    for (Entry<String, Long> seqEntry : seqStartTimes.entrySet()) {
-      Long unseqStartTime = unseqStartTimes.get(seqEntry.getKey());
-      if (unseqStartTime == null) {
-        continue;
-      }
-      Long unseqEndTime = unseqEndTimes.get(seqEntry.getKey());
-      Long seqStartTime = seqEntry.getValue();
-      Long seqEndTime = seqEndTimes.get(seqEntry.getKey());
-
-      if (intervalOverlap(seqStartTime, seqEndTime, unseqStartTime, unseqEndTime)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private static boolean intervalOverlap(long l1, long r1, long l2, long r2) {
-   return  (l1 <= l2 && l2 <= r1) ||
-        (l1 <= r2 && r2 <= r1) ||
-        (l2 <= l1 && l1 <= r2) ||
-        (l2 <= r1 && r1 <= r2);
+    return ptWritten;
   }
 
   // returns totalChunkNum of a file and the max number of chunks of a series

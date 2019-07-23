@@ -21,9 +21,12 @@ package org.apache.iotdb.db.engine.merge.selector;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -66,10 +69,11 @@ public class MergeFileSelector {
 
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
 
-  private List<Integer> tmpSelectedSeqFiles;
+  private Collection<Integer> tmpSelectedSeqFiles;
   private long tempMaxSeqFileCost;
 
   private boolean[] seqSelected;
+  private int seqSelectedNum;
 
   public MergeFileSelector(
       List<TsFileResource> seqFiles,
@@ -141,8 +145,9 @@ public class MergeFileSelector {
   }
 
   void select(boolean useTightBound) throws IOException {
-    tmpSelectedSeqFiles = new ArrayList<>();
+    tmpSelectedSeqFiles = new HashSet<>();
     seqSelected = new boolean[seqFiles.size()];
+    seqSelectedNum = 0;
     selectedSeqFiles = new ArrayList<>();
     selectedUnseqFiles = new ArrayList<>();
 
@@ -165,6 +170,7 @@ public class MergeFileSelector {
 
         for (Integer seqIdx : tmpSelectedSeqFiles) {
           seqSelected[seqIdx] = true;
+          seqSelectedNum++;
           selectedSeqFiles.add(seqFiles.get(seqIdx));
         }
         totalCost += newCost;
@@ -178,19 +184,43 @@ public class MergeFileSelector {
   }
 
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
-    for (int i = 0; i < seqFiles.size(); i++) {
-      if (seqSelected[i]) {
-        continue;
+    if (seqSelectedNum == seqFiles.size()) {
+      return;
+    }
+    int tmpSelectedNum = 0;
+    for (Entry<String, Long> deviceStartTimeEntry : unseqFile.getStartTimeMap().entrySet()) {
+      String deviceId = deviceStartTimeEntry.getKey();
+      Long unseqStartTime = deviceStartTimeEntry.getValue();
+      Long unseqEndTime = unseqFile.getEndTimeMap().get(deviceId);
+
+      boolean noMoreOverlap = false;
+      for (int i = 0; i < seqFiles.size() && !noMoreOverlap; i++) {
+        TsFileResource seqFile = seqFiles.get(i);
+        if (seqSelected[i] || !seqFile.getEndTimeMap().containsKey(deviceId)) {
+          continue;
+        }
+        Long seqEndTime = seqFile.getEndTimeMap().get(deviceId);
+        if (unseqEndTime <= seqEndTime) {
+          // the unseqFile overlaps current seqFile
+          tmpSelectedSeqFiles.add(i);
+          tmpSelectedNum ++;
+          // the device of the unseqFile can not merge with later seqFiles
+          noMoreOverlap = true;
+        } else if (unseqStartTime <= seqEndTime) {
+          // the device of the unseqFile may merge with later seqFiles
+          // and the unseqFile overlaps current seqFile
+          tmpSelectedSeqFiles.add(i);
+          tmpSelectedNum++;
+        }
       }
-      TsFileResource seqFile = seqFiles.get(i);
-      if (MergeUtils.fileOverlap(seqFile, unseqFile)) {
-        tmpSelectedSeqFiles.add(i);
+      if (tmpSelectedNum + seqSelectedNum == seqFiles.size()) {
+        break;
       }
     }
   }
 
   private long calculateMemoryCost(TsFileResource tmpSelectedUnseqFile,
-      List<Integer> tmpSelectedSeqFiles, FileQueryMemMeasurement unseqMeasurement,
+      Collection<Integer> tmpSelectedSeqFiles, FileQueryMemMeasurement unseqMeasurement,
       FileQueryMemMeasurement seqMeasurement) throws IOException {
     long cost = 0;
     Long fileCost = unseqMeasurement.measure(tmpSelectedUnseqFile);
@@ -212,13 +242,13 @@ public class MergeFileSelector {
   }
 
   private long calculateLooseMemoryCost(TsFileResource tmpSelectedUnseqFile,
-      List<Integer> tmpSelectedSeqFiles) throws IOException {
+      Collection<Integer> tmpSelectedSeqFiles) throws IOException {
     return calculateMemoryCost(tmpSelectedUnseqFile, tmpSelectedSeqFiles,
         TsFileResource::getFileSize, this::calculateMetadataSize);
   }
 
   private long calculateTightMemoryCost(TsFileResource tmpSelectedUnseqFile,
-      List<Integer> tmpSelectedSeqFiles) throws IOException {
+      Collection<Integer> tmpSelectedSeqFiles) throws IOException {
     return calculateMemoryCost(tmpSelectedUnseqFile, tmpSelectedSeqFiles,
         this::calculateTightUnseqMemoryCost, this::calculateTightSeqMemoryCost);
   }
