@@ -59,7 +59,7 @@ If you want to use Hadoop or Spark to analyze IoTDB data file (called as TsFile)
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/latest/sec1).
+This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.8.0/sec1).
 
 ## Installation from source code
 
@@ -161,7 +161,7 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 
 In total, we provide users three kinds of configurations module: environment config module (iotdb-env.bat, iotdb-env.sh), system config module (tsfile-format.properties, iotdb-engine.properties) and log config module (logback.xml). All of these kinds of configuration files are put in iotdb/config folder.
 
-For more, you are advised to check our documentation [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/latest/sec4) in detail.
+For more, you are advised to check our documentation [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/sec4) in detail.
 
 ## Start
 
@@ -275,7 +275,7 @@ execute successfully.
 
 If your session looks similar to what's above, congrats, your IoTDB is operational!
 
-For more on what commands are supported by IoTDB SQL, see our documentation [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/latest/sec5).
+For more on what commands are supported by IoTDB SQL, see our documentation [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.8.0/sec5).
 
 
 # Usage of import-csv.sh
