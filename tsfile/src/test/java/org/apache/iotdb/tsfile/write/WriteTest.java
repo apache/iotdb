@@ -222,7 +222,6 @@ public class WriteTest {
       strings = getNextRecord(lineCount, stageState);
       for (String str : strings) {
         TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
-        System.out.println(str);
         tsFileWriter.write(record);
       }
       lineCount++;

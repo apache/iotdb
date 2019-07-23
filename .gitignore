@@ -9,6 +9,10 @@ iotdb/iotdb/logs/*
 iotdb/iotdb/lib/*
 iotdb/unsequence/
 iotdb/testunsequence
+conf/*
+lib/*
+sbin/*
+tools/*
 
 tsfile/src/test/resources/perTestInputData
 # Eclipse IDE files
