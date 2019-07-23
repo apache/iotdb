@@ -113,17 +113,17 @@
                         <configuration>
                             <target>
                                 <echo>ANT TASK - copying client files....</echo>
-                                <copy todir="${maven.multiModuleProjectDirectory}/lib/" overwrite="true" flatten="true">
+                                <copy todir="${maven.multiModuleProjectDirectory}/target/lib/" overwrite="true" flatten="true">
                                     <fileset dir="${project.basedir}/cli/lib" includes="*.jar">
                                         <include name="*.jar"/>
                                     </fileset>
                                 </copy>
-                                <copy todir="${maven.multiModuleProjectDirectory}/sbin/" overwrite="true" flatten="true">
+                                <copy todir="${maven.multiModuleProjectDirectory}/target/sbin/" overwrite="true" flatten="true">
                                     <fileset dir="${project.basedir}/cli/sbin" includes="*">
                                         <include name="*"/>
                                     </fileset>
                                 </copy>
-                                <copy todir="${maven.multiModuleProjectDirectory}/tools/" overwrite="true" flatten="true">
+                                <copy todir="${maven.multiModuleProjectDirectory}/target/tools/" overwrite="true" flatten="true">
                                     <fileset dir="${project.basedir}/cli/tools" includes="*">
                                         <include name="*"/>
                                     </fileset>

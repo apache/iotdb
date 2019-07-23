@@ -35,7 +35,7 @@
 
 <!-- /TOC -->
 # 介绍
-同步工具是定期将本地磁盘中和新增的已持久化的tsfile文件上传至云端并加载的IoTDB套件工具。
+同步工具是定期将本地磁盘中和新增的已持久化的tsfile文件上传至云端并加载到IoTDB套件工具。
 
 在同步工具的发送端，同步模块是一个独立的进程，独立于本地的IoTDB。通过独立的脚本进行启动和关闭(详见章节`使用方式`)，同步的频率周期可由用户设置。
 
@@ -263,7 +263,7 @@ Linux系统与MacOS系统启动命令如下：
 ```
 Windows系统启动命令如下：
 ```
-  Shell >$IOTDB_HOME/bin/start-sync-client.bat
+  Shell >$IOTDB_HOME\bin\start-sync-client.bat
 ```
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494951-dc283b80-8ec0-11e9-9575-5d8578c08ceb.png">
 
@@ -276,5 +276,6 @@ Linux系统与MacOS系统停止命令如下：
 ```
 Windows系统停止命令如下：
 ```
-  Shell >$IOTDB_HOME/bin/stop-sync-client.bat
+  Shell >$IOTDB_HOME\bin\stop-sync-client.bat
 ```
+
