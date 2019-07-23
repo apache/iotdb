@@ -20,20 +20,14 @@
 package org.apache.iotdb.db.engine.merge;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class MergePerfTest extends MergeTest{
-
-  private Random random = new Random(System.currentTimeMillis());
 
   private long timeConsumption;
   private boolean fullMerge;
@@ -46,7 +40,7 @@ public class MergePerfTest extends MergeTest{
     timeConsumption = System.currentTimeMillis();
     MergeTask mergeTask =
         new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
-            fullMerge, 1);
+            fullMerge, 100);
     mergeTask.call();
     timeConsumption = System.currentTimeMillis() - timeConsumption;
     tearDown();
