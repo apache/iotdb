@@ -171,8 +171,6 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
   private IReaderByTimestamp initSealedTsFileReaderByTimestamp(TsFileResource sealedTsFile,
       QueryContext context) throws IOException {
     // prepare metaDataList
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(sealedTsFile.getFile().getPath(), true);
     List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
         .get(sealedTsFile.getFile().getPath(), seriesPath);
 
@@ -182,6 +180,8 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
       QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
     }
     // prepare chunkLoader
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
+        .get(sealedTsFile.getFile().getPath(), true);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     return new FileSeriesReaderByTimestampAdapter(

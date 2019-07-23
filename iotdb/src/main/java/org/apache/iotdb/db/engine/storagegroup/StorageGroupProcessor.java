@@ -27,7 +27,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -152,7 +153,8 @@ public class StorageGroupProcessor {
   /**
    * This linked hash set records the access order of sensors used by query.
    */
-  private LinkedHashSet<String> lruForSensorUsedInQuery = new LinkedHashSet<>();
+  private LinkedList<String> lruForSensorUsedInQuery = new LinkedList<>();
+  private static final int MAX_CACHE_SENSORS = 5000;
 
 
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName)
@@ -457,6 +459,9 @@ public class StorageGroupProcessor {
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context) {
     insertLock.readLock().lock();
     synchronized (lruForSensorUsedInQuery) {
+      if (lruForSensorUsedInQuery.size() >= MAX_CACHE_SENSORS) {
+        lruForSensorUsedInQuery.removeFirst();
+      }
       lruForSensorUsedInQuery.add(measurementId);
     }
     try {
@@ -471,17 +476,20 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * returns the top k% measurements which are most frequently used in queries.
+   * returns the top k% measurements which are recently used in queries.
    */
   public Set calTopKMeasurement(String sensorId, double k) {
-    int num = (int) (lruForSensorUsedInQuery.size() * k) + 1;
-    Set<String> sensorSet = new HashSet<>(num);
-
-    for (String sensor : lruForSensorUsedInQuery) {
-      if (--num > 0) {
-        sensorSet.add(sensor);
-      } else {
-        break;
+    int num = (int) (lruForSensorUsedInQuery.size() * k);
+    Set<String> sensorSet = new HashSet<>(num + 1);
+    synchronized (lruForSensorUsedInQuery) {
+      Iterator<String> iterator = lruForSensorUsedInQuery.descendingIterator();
+      while (iterator.hasNext() && sensorSet.size() < num) {
+        String sensor = iterator.next();
+        if (sensorSet.contains(sensor)) {
+          iterator.remove();
+        } else {
+          sensorSet.add(sensor);
+        }
       }
     }
     sensorSet.add(sensorId);

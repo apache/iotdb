@@ -62,7 +62,7 @@ public class TsFileMetadataUtils {
    * @param fileMetaData -tsfile meta data
    * @return -device meta data
    */
-  public static TsDeviceMetadata getTsRowGroupBlockMetaData(String filePath, String deviceId,
+  public static TsDeviceMetadata getTsDeviceMetaData(String filePath, String deviceId,
       TsFileMetaData fileMetaData) throws IOException {
     if (!fileMetaData.getDeviceMap().containsKey(deviceId)) {
       return null;

@@ -158,8 +158,6 @@ public class SeqResourceIterateReader extends IterateReader {
   private IAggregateReader initSealedTsFileReader(TsFileResource sealedTsFile, Filter filter,
       QueryContext context) throws IOException {
     // prepare metaDataList
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(sealedTsFile.getFile().getPath(), true);
     List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
         .get(sealedTsFile.getFile().getPath(), seriesPath);
 
@@ -173,6 +171,8 @@ public class SeqResourceIterateReader extends IterateReader {
       Collections.reverse(metaDataList);
     }
     // prepare chunkLoader
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
+        .get(sealedTsFile.getFile().getPath(), true);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     // init fileSeriesReader

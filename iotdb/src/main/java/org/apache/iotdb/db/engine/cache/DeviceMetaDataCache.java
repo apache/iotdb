@@ -115,7 +115,7 @@ public class DeviceMetaDataCache {
       }
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
       TsDeviceMetadata blockMetaData = TsFileMetadataUtils
-          .getTsRowGroupBlockMetaData(filePath, seriesPath.getDevice(),
+          .getTsDeviceMetaData(filePath, seriesPath.getDevice(),
               fileMetaData);
       Map<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
           .getChunkMetaDataList(calHotSensorSet(seriesPath), blockMetaData);

@@ -243,7 +243,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * returns the top k% measurements that are most frequently used in queries.
+   * returns the top k% measurements that are recently used in queries.
    */
   public Set calTopKMeasurement(String deviceId, String sensorId, double k)
       throws StorageEngineException {

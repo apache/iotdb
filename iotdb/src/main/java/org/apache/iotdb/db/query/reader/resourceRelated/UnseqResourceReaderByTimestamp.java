@@ -52,8 +52,6 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
     int priorityValue = 1;
 
     for (TsFileResource tsFileResource : unseqResources) {
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-          .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
 
       // prepare metaDataList
       List<ChunkMetaData> metaDataList;
@@ -70,6 +68,8 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
       }
 
       // create and add ChunkReaderByTimestamp with priority
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
+          .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
       ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
