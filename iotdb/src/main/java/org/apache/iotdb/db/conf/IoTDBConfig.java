@@ -99,6 +99,11 @@ public class IoTDBConfig {
   private String systemDir = "data/system";
 
   /**
+   *  Schema directory, including storage set of values.
+   */
+  private String schemaDir = "data/system/schema";
+
+  /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
   private String[] dataDirs = {"data/data"};
@@ -346,6 +351,10 @@ public class IoTDBConfig {
 
   void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getSchemaDir() {
+    return schemaDir;
   }
 
   public String getWalFolder() {
