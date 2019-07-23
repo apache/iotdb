@@ -19,6 +19,6 @@
 
 -->
 
-# Chaper7: TsFile
+# Chaper 7: TsFile
 
 Coming Soon.

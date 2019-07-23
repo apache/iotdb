@@ -26,7 +26,7 @@
 <!-- > 
 ### Data Update
 
-Users can use [UPDATE statements](/#/Documents/latest/chap5/sec1) to update data over a period of time in a specified timeseries. When updating data, users can select a timeseries to be updated (version 0.7.0 does not support multiple timeseries updates) and specify a time point or period to be updated (version 0.7.0 must have time filtering conditions).
+Users can use [UPDATE statements](/#/Documents/latest/chap5/sec1) to update data over a period of time in a specified timeseries. When updating data, users can select a timeseries to be updated (version 0.8.0 does not support multiple timeseries updates) and specify a time point or period to be updated (version 0.8.0 must have time filtering conditions).
 
 In a JAVA programming environment, you can use the [Java JDBC](/#/Documents/latest/chap6/sec1) to execute single or batch UPDATE statements.
 
@@ -54,7 +54,7 @@ Msg: do not select any existing series
 
 ### Data Deletion
 
-Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](/#/Documents/latest/chap5/sec1). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data before a certain time (version 0.7.0 does not support the deletion of data within a closed time interval).
+Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](/#/Documents/latest/chap5/sec1). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data before a certain time (version 0.8.0 does not support the deletion of data within a closed time interval).
 
 In a JAVA programming environment, you can use the [Java JDBC](/#/Documents/latest/chap6/sec1) to execute single or batch UPDATE statements.
 
