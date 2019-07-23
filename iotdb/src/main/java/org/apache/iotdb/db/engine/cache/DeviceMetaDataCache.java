@@ -53,9 +53,9 @@ public class DeviceMetaDataCache {
    * <p>
    * value: chunkMetaData list of one timeseries in the file.
    */
-  private LruLinkedHashMap<String, List<ChunkMetaData>> lruCache;
+  private LRULinkedHashMap<String, List<ChunkMetaData>> lruCache;
 
-  private AtomicLong cacheHintNum = new AtomicLong();
+  private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   /**
@@ -64,7 +64,7 @@ public class DeviceMetaDataCache {
   private long chunkMetaDataSize = 0;
 
   private DeviceMetaDataCache(long memoryThreshold) {
-    lruCache = new LruLinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
+    lruCache = new LRULinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
       @Override
       protected long calEntrySize(String key, List<ChunkMetaData> value) {
         if (chunkMetaDataSize == 0 && !value.isEmpty()) {
@@ -92,12 +92,12 @@ public class DeviceMetaDataCache {
     synchronized (lruCache) {
       cacheRequestNum.incrementAndGet();
       if (lruCache.containsKey(key)) {
-        cacheHintNum.incrementAndGet();
+        cacheHitNum.incrementAndGet();
         if (logger.isDebugEnabled()) {
           logger.debug(
               "Cache hit: the number of requests for cache is {}, "
                   + "the number of hints for cache is {}",
-              cacheRequestNum.get(), cacheHintNum.get());
+              cacheRequestNum.get(), cacheHitNum.get());
         }
         return new ArrayList<>(lruCache.get(key));
       }
@@ -105,7 +105,7 @@ public class DeviceMetaDataCache {
     synchronized (devicePathObject) {
       synchronized (lruCache) {
         if (lruCache.containsKey(key)) {
-          cacheHintNum.incrementAndGet();
+          cacheHitNum.incrementAndGet();
           return new ArrayList<>(lruCache.get(key));
         }
       }
@@ -114,11 +114,14 @@ public class DeviceMetaDataCache {
             cacheRequestNum.get());
       }
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
-      TsDeviceMetadata blockMetaData = TsFileMetadataUtils
-          .getTsDeviceMetaData(filePath, seriesPath.getDevice(),
-              fileMetaData);
+      TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
+          .getTsDeviceMetaData(filePath, seriesPath, fileMetaData);
+      // If measurement isn't included in the tsfile, empty list is returned.
+      if(deviceMetaData == null){
+        return new ArrayList<>();
+      }
       Map<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
-          .getChunkMetaDataList(calHotSensorSet(seriesPath), blockMetaData);
+          .getChunkMetaDataList(calHotSensorSet(seriesPath), deviceMetaData);
       synchronized (lruCache) {
         chunkMetaData.forEach((path, chunkMetaDataList) -> {
           String k = pathDeviceStr + "." + path.getMeasurement();

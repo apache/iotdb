@@ -25,7 +25,7 @@ import java.util.Map;
 /**
  * This class is an LRU cache. <b>Note: It's not thread safe.</b>
  */
-public abstract class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
+public abstract class LRULinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
   private static final long serialVersionUID = 1290160928914532649L;
   private static final float LOAD_FACTOR_MAP = 0.75f;
@@ -39,7 +39,7 @@ public abstract class LruLinkedHashMap<K, V> extends LinkedHashMap<K, V> {
    */
   private long usedMemInB;
 
-  public LruLinkedHashMap(long maxMemInB, boolean isLru) {
+  public LRULinkedHashMap(long maxMemInB, boolean isLru) {
     super(INITIAL_CAPACITY, LOAD_FACTOR_MAP, isLru);
     this.maxMemInB = maxMemInB;
   }

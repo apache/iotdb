@@ -67,10 +67,13 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
-      // create and add ChunkReaderByTimestamp with priority
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-          .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
-      ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
+      ChunkLoaderImpl chunkLoader = null;
+      if (!metaDataList.isEmpty()) {
+        // create and add ChunkReader with priority
+        TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
+            .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
+        chunkLoader = new ChunkLoaderImpl(tsFileReader);
+      }
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
         Chunk chunk = chunkLoader.getChunk(chunkMetaData);

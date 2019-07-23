@@ -58,17 +58,17 @@ public class TsFileMetadataUtils {
    * get row group block meta data.
    *
    * @param filePath -file path
-   * @param deviceId -device id
+   * @param seriesPath -series path
    * @param fileMetaData -tsfile meta data
    * @return -device meta data
    */
-  public static TsDeviceMetadata getTsDeviceMetaData(String filePath, String deviceId,
+  public static TsDeviceMetadata getTsDeviceMetaData(String filePath, Path seriesPath,
       TsFileMetaData fileMetaData) throws IOException {
-    if (!fileMetaData.getDeviceMap().containsKey(deviceId)) {
+    if (!fileMetaData.getMeasurementSchema().containsKey(seriesPath.getMeasurement())) {
       return null;
     } else {
       // get the index information of TsDeviceMetadata
-      TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(deviceId);
+      TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(seriesPath.getDevice());
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
       // read TsDeviceMetadata from file
       return tsFileReader.readTsDeviceMetaData(index);

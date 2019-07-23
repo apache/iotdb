@@ -84,10 +84,14 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
-      // create and add ChunkReader with priority
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-          .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
-      ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
+      ChunkLoaderImpl chunkLoader = null;
+      if (!metaDataList.isEmpty()) {
+        // create and add ChunkReader with priority
+        TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
+            .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
+        chunkLoader = new ChunkLoaderImpl(tsFileReader);
+      }
+
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
         if (filter != null) {

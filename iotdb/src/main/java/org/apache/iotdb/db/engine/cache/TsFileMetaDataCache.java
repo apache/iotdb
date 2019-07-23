@@ -39,8 +39,8 @@ public class TsFileMetaDataCache {
   /**
    * key: Tsfile path. value: TsFileMetaData
    */
-  private LruLinkedHashMap<String, TsFileMetaData> cache;
-  private AtomicLong cacheHintNum = new AtomicLong();
+  private LRULinkedHashMap<String, TsFileMetaData> cache;
+  private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   /**
@@ -57,7 +57,7 @@ public class TsFileMetaDataCache {
   private long versionAndCreatebySize = 10;
 
   private TsFileMetaDataCache() {
-    cache = new LruLinkedHashMap<String, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
+    cache = new LRULinkedHashMap<String, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
       protected long calEntrySize(String key, TsFileMetaData value) {
         if (deviceIndexMapEntrySize == 0 && value.getDeviceMap().size() > 0) {
@@ -91,12 +91,12 @@ public class TsFileMetaDataCache {
     cacheRequestNum.incrementAndGet();
     synchronized (cache) {
       if (cache.containsKey(path)) {
-        cacheHintNum.incrementAndGet();
+        cacheHitNum.incrementAndGet();
         if (logger.isDebugEnabled()) {
           logger.debug(
               "Cache hit: the number of requests for cache is {}, "
                   + "the number of hints for cache is {}",
-              cacheRequestNum.get(), cacheHintNum.get());
+              cacheRequestNum.get(), cacheHitNum.get());
         }
         return cache.get(path);
       }
@@ -104,7 +104,7 @@ public class TsFileMetaDataCache {
     synchronized (internPath) {
       synchronized (cache) {
         if (cache.containsKey(path)) {
-          cacheHintNum.incrementAndGet();
+          cacheHitNum.incrementAndGet();
           return cache.get(path);
         }
       }
