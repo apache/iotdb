@@ -52,7 +52,7 @@ Grafana是开源的指标量监测和可视化工具，可用于展示时序数�
 * 插件名称: simple-json-datasource
 * 下载地址: https://github.com/grafana/simple-json-datasource
 
-具体下载方法是：到Grafana的插件目录中：`{Grafana文件目录}/data/plugin/`（Windows系统，启动Grafana后会自动创建`data/plugin`目录）或`/var/lib/grafana/plugins` （Linux系统，plugins目录需要手动创建）或`/usr/local/var/lib/grafana/plugins`（MacOS系统，具体位置参看使用`brew install`安装Grafana后命令行给出的位置提示。
+具体下载方法是：到Grafana的插件目录中：`{Grafana文件目录}\data\plugin\`（Windows系统，启动Grafana后会自动创建`data\plugin`目录）或`/var/lib/grafana/plugins` （Linux系统，plugins目录需要手动创建）或`/usr/local/var/lib/grafana/plugins`（MacOS系统，具体位置参看使用`brew install`安装Grafana后命令行给出的位置提示。
 
 执行下面的命令：
 
@@ -133,3 +133,4 @@ Grafana以网页的dashboard形式为您展示数据，在使用时请您打开�
 进入Grafana可视化页面后，可以选择添加时间序列，如图 6.9。您也可以按照Grafana官方文档进行相应的操作，详情可参看Grafana官方文档：http://docs.grafana.org/guides/getting_started/。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
+
