@@ -23,10 +23,10 @@
 
 ## Data Model Selection
 
-Before importing data to IoTDB, we first select the appropriate data storage model according to the [sample data](/#/Documents/latest/chap3/sec1), and then create the storage group and timeseries using [SET STORAGE GROUP](/#/Documents/latest/chap5/sec1) statement and [CREATE TIMESERIES](/#/Documents/latest/chap5/sec1) statement respectively.
+Before importing data to IoTDB, we first select the appropriate data storage model according to the [sample data](/#/Documents/0.8.0/chap3/sec1), and then create the storage group and timeseries using [SET STORAGE GROUP](/#/Documents/0.8.0/chap5/sec1) statement and [CREATE TIMESERIES](/#/Documents/0.8.0/chap5/sec1) statement respectively.
 
 ### Storage Model Selection
-According to the data attribute layers described in [sample data](/#/Documents/latest/chap3/sec1), we can express it as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 3.1 below. Its hierarchical relationship is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is called a leaf node. In the process of using IoTDB, you can directly connect the attributes on the path from ROOT node to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 3.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
+According to the data attribute layers described in [sample data](/#/Documents/0.8.0/chap3/sec1), we can express it as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 3.1 below. Its hierarchical relationship is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is called a leaf node. In the process of using IoTDB, you can directly connect the attributes on the path from ROOT node to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 3.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg">
 
@@ -52,7 +52,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 ```
 
 ### Show Storage Group
-After the storage group is created, we can use the [SHOW STORAGE GROUP](/#/Documents/latest/chap5/sec1) statement to view all the storage groups. The SQL statement is as follows:
+After the storage group is created, we can use the [SHOW STORAGE GROUP](/#/Documents/0.8.0/chap5/sec1) statement to view all the storage groups. The SQL statement is as follows:
 
 ```
 IoTDB> show storage group
@@ -80,7 +80,7 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-Please refer to [Encoding](/#/Documents/latest/chap2/sec3) for correspondence between data type and encoding.
+Please refer to [Encoding](/#/Documents/0.8.0/chap2/sec3) for correspondence between data type and encoding.
 
 ### Show Timeseries
 
@@ -105,6 +105,6 @@ It is worth noting that when the queried path does not exist, the system will re
 
 Version 0.7.0 imposes some limitations on the scale of data that users can operate:
 
-Limit 1: Assuming that the JVM memory allocated to IoTDB at runtime is p and the user-defined size of data in memory written to disk ([group\_size\_in\_byte](/#/Documents/latest/chap4/sec2)) is Q, then the number of storage groups should not exceed p/q.
+Limit 1: Assuming that the JVM memory allocated to IoTDB at runtime is p and the user-defined size of data in memory written to disk ([group\_size\_in\_byte](/#/Documents/0.8.0/chap4/sec2)) is Q, then the number of storage groups should not exceed p/q.
 
 Limit 2: The number of timeseries should not exceed the ratio of JVM memory allocated to IoTDB at run time to 20KB.
