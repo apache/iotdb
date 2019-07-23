@@ -135,14 +135,14 @@
     </dependencies>
     <modules>
         <module>tsfile</module>
-        <module>jdbc</module>
-        <module>iotdb</module>
-        <module>grafana</module>
         <module>service-rpc</module>
-        <module>iotdb-cli</module>
+        <module>jdbc</module>
+        <module>client</module>
+        <module>server</module>
         <module>example</module>
+        <module>grafana</module>
+        <module>spark-tsfile</module>
         <!-- <module>hadoop</module> -->
-        <module>spark</module>
     </modules>
     <build>
         <pluginManagement>
