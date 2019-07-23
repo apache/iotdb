@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
@@ -186,5 +187,29 @@ public class MergeUtils {
       minPos = metadataIndex.getOffset() < minPos ? metadataIndex.getOffset() : minPos;
     }
     return seqFile.getFileSize() - minPos;
+  }
+
+  public static List<Chunk> collectUnseqChunks(Path seriesPath, List<TsFileResource> unseqResources,
+      MergeResource resource)
+      throws IOException {
+    List<Chunk> chunks = new ArrayList<>();
+    for (TsFileResource tsFileResource : unseqResources) {
+      TsFileSequenceReader tsFileReader = resource.getFileReader(tsFileResource);
+
+      // prepare metaDataList
+      List<ChunkMetaData> metaDataList = tsFileReader.getChunkMetadata(seriesPath);
+      List<Modification> pathModifications =
+          resource.getModifications(tsFileResource, seriesPath);
+      if (!pathModifications.isEmpty()) {
+        QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
+      }
+
+      // create and add ChunkReader
+      for (ChunkMetaData chunkMetaData : metaDataList) {
+        Chunk chunk = tsFileReader.readMemChunk(chunkMetaData);
+        chunks.add(chunk);
+      }
+    }
+    return chunks;
   }
 }

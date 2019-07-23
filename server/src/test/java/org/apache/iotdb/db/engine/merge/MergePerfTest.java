@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
@@ -39,8 +40,8 @@ public class MergePerfTest extends MergeTest{
     setUp();
     timeConsumption = System.currentTimeMillis();
     MergeTask mergeTask =
-        new MergeTask(seqResources, unseqResources, tempSGDir.getPath(), (k, v, l) -> {}, "test",
-            fullMerge, 100);
+        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v
+            , l) -> {}, "test", fullMerge, 100);
     mergeTask.call();
     timeConsumption = System.currentTimeMillis() - timeConsumption;
     tearDown();

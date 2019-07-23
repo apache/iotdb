@@ -117,7 +117,6 @@ public class MergeFileSelector {
       if (selectedUnseqFiles.isEmpty()) {
         select(true);
       }
-      clear();
       if (selectedUnseqFiles.isEmpty()) {
         logger.info("No merge candidates are found");
         return new List[0];
@@ -307,5 +306,9 @@ public class MergeFileSelector {
 
   public int getConcurrentMergeNum() {
     return concurrentMergeNum;
+  }
+
+  public Map<TsFileResource, TsFileSequenceReader> getFileReaderCache() {
+    return fileReaderCache;
   }
 }

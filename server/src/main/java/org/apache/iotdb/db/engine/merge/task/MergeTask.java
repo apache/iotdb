@@ -67,10 +67,9 @@ public class MergeTask implements Callable<Void> {
     this.concurrentMergeSeriesNum = 1;
   }
 
-  public MergeTask(List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
+  public MergeTask(MergeResource mergeResource, String storageGroupDir, MergeCallback callback,
       String taskName, boolean fullMerge, int concurrentMergeSeriesNum) {
-    this.resource = new MergeResource(seqFiles, unseqFiles);
+    this.resource = mergeResource;
     this.storageGroupDir = storageGroupDir;
     this.callback = callback;
     this.taskName = taskName;
