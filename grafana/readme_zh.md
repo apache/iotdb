@@ -32,7 +32,7 @@ Grafana下载地址：https://grafana.com/grafana/download
 插件下载地址：https://github.com/grafana/simple-json-datasource
 
 下载并解压，将文件放到Grafana的目录中：
-`data/plugin/`（Windows）或`/var/lib/grafana/plugins` (Linux)
+`data\plugin\`（Windows）或`/var/lib/grafana/plugins` (Linux)
 
 # 启动Grafana
 启动 Grafana
