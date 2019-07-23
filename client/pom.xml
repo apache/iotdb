@@ -103,39 +103,6 @@
                     <outputDirectory>${project.basedir}/cli/lib</outputDirectory>
                 </configuration>
             </plugin>
-            <plugin>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>1.8</version>
-                <executions>
-                    <execution>
-                        <id>copy</id>
-                        <phase>package</phase>
-                        <configuration>
-                            <target>
-                                <echo>ANT TASK - copying client files....</echo>
-                                <copy todir="${maven.multiModuleProjectDirectory}/target/lib/" overwrite="true" flatten="true">
-                                    <fileset dir="${project.basedir}/cli/lib" includes="*.jar">
-                                        <include name="*.jar"/>
-                                    </fileset>
-                                </copy>
-                                <copy todir="${maven.multiModuleProjectDirectory}/target/sbin/" overwrite="true" flatten="true">
-                                    <fileset dir="${project.basedir}/cli/sbin" includes="*">
-                                        <include name="*"/>
-                                    </fileset>
-                                </copy>
-                                <copy todir="${maven.multiModuleProjectDirectory}/target/tools/" overwrite="true" flatten="true">
-                                    <fileset dir="${project.basedir}/cli/tools" includes="*">
-                                        <include name="*"/>
-                                    </fileset>
-                                </copy>
-                            </target>
-                        </configuration>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <!--using `mvn test` to run UT, `mvn verify` to run ITs
             Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
