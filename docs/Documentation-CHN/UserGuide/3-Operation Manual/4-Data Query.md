@@ -24,7 +24,7 @@
 ## 数据查询
 ### 时间切片查询
 
-本章节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](/#/Documents/latest/chap5/sec1)。同时，您也可以使用[Java JDBC](/#/Documents/latest/chap6/sec1)标准接口来执行相关的查询语句。
+本章节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](/#/Documents/0.8.0/chap5/sec1)。同时，您也可以使用[Java JDBC](/#/Documents/0.8.0/chap6/sec1)标准接口来执行相关的查询语句。
 
 #### 根据一个时间区间选择一列数据
 
@@ -35,7 +35,7 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 ```
 其含义为：
 
-被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](/#/Documents/latest/chap2/sec1)）时间点以前的所有温度传感器的值。
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](/#/Documents/0.8.0/chap2/sec1)）时间点以前的所有温度传感器的值。
 
 该SQL语句的执行结果如下：
 
@@ -89,7 +89,7 @@ select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01
 
 ### 降频聚合查询
 
-本章节主要介绍降频聚合查询的相关示例，主要使用的是IoTDB SELECT语句的[GROUP BY子句](/#/Documents/latest/chap5/sec1)，该子句是IoTDB中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。IoTDB支持根据时间间隔对结果集进行划分，默认结果按照时间升序排列。同时，您也可以使用[Java JDBC](/#/Documents/latest/chap6/sec1)标准接口来执行相关的查询语句。
+本章节主要介绍降频聚合查询的相关示例，主要使用的是IoTDB SELECT语句的[GROUP BY子句](/#/Documents/0.8.0/chap5/sec1)，该子句是IoTDB中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。IoTDB支持根据时间间隔对结果集进行划分，默认结果按照时间升序排列。同时，您也可以使用[Java JDBC](/#/Documents/0.8.0/chap6/sec1)标准接口来执行相关的查询语句。
 
 GROUP BY语句为用户提供三类指定参数：
 
@@ -209,7 +209,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 由于2017-11-01T16:37:50.000时刻，时间序列`root.sgcc.wf03.wt01.temperature`结果为空值，系统采用2017-11-01T16:37:50.000时刻的前一个时间戳（且该时间戳在[2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000]时间范围内）的值进行补值并显示。
 
-在本文的[样例数据集](/#/Documents/latest/chap3/sec1)上，该语句的执行结果如图所示：
+在本文的[样例数据集](/#/Documents/0.8.0/chap3/sec1)上，该语句的执行结果如图所示：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
 
 值得说明的是，如果在填充指定的有效时间内没有数值，则系统不会进行填充，返回为空，如图所示：
@@ -243,7 +243,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 由于2017-11-01T16:37:50.000时刻，时间序列`root.sgcc.wf03.wt01.temperature`结果为空值，系统采用2017-11-01T16:37:50.000时刻的前一个时间戳（且该时间戳在[2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000]时间范围内）2017-11-01T16:37:00.000及其值21.927326、2017-11-01T16:37:50.000时刻的后一个时间戳（且该时间戳在[2017-11-01T16:37:50.000, 2017-11-01T16:38:50.000]时间范围内）2017-11-01T16:39:00.000及其值25.311783进行线性计算得到结果为21.927326 + (25.311783-21.927326)/60s*50s = 24.747707。
 
-在本文的[样例数据集](/#/Documents/latest/chap3/sec1)上，该语句的执行结果如图所示：
+在本文的[样例数据集](/#/Documents/0.8.0/chap3/sec1)上，该语句的执行结果如图所示：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
 
 #### 数据类型与填充方法对应关系
@@ -282,11 +282,11 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 > 注意: 0.8.0版本中Fill语句内至少指定一种填充类型。
 
 ### 查询结果的分页控制
-为方便用户在对IoTDB进行查询时更好的进行结果阅读，IoTDB为用户提供了[LIMIT/SLIMIT](/#/Documents/latest/chap5/sec1)子句以及[OFFSET/SOFFSET](/#/Documents/latest/chap5/sec1)子句。使用LIMIT和SLIMIT子句可以允许用户对查询结果的行数和列数进行控制，使用OFFSET和SOFFSET子句可以允许用户设定结果展示的起始位置。
+为方便用户在对IoTDB进行查询时更好的进行结果阅读，IoTDB为用户提供了[LIMIT/SLIMIT](/#/Documents/0.8.0/chap5/sec1)子句以及[OFFSET/SOFFSET](/#/Documents/0.8.0/chap5/sec1)子句。使用LIMIT和SLIMIT子句可以允许用户对查询结果的行数和列数进行控制，使用OFFSET和SOFFSET子句可以允许用户设定结果展示的起始位置。
 
 值得说明的是，LIMIT/SLIMIT子句以及OFFSET/SOFFSET子句均不改变查询的实际执行过程，仅对查询返回的结果进行约束。
 
-本章节主要介绍查询结果分页控制的相关示例。同时你也可以使用[Java JDBC](/#/Documents/latest/chap6/sec1)标准接口来执行相关的查询语句。
+本章节主要介绍查询结果分页控制的相关示例。同时你也可以使用[Java JDBC](/#/Documents/0.8.0/chap6/sec1)标准接口来执行相关的查询语句。
 
 #### 查询结果的行数控制
 
