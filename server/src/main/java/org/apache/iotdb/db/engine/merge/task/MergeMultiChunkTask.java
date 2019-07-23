@@ -182,8 +182,10 @@ class MergeMultiChunkTask {
     mergeFileWriter.startChunkGroup(deviceId);
     boolean dataWritten = false;
     for (int pathIdx : unskippedPathIndices) {
-      currDeviceMinTime = currDeviceMinTime > currTimeValuePairs[pathIdx].getTimestamp() ?
-          currTimeValuePairs[pathIdx].getTimestamp() : currDeviceMinTime;
+      if (currTimeValuePairs[pathIdx] != null) {
+        currDeviceMinTime = currDeviceMinTime > currTimeValuePairs[pathIdx].getTimestamp() ?
+            currTimeValuePairs[pathIdx].getTimestamp() : currDeviceMinTime;
+      }
       dataWritten = mergeChunks(seqChunkMeta[pathIdx], isLastFile,
           fileSequenceReader, unseqReader.get(pathIdx), mergeFileWriter, currTsFile, pathIdx)
           || dataWritten;
