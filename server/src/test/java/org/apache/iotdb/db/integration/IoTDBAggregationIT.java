@@ -472,6 +472,14 @@ public class IoTDBAggregationIT {
       statement.close();
 
       statement = connection.createStatement();
+      resultSet = statement.executeQuery("select s0,s2 " +
+          "from root.vehicle.d0 where time >= 1000 and time <= 2000");
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0)
+            + "," + resultSet.getString(d0s2);
+        System.out.println(ans);
+      }
+
       hasResultSet = statement.execute("select sum(s0),mean(s2)" +
           "from root.vehicle.d0 where time >= 1000 and time <= 2000");
 
