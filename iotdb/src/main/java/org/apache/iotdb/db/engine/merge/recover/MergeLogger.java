@@ -53,8 +53,11 @@ public class MergeLogger {
     logStream.close();
   }
 
-  public void logTSStart(Path path) throws IOException {
-    logStream.write(path.getFullPath() + " " + STR_START);
+  public void logTSStart(List<Path> paths) throws IOException {
+    logStream.write(STR_START);
+    for (Path path : paths) {
+      logStream.write(" " + path.getFullPath());
+    }
     logStream.newLine();
     logStream.flush();
   }
@@ -65,8 +68,8 @@ public class MergeLogger {
     logStream.flush();
   }
 
-  public void logTSEnd(Path path) throws IOException {
-    logStream.write(path.getFullPath() + " " + STR_END);
+  public void logTSEnd() throws IOException {
+    logStream.write(STR_END);
     logStream.newLine();
     logStream.flush();
   }
@@ -84,7 +87,7 @@ public class MergeLogger {
   }
 
   public void logFileMergeEnd(File file) throws IOException {
-    logStream.write(file.getAbsolutePath() + " " + STR_END);
+    logStream.write( STR_END + " " + file.getAbsolutePath() );
     logStream.newLine();
     logStream.flush();
   }

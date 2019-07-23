@@ -38,7 +38,9 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileSelector;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -712,8 +714,7 @@ public class StorageGroupProcessor {
       }
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-      MergeFileSelector fileSelector = new MergeFileSelector(sequenceFileList, unSequenceFileList,
-           budget);
+      MergeFileSelector fileSelector = getMergeFileSelector(budget);
       try {
         List[] mergeFiles = fileSelector.select();
         if (mergeFiles.length == 0) {
@@ -739,6 +740,18 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
+    }
+  }
+
+  private MergeFileSelector getMergeFileSelector(long budget) {
+    MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
+    switch (strategy) {
+      case MAX_FILE_NUM:
+        return new MergeFileSelector(sequenceFileList, unSequenceFileList, budget);
+      case MAX_SERIES_NUM:
+        return new MaxSeriesMergeFileSelector(sequenceFileList, unSequenceFileList, budget);
+      default:
+        throw new UnsupportedOperationException("Unknown MergeFileStrategy " + strategy);
     }
   }
 

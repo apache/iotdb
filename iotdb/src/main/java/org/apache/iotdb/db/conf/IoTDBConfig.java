@@ -23,6 +23,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.slf4j.Logger;
@@ -255,6 +256,8 @@ public class IoTDBConfig {
    * this threshold and the new chunk will be flushed.
    */
   private int chunkMergePointThreshold = 512;
+
+  private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   public IoTDBConfig() {
     // empty constructor
@@ -674,5 +677,14 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public MergeFileStrategy getMergeFileStrategy() {
+    return mergeFileStrategy;
+  }
+
+  public void setMergeFileStrategy(
+      MergeFileStrategy mergeFileStrategy) {
+    this.mergeFileStrategy = mergeFileStrategy;
   }
 }

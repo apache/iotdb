@@ -28,7 +28,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -37,8 +40,13 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MergeUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(MergeUtils.class);
+
   private MergeUtils() {
     // util class
   }
@@ -179,5 +187,33 @@ public class MergeUtils {
         (l1 <= r2 && r2 <= r1) ||
         (l2 <= l1 && l1 <= r2) ||
         (l2 <= r1 && r1 <= r2);
+  }
+
+  // returns totalChunkNum of a file and the max number of chunks of a series
+  public static long[] findLargestSeriesChunkNum(TsFileResource tsFileResource,
+      TsFileSequenceReader sequenceReader)
+      throws IOException {
+    long totalChunkNum = 0;
+    long maxChunkNum = Long.MIN_VALUE;
+    List<Path> paths = collectFileSeries(sequenceReader);
+
+    for (Path path : paths) {
+      List<ChunkMetaData> chunkMetaDataList = sequenceReader.getChunkMetadata(path);
+      totalChunkNum += chunkMetaDataList.size();
+      maxChunkNum = chunkMetaDataList.size() > maxChunkNum ? chunkMetaDataList.size() : maxChunkNum;
+    }
+    logger.debug("In file {}, total chunk num {}, series max chunk num {}", tsFileResource,
+        totalChunkNum, maxChunkNum);
+    return new long[] {totalChunkNum, maxChunkNum};
+  }
+
+  public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) throws IOException {
+    long minPos = Long.MAX_VALUE;
+    TsFileMetaData fileMetaData = sequenceReader.readFileMetadata();
+    Map<String, TsDeviceMetadataIndex> deviceMap = fileMetaData.getDeviceMap();
+    for (TsDeviceMetadataIndex metadataIndex : deviceMap.values()) {
+      minPos = metadataIndex.getOffset() < minPos ? metadataIndex.getOffset() : minPos;
+    }
+    return seqFile.getFileSize() - minPos;
   }
 }
