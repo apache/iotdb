@@ -44,7 +44,7 @@ set JAVA_OPTS=-ea^
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="%IOTDB_HOME%\lib"
 
-REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
+@REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
 for %%i in ("%IOTDB_HOME%\lib\*.jar") do call :append "%%i"
 set CLASSPATH=%CLASSPATH%;SyncClient
 goto okClasspath
@@ -53,10 +53,10 @@ goto okClasspath
 set CLASSPATH=%CLASSPATH%;%1
 goto :eof
 
-REM -----------------------------------------------------------------------------
+@REM -----------------------------------------------------------------------------
 :okClasspath
 
-rem echo CLASSPATH: %CLASSPATH%
+@rem echo CLASSPATH: %CLASSPATH%
 
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS%
 goto finally

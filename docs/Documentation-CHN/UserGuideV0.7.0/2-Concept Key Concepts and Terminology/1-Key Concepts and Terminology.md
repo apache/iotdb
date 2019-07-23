@@ -32,7 +32,7 @@ IoTDB中涉及如下基本概念：
 
 传感器是指在实际场景中的一种检测装置，它能感受到被测量的信息，并能将感受到的信息按一定规律变换成为电信号或其他所需形式的信息输出并发送给IoTDB。在IoTDB当中，存储的所有的数据及路径，都是以传感器为单位进行组织。
 
-* 3.1.3 存储组
+* 存储组
 
 用户可以将任意前缀路径设置成存储组。如有4条时间序列`root.vehicle.d1.s1`, `root.vehicle.d1.s2`, `root.vehicle.d2.s1`, `root.vehicle.d2.s2`，路径`root.vehicle`下的两个设备d1,d2可能属于同一个业主，或者同一个厂商，因此关系紧密。这时候就可以将前缀路径`root.vehicle`指定为一个存储组，这将使得IoTDB将其下的所有设备的数据存储在同一个文件夹下。未来`root.vehicle`下增加了新的设备，也将属于该存储组。
 
@@ -94,12 +94,12 @@ LayerName: Identifier | STAR
 
 时间戳是一个数据到来的时间点。IoTDB时间戳分为两种类型，一种为LONG类型，一种为DATETIME类型（包含DATETIME-INPUT, DATETIME-DISPLAY两个小类）。
 
-在用户在输入时间戳时，可以使用LONG类型的时间戳或DATETIME-INPUT类型的时间戳，其中DATETIME-INPUT类型的时间戳支持格式见表格2-1。
+在用户在输入时间戳时，可以使用LONG类型的时间戳或DATETIME-INPUT类型的时间戳，其中DATETIME-INPUT类型的时间戳支持格式如表所示：
 
-<center>**表格2-1 DATETIME-INPUT类型支持格式**
+<center>**DATETIME-INPUT类型支持格式**
 
 |format|
-|:---:|
+|:---|
 |yyyy-MM-dd HH:mm:ss|
 |yyyy/MM/dd HH:mm:ss|
 |yyyy.MM.dd HH:mm:ss|
@@ -128,9 +128,9 @@ LayerName: Identifier | STAR
 
 </center>
 
-IoTDB在显示时间戳时可以支持LONG类型以及DATETIME-DISPLAY类型，其中DATETIME-DISPLAY类型可以支持用户自定义时间格式。自定义时间格式的语法见表格2-2。
+IoTDB在显示时间戳时可以支持LONG类型以及DATETIME-DISPLAY类型，其中DATETIME-DISPLAY类型可以支持用户自定义时间格式。自定义时间格式的语法如表所示：
 
-<center>**表格2-2 DATETIME-DISPLAY自定义时间格式的语法**
+<center>**DATETIME-DISPLAY自定义时间格式的语法**
 
 |Symbol|Meaning|Presentation|Examples|
 |:---:|:---:|:---:|:---:|

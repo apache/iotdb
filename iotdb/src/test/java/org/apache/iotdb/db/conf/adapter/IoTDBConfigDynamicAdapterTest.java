@@ -61,9 +61,9 @@ public class IoTDBConfigDynamicAdapterTest {
 
   @Test
   public void addOrDeleteStorageGroup() throws ConfigAdjusterException {
-    System.out.println(
-        "System total memory : " + Runtime.getRuntime().maxMemory() / IoTDBConstant.MB
-            + "MB");
+//    System.out.println(
+//        "System total memory : " + Runtime.getRuntime().maxMemory() / IoTDBConstant.MB
+//            + "MB");
     int memTableNum = IoTDBConfigDynamicAdapter.MEM_TABLE_AVERAGE_QUEUE_LEN;
     for (int i = 1; i < 100; i++) {
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
@@ -78,7 +78,7 @@ public class IoTDBConfigDynamicAdapterTest {
         assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
       } catch (ConfigAdjusterException e) {
         assertEquals("The IoTDB system load is too large to create storage group.", e.getMessage());
-        System.out.println("it has created " + i + " storage groups.");
+        //System.out.println("it has created " + i + " storage groups.");
         assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
         break;
       }
@@ -109,14 +109,13 @@ public class IoTDBConfigDynamicAdapterTest {
             totalTimeseries);
       } catch (ConfigAdjusterException e) {
         assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
-        System.out.println("it has added " + i + " timeseries.");
+        //System.out.println("it has added " + i + " timeseries.");
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
             totalTimeseries);
         break;
       }
     }
   }
-
 
   @Test
   public void addOrDeleteTimeSeriesSyso() throws ConfigAdjusterException {
@@ -141,7 +140,6 @@ public class IoTDBConfigDynamicAdapterTest {
         MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() + 1);
       }
     } catch (ConfigAdjusterException e ) {
-      System.out.println(j);
       assertEquals("The IoTDB system load is too large to add timeseries.", e.getMessage());
     }
   }

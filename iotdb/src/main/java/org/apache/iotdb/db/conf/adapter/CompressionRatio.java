@@ -70,11 +70,7 @@ public class CompressionRatio {
   private CompressionRatio() {
     directory = new File(
         FilePathUtils.regularizePath(CONFIG.getSystemDir()) + COMPRESSION_RATIO_DIR);
-    try {
-      restore();
-    } catch (IOException e) {
-      LOGGER.error("Can not restore CompressionRatio", e);
-    }
+    restore();
   }
 
   /**
@@ -125,8 +121,10 @@ public class CompressionRatio {
   /**
    * Restore compression ratio statistics from disk when system restart
    */
-  void restore() throws IOException {
-    checkDirectoryExist();
+  void restore() {
+    if (!directory.exists()) {
+      return;
+    }
     File[] ratioFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
     if (ratioFiles != null && ratioFiles.length > 0) {
       long maxTimes = 0;

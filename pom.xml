@@ -59,6 +59,7 @@
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.0</commons.collections4>
         <thrift.version>0.9.3</thrift.version>
+        <airline.version>0.8</airline.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url>
         <!-- Exclude all generated code -->
@@ -94,6 +95,11 @@
                         <artifactId>httpcore</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>airline</artifactId>
+                <version>${airline.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

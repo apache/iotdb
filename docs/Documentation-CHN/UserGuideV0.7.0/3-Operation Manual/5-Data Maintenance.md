@@ -22,6 +22,9 @@
 # 第3章 IoTDB操作指南
 
 ## 数据维护
+
+<!-- > 
+
 ### 数据更新
 
 用户使用[UPDATE语句](/#/Documents/latest/chap5/sec1)可以更新指定的时间序列中一段时间的数据。在更新数据时，用户可以选择需要更新的一个时间序列（0.7.0版本暂不支持多个时间序列的更新）并指定更新某个时间点或时间段的数据（0.7.0版本必须有时间过滤条件）。
@@ -45,8 +48,10 @@ error: The BOOLEAN data type should be true/TRUE or false/FALSE
 当更新的列不存在时，IoTDB给出没有存在的路径的错误提示：
 ```
 IoTDB> update root.ln.wf02 set wt02.sta = false where time < now()
-error: do not select any existing path
+Msg: do not select any existing series
 ```
+-->
+
 ### 数据删除
 
 用户使用[DELETE语句](/#/Documents/latest/chap5/sec1)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带*路径对某时间之前的数据进行删除（0.7.0版本暂不支持删除某一闭时间区间范围内的数据）。
@@ -65,7 +70,7 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 
 #### 多传感器时间序列值删除	
 
-当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的前缀路径（参见本文第3.1.6节）或带`*`路径（参见本文第3.1.7节）进行删除操作，进行此操作的SQL语句为：
+当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](/#/Documents/latest/chap2/sec1)进行删除操作，进行此操作的SQL语句为：
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
@@ -79,5 +84,5 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 需要注意的是，当删除的路径不存在时，IoTDB会提示路径不存在，无法删除数据，如下所示。
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-error: TimeSeries does not exist and cannot be delete data
+Msg: TimeSeries does not exist and its data cannot be deleted
 ```

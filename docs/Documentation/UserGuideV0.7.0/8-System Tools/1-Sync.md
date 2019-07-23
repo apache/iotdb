@@ -19,19 +19,23 @@
 
 -->
 
+# Chapter 7: System Tools
+
+## Data Import
+
 <!-- TOC -->
 
-## Outline
-
-- Introduction
-- Configuration
-    - Sync Receiver
-    - Sync Sender
-- Usage
-    - Start Sync Receiver
-    - Stop Sync Receiver
-    - Start Sync Sender
-    - Stop Sync Sender
+- [Chapter 7: System Tools](#chapter-7-system-tools)
+    - [Data Import](#data-import)
+- [Introduction](#introduction)
+- [Configuration](#configuration)
+    - [Sync Receiver](#sync-receiver)
+    - [Sync Sender](#sync-sender)
+- [Usage](#usage)
+    - [Start Sync Receiver](#start-sync-receiver)
+    - [Stop Sync Receiver](#stop-sync-receiver)
+    - [Start Sync Sender](#start-sync-sender)
+    - [Stop Sync Sender](#stop-sync-sender)
 
 <!-- /TOC -->
 # Introduction
@@ -54,7 +58,7 @@ The parameter configuration of the sync receiver is located in the configuration
    </tr>
    <tr>
       <td width="30%">Description</td>
-      <td>Sync function switch, which is configured as true to indicate that the receiver is allowed to receive the data from sender and load it. When set to false, it means that the receiver is not allowed to receive the data from any sender.</td>
+      <td>Sync function switch, which is configured as true to indicate that the receiver is allowed to receive the data from the sender and load it. When set to false, it means that the receiver is not allowed to receive the data from any sender. </td>
    </tr>
    <tr>
       <td>Type</td>
@@ -140,7 +144,7 @@ The parameter configuration of the sync receiver is located in the configuration
 </table>
 
 ## Sync Sender
-The parameters of the sync sender are configured in a separate configuration file iotdb-postbackClient.pro-perties with the installation directory of ```$IOTDB_HOME/conf/iotdb-sync-client.properties```. In this configuration file, there are five parameters related to the sync sender. The configuration instructions are as follows:
+The parameters of the sync sender are configured in a separate configuration file iotdb-sync-client.properties with the installation directory of ```$IOTDB_HOME/conf/iotdb-sync-client.properties```. In this configuration file, there are five parameters related to the sync sender. The configuration instructions are as follows:
 <table>
    <tr>
       <td colspan="2">parameter: server_ip</td>
@@ -257,7 +261,7 @@ Stop IoTDB and the sync receiver will be closed at the same time.
 1. Set up parameters of sync sender. For example:
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494559-f9a8d580-8ebf-11e9-875e-355199c1a1e9.png">
 2. Start sync sender
-Users can use the scripts under the $IOTDB_HOME/bin folder to start the sync sender.
+Users can use the scripts under the ```$IOTDB_HOME/bin``` folder to start the sync sender.
 For Linux and Mac OS X users:
 ```
   Shell >$IOTDB_HOME/bin/start-sync-client.sh
@@ -269,7 +273,7 @@ For Windows users:
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494951-dc283b80-8ec0-11e9-9575-5d8578c08ceb.png">
 
 ## Stop Sync Sender
-Users can use the scripts under the $IOTDB_HOME/bin folder to stop the sync sender.
+Users can use the scripts under the ```$IOTDB_HOME/bin``` folder to stop the sync sender.
 For Linux and Mac OS X users:
 ```
   Shell >$IOTDB_HOME/bin/stop-sync-client.sh
