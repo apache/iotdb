@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.engine.merge.selector;
 
-
-import static org.apache.iotdb.db.utils.MergeUtils.collectFileSeries;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,31 +28,29 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * MergeFileSelector selects the most files from given seqFiles and unseqFiles which can be
- * merged without exceeding given memory budget.
+ * merged without exceeding given memory budget. It always assume the number of timeseries being
+ * queried at the same time is 1 to maximize the number of file merged.
  */
 public class MergeFileSelector {
 
   private static final Logger logger = LoggerFactory.getLogger(MergeFileSelector.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
-  private List<TsFileResource> seqFiles;
-  private List<TsFileResource> unseqFiles;
+  List<TsFileResource> seqFiles;
+  List<TsFileResource> unseqFiles;
 
-  private long totalCost;
+  long totalCost;
   private long memoryBudget;
   private long maxSeqFileCost;
 
-  private int concurrentMergeNum = 1;
+  // the number of timeseries being queried at the same time
+  int concurrentMergeNum = 1;
 
   /**
    * Total metadata size of each file.
@@ -66,8 +61,8 @@ public class MergeFileSelector {
    */
   private Map<TsFileResource, Long> maxSeriesQueryCostMap = new HashMap<>();
 
-  private List<TsFileResource> selectedUnseqFiles = new ArrayList<>();
-  private List<TsFileResource> selectedSeqFiles = new ArrayList<>();
+  List<TsFileResource> selectedUnseqFiles = new ArrayList<>();
+  List<TsFileResource> selectedSeqFiles = new ArrayList<>();
 
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
 
@@ -145,7 +140,7 @@ public class MergeFileSelector {
     maxSeriesQueryCostMap = null;
   }
 
-  private void select(boolean useTightBound) throws IOException {
+  void select(boolean useTightBound) throws IOException {
     tmpSelectedSeqFiles = new ArrayList<>();
     seqSelected = new boolean[seqFiles.size()];
 
@@ -229,14 +224,7 @@ public class MergeFileSelector {
   private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
     Long cost = fileMetaSizeMap.get(seqFile);
     if (cost == null) {
-      long minPos = Long.MAX_VALUE;
-      TsFileSequenceReader sequenceReader = getReader(seqFile);
-      TsFileMetaData fileMetaData = sequenceReader.readFileMetadata();
-      Map<String, TsDeviceMetadataIndex> deviceMap = fileMetaData.getDeviceMap();
-      for (TsDeviceMetadataIndex metadataIndex : deviceMap.values()) {
-        minPos = metadataIndex.getOffset() < minPos ? metadataIndex.getOffset() : minPos;
-      }
-      cost = seqFile.getFileSize() - minPos;
+      cost = MergeUtils.getFileMetaSize(seqFile, getReader(seqFile));
       fileMetaSizeMap.put(seqFile, cost);
       logger.debug(LOG_FILE_COST, seqFile, cost);
     }
@@ -247,7 +235,7 @@ public class MergeFileSelector {
       throws IOException {
     Long cost = maxSeriesQueryCostMap.get(seqFile);
     if (cost == null) {
-      long[] chunkNums = findLargestSeriesChunkNum(seqFile);
+      long[] chunkNums = MergeUtils.findLargestSeriesChunkNum(seqFile, getReader(seqFile));
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];
       cost = measurement.measure(seqFile) * maxChunkNum / totalChunkNum;
@@ -260,32 +248,19 @@ public class MergeFileSelector {
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
   // its proportion to all series to get a maximum estimation
   private long calculateTightSeqMemoryCost(TsFileResource seqFile) throws IOException {
-    return calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
+    long singleSeriesCost = calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
+    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
+    long maxCost = calculateMetadataSize(seqFile);
+    return multiSeriesCost > maxCost ? maxCost : multiSeriesCost;
   }
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
   // its proportion among all series to get a maximum estimation
-  private long calculateTightUnseqMemoryCost(TsFileResource unseqFile)
-      throws IOException {
-    return calculateTightFileMemoryCost(unseqFile, TsFileResource::getFileSize);
-  }
-
-  // returns totalChunkNum of a file and the max number of chunks of a series
-  private long[] findLargestSeriesChunkNum(TsFileResource tsFileResource)
-      throws IOException {
-    long totalChunkNum = 0;
-    long maxChunkNum = Long.MIN_VALUE;
-    TsFileSequenceReader sequenceReader = getReader(tsFileResource);
-    List<Path> paths = collectFileSeries(sequenceReader);
-
-    for (Path path : paths) {
-      List<ChunkMetaData> chunkMetaDataList = sequenceReader.getChunkMetadata(path);
-      totalChunkNum += chunkMetaDataList.size();
-      maxChunkNum = chunkMetaDataList.size() > maxChunkNum ? chunkMetaDataList.size() : maxChunkNum;
-    }
-    logger.debug("In file {}, total chunk num {}, series max chunk num {}", tsFileResource,
-        totalChunkNum, maxChunkNum);
-    return new long[] {totalChunkNum, maxChunkNum};
+  private long calculateTightUnseqMemoryCost(TsFileResource unseqFile) throws IOException {
+    long singleSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getFileSize);
+    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
+    long maxCost = unseqFile.getFileSize();
+    return multiSeriesCost > maxCost ? maxCost : multiSeriesCost;
   }
 
 

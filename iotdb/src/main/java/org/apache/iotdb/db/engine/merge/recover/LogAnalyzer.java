@@ -155,7 +155,7 @@ public class LogAnalyzer {
   }
 
   private void analyzeMergedSeries(BufferedReader bufferedReader, List<Path> unmergedPaths) throws IOException {
-    Path currTS = null;
+    List<Path> currTSList = new ArrayList<>();
     long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (STR_ALL_TS_END.equals(currLine)) {
@@ -164,7 +164,9 @@ public class LogAnalyzer {
       if (currLine.contains(STR_START)) {
         // a TS starts to merge
         String[] splits = currLine.split(" ");
-        currTS = new Path(splits[0]);
+        for (int i = 1; i < splits.length; i ++) {
+          currTSList.add(new Path(splits[i]));
+        }
         tempFileLastPositions.clear();
       } else if (!currLine.contains(STR_END)) {
         // file position
@@ -174,11 +176,11 @@ public class LogAnalyzer {
         tempFileLastPositions.put(file, position);
       } else {
         // a TS ends merging
-        unmergedPaths.remove(currTS);
+        unmergedPaths.removeAll(currTSList);
         for (Entry<File, Long> entry : tempFileLastPositions.entrySet()) {
           fileLastPositions.put(entry.getKey(), entry.getValue());
         }
-        mergedPaths.add(currTS);
+        mergedPaths.addAll(currTSList);
       }
     }
     tempFileLastPositions = null;

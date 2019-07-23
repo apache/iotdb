@@ -52,7 +52,7 @@ public class MergeTask implements Callable<Void> {
   MergeContext mergeContext = new MergeContext();
 
   private MergeCallback callback;
-  private int concurrentMergeSeriesNum;
+  int concurrentMergeSeriesNum;
   String taskName;
   boolean fullMerge;
 
