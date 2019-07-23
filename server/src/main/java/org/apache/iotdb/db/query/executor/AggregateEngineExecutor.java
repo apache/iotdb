@@ -227,14 +227,16 @@ public class AggregateEngineExecutor {
       } else {
         // cal by pageData
         BatchData batchData = sequenceReader.nextBatch();
-        if (lastBatchTimeStamp > batchData.currentTime()) {
-          // the chunk is end.
-          isChunkEnd = true;
-        } else {
-          // current page and last page are in the same chunk.
-          lastBatchTimeStamp = batchData.currentTime();
+        if (batchData.length() > 0) {
+          if (lastBatchTimeStamp > batchData.currentTime()) {
+            // the chunk is end.
+            isChunkEnd = true;
+          } else {
+            // current page and last page are in the same chunk.
+            lastBatchTimeStamp = batchData.currentTime();
+          }
+          function.calculateValueFromPageData(batchData, unSequenceReader);
         }
-        function.calculateValueFromPageData(batchData, unSequenceReader);
       }
       if (isChunkEnd) {
         break;
