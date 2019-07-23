@@ -35,6 +35,9 @@ public class MaxSeriesMergeFileSelector extends MergeFileSelector {
   public static final int MAX_SERIES_NUM = 1024;
   private static final Logger logger = LoggerFactory.getLogger(MaxSeriesMergeFileSelector.class);
 
+  private List<TsFileResource> lastSelectedSeqFiles;
+  private List<TsFileResource> lastSelectedUnseqFiles;
+
   public MaxSeriesMergeFileSelector(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -68,34 +71,12 @@ public class MaxSeriesMergeFileSelector extends MergeFileSelector {
   }
 
   private void searchMaxSeriesNum() throws IOException {
-    expSearch();
-    if (concurrentMergeNum <= 1) {
-      return;
-    }
     binSearch();
   }
 
-  private void expSearch() throws IOException {
-    concurrentMergeNum = 1;
-    while (concurrentMergeNum <= MAX_SERIES_NUM) {
-      select(false);
-      if (selectedUnseqFiles.isEmpty()) {
-        select(true);
-      }
-      if (selectedUnseqFiles.isEmpty()) {
-        concurrentMergeNum = concurrentMergeNum / 2;
-        break;
-      }
-      concurrentMergeNum = concurrentMergeNum * 2;
-    }
-    if (concurrentMergeNum > MAX_SERIES_NUM) {
-      concurrentMergeNum = MAX_SERIES_NUM;
-    }
-  }
-
   private void binSearch() throws IOException {
-    int lb = concurrentMergeNum;
-    int ub = concurrentMergeNum * 2;
+    int lb = 0;
+    int ub = MAX_SERIES_NUM + 1;
     while (true) {
       int mid = (lb + ub) / 2;
       if (mid == lb) {
@@ -109,6 +90,8 @@ public class MaxSeriesMergeFileSelector extends MergeFileSelector {
       if (selectedUnseqFiles.isEmpty()) {
         ub = mid;
       } else {
+        lastSelectedSeqFiles = selectedSeqFiles;
+        lastSelectedUnseqFiles = selectedUnseqFiles;
         lb = mid;
       }
     }

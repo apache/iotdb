@@ -61,8 +61,8 @@ public class MergeFileSelector {
    */
   private Map<TsFileResource, Long> maxSeriesQueryCostMap = new HashMap<>();
 
-  List<TsFileResource> selectedUnseqFiles = new ArrayList<>();
-  List<TsFileResource> selectedSeqFiles = new ArrayList<>();
+  List<TsFileResource> selectedUnseqFiles;
+  List<TsFileResource> selectedSeqFiles;
 
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
 
@@ -143,6 +143,8 @@ public class MergeFileSelector {
   void select(boolean useTightBound) throws IOException {
     tmpSelectedSeqFiles = new ArrayList<>();
     seqSelected = new boolean[seqFiles.size()];
+    selectedSeqFiles = new ArrayList<>();
+    selectedUnseqFiles = new ArrayList<>();
 
     totalCost = 0;
 
