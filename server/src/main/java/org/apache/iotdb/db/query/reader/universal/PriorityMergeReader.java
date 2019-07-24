@@ -31,7 +31,11 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 public class PriorityMergeReader implements IPointReader {
 
   private List<IPointReader> readerList = new ArrayList<>();
-  private PriorityQueue<Element> heap = new PriorityQueue<>();
+  private PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
+    int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
+        o2.timeValuePair.getTimestamp());
+    return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
+  });
 
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
@@ -76,7 +80,7 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  protected class Element implements Comparable<Element> {
+  protected class Element {
 
     int index;
     TimeValuePair timeValuePair;
@@ -86,35 +90,6 @@ public class PriorityMergeReader implements IPointReader {
       this.index = index;
       this.timeValuePair = timeValuePair;
       this.priority = priority;
-    }
-
-    @Override
-    public int compareTo(Element o) {
-
-      if (this.timeValuePair.getTimestamp() > o.timeValuePair.getTimestamp()) {
-        return 1;
-      }
-
-      if (this.timeValuePair.getTimestamp() < o.timeValuePair.getTimestamp()) {
-        return -1;
-      }
-
-      return Integer.compare(o.priority, this.priority);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (o instanceof Element) {
-        Element element = (Element) o;
-        return this.timeValuePair.getTimestamp() == element.timeValuePair.getTimestamp()
-            && this.priority == element.priority;
-      }
-      return false;
-    }
-
-    @Override
-    public int hashCode() {
-      return (int) (timeValuePair.getTimestamp() * 31 + priority);
     }
   }
 }
