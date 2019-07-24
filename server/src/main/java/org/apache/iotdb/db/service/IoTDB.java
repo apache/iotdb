@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
+import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
@@ -46,6 +47,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void main(String[] args) {
+    IoTDBConfigCheck.getInstance().checkConfig();
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
   }

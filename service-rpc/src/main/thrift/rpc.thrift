@@ -260,6 +260,7 @@ struct TSInsertionReq {
 struct ServerProperties {
 	1: required string version;
 	2: required list<string> supportedTimeAggregationOperations;
+	3: required string timestampPrecision;
 }
 
 service TSIService {

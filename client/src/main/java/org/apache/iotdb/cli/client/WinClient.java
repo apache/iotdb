@@ -135,6 +135,8 @@ public class WinClient extends AbstractClient {
         .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+      TIMESTAMP_PRECISION = properties.getTimestampPrecision();
+
       displayLogo(properties.getVersion());
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {

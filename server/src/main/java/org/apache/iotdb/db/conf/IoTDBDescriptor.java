@@ -123,6 +123,9 @@ public class IoTDBDescriptor {
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
+      conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
+          conf.getTimestampPrecision()));
+
       conf.setEnableParameterAdapter(
           Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
               Boolean.toString(conf.isEnableParameterAdapter()))));
@@ -135,6 +138,8 @@ public class IoTDBDescriptor {
       conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
 
       conf.setSystemDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "system");
+
+      conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + "schema");
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
