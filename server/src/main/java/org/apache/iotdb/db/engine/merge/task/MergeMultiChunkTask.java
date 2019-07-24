@@ -124,14 +124,12 @@ class MergeMultiChunkTask {
 
   private void mergePaths() throws IOException {
     mergeLogger.logTSStart(currMergingPaths);
-    List<IPointReader> unseqReaders = new ArrayList<>();
-    for (Path path : currMergingPaths) {
-      unseqReaders.add(resource.getUnseqReader(path));
-    }
+    IPointReader[] unseqReaders;
+    unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
-      if (unseqReaders.get(i).hasNext()) {
-        currTimeValuePairs[i] = unseqReaders.get(i).next();
+      if (unseqReaders[i].hasNext()) {
+        currTimeValuePairs[i] = unseqReaders[i].next();
       }
     }
 
@@ -141,7 +139,7 @@ class MergeMultiChunkTask {
     mergeLogger.logTSEnd();
   }
 
-  private void pathsMergeOneFile(int seqFileIdx, List<IPointReader> unseqReader)
+  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReader)
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     for (Path path : currMergingPaths) {
@@ -179,7 +177,7 @@ class MergeMultiChunkTask {
             currTimeValuePairs[pathIdx].getTimestamp() : currDeviceMinTime;
       }
       dataWritten = mergeChunks(seqChunkMeta[pathIdx], isLastFile, fileSequenceReader,
-          unseqReader.get(pathIdx), mergeFileWriter, currTsFile, pathIdx) || dataWritten;
+          unseqReader[pathIdx], mergeFileWriter, currTsFile, pathIdx) || dataWritten;
     }
     if (dataWritten) {
       mergeFileWriter.endChunkGroup(0);

@@ -145,18 +145,19 @@ public class MergeResource {
   }
 
   /**
-   * Construct an UnseqResourceMergeReader of a timeseries over all seqFiles. The reader is not
-   * cached since the method is only called once for each timeseries.
-   * @param path name of the time series
-   * @return an UnseqResourceMergeReader of a timeseries over all seqFiles
+   * Construct UnseqResourceMergeReaders of for each timeseries over all seqFiles. The readers are
+   * not cached since the method is only called once for each timeseries.
+   * @param paths names of the timeseries
+   * @return an array of UnseqResourceMergeReaders each corresponding to a timeseries in paths
    * @throws IOException
    */
-  public IPointReader getUnseqReader(Path path) throws IOException {
-    List<Chunk> chunks = MergeUtils.collectUnseqChunks(path, unseqFiles, this);
-    if (logger.isDebugEnabled()) {
-      logger.debug("Found {} unseq chunks of {}", chunks.size(), path);
+  public IPointReader[] getUnseqReaders(List<Path> paths) throws IOException {
+    List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
+    IPointReader[] ret = new IPointReader[paths.size()];
+    for (int i = 0; i < paths.size(); i++) {
+      ret[i] = new UnseqResourceMergeReader(paths.get(i), pathChunks[i], null);
     }
-    return new UnseqResourceMergeReader(path, chunks, null);
+    return ret;
   }
 
   /**

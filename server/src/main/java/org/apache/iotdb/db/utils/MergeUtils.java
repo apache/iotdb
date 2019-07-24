@@ -25,6 +25,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -211,5 +212,71 @@ public class MergeUtils {
       }
     }
     return chunks;
+  }
+
+  /**
+   * Reads chunks of paths in unseqResources and put them in separated lists. When reading a
+   * file, this method follows the order of positions of chunks instead of the order of
+   * timeseries, which reduce disk seeks.
+   * @param paths names of the timeseries
+   * @param unseqResources
+   * @param resource
+   * @return
+   * @throws IOException
+   */
+  public static List<Chunk>[] collectUnseqChunks(List<Path> paths,
+      List<TsFileResource> unseqResources, MergeResource resource) throws IOException {
+    List<Chunk>[] ret = new List[paths.size()];
+    for (int i = 0; i < paths.size(); i++) {
+      ret[i] = new ArrayList<>();
+    }
+    PriorityQueue<MetaListEntry> chunkMetaHeap = new PriorityQueue<>();
+    for (TsFileResource tsFileResource : unseqResources) {
+
+      TsFileSequenceReader tsFileReader = resource.getFileReader(tsFileResource);
+
+      // prepare metaDataList
+      for (int i = 0; i < paths.size(); i++) {
+        Path path = paths.get(i);
+        List<ChunkMetaData> metaDataList = tsFileReader.getChunkMetadata(path);
+        List<Modification> pathModifications =
+            resource.getModifications(tsFileResource, path);
+        if (!pathModifications.isEmpty()) {
+          QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
+        }
+        chunkMetaHeap.add(new MetaListEntry(i, metaDataList));
+      }
+
+      // read chunks order by their position
+      while (!chunkMetaHeap.isEmpty()) {
+        MetaListEntry metaListEntry = chunkMetaHeap.poll();
+        Chunk chunk =
+            tsFileReader.readMemChunk(metaListEntry.chunkMetaDataList.get(metaListEntry.listIdx));
+        ret[metaListEntry.pathId].add(chunk);
+        metaListEntry.listIdx ++;
+        if (metaListEntry.listIdx < metaListEntry.chunkMetaDataList.size()) {
+          chunkMetaHeap.add(metaListEntry);
+        }
+      }
+    }
+    return ret;
+  }
+
+  private static class MetaListEntry implements Comparable<MetaListEntry>{
+    private int pathId;
+    private int listIdx;
+    private List<ChunkMetaData> chunkMetaDataList;
+
+    private MetaListEntry(int pathId, List<ChunkMetaData> chunkMetaDataList) {
+      this.pathId = pathId;
+      this.listIdx = 0;
+      this.chunkMetaDataList = chunkMetaDataList;
+    }
+
+    @Override
+    public int compareTo(MetaListEntry o) {
+      return Long.compare(chunkMetaDataList.get(listIdx).getOffsetOfChunkHeader(),
+          o.chunkMetaDataList.get(o.listIdx).getOffsetOfChunkHeader());
+    }
   }
 }
