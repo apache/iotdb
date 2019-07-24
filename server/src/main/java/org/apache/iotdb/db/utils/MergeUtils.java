@@ -115,7 +115,8 @@ public class MergeUtils {
   }
 
   /**
-   * Collect all paths contained in the all SeqFiles and UnseqFiles in a merge.
+   * Collect all paths contained in the all SeqFiles and UnseqFiles in a merge and sort them
+   * before return.
    * @param resource
    * @return all paths contained in the merge.
    * @throws IOException

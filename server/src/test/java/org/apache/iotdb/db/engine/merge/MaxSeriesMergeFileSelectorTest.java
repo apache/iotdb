@@ -79,4 +79,16 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest{
     assertEquals(unseqResources.subList(0, 2), unseqSelected);
     assertEquals(MaxSeriesMergeFileSelector.MAX_SERIES_NUM, mergeFileSelector.getConcurrentMergeNum());
   }
+
+  @Test
+  public void testRestrictedSelection2() throws MergeException {
+    MaxSeriesMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector(seqResources, unseqResources,
+        70000);
+    List[] result = mergeFileSelector.select();
+    List<TsFileResource> seqSelected = result[0];
+    List<TsFileResource> unseqSelected = result[1];
+    assertEquals(seqResources.subList(0, 1), seqSelected);
+    assertEquals(unseqResources.subList(0, 1), unseqSelected);
+    assertEquals(54, mergeFileSelector.getConcurrentMergeNum());
+  }
 }

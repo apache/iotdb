@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.merge.task;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
@@ -56,7 +55,7 @@ public class MergeTask implements Callable<Void> {
   String taskName;
   boolean fullMerge;
 
-  public MergeTask(List<TsFileResource> seqFiles,
+  MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
       String taskName, boolean fullMerge) {
     this.resource = new MergeResource(seqFiles, unseqFiles);
@@ -105,7 +104,6 @@ public class MergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     List<Path> unmergedSeries = MergeUtils.collectPaths(resource);
-    unmergedSeries.sort(Comparator.comparing(Path::getFullPath));
 
     MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
         fullMerge, unmergedSeries, concurrentMergeSeriesNum);
