@@ -31,11 +31,11 @@ import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.flush.FlushManager;
+import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
+import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
-import org.apache.iotdb.db.engine.memtable.MemTableFlushTask;
-import org.apache.iotdb.db.engine.memtable.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -364,7 +364,7 @@ public class TsFileProcessor {
    * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
    * the flush manager pool
    */
-  void flushOneMemTable() {
+  public void flushOneMemTable() {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
 
@@ -417,7 +417,8 @@ public class TsFileProcessor {
         }
         endFile();
       } catch (IOException | TsFileProcessorException e) {
-        logger.error("meet error when flush FileMetadata to {}, change system mode to read-only", tsFileResource.getFile().getAbsolutePath());
+        logger.error("meet error when flush FileMetadata to {}, change system mode to read-only",
+            tsFileResource.getFile().getAbsolutePath());
         IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           writer.reset();
@@ -458,7 +459,7 @@ public class TsFileProcessor {
   }
 
 
-  boolean isManagedByFlushManager() {
+  public boolean isManagedByFlushManager() {
     return managedByFlushManager;
   }
 
@@ -480,11 +481,11 @@ public class TsFileProcessor {
     }
   }
 
-  void setManagedByFlushManager(boolean managedByFlushManager) {
+  public void setManagedByFlushManager(boolean managedByFlushManager) {
     this.managedByFlushManager = managedByFlushManager;
   }
 
-  int getFlushingMemTableSize() {
+  public int getFlushingMemTableSize() {
     return flushingMemTables.size();
   }
 
@@ -496,7 +497,7 @@ public class TsFileProcessor {
     return writer;
   }
 
-  String getStorageGroupName() {
+  public String getStorageGroupName() {
     return storageGroupName;
   }
 
