@@ -142,6 +142,7 @@
         <module>example</module>
         <module>grafana</module>
         <module>spark-tsfile</module>
+        <module>build</module>
         <!-- <module>hadoop</module> -->
     </modules>
     <build>
