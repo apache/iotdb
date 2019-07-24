@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.engine.merge.selector;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -35,8 +37,8 @@ public class MaxSeriesMergeFileSelector extends MergeFileSelector {
   public static final int MAX_SERIES_NUM = 1024;
   private static final Logger logger = LoggerFactory.getLogger(MaxSeriesMergeFileSelector.class);
 
-  private List<TsFileResource> lastSelectedSeqFiles;
-  private List<TsFileResource> lastSelectedUnseqFiles;
+  private List<TsFileResource> lastSelectedSeqFiles = Collections.emptyList();
+  private List<TsFileResource> lastSelectedUnseqFiles = Collections.emptyList();
 
   public MaxSeriesMergeFileSelector(
       List<TsFileResource> seqFiles,
@@ -95,6 +97,8 @@ public class MaxSeriesMergeFileSelector extends MergeFileSelector {
         lb = mid;
       }
     }
+    selectedUnseqFiles = lastSelectedUnseqFiles;
+    selectedSeqFiles = lastSelectedSeqFiles;
     concurrentMergeNum = lb;
   }
 }
