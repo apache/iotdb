@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.merge.selector;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
