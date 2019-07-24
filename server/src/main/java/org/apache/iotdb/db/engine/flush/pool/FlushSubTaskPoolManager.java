@@ -55,7 +55,7 @@ public class FlushSubTaskPoolManager extends AbstractPoolManager {
       this.pool = IoTDBThreadPoolFactory
           .newCachedThreadPool(ThreadName.FLUSH_SUB_TASK_SERVICE.getName());
     }
-    LOGGER.info("Flush encoding sub task manager started.");
+    LOGGER.info("Flush sub task manager started.");
   }
 
   @Override
@@ -64,7 +64,7 @@ public class FlushSubTaskPoolManager extends AbstractPoolManager {
       close();
       pool = null;
     }
-    LOGGER.info("Flush encoding sub task manager stopped");
+    LOGGER.info("Flush sub task manager stopped");
   }
 
   private static class InstanceHolder {
