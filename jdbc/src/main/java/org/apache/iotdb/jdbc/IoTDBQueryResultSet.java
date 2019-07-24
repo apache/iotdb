@@ -701,9 +701,10 @@ public class IoTDBQueryResultSet implements ResultSet {
   }
 
   // the next record rule without constraints
-  private boolean nextWithoutConstraints() throws SQLException {
+  private boolean nextWithoutConstraints(int limitFetchSize) throws SQLException {
     if ((recordItr == null || !recordItr.hasNext()) && !emptyResultSet) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize, queryId);
+      int adaFetchSize = (limitFetchSize < fetchSize) ? limitFetchSize : fetchSize;
+      TSFetchResultsReq req = new TSFetchResultsReq(sql, adaFetchSize, queryId);
 
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
@@ -743,14 +744,14 @@ public class IoTDBQueryResultSet implements ResultSet {
     // When rowsOffset is constrained and the offset position has NOT been reached
     if (rowsOffset != 0) {
       for (int i = 0; i < rowsOffset; i++) { // Try to move to the offset position
-        if (!nextWithoutConstraints()) {
+        if (!nextWithoutConstraints(rowsOffset + maxRowsOrRowsLimit - i)) {
           return false; // No next record, i.e, fail to move to the offset position
         }
       }
       rowsOffset = 0; // The offset position has been reached
     }
 
-    boolean isNext = nextWithoutConstraints();
+    boolean isNext = nextWithoutConstraints(maxRowsOrRowsLimit - rowsFetched);
 
     if (isNext) {
       /*
