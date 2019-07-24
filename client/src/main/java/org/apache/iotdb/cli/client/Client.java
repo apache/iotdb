@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.cli.client;
@@ -21,6 +17,7 @@ package org.apache.iotdb.cli.client;
 import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Arrays;
 import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -51,6 +48,7 @@ public class Client extends AbstractClient {
     commandLine = null;
 
     String[] newArgs;
+    String[] newArgs2;
 
     if (args == null || args.length == 0) {
       println(
@@ -62,7 +60,8 @@ public class Client extends AbstractClient {
     }
     init();
     newArgs = removePasswordArgs(args);
-    boolean continues = parseCommandLine(options, newArgs, hf);
+    newArgs2 = processExecuteArgs(newArgs);
+    boolean continues = parseCommandLine(options, newArgs2, hf);
     if (!continues) {
       return;
     }
@@ -105,7 +104,6 @@ public class Client extends AbstractClient {
     try (ConsoleReader reader = new ConsoleReader()) {
       reader.setExpandEvents(false);
 
-
       host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
       port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
@@ -114,6 +112,18 @@ public class Client extends AbstractClient {
       if (password == null) {
         password = reader.readLine("please input your password:", '\0');
       }
+      if (hasExecuteSQL) {
+        try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+          properties = connection.getServerProperties();
+          AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+          processCmd(execute, connection);
+          return;
+        } catch (SQLException e) {
+          handleException(e);
+        }
+      }
+
       receiveCommands(reader);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
@@ -130,8 +140,9 @@ public class Client extends AbstractClient {
       String s;
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-      TIMESTAMP_PRECISION  = properties.getTimestampPrecision();
+      TIMESTAMP_PRECISION = properties.getTimestampPrecision();
 
+      echoStarting();
       displayLogo(properties.getVersion());
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {
