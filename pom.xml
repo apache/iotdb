@@ -217,6 +217,8 @@
                             <!-- if `mvn clean` is not executed and `mvn test` is interrupted, then perTestInputData may be not deleted -->
                             <exclude>src/test/resources/perTestInputData</exclude>
                             <exclude>src/test/resources/*.json</exclude>
+                            <exclude>NOTICE-binary</exclude>
+                            <exclude>LICENSE-binary</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -250,7 +252,7 @@
                                 </requireJavaVersion>
                                 <!-- Disabled for now as it breaks the ability to build single modules -->
                                 <!--reactorModuleConvergence/-->
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies" />
+                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
                             </rules>
                         </configuration>
                     </execution>
