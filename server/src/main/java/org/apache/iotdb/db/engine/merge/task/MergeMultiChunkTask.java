@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.PriorityQueue;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -16,6 +17,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.MergeUtils;
+import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -139,7 +141,7 @@ class MergeMultiChunkTask {
     mergeLogger.logTSEnd();
   }
 
-  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReader)
+  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders)
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     for (Path path : currMergingPaths) {
@@ -169,16 +171,8 @@ class MergeMultiChunkTask {
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
     mergeFileWriter.startChunkGroup(deviceId);
-    boolean dataWritten = false;
-    for (int pathIdx : unskippedPathIndices) {
-      if (currTimeValuePairs[pathIdx] != null) {
-        // update the min time of the device
-        currDeviceMinTime = currDeviceMinTime > currTimeValuePairs[pathIdx].getTimestamp() ?
-            currTimeValuePairs[pathIdx].getTimestamp() : currDeviceMinTime;
-      }
-      dataWritten = mergeChunks(seqChunkMeta[pathIdx], isLastFile, fileSequenceReader,
-          unseqReader[pathIdx], mergeFileWriter, currTsFile, pathIdx) || dataWritten;
-    }
+    boolean dataWritten = mergeChunks(seqChunkMeta, isLastFile, fileSequenceReader, unseqReaders,
+        mergeFileWriter, currTsFile);
     if (dataWritten) {
       mergeFileWriter.endChunkGroup(0);
       mergeLogger.logFilePositionUpdate(mergeFileWriter.getFile());
@@ -200,43 +194,58 @@ class MergeMultiChunkTask {
     return ret;
   }
 
-  private boolean mergeChunks(List<ChunkMetaData> seqChunkMeta, boolean isLastFile,
-      TsFileSequenceReader reader, IPointReader unseqReader,
-      RestorableTsFileIOWriter mergeFileWriter, TsFileResource currFile, int pathIdx)
+  private boolean mergeChunks(List<ChunkMetaData>[] seqChunkMeta, boolean isLastFile,
+      TsFileSequenceReader reader, IPointReader[] unseqReaders,
+      RestorableTsFileIOWriter mergeFileWriter, TsFileResource currFile)
       throws IOException {
-    int ptWritten = 0;
-    Path path = currMergingPaths.get(pathIdx);
+    int[] ptWrittens = new int[seqChunkMeta.length];
+    PriorityQueue<MetaListEntry> chunkMetaHeap = new PriorityQueue<>();
+    for (int i = 0; i < currMergingPaths.size(); i++) {
+      if (seqChunkMeta[i].isEmpty()) {
+        continue;
+      }
+      MetaListEntry entry = new MetaListEntry(i, seqChunkMeta[i]);
+      entry.next();
+      chunkMetaHeap.add(entry);
+      ptWrittens[i] = 0;
+    }
 
-    MeasurementSchema measurementSchema = resource.getSchema(path.getMeasurement());
-    IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
     mergedChunkNum = 0;
     unmergedChunkNum = 0;
-    for (int i = 0; i < seqChunkMeta.size(); i++) {
-      ChunkMetaData currMeta = seqChunkMeta.get(i);
-      boolean isLastChunk = i + 1 == seqChunkMeta.size();
-      // the unseq data is not over and this chunk's time range covers the current overflow point
-      boolean chunkOverflowed =
-          currTimeValuePairs[pathIdx] != null
-              && currTimeValuePairs[pathIdx].getTimestamp() < currMeta.getEndTime();
-      // a small chunk has been written, this chunk should be merged with it to create a larger chunk
-      // or this chunk is too small and it is not the last chunk, merge it with the next chunks
-      boolean chunkTooSmall =
-          ptWritten > 0 || (minChunkPointNum >= 0 && currMeta.getNumOfPoints() < minChunkPointNum
-              && !isLastChunk);
-      Chunk chunk = reader.readMemChunk(currMeta);
-      ptWritten = mergeChunk(currMeta, chunkOverflowed, chunkTooSmall, chunk,
-          ptWritten, pathIdx, mergeFileWriter, unseqReader, chunkWriter, currFile);
-    }
-    // this only happens when the seqFiles do not contain this series, otherwise the remaining
-    // data will be merged with the last chunk in the seqFiles
-    if (isLastFile && currTimeValuePairs[pathIdx] != null) {
-      ptWritten += writeRemainingUnseq(chunkWriter, unseqReader, Long.MAX_VALUE, pathIdx);
-      mergedChunkNum++;
-    }
+    while (!chunkMetaHeap.isEmpty()) {
+      MetaListEntry metaListEntry = chunkMetaHeap.poll();
+      ChunkMetaData currMeta = metaListEntry.current();
+      int pathIdx = metaListEntry.getPathId();
+      boolean isLastChunk = !metaListEntry.hasNext();
+      Path path = currMergingPaths.get(pathIdx);
+      MeasurementSchema measurementSchema = resource.getSchema(path.getMeasurement());
+      IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
 
-    // the last merged chunk may still be smaller than the threshold, flush it anyway
-    if (ptWritten > 0) {
-      chunkWriter.writeToFileWriter(mergeFileWriter);
+      boolean chunkOverflowed = MergeUtils.isChunkOverflowed(currTimeValuePairs[pathIdx], currMeta);
+      boolean chunkTooSmall = MergeUtils
+          .isChunkTooSmall(ptWrittens[pathIdx], currMeta, isLastChunk, minChunkPointNum);
+
+      Chunk chunk = reader.readMemChunk(currMeta);
+      ptWrittens[pathIdx] = mergeChunk(currMeta, chunkOverflowed, chunkTooSmall, chunk,
+          ptWrittens[pathIdx], pathIdx, mergeFileWriter, unseqReaders[pathIdx], chunkWriter,
+          currFile);
+
+      if (!isLastChunk) {
+        metaListEntry.next();
+        chunkMetaHeap.add(metaListEntry);
+      } else {
+        // this only happens when the seqFiles do not contain this series, otherwise the remaining
+        // data will be merged with the last chunk in the seqFiles
+        if (isLastFile && currTimeValuePairs[pathIdx] != null) {
+          ptWrittens[pathIdx] += writeRemainingUnseq(chunkWriter, unseqReaders[pathIdx], Long.MAX_VALUE,
+              pathIdx);
+          mergedChunkNum++;
+        }
+        // the last merged chunk may still be smaller than the threshold, flush it anyway
+        if (ptWrittens[pathIdx] > 0) {
+          chunkWriter.writeToFileWriter(mergeFileWriter);
+        }
+      }
     }
     updateChunkCounts(currFile, mergedChunkNum, unmergedChunkNum);
 
