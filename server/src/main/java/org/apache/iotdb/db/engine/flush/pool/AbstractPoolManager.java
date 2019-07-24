@@ -24,7 +24,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.exception.StartupException;
 import org.slf4j.Logger;
 
 public abstract class AbstractPoolManager {
@@ -68,6 +67,10 @@ public abstract class AbstractPoolManager {
 
   public int getWaitingTasksNumber() {
     return ((ThreadPoolExecutor) pool).getQueue().size();
+  }
+
+  public int getTotalTasks() {
+    return getActiveCnt() + getWaitingTasksNumber();
   }
 
   public int getCorePoolSize() {
