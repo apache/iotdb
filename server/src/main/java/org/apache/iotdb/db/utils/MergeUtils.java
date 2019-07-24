@@ -76,44 +76,6 @@ public class MergeUtils {
     }
   }
 
-  public static void writeBatchPoint(BatchData batchData, int i, IChunkWriter chunkWriter) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
-        break;
-      case DOUBLE:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i));
-        break;
-      case BOOLEAN:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i));
-        break;
-      case INT64:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i));
-        break;
-      case INT32:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i));
-        break;
-      case FLOAT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i));
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-    }
-  }
-
-  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
-    TsFileMetaData metaData = sequenceReader.readFileMetadata();
-    Set<String> deviceIds = metaData.getDeviceMap().keySet();
-    Set<String> measurements = metaData.getMeasurementSchema().keySet();
-    List<Path> paths = new ArrayList<>();
-    for (String deviceId : deviceIds) {
-      for (String measurement : measurements) {
-        paths.add(new Path(deviceId, measurement));
-      }
-    }
-    return paths;
-  }
-
   /**
    * Collect all paths contained in the all SeqFiles and UnseqFiles in a merge and sort them
    * before return.
@@ -139,6 +101,19 @@ public class MergeUtils {
     return ret;
   }
 
+  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
+    TsFileMetaData metaData = sequenceReader.readFileMetadata();
+    Set<String> deviceIds = metaData.getDeviceMap().keySet();
+    Set<String> measurements = metaData.getMeasurementSchema().keySet();
+    List<Path> paths = new ArrayList<>();
+    for (String deviceId : deviceIds) {
+      for (String measurement : measurements) {
+        paths.add(new Path(deviceId, measurement));
+      }
+    }
+    return paths;
+  }
+
   public static long collectFileSizes(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     long totalSize = 0;
     for (TsFileResource tsFileResource : seqFiles) {
@@ -161,6 +136,31 @@ public class MergeUtils {
       ptWritten += batchData.length();
     }
     return ptWritten;
+  }
+
+  public static void writeBatchPoint(BatchData batchData, int i, IChunkWriter chunkWriter) {
+    switch (chunkWriter.getDataType()) {
+      case TEXT:
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
+        break;
+      case DOUBLE:
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i));
+        break;
+      case BOOLEAN:
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i));
+        break;
+      case INT64:
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i));
+        break;
+      case INT32:
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i));
+        break;
+      case FLOAT:
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i));
+        break;
+      default:
+        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
+    }
   }
 
   // returns totalChunkNum of a file and the max number of chunks of a series
@@ -240,22 +240,28 @@ public class MergeUtils {
       for (int i = 0; i < paths.size(); i++) {
         Path path = paths.get(i);
         List<ChunkMetaData> metaDataList = tsFileReader.getChunkMetadata(path);
+        if (metaDataList.isEmpty()) {
+          continue;
+        }
         List<Modification> pathModifications =
             resource.getModifications(tsFileResource, path);
         if (!pathModifications.isEmpty()) {
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
-        chunkMetaHeap.add(new MetaListEntry(i, metaDataList));
+        MetaListEntry entry = new MetaListEntry(i, metaDataList);
+        if (entry.hasNext()) {
+          entry.next();
+          chunkMetaHeap.add(entry);
+        }
       }
 
       // read chunks order by their position
       while (!chunkMetaHeap.isEmpty()) {
         MetaListEntry metaListEntry = chunkMetaHeap.poll();
-        Chunk chunk =
-            tsFileReader.readMemChunk(metaListEntry.chunkMetaDataList.get(metaListEntry.listIdx));
+        Chunk chunk = tsFileReader.readMemChunk(metaListEntry.current());
         ret[metaListEntry.pathId].add(chunk);
-        metaListEntry.listIdx ++;
-        if (metaListEntry.listIdx < metaListEntry.chunkMetaDataList.size()) {
+        if (metaListEntry.hasNext()) {
+          metaListEntry.next();
           chunkMetaHeap.add(metaListEntry);
         }
       }
@@ -263,21 +269,48 @@ public class MergeUtils {
     return ret;
   }
 
-  private static class MetaListEntry implements Comparable<MetaListEntry>{
+  public static boolean isChunkOverflowed(TimeValuePair timeValuePair, ChunkMetaData metaData) {
+    return timeValuePair != null
+        && timeValuePair.getTimestamp() < metaData.getEndTime();
+  }
+
+  public static boolean isChunkTooSmall(int ptWritten, ChunkMetaData chunkMetaData,
+      boolean isLastChunk, int minChunkPointNum) {
+    return ptWritten > 0 || (minChunkPointNum >= 0 && chunkMetaData.getNumOfPoints() < minChunkPointNum
+        && !isLastChunk);
+  }
+
+  public static class MetaListEntry implements Comparable<MetaListEntry>{
     private int pathId;
     private int listIdx;
     private List<ChunkMetaData> chunkMetaDataList;
 
-    private MetaListEntry(int pathId, List<ChunkMetaData> chunkMetaDataList) {
+    public MetaListEntry(int pathId, List<ChunkMetaData> chunkMetaDataList) {
       this.pathId = pathId;
-      this.listIdx = 0;
+      this.listIdx = -1;
       this.chunkMetaDataList = chunkMetaDataList;
     }
 
     @Override
     public int compareTo(MetaListEntry o) {
-      return Long.compare(chunkMetaDataList.get(listIdx).getOffsetOfChunkHeader(),
-          o.chunkMetaDataList.get(o.listIdx).getOffsetOfChunkHeader());
+      return Long.compare(this.current().getOffsetOfChunkHeader(),
+          o.current().getOffsetOfChunkHeader());
+    }
+
+    public ChunkMetaData current() {
+      return chunkMetaDataList.get(listIdx);
+    }
+
+    public boolean hasNext() {
+      return listIdx + 1 < chunkMetaDataList.size();
+    }
+
+    public ChunkMetaData next() {
+      return chunkMetaDataList.get(++listIdx);
+    }
+
+    public int getPathId() {
+      return pathId;
     }
   }
 }
