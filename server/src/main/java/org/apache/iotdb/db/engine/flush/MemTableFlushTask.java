@@ -12,13 +12,16 @@
  * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.memtable;
+package org.apache.iotdb.db.engine.flush;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import org.apache.iotdb.db.engine.pool.FlushSubTaskPoolManager;
+import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
+import org.apache.iotdb.db.engine.memtable.ChunkBufferPool;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.FlushRunTimeException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
