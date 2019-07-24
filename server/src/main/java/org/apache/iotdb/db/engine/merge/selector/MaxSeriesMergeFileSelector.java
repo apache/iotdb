@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.merge.selector;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.slf4j.Logger;
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory;
  * MaxSeriesMergeFileSelector is an extension of MergeFileSelector which tries to maximize the
  * number of timeseries that can be merged at the same time.
  */
-public class MaxSeriesMergeFileSelector extends MergeFileSelector {
+public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {
 
   public static final int MAX_SERIES_NUM = 1024;
   private static final Logger logger = LoggerFactory.getLogger(MaxSeriesMergeFileSelector.class);
@@ -40,21 +41,22 @@ public class MaxSeriesMergeFileSelector extends MergeFileSelector {
   private List<TsFileResource> lastSelectedUnseqFiles = Collections.emptyList();
 
   public MaxSeriesMergeFileSelector(
-      List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles,
+      MergeResource mergeResource,
       long memoryBudget) {
-    super(seqFiles, unseqFiles, memoryBudget);
+    super(mergeResource, memoryBudget);
   }
 
   @Override
   public List[] select() throws MergeException {
     long startTime = System.currentTimeMillis();
     try {
-      logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles", seqFiles.size(),
-          unseqFiles.size());
+      logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles", resource.getSeqFiles().size(),
+          resource.getUnseqFiles().size());
 
       searchMaxSeriesNum();
-
+      resource.setSeqFiles(selectedSeqFiles);
+      resource.setUnseqFiles(selectedUnseqFiles);
+      resource.removeOutdatedSeqReaders();
       if (selectedUnseqFiles.isEmpty()) {
         logger.info("No merge candidates are found");
         return new List[0];

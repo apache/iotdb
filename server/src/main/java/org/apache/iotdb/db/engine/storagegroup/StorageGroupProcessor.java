@@ -39,6 +39,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
@@ -715,7 +716,8 @@ public class StorageGroupProcessor {
       }
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-      MergeFileSelector fileSelector = getMergeFileSelector(budget);
+      MergeResource mergeResource = new MergeResource(sequenceFileList, unSequenceFileList);
+      MergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
       try {
         List[] mergeFiles = fileSelector.select();
         if (mergeFiles.length == 0) {
@@ -724,8 +726,7 @@ public class StorageGroupProcessor {
           return;
         }
         String taskName = storageGroupName + "-" + System.currentTimeMillis();
-        MergeResource mergeResource = new MergeResource(mergeFiles[0], mergeFiles[1],
-            fileSelector.getFileReaderCache());
+
 
         MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
             this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum());
@@ -746,13 +747,13 @@ public class StorageGroupProcessor {
     }
   }
 
-  private MergeFileSelector getMergeFileSelector(long budget) {
+  private MergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
     MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
     switch (strategy) {
       case MAX_FILE_NUM:
-        return new MergeFileSelector(sequenceFileList, unSequenceFileList, budget);
+        return new MaxFileMergeFileSelector(resource, budget);
       case MAX_SERIES_NUM:
-        return new MaxSeriesMergeFileSelector(sequenceFileList, unSequenceFileList, budget);
+        return new MaxSeriesMergeFileSelector(resource, budget);
       default:
         throw new UnsupportedOperationException("Unknown MergeFileStrategy " + strategy);
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -278,6 +279,31 @@ public class MergeUtils {
       boolean isLastChunk, int minChunkPointNum) {
     return ptWritten > 0 || (minChunkPointNum >= 0 && chunkMetaData.getNumOfPoints() < minChunkPointNum
         && !isLastChunk);
+  }
+
+  public static List<List<Path>> splitPathsByDevice(List<Path> paths) {
+    if (paths.isEmpty()) {
+      return Collections.emptyList();
+    }
+    String currDevice = null;
+    List<Path> currList = null;
+    List<List<Path>> ret = new ArrayList<>();
+    for (Path path : paths) {
+      if (currDevice == null) {
+        currDevice = path.getDevice();
+        currList = new ArrayList<>();
+        currList.add(path);
+      } else if (path.getDevice().equals(currDevice)) {
+        currList.add(path);
+      } else {
+        ret.add(currList);
+        currDevice = path.getDevice();
+        currList = new ArrayList<>();
+        currList.add(path);
+      }
+    }
+    ret.add(currList);
+    return ret;
   }
 
   public static class MetaListEntry implements Comparable<MetaListEntry>{

@@ -13,6 +13,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
+import org.apache.iotdb.db.engine.merge.selector.MergePathSelector;
+import org.apache.iotdb.db.engine.merge.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.IPointReader;
@@ -79,33 +81,16 @@ class MergeMultiChunkTask {
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
-
-    String lastDevice = null;
-    for (Path path : unmergedSeries) {
-      // mergeLogger.logTSStart(path);
-      boolean canMerge = false;
-      if (lastDevice == null) {
-        currMergingPaths.add(path);
-        lastDevice = path.getDevice();
-      } else if (lastDevice.equals(path.getDevice())) {
-        currMergingPaths.add(path);
-      } else {
-        canMerge = true;
-      }
-      canMerge = canMerge || currMergingPaths.size() >= concurrentMergeSeriesNum;
-      if (canMerge) {
+    List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
+    for (List<Path> pathList : devicePaths) {
+      // TODO: use statistics of queries to better rearrange series
+      MergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
+      while (pathSelector.hasNext()) {
+        currMergingPaths = pathSelector.next();
         mergePaths();
         mergedSeriesCnt += currMergingPaths.size();
-        currMergingPaths.clear();
-        lastDevice = null;
         logMergeProgress();
       }
-      // mergeLogger.logTSEnd(path);
-    }
-    if (!currMergingPaths.isEmpty()) {
-      mergePaths();
-      mergedSeriesCnt += currMergingPaths.size();
-      logMergeProgress();
     }
     if (logger.isInfoEnabled()) {
       logger.info("{} all series are merged after {}ms", taskName,
