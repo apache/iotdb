@@ -94,5 +94,4 @@ public class FlushManager implements IService {
 
     private static FlushManager instance = new FlushManager();
   }
-
 }
