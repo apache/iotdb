@@ -31,14 +31,15 @@ public enum ServiceType {
   AUTHORIZATION_SERVICE("Authorization ServerService", ""),
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
   SYNC_SERVICE("SYNC ServerService", ""),
-  TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
   MERGE_SERVICE("Merge Manager", ""),
-  PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE");
+  PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE"),
+  TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
+  FLUSH_SERVICE("Flush ServerService", "");
 
   private String name;
   private String jmxName;
 
-  private ServiceType(String name, String jmxName) {
+  ServiceType(String name, String jmxName) {
     this.name = name;
     this.jmxName = jmxName;
   }

@@ -45,6 +45,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -415,7 +416,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req) {
     long t1 = System.currentTimeMillis();
-    String currStmt = null;
     List<Integer> result = new ArrayList<>();
     try {
       if (!checkLogin()) {
@@ -429,7 +429,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       for (String statement : statements) {
         long t2 = System.currentTimeMillis();
-        currStmt = statement;
         isAllSuccessful =
             isAllSuccessful && executeStatementInBatch(statement, batchErrorMessage, result);
         Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
@@ -495,8 +494,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS");
       }
 
+      if (execShowFlushInfo(statement)) {
+        String msg = String.format(
+            "There are %d flush tasks, %d flush tasks are in execution and %d flush tasks are waiting for execution.",
+            FlushTaskPoolManager.getInstance().getTotalTasks(),
+            FlushTaskPoolManager.getInstance().getActiveCnt(),
+            FlushTaskPoolManager.getInstance().getWaitingTasksNumber());
+        return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS, msg);
+      }
+
       if (execSetConsistencyLevel(statement)) {
-        return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
+        return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS,
             "Execute set consistency level successfully");
       }
 
@@ -514,6 +522,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       logger.info("meet error while executing statement: {}", req.getStatement(), e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+    }
+  }
+
+  /**
+   * Set consistency level
+   */
+  private boolean execShowFlushInfo(String statement) {
+    if (statement == null) {
+      return false;
+    }
+    statement = statement.toLowerCase().trim();
+    if (Pattern.matches(IoTDBConstant.SHOW_FLUSH_TASK_INFO, statement)) {
+      return true;
+    } else {
+      return false;
     }
   }
 

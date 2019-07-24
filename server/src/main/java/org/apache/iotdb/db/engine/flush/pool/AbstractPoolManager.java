@@ -16,50 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.pool;
+
+package org.apache.iotdb.db.engine.flush.pool;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.slf4j.Logger;
 
-public class FlushSubTaskPoolManager {
+public abstract class AbstractPoolManager {
+  
+  private static final int WAIT_TIMEOUT = 2000;
 
-  private static final int EXIT_WAIT_TIME = 60 * 1000;
-
-  private ExecutorService pool;
-
-  private FlushSubTaskPoolManager() {
-    this.pool = IoTDBThreadPoolFactory
-        .newCachedThreadPool(ThreadName.FLUSH_SUB_TASK_SERVICE.getName());
-  }
-
-  public static FlushSubTaskPoolManager getInstance() {
-    return FlushSubTaskPoolManager.InstanceHolder.instance;
-  }
+  protected ExecutorService pool;
 
   /**
    * Block new flush submits and exit when all RUNNING THREADS AND TASKS IN THE QUEUE end.
-   *
-   * @param block if set to true, this method will wait for timeOut milliseconds.
-   * @param timeout block time out in milliseconds.
-   * @throws ProcessorException if timeOut is reached or being interrupted while waiting to exit.
    */
-  public void close(boolean block, long timeout) throws ProcessorException {
-    pool.shutdown();
-    if (block) {
+  public void close() {
+    Logger logger = getLogger();
+    pool.shutdownNow();
+    long totalWaitTime = WAIT_TIMEOUT;
+    logger.info("Waiting for {} thread pool to shut down.", getName());
+    while (!pool.isTerminated()) {
       try {
-        if (!pool.awaitTermination(timeout, TimeUnit.MILLISECONDS)) {
-          throw new ProcessorException("Flush thread pool doesn't exit after "
-              + EXIT_WAIT_TIME + " ms");
+        if (!pool.awaitTermination(WAIT_TIMEOUT, TimeUnit.MILLISECONDS)) {
+          logger.info("{} thread pool doesn't exit after {}ms.", getName(),
+              + totalWaitTime);
         }
+        totalWaitTime += WAIT_TIMEOUT;
       } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new ProcessorException("Interrupted while waiting flush thread pool to exit. ", e);
+        logger.error("Interrupted while waiting {} thread pool to exit. ", getName(), e);
       }
     }
   }
@@ -76,20 +65,23 @@ public class FlushSubTaskPoolManager {
     return ((ThreadPoolExecutor) pool).getActiveCount();
   }
 
-  private static class InstanceHolder {
-
-    private InstanceHolder() {
-      //allowed to do nothing
-    }
-
-    private static FlushSubTaskPoolManager instance = new FlushSubTaskPoolManager();
-  }
-
   public int getWaitingTasksNumber() {
     return ((ThreadPoolExecutor) pool).getQueue().size();
+  }
+
+  public int getTotalTasks() {
+    return getActiveCnt() + getWaitingTasksNumber();
   }
 
   public int getCorePoolSize() {
     return ((ThreadPoolExecutor) pool).getCorePoolSize();
   }
+
+  public abstract Logger getLogger();
+
+  public abstract void start();
+
+  public abstract void stop();
+
+  public abstract String getName();
 }

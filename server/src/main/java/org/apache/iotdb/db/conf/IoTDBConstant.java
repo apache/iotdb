@@ -57,6 +57,8 @@ public class IoTDBConstant {
   // for cluster, set read consistency level
   public static final String SET_READ_CONSISTENCY_LEVEL_PATTERN = "set\\s+read.*level.*";
 
+  public static final String SHOW_FLUSH_TASK_INFO = "show\\s+flush\\s+task\\s+info";
+
   public static final String ROLE = "Role";
   public static final String USER = "User";
   public static final String PRIVILEGE = "Privilege";
