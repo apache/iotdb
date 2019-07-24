@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -73,15 +74,6 @@ public class MergeResource {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
     this.fileReaderCache = new HashMap<>();
-  }
-
-  public MergeResource(
-      List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles,
-      Map<TsFileResource, TsFileSequenceReader> fileReaderCache) {
-    this.seqFiles = seqFiles;
-    this.unseqFiles = unseqFiles;
-    this.fileReaderCache = fileReaderCache;
   }
 
   public void clear() throws IOException {
@@ -244,5 +236,17 @@ public class MergeResource {
     return measurementSchemaMap;
   }
 
-
+  public void removeOutdatedSeqReaders() throws IOException {
+    Iterator<Entry<TsFileResource, TsFileSequenceReader>> entryIterator =
+        fileReaderCache.entrySet().iterator();
+    while (entryIterator.hasNext()) {
+      Entry<TsFileResource, TsFileSequenceReader> entry = entryIterator.next();
+      TsFileResource tsFile = entry.getKey();
+      if (!seqFiles.contains(tsFile)) {
+        TsFileSequenceReader reader = entry.getValue();
+        reader.close();
+        entryIterator.remove();
+      }
+    }
+  }
 }
