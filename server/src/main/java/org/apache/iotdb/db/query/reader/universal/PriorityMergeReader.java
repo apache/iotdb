@@ -51,9 +51,20 @@ public class PriorityMergeReader implements IPointReader {
 
   @Override
   public TimeValuePair next() throws IOException {
-    Element top = heap.peek();
-    updateHeap(top);
-    return top.timeValuePair;
+    Element top = heap.poll();
+    TimeValuePair ret = top.timeValuePair;
+    TimeValuePair topNext = null;
+    IPointReader reader = readerList.get(top.index);
+    if (reader.hasNext()) {
+      topNext = reader.next();
+    }
+    long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
+    updateHeap(top, topNextTime);
+    if (topNext != null) {
+      top.timeValuePair = topNext;
+      heap.add(top);
+    }
+    return ret;
   }
 
   @Override
@@ -61,14 +72,22 @@ public class PriorityMergeReader implements IPointReader {
     return heap.peek().timeValuePair;
   }
 
-  private void updateHeap(Element top) throws IOException {
+  private void updateHeap(Element top, long topNextTime) throws IOException {
     while (!heap.isEmpty() && heap.peek().timeValuePair.getTimestamp() == top.timeValuePair
         .getTimestamp()) {
       Element e = heap.poll();
       IPointReader reader = readerList.get(e.index);
       if (reader.hasNext()) {
         e.timeValuePair = reader.next();
-        heap.add(e);
+        if (e.timeValuePair.getTimestamp() == topNextTime && e.priority < top.priority) {
+          // if the next value of peek will be overwritten by the next of top, skip it
+          if (reader.hasNext()) {
+            e.timeValuePair = reader.next();
+            heap.add(e);
+          }
+        } else {
+          heap.add(e);
+        }
       }
     }
   }
