@@ -79,7 +79,7 @@ public class PriorityMergeReader implements IPointReader {
       IPointReader reader = readerList.get(e.index);
       if (reader.hasNext()) {
         e.timeValuePair = reader.next();
-        if (e.timeValuePair.getTimestamp() == topNextTime && e.priority < top.priority) {
+        if (e.timeValuePair.getTimestamp() == topNextTime) {
           // if the next value of peek will be overwritten by the next of top, skip it
           if (reader.hasNext()) {
             e.timeValuePair = reader.next();
