@@ -73,12 +73,12 @@ public class MemEstToolCmd implements Runnable {
       MManager.getInstance().clear();
 
       long sgCnt = 1;
-      long tsCnt = 1;
+      long tsCnt = 0;
       try {
         for (; sgCnt <= sgNum; sgCnt++) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
         }
-        for (; tsCnt <= tsNum; tsCnt++) {
+        for (; tsCnt < tsNum; tsCnt++) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
           if (maxTsNum == 0) {
             maxTsNumValid = tsCnt / sgNum + 1;
@@ -91,7 +91,7 @@ public class MemEstToolCmd implements Runnable {
 
       } catch (ConfigAdjusterException e) {
         if (sgCnt > sgNum) {
-          maxProcess = Math.max(maxProcess, tsCnt * 100 / tsNum);
+          maxProcess = Math.max(maxProcess, (tsCnt + 1) * 100 / tsNum);
           System.out
               .print(String.format("Memory estimation progress : %d%%\r", maxProcess));
         }
