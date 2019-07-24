@@ -865,7 +865,7 @@ public class LogicalGenerator {
       return System.currentTimeMillis();
     }
     try {
-      return DatetimeUtils.convertDatetimeStrToMillisecond(timestampStr, zoneId);
+      return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
     } catch (Exception e) {
       throw new LogicalOperatorException(String
           .format("Input time format %s error. "

@@ -73,6 +73,11 @@ public class IoTDBConfig {
   private int flushWalThreshold = 10000;
 
   /**
+   * this variable set timestamp precision as millisecond, microsecond or nanosecond
+   */
+  private String timestampPrecision = "ms";
+
+  /**
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call outputStream.force(true) after every each insert
    */
@@ -93,6 +98,11 @@ public class IoTDBConfig {
    * System directory, including version file for each storage group and metadata
    */
   private String systemDir = "data/system";
+
+  /**
+   *  Schema directory, including storage set of values.
+   */
+  private String schemaDir = "data/system/schema";
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
@@ -280,6 +290,7 @@ public class IoTDBConfig {
     List<String> dirs = new ArrayList<>();
     dirs.add(baseDir);
     dirs.add(systemDir);
+    dirs.add(schemaDir);
     dirs.add(walFolder);
     dirs.add(indexFileDir);
     dirs.addAll(Arrays.asList(dataDirs));
@@ -298,10 +309,11 @@ public class IoTDBConfig {
     }
     baseDir = dirs.get(0);
     systemDir = dirs.get(1);
-    walFolder = dirs.get(2);
-    indexFileDir = dirs.get(3);
+    schemaDir = dirs.get(2);
+    walFolder = dirs.get(3);
+    indexFileDir = dirs.get(4);
     for (int i = 0; i < dataDirs.length; i++) {
-      dataDirs[i] = dirs.get(i + 4);
+      dataDirs[i] = dirs.get(i + 5);
     }
   }
 
@@ -343,6 +355,14 @@ public class IoTDBConfig {
     this.rpcPort = rpcPort;
   }
 
+  public void setTimestampPrecision(String timestampPrecision) {
+    this.timestampPrecision = timestampPrecision;
+  }
+
+  public String getTimestampPrecision() {
+    return timestampPrecision;
+  }
+
   public boolean isEnableWal() {
     return enableWal;
   }
@@ -373,6 +393,14 @@ public class IoTDBConfig {
 
   void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getSchemaDir() {
+    return schemaDir;
+  }
+
+  void setSchemaDir(String schemaDir) {
+    this.schemaDir = schemaDir;
   }
 
   public String getWalFolder() {
