@@ -32,7 +32,8 @@ public enum ServiceType {
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", ""),
   SYNC_SERVICE("SYNC ServerService", ""),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE"),
-  TVLIST_ALLOCATOR_SERVICE("TVList Allocator", "");
+  TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
+  FLUSH_SERVICE("Flush ServerService", "");
 
   private String name;
   private String jmxName;
