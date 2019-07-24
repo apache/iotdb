@@ -21,18 +21,20 @@ package org.apache.iotdb.tsfile
 import org.apache.spark.sql.types._
 import org.apache.spark.sql._
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import scala.collection.mutable.ListBuffer
+import org.apache.spark.sql.SparkSession
+
 
 object Transformer {
   /**
     * transfer old form to new form
     *
-    * @param df dataFrame need to be tansfer
-    *           +---------+-------------+-------------+-------------+-------------+-------------+-------------+
-    *           |timestamp|root.ln.d1.m1|root.ln.d1.m2|root.ln.d1.m3|root.ln.d2.m1|root.ln.d2.m2|root.ln.d2.m3|
-    *           +---------+-------------+-------------+-------------+-------------+-------------+-------------+
-    *           |        1|           11|           12|         null|           21|           22|           23|
-    *           +---------+-------------+-------------+-------------+-------------+-------------+-------------+
+    * @param spark your SparkSession
+    * @param df    dataFrame need to be tansfer
+    *              +---------+-------------+-------------+-------------+-------------+-------------+-------------+
+    *              |timestamp|root.ln.d1.m1|root.ln.d1.m2|root.ln.d1.m3|root.ln.d2.m1|root.ln.d2.m2|root.ln.d2.m3|
+    *              +---------+-------------+-------------+-------------+-------------+-------------+-------------+
+    *              |        1|           11|           12|         null|           21|           22|           23|
+    *              +---------+-------------+-------------+-------------+-------------+-------------+-------------+
     * @return tansferred data frame
     *         +---------+-----------+---+---+----+
     *         |timestamp|device_name| m1| m2|  m3|
@@ -41,8 +43,9 @@ object Transformer {
     *         |        1| root.ln.d1| 11| 12|null|
     *         +---------+-----------+---+---+----+
     */
-  def toNewForm(df: DataFrame): DataFrame = {
-    df.registerTempTable("iotdb_old_form")
+  def toNewForm(spark: SparkSession,
+                df: DataFrame): DataFrame = {
+    df.createOrReplaceTempView("iotdb_old_form")
     // use to record device and their measurement
     var map = new scala.collection.mutable.HashMap[String, List[String]]()
     // use to record all the measurement, prepare for the union
@@ -107,13 +110,14 @@ object Transformer {
   /**
     * transfer new form to old form
     *
-    * @param df dataFrame need to be tansfer
-    *           +---------+-----------+---+---+----+
-    *           |timestamp|device_name| m1| m2|  m3|
-    *           +---------+-----------+---+---+----+
-    *           |        1| root.ln.d2| 21| 22|  23|
-    *           |        1| root.ln.d1| 11| 12|null|
-    *           +---------+-----------+---+---+----+
+    * @param spark your SparkSession
+    * @param df    dataFrame need to be tansfer
+    *              +---------+-----------+---+---+----+
+    *              |timestamp|device_name| m1| m2|  m3|
+    *              +---------+-----------+---+---+----+
+    *              |        1| root.ln.d2| 21| 22|  23|
+    *              |        1| root.ln.d1| 11| 12|null|
+    *              +---------+-----------+---+---+----+
     * @return tansferred data frame
     *         +---------+-------------+-------------+-------------+-------------+-------------+-------------+
     *         |timestamp|root.ln.d1.m1|root.ln.d1.m2|root.ln.d1.m3|root.ln.d2.m1|root.ln.d2.m2|root.ln.d2.m3|
@@ -122,8 +126,9 @@ object Transformer {
     *         +---------+-------------+-------------+-------------+-------------+-------------+-------------+
     *
     */
-  def toOldForm(df: DataFrame): DataFrame = {
-    df.registerTempTable("iotdb_new_form")
+  def toOldForm(spark: SparkSession,
+                df: DataFrame): DataFrame = {
+    df.createOrReplaceTempView("iotdb_new_form")
     // get all device_name
     val device_names = spark.sql("select distinct device_name from iotdb_new_form").collect()
     val table_df = spark.sql("select * from iotdb_new_form")
