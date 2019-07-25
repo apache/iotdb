@@ -137,6 +137,11 @@ class MergeMultiChunkTask {
     // which is forbidden
     String deviceId = currMergingPaths.get(0).getDevice();
     currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
+    for (TimeValuePair timeValuePair : currTimeValuePairs) {
+      if (timeValuePair != null && timeValuePair.getTimestamp() < currDeviceMinTime) {
+        currDeviceMinTime = timeValuePair.getTimestamp();
+      }
+    }
     boolean isLastFile = seqFileIdx + 1 == resource.getSeqFiles().size();
 
     TsFileSequenceReader fileSequenceReader = resource.getFileReader(currTsFile);
