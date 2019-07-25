@@ -751,7 +751,12 @@ public class IoTDBQueryResultSet implements ResultSet {
       rowsOffset = 0; // The offset position has been reached
     }
 
-    boolean isNext = nextWithoutConstraints(maxRowsOrRowsLimit - rowsFetched);
+    boolean isNext;
+    if (maxRowsOrRowsLimit > 0) {
+      isNext = nextWithoutConstraints(maxRowsOrRowsLimit - rowsFetched);
+    } else { // maxRowsOrRowsLimit=0 means neither maxRows nor LIMIT is constrained.
+      isNext = nextWithoutConstraints(fetchSize);
+    }
 
     if (isNext) {
       /*
