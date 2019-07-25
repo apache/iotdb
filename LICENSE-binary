@@ -212,14 +212,14 @@ conditions of the following licenses.
 
 The following classes are modified from Apache Hive, which is under Apache License 2.0:
 
-iotdb/src/main/java/org/apache/iotdb/db/sql/parse/AstErrorNode.java
-iotdb/src/main/java/org/apache/iotdb/db/sql/parse/AstNode.java
-iotdb/src/main/java/org/apache/iotdb/db/sql/parse/AstNodeOrigin.java
-iotdb/src/main/java/org/apache/iotdb/db/sql/parse/Node.java
-iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseDriver.java
-iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseError.java
-iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseException.java
-iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseUtils.java
+./server/src/main/java/org/apache/iotdb/db/sql/parse/AstErrorNode.java
+./server/src/main/java/org/apache/iotdb/db/sql/parse/AstNode.java
+./server/src/main/java/org/apache/iotdb/db/sql/parse/AstNodeOrigin.java
+./server/src/main/java/org/apache/iotdb/db/sql/parse/Node.java
+./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseDriver.java
+./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseError.java
+./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseException.java
+./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseUtils.java
 
 ================================================================
 
