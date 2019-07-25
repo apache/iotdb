@@ -70,7 +70,7 @@ public class UnseqResourceMergeReader extends CachedPriorityMergeReader {
         }
 
         metaDataList = DeviceMetaDataCache.getInstance()
-            .get(tsFileResource.getFile().getPath(), seriesPath);
+            .get(tsFileResource, seriesPath);
         List<Modification> pathModifications = context
             .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {

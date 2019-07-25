@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -46,30 +47,30 @@ public class TsFileMetadataUtils {
   /**
    * get tsfile meta data.
    *
-   * @param filePath -given path
+   * @param resource -given TsFile
    * @return -meta data
    */
-  public static TsFileMetaData getTsFileMetaData(String filePath) throws IOException {
-    TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
+  public static TsFileMetaData getTsFileMetaData(TsFileResource resource) throws IOException {
+    TsFileSequenceReader reader = FileReaderManager.getInstance().get(resource, true);
     return reader.readFileMetadata();
   }
 
   /**
    * get row group block meta data.
    *
-   * @param filePath -file path
+   * @param resource -TsFile
    * @param seriesPath -series path
    * @param fileMetaData -tsfile meta data
    * @return -device meta data
    */
-  public static TsDeviceMetadata getTsDeviceMetaData(String filePath, Path seriesPath,
+  public static TsDeviceMetadata getTsDeviceMetaData(TsFileResource resource, Path seriesPath,
       TsFileMetaData fileMetaData) throws IOException {
     if (!fileMetaData.getMeasurementSchema().containsKey(seriesPath.getMeasurement())) {
       return null;
     } else {
       // get the index information of TsDeviceMetadata
       TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(seriesPath.getDevice());
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource, true);
       // read TsDeviceMetadata from file
       return tsFileReader.readTsDeviceMetaData(index);
     }
