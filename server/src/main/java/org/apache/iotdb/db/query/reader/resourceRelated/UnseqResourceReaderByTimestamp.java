@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -33,7 +34,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
 /**
@@ -52,14 +52,12 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
     int priorityValue = 1;
 
     for (TsFileResource tsFileResource : unseqResources) {
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-          .get(tsFileResource, tsFileResource.isClosed());
 
       // prepare metaDataList
       List<ChunkMetaData> metaDataList;
       if (tsFileResource.isClosed()) {
-        MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
-        metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
+        metaDataList = DeviceMetaDataCache.getInstance()
+            .get(tsFileResource.getFile().getPath(), seriesPath);
         List<Modification> pathModifications = context
             .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
@@ -69,8 +67,13 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
-      // create and add ChunkReaderByTimestamp with priority
-      ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
+      ChunkLoaderImpl chunkLoader = null;
+      if (!metaDataList.isEmpty()) {
+        // create and add ChunkReader with priority
+        TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
+            .get(tsFileResource, tsFileResource.isClosed());
+        chunkLoader = new ChunkLoaderImpl(tsFileReader);
+      }
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
         Chunk chunk = chunkLoader.getChunk(chunkMetaData);

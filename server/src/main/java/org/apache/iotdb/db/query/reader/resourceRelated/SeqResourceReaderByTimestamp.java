@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -33,7 +34,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 /**
@@ -171,16 +171,17 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
   private IReaderByTimestamp initSealedTsFileReaderByTimestamp(TsFileResource sealedTsFile,
       QueryContext context) throws IOException {
     // prepare metaDataList
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(sealedTsFile, true);
-    MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
-    List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
+    List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
+        .get(sealedTsFile.getFile().getPath(), seriesPath);
+
     List<Modification> pathModifications = context.getPathModifications(sealedTsFile.getModFile(),
         seriesPath.getFullPath());
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
     }
     // prepare chunkLoader
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
+        .get(sealedTsFile, true);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     return new FileSeriesReaderByTimestampAdapter(

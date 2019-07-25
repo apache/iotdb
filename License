@@ -221,6 +221,7 @@ iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseDriver.java
 iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseError.java
 iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseException.java
 iotdb/src/main/java/org/apache/iotdb/db/sql/parse/ParseUtils.java
+iotdb/src/main/java/org/apache/iotdb/db/engine/cache/RamUsageEstimator.java
 
 ================================================================
 
