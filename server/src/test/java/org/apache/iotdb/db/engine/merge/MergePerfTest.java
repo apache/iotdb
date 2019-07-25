@@ -26,6 +26,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class MergePerfTest extends MergeTest{
@@ -35,6 +36,7 @@ public class MergePerfTest extends MergeTest{
   private File tempSGDir;
 
   public void test() throws Exception {
+    MManager.getInstance().init();
     tempSGDir = new File("tempSG");
     tempSGDir.mkdirs();
     setUp();

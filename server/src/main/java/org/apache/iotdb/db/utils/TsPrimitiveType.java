@@ -74,6 +74,30 @@ public abstract class TsPrimitiveType implements Serializable {
     throw new UnsupportedOperationException("getBinary() is not supported for current sub-class");
   }
 
+  public void setBoolean(boolean val) {
+    throw new UnsupportedOperationException("getBoolean() is not supported for current sub-class");
+  }
+
+  public void setInt(int val) {
+    throw new UnsupportedOperationException("getInt() is not supported for current sub-class");
+  }
+
+  public void setLong(long val) {
+    throw new UnsupportedOperationException("getLong() is not supported for current sub-class");
+  }
+
+  public void setFloat(float val) {
+    throw new UnsupportedOperationException("getFloat() is not supported for current sub-class");
+  }
+
+  public void setDouble(double val) {
+    throw new UnsupportedOperationException("getDouble() is not supported for current sub-class");
+  }
+
+  public void setBinary(Binary val) {
+    throw new UnsupportedOperationException("getBinary() is not supported for current sub-class");
+  }
+
   /**
    * get the size of one instance of current class.
    *
@@ -114,6 +138,11 @@ public abstract class TsPrimitiveType implements Serializable {
     @Override
     public boolean getBoolean() {
       return value;
+    }
+
+    @Override
+    public void setBoolean(boolean val) {
+      this.value = val;
     }
 
     @Override
@@ -168,6 +197,11 @@ public abstract class TsPrimitiveType implements Serializable {
     }
 
     @Override
+    public void setInt(int val) {
+      this.value = val;
+    }
+
+    @Override
     public int getSize() {
       return 4 + 4;
     }
@@ -216,6 +250,11 @@ public abstract class TsPrimitiveType implements Serializable {
     @Override
     public long getLong() {
       return value;
+    }
+
+    @Override
+    public void setLong(long val) {
+      this.value = val;
     }
 
     @Override
@@ -270,6 +309,11 @@ public abstract class TsPrimitiveType implements Serializable {
     }
 
     @Override
+    public void setFloat(float val) {
+      this.value = val;
+    }
+
+    @Override
     public int getSize() {
       return 4 + 4;
     }
@@ -321,6 +365,11 @@ public abstract class TsPrimitiveType implements Serializable {
     }
 
     @Override
+    public void setDouble(double val) {
+      this.value = val;
+    }
+
+    @Override
     public int getSize() {
       return 4 + 8;
     }
@@ -369,6 +418,11 @@ public abstract class TsPrimitiveType implements Serializable {
     @Override
     public Binary getBinary() {
       return value;
+    }
+
+    @Override
+    public void setBinary(Binary val) {
+      this.value = val;
     }
 
     @Override

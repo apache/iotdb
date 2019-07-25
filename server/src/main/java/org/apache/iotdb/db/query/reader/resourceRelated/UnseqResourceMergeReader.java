@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
-import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 
 /**
- * To read a list of unsequence TsFiles, this class extends {@link CachedPriorityMergeReader} to
+ * To read a list of unsequence TsFiles, this class extends {@link PriorityMergeReader} to
  * implement
  * <code>IPointReader</code> for the TsFiles.
  * <p>
@@ -51,7 +51,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
  * <p>
  * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter}.
  */
-public class UnseqResourceMergeReader extends CachedPriorityMergeReader {
+public class UnseqResourceMergeReader extends PriorityMergeReader {
 
   private Path seriesPath;
 
