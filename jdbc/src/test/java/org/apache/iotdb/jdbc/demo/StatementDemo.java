@@ -29,10 +29,9 @@ public class StatementDemo {
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    Connection connection = null;
-    try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
       statement.execute(
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
@@ -50,19 +49,17 @@ public class StatementDemo {
           "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465660000,24.359503)");
       statement.execute(
           "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465720000,20.092794)");
-      ResultSet resultSet = statement.executeQuery("select * from root");
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
-        }
-        System.out.println(builder);
-      }
-      statement.close();
 
-    } finally {
-      connection.close();
+      try (ResultSet resultSet = statement.executeQuery("select * from root")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          System.out.println(builder);
+        }
+      }
     }
   }
 }

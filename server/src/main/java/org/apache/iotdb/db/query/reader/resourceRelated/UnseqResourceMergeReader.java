@@ -26,6 +26,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
+import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
@@ -42,7 +43,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 
 /**
- * To read a list of unsequence TsFiles, this class extends {@link PriorityMergeReader} to
+ * To read a list of unsequence TsFiles, this class extends {@link CachedPriorityMergeReader} to
  * implement
  * <code>IPointReader</code> for the TsFiles.
  * <p>

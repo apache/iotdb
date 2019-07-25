@@ -707,7 +707,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void importCmd(String specialCmd, String cmd, IoTDBConnection connection) {
+  private static void importCmd(String specialCmd, String cmd, IoTDBConnection connection) {
     String[] values = specialCmd.split(" ");
     if (values.length != 2) {
       println("Please input like: import /User/myfile. "
@@ -728,12 +728,10 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void executeQuery(IoTDBConnection connection, String cmd) {
-    Statement statement = null;
+  private static void executeQuery(IoTDBConnection connection, String cmd) {
     long startTime = System.currentTimeMillis();
-    try {
+    try (Statement statement = connection.createStatement();) {
       ZoneId zoneId = ZoneId.of(connection.getTimeZone());
-      statement = connection.createStatement();
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       if (hasResultSet) {
@@ -746,15 +744,6 @@ public abstract class AbstractClient {
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
       handleException(e);
-    } finally {
-      if (statement != null) {
-        try {
-          statement.close();
-        } catch (SQLException e) {
-          println("Cannot close statement because: " + e.getMessage());
-          handleException(e);
-        }
-      }
     }
     long costTime = System.currentTimeMillis() - startTime;
     println(String.format("It costs %.3fs", costTime / 1000.0));

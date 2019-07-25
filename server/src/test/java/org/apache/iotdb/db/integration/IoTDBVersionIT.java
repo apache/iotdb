@@ -52,9 +52,8 @@ public class IoTDBVersionIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try(Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root")){
-      Statement statement = connection.createStatement();
-
+            "root", "root");
+        Statement statement = connection.createStatement()){
       statement.execute("SET STORAGE GROUP TO root.versionTest1");
       statement.execute("SET STORAGE GROUP TO root.versionTest2");
       statement.execute("CREATE TIMESERIES root.versionTest1.s0"
@@ -76,8 +75,6 @@ public class IoTDBVersionIT {
         statement.execute("FLUSH");
         statement.execute("MERGE");
       }
-
-      statement.close();
     }
   }
 }
