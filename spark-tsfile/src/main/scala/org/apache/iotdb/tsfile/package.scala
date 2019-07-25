@@ -7,7 +7,7 @@
   * "License"); you may not use this file except in compliance
   * with the License.  You may obtain a copy of the License at
   *
-  *     http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing,
   * software distributed under the License is distributed on an
@@ -19,15 +19,23 @@
 
 package org.apache.iotdb
 
-import org.apache.spark.sql.{DataFrame, DataFrameReader, DataFrameWriter}
+import org.apache.spark.sql.{DataFrame, DataFrameReader, DataFrameWriter, SparkSession}
 
 package object tsfile {
-
   /**
     * add a method 'tsfile' to DataFrameReader to read tsfile
     */
   implicit class TsFileDataFrameReader(reader: DataFrameReader) {
-    def tsfile: String => DataFrame = reader.format("org.apache.iotdb.tsfile").load
+    def tsfile(path: String,
+               isNewForm: Boolean = false,
+               spark: SparkSession = null): DataFrame = {
+      val df = reader.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").load
+      if (isNewForm) {
+        return Transformer.toNewForm(spark, df)
+      }
+
+      df
+    }
   }
 
   /**
