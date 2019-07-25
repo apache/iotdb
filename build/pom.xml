@@ -21,7 +21,7 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>iotdb-parent</artifactId>
+        <artifactId>incubator-iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
         <version>0.8.1-SNAPSHOT</version>
     </parent>
