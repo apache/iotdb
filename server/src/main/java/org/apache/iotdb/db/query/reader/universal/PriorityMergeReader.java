@@ -57,7 +57,7 @@ public class PriorityMergeReader implements IPointReader {
       topNext = top.currPair();
     }
     long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
-    updateHeap(top, topNextTime);
+    updateHeap(ret.getTimestamp(), topNextTime);
     if (topNext != null) {
       top.timeValuePair = topNext;
       heap.add(top);
@@ -66,12 +66,12 @@ public class PriorityMergeReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair current() throws IOException {
+  public TimeValuePair current() {
     return heap.peek().timeValuePair;
   }
 
-  void updateHeap(Element top, long topNextTime) throws IOException {
-    while (!heap.isEmpty() && heap.peek().currTime() == top.currTime()) {
+  private void updateHeap(long topTime, long topNextTime) throws IOException {
+    while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
       if (!e.hasNext()) {
         e.reader.close();
@@ -102,7 +102,7 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  protected class Element {
+  class Element {
 
     IPointReader reader;
     TimeValuePair timeValuePair;
