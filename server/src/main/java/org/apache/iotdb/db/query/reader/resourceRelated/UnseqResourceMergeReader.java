@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
@@ -62,7 +61,6 @@ public class UnseqResourceMergeReader extends CachedPriorityMergeReader {
 
     int priorityValue = 1;
     for (TsFileResource tsFileResource : unseqResources) {
-      TsFileSequenceReader tsFileReader;
 
       // prepare metaDataList
       List<ChunkMetaData> metaDataList;
@@ -70,10 +68,9 @@ public class UnseqResourceMergeReader extends CachedPriorityMergeReader {
         if (isTsFileNotSatisfied(tsFileResource, filter)) {
           continue;
         }
-        tsFileReader = FileReaderManager.getInstance()
-            .get(tsFileResource, true);
-        MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
-        metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
+
+        metaDataList = DeviceMetaDataCache.getInstance()
+            .get(tsFileResource.getFile().getPath(), seriesPath);
         List<Modification> pathModifications = context
             .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {
@@ -85,13 +82,17 @@ public class UnseqResourceMergeReader extends CachedPriorityMergeReader {
             continue;
           }
         }
-        tsFileReader = FileReaderManager.getInstance()
-            .get(tsFileResource, false);
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
-      // create and add ChunkReader with priority
-      ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileReader);
+      ChunkLoaderImpl chunkLoader = null;
+      if (!metaDataList.isEmpty()) {
+        // create and add ChunkReader with priority
+        TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
+            .get(tsFileResource, tsFileResource.isClosed());
+        chunkLoader = new ChunkLoaderImpl(tsFileReader);
+      }
+
       for (ChunkMetaData chunkMetaData : metaDataList) {
 
         if (filter != null) {
