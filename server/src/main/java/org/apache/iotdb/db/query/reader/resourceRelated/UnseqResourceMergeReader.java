@@ -52,7 +52,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
  * <p>
  * This class is used in {@link org.apache.iotdb.db.query.reader.seriesRelated.SeriesReaderWithoutValueFilter}.
  */
-public class UnseqResourceMergeReader extends PriorityMergeReader {
+public class UnseqResourceMergeReader extends CachedPriorityMergeReader {
 
   private Path seriesPath;
 
