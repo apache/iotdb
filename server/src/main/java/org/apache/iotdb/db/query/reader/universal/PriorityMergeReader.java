@@ -28,7 +28,7 @@ import org.apache.iotdb.db.utils.TimeValuePair;
  */
 public class PriorityMergeReader implements IPointReader {
 
-  private PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
+  PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
     int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
         o2.timeValuePair.getTimestamp());
     return timeCompare != 0 ? timeCompare : Integer.compare(o2.priority, o1.priority);
@@ -37,6 +37,8 @@ public class PriorityMergeReader implements IPointReader {
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
       heap.add(new Element(reader, reader.next(), priority));
+    } else {
+      reader.close();
     }
   }
 
@@ -64,11 +66,11 @@ public class PriorityMergeReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair current() {
+  public TimeValuePair current() throws IOException {
     return heap.peek().timeValuePair;
   }
 
-  private void updateHeap(Element top, long topNextTime) throws IOException {
+  void updateHeap(Element top, long topNextTime) throws IOException {
     while (!heap.isEmpty() && heap.peek().currTime() == top.currTime()) {
       Element e = heap.poll();
       if (!e.hasNext()) {
@@ -84,7 +86,7 @@ public class PriorityMergeReader implements IPointReader {
           heap.add(e);
         } else {
           // the chunk is end
-          e.reader.close();
+          e.close();
         }
       } else {
         heap.add(e);
@@ -93,7 +95,11 @@ public class PriorityMergeReader implements IPointReader {
   }
 
   @Override
-  public void close() {
+  public void close() throws IOException {
+    while (!heap.isEmpty()) {
+      Element e = heap.poll();
+      e.close();
+    }
   }
 
   protected class Element {
@@ -122,6 +128,10 @@ public class PriorityMergeReader implements IPointReader {
 
     void next() throws IOException {
       timeValuePair = reader.next();
+    }
+
+    void close() throws IOException {
+      reader.close();
     }
   }
 }

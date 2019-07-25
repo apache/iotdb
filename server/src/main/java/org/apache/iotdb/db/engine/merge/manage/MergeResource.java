@@ -30,6 +30,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -71,8 +72,9 @@ public class MergeResource {
   public MergeResource(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles;
-    this.unseqFiles = unseqFiles;
+    this.seqFiles = seqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
+    this.unseqFiles =
+        unseqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
     this.fileReaderCache = new HashMap<>();
   }
 
