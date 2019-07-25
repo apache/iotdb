@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
+import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
@@ -111,6 +113,8 @@ class MergeFileTask {
 
     seqFile.getMergeQueryLock().writeLock().lock();
     try {
+      TsFileMetaDataCache.getInstance().remove(seqFile);
+      DeviceMetaDataCache.getInstance().remove(seqFile);
       resource.removeFileReader(seqFile);
       TsFileIOWriter oldFileWriter;
       try {
@@ -137,7 +141,7 @@ class MergeFileTask {
           writeMergedChunkGroup(chunkGroupMetaData, newFileReader, oldFileWriter);
         }
       }
-      oldFileWriter.endFile(new FileSchema(oldFileWriter.getKnownSchema()));
+      oldFileWriter.endFile(new FileSchema(newFileWriter.getKnownSchema()));
 
       seqFile.serialize();
       mergeLogger.logFileMergeEnd(seqFile.getFile());
@@ -201,6 +205,8 @@ class MergeFileTask {
     seqFile.getMergeQueryLock().writeLock().lock();
     try {
       resource.removeFileReader(seqFile);
+      TsFileMetaDataCache.getInstance().remove(seqFile);
+      DeviceMetaDataCache.getInstance().remove(seqFile);
       seqFile.getFile().delete();
       FileUtils.moveFile(fileWriter.getFile(), seqFile.getFile());
     } finally {

@@ -41,7 +41,7 @@ public class TsFileMetaDataCache {
   /**
    * key: Tsfile path. value: TsFileMetaData
    */
-  private LRULinkedHashMap<String, TsFileMetaData> cache;
+  private LRULinkedHashMap<TsFileResource, TsFileMetaData> cache;
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
@@ -59,9 +59,9 @@ public class TsFileMetaDataCache {
   private long versionAndCreatebySize = 10;
 
   private TsFileMetaDataCache() {
-    cache = new LRULinkedHashMap<String, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
+    cache = new LRULinkedHashMap<TsFileResource, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
-      protected long calEntrySize(String key, TsFileMetaData value) {
+      protected long calEntrySize(TsFileResource key, TsFileMetaData value) {
         if (deviceIndexMapEntrySize == 0 && value.getDeviceMap().size() > 0) {
           deviceIndexMapEntrySize = RamUsageEstimator
               .sizeOf(value.getDeviceMap().entrySet().iterator().next());
@@ -73,7 +73,7 @@ public class TsFileMetaDataCache {
         long valueSize = value.getDeviceMap().size() * deviceIndexMapEntrySize
             + measurementSchemaEntrySize * value.getMeasurementSchema().size()
             + versionAndCreatebySize;
-        return key.length() * 2 + valueSize;
+        return key.getFile().getPath().length() * 2 + valueSize;
       }
     };
   }
@@ -117,15 +117,15 @@ public class TsFileMetaDataCache {
       }
       TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
       synchronized (cache) {
-        cache.put(path, fileMetaData);
+        cache.put(tsFileResource, fileMetaData);
         return fileMetaData;
       }
     }
   }
 
-  public void remove(String path) {
+  public void remove(TsFileResource resource) {
     synchronized (cache) {
-      cache.remove(path);
+      cache.remove(resource);
     }
   }
 

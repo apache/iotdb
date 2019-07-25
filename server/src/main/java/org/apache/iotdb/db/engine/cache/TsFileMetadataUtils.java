@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -95,6 +96,9 @@ public class TsFileMetadataUtils {
           pathToChunkMetaDataList.get(path).add(chunkMetaData);
         }
       }
+    }
+    for (List<ChunkMetaData> chunkMetaDataList : pathToChunkMetaDataList.values()) {
+      chunkMetaDataList.sort(Comparator.comparingLong(ChunkMetaData::getStartTime));
     }
     return pathToChunkMetaDataList;
   }
