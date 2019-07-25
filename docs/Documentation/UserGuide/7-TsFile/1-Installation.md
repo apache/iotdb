@@ -33,9 +33,8 @@ There are two ways to use TsFile in your own project.
 		```
 		git clone https://github.com/apache/incubator-iotdb.git
 		cd tsfile/
-		sh package.sh
 		```
-		Then, all the jars can be get in folder named `lib/`. Import `lib/tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar` to your project.
+		Then, all the jars can be get in folder named `target/`. Import `target/tsfile-0.9.0-SNAPSHOT-jar-with-dependencies.jar` to your project.
 	
 * Using as a maven dependency: 
 
