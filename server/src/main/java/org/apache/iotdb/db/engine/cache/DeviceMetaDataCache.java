@@ -183,4 +183,10 @@ public class DeviceMetaDataCache {
     private static final DeviceMetaDataCache INSTANCE = new
         DeviceMetaDataCache(MEMORY_THRESHOLD_IN_B);
   }
+
+  public void remove(TsFileResource resource) {
+    synchronized (lruCache) {
+      lruCache.entrySet().removeIf(e -> e.getKey().startsWith(resource.getFile().getPath()));
+    }
+  }
 }

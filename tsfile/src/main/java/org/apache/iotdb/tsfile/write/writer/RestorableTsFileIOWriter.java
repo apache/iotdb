@@ -222,4 +222,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     }
     return new RestorableTsFileIOWriter(file);
   }
+
+  public void addSchema(MeasurementSchema schema) {
+    knownSchemas.put(schema.getMeasurementId(), schema);
+  }
 }

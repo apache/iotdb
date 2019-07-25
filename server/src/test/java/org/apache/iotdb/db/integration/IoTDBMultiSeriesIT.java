@@ -213,7 +213,7 @@ public class IoTDBMultiSeriesIT {
 
   // "select * from root.vehicle" : test select wild data
   @Test
-  public void selectAllTest() throws ClassNotFoundException, SQLException {
+  public void selectAllTest() throws ClassNotFoundException {
     String selectSql = "select * from root.vehicle";
 
     Class.forName(Config.JDBC_DRIVER_NAME);

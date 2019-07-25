@@ -269,7 +269,7 @@ public class IoTDBAggregationIT {
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select last(s0),last(s2) " +
           "from root.vehicle.d0 where time >= 1500 and time < 9000");
@@ -328,7 +328,7 @@ Statement statement = connection.createStatement()) {
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select max_time(s0),min_time(s2) " +
           "from root.vehicle.d0 where time >= 100 and time < 9000");
@@ -338,8 +338,9 @@ Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
-              + "," + resultSet.getString(min_time(d0s2));
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
+                  + "," + resultSet.getString(min_time(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -352,8 +353,9 @@ Statement statement = connection.createStatement()) {
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
-              + "," + resultSet.getString(min_time(d0s2));
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
+                  + "," + resultSet.getString(min_time(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -373,7 +375,7 @@ Statement statement = connection.createStatement()) {
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select max_value(s0),min_value(s2) " +
           "from root.vehicle.d0 where time >= 100 and time < 9000");
@@ -383,8 +385,9 @@ Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
-              + "," + resultSet.getString(min_value(d0s2));
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
+                  + "," + resultSet.getString(min_value(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -397,8 +400,9 @@ Statement statement = connection.createStatement()) {
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
-              + "," + resultSet.getString(min_value(d0s2));
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
+                  + "," + resultSet.getString(min_value(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -411,14 +415,14 @@ Statement statement = connection.createStatement()) {
   }
 
   @Test
-  public void meanSumTest() throws SQLException {
+  public void meanSumTest() {
     String[] retArray = new String[]{
         "0,1.4508E7,7250.374812593703",
         "0,626750.0,1250.998003992016"
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select sum(s0),mean(s2)" +
           "from root.vehicle.d0 where time >= 6000 and time <= 9000");
@@ -458,12 +462,12 @@ Statement statement = connection.createStatement()) {
   public void meanSumErrorTest() throws SQLException {
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select mean(s3)" +
           "from root.vehicle.d0 where time >= 6000 and time <= 9000");
       Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()){
+      try (ResultSet resultSet = statement.getResultSet()) {
         resultSet.next();
         fail();
       } catch (Exception e) {
@@ -473,7 +477,7 @@ Statement statement = connection.createStatement()) {
       hasResultSet = statement.execute("select sum(s3)" +
           "from root.vehicle.d0 where time >= 6000 and time <= 9000");
       Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()){
+      try (ResultSet resultSet = statement.getResultSet()) {
         resultSet.next();
         fail();
       } catch (Exception e) {

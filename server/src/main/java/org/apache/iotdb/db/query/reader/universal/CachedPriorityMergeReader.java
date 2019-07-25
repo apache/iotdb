@@ -31,16 +31,16 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
 
   private TimeValuePair[] timeValuePairCache = new TimeValuePair[CACHE_SIZE];
   private int cacheLimit = 0;
-  private int cacheIdx = -1;
+  private int cacheIdx = 0;
 
   @Override
   public boolean hasNext() {
-    return cacheIdx + 1 < cacheLimit || !heap.isEmpty();
+    return cacheIdx < cacheLimit || !heap.isEmpty();
   }
 
   private void fetch() throws IOException {
     cacheLimit = 0;
-    cacheIdx = -1;
+    cacheIdx = 0;
     while (!heap.isEmpty() && cacheLimit < CACHE_SIZE) {
       Element top = heap.poll();
       if (cacheLimit == 0 || top.currTime() != timeValuePairCache[cacheLimit - 1].getTimestamp()) {
@@ -65,11 +65,11 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
   @Override
   public TimeValuePair next() throws IOException {
     TimeValuePair ret;
-    if (cacheIdx + 1 < cacheLimit) {
-      ret = timeValuePairCache[++cacheIdx];
+    if (cacheIdx < cacheLimit) {
+      ret = timeValuePairCache[cacheIdx++];
     } else {
       fetch();
-      ret = timeValuePairCache[++cacheIdx];
+      ret = timeValuePairCache[cacheIdx++];
     }
     return ret;
   }

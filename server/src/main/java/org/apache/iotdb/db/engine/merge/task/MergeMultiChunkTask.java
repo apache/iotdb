@@ -116,7 +116,7 @@ class MergeMultiChunkTask {
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
       if (unseqReaders[i].hasNext()) {
-        currTimeValuePairs[i] = unseqReaders[i].next();
+        currTimeValuePairs[i] = unseqReaders[i].current();
       }
     }
 
@@ -159,6 +159,10 @@ class MergeMultiChunkTask {
     }
 
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
+    for (Path path : currMergingPaths) {
+      MeasurementSchema schema = resource.getSchema(path.getMeasurement());
+      mergeFileWriter.addSchema(schema);
+    }
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
     mergeFileWriter.startChunkGroup(deviceId);
     boolean dataWritten = mergeChunks(seqChunkMeta, isLastFile, fileSequenceReader, unseqReaders,
@@ -282,7 +286,8 @@ class MergeMultiChunkTask {
         && currTimeValuePairs[pathIdx].getTimestamp() < timeLimit) {
       writeTVPair(currTimeValuePairs[pathIdx], chunkWriter);
       ptWritten++;
-      currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.next() : null;
+      unseqReader.next();
+      currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.current() : null;
     }
     return ptWritten;
   }
@@ -292,7 +297,7 @@ class MergeMultiChunkTask {
     mergeContext.getMergedChunkCnt().compute(currFile, (tsFileResource, anInt) -> anInt == null ?
         newMergedChunkNum
         : anInt + newMergedChunkNum);
-    mergeContext.getMergedChunkCnt().compute(currFile, (tsFileResource, anInt) -> anInt == null ?
+    mergeContext.getUnmergedChunkCnt().compute(currFile, (tsFileResource, anInt) -> anInt == null ?
         newUnmergedChunkNum
         : anInt + newUnmergedChunkNum);
   }
@@ -338,13 +343,15 @@ class MergeMultiChunkTask {
       while (currTimeValuePairs[pathIdx] != null
           && currTimeValuePairs[pathIdx].getTimestamp() < time) {
         writeTVPair(currTimeValuePairs[pathIdx], chunkWriter);
-        currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.next() : null;
+        unseqReader.next();
+        currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.current() : null;
         cnt++;
       }
       if (currTimeValuePairs[pathIdx] != null
           && currTimeValuePairs[pathIdx].getTimestamp() == time) {
         writeTVPair(currTimeValuePairs[pathIdx], chunkWriter);
-        currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.next() : null;
+        unseqReader.next();
+        currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.current() : null;
         cnt++;
       } else {
         writeBatchPoint(batchData, i, chunkWriter);
