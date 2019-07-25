@@ -159,7 +159,7 @@ public class SeqResourceIterateReader extends IterateReader {
       QueryContext context) throws IOException {
     // prepare metaDataList
     List<ChunkMetaData> metaDataList = DeviceMetaDataCache.getInstance()
-        .get(sealedTsFile.getFile().getPath(), seriesPath);
+        .get(sealedTsFile, seriesPath);
     List<Modification> pathModifications = context.getPathModifications(sealedTsFile.getModFile(),
         seriesPath.getFullPath());
     if (!pathModifications.isEmpty()) {

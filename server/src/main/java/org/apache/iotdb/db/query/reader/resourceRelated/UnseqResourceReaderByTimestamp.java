@@ -57,7 +57,7 @@ public class UnseqResourceReaderByTimestamp extends PriorityMergeReaderByTimesta
       List<ChunkMetaData> metaDataList;
       if (tsFileResource.isClosed()) {
         metaDataList = DeviceMetaDataCache.getInstance()
-            .get(tsFileResource.getFile().getPath(), seriesPath);
+            .get(tsFileResource, seriesPath);
         List<Modification> pathModifications = context
             .getPathModifications(tsFileResource.getModFile(), seriesPath.getFullPath());
         if (!pathModifications.isEmpty()) {

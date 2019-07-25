@@ -22,7 +22,9 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,12 +83,13 @@ public class TsFileMetaDataCache {
   }
 
   /**
-   * get the TsFileMetaData for given path.
+   * get the TsFileMetaData for given TsFile.
    *
-   * @param path -given path
+   * @param tsFileResource -given TsFile
    */
-  public TsFileMetaData get(String path) throws IOException {
+  public TsFileMetaData get(TsFileResource tsFileResource) throws IOException {
 
+    String path = tsFileResource.getFile().getPath();
     Object internPath = path.intern();
     cacheRequestNum.incrementAndGet();
     synchronized (cache) {
@@ -112,7 +115,7 @@ public class TsFileMetaDataCache {
         logger.debug("Cache didn't hit: the number of requests for cache is {}",
             cacheRequestNum.get());
       }
-      TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(path);
+      TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
       synchronized (cache) {
         cache.put(path, fileMetaData);
         return fileMetaData;
