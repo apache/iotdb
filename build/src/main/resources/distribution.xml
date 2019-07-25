@@ -30,7 +30,7 @@
             <source>${maven.multiModuleProjectDirectory}/README.md</source>
         </file>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/License-binary</source>
+            <source>${maven.multiModuleProjectDirectory}/LICENSE-binary</source>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
