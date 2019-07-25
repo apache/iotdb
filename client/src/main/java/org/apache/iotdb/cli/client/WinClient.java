@@ -137,7 +137,6 @@ public class WinClient extends AbstractClient {
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       TIMESTAMP_PRECISION = properties.getTimestampPrecision();
 
-      echoStarting();
       displayLogo(properties.getVersion());
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {
