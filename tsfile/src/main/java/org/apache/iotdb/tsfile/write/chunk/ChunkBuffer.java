@@ -198,7 +198,7 @@ public class ChunkBuffer {
           + " " + pageBuffer.size());
     }
 
-    writer.endChunk(totalValueCount, headerSize + dataSize);
+    writer.endChunk(totalValueCount);
     return headerSize + dataSize;
   }
 
