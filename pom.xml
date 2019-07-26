@@ -379,6 +379,15 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <excludes>
+                        <!-- Additional files like .gitignore etc.-->
+                        <exclude>**/.*/**</exclude>
+                        <exclude>**/data/**</exclude>
+                        <exclude>NOTICE*</exclude>
+                        <exclude>licenses/*</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
             <!--use `mvn cobertura:cobertura` -->
             <plugin>
