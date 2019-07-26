@@ -32,6 +32,8 @@ import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationResp;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -138,6 +140,10 @@ public class IoTDBQueryResultSetTest {
 
     when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
     when(fetchResultsResp.getStatus()).thenReturn(Status_SUCCESS);
+
+    TSCloseOperationResp closeResp = new TSCloseOperationResp();
+    closeResp.setStatus(Status_SUCCESS);
+    when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
   }
 
   @SuppressWarnings("resource")
@@ -173,7 +179,7 @@ public class IoTDBQueryResultSetTest {
     when(fetchResultsResp.getQueryDataSet()).thenReturn(tsQueryDataSet);
 
     if (hasResultSet) {
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         // check columnInfoMap
         Assert.assertEquals(resultSet.findColumn("Time"), 1);
         Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 2);

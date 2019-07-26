@@ -291,13 +291,12 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     MeasurementSchema that = (MeasurementSchema) o;
     return type == that.type && encoding == that.encoding && Objects
         .equals(measurementId, that.measurementId)
-        && Objects.equals(encodingConverter, that.encodingConverter)
-        && Objects.equals(compressor, that.compressor) && Objects.equals(props, that.props);
+        && Objects.equals(compressor, that.compressor);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, encoding, measurementId, encodingConverter, compressor, props);
+    return Objects.hash(type, encoding, measurementId, compressor);
   }
 
   /**
