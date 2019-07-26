@@ -142,7 +142,6 @@
         <module>example</module>
         <module>grafana</module>
         <module>spark-tsfile</module>
-        <module>build</module>
         <!-- <module>hadoop</module> -->
     </modules>
     <build>
@@ -608,6 +607,19 @@
                                     <finalName>apache-iotdb-${project.version}-incubating</finalName>
                                 </configuration>
                             </execution>
+                            <!-- Package binaries-->
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors>
+                                        <descriptor>src/assembly/distribution.xml</descriptor>
+                                    </descriptors>
+                                    <finalName>apache-iotdb-${project.version}-incubating-bin</finalName>
+                                </configuration>
+                            </execution>
                         </executions>
                     </plugin>
                     <!--
@@ -633,6 +645,26 @@
                                             <directory>${project.build.directory}</directory>
                                             <includes>
                                                 <include>apache-iotdb-${project.version}-incubating-source-release.zip</include>
+                                            </includes>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>sign-binary-package</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>files</goal>
+                                </goals>
+                                <configuration>
+                                    <algorithms>
+                                        <algorithm>SHA-512</algorithm>
+                                    </algorithms>
+                                    <fileSets>
+                                        <fileSet>
+                                            <directory>${project.build.directory}</directory>
+                                            <includes>
+                                                <include>apache-iotdb-${project.version}-SNAPSHOT-incubating-bin-release.zip</include>
                                             </includes>
                                         </fileSet>
                                     </fileSets>
