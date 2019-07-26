@@ -20,7 +20,7 @@
 
 -->
 <assembly>
-    <id>release</id>
+    <id>bin</id>
     <formats>
         <format>zip</format>
     </formats>
