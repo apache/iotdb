@@ -87,7 +87,7 @@ public class MergeManager implements IService {
       }
       mergeTaskPool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
-      while (!mergeTaskPool.isShutdown()) {
+      while (!mergeTaskPool.isTerminated()) {
         // wait
       }
       mergeTaskPool = null;
