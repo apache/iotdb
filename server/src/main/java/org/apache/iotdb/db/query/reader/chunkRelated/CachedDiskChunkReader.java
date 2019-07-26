@@ -30,13 +30,13 @@ public class CachedDiskChunkReader implements IPointReader {
 
   private ChunkReader chunkReader;
   private BatchData data;
+  private TimeValuePair prev;
   private TimeValuePair current;
 
   public CachedDiskChunkReader(ChunkReader chunkReader) {
     this.chunkReader = chunkReader;
-    this.current =
+    this.prev =
         TimeValuePairUtils.getEmptyTimeValuePair(chunkReader.getChunkHeader().getDataType());
-
   }
 
   @Override
@@ -54,14 +54,30 @@ public class CachedDiskChunkReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair next() {
-    TimeValuePairUtils.setCurrentTimeValuePair(data, current);
+  public TimeValuePair next() throws IOException {
+    TimeValuePairUtils.setCurrentTimeValuePair(data, prev);
     data.next();
-    return current;
+    if (data.hasNext()) {
+      TimeValuePairUtils.setCurrentTimeValuePair(data, current());
+    } else {
+      while (chunkReader.hasNextBatch()) {
+        data = chunkReader.nextBatch();
+        if (data.hasNext()) {
+          TimeValuePairUtils.setCurrentTimeValuePair(data, current());
+          break;
+        }
+      }
+    }
+    return prev;
   }
 
   @Override
   public TimeValuePair current() {
+    if (current == null) {
+      this.current =
+          TimeValuePairUtils.getEmptyTimeValuePair(chunkReader.getChunkHeader().getDataType());
+      TimeValuePairUtils.setCurrentTimeValuePair(data, current);
+    }
     return current;
   }
 
