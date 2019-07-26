@@ -36,6 +36,9 @@
             <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
         </file>
         <file>
+            <source>${maven.multiModuleProjectDirectory}/DISCLAIMER</source>
+        </file>
+        <file>
             <source>${maven.multiModuleProjectDirectory}/RELEASE_NOTES.md</source>
         </file>
     </files>

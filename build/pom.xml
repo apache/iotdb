@@ -21,15 +21,14 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>incubator-iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
+        <artifactId>incubating-iotdb-parent</artifactId>
         <version>0.8.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>build</artifactId>
-    <name>build</name>
-    <!-- FIXME change it to the project's website -->
-    <url>http://www.example.com</url>
+    <artifactId>incubating-iotdb</artifactId>
+    <name>build-incubating-iotdb</name>
+    <url>https://iotdb.apache.org</url>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.7</maven.compiler.source>
