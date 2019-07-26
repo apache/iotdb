@@ -36,7 +36,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.CachedUnseqResourceMergeReader;
-import org.apache.iotdb.db.query.reader.resourceRelated.UnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
