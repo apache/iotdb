@@ -183,7 +183,7 @@ public class ChunkBuffer {
         schema.getEncodingType(), statistics, maxTimestamp, minTimestamp, pageBuffer.size(),
         numOfPages);
 
-    long totalByteSize = writer.getPos();
+    long dataOffset = writer.getPos();
     LOG.debug("start writing pages of {} into file, position {}", schema.getMeasurementId(),
         writer.getPos());
 
@@ -192,14 +192,14 @@ public class ChunkBuffer {
     LOG.debug("finish writing pages of {} into file, position {}", schema.getMeasurementId(),
         writer.getPos());
 
-    long size = writer.getPos() - totalByteSize;
-    if (size != pageBuffer.size()) {
-      throw new IOException("Bytes written is inconsistent with the size of data: " + size  +" !="
+    long dataSize = writer.getPos() - dataOffset;
+    if (dataSize != pageBuffer.size()) {
+      throw new IOException("Bytes written is inconsistent with the size of data: " + dataSize  +" !="
           + " " + pageBuffer.size());
     }
 
-    writer.endChunk(totalValueCount);
-    return headerSize + size;
+    writer.endChunk(totalValueCount, headerSize + dataSize);
+    return headerSize + dataSize;
   }
 
   /**
