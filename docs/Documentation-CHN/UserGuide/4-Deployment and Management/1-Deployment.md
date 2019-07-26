@@ -65,7 +65,7 @@ Shell > tar -zxf iotdb-<version>.tar.gz # For Linux or MacOS
 解压后文件夹内容见图：
 
 ```
-iotdb/     <-- root path
+server/     <-- root path
 |
 +- bin/       <-- script files
 |
@@ -95,7 +95,7 @@ Shell > git clone git@github.com:apache/incubator-iotdb.git
 步骤三：源码克隆后，进入到源码文件夹目录下，使用以下命令进行编译：
 
 ```
-> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
+> mvn clean package -pl server -am -Dmaven.test.skip=true
 ```
 
 成功后，可以在终端看到如下信息:
@@ -108,7 +108,7 @@ Shell > git clone git@github.com:apache/incubator-iotdb.git
 [INFO] TsFile ............................................. SUCCESS [ 10.486 s]
 [INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
 [INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
-[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] IoTDB Server ....................................... SUCCESS [  8.258 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
