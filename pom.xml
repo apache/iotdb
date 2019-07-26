@@ -27,7 +27,7 @@
         <version>21</version>
     </parent>
     <groupId>org.apache.iotdb</groupId>
-    <artifactId>incubating-iotdb-parent</artifactId>
+    <artifactId>iotdb-parent</artifactId>
     <version>0.8.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Apache IoTDB (incubating) Project Parent POM</name>
@@ -577,6 +577,65 @@
                                     <generator>java</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Make sure the source assembly has the right name (includes "incubating") -->
+        <profile>
+            <id>apache-release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>source-release-assembly</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <!-- heads up: combine.self in the following is highlighted
+                                    as an error in Eclipse's xml editor view.
+                                    Just ignore that.
+                                    See  https://issues.apache.org/jira/browse/MNG-5454  sigh.
+                                 -->
+                                <configuration combine.self="append">
+                                    <finalName>apache-iotdb-${project.version}-incubating</finalName>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!--
+                      Create SHA512 checksum files for the release artifacts.
+                    -->
+                    <plugin>
+                        <groupId>net.nicoulaj.maven.plugins</groupId>
+                        <artifactId>checksum-maven-plugin</artifactId>
+                        <version>1.8</version>
+                        <executions>
+                            <execution>
+                                <id>sign-source-release</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>files</goal>
+                                </goals>
+                                <configuration>
+                                    <algorithms>
+                                        <algorithm>SHA-512</algorithm>
+                                    </algorithms>
+                                    <fileSets>
+                                        <fileSet>
+                                            <directory>${project.build.directory}</directory>
+                                            <includes>
+                                                <include>apache-iotdb-${project.version}-incubating-source-release.zip</include>
+                                            </includes>
+                                        </fileSet>
+                                    </fileSets>
                                 </configuration>
                             </execution>
                         </executions>
