@@ -30,7 +30,7 @@
     <artifactId>tsfile</artifactId>
     <name>TsFile</name>
     <description>A columnar file format designed for time-series data</description>
-    <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
+    <url>https://github.com/apache/incubator-iotdb/tree/master/tsfile</url>
     <properties>
         <tsfile.test.skip>false</tsfile.test.skip>
         <tsfile.it.skip>${tsfile.test.skip}</tsfile.it.skip>
