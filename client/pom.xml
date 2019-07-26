@@ -23,7 +23,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>root</artifactId>
+        <artifactId>incubating-iotdb-parent</artifactId>
         <version>0.9.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
