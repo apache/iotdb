@@ -146,25 +146,51 @@ StringLiteral
     )
     ;
 
-//2016-11-16T16:22:33+0800
-DATETIME
-    : Digit+ (MINUS | DIVIDE | DOT) Digit+ (MINUS | DIVIDE | DOT) Digit+ ('T' | WS) Digit+ COLON Digit+ COLON Digit+ (DOT Digit+)? ((PLUS | MINUS) Digit+ COLON Digit+)?
-    ;
-
 NegativeInteger
     :
     '-' Digit+
     ;
 
-NonNegativeInteger
+PositiveInteger
     :
-    ('+')? Digit+
+    '+' Digit+
     ;
 
-Float
-	:
-	('+'|'-')? Digit+ DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
-	;
+NegativeFloat
+    :
+    '-' Digit+ DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
+    ;
+
+PositiveFloat
+    :
+    '+' Digit+ DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
+    ;
+
+UnsignedInteger
+    :
+    Digit+
+    ;
+
+DoubleInScientificNotationSuffix
+    :
+    DOT
+    (
+      (Digit+ ('e'|'E') ('+'|'-')? Digit+) => Digit+ ('e'|'E') ('+'|'-')? Digit+
+    |
+      (){$type=DOT;}
+    )
+    ;
+
+// 2017-11-1T00:15:00+08:00
+DATETIME
+    :
+    Digit+
+    (
+      ((MINUS | DIVIDE | DOT) Digit+ (MINUS | DIVIDE | DOT) Digit+ ('T' | WS) Digit+ COLON Digit+ COLON Digit+ (DOT Digit+)? ((PLUS | MINUS) Digit+ COLON Digit+)?)=>(MINUS | DIVIDE | DOT) Digit+ (MINUS | DIVIDE | DOT) Digit+ ('T' | WS) Digit+ COLON Digit+ COLON Digit+ (DOT Digit+)? ((PLUS | MINUS) Digit+ COLON Digit+)?
+    |
+      (){$type=UnsignedInteger;}
+    )
+    ;
 
 Boolean
     :
