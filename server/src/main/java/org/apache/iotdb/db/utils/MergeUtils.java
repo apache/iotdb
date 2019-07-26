@@ -222,52 +222,64 @@ public class MergeUtils {
    * timeseries, which reduce disk seeks.
    * @param paths names of the timeseries
    * @param unseqResources
-   * @param resource
+   * @param mergeResource
    * @return
    * @throws IOException
    */
   public static List<Chunk>[] collectUnseqChunks(List<Path> paths,
-      List<TsFileResource> unseqResources, MergeResource resource) throws IOException {
+      List<TsFileResource> unseqResources, MergeResource mergeResource) throws IOException {
     List<Chunk>[] ret = new List[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       ret[i] = new ArrayList<>();
     }
     PriorityQueue<MetaListEntry> chunkMetaHeap = new PriorityQueue<>();
+
     for (TsFileResource tsFileResource : unseqResources) {
 
-      TsFileSequenceReader tsFileReader = resource.getFileReader(tsFileResource);
-
+      TsFileSequenceReader tsFileReader = mergeResource.getFileReader(tsFileResource);
       // prepare metaDataList
-      for (int i = 0; i < paths.size(); i++) {
-        Path path = paths.get(i);
-        List<ChunkMetaData> metaDataList = tsFileReader.getChunkMetadata(path);
-        if (metaDataList.isEmpty()) {
-          continue;
-        }
-        List<Modification> pathModifications =
-            resource.getModifications(tsFileResource, path);
-        if (!pathModifications.isEmpty()) {
-          QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
-        }
-        MetaListEntry entry = new MetaListEntry(i, metaDataList);
-        if (entry.hasNext()) {
-          entry.next();
-          chunkMetaHeap.add(entry);
-        }
-      }
+      buildMetaHeap(paths, tsFileReader, mergeResource, tsFileResource, chunkMetaHeap);
 
       // read chunks order by their position
-      while (!chunkMetaHeap.isEmpty()) {
-        MetaListEntry metaListEntry = chunkMetaHeap.poll();
-        Chunk chunk = tsFileReader.readMemChunk(metaListEntry.current());
-        ret[metaListEntry.pathId].add(chunk);
-        if (metaListEntry.hasNext()) {
-          metaListEntry.next();
-          chunkMetaHeap.add(metaListEntry);
-        }
-      }
+      collectUnseqChunks(chunkMetaHeap, mergeResource, tsFileReader, ret);
     }
     return ret;
+  }
+
+  private static void buildMetaHeap(List<Path> paths, TsFileSequenceReader tsFileReader,
+      MergeResource resource, TsFileResource tsFileResource, PriorityQueue<MetaListEntry> chunkMetaHeap)
+      throws IOException {
+    for (int i = 0; i < paths.size(); i++) {
+      Path path = paths.get(i);
+      List<ChunkMetaData> metaDataList = tsFileReader.getChunkMetadata(path);
+      if (metaDataList.isEmpty()) {
+        continue;
+      }
+      List<Modification> pathModifications =
+          resource.getModifications(tsFileResource, path);
+      if (!pathModifications.isEmpty()) {
+        QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
+      }
+      MetaListEntry entry = new MetaListEntry(i, metaDataList);
+      if (entry.hasNext()) {
+        entry.next();
+        chunkMetaHeap.add(entry);
+      }
+    }
+  }
+
+  private static void collectUnseqChunks(PriorityQueue<MetaListEntry> chunkMetaHeap,
+      MergeResource resource, TsFileSequenceReader tsFileReader, List<Chunk>[] ret) throws IOException {
+    while (!chunkMetaHeap.isEmpty()) {
+      MetaListEntry metaListEntry = chunkMetaHeap.poll();
+      ChunkMetaData currMeta = metaListEntry.current();
+      Chunk chunk = tsFileReader.readMemChunk(currMeta);
+      ret[metaListEntry.pathId].add(chunk);
+      if (metaListEntry.hasNext()) {
+        metaListEntry.next();
+        chunkMetaHeap.add(metaListEntry);
+      }
+    }
   }
 
   public static boolean isChunkOverflowed(TimeValuePair timeValuePair, ChunkMetaData metaData) {
