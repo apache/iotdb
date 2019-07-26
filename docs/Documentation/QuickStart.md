@@ -78,11 +78,11 @@ Now suppose your directory is like this:
 > ls -l
 incubator-iotdb/     <-- root path
 |
-+- iotdb/
++- server/
 |
 +- jdbc/
 |
-+- iotdb-cli/
++- client/
 |
 ...
 |
@@ -115,10 +115,10 @@ Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 /workspace/incubator-iotdb
 
 # Unix/OS X
-> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
+> mvn clean package -pl server -am -Dmaven.test.skip=true
 
 # Windows
-> mvn clean package -pl iotdb -am '-Dmaven.test.skip=true'
+> mvn clean package -pl server -am '-Dmaven.test.skip=true'
 ```
 
 Note: If you are a Windows user, you should use quoting `'-Dmaven.test.skip=true'` in the following commands.
@@ -133,7 +133,7 @@ If successful, you will see the the following text in the terminal:
 [INFO] TsFile ............................................. SUCCESS [ 10.486 s]
 [INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
 [INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
-[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] IoTDB Server ....................................... SUCCESS [  8.258 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
@@ -190,7 +190,7 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 > pwd
 /workspace/incubator-iotdb
 
-> mvn clean package -pl iotdb-cli -am -Dmaven.test.skip=true
+> mvn clean package -pl client -am -Dmaven.test.skip=true
 
 # Unix/OS X
 > $IOTDB_CLI_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>

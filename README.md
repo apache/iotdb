@@ -84,7 +84,7 @@ Now suppose your directory is like this:
 > ls -l
 incubator-iotdb/     <-- root path
 |
-+- iotdb/
++- server/
 |
 +- jdbc/
 |
@@ -121,7 +121,7 @@ Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 > pwd
 /workspace/incubator-iotdb
 
-> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
+> mvn clean package -pl server -am -Dmaven.test.skip=true
 ```
 
 If successful, you will see the the following text in the terminal:
@@ -134,17 +134,17 @@ If successful, you will see the the following text in the terminal:
 [INFO] TsFile ............................................. SUCCESS [ 10.486 s]
 [INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
 [INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
-[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] IoTDB Server ....................................... SUCCESS [  8.258 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
 ```
 Otherwise, you may need to check the error statements and fix the problems.
 
-After build, the IoTDB project will be at the folder "iotdb/iotdb". The folder will include the following contents:
+After build, the IoTDB project will be at the folder "server/iotdb". The folder will include the following contents:
 
 ```
-iotdb/iotdb/  <-- root path
+server/iotdb/  <-- root path
 |
 +- bin/       <-- script files
 |
@@ -198,7 +198,7 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 > pwd
 /workspace/incubator-iotdb
 
-> mvn clean package -pl iotdb-cli -am -Dmaven.test.skip=true
+> mvn clean package -pl client -am -Dmaven.test.skip=true
 
 # Unix/OS X
 > $IOTDB_CLI_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
