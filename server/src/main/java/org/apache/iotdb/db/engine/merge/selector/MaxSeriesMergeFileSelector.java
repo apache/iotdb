@@ -39,6 +39,7 @@ public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {
 
   private List<TsFileResource> lastSelectedSeqFiles = Collections.emptyList();
   private List<TsFileResource> lastSelectedUnseqFiles = Collections.emptyList();
+  private long lastTotalMemoryCost;
 
   public MaxSeriesMergeFileSelector(
       MergeResource mergeResource,
@@ -95,11 +96,13 @@ public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {
       } else {
         lastSelectedSeqFiles = selectedSeqFiles;
         lastSelectedUnseqFiles = selectedUnseqFiles;
+        lastTotalMemoryCost = totalCost;
         lb = mid;
       }
     }
     selectedUnseqFiles = lastSelectedUnseqFiles;
     selectedSeqFiles = lastSelectedSeqFiles;
     concurrentMergeNum = lb;
+    totalCost = lastTotalMemoryCost;
   }
 }

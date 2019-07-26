@@ -136,6 +136,8 @@ public class MaxFileMergeFileSelector implements MergeFileSelector {
     seqSelectedNum = 0;
     selectedSeqFiles = new ArrayList<>();
     selectedUnseqFiles = new ArrayList<>();
+    maxSeqFileCost = 0;
+    tempMaxSeqFileCost = 0;
 
     totalCost = 0;
 
