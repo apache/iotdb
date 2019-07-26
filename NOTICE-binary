@@ -47,3 +47,48 @@ Java SE, which can be obtained at:
     * https://github.com/apache/hive
 
 ============================================================================
+
+The binary distribution of this product bundles binaries of
+ch.qos.logback:logback-classic:1.1.11 and ch.qos.logback:logback-core:1.1.11 (https://logback.qos.ch/).
+It has the following notices:
+
+Logback: the reliable, generic, fast and flexible logging framework.
+Copyright (C) 1999-2017, QOS.ch. All rights reserved.
+
+This program and the accompanying materials are dual-licensed under
+either the terms of the Eclipse Public License v1.0 as published by
+the Eclipse Foundation
+
+---
+
+The binary distribution of this product bundles binaries of
+javax.annotation:javax.annotation-api:1.3.2 (https://github.com/javaee/javax.annotation).
+It has the following notices:
+
+NOTICE PURSUANT TO SECTION 9 OF THE COMMON DEVELOPMENT AND DISTRIBUTION
+LICENSE (CDDL)
+
+The code released under the CDDL shall be governed by the laws of the
+State of California (excluding conflict-of-law provisions). Any
+litigation relating to this License shall be subject to the jurisdiction
+of the Federal Courts of the Northern District of California and the
+state courts of the State of California, with venue lying in Santa Clara
+County, California.
+
+---
+
+The binary distribution of this product bundles binaries of
+javax.activation:javax.activation-api:1.2.0 (https://docs.oracle.com/javase/7/docs/api/javax/activation/package-summary.html).
+It has the following notices:
+
+Copyright © 1993, 2018, Oracle and/or its affiliates. All rights reserved. Use is subject to license terms. Also see the documentation redistribution policy.
+
+---
+
+The binary distribution of this product bundles binaries of
+javax.xml.bind:jaxb-api:2.4.0-b180725.0427 (https://docs.oracle.com/javase/8/docs/api/javax/xml/bind/JAXB.html).
+It has the following notices:
+
+Copyright © 1993, 2018, Oracle and/or its affiliates. All rights reserved. Use is subject to license terms. Also see the documentation redistribution policy.
+
+---
