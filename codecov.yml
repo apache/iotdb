@@ -46,3 +46,4 @@ ignore:
   - "NOTICE-binary"
   - "License"
   - "LICENSE-binary"
+  - "DISCLAIMER"

@@ -576,13 +576,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp = executeAuthQuery(plan, columns);
       }
 
+      resp.setColumns(columns);
+      resp.setDataTypeList(queryColumnsType(columns));
       resp.setOperationType(plan.getOperatorType().toString());
       TSHandleIdentifier operationId = new TSHandleIdentifier(
-          ByteBuffer.wrap(username.get().getBytes()),
-          ByteBuffer.wrap("PASS".getBytes()));
-      TSOperationHandle operationHandle;
-      resp.setColumns(columns);
-      operationHandle = new TSOperationHandle(operationId, true);
+          ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()));
+      TSOperationHandle operationHandle = new TSOperationHandle(operationId, true);
       resp.setOperationHandle(operationHandle);
       recordANewQuery(statement, plan);
       return resp;
@@ -592,6 +591,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, t1);
     }
+  }
+
+  private List<String> queryColumnsType(List<String> columns) throws PathErrorException {
+    List<String> columnTypes = new ArrayList<>();
+    for (String column : columns) {
+      columnTypes.add(getSeriesType(column).toString());
+    }
+    return columnTypes;
   }
 
   private TSExecuteStatementResp executeAuthQuery(PhysicalPlan plan, List<String> columns) {
@@ -627,8 +634,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSExecuteStatementResp executeDataQuery(PhysicalPlan plan, List<String> columns)
       throws AuthException, TException {
-    List<Path> paths;
-    paths = plan.getPaths();
+    List<Path> paths = plan.getPaths();
 
     // check seriesPath exists
     if (paths.isEmpty()) {
