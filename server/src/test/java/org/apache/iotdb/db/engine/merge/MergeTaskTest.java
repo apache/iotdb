@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.resourceRelated.SeqResourceIterateReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -50,7 +51,7 @@ public class MergeTaskTest extends MergeTest {
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     FileUtils.deleteDirectory(tempSGDir);
   }

@@ -31,6 +31,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Before;
@@ -48,7 +49,7 @@ public class MergeLogTest extends MergeTest {
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     FileUtils.deleteDirectory(tempSGDir);FileUtils.deleteDirectory(tempSGDir);
   }
@@ -66,9 +67,8 @@ public class MergeLogTest extends MergeTest {
     int lineCnt = 0;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(mergeLog))) {
       String line;
-      while ((line = bufferedReader.readLine()) != null) {
+      while (bufferedReader.readLine() != null) {
         lineCnt ++;
-        System.out.println(line);
       }
     } catch (IOException e) {
       e.printStackTrace();
