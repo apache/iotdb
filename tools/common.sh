@@ -26,10 +26,10 @@ IOTDB_ROOT_DIR=.
 BUNDLE_DIR=${IOTDB_ROOT_DIR}/target/checkout/target
 
 IOTDB_ASF_GIT_URL=https://git-wip-us.apache.org/repos/asf/incubator-iotdb.git
-IOTDB_ASF_DIST_URL=https://www.apache.org/dist/iotdb
+IOTDB_ASF_DIST_URL=https://www.apache.org/dist/incubator/iotdb
 IOTDB_ASF_DIST_DYN_URL=https://www.apache.org/dyn/closer.cgi/iotdb
 IOTDB_ASF_SVN_RELEASE_URL=https://dist.apache.org/repos/dist/release/iotdb
-IOTDB_ASF_SVN_RC_URL=https://dist.apache.org/repos/dist/dev/iotdb
+IOTDB_ASF_SVN_RC_URL=https://dist.apache.org/repos/dist/dev/incubator/iotdb
 
 USAGE=
 
