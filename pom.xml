@@ -27,10 +27,10 @@
         <version>21</version>
     </parent>
     <groupId>org.apache.iotdb</groupId>
-    <artifactId>root</artifactId>
-    <version>0.8.0-SNAPSHOT</version>
+    <artifactId>incubating-iotdb-parent</artifactId>
+    <version>0.8.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>IoTDB Root</name>
+    <name>Apache IoTDB (incubating) Project Parent POM</name>
     <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
     <licenses>
         <license>
@@ -217,6 +217,8 @@
                             <!-- if `mvn clean` is not executed and `mvn test` is interrupted, then perTestInputData may be not deleted -->
                             <exclude>src/test/resources/perTestInputData</exclude>
                             <exclude>src/test/resources/*.json</exclude>
+                            <exclude>NOTICE-binary</exclude>
+                            <exclude>LICENSE-binary</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
