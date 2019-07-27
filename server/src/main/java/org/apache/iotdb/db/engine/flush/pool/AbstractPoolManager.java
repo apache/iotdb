@@ -84,4 +84,12 @@ public abstract class AbstractPoolManager {
   public abstract void stop();
 
   public abstract String getName();
+
+  public int getNumberOfWorkingTasks() {
+    return ((ThreadPoolExecutor)pool).getActiveCount();
+  }
+
+  public int getNumberOfPendingTasks() {
+    return ((ThreadPoolExecutor)pool).getQueue().size();
+  }
 }
