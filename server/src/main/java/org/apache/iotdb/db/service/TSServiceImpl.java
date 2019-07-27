@@ -503,8 +503,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       if (execShowDynamicParameters(statement)) {
         String msg = String.format(
-            "Memtable size threshold: %dB , Memtable number: %d , Tsfile size threshold: %dB , Compression ratio: %f ,"
-                + "Storage group number: %d , Timeseries number: %d, Maximal timeseries number among storage groups: %d",
+            "Memtable size threshold: %dB, Memtable number: %d, Tsfile size threshold: %dB, Compression ratio: %f,"
+                + " Storage group number: %d, Timeseries number: %d, Maximal timeseries number among storage groups: %d",
             IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold(),
             IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber(),
             IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
