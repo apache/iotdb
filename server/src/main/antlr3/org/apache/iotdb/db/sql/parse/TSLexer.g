@@ -158,17 +158,24 @@ PositiveInteger
 
 NegativeFloat
     :
-    '-' Digit+ DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
+    '-' Digit+
+    (
+      (DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?) => DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
+    |
+      (){$type=NegativeInteger;}
+    )
+    | '-' DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
     ;
 
 PositiveFloat
     :
-    '+' Digit+ DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
-    ;
-
-UnsignedInteger
-    :
-    Digit+
+    '+' Digit+
+    (
+      (DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?) => DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
+    |
+      (){$type=PositiveInteger;}
+    )
+    | '+' DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
     ;
 
 DoubleInScientificNotationSuffix
@@ -179,6 +186,11 @@ DoubleInScientificNotationSuffix
     |
       (){$type=DOT;}
     )
+    ;
+
+UnsignedInteger
+    :
+    Digit+
     ;
 
 // 2017-11-1T00:15:00+08:00

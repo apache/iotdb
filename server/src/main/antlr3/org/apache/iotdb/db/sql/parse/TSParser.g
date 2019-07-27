@@ -323,8 +323,13 @@ integer
 floatValue
     : PositiveFloat
     | NegativeFloat
-    | UnsignedInteger DOT UnsignedInteger -> ^(TOK_FLOAT_COMB UnsignedInteger DOT UnsignedInteger)
+    | PositiveInteger DOT -> PositiveInteger
+    | NegativeInteger DOT -> NegativeInteger
+    | (UnsignedInteger DOT UnsignedInteger)=>UnsignedInteger DOT UnsignedInteger -> ^(TOK_FLOAT_COMB UnsignedInteger DOT UnsignedInteger)
+    | UnsignedInteger DOT -> UnsignedInteger
+    | DOT UnsignedInteger -> ^(TOK_FLOAT_COMB DOT UnsignedInteger)
     | UnsignedInteger DoubleInScientificNotationSuffix -> ^(TOK_FLOAT_COMB UnsignedInteger DoubleInScientificNotationSuffix)
+    | DoubleInScientificNotationSuffix
     ;
 
 number
