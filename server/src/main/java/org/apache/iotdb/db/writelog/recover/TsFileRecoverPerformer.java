@@ -78,10 +78,7 @@ public class TsFileRecoverPerformer {
    * 4. clean WALs
    */
   public void recover() throws ProcessorException {
-    IMemTable recoverMemTable = new PrimitiveMemTable();
-    this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
-        versionController,
-        tsFileResource, fileSchema, recoverMemTable, acceptUnseq);
+
     File insertFile = new File(insertFilePath);
     if (!insertFile.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", insertFilePath);
@@ -95,7 +92,7 @@ public class TsFileRecoverPerformer {
       throw new ProcessorException(e);
     }
 
-    if (!restorableTsFileIOWriter.hasCrashed()) {
+    if (!restorableTsFileIOWriter.hasCrashed() && !restorableTsFileIOWriter.canWrite()) {
       // tsfile is complete
       try {
         if (tsFileResource.fileExists()) {
@@ -103,23 +100,7 @@ public class TsFileRecoverPerformer {
           tsFileResource.deSerialize();
         } else {
           // .resource file does not exist, read file metadata and recover tsfile resource
-          try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getFile().getAbsolutePath())) {
-            TsFileMetaData metaData = reader.readFileMetadata();
-            List<TsDeviceMetadataIndex> deviceMetadataIndexList = new ArrayList<>(
-                metaData.getDeviceMap().values());
-            for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
-              TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-              List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
-              for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-                for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-                  tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
-                  tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
-                }
-              }
-            }
-          }
-          // write .resource file
-          tsFileResource.serialize();
+          recoverResourceFromReader();
         }
         return;
       } catch (IOException e) {
@@ -129,23 +110,63 @@ public class TsFileRecoverPerformer {
     } else {
       // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
       // map must be updated first to avoid duplicated insertion
-      for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter
-          .getChunkGroupMetaDatas()) {
-        for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-          tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
-          tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
-        }
-      }
+      recoverResourceFromWriter(restorableTsFileIOWriter);
     }
 
     // redo logs
+    redoLogs(restorableTsFileIOWriter);
+
+    // clean logs
+    try {
+      MultiFileLogNodeManager.getInstance()
+          .deleteNode(logNodePrefix + new File(insertFilePath).getName());
+    } catch (IOException e) {
+      throw new ProcessorException(e);
+    }
+  }
+
+  private void recoverResourceFromReader() throws IOException {
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(tsFileResource.getFile().getAbsolutePath(), false)) {
+      TsFileMetaData metaData = reader.readFileMetadata();
+      List<TsDeviceMetadataIndex> deviceMetadataIndexList = new ArrayList<>(
+          metaData.getDeviceMap().values());
+      for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
+        TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
+        List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
+        for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
+          for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+            tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
+            tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+          }
+        }
+      }
+    }
+    // write .resource file
+    tsFileResource.serialize();
+  }
+
+  private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter) {
+    for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter
+        .getChunkGroupMetaDatas()) {
+      for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
+        tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
+        tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+      }
+    }
+  }
+
+  private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter) throws ProcessorException {
+    IMemTable recoverMemTable = new PrimitiveMemTable();
+    this.logReplayer = new LogReplayer(logNodePrefix, insertFilePath, tsFileResource.getModFile(),
+        versionController,
+        tsFileResource, fileSchema, recoverMemTable, acceptUnseq);
     logReplayer.replayLogs();
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, fileSchema,
-            restorableTsFileIOWriter,
-            logNodePrefix);
+            restorableTsFileIOWriter, logNodePrefix);
         tableFlushTask.syncFlushMemTable();
       }
       // close file
@@ -153,14 +174,6 @@ public class TsFileRecoverPerformer {
       tsFileResource.serialize();
     } catch (ExecutionException | InterruptedException | IOException e) {
       Thread.currentThread().interrupt();
-      throw new ProcessorException(e);
-    }
-
-    // clean logs
-    try {
-      MultiFileLogNodeManager.getInstance()
-          .deleteNode(logNodePrefix + new File(insertFilePath).getName());
-    } catch (IOException e) {
       throw new ProcessorException(e);
     }
   }
