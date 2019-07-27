@@ -241,7 +241,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     return currentMemTableSize;
   }
 
-  int getTotalTimeseries() {
+  public int getTotalTimeseries() {
     return totalTimeseries;
   }
 
