@@ -44,7 +44,7 @@ object Transformer {
     */
   def toNewForm(spark: SparkSession,
                 df: DataFrame): DataFrame = {
-    df.registerTempTable("iotdb_old_form")
+    df.registerTempTable("tsfle_old_form")
     // use to record device and their measurement
     var map = new scala.collection.mutable.HashMap[String, List[String]]()
     // use to record all the measurement, prepare for the union
@@ -92,7 +92,7 @@ object Transformer {
         }
       }
 
-      query += " from iotdb_old_form"
+      query += " from tsfle_old_form"
       var cur_df = spark.sql(query)
 
       if (res == null) {
@@ -127,10 +127,10 @@ object Transformer {
     */
   def toOldForm(spark: SparkSession,
                 df: DataFrame): DataFrame = {
-    df.registerTempTable("iotdb_new_form")
+    df.registerTempTable("tsfle_new_form")
     // get all device_name
-    val device_names = spark.sql("select distinct device_name from iotdb_new_form").collect()
-    val table_df = spark.sql("select * from iotdb_new_form")
+    val device_names = spark.sql("select distinct device_name from tsfle_new_form").collect()
+    val table_df = spark.sql("select * from tsfle_new_form")
 
     import scala.collection.mutable.ListBuffer
     // get all measurement_name
@@ -157,7 +157,7 @@ object Transformer {
         query = query + ", " + measurement_name + " as `" + device_name(0) + "." + measurement_name + "`"
       })
 
-      query = query + " from iotdb_new_form where device_name = \"" + device_name(0) + "\""
+      query = query + " from tsfle_new_form where device_name = \"" + device_name(0) + "\""
       val cur_df = spark.sql(query)
 
       if (res == null) {
