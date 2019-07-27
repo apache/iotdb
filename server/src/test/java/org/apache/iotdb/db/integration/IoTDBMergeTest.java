@@ -29,7 +29,6 @@ import java.sql.Statement;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
