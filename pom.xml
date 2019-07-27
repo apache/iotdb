@@ -188,6 +188,7 @@
                         <excludes>
                             <!-- Git related files -->
                             <exclude>**/.git/**</exclude>
+                            <exclude>**/.mvn/**</exclude>
                             <exclude>**/.gitignore</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
@@ -251,7 +252,7 @@
                                 </requireJavaVersion>
                                 <!-- Disabled for now as it breaks the ability to build single modules -->
                                 <!--reactorModuleConvergence/-->
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies" />
+                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
                             </rules>
                         </configuration>
                     </execution>
