@@ -107,6 +107,8 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    */
   private long staticMemory;
 
+  private int totalStorageGroup;
+
   private int totalTimeseries;
 
   // MemTable section
@@ -207,12 +209,14 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    */
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
+    totalStorageGroup += diff;
     maxMemTableNum += 4 * diff;
     if(!CONFIG.isEnableParameterAdapter()){
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return;
     }
     if (!tryToAdaptParameters()) {
+      totalStorageGroup -= diff;
       maxMemTableNum -= 4 * diff;
       throw new ConfigAdjusterException(
           "The IoTDB system load is too large to create storage group.");
@@ -241,8 +245,12 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     return currentMemTableSize;
   }
 
-  int getTotalTimeseries() {
+  public int getTotalTimeseries() {
     return totalTimeseries;
+  }
+
+  public int getTotalStorageGroup() {
+    return totalStorageGroup;
   }
 
   /**
