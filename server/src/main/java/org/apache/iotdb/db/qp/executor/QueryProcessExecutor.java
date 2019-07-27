@@ -50,6 +50,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -90,7 +91,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
         }
         return flag;
       case INSERT:
-        return insert((InsertPlan)plan);
+        return insert((InsertPlan) plan);
       case CREATE_ROLE:
       case DELETE_ROLE:
       case CREATE_USER:
@@ -104,6 +105,10 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case DELETE_USER:
         AuthorPlan author = (AuthorPlan) plan;
         return operateAuthor(author);
+      case GRANT_DATA_AUTH:
+        return operateDataAuth(((DataAuthPlan) plan).getUsers(), true);
+      case REVOKE_DATA_AUTH:
+        return operateDataAuth(((DataAuthPlan) plan).getUsers(), false);
       case DELETE_TIMESERIES:
       case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
@@ -298,7 +303,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           for (int i : permissions) {
             authorizer.grantPrivilegeToRole(roleName, nodeName.getFullPath(), i);
           }
-         break;
+          break;
         case GRANT_USER:
           for (int i : permissions) {
             authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i);
@@ -306,7 +311,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           break;
         case GRANT_ROLE_TO_USER:
           authorizer.grantRoleToUser(roleName, userName);
-         break;
+          break;
         case REVOKE_USER:
           for (int i : permissions) {
             authorizer.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i);
@@ -322,6 +327,20 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           break;
         default:
           throw new ProcessorException("Unsupported operation " + authorType);
+      }
+    } catch (AuthException e) {
+      throw new ProcessorException(e);
+    }
+    return true;
+  }
+
+  private boolean operateDataAuth(List<String> users, boolean useWatermark)
+      throws ProcessorException {
+    IAuthorizer authorizer;
+    try {
+      authorizer = LocalFileAuthorizer.getInstance();
+      for (String user : users) {
+        authorizer.setUserUseWaterMark(user, useWatermark);
       }
     } catch (AuthException e) {
       throw new ProcessorException(e);
