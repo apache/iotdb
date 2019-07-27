@@ -223,9 +223,10 @@ The following classes are modified from Apache Hive, which is under Apache Licen
 
 ------------
 
-The following class is modified from Maven Wrapper, which is under Apache License 2.0:
+The following class is modified from Maven Wrapper:
 
-./mvn/wrapper/MavenWrapperDownloader.java
+./.mvn/wrapper/MavenWrapperDownloader.java
+
 ================================================================
 
 The binary distribution of this product bundles these dependencies under the
