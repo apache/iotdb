@@ -61,7 +61,7 @@ The IoTDB project will be at the subfolder named iotdb. The folder will include 
 ```
 iotdb/     <-- root path
 |
-+- bin/       <-- script files
++- sbin/       <-- script files
 |
 +- conf/      <-- configuration files
 |
@@ -72,17 +72,7 @@ iotdb/     <-- root path
 
 ### Installation from source code
 
-Use git to get IoTDB source code:
-
-```
-Shell > git clone https://github.com/apache/incubator-iotdb.git
-```
-
-Or:
-
-```
-Shell > git clone git@github.com:apache/incubator-iotdb.git
-```
+You can get the released source code from https://iotdb.apache.org/#/Download, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
 
 Now suppose your directory is like this:
 
@@ -93,28 +83,28 @@ Now suppose your directory is like this:
 > ls -l
 incubator-iotdb/     <-- root path
 |
-+- iotdb/
++- server/
 |
 +- jdbc/
 |
-+- iotdb-cli/
++- client/
 |
 ...
 |
 +- pom.xml
 ```
 
-Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb/
-Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli/
+Let $IOTDB_HOME = /workspace/incubator-iotdb/server/iotdb/
+Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/cli/
 
 Note:
 * if `IOTDB_HOME` is not explicitly assigned, 
-then by default `IOTDB_HOME` is the direct parent directory of `bin/start-server.sh` on Unix/OS X 
-(or that of `bin\start-server.bat` on Windows).
+then by default `IOTDB_HOME` is the direct parent directory of `sbin/start-server.sh` on Unix/OS X 
+(or that of `sbin\start-server.bat` on Windows).
 
 * if `IOTDB_CLI_HOME` is not explicitly assigned, 
-then by default `IOTDB_CLI_HOME` is the direct parent directory of `bin/start-client.sh` on 
-Unix/OS X (or that of `bin\start-client.bat` on Windows).
+then by default `IOTDB_CLI_HOME` is the direct parent directory of `sbin/start-client.sh` on 
+Unix/OS X (or that of `sbin\start-client.bat` on Windows).
 
 If you are not the first time that building IoTDB, remember deleting the following files:
 
@@ -129,7 +119,7 @@ Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 > pwd
 /workspace/incubator-iotdb
 
-> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
+> mvn clean package -pl server -am -Dmaven.test.skip=true
 ```
 
 If successful, you will see the the following text in the terminal:
@@ -138,11 +128,11 @@ If successful, you will see the the following text in the terminal:
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Summary:
 [INFO]
-[INFO] IoTDB Root ......................................... SUCCESS [  7.020 s]
-[INFO] TsFile ............................................. SUCCESS [ 10.486 s]
-[INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
-[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
-[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] Apache IoTDB (incubating) Project Parent POM ....... SUCCESS [  6.405 s]
+[INFO] TsFile ............................................. SUCCESS [ 10.435 s]
+[INFO] Service-rpc ........................................ SUCCESS [  4.170 s]
+[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.252 s]
+[INFO] IoTDB Server ....................................... SUCCESS [  8.072 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
@@ -155,7 +145,7 @@ After building, the IoTDB project will be at the subfolder named iotdb. The fold
 ```
 $IOTDB_HOME/
 |
-+- bin/       <-- script files
++- sbin/       <-- script files
 |
 +- conf/      <-- configuration files
 |
