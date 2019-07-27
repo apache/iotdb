@@ -34,6 +34,19 @@ public class PriorityMergeReader implements IPointReader {
   private List<Integer> priorityList = new ArrayList<>();
   private PriorityQueue<Element> heap = new PriorityQueue<>();
 
+  public PriorityMergeReader() {
+  }
+
+  public PriorityMergeReader(IPointReader reader, int priority) throws IOException {
+    addReaderWithPriority(reader, priority);
+  }
+
+  public PriorityMergeReader(List<PriorityMergeReader> prioritySeriesReaders) throws IOException {
+    for (PriorityMergeReader reader : prioritySeriesReaders) {
+      addReaderWithPriority(reader, reader.getPriority());
+    }
+  }
+
   public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
       heap.add(new Element(readerList.size(), reader.next(), priority));
@@ -74,6 +87,14 @@ public class PriorityMergeReader implements IPointReader {
   public void close() throws IOException {
     for (IPointReader reader : readerList) {
       reader.close();
+    }
+  }
+
+  public int getPriority() {
+    if (priorityList.isEmpty()) {
+      return 0;
+    } else {
+      return priorityList.get(0);
     }
   }
 

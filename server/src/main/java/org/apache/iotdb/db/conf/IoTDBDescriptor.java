@@ -141,6 +141,8 @@ public class IoTDBDescriptor {
 
       conf.setSchemaDir(FilePathUtils.regularizePath(conf.getSystemDir()) + "schema");
 
+      conf.setQueryDir(FilePathUtils.regularizePath(conf.getBaseDir()) + "query");
+
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
@@ -223,6 +225,10 @@ public class IoTDBDescriptor {
       String tmpTimeZone = properties.getProperty("time_zone", conf.getZoneID().toString());
       conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
       logger.info("Time zone has been set to {}", conf.getZoneID());
+
+      conf.setExternalSortThreshold(Integer.parseInt(properties
+          .getProperty("external_sort_threshold",
+              Integer.toString(conf.getExternalSortThreshold()))));
 
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",

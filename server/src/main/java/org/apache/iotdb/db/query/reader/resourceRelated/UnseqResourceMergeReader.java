@@ -19,12 +19,16 @@
 package org.apache.iotdb.db.query.reader.resourceRelated;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.externalsort.ExternalSortJobEngine;
+import org.apache.iotdb.db.query.externalsort.SimpleExternalSortEngine;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -54,12 +58,15 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 public class UnseqResourceMergeReader extends PriorityMergeReader {
 
   private Path seriesPath;
+  private long queryId;
 
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
       QueryContext context, Filter filter) throws IOException {
     this.seriesPath = seriesPath;
+    this.queryId = context.getJobId();
 
     int priorityValue = 1;
+    List<IPointReader> priorityReaderList = new ArrayList<>();
     for (TsFileResource tsFileResource : unseqResources) {
 
       // prepare metaDataList
@@ -109,15 +116,32 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
         ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
             : new ChunkReaderWithoutFilter(chunk);
 
-        addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue++);
+        priorityReaderList.add(new DiskChunkReader(chunkReader));
       }
 
       if (!tsFileResource.isClosed()) {
         // create and add MemChunkReader with priority
-        addReaderWithPriority(
-            new MemChunkReader(tsFileResource.getReadOnlyMemChunk(), filter), priorityValue++);
+        priorityReaderList.add(new MemChunkReader(tsFileResource.getReadOnlyMemChunk(), filter));
       }
     }
+
+    if (shouldUseExternalSort()) {
+      ExternalSortJobEngine externalSortJobEngine = SimpleExternalSortEngine.getInstance();
+      List<IPointReader> readerList = externalSortJobEngine
+          .executeWithGlobalTimeFilter(queryId, priorityReaderList, priorityValue);
+      for (IPointReader chunkReader : readerList) {
+        addReaderWithPriority(chunkReader, priorityValue++);
+      }
+    } else {
+      for (IPointReader chunkReader : priorityReaderList) {
+        addReaderWithPriority(chunkReader, priorityValue++);
+      }
+    }
+
+  }
+
+  private boolean shouldUseExternalSort() {
+    return false;
   }
 
   /**

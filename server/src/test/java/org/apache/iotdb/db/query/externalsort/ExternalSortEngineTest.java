@@ -1,0 +1,178 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.query.externalsort;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.universal.FakedSeriesReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.TimeValuePair;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Test;
+
+public class ExternalSortEngineTest {
+
+  private String baseDir = "externalSortTestTmp";
+  private long queryId = EnvironmentUtils.TEST_QUERY_JOB_ID;
+
+  @After
+  public void after() throws IOException, StorageEngineException {
+    QueryResourceManager.getInstance().endQueryForGivenJob(queryId);
+    deleteDir();
+  }
+
+  @Test
+  public void testSimple() throws IOException {
+    SimpleExternalSortEngine engine = new SimpleExternalSortEngine(baseDir + "/", 2);
+    List<IPointReader> readerList1 = genSimple();
+    List<IPointReader> readerList2 = genSimple();
+    readerList1 = engine.executeWithGlobalTimeFilter(queryId, readerList1, 1);
+    PriorityMergeReader reader1 = new PriorityMergeReader();
+    for (int i = 0; i < readerList1.size(); i++) {
+      reader1.addReaderWithPriority(readerList1.get(i), i);
+    }
+    PriorityMergeReader reader2 = new PriorityMergeReader();
+    for (int i = 0; i < readerList2.size(); i++) {
+      reader2.addReaderWithPriority(readerList2.get(i), i);
+    }
+    check(reader1, reader2);
+    reader1.close();
+    reader2.close();
+  }
+
+  @Test
+  public void testBig() throws IOException {
+    SimpleExternalSortEngine engine = new SimpleExternalSortEngine(baseDir + "/", 50);
+    int lineCount = 100;
+    int valueCount = 10000;
+    List<long[]> data = genData(lineCount, valueCount);
+
+    List<IPointReader> readerList1 = genReaders(data);
+    List<IPointReader> readerList2 = genReaders(data);
+    readerList1 = engine.executeWithGlobalTimeFilter(queryId, readerList1, 1);
+    PriorityMergeReader reader1 = new PriorityMergeReader();
+    for (int i = 0; i < readerList1.size(); i++) {
+      reader1.addReaderWithPriority(readerList1.get(i), i);
+    }
+    PriorityMergeReader reader2 = new PriorityMergeReader();
+    for (int i = 0; i < readerList2.size(); i++) {
+      reader2.addReaderWithPriority(readerList2.get(i), i);
+    }
+
+    check(reader1, reader2);
+    reader1.close();
+    reader2.close();
+  }
+
+  public void efficiencyTest() throws IOException {
+    SimpleExternalSortEngine engine = new SimpleExternalSortEngine(baseDir + "/", 50);
+    int lineCount = 100000;
+    int valueCount = 100;
+    List<long[]> data = genData(lineCount, valueCount);
+
+    List<IPointReader> readerList1 = genReaders(data);
+    long startTimestamp = System.currentTimeMillis();
+    readerList1 = engine.executeWithGlobalTimeFilter(queryId, readerList1, 1);
+    PriorityMergeReader reader1 = new PriorityMergeReader();
+    for (int i = 0; i < readerList1.size(); i++) {
+      reader1.addReaderWithPriority(readerList1.get(i), i);
+    }
+    while (reader1.hasNext()) {
+      reader1.next();
+    }
+    System.out.println(
+        "Time used WITH external sort:" + (System.currentTimeMillis() - startTimestamp) + "ms");
+
+    List<IPointReader> readerList2 = genReaders(data);
+    startTimestamp = System.currentTimeMillis();
+    PriorityMergeReader reader2 = new PriorityMergeReader();
+    for (int i = 0; i < readerList2.size(); i++) {
+      reader2.addReaderWithPriority(readerList2.get(i), i);
+    }
+    while (reader2.hasNext()) {
+      reader2.next();
+    }
+    System.out.println(
+        "Time used WITHOUT external sort:" + (System.currentTimeMillis() - startTimestamp) + "ms");
+
+    //reader1.close();
+    reader2.close();
+  }
+
+  private List<long[]> genData(int lineCount, int valueCountEachLine) {
+    Random rand = new Random();
+    List<long[]> data = new ArrayList<>();
+    for (int i = 0; i < lineCount; i++) {
+      long[] tmp = new long[valueCountEachLine];
+      long start = rand.nextInt(Integer.MAX_VALUE);
+      for (int j = 0; j < valueCountEachLine; j++) {
+        tmp[j] = start++;
+      }
+      data.add(tmp);
+    }
+    return data;
+  }
+
+  private List<IPointReader> genReaders(List<long[]> data) {
+    List<IPointReader> readerList = new ArrayList<>();
+    for (int i = 0; i < data.size(); i++) {
+      readerList.add(new FakedSeriesReader(data.get(i), i));
+    }
+    return readerList;
+  }
+
+  private void check(IPointReader reader1, IPointReader reader2) throws IOException {
+    while (reader1.hasNext() && reader2.hasNext()) {
+      TimeValuePair tv1 = reader1.next();
+      TimeValuePair tv2 = reader2.next();
+      Assert.assertEquals(tv1.getTimestamp(), tv2.getTimestamp());
+      Assert.assertEquals(tv1.getValue(), tv2.getValue());
+    }
+    Assert.assertEquals(false, reader2.hasNext());
+    Assert.assertEquals(false, reader1.hasNext());
+  }
+
+  private List<IPointReader> genSimple() {
+    IPointReader reader1 = new FakedSeriesReader(new long[]{1, 2, 3, 4, 5}, 1L);
+    IPointReader reader2 = new FakedSeriesReader(new long[]{1, 5, 6, 7, 8}, 2L);
+    IPointReader reader3 = new FakedSeriesReader(new long[]{4, 5, 6, 7, 10}, 3L);
+
+    List<IPointReader> readerList = new ArrayList<>();
+    readerList.add(reader1);
+    readerList.add(reader2);
+    readerList.add(reader3);
+    return readerList;
+  }
+
+  private void deleteDir() throws IOException {
+    File file = new File(baseDir);
+    if (!file.delete()) {
+      throw new IOException("delete tmp file dir error");
+    }
+  }
+}

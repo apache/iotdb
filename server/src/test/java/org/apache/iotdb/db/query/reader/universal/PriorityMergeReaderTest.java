@@ -65,36 +65,4 @@ public class PriorityMergeReaderTest {
       i++;
     }
   }
-
-  public static class FakedSeriesReader implements IPointReader {
-
-    private long[] timestamps;
-    private int index;
-    private long value;
-
-    FakedSeriesReader(long[] timestamps, long value) {
-      this.timestamps = timestamps;
-      index = 0;
-      this.value = value;
-    }
-
-    @Override
-    public boolean hasNext() {
-      return index < timestamps.length;
-    }
-
-    @Override
-    public TimeValuePair next() {
-      return new TimeValuePair(timestamps[index++], new TsPrimitiveType.TsLong(value));
-    }
-
-    @Override
-    public TimeValuePair current() {
-      return new TimeValuePair(timestamps[index], new TsPrimitiveType.TsLong(value));
-    }
-
-    @Override
-    public void close() {
-    }
-  }
 }
