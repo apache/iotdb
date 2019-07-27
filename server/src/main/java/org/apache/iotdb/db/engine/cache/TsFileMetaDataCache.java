@@ -19,8 +19,9 @@
 package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,15 +32,48 @@ import org.slf4j.LoggerFactory;
 public class TsFileMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileMetaDataCache.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final long MEMORY_THRESHOLD_IN_B = (long) (0.25 * config
+      .getAllocateMemoryForRead());
   /**
-   * key: The file seriesPath of tsfile.
+   * key: Tsfile path. value: TsFileMetaData
    */
-  private ConcurrentHashMap<String, TsFileMetaData> cache;
-  private AtomicLong cacheHintNum = new AtomicLong();
+  private LRULinkedHashMap<String, TsFileMetaData> cache;
+  private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
+  /**
+   * estimated size of a deviceIndexMap entry in TsFileMetaData.
+   */
+  private long deviceIndexMapEntrySize = 0;
+  /**
+   * estimated size of measurementSchema entry in TsFileMetaData.
+   */
+  private long measurementSchemaEntrySize = 0;
+  /**
+   * estimated size of version and CreateBy in TsFileMetaData.
+   */
+  private long versionAndCreatebySize = 10;
+
   private TsFileMetaDataCache() {
-    cache = new ConcurrentHashMap<>();
+    cache = new LRULinkedHashMap<String, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
+      @Override
+      protected long calEntrySize(String key, TsFileMetaData value) {
+        if (deviceIndexMapEntrySize == 0 && value.getDeviceMap().size() > 0) {
+          deviceIndexMapEntrySize = RamUsageEstimator
+              .sizeOf(value.getDeviceMap().entrySet().iterator().next());
+        }
+        if (measurementSchemaEntrySize == 0 && value.getMeasurementSchema().size() > 0) {
+          measurementSchemaEntrySize = RamUsageEstimator
+              .sizeOf(value.getMeasurementSchema().entrySet().iterator().next());
+        }
+        long valueSize = value.getDeviceMap().size() * deviceIndexMapEntrySize
+            + measurementSchemaEntrySize * value.getMeasurementSchema().size()
+            + versionAndCreatebySize;
+        return key.length() * 2 + valueSize;
+      }
+    };
   }
 
   public static TsFileMetaDataCache getInstance() {
@@ -47,51 +81,64 @@ public class TsFileMetaDataCache {
   }
 
   /**
-   * get the TsFileMetaData for the given path.
+   * get the TsFileMetaData for given path.
    *
    * @param path -given path
    */
   public TsFileMetaData get(String path) throws IOException {
 
     Object internPath = path.intern();
-    synchronized (internPath) {
-      cacheRequestNum.incrementAndGet();
-      if (!cache.containsKey(path)) {
-        // read value from tsfile
-        TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(path);
-        cache.put(path, fileMetaData);
-        if (logger.isDebugEnabled()) {
-          logger.debug("Cache didn't hint: the number of requests for cache is {}",
-              cacheRequestNum.get());
-        }
-        return cache.get(path);
-      } else {
-        cacheHintNum.incrementAndGet();
+    cacheRequestNum.incrementAndGet();
+    synchronized (cache) {
+      if (cache.containsKey(path)) {
+        cacheHitNum.incrementAndGet();
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "Cache hint: the number of requests for cache is {}, the number of hints for cache "
-                  + "is {}",
-              cacheRequestNum.get(), cacheHintNum.get());
+              "Cache hit: the number of requests for cache is {}, "
+                  + "the number of hints for cache is {}",
+              cacheRequestNum.get(), cacheHitNum.get());
         }
         return cache.get(path);
+      }
+    }
+    synchronized (internPath) {
+      synchronized (cache) {
+        if (cache.containsKey(path)) {
+          cacheHitNum.incrementAndGet();
+          return cache.get(path);
+        }
+      }
+      if (logger.isDebugEnabled()) {
+        logger.debug("Cache didn't hit: the number of requests for cache is {}",
+            cacheRequestNum.get());
+      }
+      TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(path);
+      synchronized (cache) {
+        cache.put(path, fileMetaData);
+        return fileMetaData;
       }
     }
   }
 
   public void remove(String path) {
-    cache.remove(path);
+    synchronized (cache) {
+      cache.remove(path);
+    }
   }
 
   public void clear() {
-    cache.clear();
+    synchronized (cache) {
+      cache.clear();
+    }
   }
 
-  /*
+  /**
    * Singleton pattern
    */
   private static class TsFileMetaDataCacheHolder {
 
-    private TsFileMetaDataCacheHolder() {}
+    private TsFileMetaDataCacheHolder() {
+    }
 
     private static final TsFileMetaDataCache INSTANCE = new TsFileMetaDataCache();
   }

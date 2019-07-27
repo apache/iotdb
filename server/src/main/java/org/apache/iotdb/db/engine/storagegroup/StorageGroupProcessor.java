@@ -26,16 +26,19 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -147,6 +150,12 @@ public class StorageGroupProcessor {
    */
   private ModificationFile mergingModification;
 
+  /**
+   * This linked list records the access order of sensors used by query.
+   */
+  private LinkedList<String> lruForSensorUsedInQuery = new LinkedList<>();
+  private static final int MAX_CACHE_SENSORS = 5000;
+
 
   public StorageGroupProcessor(String systemInfoDir, String storageGroupName)
       throws ProcessorException {
@@ -160,7 +169,7 @@ public class StorageGroupProcessor {
       if (storageGroupSysDir.mkdirs()) {
         logger.info("Storage Group system Directory {} doesn't exist, create it",
             storageGroupSysDir.getPath());
-      } else if(!storageGroupSysDir.exists()) {
+      } else if (!storageGroupSysDir.exists()) {
         logger.error("craete Storage Group system Directory {} failed",
             storageGroupSysDir.getPath());
       }
@@ -304,7 +313,9 @@ public class StorageGroupProcessor {
         tsFileProcessor = workUnSequenceTsFileProcessor;
       }
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("disk space is insufficient when creating TsFile processor, change system mode to read-only", e);
+      logger.error(
+          "disk space is insufficient when creating TsFile processor, change system mode to read-only",
+          e);
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       return false;
     }
@@ -447,6 +458,12 @@ public class StorageGroupProcessor {
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context) {
     insertLock.readLock().lock();
+    synchronized (lruForSensorUsedInQuery) {
+      if (lruForSensorUsedInQuery.size() >= MAX_CACHE_SENSORS) {
+        lruForSensorUsedInQuery.removeFirst();
+      }
+      lruForSensorUsedInQuery.add(measurementId);
+    }
     try {
       List<TsFileResource> seqResources = getFileReSourceListForQuery(sequenceFileList,
           deviceId, measurementId, context);
@@ -456,6 +473,27 @@ public class StorageGroupProcessor {
     } finally {
       insertLock.readLock().unlock();
     }
+  }
+
+  /**
+   * returns the top k% measurements which are recently used in queries.
+   */
+  public Set calTopKMeasurement(String sensorId, double k) {
+    int num = (int) (lruForSensorUsedInQuery.size() * k);
+    Set<String> sensorSet = new HashSet<>(num + 1);
+    synchronized (lruForSensorUsedInQuery) {
+      Iterator<String> iterator = lruForSensorUsedInQuery.descendingIterator();
+      while (iterator.hasNext() && sensorSet.size() < num) {
+        String sensor = iterator.next();
+        if (sensorSet.contains(sensor)) {
+          iterator.remove();
+        } else {
+          sensorSet.add(sensor);
+        }
+      }
+    }
+    sensorSet.add(sensorId);
+    return sensorSet;
   }
 
   private void writeLock() {

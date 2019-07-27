@@ -16,20 +16,42 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup;
+package org.apache.iotdb.db.engine.flush;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
-import org.apache.iotdb.db.engine.pool.FlushPoolManager;
+import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
+import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FlushManager {
+public class FlushManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(FlushManager.class);
 
   private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue = new ConcurrentLinkedDeque<>();
 
-  private FlushPoolManager flushPool = FlushPoolManager.getInstance();
+  private FlushTaskPoolManager flushPool = FlushTaskPoolManager.getInstance();
+
+  @Override
+  public void start() throws StartupException {
+    FlushSubTaskPoolManager.getInstance().start();
+    FlushTaskPoolManager.getInstance().start();
+  }
+
+  @Override
+  public void stop() {
+    FlushSubTaskPoolManager.getInstance().stop();
+    FlushTaskPoolManager.getInstance().stop();
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.FLUSH_SERVICE;
+  }
 
   class FlushThread implements Runnable {
 
@@ -46,7 +68,7 @@ public class FlushManager {
    * Add BufferWriteProcessor to asyncTryToFlush manager
    */
   @SuppressWarnings("squid:S2445")
-  void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
+  public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
       if (!tsFileProcessor.isManagedByFlushManager() && tsFileProcessor.getFlushingMemTableSize() > 0) {
         logger.info("storage group {} begin to submit a flush thread, flushing memtable size: {}",
@@ -72,5 +94,4 @@ public class FlushManager {
 
     private static FlushManager instance = new FlushManager();
   }
-
 }
