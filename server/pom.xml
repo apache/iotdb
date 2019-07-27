@@ -23,7 +23,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>root</artifactId>
+        <artifactId>iotdb-parent</artifactId>
         <version>0.9.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
@@ -158,44 +158,6 @@
                 <configuration>
                     <outputDirectory>${project.basedir}/iotdb/lib</outputDirectory>
                 </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>1.8</version>
-                <executions>
-                    <execution>
-                        <id>copy</id>
-                        <phase>package</phase>
-                        <configuration>
-                            <target>
-                                <echo>ANT TASK - copying server files....</echo>
-                                <copy todir="${maven.multiModuleProjectDirectory}/target/conf/" overwrite="true" flatten="true">
-                                    <fileset dir="${project.basedir}/iotdb/conf" includes="*">
-                                        <include name="*"/>
-                                    </fileset>
-                                </copy>
-                                <copy todir="${maven.multiModuleProjectDirectory}/target/lib/" overwrite="true" flatten="true">
-                                    <fileset dir="${project.basedir}/iotdb/lib" includes="*.jar">
-                                        <include name="*.jar"/>
-                                    </fileset>
-                                </copy>
-                                <copy todir="${maven.multiModuleProjectDirectory}/target/sbin/" overwrite="true" flatten="true">
-                                    <fileset dir="${project.basedir}/iotdb/sbin" includes="*">
-                                        <include name="*"/>
-                                    </fileset>
-                                </copy>
-                                <copy todir="${maven.multiModuleProjectDirectory}/target/tools/" overwrite="true" flatten="true">
-                                    <fileset dir="${project.basedir}/iotdb/tools" includes="*">
-                                        <include name="*"/>
-                                    </fileset>
-                                </copy>
-                            </target>
-                        </configuration>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <!--using `mvn test` to run UT, `mvn verify` to run ITs
                         Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->

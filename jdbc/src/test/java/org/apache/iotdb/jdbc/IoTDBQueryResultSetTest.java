@@ -155,14 +155,23 @@ public class IoTDBQueryResultSetTest {
     columns.add("root.vehicle.d0.s0");
     columns.add("root.vehicle.d0.s2");
 
+    List<String> dataTypeList = new ArrayList<>();
+//    //BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
+//    dataTypeList.add(TSDataType.INT64.toString());
+    dataTypeList.add("FLOAT");
+    dataTypeList.add("INT64");
+    dataTypeList.add("INT32");
+    dataTypeList.add("FLOAT");
+
     when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.getDataTypeList()).thenReturn(dataTypeList);
     when(execResp.getOperationType()).thenReturn("QUERY");
     doReturn("FLOAT").doReturn("INT64").doReturn("INT32").doReturn("FLOAT").when(fetchMetadataResp)
         .getDataType();
 
     boolean hasResultSet = statement.execute(testSql);
 
-    verify(fetchMetadataResp, times(4)).getDataType();
+    verify(fetchMetadataResp, times(0)).getDataType();
 
     /*
      * step 2: fetch result

@@ -19,33 +19,60 @@
 package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class is used to cache <code>DeviceMetaDataCache</code> of tsfile in IoTDB.
+ * This class is used to cache <code>List<ChunkMetaData></code> of tsfile in IoTDB. The caching
+ * strategy is LRU.
  */
 public class DeviceMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(DeviceMetaDataCache.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final int CACHE_SIZE = 100;
+  private static StorageEngine storageEngine = StorageEngine.getInstance();
+
+  private static final long MEMORY_THRESHOLD_IN_B = (long) (0.3 * config
+      .getAllocateMemoryForRead());
   /**
-   * key: the file path + deviceId.
+   * key: file path dot deviceId dot sensorId.
+   * <p>
+   * value: chunkMetaData list of one timeseries in the file.
    */
-  private LinkedHashMap<String, TsDeviceMetadata> lruCache;
+  private LRULinkedHashMap<String, List<ChunkMetaData>> lruCache;
 
-  private AtomicLong cacheHintNum = new AtomicLong();
+  private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
-  private DeviceMetaDataCache(int cacheSize) {
-    lruCache = new LruLinkedHashMap(cacheSize, true);
+  /**
+   * approximate estimation of chunkMetaData size
+   */
+  private long chunkMetaDataSize = 0;
+
+  private DeviceMetaDataCache(long memoryThreshold) {
+    lruCache = new LRULinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
+      @Override
+      protected long calEntrySize(String key, List<ChunkMetaData> value) {
+        if (chunkMetaDataSize == 0 && !value.isEmpty()) {
+          chunkMetaDataSize = RamUsageEstimator.sizeOf(value.get(0));
+        }
+        return value.size() * chunkMetaDataSize + key.length() * 2;
+      }
+    };
   }
 
   public static DeviceMetaDataCache getInstance() {
@@ -53,43 +80,86 @@ public class DeviceMetaDataCache {
   }
 
   /**
-   * get {@link TsDeviceMetadata}. THREAD SAFE.
+   * get {@link ChunkMetaData}. THREAD SAFE.
    */
-  public TsDeviceMetadata get(String filePath, String deviceId, TsFileMetaData fileMetaData)
+  public List<ChunkMetaData> get(String filePath, Path seriesPath)
       throws IOException {
-    // The key(the tsfile path and deviceId) for the lruCache
+    StringBuilder builder = new StringBuilder(filePath).append(".").append(seriesPath.getDevice());
+    String pathDeviceStr = builder.toString();
+    String key = builder.append(".").append(seriesPath.getMeasurement()).toString();
+    Object devicePathObject = pathDeviceStr.intern();
 
-    String jointPath = filePath + deviceId;
-    Object jointPathObject = jointPath.intern();
     synchronized (lruCache) {
       cacheRequestNum.incrementAndGet();
-      if (lruCache.containsKey(jointPath)) {
-        cacheHintNum.incrementAndGet();
+      if (lruCache.containsKey(key)) {
+        cacheHitNum.incrementAndGet();
         if (logger.isDebugEnabled()) {
           logger.debug(
-              "Cache hint: the number of requests for cache is {}, "
+              "Cache hit: the number of requests for cache is {}, "
                   + "the number of hints for cache is {}",
-              cacheRequestNum.get(), cacheHintNum.get());
+              cacheRequestNum.get(), cacheHitNum.get());
         }
-        return lruCache.get(jointPath);
+        return new ArrayList<>(lruCache.get(key));
       }
     }
-    synchronized (jointPathObject) {
+    synchronized (devicePathObject) {
       synchronized (lruCache) {
-        if (lruCache.containsKey(jointPath)) {
-          return lruCache.get(jointPath);
+        if (lruCache.containsKey(key)) {
+          cacheHitNum.incrementAndGet();
+          return new ArrayList<>(lruCache.get(key));
         }
       }
       if (logger.isDebugEnabled()) {
-        logger.debug("Cache didn't hint: the number of requests for cache is {}",
+        logger.debug("Cache didn't hit: the number of requests for cache is {}",
             cacheRequestNum.get());
       }
-      TsDeviceMetadata blockMetaData = TsFileMetadataUtils
-          .getTsRowGroupBlockMetaData(filePath, deviceId,
-              fileMetaData);
+      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
+      TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
+          .getTsDeviceMetaData(filePath, seriesPath, fileMetaData);
+      // If measurement isn't included in the tsfile, empty list is returned.
+      if(deviceMetaData == null){
+        return new ArrayList<>();
+      }
+      Map<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
+          .getChunkMetaDataList(calHotSensorSet(seriesPath), deviceMetaData);
       synchronized (lruCache) {
-        lruCache.put(jointPath, blockMetaData);
-        return lruCache.get(jointPath);
+        chunkMetaData.forEach((path, chunkMetaDataList) -> {
+          String k = pathDeviceStr + "." + path.getMeasurement();
+          if (!lruCache.containsKey(k)) {
+            lruCache.put(k, chunkMetaDataList);
+          }
+        });
+        if (chunkMetaData.containsKey(seriesPath)) {
+          return new ArrayList<>(chunkMetaData.get(seriesPath));
+        }
+        return new ArrayList<>();
+      }
+    }
+  }
+
+  /**
+   * calculate the most frequently query sensors set.
+   *
+   * @param seriesPath the series to be queried in a query statements.
+   */
+  private Set<String> calHotSensorSet(Path seriesPath) throws IOException {
+    double usedMemProportion = lruCache.getUsedMemoryProportion();
+
+    if (usedMemProportion < 0.6) {
+      return new HashSet<>();
+    } else {
+      double hotSensorProportion;
+      if (usedMemProportion < 0.8) {
+        hotSensorProportion = 0.1;
+      } else {
+        hotSensorProportion = 0.05;
+      }
+      try {
+        return storageEngine
+            .calTopKMeasurement(seriesPath.getDevice(), seriesPath.getMeasurement(),
+                hotSensorProportion);
+      } catch (Exception e) {
+        throw new IOException(e);
       }
     }
   }
@@ -104,64 +174,11 @@ public class DeviceMetaDataCache {
   }
 
   /**
-   * the default LRU cache size is 100. The singleton pattern.
+   * singleton pattern.
    */
   private static class RowGroupBlockMetaDataCacheSingleton {
 
     private static final DeviceMetaDataCache INSTANCE = new
-        DeviceMetaDataCache(CACHE_SIZE);
-  }
-
-  /**
-   * This class is a map used to cache the <code>RowGroupBlockMetaData</code>. The caching strategy
-   * is LRU.
-   *
-   */
-  private class LruLinkedHashMap extends LinkedHashMap<String, TsDeviceMetadata> {
-
-    private static final long serialVersionUID = 1290160928914532649L;
-    private static final float LOAD_FACTOR_MAP = 0.75f;
-    private int maxCapacity;
-
-    public LruLinkedHashMap(int maxCapacity, boolean isLru) {
-      super(maxCapacity, LOAD_FACTOR_MAP, isLru);
-      this.maxCapacity = maxCapacity;
-    }
-
-    @Override
-    protected boolean removeEldestEntry(Map.Entry<String, TsDeviceMetadata> eldest) {
-      return size() > maxCapacity;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      return super.equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-      return super.hashCode();
-    }
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    DeviceMetaDataCache that = (DeviceMetaDataCache) o;
-    return Objects.equals(lruCache, that.lruCache) &&
-            Objects.equals(cacheHintNum, that.cacheHintNum) &&
-            Objects.equals(cacheRequestNum, that.cacheRequestNum);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(lruCache, cacheHintNum, cacheRequestNum);
+        DeviceMetaDataCache(MEMORY_THRESHOLD_IN_B);
   }
 }
