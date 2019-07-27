@@ -532,14 +532,20 @@ dropRole
     -> ^(TOK_DROP ^(TOK_ROLE $roleName))
     ;
 
+rootOrIdentifier
+    :
+    KW_ROOT
+    | Identifier
+    ;
+
 grantDataAuth
-    : KW_GRANT KW_DATA_AHTH KW_TO Identifier (COMMA Identifier)*
-    -> ^(TOK_GRANT_DATA_AUTH Identifier+)
+    : KW_GRANT KW_DATA_AHTH KW_TO rootOrIdentifier (COMMA rootOrIdentifier)*
+    -> ^(TOK_GRANT_DATA_AUTH rootOrIdentifier+)
     ;
 
 revokeDataAuth
-    : KW_REVOKE KW_DATA_AHTH KW_FROM Identifier (COMMA Identifier)*
-    -> ^(TOK_REVOKE_DATA_AUTH Identifier+)
+    : KW_REVOKE KW_DATA_AHTH KW_FROM rootOrIdentifier (COMMA rootOrIdentifier)*
+    -> ^(TOK_REVOKE_DATA_AUTH rootOrIdentifier+)
     ;
 
 grantUser
