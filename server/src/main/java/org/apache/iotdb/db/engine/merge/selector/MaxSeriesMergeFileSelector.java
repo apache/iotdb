@@ -67,8 +67,8 @@ public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {
     }
     if (logger.isInfoEnabled()) {
       logger.info("Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
-              + "time consumption {}ms",
-          selectedSeqFiles.size(), selectedUnseqFiles.size(), totalCost,
+              + "concurrent merge num {}" + "time consumption {}ms",
+          selectedSeqFiles.size(), selectedUnseqFiles.size(), totalCost, concurrentMergeNum,
           System.currentTimeMillis() - startTime);
     }
     return new List[]{selectedSeqFiles, selectedUnseqFiles};
