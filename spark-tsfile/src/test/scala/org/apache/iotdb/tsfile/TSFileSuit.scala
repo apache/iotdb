@@ -214,4 +214,28 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     Assert.assertEquals(expected, df.schema)
   }
 
+  test("testTransform1") {
+    val df = spark.read.tsfile(tsfile1, false, spark)
+    df.createOrReplaceTempView("tsfile_table")
+    val newDf = spark.sql("select * from tsfile_table " +
+      "where (`device_1.sensor_1`>0 or `device_1.sensor_2` < 22) and time < 4")
+    Assert.assertEquals(3, newDf.count())
+  }
+
+  test("testTransform2") {
+    val df = spark.read.tsfile(tsfile1, true, spark)
+    df.createOrReplaceTempView("tsfile_table")
+    val newDf = spark.sql("select * from tsfile_table " +
+      "where `device_name` = 'device_1' and (`sensor_1`>0 or `sensor_2` < 22) and time < 4")
+    Assert.assertEquals(3, newDf.count())
+  }
+
+  test("testTransform3") {
+    val df = spark.read.tsfile(tsfile1, true, spark)
+    df.createOrReplaceTempView("tsfile_table")
+    val newDf = spark.sql("select * from tsfile_table " +
+      "where (`sensor_1`>0 or `sensor_2` < 22) and time < 4")
+    Assert.assertEquals(5, newDf.count())
+  }
+
 }
