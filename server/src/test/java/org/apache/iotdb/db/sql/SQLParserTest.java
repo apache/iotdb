@@ -636,6 +636,195 @@ public class SQLParserTest {
             "TOK_PATH", "device_1", "sensor_1",
             "TOK_PATH", "device_2", "sensor_2",
             "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+            "TOK_WHERE",
+            "<",
+            "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1",
+            ".2e2"
+        ));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+        "SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+            + "WHERE root.laptop.device_1.sensor_1 < .2e2");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void query9() throws ParseException {
+    // template for test case
+    ArrayList<String> ans = new ArrayList<>(
+        Arrays.asList("TOK_QUERY", "TOK_SELECT",
+            "TOK_PATH", "device_1", "sensor_1",
+            "TOK_PATH", "device_2", "sensor_2",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+            "TOK_WHERE",
+            "<",
+            "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1",
+            "TOK_FLOAT_COMB", ".", "2"
+        ));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+        "SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+            + "WHERE root.laptop.device_1.sensor_1 < .2");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void query10() throws ParseException {
+    // template for test case
+    ArrayList<String> ans = new ArrayList<>(
+        Arrays.asList("TOK_QUERY", "TOK_SELECT",
+            "TOK_PATH", "device_1", "sensor_1",
+            "TOK_PATH", "device_2", "sensor_2",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+            "TOK_WHERE",
+            "<",
+            "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1",
+            "2"
+        ));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+        "SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+            + "WHERE root.laptop.device_1.sensor_1 < 2.");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void query11() throws ParseException {
+    // template for test case
+    ArrayList<String> ans = new ArrayList<>(
+        Arrays.asList("TOK_QUERY", "TOK_SELECT",
+            "TOK_PATH", "device_1", "sensor_1",
+            "TOK_PATH", "device_2", "sensor_2",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+            "TOK_WHERE",
+            "<",
+            "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1",
+            "+2"
+        ));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+        "SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+            + "WHERE root.laptop.device_1.sensor_1 < +2.");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void query12() throws ParseException {
+    // template for test case
+    ArrayList<String> ans = new ArrayList<>(
+        Arrays.asList("TOK_QUERY", "TOK_SELECT",
+            "TOK_PATH", "device_1", "sensor_1",
+            "TOK_PATH", "device_2", "sensor_2",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+            "TOK_WHERE",
+            "<",
+            "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1",
+            "-2"
+        ));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+        "SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+            + "WHERE root.laptop.device_1.sensor_1 < -2.");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void query13() throws ParseException {
+    // template for test case
+    ArrayList<String> ans = new ArrayList<>(
+        Arrays.asList("TOK_QUERY", "TOK_SELECT",
+            "TOK_PATH", "device_1", "sensor_1",
+            "TOK_PATH", "device_2", "sensor_2",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+            "TOK_WHERE",
+            "<",
+            "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1",
+            "-.2"
+        ));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+        "SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+            + "WHERE root.laptop.device_1.sensor_1 < -.2");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void query14() throws ParseException {
+    // template for test case
+    ArrayList<String> ans = new ArrayList<>(
+        Arrays.asList("TOK_QUERY", "TOK_SELECT",
+            "TOK_PATH", "device_1", "sensor_1",
+            "TOK_PATH", "device_2", "sensor_2",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+            "TOK_WHERE",
+            "<",
+            "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1",
+            "-.2e10"
+        ));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST(
+        "SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle "
+            + "WHERE root.laptop.device_1.sensor_1 < -.2e10");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void query15() throws ParseException {
+    // template for test case
+    ArrayList<String> ans = new ArrayList<>(
+        Arrays.asList("TOK_QUERY", "TOK_SELECT",
+            "TOK_PATH", "device_1", "sensor_1",
+            "TOK_PATH", "device_2", "sensor_2",
+            "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
             "TOK_WHERE", "&&",
             "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1", "-2.2E10",
             ">", "TOK_PATH", "time", "TOK_DATETIME", "now"));
@@ -654,7 +843,7 @@ public class SQLParserTest {
   }
 
   @Test
-  public void query9() throws ParseException {
+  public void query16() throws ParseException {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_QUERY", "TOK_SELECT",
@@ -679,7 +868,7 @@ public class SQLParserTest {
   }
 
   @Test
-  public void query10() throws ParseException {
+  public void query17() throws ParseException {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_QUERY", "TOK_SELECT",
@@ -703,7 +892,7 @@ public class SQLParserTest {
   }
 
   @Test
-  public void query11() throws ParseException {
+  public void query18() throws ParseException {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_QUERY", "TOK_SELECT",
@@ -726,7 +915,7 @@ public class SQLParserTest {
   }
 
   @Test
-  public void query12() throws ParseException {
+  public void query19() throws ParseException {
     // template for test case
     ArrayList<String> ans = new ArrayList<>(
         Arrays.asList("TOK_QUERY", "TOK_SELECT",

@@ -364,4 +364,81 @@ public class PhysicalPlanTest {
         ValueFilter.gt(2.5e+2));
     assertEquals(expect.toString(), queryFilter.toString());
   }
+
+  @Test
+  public void testQueryFloat8()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2e2";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.gt(0.2e+2));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test
+  public void testQueryFloat9()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.gt(0.2));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test
+  public void testQueryFloat10()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.gt(2.0));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test
+  public void testQueryFloat11()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > +2.";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.gt(2.0));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test
+  public void testQueryFloat12()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.gt(-2.0));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test
+  public void testQueryFloat13()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.gt(-0.2));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test
+  public void testQueryFloat14()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2e2";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((QueryPlan) plan).getExpression();
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+        ValueFilter.gt(-20.0));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
 }
