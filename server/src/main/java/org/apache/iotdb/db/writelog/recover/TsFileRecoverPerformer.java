@@ -97,7 +97,7 @@ public class TsFileRecoverPerformer {
       try {
         if (tsFileResource.fileExists()) {
           // .resource file exists, deserialize it
-          tsFileResource.deSerialize();
+          recoverResourceFromFile();
         } else {
           // .resource file does not exist, read file metadata and recover tsfile resource
           recoverResourceFromReader();
@@ -124,6 +124,17 @@ public class TsFileRecoverPerformer {
       throw new ProcessorException(e);
     }
   }
+
+  private void recoverResourceFromFile() throws IOException {
+    try {
+      tsFileResource.deSerialize();
+    } catch (IOException e) {
+      logger.warn("Cannot deserialize TsFileResource {}, construct it using "
+          + "TsFileSequenceReader", tsFileResource.getFile(), e);
+      recoverResourceFromReader();
+    }
+  }
+
 
   private void recoverResourceFromReader() throws IOException {
     try (TsFileSequenceReader reader =
