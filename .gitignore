@@ -1,18 +1,8 @@
-iotdb/data/*
-iotdb/derby.log
-iotdb/iotdb/data/*
-iotdb/iotdb/derby.log
-iotdb/*.pid
-iotdb/iotdb/data/*
-iotdb/iotdb/gc.log*
-iotdb/iotdb/logs/*
-iotdb/iotdb/lib/*
-iotdb/unsequence/
-iotdb/testunsequence
-conf/*
-lib/*
-sbin/*
-tools/*
+**/*.pid
+**/gc.log*
+**/logs/*
+**/lib/**
+**/data/**
 
 tsfile/src/test/resources/perTestInputData
 # Eclipse IDE files
@@ -40,7 +30,6 @@ derby-tsfile-db
 **/target/
 
 # intermediately generated locally
-**/logs/
 
 tsfile-timeseries/src/main/resources/logback.out.out.xml
 tsfile-timeseries/src/main/resources/logback.out.xml
@@ -53,7 +42,6 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 *.gz
 *.tar.gz
 *.tar
-/data/
 #src/test/resources/logback.xml
 
 
