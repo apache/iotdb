@@ -56,6 +56,7 @@ public class FlushManager implements FlushManagerMBean, IService {
   public void stop() {
     FlushSubTaskPoolManager.getInstance().stop();
     FlushTaskPoolManager.getInstance().stop();
+    JMXService.deregisterMBean(ServiceType.FLUSH_SERVICE.getJmxName());
   }
 
   @Override
