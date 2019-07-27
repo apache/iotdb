@@ -95,7 +95,7 @@ public class CompressionRatio {
   /**
    * Get the average compression ratio for all closed files
    */
-  synchronized double getRatio() {
+  public synchronized double getRatio() {
     return calcTimes == 0 ? DEFAULT_COMPRESSION_RATIO : compressionRatioSum / calcTimes;
   }
 
