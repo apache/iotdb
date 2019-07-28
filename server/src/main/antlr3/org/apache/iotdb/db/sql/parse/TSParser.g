@@ -77,6 +77,7 @@ TOK_ALL;
 TOK_SLIMIT;
 TOK_SOFFSET;
 TOK_LIMIT;
+TOK_FLOAT_COMB;
 
 /*
   BELOW IS THE METADATA TOKEN
@@ -308,17 +309,35 @@ statement
 	: execStatement (SEMICOLON)? EOF
 	;
 
+nonNegativeInteger
+    : PositiveInteger
+    | UnsignedInteger
+    ;
+
 integer
     : NegativeInteger
-    | NonNegativeInteger
+    | nonNegativeInteger
+    ;
+
+// ATTENTION: DO NOT USE NAME 'float'!
+floatValue
+    : PositiveFloat
+    | NegativeFloat
+    | PositiveInteger DOT -> PositiveInteger
+    | NegativeInteger DOT -> NegativeInteger
+    | (UnsignedInteger DOT UnsignedInteger)=>UnsignedInteger DOT UnsignedInteger -> ^(TOK_FLOAT_COMB UnsignedInteger DOT UnsignedInteger)
+    | UnsignedInteger DOT -> UnsignedInteger
+    | DOT UnsignedInteger -> ^(TOK_FLOAT_COMB DOT UnsignedInteger)
+    | UnsignedInteger DoubleInScientificNotationSuffix -> ^(TOK_FLOAT_COMB UnsignedInteger DoubleInScientificNotationSuffix)
+    | DoubleInScientificNotationSuffix
     ;
 
 number
-    : integer | Float | Boolean
+    : integer | floatValue | Boolean
     ;
 
 numberOrString // identifier is string or integer
-    : Boolean | Float | identifier
+    : Boolean | floatValue | identifier
     ;
 
 numberOrStringWidely
@@ -608,8 +627,8 @@ Assit to multi insert, target grammar:  insert into root.<deviceType>.<deviceNam
 
 multidentifier
 	:
-	LPAREN KW_TIMESTAMP (COMMA Identifier)* RPAREN
-	-> ^(TOK_MULT_IDENTIFIER TOK_TIME Identifier*)
+	LPAREN KW_TIMESTAMP (COMMA identifier)* RPAREN
+	-> ^(TOK_MULT_IDENTIFIER TOK_TIME identifier*)
 	;
 multiValue
 	:
@@ -704,7 +723,7 @@ identifier
 //    ;
 
 selectClause
-    : KW_SELECT KW_INDEX func=Identifier LPAREN p1=timeseries COMMA p2=timeseries COMMA n1=dateFormatWithNumber COMMA n2=dateFormatWithNumber COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN (fromClause)?
+    : KW_SELECT KW_INDEX func=Identifier LPAREN p1=timeseries COMMA p2=timeseries COMMA n1=dateFormatWithNumber COMMA n2=dateFormatWithNumber COMMA epsilon=floatValue (COMMA alpha=floatValue COMMA beta=floatValue)? RPAREN (fromClause)?
     -> ^(TOK_SELECT_INDEX $func $p1 $p2 $n1 $n2 $epsilon ($alpha $beta)?) fromClause?
     | KW_SELECT clusteredPath (COMMA clusteredPath)* fromClause
     -> ^(TOK_SELECT clusteredPath+) fromClause
@@ -742,24 +761,24 @@ fillClause
 
 limitClause
     :
-    KW_LIMIT N=NonNegativeInteger offsetClause?
+    KW_LIMIT N=nonNegativeInteger offsetClause?
     -> ^(TOK_LIMIT $N)
     ;
 
 offsetClause
     :
-    KW_OFFSET OFFSETValue=NonNegativeInteger
+    KW_OFFSET OFFSETValue=nonNegativeInteger
     ;
 
 slimitClause
     :
-    KW_SLIMIT SN=NonNegativeInteger soffsetClause?
+    KW_SLIMIT SN=nonNegativeInteger soffsetClause?
     -> ^(TOK_SLIMIT $SN) soffsetClause?
     ;
 
 soffsetClause
     :
-    KW_SOFFSET SOFFSETValue=NonNegativeInteger
+    KW_SOFFSET SOFFSETValue=nonNegativeInteger
     -> ^(TOK_SOFFSET $SOFFSETValue)
     ;
 
@@ -813,7 +832,7 @@ precedenceNotExpression
 
 precedenceEqualExpressionSingle
     :
-    (left=atomExpression -> $left)
+    (left=atomExpressionWithNumberPath -> $left)
     (
     	(precedenceEqualOperator equalExpr=atomExpression)
        -> ^(precedenceEqualOperator $precedenceEqualExpressionSingle $equalExpr)
@@ -834,6 +853,16 @@ nullCondition
     | KW_NOT KW_NULL -> ^(TOK_ISNOTNULL)
     ;
 
+
+atomExpressionWithNumberPath
+    :
+    (KW_NULL) => KW_NULL -> TOK_NULL
+    | (KW_TIME) => KW_TIME -> ^(TOK_PATH KW_TIME)
+    | (constant) => constant -> ^(TOK_PATH constant)
+    | prefixPath
+    | suffixPath
+    | LPAREN! expression RPAREN!
+    ;
 
 
 atomExpression
