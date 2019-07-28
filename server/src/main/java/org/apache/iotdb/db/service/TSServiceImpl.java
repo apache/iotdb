@@ -42,6 +42,8 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.CompressionRatio;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -499,6 +501,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS, msg);
       }
 
+      if (execShowDynamicParameters(statement)) {
+        String msg = String.format(
+            "Memtable size threshold: %dB, Memtable number: %d, Tsfile size threshold: %dB, Compression ratio: %f,"
+                + " Storage group number: %d, Timeseries number: %d, Maximal timeseries number among storage groups: %d",
+            IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold(),
+            IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber(),
+            IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
+            CompressionRatio.getInstance().getRatio(),
+            MManager.getInstance().getAllStorageGroup().size(),
+            IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
+            MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups());
+        return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS, msg);
+      }
+
       if (execSetConsistencyLevel(statement)) {
         return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS,
             "Execute set consistency level successfully");
@@ -522,7 +538,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * Set consistency level
+   * Show flush info
    */
   private boolean execShowFlushInfo(String statement) {
     if (statement == null) {
@@ -530,6 +546,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     statement = statement.toLowerCase().trim();
     if (Pattern.matches(IoTDBConstant.SHOW_FLUSH_TASK_INFO, statement)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * Show dynamic parameters
+   */
+  private boolean execShowDynamicParameters(String statement) {
+    if (statement == null) {
+      return false;
+    }
+    statement = statement.toLowerCase().trim();
+    if (Pattern.matches(IoTDBConstant.SHOW_DYNAMIC_PARAMETERS, statement)) {
       return true;
     } else {
       return false;
@@ -572,13 +603,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp = executeAuthQuery(plan, columns);
       }
 
+      resp.setColumns(columns);
+      resp.setDataTypeList(queryColumnsType(columns));
       resp.setOperationType(plan.getOperatorType().toString());
       TSHandleIdentifier operationId = new TSHandleIdentifier(
-          ByteBuffer.wrap(username.get().getBytes()),
-          ByteBuffer.wrap("PASS".getBytes()));
-      TSOperationHandle operationHandle;
-      resp.setColumns(columns);
-      operationHandle = new TSOperationHandle(operationId, true);
+          ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()));
+      TSOperationHandle operationHandle = new TSOperationHandle(operationId, true);
       resp.setOperationHandle(operationHandle);
       recordANewQuery(statement, plan);
       return resp;
@@ -588,6 +618,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, t1);
     }
+  }
+
+  private List<String> queryColumnsType(List<String> columns) throws PathErrorException {
+    List<String> columnTypes = new ArrayList<>();
+    for (String column : columns) {
+      columnTypes.add(getSeriesType(column).toString());
+    }
+    return columnTypes;
   }
 
   private TSExecuteStatementResp executeAuthQuery(PhysicalPlan plan, List<String> columns) {
@@ -623,8 +661,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSExecuteStatementResp executeDataQuery(PhysicalPlan plan, List<String> columns)
       throws AuthException, TException {
-    List<Path> paths;
-    paths = plan.getPaths();
+    List<Path> paths = plan.getPaths();
 
     // check seriesPath exists
     if (paths.isEmpty()) {

@@ -38,8 +38,6 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
@@ -253,7 +251,7 @@ public class IoTDBStatement implements Statement {
         IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this,
             execResp.getColumns(), client,
             operationHandle, sql, execResp.getOperationType(),
-            getColumnsType(execResp.getColumns()), queryId.getAndIncrement());
+            execResp.getDataTypeList(), queryId.getAndIncrement());
         resSet.setIgnoreTimeStamp(execResp.ignoreTimeStamp);
         this.resultSet = resSet;
         return true;
@@ -350,7 +348,7 @@ public class IoTDBStatement implements Statement {
     operationHandle = execResp.getOperationHandle();
     Utils.verifySuccess(execResp.getStatus());
     IoTDBQueryResultSet resSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
-        operationHandle, sql, execResp.getOperationType(), getColumnsType(execResp.getColumns()),
+        operationHandle, sql, execResp.getOperationType(), execResp.getDataTypeList(),
         queryId.getAndIncrement());
     resSet.setIgnoreTimeStamp(execResp.ignoreTimeStamp);
     this.resultSet = resSet;
@@ -564,31 +562,6 @@ public class IoTDBStatement implements Statement {
   private void reInit() {
     this.client = connection.client;
     this.sessionHandle = connection.sessionHandle;
-  }
-
-  private List<String> getColumnsType(List<String> columns) throws SQLException {
-    List<String> columnTypes = new ArrayList<>();
-    for (String column : columns) {
-      columnTypes.add(getColumnType(column));
-    }
-    return columnTypes;
-  }
-
-  private String getColumnType(String columnName) throws SQLException {
-    TSFetchMetadataReq req;
-
-    req = new TSFetchMetadataReq(Constant.GLOBAL_COLUMN_REQ);
-    req.setColumnPath(columnName);
-
-    TSFetchMetadataResp resp;
-    try {
-      resp = client.fetchMetadata(req);
-      Utils.verifySuccess(resp.getStatus());
-      return resp.getDataType();
-    } catch (TException | IoTDBSQLException e) {
-      throw new SQLException(
-          String.format("Cannot get column %s data type", columnName), e);
-    }
   }
 
   void requestStmtId() throws SQLException {
