@@ -764,8 +764,9 @@ public class StorageGroupProcessor {
               budget);
           return;
         }
+        // avoid pending tasks holds the metadata and streams
+        mergeResource.clear();
         String taskName = storageGroupName + "-" + System.currentTimeMillis();
-
 
         MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
             this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum());
@@ -778,7 +779,7 @@ public class StorageGroupProcessor {
         isMerging = true;
         mergeStartTime = System.currentTimeMillis();
 
-      } catch (MergeException e) {
+      } catch (MergeException | IOException e) {
         logger.error("{} cannot select file for merge", storageGroupName, e);
       }
     } finally {
