@@ -72,7 +72,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     this.minBitPosition = minBitPosition;
   }
 
-  private static int hashMod(String val, Integer base) {
+  public static int hashMod(String val, Integer base) {
     MessageDigest md;
     try {
       md = MessageDigest.getInstance("MD5");
