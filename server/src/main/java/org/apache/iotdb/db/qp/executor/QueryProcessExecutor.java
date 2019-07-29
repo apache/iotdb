@@ -105,10 +105,10 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       case DELETE_USER:
         AuthorPlan author = (AuthorPlan) plan;
         return operateAuthor(author);
-      case GRANT_DATA_AUTH:
-        return operateDataAuth(((DataAuthPlan) plan).getUsers(), true);
-      case REVOKE_DATA_AUTH:
-        return operateDataAuth(((DataAuthPlan) plan).getUsers(), false);
+      case GRANT_WATERMARK_EMBEDDING:
+        return operateWatermarkEmbedding(((DataAuthPlan) plan).getUsers(), true);
+      case REVOKE_WATERMARK_EMBEDDING:
+        return operateWatermarkEmbedding(((DataAuthPlan) plan).getUsers(), false);
       case DELETE_TIMESERIES:
       case CREATE_TIMESERIES:
       case SET_STORAGE_GROUP:
@@ -334,7 +334,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
     return true;
   }
 
-  private boolean operateDataAuth(List<String> users, boolean useWatermark)
+  private boolean operateWatermarkEmbedding(List<String> users, boolean useWatermark)
       throws ProcessorException {
     IAuthorizer authorizer;
     try {

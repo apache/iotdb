@@ -28,10 +28,10 @@ public class DataAuthOperator extends RootOperator {
 
   public DataAuthOperator(int tokenIntType, List<String> users) {
     super(tokenIntType);
-    if (tokenIntType == SQLConstant.TOK_GRANT_DATA_AUTH) {
-      operatorType = OperatorType.GRANT_DATA_AUTH;
+    if (tokenIntType == SQLConstant.TOK_GRANT_WATERMARK_EMBEDDING) {
+      operatorType = OperatorType.GRANT_WATERMARK_EMBEDDING;
     } else {
-      operatorType = OperatorType.REVOKE_DATA_AUTH;
+      operatorType = OperatorType.REVOKE_WATERMARK_EMBEDDING;
     }
     this.users = users;
   }

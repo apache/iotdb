@@ -109,7 +109,6 @@ public class IoTDBWatermarkIT {
 
       statement.execute("GRANT DATA_AUTHORITY to root");
       boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0");
-//      boolean hasResultSet = statement.execute("select * from root");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;

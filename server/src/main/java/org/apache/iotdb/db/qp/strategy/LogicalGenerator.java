@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.strategy;
 
 import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHAN;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.LESSTHANOREQUALTO;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.reverseWords;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -37,7 +36,6 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.constant.TSParserConstant;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteOperator;
@@ -182,11 +180,11 @@ public class LogicalGenerator {
       case TSParser.TOK_GRANT:
         analyzeAuthorGrant(astNode);
         return;
-      case TSParser.TOK_GRANT_DATA_AUTH:
-        analyzeGrantDataAuth(astNode);
+      case TSParser.TOK_GRANT_WATERMARK_EMBEDDING:
+        analyzeWatermarkEmbedding(astNode, SQLConstant.TOK_GRANT_WATERMARK_EMBEDDING);
         return;
-      case TSParser.TOK_REVOKE_DATA_AUTH:
-        analyzeRevokeDataAuth(astNode);
+      case TSParser.TOK_REVOKE_WATERMARK_EMBEDDING:
+        analyzeWatermarkEmbedding(astNode, SQLConstant.TOK_REVOKE_WATERMARK_EMBEDDING);
         return;
       case TSParser.TOK_REVOKE:
         analyzeAuthorRevoke(astNode);
@@ -1017,7 +1015,7 @@ public class LogicalGenerator {
     initializedOperator = authorOperator;
   }
 
-  private void analyzeGrantDataAuth(AstNode astNode) throws IllegalASTFormatException {
+  private void analyzeWatermarkEmbedding(AstNode astNode, int tokenIntType) {
     int childCount = astNode.getChildCount();
 
     List<String> users = new ArrayList<>();
@@ -1025,18 +1023,7 @@ public class LogicalGenerator {
       String user = astNode.getChild(i).getText();
       users.add(user);
     }
-    initializedOperator = new DataAuthOperator(SQLConstant.TOK_GRANT_DATA_AUTH, users);
-  }
-
-  private void analyzeRevokeDataAuth(AstNode astNode) throws IllegalASTFormatException {
-    int childCount = astNode.getChildCount();
-
-    List<String> users = new ArrayList<>();
-    for (int i = 0; i < childCount; i++) {
-      String user = astNode.getChild(i).getText();
-      users.add(user);
-    }
-    initializedOperator = new DataAuthOperator(SQLConstant.TOK_REVOKE_DATA_AUTH, users);
+    initializedOperator = new DataAuthOperator(tokenIntType, users);
   }
 
   private void analyzeAuthorGrant(AstNode astNode) throws IllegalASTFormatException {
