@@ -39,18 +39,18 @@ public class IoTDBWatermarkIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
-    EnvironmentUtils.envSetUp();
-    Thread.sleep(5000);
+//    EnvironmentUtils.closeStatMonitor();
+//    daemon = IoTDB.getInstance();
+//    daemon.active();
+//    EnvironmentUtils.envSetUp();
+//    Thread.sleep(5000);
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
-    EnvironmentUtils.cleanEnv();
+//    daemon.stop();
+//    EnvironmentUtils.cleanEnv();
   }
 
   private static void insertData()
@@ -120,7 +120,8 @@ public class IoTDBWatermarkIT {
                 + "," + resultSet.getString(Constant.d0s2);
         System.out.println(ans);
         cnt++;
-        statement.execute("insert into root.vehicle_wm.d0(timestamp,s0,s1,s2) values(" + ans + ")");
+        boolean res = statement.execute("insert into root.vehicle_wm.d0(timestamp,s0,s1,s2) values(" + ans + ")");
+        System.out.println(res);
       }
       System.out.println("cnt: " + cnt);
 
@@ -135,7 +136,7 @@ public class IoTDBWatermarkIT {
                 + "," + resultSet.getString("root.vehicle_wm.d0.s1")
                 + "," + resultSet.getString("root.vehicle_wm.d0.s1")
                 + "," + resultSet.getString("root.vehicle_wm.d0.s1");
-//        System.out.println(ans);
+        System.out.println(ans);
         cnt++;
       }
       System.out.println("cnt: " + cnt);
