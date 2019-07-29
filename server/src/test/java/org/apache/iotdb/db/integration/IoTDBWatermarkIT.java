@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.integration;
@@ -70,11 +66,8 @@ public class IoTDBWatermarkIT {
         statement.execute(sql);
       }
 
-//      statement.execute("CREATE USER ln_write_user write_pwd");
-
       // s0 INT32, s1 INT64, s2 FLOAT
       for (int time = 1; time < 1000; time++) {
-
         String sql = String
             .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 50);
         statement.execute(sql);
@@ -85,6 +78,14 @@ public class IoTDBWatermarkIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 50);
         statement.execute(sql);
       }
+
+      statement.execute("SET STORAGE GROUP TO root.vehicle_wm");
+      statement
+          .execute("CREATE TIMESERIES root.vehicle_wm.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
+      statement
+          .execute("CREATE TIMESERIES root.vehicle_wm.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+      statement
+          .execute("CREATE TIMESERIES root.vehicle_wm.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE");
 
       statement.close();
     } catch (Exception e) {
@@ -97,19 +98,18 @@ public class IoTDBWatermarkIT {
     }
   }
 
-  // "select * from root.vehicle" : test select wild data
   @Test
-  public void selectAllTest() throws ClassNotFoundException, SQLException {
-    String selectSql = "select s0,s1,s2 from root.vehicle.d0";
-
+  public void EncodeAndSaveTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
       connection = DriverManager
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
+
       statement.execute("GRANT DATA_AUTHORITY to root");
-      boolean hasResultSet = statement.execute(selectSql);
+      boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0");
+//      boolean hasResultSet = statement.execute("select * from root");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -120,9 +120,26 @@ public class IoTDBWatermarkIT {
                 + "," + resultSet.getString(Constant.d0s2);
         System.out.println(ans);
         cnt++;
+        statement.execute("insert into root.vehicle_wm.d0(timestamp,s0,s1,s2) values(" + ans + ")");
       }
-
       System.out.println("cnt: " + cnt);
+
+      statement.execute("REVOKE DATA_AUTHORITY from root");
+      hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle_wm.d0");
+      Assert.assertTrue(hasResultSet);
+      resultSet = statement.getResultSet();
+      cnt = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(Constant.TIMESTAMP_STR)
+                + "," + resultSet.getString("root.vehicle_wm.d0.s1")
+                + "," + resultSet.getString("root.vehicle_wm.d0.s1")
+                + "," + resultSet.getString("root.vehicle_wm.d0.s1");
+//        System.out.println(ans);
+        cnt++;
+      }
+      System.out.println("cnt: " + cnt);
+
       statement.close();
 
     } catch (Exception e) {
