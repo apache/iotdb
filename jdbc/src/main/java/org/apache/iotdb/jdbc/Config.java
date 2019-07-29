@@ -20,7 +20,7 @@ package org.apache.iotdb.jdbc;
 
 public class Config {
 
-  private Config() {}
+  private Config(){}
 
   /**
    * The required prefix for the connection URL.
