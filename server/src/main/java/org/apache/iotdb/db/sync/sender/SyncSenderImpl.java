@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.conf.Constans;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
@@ -55,6 +56,7 @@ import org.apache.iotdb.service.sync.thrift.SyncDataStatus;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -265,7 +267,11 @@ public class SyncSenderImpl implements SyncSender {
   @Override
   public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
     transport = new TSocket(serverIp, serverPort);
-    TProtocol protocol = new TBinaryProtocol(transport);
+    TProtocol protocol;
+    if(IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable())
+      protocol= new TCompactProtocol(transport);
+    else
+      protocol = new TBinaryProtocol(transport);
     serviceClient = new SyncService.Client(protocol);
     try {
       transport.open();

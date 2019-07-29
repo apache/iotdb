@@ -57,6 +57,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -89,7 +90,10 @@ public class IoTDBConnection implements Connection {
     supportedProtocols.add(TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
 
     openTransport();
-    client = new TSIService.Client(new TBinaryProtocol(transport));
+    if(Config.rpcThriftCompressionEnable)
+      client = new TSIService.Client(new TCompactProtocol(transport));
+    else
+      client = new TSIService.Client(new TBinaryProtocol(transport));
     // open client session
     openSession();
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
@@ -463,7 +467,10 @@ public class IoTDBConnection implements Connection {
         if (transport != null) {
           transport.close();
           openTransport();
-          client = new TSIService.Client(new TBinaryProtocol(transport));
+          if(Config.rpcThriftCompressionEnable)
+            client = new TSIService.Client(new TCompactProtocol(transport));
+          else
+            client = new TSIService.Client(new TBinaryProtocol(transport));
           openSession();
           client = newSynchronizedClient(client);
           flag = true;
