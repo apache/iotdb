@@ -40,7 +40,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
   private String secretKey;
   private String bitString;
   private int markRate = 2;
-  private int groupNumber = 20;
+  private int groupNumber;
   private int maxBitPosition = 5;
   private int minBitPosition = 0;
 
@@ -54,7 +54,6 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     this(conf.getWatermarkSecretKey(), conf.getWatermarkBitString());
     this.markRate = conf.getWatermarkParamMarkRate();
     this.maxBitPosition = conf.getWatermarkParamMaxRightBit();
-    System.out.println("secretKey:"+this.secretKey);
   }
 
   public void setMarkRate(int markRate) {
