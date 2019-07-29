@@ -1897,7 +1897,7 @@ public class SQLParserTest {
 
 
   @Test
-  public void grantDataAuth() throws ParseException, RecognitionException {
+  public void grantDataAuth() throws ParseException {
     ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT_DATA_AUTH", "a", "b"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST("GRANT DATA_AUTHORITY to a,b");
@@ -1912,7 +1912,7 @@ public class SQLParserTest {
   }
 
   @Test
-  public void revokeDataAuth() throws ParseException, RecognitionException {
+  public void revokeDataAuth() throws ParseException {
     ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE_DATA_AUTH", "a", "b"));
     ArrayList<String> rec = new ArrayList<>();
     AstNode astTree = ParseGenerator.generateAST("revoke data_authority from a,b");
