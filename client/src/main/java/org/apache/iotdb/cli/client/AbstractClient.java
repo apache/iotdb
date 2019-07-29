@@ -813,7 +813,7 @@ public abstract class AbstractClient {
   }
 
   protected static void print(String msg) {
-    SCREEN_PRINTER.println(msg);
+    SCREEN_PRINTER.print(msg);
   }
 
   protected static void println() {
