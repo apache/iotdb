@@ -161,6 +161,7 @@ class MergeFileTask {
     for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       fileWriter.writeChunk(chunk, chunkMetaData);
+      context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
     }
     fileWriter.endChunkGroup(version + 1);
   }
@@ -226,6 +227,7 @@ class MergeFileTask {
           Chunk chunk = reader.readMemChunk(metaData);
           fileWriter.writeChunk(chunk, metaData);
           maxVersion = metaData.getVersion() > maxVersion ? metaData.getVersion() : maxVersion;
+          context.incTotalPointWritten(metaData.getNumOfPoints());
           break;
         }
       }

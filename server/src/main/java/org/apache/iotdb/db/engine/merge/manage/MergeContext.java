@@ -35,6 +35,7 @@ public class MergeContext {
   private Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes = new HashMap<>();
 
   private int totalChunkWritten;
+  private long totalPointWritten;
 
   public void clear() {
     mergedChunkCnt.clear();
@@ -75,5 +76,13 @@ public class MergeContext {
 
   public void setTotalChunkWritten(int totalChunkWritten) {
     this.totalChunkWritten = totalChunkWritten;
+  }
+
+  public void incTotalPointWritten(long increment) {
+    totalPointWritten += increment;
+  }
+
+  public long getTotalPointWritten() {
+    return totalPointWritten;
   }
 }
