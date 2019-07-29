@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
@@ -52,8 +53,8 @@ public class FileSeriesReaderWithFilter extends FileSeriesReader {
   protected boolean chunkSatisfied(ChunkMetaData chunkMetaData) {
     DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
         chunkMetaData.getEndTime(),
-        chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
-        chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
+        chunkMetaData.getDigest().getStatistics().get(StatisticType.min_value),
+        chunkMetaData.getDigest().getStatistics().get(StatisticType.max_value),
         chunkMetaData.getTsDataType());
     return filter.satisfy(digest);
   }

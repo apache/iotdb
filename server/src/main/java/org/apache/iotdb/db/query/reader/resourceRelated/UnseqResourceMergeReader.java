@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -97,8 +98,8 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
         if (filter != null) {
           DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
               chunkMetaData.getEndTime(),
-              chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
-              chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
+              chunkMetaData.getDigest().getStatistics().get(StatisticType.min_value),
+              chunkMetaData.getDigest().getStatistics().get(StatisticType.max_value),
               chunkMetaData.getTsDataType());
           if (!filter.satisfy(digest)) {
             continue;

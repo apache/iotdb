@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public class TsDigest {
 
-  private Map<String, ByteBuffer> statistics;
+  private Map<StatisticType, ByteBuffer> statistics;
 
   private int serializedSize = Integer.BYTES;
 
@@ -67,11 +67,12 @@ public class TsDigest {
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     if (size > 0) {
-      Map<String, ByteBuffer> statistics = new HashMap<>();
-      String key;
+      Map<StatisticType, ByteBuffer> statistics = new HashMap<>();
+      StatisticType key;
       ByteBuffer value;
       for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(inputStream);
+        short n = ReadWriteIOUtils.readShort(inputStream);
+        key = StatisticType.deserialize(n);
         value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
         statistics.put(key, value);
       }
@@ -92,11 +93,12 @@ public class TsDigest {
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
-      Map<String, ByteBuffer> statistics = new HashMap<>();
-      String key;
+      Map<StatisticType, ByteBuffer> statistics = new HashMap<>();
+      StatisticType key;
       ByteBuffer value;
       for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(buffer);
+        short n = ReadWriteIOUtils.readShort(buffer);
+        key = StatisticType.deserialize(n);
         value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
         statistics.put(key, value);
       }
@@ -109,9 +111,9 @@ public class TsDigest {
   private void reCalculateSerializedSize() {
     serializedSize = Integer.BYTES;
     if (statistics != null) {
-      for (Map.Entry<String, ByteBuffer> entry : statistics.entrySet()) {
-        serializedSize += Integer.BYTES + entry.getKey().length() + Integer.BYTES
-            + entry.getValue().remaining();
+      for (Map.Entry<StatisticType, ByteBuffer> entry : statistics.entrySet()) {
+        serializedSize +=
+            StatisticType.getSerializedSize() + Integer.BYTES + entry.getValue().remaining();
       }
       sizeOfList = statistics.size();
     } else {
@@ -124,14 +126,14 @@ public class TsDigest {
    *
    * @return -unmodifiableMap of the current object's statistics
    */
-  public Map<String, ByteBuffer> getStatistics() {
+  public Map<StatisticType, ByteBuffer> getStatistics() {
     if (statistics == null) {
       return null;
     }
     return Collections.unmodifiableMap(this.statistics);
   }
 
-  public void setStatistics(Map<String, ByteBuffer> statistics) {
+  public void setStatistics(Map<StatisticType, ByteBuffer> statistics) {
     this.statistics = statistics;
     reCalculateSerializedSize();
   }
@@ -142,12 +144,12 @@ public class TsDigest {
    * @param key -key of the entry
    * @param value -value of the entry
    */
-  public void addStatistics(String key, ByteBuffer value) {
+  public void addStatistics(StatisticType key, ByteBuffer value) {
     if (statistics == null) {
       statistics = new HashMap<>();
     }
     statistics.put(key, value);
-    serializedSize += Integer.BYTES + key.length() + Integer.BYTES + value.remaining();
+    serializedSize += StatisticType.getSerializedSize() + Integer.BYTES + value.remaining();
     sizeOfList++;
   }
 
@@ -172,11 +174,10 @@ public class TsDigest {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     } else {
       byteLen += ReadWriteIOUtils.write(statistics.size(), outputStream);
-      for (Map.Entry<String, ByteBuffer> entry : statistics.entrySet()) {
-        byteLen += ReadWriteIOUtils
-            .write(entry.getKey(), outputStream);
-        byteLen += ReadWriteIOUtils
-            .write(entry.getValue(), outputStream);
+      for (Map.Entry<StatisticType, ByteBuffer> entry : statistics.entrySet()) {
+        short n = entry.getKey().serialize();
+        byteLen += ReadWriteIOUtils.write(n, outputStream);
+        byteLen += ReadWriteIOUtils.write(entry.getValue(), outputStream);
       }
     }
     return byteLen;
@@ -199,10 +200,10 @@ public class TsDigest {
       byteLen += ReadWriteIOUtils.write(0, buffer);
     } else {
       byteLen += ReadWriteIOUtils.write(statistics.size(), buffer);
-      for (Map.Entry<String, ByteBuffer> entry : statistics.entrySet()) {
-        byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
-        byteLen += ReadWriteIOUtils
-            .write(entry.getValue(), buffer);
+      for (Map.Entry<StatisticType, ByteBuffer> entry : statistics.entrySet()) {
+        short n = entry.getKey().serialize();
+        byteLen += ReadWriteIOUtils.write(n, buffer);
+        byteLen += ReadWriteIOUtils.write(entry.getValue(), buffer);
       }
     }
     return byteLen;
@@ -233,13 +234,58 @@ public class TsDigest {
         || statistics.size() != digest.statistics.size()) {
       return false;
     }
-    for (Entry<String, ByteBuffer> entry : statistics.entrySet()) {
-      String key = entry.getKey();
+    for (Entry<StatisticType, ByteBuffer> entry : statistics.entrySet()) {
+      StatisticType key = entry.getKey();
       ByteBuffer value = entry.getValue();
       if (!digest.statistics.containsKey(key) || !value.equals(digest.statistics.get(key))) {
         return false;
       }
     }
     return true;
+  }
+
+  public enum StatisticType {
+    max_value, min_value, first, sum, last;
+
+    public static StatisticType deserialize(short i) {
+      if (i >= 5 || i < 0) {
+        throw new IllegalArgumentException("Invalid input: " + i);
+      }
+      switch (i) {
+        case 0:
+          return max_value;
+        case 1:
+          return min_value;
+        case 2:
+          return first;
+        case 3:
+          return sum;
+        case 4:
+          return last;
+        default:
+          return last;
+      }
+    }
+
+    public static int getSerializedSize() {
+      return Short.BYTES;
+    }
+
+    public short serialize() {
+      switch (this) {
+        case max_value:
+          return 0;
+        case min_value:
+          return 1;
+        case first:
+          return 2;
+        case sum:
+          return 3;
+        case last:
+          return 4;
+        default:
+          return -1;
+      }
+    }
   }
 }

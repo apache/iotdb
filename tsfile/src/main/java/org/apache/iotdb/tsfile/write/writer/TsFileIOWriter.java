@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.write.writer;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -38,6 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -95,7 +94,6 @@ public class TsFileIOWriter {
    * for writing a new tsfile.
    *
    * @param output be used to output written data
-   * @throws IOException
    */
   public TsFileIOWriter(TsFileOutput output) throws IOException {
     this.out = output;
@@ -141,7 +139,8 @@ public class TsFileIOWriter {
    */
   public void startChunkGroup(String deviceId) throws IOException {
     LOG.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
-    currentChunkGroupMetaData = new ChunkGroupMetaData(deviceId, new ArrayList<>(), out.getPosition());
+    currentChunkGroupMetaData = new ChunkGroupMetaData(deviceId, new ArrayList<>(),
+        out.getPosition());
   }
 
   /**
@@ -149,7 +148,8 @@ public class TsFileIOWriter {
    */
   public void endChunkGroup(long version) throws IOException {
     long dataSize = out.getPosition() - currentChunkGroupMetaData.getStartOffsetOfChunkGroup();
-    ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(currentChunkGroupMetaData.getDeviceID(),
+    ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(
+        currentChunkGroupMetaData.getDeviceID(),
         dataSize, currentChunkGroupMetaData.getChunkMetaDataList().size());
     chunkGroupFooter.serializeTo(out.wrapAsStream());
     currentChunkGroupMetaData.setEndOffsetOfChunkGroup(out.getPosition());
@@ -188,13 +188,13 @@ public class TsFileIOWriter {
     header.serializeTo(out.wrapAsStream());
     LOG.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
 
-    Map<String, ByteBuffer> statisticsMap = new HashMap<>();
+    Map<StatisticType, ByteBuffer> statisticsMap = new HashMap<>();
     // TODO add your statistics
-    statisticsMap.put(StatisticConstant.MAX_VALUE, ByteBuffer.wrap(statistics.getMaxBytes()));
-    statisticsMap.put(StatisticConstant.MIN_VALUE, ByteBuffer.wrap(statistics.getMinBytes()));
-    statisticsMap.put(StatisticConstant.FIRST, ByteBuffer.wrap(statistics.getFirstBytes()));
-    statisticsMap.put(StatisticConstant.SUM, ByteBuffer.wrap(statistics.getSumBytes()));
-    statisticsMap.put(StatisticConstant.LAST, ByteBuffer.wrap(statistics.getLastBytes()));
+    statisticsMap.put(StatisticType.max_value, ByteBuffer.wrap(statistics.getMaxBytes()));
+    statisticsMap.put(StatisticType.min_value, ByteBuffer.wrap(statistics.getMinBytes()));
+    statisticsMap.put(StatisticType.first, ByteBuffer.wrap(statistics.getFirstBytes()));
+    statisticsMap.put(StatisticType.sum, ByteBuffer.wrap(statistics.getSumBytes()));
+    statisticsMap.put(StatisticType.last, ByteBuffer.wrap(statistics.getLastBytes()));
 
     TsDigest tsDigest = new TsDigest();
 
@@ -325,7 +325,6 @@ public class TsFileIOWriter {
   }
 
 
-
   /**
    * get chunkGroupMetaDataList.
    *
@@ -348,8 +347,8 @@ public class TsFileIOWriter {
   }
 
   /**
-   * close the outputStream or file channel without writing FileMetadata.
-   * This is just used for Testing.
+   * close the outputStream or file channel without writing FileMetadata. This is just used for
+   * Testing.
    */
   public void close() throws IOException {
     canWrite = false;
@@ -359,6 +358,7 @@ public class TsFileIOWriter {
   void writeSeparatorMaskForTest() throws IOException {
     out.write(new byte[]{MetaMarker.SEPARATOR});
   }
+
   void writeChunkMaskForTest() throws IOException {
     out.write(new byte[]{MetaMarker.CHUNK_HEADER});
   }

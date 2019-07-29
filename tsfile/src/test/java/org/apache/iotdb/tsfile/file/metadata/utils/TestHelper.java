@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataTest;
 import org.apache.iotdb.tsfile.file.metadata.TsDigest;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaDataTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -126,11 +127,14 @@ public class TestHelper {
 
   public static TsDigest createSimpleTsDigest() {
     TsDigest digest = new TsDigest();
-    digest.addStatistics("max", ByteBuffer.wrap(BytesUtils.stringToBytes(MAX_VALUE)));
-    digest.addStatistics("min", ByteBuffer.wrap(BytesUtils.stringToBytes(MIN_VALUE)));
-    digest.addStatistics("sum", ByteBuffer.wrap(BytesUtils.stringToBytes(SUM_VALUE)));
-    digest.addStatistics("first", ByteBuffer.wrap(BytesUtils.stringToBytes(FIRST_VALUE)));
-    digest.addStatistics("last", ByteBuffer.wrap(BytesUtils.stringToBytes(LAST_VALUE)));
+    digest.addStatistics(StatisticType.max_value,
+        ByteBuffer.wrap(BytesUtils.stringToBytes(MAX_VALUE)));
+    digest.addStatistics(StatisticType.min_value,
+        ByteBuffer.wrap(BytesUtils.stringToBytes(MIN_VALUE)));
+    digest.addStatistics(StatisticType.sum, ByteBuffer.wrap(BytesUtils.stringToBytes(SUM_VALUE)));
+    digest
+        .addStatistics(StatisticType.first, ByteBuffer.wrap(BytesUtils.stringToBytes(FIRST_VALUE)));
+    digest.addStatistics(StatisticType.last, ByteBuffer.wrap(BytesUtils.stringToBytes(LAST_VALUE)));
     return digest;
   }
 

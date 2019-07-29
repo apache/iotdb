@@ -64,14 +64,14 @@ public class HDFSInputTest {
 
   @Test
   public void test_read1() throws IOException {
-    int size = 2000;
+    int size = 1000;
     ByteBuffer buffer = ByteBuffer.allocate(size);
     Assert.assertEquals(size, in.read(buffer));
   }
 
   @Test
   public void test_read2() throws IOException {
-    int size = 2000;
+    int size = 1000;
     long pos = 20L;
     ByteBuffer buffer = ByteBuffer.allocate(size);
     Assert.assertEquals(size, in.read(buffer, pos));
