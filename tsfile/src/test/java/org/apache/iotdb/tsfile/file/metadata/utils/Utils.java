@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -37,7 +38,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class Utils {
 
   private static final double maxError = 0.0001d;
-  
+
 
   public static void isListEqual(List<?> listA, List<?> listB, String name) {
     if ((listA == null) ^ (listB == null)) {
@@ -70,7 +71,8 @@ public class Utils {
     }
   }
 
-  public static void isMapBufferEqual(Map<String, ByteBuffer> mapA, Map<String, ByteBuffer> mapB,
+  public static void isMapBufferEqual(Map<StatisticType, ByteBuffer> mapA,
+      Map<StatisticType, ByteBuffer> mapB,
       String name) {
     if ((mapA == null) ^ (mapB == null)) {
       System.out.println("error");
@@ -80,7 +82,7 @@ public class Utils {
       if (mapA.size() != mapB.size()) {
         fail(String.format("%s size is different", name));
       }
-      for (String key : mapB.keySet()) {
+      for (StatisticType key : mapB.keySet()) {
         ByteBuffer b = mapB.get(key);
         ByteBuffer a = mapA.get(key);
         assertTrue(b.equals(a));
@@ -91,11 +93,8 @@ public class Utils {
   /**
    * when one of A and B is Null, A != B, so test case fails.
    *
-   * @param objectA
-   * @param objectB
-   * @param name
-   * @return false - A and B both are NULL, so we do not need to check whether their members are equal true - A and B
-   *         both are not NULL, so we need to check their members
+   * @return false - A and B both are NULL, so we do not need to check whether their members are
+   * equal true - A and B both are not NULL, so we need to check their members
    */
   public static boolean isTwoObjectsNotNULL(Object objectA, Object objectB, String name) {
     if ((objectA == null) && (objectB == null)) {
@@ -142,9 +141,11 @@ public class Utils {
       assertEquals(metadata1.getStartTime(), metadata2.getStartTime());
       assertEquals(metadata1.getEndTime(), metadata2.getEndTime());
 
-      if (Utils.isTwoObjectsNotNULL(metadata1.getChunkGroupMetaDataList(), metadata2.getChunkGroupMetaDataList(),
+      if (Utils.isTwoObjectsNotNULL(metadata1.getChunkGroupMetaDataList(),
+          metadata2.getChunkGroupMetaDataList(),
           "Rowgroup metadata list")) {
-        assertEquals(metadata1.getChunkGroupMetaDataList().size(), metadata2.getChunkGroupMetaDataList().size());
+        assertEquals(metadata1.getChunkGroupMetaDataList().size(),
+            metadata2.getChunkGroupMetaDataList().size());
         for (int i = 0; i < metadata1.getChunkGroupMetaDataList().size(); i++) {
           Utils.isChunkGroupMetaDataEqual(metadata1.getChunkGroupMetaDataList().get(i),
               metadata1.getChunkGroupMetaDataList().get(i));
@@ -219,7 +220,8 @@ public class Utils {
       assertTrue(header1.getNumOfValues() == header2.getNumOfValues());
       assertTrue(header1.getMaxTimestamp() == header2.getMaxTimestamp());
       assertTrue(header1.getMinTimestamp() == header2.getMinTimestamp());
-      if (Utils.isTwoObjectsNotNULL(header1.getStatistics(), header2.getStatistics(), "statistics")) {
+      if (Utils
+          .isTwoObjectsNotNULL(header1.getStatistics(), header2.getStatistics(), "statistics")) {
         Utils.isStatisticsEqual(header1.getStatistics(), header2.getStatistics());
       }
     }
