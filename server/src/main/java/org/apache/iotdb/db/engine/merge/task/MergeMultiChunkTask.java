@@ -275,6 +275,7 @@ class MergeMultiChunkTask {
       // write without unpacking the chunk
       mergeFileWriter.writeChunk(chunk, currMeta);
       mergedChunkNum++;
+      mergeContext.incTotalPointWritten(currMeta.getNumOfPoints());
     } else {
       // the chunk should be unpacked to merge with other chunks
       int chunkPtNum = writeChunk(chunk, currMeta, chunkWriter,
@@ -289,6 +290,7 @@ class MergeMultiChunkTask {
       }
     }
 
+    mergeContext.incTotalPointWritten(newPtWritten - ptWritten);
     if (minChunkPointNum > 0 && newPtWritten >= minChunkPointNum
         || newPtWritten > 0 && minChunkPointNum < 0) {
       // the new chunk's size is large enough and it should be flushed
