@@ -18,16 +18,15 @@
  */
 package org.apache.iotdb.db.tools;
 
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.thrift.EncodingUtils;
-
-import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.List;
 
 /**
  * Created by wangyihan on 2019/5/29 10:50 PM.
@@ -55,6 +54,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     this(conf.getWatermarkSecretKey(), conf.getWatermarkBitString());
     this.markRate = conf.getWatermarkParamMarkRate();
     this.maxBitPosition = conf.getWatermarkParamMaxRightBit();
+    System.out.println("secretKey:"+this.secretKey);
   }
 
   public void setMarkRate(int markRate) {
@@ -87,11 +87,11 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
   }
 
   private boolean getMarkFlag(long timestamp) {
-    return hashMod(String.format("%d%s", timestamp, secretKey), markRate) == 0;
+    return hashMod(String.format("%s%d", secretKey, timestamp), markRate) == 0;
   }
 
   private int getGroupId(long timestamp) {
-    return hashMod(String.format("%s%d%s", secretKey, timestamp, secretKey), groupNumber);
+    return hashMod(String.format("%d%s", timestamp, secretKey), groupNumber);
   }
 
   private int getBitPosition(long timestamp) {
@@ -99,7 +99,8 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
       throw new RuntimeException("Error: minBitPosition is bigger than maxBitPosition");
     }
     int range = maxBitPosition - minBitPosition;
-    return minBitPosition + hashMod(String.format("%d%s", timestamp, secretKey), range);
+    return minBitPosition + hashMod(String.format("%s%d%s", secretKey, timestamp, secretKey),
+        range);
   }
 
   private boolean getBitValue(long timestamp) {
