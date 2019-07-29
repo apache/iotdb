@@ -39,18 +39,18 @@ public class IoTDBWatermarkIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-//    EnvironmentUtils.closeStatMonitor();
-//    daemon = IoTDB.getInstance();
-//    daemon.active();
-//    EnvironmentUtils.envSetUp();
-//    Thread.sleep(5000);
+    EnvironmentUtils.closeStatMonitor();
+    daemon = IoTDB.getInstance();
+    daemon.active();
+    EnvironmentUtils.envSetUp();
+    Thread.sleep(5000);
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-//    daemon.stop();
-//    EnvironmentUtils.cleanEnv();
+    daemon.stop();
+    EnvironmentUtils.cleanEnv();
   }
 
   private static void insertData()
@@ -107,7 +107,7 @@ public class IoTDBWatermarkIT {
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
 
-      statement.execute("GRANT DATA_AUTHORITY to root");
+      statement.execute("GRANT WATERMARK_EMBEDDING to root");
       boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
@@ -124,7 +124,7 @@ public class IoTDBWatermarkIT {
       }
       System.out.println("cnt: " + cnt);
 
-      statement.execute("REVOKE DATA_AUTHORITY from root");
+      statement.execute("REVOKE WATERMARK_EMBEDDING from root");
       hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle_wm.d0");
       Assert.assertTrue(hasResultSet);
       resultSet = statement.getResultSet();
