@@ -70,9 +70,7 @@ public class MergeResource {
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new HashMap<>();
 
-  public MergeResource(
-      List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles) {
+  public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
     this.unseqFiles =
         unseqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
