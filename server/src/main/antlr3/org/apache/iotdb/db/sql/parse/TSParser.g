@@ -79,8 +79,10 @@ TOK_SOFFSET;
 TOK_LIMIT;
 TOK_FLOAT_COMB;
 
-TOK_GRANT_DATA_AUTH;
-TOK_REVOKE_DATA_AUTH;
+TOK_GRANT_WATERMARK_EMBEDDING;
+TOK_REVOKE_WATERMARK_EMBEDDING;
+TOK_WATERMARK_DETECT;
+
 /*
   BELOW IS THE METADATA TOKEN
 */
@@ -209,6 +211,9 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
 
         xlateMap.put("CharSetLiteral", "\\'");
         xlateMap.put("KW_LIST", "LIST");
+
+        xlateMap.put("KW_WATERMARK_ENCODE", "WATERMARK_EMBEDDING");
+        xlateMap.put("KW_WATERMARK_DETECT", "WATERMARK_DETECT");
     }
 
     public static Collection<String> getKeywords() {
@@ -359,6 +364,7 @@ execStatement
     | indexStatement
     | quitStatement
     | listStatement
+    | watermarkDetectStatement
     ;
 
 
@@ -520,8 +526,8 @@ authorStatement
     | revokeRole
     | grantRoleToUser
     | revokeRoleFromUser
-    | grantDataAuth
-    | revokeDataAuth
+    | grantWatermarkEmbedding
+    | revokeWatermarkEmbedding
     ;
 
 loadStatement
@@ -557,14 +563,14 @@ rootOrIdentifier
     | Identifier
     ;
 
-grantDataAuth
-    : KW_GRANT KW_DATA_AHTH KW_TO rootOrIdentifier (COMMA rootOrIdentifier)*
-    -> ^(TOK_GRANT_DATA_AUTH rootOrIdentifier+)
+grantWatermarkEmbedding
+    : KW_GRANT KW_WATERMARK_EMBEDDING KW_TO rootOrIdentifier (COMMA rootOrIdentifier)*
+    -> ^(TOK_GRANT_WATERMARK_EMBEDDING rootOrIdentifier+)
     ;
 
-revokeDataAuth
-    : KW_REVOKE KW_DATA_AHTH KW_FROM rootOrIdentifier (COMMA rootOrIdentifier)*
-    -> ^(TOK_REVOKE_DATA_AUTH rootOrIdentifier+)
+revokeWatermarkEmbedding
+    : KW_REVOKE KW_WATERMARK_EMBEDDING KW_FROM rootOrIdentifier (COMMA rootOrIdentifier)*
+    -> ^(TOK_REVOKE_WATERMARK_EMBEDDING rootOrIdentifier+)
     ;
 
 grantUser
@@ -619,6 +625,12 @@ listStatement
     -> ^(TOK_LIST TOK_ROLE TOK_ALL ^(TOK_USER $username))
     | KW_LIST KW_ALL KW_USER KW_OF KW_ROLE roleName = Identifier
     -> ^(TOK_LIST TOK_USER TOK_ALL ^(TOK_ROLE $roleName))
+    ;
+
+watermarkDetectStatement
+    :
+    KW_WATERMARK_DETECT LPAREN queryStatement COMMA floatValue RPAREN
+    -> ^(TOK_WATERMARK_DETECT queryStatement floatValue)
     ;
 
 prefixPath

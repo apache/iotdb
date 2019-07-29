@@ -1897,10 +1897,10 @@ public class SQLParserTest {
 
 
   @Test
-  public void grantDataAuth() throws ParseException {
-    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT_DATA_AUTH", "a", "b"));
+  public void grantWatermarkEmbedding() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT_WATERMARK_EMBEDDING", "a", "b"));
     ArrayList<String> rec = new ArrayList<>();
-    AstNode astTree = ParseGenerator.generateAST("GRANT DATA_AUTHORITY to a,b");
+    AstNode astTree = ParseGenerator.generateAST("GRANT watermark_embedding to a,b");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 
@@ -1912,10 +1912,27 @@ public class SQLParserTest {
   }
 
   @Test
-  public void revokeDataAuth() throws ParseException {
-    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE_DATA_AUTH", "a", "b"));
+  public void revokeWatermarkEmbedding() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE_WATERMARK_EMBEDDING", "a", "b"));
     ArrayList<String> rec = new ArrayList<>();
-    AstNode astTree = ParseGenerator.generateAST("revoke data_authority from a,b");
+    AstNode astTree = ParseGenerator.generateAST("revoke watermark_embedding from a,b");
+    astTree = ParseUtils.findRootNonNullToken(astTree);
+    recursivePrintSon(astTree, rec);
+
+    int i = 0;
+    while (i <= rec.size() - 1) {
+      assertEquals(rec.get(i), ans.get(i));
+      i++;
+    }
+  }
+
+  @Test
+  public void watermarkDetect() throws ParseException {
+    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_WATERMARK_DETECT",
+        "TOK_QUERY", "TOK_SELECT", "TOK_PATH", "*", "TOK_FROM", "TOK_PATH", "TOK_ROOT",
+        "TOK_FLOAT_COMB", "0", ".", "99"));
+    ArrayList<String> rec = new ArrayList<>();
+    AstNode astTree = ParseGenerator.generateAST("watermark_detect(select * from root, 0.99)");
     astTree = ParseUtils.findRootNonNullToken(astTree);
     recursivePrintSon(astTree, rec);
 

@@ -138,8 +138,8 @@ public class QueryProcessor {
       case INSERT:
       case INDEX:
       case INDEXQUERY:
-      case GRANT_DATA_AUTH:
-      case REVOKE_DATA_AUTH:
+      case GRANT_WATERMARK_EMBEDDING:
+      case REVOKE_WATERMARK_EMBEDDING:
         return operator;
       case QUERY:
       case UPDATE:

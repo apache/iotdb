@@ -446,22 +446,32 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testGrantDataAuth()
+  public void testGrantWatermarkEmbedding()
       throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    String sqlStr = "GRANT DATA_AUTHORITY to a,b";
+    String sqlStr = "GRANT WATERMARK_EMBEDDING to a,b";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
     Assert.assertEquals(2, dataAuthPlan.getUsers().size());
-    Assert.assertEquals(OperatorType.GRANT_DATA_AUTH, dataAuthPlan.getOperatorType());
+    Assert.assertEquals(OperatorType.GRANT_WATERMARK_EMBEDDING, dataAuthPlan.getOperatorType());
   }
 
   @Test
-  public void testRevokeDataAuth()
+  public void testRevokeWatermarkEmbedding()
       throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    String sqlStr = "revoke DATA_AUTHORITY from a,b";
+    String sqlStr = "REVOKE WATERMARK_EMBEDDING from a,b";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
     Assert.assertEquals(2, dataAuthPlan.getUsers().size());
-    Assert.assertEquals(OperatorType.REVOKE_DATA_AUTH, dataAuthPlan.getOperatorType());
+    Assert.assertEquals(OperatorType.REVOKE_WATERMARK_EMBEDDING, dataAuthPlan.getOperatorType());
+  }
+
+  @Test
+  public void testWatermarkDetect()
+      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+    String sqlStr = "REVOKE WATERMARK_EMBEDDING from a,b";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
+    Assert.assertEquals(2, dataAuthPlan.getUsers().size());
+    Assert.assertEquals(OperatorType.REVOKE_WATERMARK_EMBEDDING, dataAuthPlan.getOperatorType());
   }
 }
