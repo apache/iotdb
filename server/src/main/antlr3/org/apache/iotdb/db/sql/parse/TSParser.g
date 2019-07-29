@@ -364,7 +364,6 @@ execStatement
     | indexStatement
     | quitStatement
     | listStatement
-    | watermarkDetectStatement
     ;
 
 
@@ -625,12 +624,6 @@ listStatement
     -> ^(TOK_LIST TOK_ROLE TOK_ALL ^(TOK_USER $username))
     | KW_LIST KW_ALL KW_USER KW_OF KW_ROLE roleName = Identifier
     -> ^(TOK_LIST TOK_USER TOK_ALL ^(TOK_ROLE $roleName))
-    ;
-
-watermarkDetectStatement
-    :
-    KW_WATERMARK_DETECT LPAREN queryStatement COMMA floatValue RPAREN
-    -> ^(TOK_WATERMARK_DETECT queryStatement floatValue)
     ;
 
 prefixPath
