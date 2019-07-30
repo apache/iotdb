@@ -268,10 +268,12 @@ public class SyncSenderImpl implements SyncSender {
   public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
     transport = new TSocket(serverIp, serverPort);
     TProtocol protocol;
-    if(IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable())
-      protocol= new TCompactProtocol(transport);
-    else
+    if(IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+      protocol = new TCompactProtocol(transport);
+    }
+    else {
       protocol = new TBinaryProtocol(transport);
+    }
     serviceClient = new SyncService.Client(protocol);
     try {
       transport.open();

@@ -113,10 +113,12 @@ public class SyncServerManager implements IService {
       try {
         serverTransport = new TServerSocket(
             new InetSocketAddress(conf.getRpcAddress(), conf.getSyncServerPort()));
-        if(conf.isRpcThriftCompressionEnable())
+        if(conf.isRpcThriftCompressionEnable()) {
           protocolFactory = new TCompactProtocol.Factory();
-        else
+        }
+        else {
           protocolFactory = new TBinaryProtocol.Factory();
+        }
         processor = new SyncService.Processor<>(new SyncServiceImpl());
         poolArgs = new TThreadPoolServer.Args(serverTransport);
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,

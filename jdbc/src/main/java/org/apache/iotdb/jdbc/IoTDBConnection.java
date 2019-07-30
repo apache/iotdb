@@ -90,10 +90,12 @@ public class IoTDBConnection implements Connection {
     supportedProtocols.add(TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
 
     openTransport();
-    if(Config.rpcThriftCompressionEnable)
+    if(Config.rpcThriftCompressionEnable) {
       client = new TSIService.Client(new TCompactProtocol(transport));
-    else
+    }
+    else {
       client = new TSIService.Client(new TBinaryProtocol(transport));
+    }
     // open client session
     openSession();
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
@@ -467,10 +469,12 @@ public class IoTDBConnection implements Connection {
         if (transport != null) {
           transport.close();
           openTransport();
-          if(Config.rpcThriftCompressionEnable)
+          if(Config.rpcThriftCompressionEnable) {
             client = new TSIService.Client(new TCompactProtocol(transport));
-          else
+          }
+          else {
             client = new TSIService.Client(new TBinaryProtocol(transport));
+          }
           openSession();
           client = newSynchronizedClient(client);
           flag = true;

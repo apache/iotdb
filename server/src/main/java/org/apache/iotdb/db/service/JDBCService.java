@@ -190,10 +190,12 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
     public JDBCServiceThread(CountDownLatch threadStartLatch, CountDownLatch threadStopLatch)
         throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-      if(IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable())
+      if(IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
         protocolFactory = new TCompactProtocol.Factory();
-      else
+      }
+      else {
         protocolFactory = new TBinaryProtocol.Factory();
+      }
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       impl = (TSServiceImpl) Class.forName(config.getRpcImplClassName()).newInstance();
       processor = new TSIService.Processor<>(impl);
