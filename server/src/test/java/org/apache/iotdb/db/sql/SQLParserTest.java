@@ -1926,23 +1926,6 @@ public class SQLParserTest {
     }
   }
 
-  @Test
-  public void watermarkDetect() throws ParseException {
-    ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_WATERMARK_DETECT",
-        "TOK_QUERY", "TOK_SELECT", "TOK_PATH", "*", "TOK_FROM", "TOK_PATH", "TOK_ROOT",
-        "TOK_FLOAT_COMB", "0", ".", "99"));
-    ArrayList<String> rec = new ArrayList<>();
-    AstNode astTree = ParseGenerator.generateAST("watermark_detect(select * from root, 0.99)");
-    astTree = ParseUtils.findRootNonNullToken(astTree);
-    recursivePrintSon(astTree, rec);
-
-    int i = 0;
-    while (i <= rec.size() - 1) {
-      assertEquals(rec.get(i), ans.get(i));
-      i++;
-    }
-  }
-
   public void recursivePrintSon(Node ns, ArrayList<String> rec) {
     rec.add(ns.toString());
     if (ns.getChildren() != null) {
