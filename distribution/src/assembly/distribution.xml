@@ -25,15 +25,31 @@
         <format>zip</format>
     </formats>
     <includeBaseDirectory>true</includeBaseDirectory>
+    <moduleSets>
+        <moduleSet>
+            <!-- Forces the assembly module to be moved to the end of the build -->
+            <useAllReactorProjects>true</useAllReactorProjects>
+            <includes>
+                <include>org.apache.iotdb:iotdb-server</include>
+                <include>org.apache.iotdb:iotdb-client</include>
+            </includes>
+            <binaries>
+                <outputDirectory>lib</outputDirectory>
+                <unpack>false</unpack>
+            </binaries>
+        </moduleSet>
+    </moduleSets>
     <files>
         <file>
             <source>${maven.multiModuleProjectDirectory}/README.md</source>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/LICENSE-binary</source>
+            <destName>LICENSE</destName>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
+            <destName>NOTICE</destName>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/DISCLAIMER</source>
@@ -54,14 +70,6 @@
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/server/iotdb/conf</directory>
             <outputDirectory>conf</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/server/iotdb/lib</directory>
-            <outputDirectory>lib</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/client/cli/lib</directory>
-            <outputDirectory>lib</outputDirectory>
         </fileSet>
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/server/iotdb/sbin</directory>
