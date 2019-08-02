@@ -143,6 +143,7 @@
         <module>grafana</module>
         <module>spark-tsfile</module>
         <!-- <module>hadoop</module> -->
+        <module>distribution</module>
     </modules>
     <build>
         <pluginManagement>
@@ -608,19 +609,6 @@
                                     <finalName>apache-iotdb-${project.version}-incubating</finalName>
                                 </configuration>
                             </execution>
-                            <!-- Package binaries-->
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <descriptors>
-                                        <descriptor>src/assembly/distribution.xml</descriptor>
-                                    </descriptors>
-                                    <finalName>apache-iotdb-${project.version}-incubating</finalName>
-                                </configuration>
-                            </execution>
                         </executions>
                     </plugin>
                     <!--
@@ -646,7 +634,6 @@
                                             <directory>${project.build.directory}</directory>
                                             <includes>
                                                 <include>apache-iotdb-${project.version}-incubating-source-release.zip</include>
-                                                <include>apache-iotdb-${project.version}-incubating-bin.zip</include>
                                             </includes>
                                         </fileSet>
                                     </fileSets>
