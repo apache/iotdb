@@ -151,7 +151,7 @@ public class StorageGroupProcessor {
   private ModificationFile mergingModification;
 
   /**
-   * This linked list records the access order of sensors used by query.
+   * This linked list records the access order of measurements used by query.
    */
   private LinkedList<String> lruForSensorUsedInQuery = new LinkedList<>();
   private static final int MAX_CACHE_SENSORS = 5000;
