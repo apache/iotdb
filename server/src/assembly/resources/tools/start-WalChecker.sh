@@ -74,11 +74,16 @@ launch_service()
 # Start up the service
 #launch_service "$classname"
 
-if [ ! -d ${IOTDB_HOME}/data/wal ]; then
-    echo "Can't find wal directory." 
+if [ $# -ne 1 ]; then
+    echo "please input the wal folder."
+exit 1;
+fi
+
+if [ ! -d ${1} ]; then
+    echo "Can't find wal directory. ${1}" 
     exit 1;
 else
-    WALPATH=${IOTDB_HOME}/data/wal
+    WALPATH=${1}
     launch_service "$classname"    
 fi
 
