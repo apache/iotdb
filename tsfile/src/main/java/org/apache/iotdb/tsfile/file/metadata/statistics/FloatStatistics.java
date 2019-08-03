@@ -53,6 +53,18 @@ public class FloatStatistics extends Statistics<Float> {
     }
   }
 
+  @Override
+  public void updateStats(float[] values) {
+    for (float value : values) {
+      if (this.isEmpty) {
+        initializeStats(value, value, value, value, value);
+        isEmpty = false;
+      } else {
+        updateStats(value, value, value, value, value);
+      }
+    }
+  }
+
   private void updateStats(float minValue, float maxValue, float firstValue,
       double sumValue, float last) {
     if (minValue < min) {

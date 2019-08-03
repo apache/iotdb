@@ -53,6 +53,18 @@ public class DoubleStatistics extends Statistics<Double> {
     }
   }
 
+  @Override
+  public void updateStats(double[] values) {
+    for (double value : values) {
+      if (this.isEmpty) {
+        initializeStats(value, value, value, value, value);
+        isEmpty = false;
+      } else {
+        updateStats(value, value, value, value, value);
+      }
+    }
+  }
+
   private void updateStats(double minValue, double maxValue, double firstValue, double sumValue,
       double lastValue) {
     if (minValue < min) {
