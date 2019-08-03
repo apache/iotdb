@@ -85,8 +85,12 @@ REM ----------------------------------------------------------------------------
 :okClasspath
 
 rem echo CLASSPATH: %CLASSPATH%
-set IOTDB_DATA=%IOTDB_HOME%\data
-set IOTDB_WAL=%IOTDB_DATA%\wal
+set IOTDB_WAL=%1
+
+IF "%IOTDB_WAL%"=="" (
+    echo "please input the wal folder."
+    goto finally
+    )
 
 IF EXIST "%IOTDB_WAL%" (
     "%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %IOTDB_WAL%
