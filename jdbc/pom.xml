@@ -39,12 +39,12 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
-            <version>${project.version}</version>
+            <version>0.9.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
-            <version>${project.version}</version>
+            <version>0.9.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
     <build>
@@ -94,17 +94,6 @@
                 <configuration>
                     <skipTests>${jdbc.test.skip}</skipTests>
                     <skipITs>${jdbc.it.skip}</skipITs>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.rat</groupId>
-                <artifactId>apache-rat-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>example/data/kafka_data.csv</exclude>
-                        <exclude>**/*.iml</exclude>
-                        <exclude>**/*.log</exclude>
-                    </excludes>
                 </configuration>
             </plugin>
         </plugins>
