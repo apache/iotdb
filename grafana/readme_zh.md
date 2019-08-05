@@ -69,7 +69,7 @@ server.port = 8888
 运行后端数据源连接器，在控制台输入
 
 ```shell
-$ java -jar iotdb-grafana-{version}-SNAPSHOT.war
+$ java -jar iotdb-grafana-{version}.war
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
