@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.8.0-SNAPSHOT</version>
+        <version>0.8.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-server</artifactId>
@@ -38,17 +38,17 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
-            <version>0.8.0-SNAPSHOT</version>
+            <version>0.8.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
-            <version>0.8.0-SNAPSHOT</version>
+            <version>0.8.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.8.0-SNAPSHOT</version>
+            <version>0.8.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
