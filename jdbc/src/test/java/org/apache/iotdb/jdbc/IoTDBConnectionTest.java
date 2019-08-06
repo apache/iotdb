@@ -82,8 +82,9 @@ public class IoTDBConnectionTest {
         add("min_time");
       }
     };
+    final String timestampPrecision = "ms";
     when(client.getProperties())
-        .thenReturn(new ServerProperties(version, supportedAggregationTime));
+        .thenReturn(new ServerProperties(version, supportedAggregationTime, timestampPrecision));
     connection.client = client;
     assertEquals(connection.getServerProperties().getVersion(), version);
     for (int i = 0; i < supportedAggregationTime.size(); i++) {
