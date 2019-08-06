@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.8.0</version>
+        <version>0.8.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-distribution</artifactId>
@@ -87,13 +87,13 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
-            <version>0.8.0</version>
+            <version>0.8.1-SNAPSHOT</version>
             <type>zip</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-client</artifactId>
-            <version>0.8.0</version>
+            <version>0.8.1-SNAPSHOT</version>
             <type>zip</type>
         </dependency>
     </dependencies>
