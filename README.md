@@ -86,9 +86,9 @@ incubator-iotdb/     <-- root path
 +- pom.xml
 ```
 
-Let `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server`
+Let `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server-{project.version}`
 
-Let `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/target/iotdb-client`
+Let `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/target/iotdb-client-{project.version}`
 
 Note:
 * if `IOTDB_HOME` is not explicitly assigned, 
@@ -133,7 +133,7 @@ If successful, you will see the the following text in the terminal:
 
 Otherwise, you may need to check the error statements and fix the problems.
 
-After build, the IoTDB project will be at the folder "server/iotdb". The folder will include the following contents:
+After build, the IoTDB project will be at the folder "server/target/iotdb-server-{project.version}". The folder will include the following contents:
 
 ```
 server/iotdb/  <-- root path
@@ -191,7 +191,11 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 /workspace/incubator-iotdb
 
 > mvn clean package -pl client -am -Dmaven.test.skip=true
+```
 
+After build, the IoTDB client will be at the folder "client/target/iotdb-client-{project.version}".
+
+```
 # Unix/OS X
 > $IOTDB_CLI_HOME/sbin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
 

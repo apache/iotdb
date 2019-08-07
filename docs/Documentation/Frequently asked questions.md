@@ -80,9 +80,9 @@ Readme.md
 ...
 ```
 
-Let `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server`
+Let `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server-{project.version}`
 
-Let `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/target/iotdb-client`
+Let `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/target/iotdb-client-{project.version}`
 
 By default settings, the logs are stored under ```IOTDB_HOME/logs```. You can change log level and storage path by configuring ```logback.xml``` under ```IOTDB_HOME/conf```.
 
