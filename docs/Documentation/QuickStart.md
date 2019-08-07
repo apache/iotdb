@@ -150,11 +150,11 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 
 In total, we provide users three kinds of configurations module: 
 
-* environment config module (iotdb-env.`sh`(Linux or OSX), iotdb-env.`bat`(Windows))
-* system config module (tsfile-format.properties, iotdb-engine.properties)
-* log config module (logback.xml)
+* environment config module (`iotdb-env.sh`(Linux or OSX), `iotdb-env.bat`(Windows))
+* system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
+* log config module (`logback.xml`)
 
-The configuration files of the three configuration items are located in the IoTDB installation directory: $IOTDB_HOME/conf folder. For more, you are advised to check Chapter 4 of the User Guide to give you the details.
+The configuration files of the three configuration items are located in the IoTDB installation directory: `$IOTDB_HOME/conf` folder. For more, you are advised to check Chapter 4 of the User Guide to give you the details.
 
 ## Start
 

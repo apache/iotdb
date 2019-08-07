@@ -151,7 +151,7 @@ server/iotdb/  <-- root path
 
 Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already set the default config in the files.
 
-In total, we provide users three kinds of configurations module: environment config module (iotdb-env.bat, iotdb-env.sh), system config module (tsfile-format.properties, iotdb-engine.properties) and log config module (logback.xml). All of these kinds of configuration files are put in iotdb/config folder.
+In total, we provide users three kinds of configurations module: environment config module (`iotdb-env.bat`, `iotdb-env.sh`), system config module (`tsfile-format.properties`, `iotdb-engine.properties`) and log config module (`logback.xml`). All of these kinds of configuration files are put in iotdb/config folder.
 
 For more, you are advised to check our documentation [Chapter4: Deployment and Management](https://iotdb.apache.org/#/Documents/0.8.0/chap4/sec1) in detail.
 
