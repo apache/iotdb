@@ -94,8 +94,9 @@ incubator-iotdb/     <-- root path
 +- pom.xml
 ```
 
-Let $IOTDB_HOME = /workspace/incubator-iotdb/server/iotdb/
-Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/cli/
+Let `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server-{project.version}`
+
+Let `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/target/iotdb-client-{project.version}`
 
 Note:
 * if `IOTDB_HOME` is not explicitly assigned, 
