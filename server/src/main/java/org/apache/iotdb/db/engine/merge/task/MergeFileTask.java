@@ -144,7 +144,7 @@ class MergeFileTask {
       oldFileWriter.endFile(new FileSchema(newFileWriter.getKnownSchema()));
 
       seqFile.serialize();
-      mergeLogger.logFileMergeEnd(seqFile.getFile());
+      mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
 
       newFileWriter.getFile().delete();
@@ -200,7 +200,7 @@ class MergeFileTask {
     fileWriter.endFile(new FileSchema(fileWriter.getKnownSchema()));
 
     seqFile.serialize();
-    mergeLogger.logFileMergeEnd(fileWriter.getFile());
+    mergeLogger.logFileMergeEnd();
     logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
 
     seqFile.getMergeQueryLock().writeLock().lock();
