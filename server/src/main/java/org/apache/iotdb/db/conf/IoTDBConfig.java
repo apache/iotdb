@@ -230,9 +230,14 @@ public class IoTDBConfig {
   private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
 
   /**
-   * How many thread will be set up to perform merges.
+   * How many threads will be set up to perform main merge tasks.
    */
   private int mergeThreadNum = 1;
+
+  /**
+   * How many threads will be set up to perform merge chunk sub-tasks.
+   */
+  private int mergeChunkSubThreadNum = 8;
 
   /**
    * When set to true, if some crashed merges are detected during system rebooting, such merges will
@@ -700,5 +705,13 @@ public class IoTDBConfig {
   public void setMergeFileStrategy(
       MergeFileStrategy mergeFileStrategy) {
     this.mergeFileStrategy = mergeFileStrategy;
+  }
+
+  public int getMergeChunkSubThreadNum() {
+    return mergeChunkSubThreadNum;
+  }
+
+  public void setMergeChunkSubThreadNum(int mergeChunkSubThreadNum) {
+    this.mergeChunkSubThreadNum = mergeChunkSubThreadNum;
   }
 }

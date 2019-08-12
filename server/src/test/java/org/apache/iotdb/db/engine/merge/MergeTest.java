@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
+import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -69,6 +70,7 @@ abstract class MergeTest {
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(-1);
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
+    MergeManager.getINSTANCE().start();
   }
 
   @After
@@ -80,6 +82,7 @@ abstract class MergeTest {
     TsFileMetaDataCache.getInstance().clear();
     DeviceMetaDataCache.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
+    MergeManager.getINSTANCE().stop();
   }
 
   private void prepareSeries() {

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +46,7 @@ public class MergeManager implements IService {
 
   private AtomicInteger threadCnt = new AtomicInteger();
   private ThreadPoolExecutor mergeTaskPool;
+  private ThreadPoolExecutor mergeChunkSubTaskPool;
   private ScheduledExecutorService timedMergeThreadPool;
 
   private MergeManager() {
@@ -53,8 +56,12 @@ public class MergeManager implements IService {
     return INSTANCE;
   }
 
-  public void submit(MergeTask mergeTask) {
+  public void submitMainTask(MergeTask mergeTask) {
     mergeTaskPool.submit(mergeTask);
+  }
+
+  public Future submitChunkSubTask(Callable callable) {
+    return mergeChunkSubTaskPool.submit(callable);
   }
 
   @Override
@@ -64,9 +71,18 @@ public class MergeManager implements IService {
       if (threadNum <= 0) {
         threadNum = 1;
       }
+
+      int chunkSubThreadNum = IoTDBDescriptor.getInstance().getConfig().getMergeChunkSubThreadNum();
+      if (chunkSubThreadNum <= 0) {
+        chunkSubThreadNum = 1;
+      }
+
       mergeTaskPool =
           (ThreadPoolExecutor) Executors.newFixedThreadPool(threadNum,
               r -> new Thread(r, "MergeThread-" + threadCnt.getAndIncrement()));
+      mergeChunkSubTaskPool =
+          (ThreadPoolExecutor) Executors.newFixedThreadPool(threadNum * chunkSubThreadNum,
+              r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
       long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
       if (mergeInterval > 0) {
         timedMergeThreadPool = Executors.newSingleThreadScheduledExecutor( r -> new Thread(r,
@@ -86,8 +102,9 @@ public class MergeManager implements IService {
         timedMergeThreadPool = null;
       }
       mergeTaskPool.shutdownNow();
+      mergeChunkSubTaskPool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
-      while (!mergeTaskPool.isTerminated()) {
+      while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated() ) {
         // wait
       }
       mergeTaskPool = null;
