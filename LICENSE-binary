@@ -210,24 +210,6 @@ conditions of the following licenses.
 
 ================================================================
 
-The following classes are modified from Apache Hive, which is under Apache License 2.0:
-
-./server/src/main/java/org/apache/iotdb/db/sql/parse/AstErrorNode.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/AstNode.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/AstNodeOrigin.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/Node.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseDriver.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseError.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseException.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseUtils.java
-
-------------
-
-The following class is modified from Maven Wrapper, which is under Apache License 2.0:
-
-./mvn/wrapper/MavenWrapperDownloader.java
-================================================================
-
 The binary distribution of this product bundles these dependencies under the
 following license. See licenses/ for text of these licenses.
 

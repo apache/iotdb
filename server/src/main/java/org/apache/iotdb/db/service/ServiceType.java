@@ -33,6 +33,7 @@ public enum ServiceType {
   SYNC_SERVICE("SYNC ServerService", ""),
   MERGE_SERVICE("Merge Manager", ""),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE"),
+  MANAGE_DYNAMIC_PARAMETERS_SERVICE("Manage Dynamic Parameters", "Manage Dynamic Parameters"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
   FLUSH_SERVICE("Flush ServerService", "");
 

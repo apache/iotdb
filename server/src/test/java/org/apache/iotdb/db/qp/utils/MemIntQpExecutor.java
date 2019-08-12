@@ -26,11 +26,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.TreeSet;
-
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -78,7 +77,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
       return TSDataType.INT32;
     }
     if (demoMemDataBase.containsKey(fullPath.toString())) {
-      return TSDataType.INT32;
+      return TSDataType.FLOAT;
     }
     return null;
   }

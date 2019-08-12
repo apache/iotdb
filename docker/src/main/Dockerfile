@@ -29,9 +29,12 @@ RUN apt update \
   && unzip master.zip \
   && rm master.zip \
   && cd incubator-iotdb-master \
-  && mvn package -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift" \
-  && cp -r iotdb/iotdb /iotdb \
-  && cp -r iotdb-cli/cli /cli \
+  && mvn package -pl server,client -am -Papache-release -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift" \
+  && cd target/ \
+  && unzip apache-iotdb-0.9.0-SNAPSHOT-incubating-bin.zip \
+  && mkdir /iotdb \
+  && mv apache-iotdb-0.9.0-SNAPSHOT-incubating/* /iotdb/ \
+  && cd ../../ \
   && mvn clean \
   && ls -lh ~/.m2 \
   && rm -rf ~/.m2 \

@@ -103,7 +103,7 @@ server.port = 8888
 
 ```shell
 cd grafana/target/
-java -jar iotdb-grafana-{version}-SNAPSHOT.war
+java -jar iotdb-grafana-{version}.war
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
 ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
