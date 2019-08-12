@@ -198,12 +198,12 @@ public class LogAnalyzer {
       if (STR_MERGE_END.equals(currLine)) {
         break;
       }
-      if (currLine.contains(STR_START)) {
+      if (!currLine.contains(STR_END)) {
         String[] splits = currLine.split(" ");
         currFile = new File(splits[0]);
         Long lastPost = Long.parseLong(splits[2]);
         fileLastPositions.put(currFile, lastPost);
-      } else if (currLine.contains(STR_END)) {
+      } else {
         fileLastPositions.remove(currFile);
         String seqFilePath = currFile.getAbsolutePath().replace(MergeTask.MERGE_SUFFIX, "");
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();

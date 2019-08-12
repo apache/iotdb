@@ -86,8 +86,8 @@ public class MergeLogger {
     logStream.flush();
   }
 
-  public void logFileMergeEnd(File file) throws IOException {
-    logStream.write( STR_END + " " + file.getAbsolutePath() );
+  public void logFileMergeEnd() throws IOException {
+    logStream.write(STR_END);
     logStream.newLine();
     logStream.flush();
   }
