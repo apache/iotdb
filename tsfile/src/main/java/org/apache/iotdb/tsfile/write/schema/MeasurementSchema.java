@@ -42,9 +42,6 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
  * including measurement id, data type, encoding and compressor type. For each TSEncoding,
  * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
  * TSDataTypeConverter up to now.
- *
- * @author kangrong
- * @since version 0.1.0
  */
 public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
 

@@ -20,20 +20,32 @@
 
 -->
 <assembly>
-    <id>release</id>
+    <id>bin</id>
     <formats>
-        <format>tar.gz</format>
+        <format>dir</format>
+        <format>zip</format>
     </formats>
     <includeBaseDirectory>true</includeBaseDirectory>
+    <dependencySets>
+        <dependencySet>
+            <includes>
+                <include>*:zip:*</include>
+            </includes>
+            <outputDirectory>/</outputDirectory>
+            <unpack>true</unpack>
+        </dependencySet>
+    </dependencySets>
     <files>
         <file>
             <source>${maven.multiModuleProjectDirectory}/README.md</source>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/LICENSE-binary</source>
+            <destName>LICENSE</destName>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
+            <destName>NOTICE</destName>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/DISCLAIMER</source>
@@ -50,34 +62,6 @@
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/docs</directory>
             <outputDirectory>docs</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/server/iotdb/conf</directory>
-            <outputDirectory>conf</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/server/iotdb/lib</directory>
-            <outputDirectory>lib</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/client/cli/lib</directory>
-            <outputDirectory>lib</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/server/iotdb/sbin</directory>
-            <outputDirectory>sbin</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/client/cli/sbin</directory>
-            <outputDirectory>sbin</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/server/iotdb/tools</directory>
-            <outputDirectory>tools</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/client/cli/tools</directory>
-            <outputDirectory>tools</outputDirectory>
         </fileSet>
     </fileSets>
 </assembly>

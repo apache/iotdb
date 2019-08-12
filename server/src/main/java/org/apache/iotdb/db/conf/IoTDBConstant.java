@@ -59,6 +59,8 @@ public class IoTDBConstant {
 
   public static final String SHOW_FLUSH_TASK_INFO = "show\\s+flush\\s+task\\s+info";
 
+  public static final String SHOW_DYNAMIC_PARAMETERS = "show\\s+dynamic\\s+parameters";
+
   public static final String ROLE = "Role";
   public static final String USER = "User";
   public static final String PRIVILEGE = "Privilege";

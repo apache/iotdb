@@ -42,6 +42,8 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.CompressionRatio;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -503,6 +505,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS, msg);
       }
 
+      if (execShowDynamicParameters(statement)) {
+        String msg = String.format(
+            "Memtable size threshold: %dB, Memtable number: %d, Tsfile size threshold: %dB, Compression ratio: %f,"
+                + " Storage group number: %d, Timeseries number: %d, Maximal timeseries number among storage groups: %d",
+            IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold(),
+            IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber(),
+            IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
+            CompressionRatio.getInstance().getRatio(),
+            MManager.getInstance().getAllStorageGroup().size(),
+            IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
+            MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups());
+        return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS, msg);
+      }
+
       if (execSetConsistencyLevel(statement)) {
         return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS,
             "Execute set consistency level successfully");
@@ -511,7 +527,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
-        return executeQueryStatement(req);
+        return executeQueryStatement(statement, physicalPlan);
       } else {
         return executeUpdateStatement(physicalPlan);
       }
@@ -526,7 +542,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * Set consistency level
+   * Show flush info
    */
   private boolean execShowFlushInfo(String statement) {
     if (statement == null) {
@@ -534,6 +550,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     statement = statement.toLowerCase().trim();
     if (Pattern.matches(IoTDBConstant.SHOW_FLUSH_TASK_INFO, statement)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * Show dynamic parameters
+   */
+  private boolean execShowDynamicParameters(String statement) {
+    if (statement == null) {
+      return false;
+    }
+    statement = statement.toLowerCase().trim();
+    if (Pattern.matches(IoTDBConstant.SHOW_DYNAMIC_PARAMETERS, statement)) {
       return true;
     } else {
       return false;
@@ -556,18 +587,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  @Override
-  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
+  private TSExecuteStatementResp executeQueryStatement(String statement, PhysicalPlan plan) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!checkLogin()) {
-        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-        return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
-      }
-
-      String statement = req.getStatement();
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
-
       TSExecuteStatementResp resp;
       List<String> columns = new ArrayList<>();
       if (!(plan instanceof AuthorPlan)) {
@@ -575,7 +597,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } else {
         resp = executeAuthQuery(plan, columns);
       }
-
       resp.setColumns(columns);
       resp.setDataTypeList(queryColumnsType(columns));
       resp.setOperationType(plan.getOperatorType().toString());
@@ -583,6 +604,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           ByteBuffer.wrap(username.get().getBytes()), ByteBuffer.wrap("PASS".getBytes()));
       TSOperationHandle operationHandle = new TSOperationHandle(operationId, true);
       resp.setOperationHandle(operationHandle);
+
       recordANewQuery(statement, plan);
       return resp;
     } catch (Exception e) {
@@ -591,6 +613,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, t1);
     }
+  }
+
+  @Override
+  public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
+    if (!checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
+    }
+
+    String statement = req.getStatement();
+    PhysicalPlan physicalPlan;
+    try {
+      physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
+    } catch (QueryProcessorException | ArgsErrorException | MetadataErrorException e) {
+      logger.error("meet error while parsing SQL to physical plan!", e);
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+    }
+
+    if (!physicalPlan.isQuery()) {
+      return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+          "Statement is not a query statement.");
+    }
+    return executeQueryStatement(statement, physicalPlan);
   }
 
   private List<String> queryColumnsType(List<String> columns) throws PathErrorException {
@@ -756,6 +801,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) {
     try {
       if (!checkLogin()) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
       }
       String statement = req.getStatement();
@@ -925,7 +971,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
-    properties.setTimestampPrecision(IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+    properties
+        .setTimestampPrecision(IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
     return properties;
   }
 

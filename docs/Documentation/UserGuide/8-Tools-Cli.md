@@ -43,12 +43,12 @@ the port number of the server running, set the specific IP and PORT at -h and -p
 The Linux and MacOS system startup commands are as follows:
 
 ```
-  Shell > ./bin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > ./sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 The Windows system startup commands are as follows:
 
 ```
-  Shell > \bin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > \sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 After using these commands, the client can be started successfully. The successful status will be as follows: 
 
@@ -84,10 +84,10 @@ Following is a client command which connects the host with IP
 The Linux and MacOS system startup commands are as follows:
 
 ```
-  Shell >./bin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell >./sbin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 The Windows system startup commands are as follows:
 
 ```
-  Shell > \bin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > \sbin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
