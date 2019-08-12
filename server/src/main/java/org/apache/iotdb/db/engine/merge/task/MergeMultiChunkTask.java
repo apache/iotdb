@@ -227,8 +227,9 @@ class MergeMultiChunkTask {
       MetaListEntry entry = new MetaListEntry(i, seqChunkMeta[i]);
       entry.next();
 
-      chunkMetaHeaps[entry.current().getMeasurementUid().hashCode() %
-          mergeChunkSubTaskNum].add(entry);
+      int index = entry.current().getMeasurementUid().hashCode() % mergeChunkSubTaskNum;
+      index = index < 0 ? -index : index;
+      chunkMetaHeaps[index].add(entry);
       ptWrittens[i] = 0;
     }
 
