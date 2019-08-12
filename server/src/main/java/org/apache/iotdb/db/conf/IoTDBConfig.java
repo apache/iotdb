@@ -240,6 +240,13 @@ public class IoTDBConfig {
   private int mergeChunkSubThreadNum = 8;
 
   /**
+   * If one merge file selection runs for more than this time, it will be ended and its current
+   * selection will be used as final selection. Unit: millis.
+   * When < 0, it means time is unbounded.
+   */
+  private long mergeFileSelectionTimeBudget = 30 * 1000;
+
+  /**
    * When set to true, if some crashed merges are detected during system rebooting, such merges will
    * be continued, otherwise, the unfinished parts of such merges will not be continued while the
    * finished parts still remain as they are.
@@ -713,5 +720,13 @@ public class IoTDBConfig {
 
   public void setMergeChunkSubThreadNum(int mergeChunkSubThreadNum) {
     this.mergeChunkSubThreadNum = mergeChunkSubThreadNum;
+  }
+
+  public long getMergeFileSelectionTimeBudget() {
+    return mergeFileSelectionTimeBudget;
+  }
+
+  public void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
+    this.mergeFileSelectionTimeBudget = mergeFileSelectionTimeBudget;
   }
 }

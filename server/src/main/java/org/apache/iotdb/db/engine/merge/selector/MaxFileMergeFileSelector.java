@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -142,15 +143,22 @@ public class MaxFileMergeFileSelector implements MergeFileSelector {
     totalCost = 0;
 
     int unseqIndex = 0;
-    while (unseqIndex < resource.getUnseqFiles().size()) {
+    long startTime = System.currentTimeMillis();
+    long timeConsumption = 0;
+    long timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
+    if (timeLimit < 0) {
+      timeLimit = Long.MAX_VALUE;
+    }
+    while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
 
       selectOverlappedSeqFiles(unseqFile);
 
       tempMaxSeqFileCost = maxSeqFileCost;
-      long newCost = useTightBound ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles) :
-          calculateLooseMemoryCost(unseqFile, tmpSelectedSeqFiles);
+      long newCost = useTightBound ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles,
+          startTime, timeLimit) :
+          calculateLooseMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit);
 
       if (totalCost + newCost < memoryBudget) {
         selectedUnseqFiles.add(unseqFile);
@@ -168,6 +176,7 @@ public class MaxFileMergeFileSelector implements MergeFileSelector {
       }
       tmpSelectedSeqFiles.clear();
       unseqIndex++;
+      timeConsumption = System.currentTimeMillis() - startTime;
     }
   }
 
@@ -209,7 +218,7 @@ public class MaxFileMergeFileSelector implements MergeFileSelector {
 
   private long calculateMemoryCost(TsFileResource tmpSelectedUnseqFile,
       Collection<Integer> tmpSelectedSeqFiles, FileQueryMemMeasurement unseqMeasurement,
-      FileQueryMemMeasurement seqMeasurement) throws IOException {
+      FileQueryMemMeasurement seqMeasurement, long startTime, long timeLimit) throws IOException {
     long cost = 0;
     Long fileCost = unseqMeasurement.measure(tmpSelectedUnseqFile);
     cost += fileCost;
@@ -225,20 +234,24 @@ public class MaxFileMergeFileSelector implements MergeFileSelector {
       }
       // but writing data into a new file may generate the same amount of metadata in memory
       cost += fileCost;
+      long timeConsumption = System.currentTimeMillis() - startTime;
+      if (timeConsumption > timeLimit) {
+        return Long.MAX_VALUE;
+      }
     }
     return cost;
   }
 
   private long calculateLooseMemoryCost(TsFileResource tmpSelectedUnseqFile,
-      Collection<Integer> tmpSelectedSeqFiles) throws IOException {
+      Collection<Integer> tmpSelectedSeqFiles, long startTime, long timeLimit) throws IOException {
     return calculateMemoryCost(tmpSelectedUnseqFile, tmpSelectedSeqFiles,
-        TsFileResource::getFileSize, this::calculateMetadataSize);
+        TsFileResource::getFileSize, this::calculateMetadataSize, startTime, timeLimit);
   }
 
   private long calculateTightMemoryCost(TsFileResource tmpSelectedUnseqFile,
-      Collection<Integer> tmpSelectedSeqFiles) throws IOException {
+      Collection<Integer> tmpSelectedSeqFiles, long startTime, long timeLimit) throws IOException {
     return calculateMemoryCost(tmpSelectedUnseqFile, tmpSelectedSeqFiles,
-        this::calculateTightUnseqMemoryCost, this::calculateTightSeqMemoryCost);
+        this::calculateTightUnseqMemoryCost, this::calculateTightSeqMemoryCost, startTime, timeLimit);
   }
 
   private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
