@@ -163,14 +163,6 @@ public class IoTDBDescriptor {
       conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
           conf.getMultiDirStrategyClassName()));
 
-      conf.setMergeConcurrentThreads(Integer
-          .parseInt(properties.getProperty("merge_concurrent_threads",
-              Integer.toString(conf.getMergeConcurrentThreads()))));
-      if (conf.getMergeConcurrentThreads() <= 0
-          || conf.getMergeConcurrentThreads() > Runtime.getRuntime().availableProcessors()) {
-        conf.setMergeConcurrentThreads(Runtime.getRuntime().availableProcessors());
-      }
-
       conf.setFetchSize(Integer.parseInt(properties.getProperty("fetch_size",
           Integer.toString(conf.getFetchSize()))));
 
