@@ -130,12 +130,6 @@ public class IoTDBConfig {
   private int maxMemtableNumber = 20;
 
   /**
-   * The maximum concurrent thread number for merging. When the value <=0 or > CPU core number, use
-   * the CPU core number.
-   */
-  private int mergeConcurrentThreads = Runtime.getRuntime().availableProcessors();
-
-  /**
    * The amount of data that is read every time when IoTDB merges data.
    */
   private int fetchSize = 10000;
@@ -429,14 +423,6 @@ public class IoTDBConfig {
 
   private void setIndexFileDir(String indexFileDir) {
     this.indexFileDir = indexFileDir;
-  }
-
-  public int getMergeConcurrentThreads() {
-    return mergeConcurrentThreads;
-  }
-
-  void setMergeConcurrentThreads(int mergeConcurrentThreads) {
-    this.mergeConcurrentThreads = mergeConcurrentThreads;
   }
 
   public int getFetchSize() {
