@@ -71,6 +71,8 @@ public class MergeResource {
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
+  private boolean cacheDeviceMeta = false;
+
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
     this.unseqFiles =
@@ -132,7 +134,7 @@ public class MergeResource {
   public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
     TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
     if (reader == null) {
-      reader = new TsFileSequenceReader(tsFileResource.getFile().getPath(), true, true);
+      reader = new TsFileSequenceReader(tsFileResource.getFile().getPath(), true, cacheDeviceMeta);
       fileReaderCache.put(tsFileResource, reader);
     }
     return reader;
@@ -251,5 +253,9 @@ public class MergeResource {
         entryIterator.remove();
       }
     }
+  }
+
+  public void setCacheDeviceMeta(boolean cacheDeviceMeta) {
+    this.cacheDeviceMeta = cacheDeviceMeta;
   }
 }
