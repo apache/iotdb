@@ -75,7 +75,7 @@ public class RecoverMergeTask extends MergeTask {
       case NONE:
         logFile.delete();
         break;
-      case FILES_LOGGED:
+      case MERGE_START:
         resumeAfterFilesLogged(continueMerge);
         break;
       case ALL_TS_MERGED:
