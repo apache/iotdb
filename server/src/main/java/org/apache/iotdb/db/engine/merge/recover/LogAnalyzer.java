@@ -201,7 +201,7 @@ public class LogAnalyzer {
       if (!currLine.contains(STR_END)) {
         String[] splits = currLine.split(" ");
         currFile = new File(splits[0]);
-        Long lastPost = Long.parseLong(splits[2]);
+        Long lastPost = Long.parseLong(splits[1]);
         fileLastPositions.put(currFile, lastPost);
       } else {
         fileLastPositions.remove(currFile);
