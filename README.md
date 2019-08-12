@@ -136,7 +136,7 @@ Otherwise, you may need to check the error statements and fix the problems.
 After build, the IoTDB project will be at the folder "server/target/iotdb-server-{project.version}". The folder will include the following contents:
 
 ```
-server/iotdb/  <-- root path
+server/target/iotdb-server-{project.version}  <-- root path
 |
 +- sbin/       <-- script files for starting and stopping the server
 |
@@ -146,6 +146,8 @@ server/iotdb/  <-- root path
 |
 +- lib/       <-- project dependencies
 ```
+
+> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr3" need to be added to sources roots to avoid compilation errors. 
 
 ## Configure
 
@@ -226,9 +228,9 @@ But lets try something slightly more interesting:
 
 ``` 
 IoTDB> SET STORAGE GROUP TO root.vehicle
-execute successfully.
+It costs xxxs
 IoTDB> CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE
-execute successfully.
+It costs xxxs
 ```
 Till now, we have already create a table called root.vehicle and add a column called d0.s0 in the table. Let's take a look at what we have done by 'SHOW TIMESERIES' command.
 
@@ -236,37 +238,39 @@ Till now, we have already create a table called root.vehicle and add a column ca
 IoTDB> SHOW TIMESERIES
 ===  Timeseries Tree  ===
 
-root:{
-    vehicle:{
-        d0:{
-            s0:{
-                 DataType: INT32,
-                 Encoding: RLE,
-                 Compressor: UNCOMPRESSED,
-                 args: {},
-                 StorageGroup: root.vehicle
-            }
+{
+        "root":{
+                "vehicle":{
+                        "d0":{
+                                "s0":{
+                                        "args":"{}",
+                                        "StorageGroup":"root.vehicle",
+                                        "DataType":"INT32",
+                                        "Compressor":"UNCOMPRESSED",
+                                        "Encoding":"RLE"
+                                }
+                        }
+                }
         }
-    }
 }
 ```
 Insert time series data is the basic operation of IoTDB, you can use 'INSERT' command to finish this:
 
 ```
 IoTDB> insert into root.vehicle.d0(timestamp,s0) values(1,101);
-execute successfully.
+It costs xxxs
 ```
 The data we've just inserted displays like this:
 
 ```
 IoTDB> SELECT d0.s0 FROM root.vehicle
-+-----------------------+------------------+
-|                   Time|root.vehicle.d0.s0|
-+-----------------------+------------------+
-|1970-01-01T08:00:00.001|               101|
-+-----------------------+------------------+
-record number = 1
-execute successfully.
++-----------------------------+------------------+
+|                         Time|root.vehicle.d0.s0|
++-----------------------------+------------------+
+|1970-01-01T08:00:00.001+08:00|               101|
++-----------------------------+------------------+
+Total line number = 1
+It costs xxxs
 ```
 
 If your session looks similar to what's above, congrats, your IoTDB is operational!
