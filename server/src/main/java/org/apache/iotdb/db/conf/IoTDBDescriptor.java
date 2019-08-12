@@ -220,6 +220,9 @@ public class IoTDBDescriptor {
           Long.toString(conf.getMergeMemoryBudget()))));
       conf.setMergeThreadNum(Integer.parseInt(properties.getProperty("merge_thread_num",
           Integer.toString(conf.getMergeThreadNum()))));
+      conf.setMergeChunkSubThreadNum(Integer.parseInt(properties.getProperty
+          ("merge_chunk_subthread_num",
+          Integer.toString(conf.getMergeChunkSubThreadNum()))));
       conf.setContinueMergeAfterReboot(Boolean.parseBoolean(properties.getProperty(
           "continue_merge_after_reboot", Boolean.toString(conf.isContinueMergeAfterReboot()))));
       conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",

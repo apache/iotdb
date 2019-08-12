@@ -22,6 +22,8 @@ package org.apache.iotdb.db.engine.merge.manage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
 
@@ -34,8 +36,8 @@ public class MergeContext {
   private Map<TsFileResource, Integer> unmergedChunkCnt = new HashMap<>();
   private Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes = new HashMap<>();
 
-  private int totalChunkWritten;
-  private long totalPointWritten;
+  private AtomicInteger totalChunkWritten = new AtomicInteger();
+  private AtomicLong totalPointWritten = new AtomicLong();
 
   public void clear() {
     mergedChunkCnt.clear();
@@ -71,18 +73,18 @@ public class MergeContext {
   }
 
   public int getTotalChunkWritten() {
-    return totalChunkWritten;
+    return totalChunkWritten.get();
   }
 
-  public void setTotalChunkWritten(int totalChunkWritten) {
-    this.totalChunkWritten = totalChunkWritten;
+  public void incTotalChunkWritten() {
+    this.totalChunkWritten.incrementAndGet();
   }
 
   public void incTotalPointWritten(long increment) {
-    totalPointWritten += increment;
+    totalPointWritten.addAndGet(increment);
   }
 
   public long getTotalPointWritten() {
-    return totalPointWritten;
+    return totalPointWritten.get();
   }
 }

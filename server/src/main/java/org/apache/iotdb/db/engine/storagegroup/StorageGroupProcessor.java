@@ -771,7 +771,7 @@ public class StorageGroupProcessor {
         MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
             this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum());
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
-        MergeManager.getINSTANCE().submit(mergeTask);
+        MergeManager.getINSTANCE().submitMainTask(mergeTask);
         if (logger.isInfoEnabled()) {
           logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
               storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
