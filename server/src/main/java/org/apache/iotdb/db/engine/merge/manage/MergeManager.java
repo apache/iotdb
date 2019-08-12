@@ -60,7 +60,7 @@ public class MergeManager implements IService {
   @Override
   public void start() {
     if (mergeTaskPool == null) {
-      int threadNum = IoTDBDescriptor.getInstance().getConfig().getMergeConcurrentThreads();
+      int threadNum = IoTDBDescriptor.getInstance().getConfig().getMergeThreadNum();
       if (threadNum <= 0) {
         threadNum = 1;
       }
