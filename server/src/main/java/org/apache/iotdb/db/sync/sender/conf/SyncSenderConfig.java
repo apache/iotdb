@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.conf;
+package org.apache.iotdb.db.sync.sender.conf;
 
 import java.io.File;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;

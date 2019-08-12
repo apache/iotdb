@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender;
+package org.apache.iotdb.db.sync.sender.transfer;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -47,9 +47,10 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.db.sync.conf.Constans;
-import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
-import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
+import org.apache.iotdb.db.sync.sender.SyncFileManager;
+import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
+import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.service.sync.thrift.SyncDataStatus;
 import org.apache.iotdb.service.sync.thrift.SyncService;
@@ -65,9 +66,9 @@ import org.slf4j.LoggerFactory;
 /**
  * SyncSenderImpl is used to transfer tsfiles that needs to sync to receiver.
  */
-public class SyncSenderImpl implements SyncSender {
+public class DataTransferManager implements IDataTransferManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(SyncSenderImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(DataTransferManager.class);
 
   private TTransport transport;
 
@@ -101,11 +102,11 @@ public class SyncSenderImpl implements SyncSender {
 
   private ScheduledExecutorService executorService;
 
-  private SyncSenderImpl() {
+  private DataTransferManager() {
     init();
   }
 
-  public static final SyncSenderImpl getInstance() {
+  public static final DataTransferManager getInstance() {
     return InstanceHolder.INSTANCE;
   }
 
@@ -116,7 +117,7 @@ public class SyncSenderImpl implements SyncSender {
    */
   public static void main(String[] args) throws IOException {
     Thread.currentThread().setName(ThreadName.SYNC_CLIENT.getName());
-    SyncSenderImpl fileSenderImpl = new SyncSenderImpl();
+    DataTransferManager fileSenderImpl = new DataTransferManager();
     fileSenderImpl.verifySingleton();
     fileSenderImpl.startMonitor();
     fileSenderImpl.startTimedTask();
@@ -524,7 +525,7 @@ public class SyncSenderImpl implements SyncSender {
 
   private static class InstanceHolder {
 
-    private static final SyncSenderImpl INSTANCE = new SyncSenderImpl();
+    private static final DataTransferManager INSTANCE = new DataTransferManager();
   }
 
   public void setConfig(SyncSenderConfig config) {

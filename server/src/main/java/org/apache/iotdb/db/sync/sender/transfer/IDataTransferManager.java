@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.sender;
+package org.apache.iotdb.db.sync.sender.transfer;
 
 import java.io.IOException;
 import java.util.Set;
@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.SyncConnectionException;
 /**
  * SyncSender defines the methods of a sender in sync module.
  */
-public interface SyncSender {
+public interface IDataTransferManager {
 
   /**
    * Init

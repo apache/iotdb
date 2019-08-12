@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
-import org.apache.iotdb.db.sync.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

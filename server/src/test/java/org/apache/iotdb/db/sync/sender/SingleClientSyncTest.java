@@ -35,9 +35,10 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.integration.Constant;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sync.conf.Constans;
-import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
-import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
+import org.apache.iotdb.db.sync.sender.conf.Constans;
+import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
+import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
+import org.apache.iotdb.db.sync.sender.transfer.DataTransferManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.slf4j.Logger;
@@ -49,7 +50,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SingleClientSyncTest {
 
-  SyncSenderImpl fileSenderImpl = SyncSenderImpl.getInstance();
+  DataTransferManager fileSenderImpl = DataTransferManager.getInstance();
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   private String serverIpTest = "192.168.130.7";
   private SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
