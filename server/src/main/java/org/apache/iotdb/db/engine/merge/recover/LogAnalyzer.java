@@ -73,15 +73,20 @@ public class LogAnalyzer {
    */
   public Status analyze() throws IOException {
     Status status = Status.NONE;
+    long startTime = System.currentTimeMillis();
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       currLine = bufferedReader.readLine();
       if (currLine != null) {
         if (STR_SEQ_FILES.equals(currLine)) {
           analyzeSeqFiles(bufferedReader);
         }
+        logger.info("analyzing seq files costs {}ms", (System.currentTimeMillis() - startTime));
+        startTime = System.currentTimeMillis();
         if (STR_UNSEQ_FILES.equals(currLine)) {
           analyzeUnseqFiles(bufferedReader);
         }
+        logger.info("analyzing unseq files costs {}ms", (System.currentTimeMillis() - startTime));
+        startTime = System.currentTimeMillis();
         if (STR_MERGE_START.equals(currLine)) {
           status = Status.FILES_LOGGED;
           for (TsFileResource seqFile : resource.getSeqFiles()) {
@@ -91,11 +96,14 @@ public class LogAnalyzer {
           unmergedPaths = MergeUtils.collectPaths(resource);
           analyzeMergedSeries(bufferedReader, unmergedPaths);
         }
+        logger.info("analyzing merged series costs {}ms", (System.currentTimeMillis() - startTime));
+        startTime = System.currentTimeMillis();
         if (STR_ALL_TS_END.equals(currLine)) {
           status = Status.ALL_TS_MERGED;
           unmergedFiles = resource.getSeqFiles();
           analyzeMergedFiles(bufferedReader);
         }
+        logger.info("analyzing merged files costs {}ms", (System.currentTimeMillis() - startTime));
         if (STR_MERGE_END.equals(currLine)) {
           status = Status.MERGE_END;
         }
