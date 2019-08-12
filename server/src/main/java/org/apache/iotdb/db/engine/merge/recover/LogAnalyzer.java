@@ -25,16 +25,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +54,8 @@ public class LogAnalyzer {
   private List<TsFileResource> unmergedFiles;
   private String currLine;
 
+  private Status status;
+
   public LogAnalyzer(MergeResource resource, String taskName, File logFile) {
     this.resource = resource;
     this.taskName = taskName;
@@ -72,47 +69,47 @@ public class LogAnalyzer {
    * @throws IOException
    */
   public Status analyze() throws IOException {
-    Status status = Status.NONE;
-    long startTime = System.currentTimeMillis();
+    status = Status.NONE;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       currLine = bufferedReader.readLine();
       if (currLine != null) {
-        if (STR_SEQ_FILES.equals(currLine)) {
-          analyzeSeqFiles(bufferedReader);
-        }
-        logger.info("analyzing seq files costs {}ms", (System.currentTimeMillis() - startTime));
-        startTime = System.currentTimeMillis();
-        if (STR_UNSEQ_FILES.equals(currLine)) {
-          analyzeUnseqFiles(bufferedReader);
-        }
-        logger.info("analyzing unseq files costs {}ms", (System.currentTimeMillis() - startTime));
-        startTime = System.currentTimeMillis();
-        if (STR_MERGE_START.equals(currLine)) {
-          status = Status.FILES_LOGGED;
-          for (TsFileResource seqFile : resource.getSeqFiles()) {
-            File mergeFile = new File(seqFile.getFile().getPath() + MergeTask.MERGE_SUFFIX);
-            fileLastPositions.put(mergeFile, 0L);
-          }
-          unmergedPaths = MergeUtils.collectPaths(resource);
-          analyzeMergedSeries(bufferedReader, unmergedPaths);
-        }
-        logger.info("analyzing merged series costs {}ms", (System.currentTimeMillis() - startTime));
-        startTime = System.currentTimeMillis();
-        if (STR_ALL_TS_END.equals(currLine)) {
-          status = Status.ALL_TS_MERGED;
-          unmergedFiles = resource.getSeqFiles();
-          analyzeMergedFiles(bufferedReader);
-        }
-        logger.info("analyzing merged files costs {}ms", (System.currentTimeMillis() - startTime));
-        if (STR_MERGE_END.equals(currLine)) {
-          status = Status.MERGE_END;
-        }
+        analyzeSeqFiles(bufferedReader);
+
+        analyzeUnseqFiles(bufferedReader);
+
+        analyzeUnmergedSeries(bufferedReader);
+
+        analyzeMergedSeries(bufferedReader, unmergedPaths);
+
+        analyzeMergedFiles(bufferedReader);
       }
     }
     return status;
   }
 
+  private void analyzeUnmergedSeries(BufferedReader bufferedReader) throws IOException {
+    if (!STR_TIMESERIES.equals(currLine)) {
+      return;
+    }
+    long startTime = System.currentTimeMillis();
+    List<Path> paths = new ArrayList<>();
+    while ((currLine = bufferedReader.readLine()) != null) {
+      if (STR_MERGE_START.equals(currLine)) {
+        break;
+      }
+      paths.add(new Path(currLine));
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} found {} seq files after {}ms", taskName, paths.size(),
+              (System.currentTimeMillis() - startTime));
+    }
+    unmergedPaths = paths;
+  }
+
   private void analyzeSeqFiles(BufferedReader bufferedReader) throws IOException {
+    if (!STR_SEQ_FILES.equals(currLine)) {
+      return;
+    }
     long startTime = System.currentTimeMillis();
     List<TsFileResource> mergeSeqFiles = new ArrayList<>();
     while ((currLine = bufferedReader.readLine()) != null) {
@@ -138,6 +135,9 @@ public class LogAnalyzer {
   }
 
   private void analyzeUnseqFiles(BufferedReader bufferedReader) throws IOException {
+    if (!STR_UNSEQ_FILES.equals(currLine)) {
+      return;
+    }
     long startTime = System.currentTimeMillis();
     List<TsFileResource> mergeUnseqFiles = new ArrayList<>();
     while ((currLine = bufferedReader.readLine()) != null) {
@@ -163,6 +163,16 @@ public class LogAnalyzer {
   }
 
   private void analyzeMergedSeries(BufferedReader bufferedReader, List<Path> unmergedPaths) throws IOException {
+    if (!STR_MERGE_START.equals(currLine)) {
+      return;
+    }
+
+    status = Status.MERGE_START;
+    for (TsFileResource seqFile : resource.getSeqFiles()) {
+      File mergeFile = new File(seqFile.getFile().getPath() + MergeTask.MERGE_SUFFIX);
+      fileLastPositions.put(mergeFile, 0L);
+    }
+
     List<Path> currTSList = new ArrayList<>();
     long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
@@ -199,11 +209,19 @@ public class LogAnalyzer {
   }
 
   private void analyzeMergedFiles(BufferedReader bufferedReader) throws IOException {
+    if (!STR_ALL_TS_END.equals(currLine)) {
+      return;
+    }
+
+    status = Status.ALL_TS_MERGED;
+    unmergedFiles = resource.getSeqFiles();
+
     File currFile = null;
     long startTime = System.currentTimeMillis();
     int mergedCnt = 0;
     while ((currLine = bufferedReader.readLine()) != null) {
       if (STR_MERGE_END.equals(currLine)) {
+        status = Status.MERGE_END;
         break;
       }
       if (!currLine.contains(STR_END)) {
@@ -267,8 +285,8 @@ public class LogAnalyzer {
   public enum Status {
     // almost nothing has been done
     NONE,
-    // at least the files to be merged are known
-    FILES_LOGGED,
+    // at least the files and timeseries to be merged are known
+    MERGE_START,
     // all the timeseries have been merged(merged chunks are generated)
     ALL_TS_MERGED,
     // all the merge files are merged with the origin files and the task is almost done

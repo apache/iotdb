@@ -104,6 +104,9 @@ public class MergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     List<Path> unmergedSeries = MergeUtils.collectPaths(resource);
+    mergeLogger.logAllTS(unmergedSeries);
+
+    mergeLogger.logMergeStart();
 
     MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
         fullMerge, unmergedSeries, concurrentMergeSeriesNum);

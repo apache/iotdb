@@ -37,6 +37,7 @@ public class MergeLogger {
 
   static final String STR_SEQ_FILES = "seqFiles";
   static final String STR_UNSEQ_FILES = "unseqFiles";
+  static final String STR_TIMESERIES = "timeseries";
   static final String STR_START = "start";
   static final String STR_END = "end";
   static final String STR_ALL_TS_END = "all ts end";
@@ -101,7 +102,16 @@ public class MergeLogger {
   public void logFiles(MergeResource resource) throws IOException {
     logSeqFiles(resource.getSeqFiles());
     logUnseqFiles(resource.getUnseqFiles());
-    logMergeStart();
+  }
+
+  public void logAllTS(List<Path> paths) throws IOException {
+    logStream.write(STR_TIMESERIES);
+    logStream.newLine();
+    for (Path path : paths) {
+      logStream.write(path.getFullPath());
+      logStream.newLine();
+    }
+    logStream.flush();
   }
 
   private void logSeqFiles(List<TsFileResource> seqFiles) throws IOException {
@@ -124,7 +134,7 @@ public class MergeLogger {
     logStream.flush();
   }
 
-  private void logMergeStart() throws IOException {
+  public void logMergeStart() throws IOException {
     logStream.write(STR_MERGE_START);
     logStream.newLine();
     logStream.flush();
