@@ -237,7 +237,7 @@ public class IoTDBConfig {
   /**
    * How many threads will be set up to perform merge chunk sub-tasks.
    */
-  private int mergeChunkSubThreadNum = 8;
+  private int mergeChunkSubThreadNum = 4;
 
   /**
    * If one merge file selection runs for more than this time, it will be ended and its current
