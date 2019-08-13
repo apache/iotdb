@@ -151,14 +151,18 @@ class MergeMultiChunkTask {
   private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders)
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
+    String deviceId = currMergingPaths.get(0).getDevice();
+    Long currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
+    if (currDeviceMinTime == null) {
+      return;
+    }
+
     for (Path path : currMergingPaths) {
       mergeContext.getUnmergedChunkStartTimes().get(currTsFile).put(path, new ArrayList<>());
     }
 
     // if this TsFile receives data later than fileLimitTime, it will overlap the next TsFile,
     // which is forbidden
-    String deviceId = currMergingPaths.get(0).getDevice();
-    long currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
     for (TimeValuePair timeValuePair : currTimeValuePairs) {
       if (timeValuePair != null && timeValuePair.getTimestamp() < currDeviceMinTime) {
         currDeviceMinTime = timeValuePair.getTimestamp();

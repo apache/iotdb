@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.merge.task;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -28,8 +29,11 @@ import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +51,7 @@ public class MergeTask implements Callable<Void> {
 
   MergeResource resource;
   String storageGroupDir;
+  private String storageGroupName;
   MergeLogger mergeLogger;
   MergeContext mergeContext = new MergeContext();
 
@@ -57,23 +62,25 @@ public class MergeTask implements Callable<Void> {
 
   MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
-      String taskName, boolean fullMerge) {
+      String taskName, boolean fullMerge, String storageGroupName) {
     this.resource = new MergeResource(seqFiles, unseqFiles);
     this.storageGroupDir = storageGroupDir;
     this.callback = callback;
     this.taskName = taskName;
     this.fullMerge = fullMerge;
     this.concurrentMergeSeriesNum = 1;
+    this.storageGroupName = storageGroupName;
   }
 
   public MergeTask(MergeResource mergeResource, String storageGroupDir, MergeCallback callback,
-      String taskName, boolean fullMerge, int concurrentMergeSeriesNum) {
+      String taskName, boolean fullMerge, int concurrentMergeSeriesNum, String storageGroupName) {
     this.resource = mergeResource;
     this.storageGroupDir = storageGroupDir;
     this.callback = callback;
     this.taskName = taskName;
     this.fullMerge = fullMerge;
     this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
+    this.storageGroupName = storageGroupName;
   }
 
   @Override
@@ -91,7 +98,7 @@ public class MergeTask implements Callable<Void> {
     return null;
   }
 
-  private void doMerge() throws IOException {
+  private void doMerge() throws IOException, MetadataErrorException {
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge {} seqFiles, {} unseqFiles", taskName,
           resource.getSeqFiles().size(), resource.getUnseqFiles().size());
@@ -103,7 +110,15 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    List<Path> unmergedSeries = MergeUtils.collectPaths(resource);
+    List<MeasurementSchema> measurementSchemas = MManager.getInstance()
+        .getSchemaForStorageGroup(storageGroupName);
+    resource.addMeasurements(measurementSchemas);
+
+    List<String> storageGroupPaths = MManager.getInstance().getPaths(storageGroupName + ".*");
+    List<Path> unmergedSeries = new ArrayList<>();
+    for (String path : storageGroupPaths) {
+      unmergedSeries.add(new Path(path));
+    }
     mergeLogger.logAllTS(unmergedSeries);
 
     mergeLogger.logMergeStart();

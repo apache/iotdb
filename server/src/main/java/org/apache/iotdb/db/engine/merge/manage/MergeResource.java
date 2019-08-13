@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.CachedUnseqResourceMergeReader;
@@ -257,5 +258,11 @@ public class MergeResource {
 
   public void setCacheDeviceMeta(boolean cacheDeviceMeta) {
     this.cacheDeviceMeta = cacheDeviceMeta;
+  }
+
+  public void addMeasurements(List<MeasurementSchema> measurementSchemas) {
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
+      measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
+    }
   }
 }
