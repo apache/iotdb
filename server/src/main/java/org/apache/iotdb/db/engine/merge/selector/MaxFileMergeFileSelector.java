@@ -230,10 +230,10 @@ public class MaxFileMergeFileSelector implements MergeFileSelector {
         // only one file will be read at the same time, so only the largest one is recorded here
         cost -= tempMaxSeqFileCost;
         cost += fileCost;
-        tempMaxSeqFileCost = calculateMetadataSize(seqFile);
+        tempMaxSeqFileCost = fileCost;
       }
       // but writing data into a new file may generate the same amount of metadata in memory
-      cost += fileCost;
+      cost += calculateMetadataSize(seqFile);
       long timeConsumption = System.currentTimeMillis() - startTime;
       if (timeConsumption > timeLimit) {
         return Long.MAX_VALUE;
