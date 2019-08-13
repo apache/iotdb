@@ -19,21 +19,24 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -45,6 +48,8 @@ import org.junit.After;
 import org.junit.Before;
 
 abstract class MergeTest {
+
+  static final String MERGE_TEST_SG = "root.mergeTest";
 
   int seqFileNum = 5;
   int unseqFileNum = 5;
@@ -63,7 +68,7 @@ abstract class MergeTest {
   private int prevMergeChunkThreshold;
 
   @Before
-  public void setUp() throws IOException, WriteProcessException {
+  public void setUp() throws IOException, WriteProcessException, MetadataErrorException {
     MManager.getInstance().init();
     prevMergeChunkThreshold =
         IoTDBDescriptor.getInstance().getConfig().getChunkMergePointThreshold();
@@ -81,11 +86,12 @@ abstract class MergeTest {
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(prevMergeChunkThreshold);
     TsFileMetaDataCache.getInstance().clear();
     DeviceMetaDataCache.getInstance().clear();
+    MManager.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
     MergeManager.getINSTANCE().stop();
   }
 
-  private void prepareSeries() {
+  private void prepareSeries() throws MetadataErrorException {
     measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
@@ -93,7 +99,16 @@ abstract class MergeTest {
     }
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
-      deviceIds[i] = "device" + i;
+      deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
+    }
+    MManager.getInstance().setStorageLevelToMTree(MERGE_TEST_SG);
+    for (String device : deviceIds) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        MManager.getInstance().addPathToMTree(
+            device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
+            .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
+            Collections.emptyMap());
+      }
     }
   }
 

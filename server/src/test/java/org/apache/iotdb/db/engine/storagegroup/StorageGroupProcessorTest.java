@@ -40,7 +40,7 @@ import org.junit.Test;
 
 public class StorageGroupProcessorTest {
 
-  private String storageGroup = "storage_group1";
+  private String storageGroup = "root.vehicle.d0";
   private String systemDir = "data/info";
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";

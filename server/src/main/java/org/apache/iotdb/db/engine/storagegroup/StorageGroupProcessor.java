@@ -220,7 +220,7 @@ public class StorageGroupProcessor {
       }
       RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
           storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
-          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
       recoverMergeTask.recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
@@ -772,7 +772,7 @@ public class StorageGroupProcessor {
         mergeResource.setCacheDeviceMeta(true);
 
         MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
-            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum());
+            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(), storageGroupName);
         mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
         if (logger.isInfoEnabled()) {

@@ -90,13 +90,14 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest{
   @Test
   public void testRestrictedSelection2() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
-    MaxSeriesMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector(resource, 70000);
+    MaxSeriesMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector(resource,
+        100000);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
     assertEquals(seqResources.subList(0, 1), seqSelected);
     assertEquals(unseqResources.subList(0, 1), unseqSelected);
-    assertEquals(33, mergeFileSelector.getConcurrentMergeNum());
+    assertEquals(12, mergeFileSelector.getConcurrentMergeNum());
     resource.clear();
   }
 }
