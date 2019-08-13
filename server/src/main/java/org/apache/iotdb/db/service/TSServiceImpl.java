@@ -58,6 +58,7 @@ import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
+import org.apache.iotdb.db.metrics.server.QueryResult;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -114,6 +115,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final String ERROR_NOT_LOGIN = "Not login";
+  public static List<QueryResult> queryResultList = new ArrayList<QueryResult>();
 
   protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
@@ -481,6 +483,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
+	long starttime = System.currentTimeMillis();
+	TSExecuteStatementResp resp;
+	QueryResult queryResult;
     try {
       if (!checkLogin()) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -523,7 +528,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
-        return executeQueryStatement(req);
+    	resp = executeQueryStatement(req);
+    	long endtime = System.currentTimeMillis();
+    	queryResult = new QueryResult(resp,physicalPlan,statement,starttime,endtime);
+    	queryResult.setStatement(statement);
+    	queryResultList.add(queryResult);
+    	if(queryResultList.size()>200) {
+			for (int i = 0; i < 50; i++) {
+				queryResultList.remove(queryResultList.size()-1);
+			}
+    	}
+        return resp;
       } else {
         return executeUpdateStatement(physicalPlan);
       }

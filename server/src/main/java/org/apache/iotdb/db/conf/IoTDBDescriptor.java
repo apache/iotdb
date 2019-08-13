@@ -122,7 +122,10 @@ public class IoTDBDescriptor {
 
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
-
+      
+      conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
+    	  Integer.toString(conf.getMetricsPort()))));
+      
       conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
           conf.getTimestampPrecision()));
 
