@@ -27,6 +27,7 @@ import java.util.Random;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.FakedSeriesReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -51,15 +52,11 @@ public class ExternalSortEngineTest {
     SimpleExternalSortEngine engine = new SimpleExternalSortEngine(baseDir + "/", 2);
     List<IPointReader> readerList1 = genSimple();
     List<IPointReader> readerList2 = genSimple();
-    readerList1 = engine.executeWithGlobalTimeFilter(queryId, readerList1, 1);
-    PriorityMergeReader reader1 = new PriorityMergeReader();
-    for (int i = 0; i < readerList1.size(); i++) {
-      reader1.addReaderWithPriority(readerList1.get(i), i);
-    }
-    PriorityMergeReader reader2 = new PriorityMergeReader();
-    for (int i = 0; i < readerList2.size(); i++) {
-      reader2.addReaderWithPriority(readerList2.get(i), i);
-    }
+    List<ChunkReaderWrap> chunkReaderWrapList = new ArrayList<>();
+    readerList1.forEach(x -> chunkReaderWrapList.add(new FakeChunkReaderWrap(x)));
+    readerList1 = engine.executeForIPointReader(queryId, chunkReaderWrapList);
+    PriorityMergeReader reader1 = new PriorityMergeReader(readerList1, 1);
+    PriorityMergeReader reader2 = new PriorityMergeReader(readerList2, 1);
     check(reader1, reader2);
     reader1.close();
     reader2.close();
@@ -74,15 +71,11 @@ public class ExternalSortEngineTest {
 
     List<IPointReader> readerList1 = genReaders(data);
     List<IPointReader> readerList2 = genReaders(data);
-    readerList1 = engine.executeWithGlobalTimeFilter(queryId, readerList1, 1);
-    PriorityMergeReader reader1 = new PriorityMergeReader();
-    for (int i = 0; i < readerList1.size(); i++) {
-      reader1.addReaderWithPriority(readerList1.get(i), i);
-    }
-    PriorityMergeReader reader2 = new PriorityMergeReader();
-    for (int i = 0; i < readerList2.size(); i++) {
-      reader2.addReaderWithPriority(readerList2.get(i), i);
-    }
+    List<ChunkReaderWrap> chunkReaderWrapList = new ArrayList<>();
+    readerList1.forEach(x -> chunkReaderWrapList.add(new FakeChunkReaderWrap(x)));
+    readerList1 = engine.executeForIPointReader(queryId, chunkReaderWrapList);
+    PriorityMergeReader reader1 = new PriorityMergeReader(readerList1, 1);
+    PriorityMergeReader reader2 = new PriorityMergeReader(readerList2, 1);
 
     check(reader1, reader2);
     reader1.close();
@@ -96,8 +89,11 @@ public class ExternalSortEngineTest {
     List<long[]> data = genData(lineCount, valueCount);
 
     List<IPointReader> readerList1 = genReaders(data);
+    List<ChunkReaderWrap> chunkReaderWrapList = new ArrayList<>();
+    readerList1.forEach(x -> chunkReaderWrapList.add(new FakeChunkReaderWrap(x)));
+
     long startTimestamp = System.currentTimeMillis();
-    readerList1 = engine.executeWithGlobalTimeFilter(queryId, readerList1, 1);
+    readerList1 = engine.executeForIPointReader(queryId, chunkReaderWrapList);
     PriorityMergeReader reader1 = new PriorityMergeReader();
     for (int i = 0; i < readerList1.size(); i++) {
       reader1.addReaderWithPriority(readerList1.get(i), i);

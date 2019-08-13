@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.TimeValuePairDeserializer;
-import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairDeserializer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
@@ -42,10 +41,16 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
  * <p>
  * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to
  * the jobs. During the life cycle of a query, the following methods must be called in strict order:
- * 1. assignJobId - get an Id for the new job. 2. beginQueryOfGivenQueryPaths - remind StorageEngine
- * that some files are being used 3. (if using filter)beginQueryOfGivenExpression - remind
- * StorageEngine that some files are being used 4. getQueryDataSource - open files for the job or
- * reuse existing readers. 5. endQueryForGivenJob - putBack the resource used by this job.
+ * 1. assignJobId - get an Id for the new job.
+ *
+ * 2. beginQueryOfGivenQueryPaths - remind StorageEngine that some files are being used
+ *
+ * 3. (if using filter)beginQueryOfGivenExpression - remind StorageEngine that some files are being
+ * used
+ *
+ * 4. getQueryDataSource - open files for the job or reuse existing readers.
+ *
+ * 5. endQueryForGivenJob - putBack the resource used by this job.
  * </p>
  */
 public class QueryResourceManager {
@@ -77,8 +82,7 @@ public class QueryResourceManager {
    *
    * <code>StorageEngine.getInstance().endQueryForGivenJob(device_1, 1)</code> and
    * <code>StorageEngine.getInstance().endQueryForGivenJob(device_2, 2)</code> must be invoked no
-   * matter how
-   * query process Q1 exits normally or abnormally. So is Q2,
+   * matter how query process Q1 exits normally or abnormally. So is Q2,
    * <code>StorageEngine.getInstance().endQueryForGivenJob(device_1, 3)</code> and
    * <code>StorageEngine.getInstance().endQueryForGivenJob(device_2, 4)</code> must be invoked
    *
@@ -91,7 +95,9 @@ public class QueryResourceManager {
   private JobFileManager filePathsManager;
   private AtomicLong maxJobId;
   /**
+   * Record temporary files used for external sorting.
    *
+   * Key: query job id. Value: temporary file list used for external sorting.
    */
   private ConcurrentHashMap<Long, List<TimeValuePairDeserializer>> externalSortFileMap;
 

@@ -19,20 +19,24 @@
  */
  package org.apache.iotdb.db.query.externalsort;
 
- import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+ import java.io.IOException;
+ import org.apache.iotdb.db.query.reader.IPointReader;
+ import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 
 
  public class SingleSourceExternalSortJobPart extends ExternalSortJobPart {
 
-  private PriorityMergeReader timeValuePairReader;
+   private IPointReader timeValuePairReader;
+   private ChunkReaderWrap chunkReaderWrap;
 
-  public SingleSourceExternalSortJobPart(PriorityMergeReader timeValuePairReader) {
-   super(ExternalSortJobPartType.SINGLE_SOURCE);
-   this.timeValuePairReader = timeValuePairReader;
-  }
+   public SingleSourceExternalSortJobPart(ChunkReaderWrap chunkReaderWrap) {
+     super(ExternalSortJobPartType.SINGLE_SOURCE);
+     this.chunkReaderWrap = chunkReaderWrap;
+   }
 
-  @Override
-  public PriorityMergeReader executeWithGlobalTimeFilter() {
-   return this.timeValuePairReader;
-  }
+   @Override
+   public IPointReader executeWithGlobalTimeFilter() throws IOException {
+     timeValuePairReader = chunkReaderWrap.getIPointReader();
+     return this.timeValuePairReader;
+   }
  }

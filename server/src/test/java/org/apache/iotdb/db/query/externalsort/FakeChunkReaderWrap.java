@@ -16,26 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.query.reader.universal;
+package org.apache.iotdb.db.query.externalsort;
 
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 
-public class PriorityReaderBean {
-
-  private IPointReader reader;
-  private int priority;
-
-  public PriorityReaderBean(IPointReader reader, int priority) {
-    this.reader = reader;
-    this.priority = priority;
+public class FakeChunkReaderWrap extends ChunkReaderWrap {
+  private IPointReader pointReader;
+  public FakeChunkReaderWrap(IPointReader pointReader){
+    super();
+    this.pointReader = pointReader;
   }
 
-  public IPointReader getReader() {
-    return reader;
+  @Override
+  public IPointReader getIPointReader() {
+    return pointReader;
   }
 
-  public int getPriority() {
-    return priority;
+  @Override
+  public IReaderByTimestamp getIReaderByTimestamp() {
+    return null;
   }
+
 }

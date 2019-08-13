@@ -104,7 +104,7 @@ public class IoTDBConfig {
   private String schemaDir = "data/system/schema";
 
   /**
-   * Query directory, stores temporary files for query
+   * Query directory, stores temporary files of query
    */
   private String queryDir = "data/query";
 

@@ -21,9 +21,10 @@ package org.apache.iotdb.db.query.externalsort.serialize;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 
-public interface TimeValuePairDeserializer extends IPointReader {
+public interface TimeValuePairDeserializer extends IPointReader, IReaderByTimestamp {
 
   @Override
   default TimeValuePair current() throws IOException {

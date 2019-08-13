@@ -47,6 +47,11 @@ public class SimpleTimeValuePairDeserializer implements TimeValuePairDeserialize
   }
 
   @Override
+  public Object getValueInTimestamp(long timestamp) throws IOException {
+    return null;
+  }
+
+  @Override
   public boolean hasNext() throws IOException {
     return inputStream.available() > 0;
   }
@@ -67,8 +72,11 @@ public class SimpleTimeValuePairDeserializer implements TimeValuePairDeserialize
    */
   @Override
   public void close() throws IOException {
-    objectInputStream.close();
     File file = new File(tmpFilePath);
+    if (!file.exists()) {
+      return;
+    }
+    objectInputStream.close();
     if (!file.delete()) {
       throw new IOException("Delete external sort tmp file error. FilePath:" + tmpFilePath);
     }

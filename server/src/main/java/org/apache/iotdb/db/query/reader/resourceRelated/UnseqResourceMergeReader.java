@@ -29,21 +29,16 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.externalsort.ExternalSortJobEngine;
 import org.apache.iotdb.db.query.externalsort.SimpleExternalSortEngine;
 import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
-import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
+import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 
 /**
  * To read a list of unsequence TsFiles, this class extends {@link PriorityMergeReader} to
@@ -65,8 +60,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
     this.seriesPath = seriesPath;
     this.queryId = context.getJobId();
 
-    int priorityValue = 1;
-    List<IPointReader> priorityReaderList = new ArrayList<>();
+    List<ChunkReaderWrap> readerWrapList = new ArrayList<>();
     for (TsFileResource tsFileResource : unseqResources) {
 
       // prepare metaDataList
@@ -93,7 +87,6 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
 
       ChunkLoaderImpl chunkLoader = null;
       if (!metaDataList.isEmpty()) {
-        // create and add ChunkReader with priority
         TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
             .get(tsFileResource.getFile().getPath(), tsFileResource.isClosed());
         chunkLoader = new ChunkLoaderImpl(tsFileReader);
@@ -111,37 +104,23 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
             continue;
           }
         }
-
-        Chunk chunk = chunkLoader.getChunk(chunkMetaData);
-        ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
-            : new ChunkReaderWithoutFilter(chunk);
-
-        priorityReaderList.add(new DiskChunkReader(chunkReader));
+        // create and add DiskChunkReader
+        readerWrapList.add(new ChunkReaderWrap(chunkMetaData, chunkLoader, filter));
       }
 
       if (!tsFileResource.isClosed()) {
-        // create and add MemChunkReader with priority
-        priorityReaderList.add(new MemChunkReader(tsFileResource.getReadOnlyMemChunk(), filter));
+        // create and add MemChunkReader
+        readerWrapList.add(new ChunkReaderWrap(tsFileResource.getReadOnlyMemChunk(), filter));
       }
     }
 
-    if (shouldUseExternalSort()) {
-      ExternalSortJobEngine externalSortJobEngine = SimpleExternalSortEngine.getInstance();
-      List<IPointReader> readerList = externalSortJobEngine
-          .executeWithGlobalTimeFilter(queryId, priorityReaderList, priorityValue);
-      for (IPointReader chunkReader : readerList) {
-        addReaderWithPriority(chunkReader, priorityValue++);
-      }
-    } else {
-      for (IPointReader chunkReader : priorityReaderList) {
-        addReaderWithPriority(chunkReader, priorityValue++);
-      }
+    ExternalSortJobEngine externalSortJobEngine = SimpleExternalSortEngine.getInstance();
+    List<IPointReader> readerList = externalSortJobEngine
+        .executeForIPointReader(queryId, readerWrapList);
+    int priorityValue = 1;
+    for (IPointReader chunkReader : readerList) {
+      addReaderWithPriority(chunkReader, priorityValue++);
     }
-
-  }
-
-  private boolean shouldUseExternalSort() {
-    return false;
   }
 
   /**

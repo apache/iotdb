@@ -22,7 +22,7 @@
  import java.io.IOException;
  import java.util.ArrayList;
  import java.util.List;
- import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+ import org.apache.iotdb.db.query.reader.IPointReader;
 
 
  public class MultiSourceExternalSortJobPart extends ExternalSortJobPart {
@@ -50,8 +50,8 @@
    }
 
    @Override
-   public PriorityMergeReader executeWithGlobalTimeFilter() throws IOException {
-     List<PriorityMergeReader> prioritySeriesReaders = new ArrayList<>();
+   public IPointReader executeWithGlobalTimeFilter() throws IOException {
+     List<IPointReader> prioritySeriesReaders = new ArrayList<>();
      for (ExternalSortJobPart part : source) {
        prioritySeriesReaders.add(part.executeWithGlobalTimeFilter());
      }

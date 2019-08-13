@@ -37,13 +37,9 @@ public class PriorityMergeReader implements IPointReader {
   public PriorityMergeReader() {
   }
 
-  public PriorityMergeReader(IPointReader reader, int priority) throws IOException {
-    addReaderWithPriority(reader, priority);
-  }
-
-  public PriorityMergeReader(List<PriorityMergeReader> prioritySeriesReaders) throws IOException {
-    for (PriorityMergeReader reader : prioritySeriesReaders) {
-      addReaderWithPriority(reader, reader.getPriority());
+  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority) throws IOException {
+    for (IPointReader reader : prioritySeriesReaders) {
+      addReaderWithPriority(reader, startPriority++);
     }
   }
 

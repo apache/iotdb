@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.externalsort;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.IPointReader;
 
 
 public abstract class ExternalSortJobPart {
@@ -31,7 +31,7 @@ public abstract class ExternalSortJobPart {
     this.type = type;
   }
 
-  public abstract PriorityMergeReader executeWithGlobalTimeFilter() throws IOException;
+  public abstract IPointReader executeWithGlobalTimeFilter() throws IOException;
 
   public ExternalSortJobPartType getType() {
     return type;

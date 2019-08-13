@@ -49,6 +49,11 @@ public class FixLengthTimeValuePairDeserializer implements TimeValuePairDeserial
   }
 
   @Override
+  public Object getValueInTimestamp(long timestamp) throws IOException {
+    return null;
+  }
+
+  @Override
   public boolean hasNext() throws IOException {
     return inputStream.available() > 0;
   }
