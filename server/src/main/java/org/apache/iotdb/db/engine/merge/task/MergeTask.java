@@ -38,10 +38,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * MergeTask merges given seqFiles and unseqFiles into a new one, which basically consists of three
+ * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
  * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files
  *        2. move the merged chunks in the temp files back to the seqFiles or move the unmerged
- *        chunks in the seqFiles int temp files and replace the seqFiles with the temp files.
+ *        chunks in the seqFiles into temp files and replace the seqFiles with the temp files.
  *        3. remove unseqFiles
  */
 public class MergeTask implements Callable<Void> {
