@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
+
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -58,6 +59,7 @@ import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
 import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.Metadata;
+import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -114,6 +116,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final String ERROR_NOT_LOGIN = "Not login";
+  public static List<SqlArgument> sqlArgumentsList = new ArrayList<SqlArgument>();
 
   protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
@@ -481,6 +484,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
+	long starttime = System.currentTimeMillis();
+	TSExecuteStatementResp resp;
+	SqlArgument sqlArgument;
     try {
       if (!checkLogin()) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -523,7 +529,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan;
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
-        return executeQueryStatement(statement, physicalPlan);
+      	resp = executeQueryStatement(statement, physicalPlan);
+      	long endtime = System.currentTimeMillis();
+      	sqlArgument = new SqlArgument(resp,physicalPlan,statement,starttime,endtime);
+      	sqlArgument.setStatement(statement);
+      	sqlArgumentsList.add(sqlArgument);
+      	if(sqlArgumentsList.size()>200) {
+  			for (int i = 0; i < 50; i++) {
+  				sqlArgumentsList.remove(sqlArgumentsList.size()-1);
+  			}
+      	}
+        return resp;
       } else {
         return executeUpdateStatement(physicalPlan);
       }
