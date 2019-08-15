@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import org.apache.iotdb.db.metrics.sink.ConsoleSink;
 import org.apache.iotdb.db.metrics.sink.MetricsServletSink;
 import org.apache.iotdb.db.metrics.sink.Sink;
+import org.apache.iotdb.db.metrics.source.JvmSource;
 import org.apache.iotdb.db.metrics.source.MetricsSource;
 import org.apache.iotdb.db.metrics.source.Source;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -33,7 +34,7 @@ public class MetricsSystem {
 	
 	private ArrayList<Sink> sinks = new ArrayList<Sink>();
 	private ArrayList<Source> sources = new ArrayList<Source>();
-	private MetricRegistry metricRegistry = new MetricRegistry();
+	public static MetricRegistry metricRegistry = new MetricRegistry();
 	private ServerArgument serverArgument;
 
 	public MetricsSystem(ServerArgument serverArgument) {
@@ -51,21 +52,12 @@ public class MetricsSystem {
 		this.serverArgument = serverArgument;
 	}
 
-	public MetricRegistry getMetricRegistry() {
-		return metricRegistry;
-	}
-
-	public void setMetricRegistry(MetricRegistry metricRegistry) {
-		this.metricRegistry = metricRegistry;
-	}
-
 	public ServletContextHandler getServletHandlers() {
 		return new MetricsServletSink(metricRegistry).getHandler();
 	}
 
 	public void start() {
-		Source source = new MetricsSource(serverArgument);
-		registerSource(source);
+		registerSource();
 		registerSinks();
 		sinks.forEach(sink -> sink.start());
 	}
@@ -78,10 +70,10 @@ public class MetricsSystem {
 		sinks.forEach(sink -> sink.report());
 	}
 
-	public void registerSource(Source source) {
+	public void registerSource() {
+		Source source = new MetricsSource(serverArgument);
+//		Source jvmsource  = new JvmSource();
 		sources.add(source);
-		String regName = MetricRegistry.name(source.sourceName());
-		metricRegistry.register(regName, source.metricRegistry());
 	}
 
 	public void registerSinks() {

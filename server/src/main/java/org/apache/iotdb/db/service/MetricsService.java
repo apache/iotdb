@@ -118,7 +118,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 		public void run() {
 			try {
 				int port = getMetricsPort();
-				metricsWebUI = new MetricsWebUI(metricsSystem.getMetricRegistry());
+				metricsWebUI = new MetricsWebUI(MetricsSystem.metricRegistry);
 				metricsWebUI.getHandlers().add(metricsSystem.getServletHandlers());
 				metricsWebUI.initialize();
 				server = metricsWebUI.getServer();
