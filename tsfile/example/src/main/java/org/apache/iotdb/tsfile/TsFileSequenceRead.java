@@ -43,8 +43,12 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 public class TsFileSequenceRead {
 
   public static void main(String[] args) throws IOException {
-    TsFileSequenceReader reader = new TsFileSequenceReader(args[0]);
-    System.out.println("file length: " + new File(args[0]).length());
+    String filename = "test.tsfile";
+    if (args.length >= 1) {
+      filename = args[0];
+    }
+    TsFileSequenceReader reader = new TsFileSequenceReader(filename);
+    System.out.println("file length: " + new File(filename).length());
     System.out.println("file magic head: " + reader.readHeadMagic());
     System.out.println("file magic tail: " + reader.readTailMagic());
     System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
