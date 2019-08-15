@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.metrics.ui;
 
 import java.text.SimpleDateFormat;
@@ -61,8 +79,6 @@ public class MetricsPage {
 		head.append("<meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\" />");
 		head.append("<link rel=\"stylesheet\" href=\"/static/bootstrap.min.css\" type=\"text/css\"/>");
 		head.append("<link rel=\"stylesheet\" href=\"/static/webui.css\" type=\"text/css\"/>");
-		head.append("<script src=\"/static/jquery-1.11.1.min.js\"></script>");
-		head.append("<script src=\"/static/webui.js\"></script>");
 		return head;
 	}
 
@@ -91,7 +107,6 @@ public class MetricsPage {
 		 +      "<div class=\"span12\">"
 		 +        "<span class=\"collapse-aggregated-workers collapse-table\" onclick=\"collapseTable('collapse-aggregated-workers','aggregated-workers')\">"
 		 +          "<h4>"
-		 +            "<span class=\"collapse-table-arrow arrow-open\"></span>"
 		 +            "<a>Excute Sql</a>"
 		 + 		    "</h4>"
 		 +        "</span>"
