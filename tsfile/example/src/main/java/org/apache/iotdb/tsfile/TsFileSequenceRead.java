@@ -43,8 +43,10 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 public class TsFileSequenceRead {
 
   public static void main(String[] args) throws IOException {
-    String filename="test.tsfil";
-    if(args.length>=1)filename=args[0];
+    String filename = "test.tsfile";
+    if (args.length >= 1) {
+      filename = args[0];
+    }
     TsFileSequenceReader reader = new TsFileSequenceReader(filename);
     System.out.println("file length: " + new File(filename).length());
     System.out.println("file magic head: " + reader.readHeadMagic());
