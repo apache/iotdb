@@ -224,6 +224,7 @@ class MergeMultiChunkTask {
     for (int i = 0; i < mergeChunkSubTaskNum; i++) {
       chunkMetaHeaps[i] = new PriorityQueue<>();
     }
+    int idx = 0;
     for (int i = 0; i < currMergingPaths.size(); i++) {
       if (seqChunkMeta[i].isEmpty()) {
         continue;
@@ -231,9 +232,8 @@ class MergeMultiChunkTask {
       MetaListEntry entry = new MetaListEntry(i, seqChunkMeta[i]);
       entry.next();
 
-      int index = entry.current().getMeasurementUid().hashCode() % mergeChunkSubTaskNum;
-      index = index < 0 ? -index : index;
-      chunkMetaHeaps[index].add(entry);
+      chunkMetaHeaps[idx % mergeChunkSubTaskNum].add(entry);
+      idx++;
       ptWrittens[i] = 0;
     }
 
