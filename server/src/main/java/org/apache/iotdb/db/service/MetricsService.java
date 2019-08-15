@@ -139,10 +139,12 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
 		public synchronized void close() {
 			try {
-				server.stop();
-				ThreadPool threadPool = server.getThreadPool();
-				if (threadPool != null && LifeCycle.class.isInstance(threadPool)) {
-					LifeCycle.stop(threadPool);
+				if(server != null) {
+					server.stop();
+					ThreadPool threadPool = server.getThreadPool();
+					if (threadPool != null && LifeCycle.class.isInstance(threadPool)) {
+						LifeCycle.stop(threadPool);
+					}
 				}
 			} catch (Exception e) {
 				logger.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
