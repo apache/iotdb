@@ -68,7 +68,8 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
   @Test
   public void testUnseqResourceMergeReaderWithGlobalTimeFilter() throws IOException {
     Path path = new Path(deviceId, measurementId);
-    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
+        null);
     IPointReader reader = new UnseqResourceMergeReader(path,
         queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, TimeFilter.lt(4));
 
@@ -90,7 +91,7 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
   public void testUnseqResourceMergeReaderWithoutFilter() throws IOException {
     Path path = new Path(deviceId, measurementId);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(deviceId, measurementId, context);
+        .query(deviceId, measurementId, context, null);
     IPointReader reader = new UnseqResourceMergeReader(path,
         queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT, null);
 
@@ -112,7 +113,8 @@ public class UnseqResourceReaderTest extends ReaderTestHelper {
   @Test
   public void testUnseqResourceReaderByTimestamp() throws IOException, StorageEngineException {
     Path path = new Path(deviceId, measurementId);
-    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context);
+    QueryDataSource queryDataSource = storageGroupProcessor.query(deviceId, measurementId, context,
+        null);
     IReaderByTimestamp reader = new UnseqResourceReaderByTimestamp(path,
         queryDataSource.getUnseqResources(), EnvironmentUtils.TEST_QUERY_CONTEXT);
 

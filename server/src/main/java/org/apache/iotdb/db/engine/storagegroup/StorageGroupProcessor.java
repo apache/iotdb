@@ -58,6 +58,7 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -65,6 +66,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -226,7 +228,7 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
-    } catch (IOException e) {
+    } catch (IOException | MetadataErrorException e) {
       throw new ProcessorException(e);
     }
 
@@ -517,7 +519,8 @@ public class StorageGroupProcessor {
   }
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
-  public QueryDataSource query(String deviceId, String measurementId, QueryContext context) {
+  public QueryDataSource query(String deviceId, String measurementId, QueryContext context,
+      JobFileManager filePathsManager) {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
     synchronized (lruForSensorUsedInQuery) {
@@ -531,7 +534,14 @@ public class StorageGroupProcessor {
           deviceId, measurementId, context);
       List<TsFileResource> unseqResources = getFileReSourceListForQuery(unSequenceFileList,
           deviceId, measurementId, context);
-      return new QueryDataSource(new Path(deviceId, measurementId), seqResources, unseqResources);
+      QueryDataSource dataSource =  new QueryDataSource(new Path(deviceId, measurementId), seqResources, unseqResources);
+      // used files should be added before mergeLock is unlocked, or they may be deleted by
+      // running merge
+      // is null only in tests
+      if (filePathsManager != null) {
+        filePathsManager.addUsedFilesForGivenJob(context.getJobId(), dataSource);
+      }
+      return dataSource;
     } finally {
       insertLock.readLock().unlock();
       mergeLock.readLock().unlock();

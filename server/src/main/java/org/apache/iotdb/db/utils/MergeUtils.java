@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -75,31 +74,6 @@ public class MergeUtils {
       default:
         throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
     }
-  }
-
-  /**
-   * Collect all paths contained in the all SeqFiles and UnseqFiles in a merge and sort them
-   * before return.
-   * @param resource
-   * @return all paths contained in the merge.
-   * @throws IOException
-   */
-  public static List<Path> collectPaths(MergeResource resource)
-      throws IOException {
-    Set<Path> pathSet = new HashSet<>();
-    for (TsFileResource tsFileResource : resource.getUnseqFiles()) {
-      TsFileSequenceReader sequenceReader = resource.getFileReader(tsFileResource);
-      resource.getMeasurementSchemaMap().putAll(sequenceReader.readFileMetadata().getMeasurementSchema());
-      pathSet.addAll(collectFileSeries(sequenceReader));
-    }
-    for (TsFileResource tsFileResource : resource.getSeqFiles()) {
-      TsFileSequenceReader sequenceReader = resource.getFileReader(tsFileResource);
-      resource.getMeasurementSchemaMap().putAll(sequenceReader.readFileMetadata().getMeasurementSchema());
-      pathSet.addAll(collectFileSeries(sequenceReader));
-    }
-    List<Path> ret = new ArrayList<>(pathSet);
-    ret.sort(Comparator.comparing(Path::getFullPath));
-    return ret;
   }
 
   private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
@@ -192,30 +166,6 @@ public class MergeUtils {
     return seqFile.getFileSize() - minPos;
   }
 
-  public static List<Chunk> collectUnseqChunks(Path seriesPath, List<TsFileResource> unseqResources,
-      MergeResource resource)
-      throws IOException {
-    List<Chunk> chunks = new ArrayList<>();
-    for (TsFileResource tsFileResource : unseqResources) {
-      TsFileSequenceReader tsFileReader = resource.getFileReader(tsFileResource);
-
-      // prepare metaDataList
-      List<ChunkMetaData> metaDataList = tsFileReader.getChunkMetadata(seriesPath);
-      List<Modification> pathModifications =
-          resource.getModifications(tsFileResource, seriesPath);
-      if (!pathModifications.isEmpty()) {
-        QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
-      }
-
-      // create and add ChunkReader
-      for (ChunkMetaData chunkMetaData : metaDataList) {
-        Chunk chunk = tsFileReader.readMemChunk(chunkMetaData);
-        chunks.add(chunk);
-      }
-    }
-    return chunks;
-  }
-
   /**
    * Reads chunks of paths in unseqResources and put them in separated lists. When reading a
    * file, this method follows the order of positions of chunks instead of the order of
@@ -241,7 +191,7 @@ public class MergeUtils {
       buildMetaHeap(paths, tsFileReader, mergeResource, tsFileResource, chunkMetaHeap);
 
       // read chunks order by their position
-      collectUnseqChunks(chunkMetaHeap, mergeResource, tsFileReader, ret);
+      collectUnseqChunks(chunkMetaHeap, tsFileReader, ret);
     }
     return ret;
   }
@@ -269,7 +219,7 @@ public class MergeUtils {
   }
 
   private static void collectUnseqChunks(PriorityQueue<MetaListEntry> chunkMetaHeap,
-      MergeResource resource, TsFileSequenceReader tsFileReader, List<Chunk>[] ret) throws IOException {
+      TsFileSequenceReader tsFileReader, List<Chunk>[] ret) throws IOException {
     while (!chunkMetaHeap.isEmpty()) {
       MetaListEntry metaListEntry = chunkMetaHeap.poll();
       ChunkMetaData currMeta = metaListEntry.current();
@@ -297,6 +247,8 @@ public class MergeUtils {
     if (paths.isEmpty()) {
       return Collections.emptyList();
     }
+    paths.sort(Comparator.comparing(Path::getDevice));
+
     String currDevice = null;
     List<Path> currList = null;
     List<List<Path>> ret = new ArrayList<>();
