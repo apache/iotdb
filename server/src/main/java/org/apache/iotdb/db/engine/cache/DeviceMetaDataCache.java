@@ -140,7 +140,7 @@ public class DeviceMetaDataCache {
   }
 
   /**
-   * calculate the most frequently query sensors set.
+   * calculate the most frequently query measurements set.
    *
    * @param seriesPath the series to be queried in a query statements.
    */

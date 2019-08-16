@@ -76,7 +76,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private Statistics<?> chunkStatistics;
   // time of the latest written time value pair
   private long time;
-  private long minTimestamp = -1;
+  private long minTimestamp = Long.MIN_VALUE;
 
   private MeasurementSchema measurementSchema;
 
@@ -119,7 +119,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
-    if (minTimestamp == -1) {
+    if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
     }
     checkPageSizeAndMayOpenANewPage();
@@ -131,7 +131,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
-    if (minTimestamp == -1) {
+    if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
     }
     checkPageSizeAndMayOpenANewPage();
@@ -143,7 +143,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
-    if (minTimestamp == -1) {
+    if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
     }
     checkPageSizeAndMayOpenANewPage();
@@ -155,7 +155,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
-    if (minTimestamp == -1) {
+    if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
     }
     checkPageSizeAndMayOpenANewPage();
@@ -167,7 +167,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
-    if (minTimestamp == -1) {
+    if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
     }
     checkPageSizeAndMayOpenANewPage();
@@ -179,7 +179,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
-    if (minTimestamp == -1) {
+    if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
     }
     checkPageSizeAndMayOpenANewPage();
@@ -191,9 +191,93 @@ public class ChunkWriterImpl implements IChunkWriter {
     ++valueCountInOnePage;
     dataPageWriter.write(time, value);
     pageStatistics.updateStats(value);
-    if (minTimestamp == -1) {
+    if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = time;
     }
+    checkPageSizeAndMayOpenANewPage();
+  }
+
+  @Override
+  public void write(long[] timestamps, int[] values) {
+    this.time = timestamps[timestamps.length - 1];
+    valueCountInOnePage += timestamps.length;
+    if (minTimestamp == Long.MIN_VALUE) {
+      minTimestamp = timestamps[0];
+    }
+    dataPageWriter.write(timestamps, values);
+    pageStatistics.updateStats(values);
+    checkPageSizeAndMayOpenANewPage();
+  }
+
+  @Override
+  public void write(long[] timestamps, long[] values) {
+    this.time = timestamps[timestamps.length - 1];
+    valueCountInOnePage += timestamps.length;
+    if (minTimestamp == Long.MIN_VALUE) {
+      minTimestamp = timestamps[0];
+    }
+    dataPageWriter.write(timestamps, values);
+    pageStatistics.updateStats(values);
+    checkPageSizeAndMayOpenANewPage();
+  }
+
+  @Override
+  public void write(long[] timestamps, boolean[] values) {
+    this.time = timestamps[timestamps.length - 1];
+    valueCountInOnePage += timestamps.length;
+    if (minTimestamp == Long.MIN_VALUE) {
+      minTimestamp = timestamps[0];
+    }
+    dataPageWriter.write(timestamps, values);
+    pageStatistics.updateStats(values);
+    checkPageSizeAndMayOpenANewPage();
+  }
+
+  @Override
+  public void write(long[] timestamps, float[] values) {
+    this.time = timestamps[timestamps.length - 1];
+    valueCountInOnePage += timestamps.length;
+    if (minTimestamp == Long.MIN_VALUE) {
+      minTimestamp = timestamps[0];
+    }
+    dataPageWriter.write(timestamps, values);
+    pageStatistics.updateStats(values);
+    checkPageSizeAndMayOpenANewPage();
+  }
+
+  @Override
+  public void write(long[] timestamps, double[] values) {
+    this.time = timestamps[timestamps.length - 1];
+    valueCountInOnePage += timestamps.length;
+    if (minTimestamp == Long.MIN_VALUE) {
+      minTimestamp = timestamps[0];
+    }
+    dataPageWriter.write(timestamps, values);
+    pageStatistics.updateStats(values);
+    checkPageSizeAndMayOpenANewPage();
+  }
+
+  @Override
+  public void write(long[] timestamps, BigDecimal[] values) {
+    this.time = timestamps[timestamps.length - 1];
+    valueCountInOnePage += timestamps.length;
+    if (minTimestamp == Long.MIN_VALUE) {
+      minTimestamp = timestamps[0];
+    }
+    dataPageWriter.write(timestamps, values);
+    pageStatistics.updateStats(values);
+    checkPageSizeAndMayOpenANewPage();
+  }
+
+  @Override
+  public void write(long[] timestamps, Binary[] values) {
+    this.time = timestamps[timestamps.length - 1];
+    valueCountInOnePage += timestamps.length;
+    if (minTimestamp == Long.MIN_VALUE) {
+      minTimestamp = timestamps[0];
+    }
+    dataPageWriter.write(timestamps, values);
+    pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
@@ -248,7 +332,7 @@ public class ChunkWriterImpl implements IChunkWriter {
           "meet error in chunkBuffer.writePageHeaderAndDataIntoBuff, ignore this page:", e);
     } finally {
       // clear start time stamp for next initializing
-      minTimestamp = -1;
+      minTimestamp = Long.MIN_VALUE;
       valueCountInOnePage = 0;
       dataPageWriter.reset();
       resetPageStatistics();

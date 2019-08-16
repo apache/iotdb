@@ -67,6 +67,26 @@ public class NoStatistics extends Statistics<Long> {
   }
 
   @Override
+  public void updateStats(boolean[] values) {
+    // NoStatistics does not make any statistics
+  }
+
+  @Override
+  public void updateStats(int[] values) {
+    // NoStatistics does not make any statistics
+  }
+
+  @Override
+  public void updateStats(long[] values) {
+    // NoStatistics does not make any statistics
+  }
+
+  @Override
+  public void updateStats(Binary[] values) {
+    // NoStatistics does not make any statistics
+  }
+
+  @Override
   public void updateStats(long min, long max) {
     throw new UnsupportedOperationException();
   }
