@@ -54,6 +54,19 @@ public class BooleanStatistics extends Statistics<Boolean> {
     }
   }
 
+  @Override
+  public void updateStats(boolean[] values) {
+    for (boolean value : values) {
+      if (isEmpty) {
+        initializeStats(value, value, value, 0, value);
+        isEmpty = false;
+      } else {
+        updateStats(value, value, value, 0, value);
+        isEmpty = false;
+      }
+    }
+  }
+
   private void updateStats(boolean minValue, boolean maxValue, boolean firstValue, double sumValue,
       boolean lastValue) {
     if (!minValue && min) {

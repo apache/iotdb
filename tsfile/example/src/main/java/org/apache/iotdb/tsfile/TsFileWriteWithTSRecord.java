@@ -29,11 +29,11 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
- * An example of writing data to TsFile
+ * An example of writing data with TSRecord to TsFile
  * It uses the interface:
  * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
  */
-public class TsFileWrite {
+public class TsFileWriteWithTSRecord {
 
   public static void main(String args[]) {
     try {
