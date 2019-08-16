@@ -271,7 +271,7 @@ public class IoTDBConfig {
    * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
    * this threshold and the new chunk will be flushed.
    */
-  private int chunkMergePointThreshold = 512;
+  private int chunkMergePointThreshold = 20480;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 

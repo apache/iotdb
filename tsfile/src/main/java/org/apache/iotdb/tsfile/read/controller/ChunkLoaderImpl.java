@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 /**
  * Read one Chunk and cache it into a LRUCache.
  */
-public class ChunkLoaderImpl implements ChunkLoader {
+public class ChunkLoaderImpl implements IChunkLoader {
 
   private static final int DEFAULT_CHUNK_CACHE_SIZE = 100000;
   private TsFileSequenceReader reader;

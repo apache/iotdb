@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileSelector;
+import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.junit.Test;
@@ -35,7 +35,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest{
   @Test
   public void testFullSelection() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
-    MergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
@@ -65,7 +65,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest{
   @Test
   public void testNonSelection() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
-    MergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 1);
+    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 1);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
     resource.clear();
@@ -74,7 +74,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest{
   @Test
   public void testRestrictedSelection() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
-    MergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 400000);
+    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 400000);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];

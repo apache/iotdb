@@ -16,19 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.read.controller;
 
-package org.apache.iotdb.db.engine.merge.selector;
+import java.io.IOException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 
-import java.util.List;
-import org.apache.iotdb.db.exception.MergeException;
+public interface IChunkLoader {
 
-/**
- * MergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be
- * merged without exceeding given memory budget.
- */
-public interface MergeFileSelector {
+  /**
+   * read all content of any chunk.
+   */
+  Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException;
 
-  List[] select() throws MergeException;
+  /**
+   * close the file reader.
+   */
+  void close() throws IOException;
 
-  int getConcurrentMergeNum();
+  /**
+   * clear Chunk cache if used.
+   */
+  void clear();
 }

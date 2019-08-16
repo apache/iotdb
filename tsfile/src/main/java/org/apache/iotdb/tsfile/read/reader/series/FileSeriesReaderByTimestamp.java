@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
  */
 public class FileSeriesReaderByTimestamp {
 
-  protected ChunkLoader chunkLoader;
+  protected IChunkLoader chunkLoader;
   protected List<ChunkMetaData> chunkMetaDataList;
   private int currentChunkIndex = 0;
 
@@ -47,7 +47,7 @@ public class FileSeriesReaderByTimestamp {
   /**
    * init with chunkLoader and chunkMetaDataList.
    */
-  public FileSeriesReaderByTimestamp(ChunkLoader chunkLoader, List<ChunkMetaData> chunkMetaDataList) {
+  public FileSeriesReaderByTimestamp(IChunkLoader chunkLoader, List<ChunkMetaData> chunkMetaDataList) {
     this.chunkLoader = chunkLoader;
     this.chunkMetaDataList = chunkMetaDataList;
     currentTimestamp = Long.MIN_VALUE;

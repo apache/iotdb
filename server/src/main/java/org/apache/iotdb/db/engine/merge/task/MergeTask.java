@@ -50,7 +50,7 @@ public class MergeTask implements Callable<Void> {
   private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
 
   MergeResource resource;
-  String storageGroupDir;
+  String storageGroupSysDir;
   String storageGroupName;
   MergeLogger mergeLogger;
   MergeContext mergeContext = new MergeContext();
@@ -61,10 +61,10 @@ public class MergeTask implements Callable<Void> {
   boolean fullMerge;
 
   MergeTask(List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles, String storageGroupDir, MergeCallback callback,
+      List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
       String taskName, boolean fullMerge, String storageGroupName) {
     this.resource = new MergeResource(seqFiles, unseqFiles);
-    this.storageGroupDir = storageGroupDir;
+    this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
     this.fullMerge = fullMerge;
@@ -72,10 +72,10 @@ public class MergeTask implements Callable<Void> {
     this.storageGroupName = storageGroupName;
   }
 
-  public MergeTask(MergeResource mergeResource, String storageGroupDir, MergeCallback callback,
+  public MergeTask(MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
       String taskName, boolean fullMerge, int concurrentMergeSeriesNum, String storageGroupName) {
     this.resource = mergeResource;
-    this.storageGroupDir = storageGroupDir;
+    this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
     this.fullMerge = fullMerge;
@@ -92,7 +92,7 @@ public class MergeTask implements Callable<Void> {
       cleanUp(false);
       // call the callback to make sure the StorageGroup exit merging status, but passing 2
       // empty file lists to avoid files being deleted.
-      callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME));
+      callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
       throw e;
     }
     return null;
@@ -106,7 +106,7 @@ public class MergeTask implements Callable<Void> {
     long startTime = System.currentTimeMillis();
     long totalFileSize = MergeUtils.collectFileSizes(resource.getSeqFiles(),
         resource.getUnseqFiles());
-    mergeLogger = new MergeLogger(storageGroupDir);
+    mergeLogger = new MergeLogger(storageGroupSysDir);
 
     mergeLogger.logFiles(resource);
 
@@ -160,7 +160,7 @@ public class MergeTask implements Callable<Void> {
       mergeFile.delete();
     }
 
-    File logFile = new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again

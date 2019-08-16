@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
-import org.apache.iotdb.db.engine.merge.selector.MergePathSelector;
+import org.apache.iotdb.db.engine.merge.selector.IMergePathSelector;
 import org.apache.iotdb.db.engine.merge.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -106,7 +106,7 @@ class MergeMultiChunkTask {
     List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
     for (List<Path> pathList : devicePaths) {
       // TODO: use statistics of queries to better rearrange series
-      MergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
+      IMergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
       while (pathSelector.hasNext()) {
         currMergingPaths = pathSelector.next();
         mergePaths();
@@ -195,7 +195,7 @@ class MergeMultiChunkTask {
         mergeFileWriter, currTsFile);
     if (dataWritten) {
       mergeFileWriter.endChunkGroup(0);
-      mergeLogger.logFilePositionUpdate(mergeFileWriter.getFile());
+      mergeLogger.logFilePosition(mergeFileWriter.getFile());
       currTsFile.getStartTimeMap().put(deviceId, currDeviceMinTime);
     }
   }

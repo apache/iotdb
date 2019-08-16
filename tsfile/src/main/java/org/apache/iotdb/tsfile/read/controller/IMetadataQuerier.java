@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
-public interface MetadataQuerier {
+public interface IMetadataQuerier {
 
   List<ChunkMetaData> getChunkMetaDataList(Path path) throws IOException;
 

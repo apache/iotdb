@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class NaivePathSelector implements MergePathSelector {
+public class NaivePathSelector implements IMergePathSelector {
 
   private List<Path> paths;
   private int idx;

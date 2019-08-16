@@ -39,6 +39,22 @@ import org.slf4j.LoggerFactory;
 /**
  * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge,
  * the last available positions of each file and how many timeseries and files have been merged.
+ * An example of merging 1 seqFile and 1 unseqFile containing 3 series is:
+ * seqFiles
+ * server/0seq.tsfile
+ * unseqFiles
+ * server/0unseq.tsfile
+ * merge start
+ * start root.mergeTest.device0.sensor0
+ * server/0seq.tsfile.merge 338
+ * end
+ * start root.mergeTest.device0.sensor1
+ * server/0seq.tsfile.merge 664
+ * end
+ * all ts end
+ * server/0seq.tsfile 145462
+ * end
+ * merge end
  */
 public class LogAnalyzer {
 

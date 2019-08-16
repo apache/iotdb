@@ -32,7 +32,7 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
@@ -182,7 +182,7 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
     // prepare chunkLoader
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
         .get(sealedTsFile, true);
-    ChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
+    IChunkLoader chunkLoader = new ChunkLoaderImpl(tsFileReader);
 
     return new FileSeriesReaderByTimestampAdapter(
         new FileSeriesReaderByTimestamp(chunkLoader, metaDataList));

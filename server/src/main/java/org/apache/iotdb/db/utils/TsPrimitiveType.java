@@ -75,27 +75,27 @@ public abstract class TsPrimitiveType implements Serializable {
   }
 
   public void setBoolean(boolean val) {
-    throw new UnsupportedOperationException("getBoolean() is not supported for current sub-class");
+    throw new UnsupportedOperationException("setBoolean() is not supported for current sub-class");
   }
 
   public void setInt(int val) {
-    throw new UnsupportedOperationException("getInt() is not supported for current sub-class");
+    throw new UnsupportedOperationException("setInt() is not supported for current sub-class");
   }
 
   public void setLong(long val) {
-    throw new UnsupportedOperationException("getLong() is not supported for current sub-class");
+    throw new UnsupportedOperationException("setLong() is not supported for current sub-class");
   }
 
   public void setFloat(float val) {
-    throw new UnsupportedOperationException("getFloat() is not supported for current sub-class");
+    throw new UnsupportedOperationException("setFloat() is not supported for current sub-class");
   }
 
   public void setDouble(double val) {
-    throw new UnsupportedOperationException("getDouble() is not supported for current sub-class");
+    throw new UnsupportedOperationException("setDouble() is not supported for current sub-class");
   }
 
   public void setBinary(Binary val) {
-    throw new UnsupportedOperationException("getBinary() is not supported for current sub-class");
+    throw new UnsupportedOperationException("setBinary() is not supported for current sub-class");
   }
 
   /**

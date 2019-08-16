@@ -63,7 +63,7 @@ public class MergeLogger {
     logStream.flush();
   }
 
-  public void logFilePositionUpdate(File file) throws IOException {
+  public void logFilePosition(File file) throws IOException {
     logStream.write(String.format("%s %d", file.getAbsolutePath(), file.length()));
     logStream.newLine();
     logStream.flush();

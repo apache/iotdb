@@ -121,17 +121,6 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
     }
   }
 
-  public UnseqResourceMergeReader(Path seriesPath, List<Chunk> chunks, Filter filter)
-      throws IOException {
-    this. seriesPath = seriesPath;
-    int priorityValue = 1;
-    for (Chunk chunk : chunks) {
-      ChunkReader chunkReader = filter != null ? new ChunkReaderWithFilter(chunk, filter)
-          : new ChunkReaderWithoutFilter(chunk);
-      addReaderWithPriority(new DiskChunkReader(chunkReader), priorityValue++);
-    }
-  }
-
   /**
    * Returns true if the start and end time of the series data in this unsequence TsFile do not
    * satisfy the filter condition. Returns false if satisfy.

@@ -24,7 +24,7 @@ import java.util.List;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 /**
@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
  */
 public abstract class FileSeriesReader {
 
-  protected ChunkLoader chunkLoader;
+  protected IChunkLoader chunkLoader;
   protected List<ChunkMetaData> chunkMetaDataList;
   protected ChunkReader chunkReader;
   private int chunkToRead;
@@ -42,7 +42,7 @@ public abstract class FileSeriesReader {
   /**
    * constructor of FileSeriesReader.
    */
-  public FileSeriesReader(ChunkLoader chunkLoader, List<ChunkMetaData> chunkMetaDataList) {
+  public FileSeriesReader(IChunkLoader chunkLoader, List<ChunkMetaData> chunkMetaDataList) {
     this.chunkLoader = chunkLoader;
     this.chunkMetaDataList = chunkMetaDataList;
     this.chunkToRead = 0;

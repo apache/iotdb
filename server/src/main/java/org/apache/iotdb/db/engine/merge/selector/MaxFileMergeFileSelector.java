@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * merged without exceeding given memory budget. It always assume the number of timeseries being
  * queried at the same time is 1 to maximize the number of file merged.
  */
-public class MaxFileMergeFileSelector implements MergeFileSelector {
+public class MaxFileMergeFileSelector implements IMergeFileSelector {
 
   private static final Logger logger = LoggerFactory.getLogger(MaxFileMergeFileSelector.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
@@ -86,7 +86,7 @@ public class MaxFileMergeFileSelector implements MergeFileSelector {
    * The memory cost of a file is calculated in two ways:
    *    The rough estimation: for a seqFile, the size of its metadata is used for estimation.
    *    Since in the worst case, the file only contains one timeseries and all its metadata will
-   *    be loaded into memory with at most one actual data page (which is negligible) and writing
+   *    be loaded into memory with at most one actual data chunk (which is negligible) and writing
    *    the timeseries into a new file generate metadata of the similar size, so the size of all
    *    seqFiles' metadata (generated when writing new chunks) pluses the largest one (loaded
    *    when reading a timeseries from the seqFiles) is the total estimation of all seqFiles; for
@@ -217,8 +217,8 @@ public class MaxFileMergeFileSelector implements MergeFileSelector {
   }
 
   private long calculateMemoryCost(TsFileResource tmpSelectedUnseqFile,
-      Collection<Integer> tmpSelectedSeqFiles, FileQueryMemMeasurement unseqMeasurement,
-      FileQueryMemMeasurement seqMeasurement, long startTime, long timeLimit) throws IOException {
+      Collection<Integer> tmpSelectedSeqFiles, IFileQueryMemMeasurement unseqMeasurement,
+      IFileQueryMemMeasurement seqMeasurement, long startTime, long timeLimit) throws IOException {
     long cost = 0;
     Long fileCost = unseqMeasurement.measure(tmpSelectedUnseqFile);
     cost += fileCost;
@@ -264,11 +264,11 @@ public class MaxFileMergeFileSelector implements MergeFileSelector {
     return cost;
   }
 
-  private long calculateTightFileMemoryCost(TsFileResource seqFile, FileQueryMemMeasurement measurement)
+  private long calculateTightFileMemoryCost(TsFileResource seqFile, IFileQueryMemMeasurement measurement)
       throws IOException {
     Long cost = maxSeriesQueryCostMap.get(seqFile);
     if (cost == null) {
-      long[] chunkNums = MergeUtils.findLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
+      long[] chunkNums = MergeUtils.findTotalAndLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];
       cost = measurement.measure(seqFile) * maxChunkNum / totalChunkNum;
