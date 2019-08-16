@@ -98,4 +98,20 @@ public class TsFileMetadataUtils {
     return pathToChunkMetaDataList;
   }
 
+  public static List<ChunkMetaData> getChunkMetaDataList(String sensor,
+      TsDeviceMetadata tsDeviceMetadata) {
+    List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
+    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
+      List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
+          .getChunkMetaDataList();
+
+      for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
+        if (sensor.equals(chunkMetaData.getMeasurementUid())) {
+          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
+          chunkMetaDataList.add(chunkMetaData);
+        }
+      }
+    }
+    return chunkMetaDataList;
+  }
 }

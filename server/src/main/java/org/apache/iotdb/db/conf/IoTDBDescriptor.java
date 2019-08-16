@@ -130,6 +130,10 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
               Boolean.toString(conf.isEnableParameterAdapter()))));
 
+      conf.setMetaDataCacheEnable(
+          Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
+              Boolean.toString(conf.isMetaDataCacheEnable()))));
+
       initMemoryAllocate(properties);
 
       conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
@@ -263,6 +267,26 @@ public class IoTDBDescriptor {
       conf.setAllocateMemoryForRead(
           maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
     }
+
+    if (!conf.isMetaDataCacheEnable()) {
+      return;
+    }
+
+    String queryMemoryAllocateProportion = properties
+        .getProperty("filemeta_chunkmeta_free_memory_proportion");
+    if (queryMemoryAllocateProportion != null) {
+      String[] proportions = queryMemoryAllocateProportion.split(":");
+      int proportionSum = 0;
+      for (String proportion : proportions) {
+        proportionSum += Integer.parseInt(proportion.trim());
+      }
+      long maxMemoryAvailable = conf.getAllocateMemoryForRead();
+      conf.setAllocateMemoryForFileMetaDataCache(
+          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+      conf.setAllocateMemoryForChumkMetaDataCache(
+          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+    }
+
   }
 
   private static class IoTDBDescriptorHolder {
