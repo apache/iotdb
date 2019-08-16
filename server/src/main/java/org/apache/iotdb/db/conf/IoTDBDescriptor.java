@@ -281,10 +281,17 @@ public class IoTDBDescriptor {
         proportionSum += Integer.parseInt(proportion.trim());
       }
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
-      conf.setAllocateMemoryForFileMetaDataCache(
-          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-      conf.setAllocateMemoryForChumkMetaDataCache(
-          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      try {
+        conf.setAllocateMemoryForFileMetaDataCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+        conf.setAllocateMemoryForChumkMetaDataCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "
+                + queryMemoryAllocateProportion);
+      }
+
     }
 
   }
