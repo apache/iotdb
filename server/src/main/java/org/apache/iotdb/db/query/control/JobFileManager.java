@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.control;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -73,14 +74,20 @@ public class JobFileManager {
    * this jdbc request must be cleared and thus the usage reference must be decreased.
    */
   void removeUsedFilesForGivenJob(long jobId) {
+    Set<TsFileResource> tsFiles = sealedFilePathsMap.get(jobId);
+    if (tsFiles != null) {
       for (TsFileResource tsFile : sealedFilePathsMap.get(jobId)) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
       }
       sealedFilePathsMap.remove(jobId);
+    }
+    tsFiles = unsealedFilePathsMap.get(jobId);
+    if (tsFiles != null) {
       for (TsFileResource tsFile : unsealedFilePathsMap.get(jobId)) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
       }
       unsealedFilePathsMap.remove(jobId);
+    }
   }
 
   /**

@@ -104,16 +104,6 @@ public class MergeLogger {
     logUnseqFiles(resource.getUnseqFiles());
   }
 
-  public void logAllTS(List<Path> paths) throws IOException {
-    logStream.write(STR_TIMESERIES);
-    logStream.newLine();
-    for (Path path : paths) {
-      logStream.write(path.getFullPath());
-      logStream.newLine();
-    }
-    logStream.flush();
-  }
-
   private void logSeqFiles(List<TsFileResource> seqFiles) throws IOException {
     logStream.write(STR_SEQ_FILES);
     logStream.newLine();

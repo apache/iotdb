@@ -30,6 +30,8 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.MetadataErrorException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +47,7 @@ public class LogAnalyzer {
   private MergeResource resource;
   private String taskName;
   private File logFile;
+  private String storageGroupName;
 
   private Map<File, Long> fileLastPositions = new HashMap<>();
   private Map<File, Long> tempFileLastPositions = new HashMap<>();
@@ -56,10 +59,11 @@ public class LogAnalyzer {
 
   private Status status;
 
-  public LogAnalyzer(MergeResource resource, String taskName, File logFile) {
+  public LogAnalyzer(MergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;
+    this.storageGroupName = storageGroupName;
   }
 
   /**
@@ -68,7 +72,7 @@ public class LogAnalyzer {
    * @return a Status indicating the completed stage of the last merge.
    * @throws IOException
    */
-  public Status analyze() throws IOException {
+  public Status analyze() throws IOException, MetadataErrorException {
     status = Status.NONE;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       currLine = bufferedReader.readLine();
@@ -77,7 +81,11 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        analyzeUnmergedSeries(bufferedReader);
+        List<String> storageGroupPaths = MManager.getInstance().getPaths(storageGroupName + ".*");
+        unmergedPaths = new ArrayList<>();
+        for (String path : storageGroupPaths) {
+          unmergedPaths.add(new Path(path));
+        }
 
         analyzeMergedSeries(bufferedReader, unmergedPaths);
 
@@ -85,25 +93,6 @@ public class LogAnalyzer {
       }
     }
     return status;
-  }
-
-  private void analyzeUnmergedSeries(BufferedReader bufferedReader) throws IOException {
-    if (!STR_TIMESERIES.equals(currLine)) {
-      return;
-    }
-    long startTime = System.currentTimeMillis();
-    List<Path> paths = new ArrayList<>();
-    while ((currLine = bufferedReader.readLine()) != null) {
-      if (STR_MERGE_START.equals(currLine)) {
-        break;
-      }
-      paths.add(new Path(currLine));
-    }
-    if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} seq files after {}ms", taskName, paths.size(),
-              (System.currentTimeMillis() - startTime));
-    }
-    unmergedPaths = paths;
   }
 
   private void analyzeSeqFiles(BufferedReader bufferedReader) throws IOException {

@@ -34,8 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resourceRelated.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -63,8 +61,6 @@ public class MergeResource {
 
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
-
-  private QueryContext mergeContext = new QueryContext();
 
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache;
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
