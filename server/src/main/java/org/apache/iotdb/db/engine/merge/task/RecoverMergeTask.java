@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.merge.recover.LogAnalyzer.Status;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -57,7 +58,7 @@ public class RecoverMergeTask extends MergeTask {
     super(seqFiles, unseqFiles, storageGroupDir, callback, taskName, fullMerge, storageGroupName);
   }
 
-  public void recoverMerge(boolean continueMerge) throws IOException {
+  public void recoverMerge(boolean continueMerge) throws IOException, MetadataErrorException {
     File logFile = new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
       logger.info("{} no merge.log, merge recovery ends", taskName);
@@ -65,7 +66,7 @@ public class RecoverMergeTask extends MergeTask {
     }
     long startTime = System.currentTimeMillis();
 
-    analyzer = new LogAnalyzer(resource, taskName, logFile);
+    analyzer = new LogAnalyzer(resource, taskName, logFile, storageGroupName);
     Status status = analyzer.analyze();
     if (logger.isInfoEnabled()) {
       logger.info("{} merge recovery status determined: {} after {}ms", taskName, status,

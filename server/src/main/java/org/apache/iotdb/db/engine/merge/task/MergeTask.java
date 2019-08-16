@@ -51,7 +51,7 @@ public class MergeTask implements Callable<Void> {
 
   MergeResource resource;
   String storageGroupDir;
-  private String storageGroupName;
+  String storageGroupName;
   MergeLogger mergeLogger;
   MergeContext mergeContext = new MergeContext();
 
@@ -119,7 +119,6 @@ public class MergeTask implements Callable<Void> {
     for (String path : storageGroupPaths) {
       unmergedSeries.add(new Path(path));
     }
-    mergeLogger.logAllTS(unmergedSeries);
 
     mergeLogger.logMergeStart();
 
