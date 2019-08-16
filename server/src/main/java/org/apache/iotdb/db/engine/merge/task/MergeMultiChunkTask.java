@@ -257,7 +257,11 @@ class MergeMultiChunkTask {
       }
     }
 
-    updateChunkCounts(currFile, mergedChunkNum, unmergedChunkNum);
+    // add merge and unmerged chunk statistic
+    mergeContext.getMergedChunkCnt().compute(currFile, (tsFileResource, anInt) -> anInt == null ?
+        mergedChunkNum.get() : anInt + mergedChunkNum.get());
+    mergeContext.getUnmergedChunkCnt().compute(currFile, (tsFileResource, anInt) -> anInt == null ?
+        unmergedChunkNum.get() : anInt + unmergedChunkNum.get());
 
     return mergedChunkNum.get() > 0;
   }
@@ -282,7 +286,7 @@ class MergeMultiChunkTask {
       synchronized (reader) {
         chunk = reader.readMemChunk(currMeta);
       }
-      ptWrittens[pathIdx] = mergeChunk(currMeta, chunkOverflowed, chunkTooSmall, chunk,
+      ptWrittens[pathIdx] = mergeChunkV2(currMeta, chunkOverflowed, chunkTooSmall, chunk,
               ptWrittens[pathIdx], pathIdx, mergeFileWriter, unseqReaders[pathIdx], chunkWriter,
               currFile);
 
@@ -307,43 +311,78 @@ class MergeMultiChunkTask {
     }
   }
 
-  private int mergeChunk(ChunkMetaData currMeta, boolean chunkOverflowed,
-      boolean chunkTooSmall,Chunk chunk, int ptWritten, int pathIdx,
+  /**
+   * merge a sequence chunk SK
+   *
+   * 1. no need to write the chunk to .merge file when:
+   * isn't full merge &
+   * there isn't unclosed chunk before &
+   * SK is big enough &
+   * SK isn't overflowed &
+   * SK isn't modified
+   *
+   *
+   * 2. write SK to .merge.file without compressing when:
+   * is full merge &
+   * there isn't unclosed chunk before &
+   * SK is big enough &
+   * SK isn't overflowed &
+   * SK isn't modified
+   *
+   * 3. other cases: need to unCompress the chunk and write
+   * 3.1 SK isn't overflowed
+   * 3.2 SK is overflowed
+   *
+   */
+  private int mergeChunkV2(ChunkMetaData currMeta, boolean chunkOverflowed,
+      boolean chunkTooSmall,Chunk chunk, int lastUnclosedChunkPoint, int pathIdx,
       TsFileIOWriter mergeFileWriter, IPointReader unseqReader,
       IChunkWriter chunkWriter, TsFileResource currFile) throws IOException {
 
-    int newPtWritten = ptWritten;
-    if (ptWritten == 0 && fullMerge && !chunkOverflowed && !chunkTooSmall) {
-      // write without unpacking the chunk
+    int unclosedChunkPoint = lastUnclosedChunkPoint;
+    boolean chunkModified = currMeta.getDeletedAt() > Long.MIN_VALUE;
+
+    // no need to write the chunk to .merge file
+    if (!fullMerge && lastUnclosedChunkPoint == 0 && !chunkTooSmall && !chunkOverflowed && !chunkModified) {
+      unmergedChunkNum.incrementAndGet();
+      mergeContext.getUnmergedChunkStartTimes().get(currFile).get(currMergingPaths.get(pathIdx))
+          .add(currMeta.getStartTime());
+      return 0;
+    }
+
+    // write SK to .merge.file without compressing
+    if (fullMerge && lastUnclosedChunkPoint == 0 && !chunkTooSmall && !chunkOverflowed && !chunkModified) {
       synchronized (mergeFileWriter) {
         mergeFileWriter.writeChunk(chunk, currMeta);
       }
-      mergedChunkNum.incrementAndGet();
       mergeContext.incTotalPointWritten(currMeta.getNumOfPoints());
-    } else {
-      // the chunk should be unpacked to merge with other chunks
-      int chunkPtNum = writeChunk(chunk, currMeta, chunkWriter,
-          unseqReader, chunkOverflowed, chunkTooSmall, pathIdx);
-      if (chunkPtNum > 0) {
-        mergedChunkNum.incrementAndGet();
-        newPtWritten += chunkPtNum;
-      } else {
-        unmergedChunkNum.incrementAndGet();
-        mergeContext.getUnmergedChunkStartTimes().get(currFile).get(currMergingPaths.get(pathIdx))
-            .add(currMeta.getStartTime());
-      }
+      mergeContext.incTotalChunkWritten();
+      mergedChunkNum.incrementAndGet();
+      return 0;
     }
 
-    mergeContext.incTotalPointWritten(newPtWritten - ptWritten);
-    if (minChunkPointNum > 0 && newPtWritten >= minChunkPointNum
-        || newPtWritten > 0 && minChunkPointNum < 0) {
+    // 3.1 SK isn't overflowed, just uncompress and write sequence chunk
+    if (!chunkOverflowed) {
+      unclosedChunkPoint += MergeUtils.writeChunkWithoutUnseq(chunk, chunkWriter);
+      mergedChunkNum.incrementAndGet();
+    } else {
+      // 3.2 SK is overflowed, uncompress sequence chunk and merge with unseq chunk, then write
+      unclosedChunkPoint += writeChunkWithUnseq(chunk, chunkWriter, unseqReader,
+          currMeta.getEndTime(), pathIdx);
+      mergedChunkNum.incrementAndGet();
+    }
+
+    // update points written statistics
+    mergeContext.incTotalPointWritten(unclosedChunkPoint - lastUnclosedChunkPoint);
+    if (minChunkPointNum > 0 && unclosedChunkPoint >= minChunkPointNum
+        || unclosedChunkPoint > 0 && minChunkPointNum < 0) {
       // the new chunk's size is large enough and it should be flushed
       synchronized (mergeFileWriter) {
         chunkWriter.writeToFileWriter(mergeFileWriter);
       }
-      newPtWritten = 0;
+      unclosedChunkPoint = 0;
     }
-    return newPtWritten;
+    return unclosedChunkPoint;
   }
 
   private int writeRemainingUnseq(IChunkWriter chunkWriter,
@@ -357,34 +396,6 @@ class MergeMultiChunkTask {
       currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.current() : null;
     }
     return ptWritten;
-  }
-
-  private void updateChunkCounts(TsFileResource currFile, AtomicInteger newMergedChunkNum,
-      AtomicInteger newUnmergedChunkNum) {
-    mergeContext.getMergedChunkCnt().compute(currFile, (tsFileResource, anInt) -> anInt == null ?
-        newMergedChunkNum.get() : anInt + newMergedChunkNum.get());
-    mergeContext.getUnmergedChunkCnt().compute(currFile, (tsFileResource, anInt) -> anInt == null ?
-        newUnmergedChunkNum.get() : anInt + newUnmergedChunkNum.get());
-  }
-
-  private int writeChunk(Chunk chunk,
-      ChunkMetaData currMeta, IChunkWriter chunkWriter, IPointReader unseqReader,
-      boolean chunkOverflowed,
-      boolean chunkTooSmall, int pathIdx) throws IOException {
-
-    boolean chunkModified = currMeta.getDeletedAt() > Long.MIN_VALUE;
-    int newPtWritten = 0;
-
-    if (!chunkOverflowed && (chunkTooSmall || chunkModified || fullMerge)) {
-      // just rewrite the (modified) chunk
-      newPtWritten += MergeUtils.writeChunkWithoutUnseq(chunk, chunkWriter);
-      mergeContext.incTotalChunkWritten();
-    } else if (chunkOverflowed) {
-      // this chunk may merge with the current point
-      newPtWritten += writeChunkWithUnseq(chunk, chunkWriter, unseqReader, currMeta.getEndTime(), pathIdx);
-      mergeContext.incTotalChunkWritten();
-    }
-    return newPtWritten;
   }
 
   private int writeChunkWithUnseq(Chunk chunk, IChunkWriter chunkWriter, IPointReader unseqReader,
@@ -405,20 +416,21 @@ class MergeMultiChunkTask {
     for (int i = 0; i < batchData.length(); i++) {
       long time = batchData.getTimeByIndex(i);
       // merge data in batch and data in unseqReader
+
+      boolean overwriteSeqPoint = false;
+      // unseq point.time <= sequence point.time, write unseq point
       while (currTimeValuePairs[pathIdx] != null
-          && currTimeValuePairs[pathIdx].getTimestamp() < time) {
+          && currTimeValuePairs[pathIdx].getTimestamp() <= time) {
         writeTVPair(currTimeValuePairs[pathIdx], chunkWriter);
+        if (currTimeValuePairs[pathIdx].getTimestamp() == time) {
+          overwriteSeqPoint = true;
+        }
         unseqReader.next();
         currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.current() : null;
         cnt++;
       }
-      if (currTimeValuePairs[pathIdx] != null
-          && currTimeValuePairs[pathIdx].getTimestamp() == time) {
-        writeTVPair(currTimeValuePairs[pathIdx], chunkWriter);
-        unseqReader.next();
-        currTimeValuePairs[pathIdx] = unseqReader.hasNext() ? unseqReader.current() : null;
-        cnt++;
-      } else {
+      // unseq point.time > sequence point.time, write seq point
+      if (!overwriteSeqPoint) {
         writeBatchPoint(batchData, i, chunkWriter);
         cnt++;
       }
