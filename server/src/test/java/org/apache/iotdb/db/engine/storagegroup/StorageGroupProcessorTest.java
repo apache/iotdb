@@ -75,7 +75,8 @@ public class StorageGroupProcessorTest {
     }
 
     processor.waitForAllCurrentTsFileProcessorsClosed();
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context);
+    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+        null);
 
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -104,7 +105,8 @@ public class StorageGroupProcessorTest {
 
     processor.waitForAllCurrentTsFileProcessorsClosed();
 
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context);
+    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+        null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -140,7 +142,8 @@ public class StorageGroupProcessorTest {
       // wait
     }
 
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context);
+    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+        null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {

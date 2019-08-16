@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.JobFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -212,13 +213,14 @@ public class StorageEngine implements IService {
   /**
    * query data.
    */
-  public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context)
+  public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
+      JobFileManager filePathsManager)
       throws StorageEngineException {
     //TODO use context.
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(deviceId, measurementId, context);
+    return storageGroupProcessor.query(deviceId, measurementId, context, filePathsManager);
   }
 
   /**

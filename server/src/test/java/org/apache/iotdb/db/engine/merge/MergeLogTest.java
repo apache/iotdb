@@ -75,7 +75,7 @@ public class MergeLogTest extends MergeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertEquals(410, lineCnt);
+    assertEquals(309, lineCnt);
   }
 
 }
