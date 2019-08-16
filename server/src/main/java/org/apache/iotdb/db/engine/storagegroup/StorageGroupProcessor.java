@@ -36,16 +36,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
@@ -154,12 +153,9 @@ public class StorageGroupProcessor {
   private VersionController versionController;
 
   /**
-   * mergeDeleteLock is to be used in the merge process. Concurrent deletion and merge may result in
-   * losing some deletion in the merged new file, so a lock is necessary. TODO reconsidering this
-   * when implementing the merge process.
+   * mergeLock is to be used in the merge process. Concurrent queries, deletions and merges may
+   * result in losing some deletion in the merged new file, so a lock is necessary.
    */
-  @SuppressWarnings("unused") // to be used in merge
-  private ReentrantLock mergeDeleteLock = new ReentrantLock();
   private ReentrantReadWriteLock mergeLock = new ReentrantReadWriteLock();
 
   /**
@@ -191,7 +187,7 @@ public class StorageGroupProcessor {
         logger.info("Storage Group system Directory {} doesn't exist, create it",
             storageGroupSysDir.getPath());
       } else if (!storageGroupSysDir.exists()) {
-        logger.error("craete Storage Group system Directory {} failed",
+        logger.error("create Storage Group system Directory {} failed",
             storageGroupSysDir.getPath());
       }
 
@@ -218,7 +214,7 @@ public class StorageGroupProcessor {
       String taskName = storageGroupName + "-" + System.currentTimeMillis();
       File mergingMods = new File(storageGroupSysDir, MERGING_MODIFICAITON_FILE_NAME);
       if (mergingMods.exists()) {
-        mergingModification = new ModificationFile(storageGroupSysDir + File.separator + MERGING_MODIFICAITON_FILE_NAME);
+        mergingModification = new ModificationFile(mergingMods.getPath());
       }
       RecoverMergeTask recoverMergeTask = new RecoverMergeTask(seqTsFiles, unseqTsFiles,
           storageGroupSysDir.getPath(), this::mergeEndAction, taskName,
@@ -245,7 +241,7 @@ public class StorageGroupProcessor {
       if (!fileFolder.exists()) {
         continue;
       }
-      // some TsFileResource may be persisting when the system crashed, try recovering such
+      // some TsFileResource may be being persisted when the system crashed, try recovering such
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
 
@@ -658,7 +654,6 @@ public class StorageGroupProcessor {
       Path fullPath = new Path(deviceId, measurementId);
       Deletion deletion = new Deletion(fullPath, versionController.nextVersion(), timestamp);
       if (mergingModification != null) {
-        //TODO check me when implementing the merge process.
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
       }
@@ -766,7 +761,7 @@ public class StorageGroupProcessor {
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       MergeResource mergeResource = new MergeResource(sequenceFileList, unSequenceFileList);
-      MergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
+      IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
       try {
         List[] mergeFiles = fileSelector.select();
         if (mergeFiles.length == 0) {
@@ -800,7 +795,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private MergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
+  private IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
     MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
     switch (strategy) {
       case MAX_FILE_NUM:
@@ -830,12 +825,10 @@ public class StorageGroupProcessor {
       mergeLock.writeLock().unlock();
     }
 
-    for (int i = 0; i < unseqFiles.size(); i++) {
-      TsFileResource unseqFile = unseqFiles.get(i);
+    for (TsFileResource unseqFile : unseqFiles) {
       unseqFile.getMergeQueryLock().writeLock().lock();
       try {
         unseqFile.remove();
-        unseqFiles.remove(unseqFile);
       } finally {
         unseqFile.getMergeQueryLock().writeLock().unlock();
       }

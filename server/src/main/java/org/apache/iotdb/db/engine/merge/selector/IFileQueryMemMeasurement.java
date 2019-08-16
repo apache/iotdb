@@ -16,26 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.controller;
+
+package org.apache.iotdb.db.engine.merge.selector;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
-public interface ChunkLoader {
 
-  /**
-   * read all content of any chunk.
-   */
-  Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException;
-
-  /**
-   * close the file reader.
-   */
-  void close() throws IOException;
-
-  /**
-   * clear Chunk cache if used.
-   */
-  void clear();
+@FunctionalInterface
+/**
+ * Estimate how much memory a file may occupy when being queried during merge.
+ * @param resource
+ * @return
+ * @throws IOException
+ */
+interface IFileQueryMemMeasurement {
+  long measure(TsFileResource resource) throws IOException;
 }

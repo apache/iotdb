@@ -24,9 +24,9 @@ import java.util.List;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
- * MergePathSelector select paths to be merged at a time if all paths of a device cannot be
+ * IMergePathSelector select paths to be merged at a time if all paths of a device cannot be
  * merged at the same time.
  */
-public interface MergePathSelector extends Iterator<List<Path>> {
+public interface IMergePathSelector extends Iterator<List<Path>> {
 
 }

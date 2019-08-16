@@ -52,14 +52,14 @@ public class RecoverMergeTask extends MergeTask {
   private LogAnalyzer analyzer;
 
   public RecoverMergeTask(List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles, String storageGroupDir,
+      List<TsFileResource> unseqFiles, String storageGroupSysDir,
       MergeCallback callback, String taskName,
       boolean fullMerge, String storageGroupName) {
-    super(seqFiles, unseqFiles, storageGroupDir, callback, taskName, fullMerge, storageGroupName);
+    super(seqFiles, unseqFiles, storageGroupSysDir, callback, taskName, fullMerge, storageGroupName);
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException, MetadataErrorException {
-    File logFile = new File(storageGroupDir, MergeLogger.MERGE_LOG_NAME);
+    File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
     if (!logFile.exists()) {
       logger.info("{} no merge.log, merge recovery ends", taskName);
       return;
@@ -131,7 +131,7 @@ public class RecoverMergeTask extends MergeTask {
   }
 
   private void resumeMergeProgress() throws IOException {
-    mergeLogger = new MergeLogger(storageGroupDir);
+    mergeLogger = new MergeLogger(storageGroupSysDir);
     truncateFiles();
     recoverChunkCounts();
   }
@@ -140,7 +140,7 @@ public class RecoverMergeTask extends MergeTask {
     long singleSeriesUnseqCost = 0;
     long maxUnseqCost = 0;
     for (TsFileResource unseqFile : resource.getUnseqFiles()) {
-      long[] chunkNums = MergeUtils.findLargestSeriesChunkNum(unseqFile,
+      long[] chunkNums = MergeUtils.findTotalAndLargestSeriesChunkNum(unseqFile,
           resource.getFileReader(unseqFile));
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];
@@ -152,7 +152,7 @@ public class RecoverMergeTask extends MergeTask {
     long maxSeqReadCost = 0;
     long seqWriteCost = 0;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      long[] chunkNums = MergeUtils.findLargestSeriesChunkNum(seqFile,
+      long[] chunkNums = MergeUtils.findTotalAndLargestSeriesChunkNum(seqFile,
           resource.getFileReader(seqFile));
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];

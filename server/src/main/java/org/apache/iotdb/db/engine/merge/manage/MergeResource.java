@@ -62,7 +62,7 @@ public class MergeResource {
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
 
-  private Map<TsFileResource, TsFileSequenceReader> fileReaderCache;
+  private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>();
@@ -74,7 +74,6 @@ public class MergeResource {
     this.seqFiles = seqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
     this.unseqFiles =
         unseqFiles.stream().filter(TsFileResource::isClosed).collect(Collectors.toList());
-    this.fileReaderCache = new HashMap<>();
   }
 
   public void clear() throws IOException {
@@ -89,7 +88,7 @@ public class MergeResource {
     chunkWriterCache.clear();
   }
 
-  public  MeasurementSchema getSchema(String measurementId) {
+  public MeasurementSchema getSchema(String measurementId) {
     return measurementSchemaMap.get(measurementId);
   }
 
@@ -120,7 +119,7 @@ public class MergeResource {
   public List<ChunkMetaData> queryChunkMetadata(Path path, TsFileResource seqFile)
       throws IOException {
     TsFileSequenceReader sequenceReader = getFileReader(seqFile);
-    return sequenceReader.getChunkMetadata(path);
+    return sequenceReader.getChunkMetadataList(path);
   }
 
   /**
@@ -156,8 +155,7 @@ public class MergeResource {
 
   /**
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
-   * the
-   * same measurement shares the same instance.
+   * the same measurement shares the same instance.
    * @param measurementSchema
    * @return
    */
@@ -197,7 +195,7 @@ public class MergeResource {
    * @param tsFileResource the SeqFile
    * @throws IOException
    */
-  public void removeFileWriter(TsFileResource tsFileResource) throws IOException {
+  public void removeFileAndWriter(TsFileResource tsFileResource) throws IOException {
     RestorableTsFileIOWriter newFileWriter = fileWriterCache.remove(tsFileResource);
     if (newFileWriter != null) {
       newFileWriter.close();

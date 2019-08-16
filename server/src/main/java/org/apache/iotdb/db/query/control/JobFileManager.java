@@ -96,13 +96,13 @@ public class JobFileManager {
    * so <code>sealedFilePathsMap.get(jobId)</code> or <code>unsealedFilePathsMap.get(jobId)</code>
    * must not return null.
    */
-  void addFilePathToMap(long jobId, TsFileResource tsFile, boolean isSealed) {
-    ConcurrentHashMap<Long, Set<TsFileResource>> pathMap = !isSealed ? unsealedFilePathsMap :
+  void addFilePathToMap(long jobId, TsFileResource tsFile, boolean isClosed) {
+    ConcurrentHashMap<Long, Set<TsFileResource>> pathMap = !isClosed ? unsealedFilePathsMap :
         sealedFilePathsMap;
     //TODO this is not an atomic operation, is there concurrent problem?
     if (!pathMap.get(jobId).contains(tsFile)) {
       pathMap.get(jobId).add(tsFile);
-      FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isSealed);
+      FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
     }
   }
 }

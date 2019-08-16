@@ -107,7 +107,7 @@ class MergeFileTask {
   private void moveMergedToOld(TsFileResource seqFile) throws IOException {
     int mergedChunkNum = context.getMergedChunkCnt().getOrDefault(seqFile, 0);
     if (mergedChunkNum == 0) {
-      resource.removeFileWriter(seqFile);
+      resource.removeFileAndWriter(seqFile);
       return;
     }
 

@@ -28,7 +28,7 @@ import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.IterateReader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
@@ -115,7 +115,7 @@ public class UnSealedTsFileIterateReader extends IterateReader {
     // prepare chunkLoader
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
         .get(unSealedTsFile, false);
-    ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
+    IChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
     // init fileSeriesReader
     FileSeriesReader fileSeriesReader;

@@ -28,6 +28,9 @@ public class Chunk {
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkData;
+  /**
+   * All data with timestamp <= deletedAt are considered deleted.
+   */
   private long deletedAt;
 
   public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt) {

@@ -139,7 +139,7 @@ public class MergeUtils {
   }
 
   // returns totalChunkNum of a file and the max number of chunks of a series
-  public static long[] findLargestSeriesChunkNum(TsFileResource tsFileResource,
+  public static long[] findTotalAndLargestSeriesChunkNum(TsFileResource tsFileResource,
       TsFileSequenceReader sequenceReader)
       throws IOException {
     long totalChunkNum = 0;
@@ -147,7 +147,7 @@ public class MergeUtils {
     List<Path> paths = collectFileSeries(sequenceReader);
 
     for (Path path : paths) {
-      List<ChunkMetaData> chunkMetaDataList = sequenceReader.getChunkMetadata(path);
+      List<ChunkMetaData> chunkMetaDataList = sequenceReader.getChunkMetadataList(path);
       totalChunkNum += chunkMetaDataList.size();
       maxChunkNum = chunkMetaDataList.size() > maxChunkNum ? chunkMetaDataList.size() : maxChunkNum;
     }
@@ -201,7 +201,7 @@ public class MergeUtils {
       throws IOException {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      List<ChunkMetaData> metaDataList = tsFileReader.getChunkMetadata(path);
+      List<ChunkMetaData> metaDataList = tsFileReader.getChunkMetadataList(path);
       if (metaDataList.isEmpty()) {
         continue;
       }

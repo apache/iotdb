@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  */
 public class ForceAppendTsFileWriter extends TsFileIOWriter{
 
-  private Map<String, MeasurementSchema> knownSchemas = new HashMap<>();
+  private Map<String, MeasurementSchema> knownSchemas;
   private long truncatePosition;
 
   public ForceAppendTsFileWriter(File file) throws IOException {
@@ -57,8 +57,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter{
       TsFileMetaData fileMetaData = reader.readFileMetadata();
       Map<String, TsDeviceMetadataIndex> deviceMap = fileMetaData.getDeviceMap();
       long firstDeviceMetaPos = Long.MAX_VALUE;
-      for (Entry<String, TsDeviceMetadataIndex> deviceMetadataEntry : deviceMap.entrySet()) {
-        TsDeviceMetadataIndex deviceMetadataIndex = deviceMetadataEntry.getValue();
+      for (TsDeviceMetadataIndex deviceMetadataIndex : deviceMap.values()) {
         TsDeviceMetadata tsDeviceMetadata = reader
             .readTsDeviceMetaData(deviceMetadataIndex);
         chunkGroupMetaDataList.addAll(tsDeviceMetadata.getChunkGroupMetaDataList());

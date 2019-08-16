@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.read.controller;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -41,7 +40,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class MetadataQuerierByFileImpl implements MetadataQuerier {
+public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   private static final int CHUNK_METADATA_CACHE_SIZE = 100000;
 
@@ -173,7 +172,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
   }
 
   private List<ChunkMetaData> loadChunkMetadata(Path path) throws IOException {
-    return tsFileReader.getChunkMetadata(path);
+    return tsFileReader.getChunkMetadataList(path);
   }
 
   @Override

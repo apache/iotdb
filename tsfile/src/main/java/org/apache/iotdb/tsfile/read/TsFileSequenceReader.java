@@ -651,7 +651,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return totalChunkNum;
   }
 
-  public List<ChunkMetaData> getChunkMetadata(Path path) throws IOException {
+  public List<ChunkMetaData> getChunkMetadataList(Path path) throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }

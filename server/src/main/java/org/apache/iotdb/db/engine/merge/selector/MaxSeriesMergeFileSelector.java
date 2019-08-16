@@ -29,7 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * MaxSeriesMergeFileSelector is an extension of MergeFileSelector which tries to maximize the
+ * MaxSeriesMergeFileSelector is an extension of IMergeFileSelector which tries to maximize the
  * number of timeseries that can be merged at the same time.
  */
 public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {

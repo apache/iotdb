@@ -87,7 +87,7 @@ public class MergeManager implements IService {
       if (mergeInterval > 0) {
         timedMergeThreadPool = Executors.newSingleThreadScheduledExecutor( r -> new Thread(r,
             "TimedMergeThread"));
-        timedMergeThreadPool.scheduleAtFixedRate(this::flushAll, mergeInterval,
+        timedMergeThreadPool.scheduleAtFixedRate(this::mergeAll, mergeInterval,
             mergeInterval, TimeUnit.SECONDS);
       }
       logger.info("MergeManager started");
@@ -117,7 +117,7 @@ public class MergeManager implements IService {
     return ServiceType.MERGE_SERVICE;
   }
 
-  private void flushAll() {
+  private void mergeAll() {
     try {
       StorageEngine.getInstance().mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
     } catch (StorageEngineException e) {

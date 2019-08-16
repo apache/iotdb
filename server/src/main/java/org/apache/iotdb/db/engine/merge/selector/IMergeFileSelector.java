@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.db.engine.merge.selector;
 
-import java.io.IOException;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import java.util.List;
+import org.apache.iotdb.db.exception.MergeException;
 
-
-@FunctionalInterface
 /**
- * Estimate how much memory a file may occupy when being queried during merge.
- * @param resource
- * @return
- * @throws IOException
+ * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be
+ * merged without exceeding given memory budget.
  */
-interface FileQueryMemMeasurement {
-  long measure(TsFileResource resource) throws IOException;
+public interface IMergeFileSelector {
+
+  List[] select() throws MergeException;
+
+  int getConcurrentMergeNum();
 }
