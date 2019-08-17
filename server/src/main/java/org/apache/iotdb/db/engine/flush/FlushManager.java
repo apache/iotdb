@@ -66,22 +66,22 @@ public class FlushManager implements FlushManagerMBean, IService {
 
   @Override
   public int getNumberOfWorkingTasks() {
-    return flushPool.getNumberOfWorkingTasks();
+    return flushPool.getWorkingTasksNumber();
   }
 
   @Override
   public int getNumberOfPendingTasks() {
-    return flushPool.getNumberOfPendingTasks();
+    return flushPool.getWaitingTasksNumber();
   }
 
   @Override
   public int getNumberOfWorkingSubTasks() {
-    return FlushSubTaskPoolManager.getInstance().getNumberOfWorkingTasks();
+    return FlushSubTaskPoolManager.getInstance().getWorkingTasksNumber();
   }
 
   @Override
   public int getNumberOfPendingSubTasks() {
-    return FlushSubTaskPoolManager.getInstance().getNumberOfPendingTasks();
+    return FlushSubTaskPoolManager.getInstance().getWaitingTasksNumber();
   }
 
   class FlushThread implements Runnable {
