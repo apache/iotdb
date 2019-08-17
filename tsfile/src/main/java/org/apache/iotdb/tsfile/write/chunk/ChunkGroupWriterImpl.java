@@ -22,9 +22,14 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -50,7 +55,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void addSeriesWriter(MeasurementSchema schema, int pageSizeThreshold) {
+  public void tryToAddSeriesWriter(MeasurementSchema schema, int pageSizeThreshold) {
     if (!chunkWriters.containsKey(schema.getMeasurementId())) {
       ChunkBuffer chunkBuffer = new ChunkBuffer(schema);
       IChunkWriter seriesWriter = new ChunkWriterImpl(schema, chunkBuffer, pageSizeThreshold);
@@ -68,6 +73,46 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
       }
       point.writeTo(time, chunkWriters.get(measurementId));
 
+    }
+  }
+
+  @Override
+  public void write(RowBatch rowBatch) throws WriteProcessException, IOException {
+    List<MeasurementSchema> measurements = rowBatch.measurements;
+    for (int i = 0; i < measurements.size(); i++) {
+      String measurementId = measurements.get(i).getMeasurementId();
+      TSDataType dataType = measurements.get(i).getType();
+      if (!chunkWriters.containsKey(measurementId)) {
+        throw new NoMeasurementException("measurement id" + measurementId + " not found!");
+      }
+      writeByDataType(rowBatch, measurementId, dataType, i);
+    }
+  }
+
+  private void writeByDataType(
+          RowBatch rowBatch, String measurementId, TSDataType dataType, int index) throws IOException {
+    switch (dataType) {
+      case INT32:
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (int[]) rowBatch.values[index]);
+        break;
+      case INT64:
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (long[]) rowBatch.values[index]);
+        break;
+      case FLOAT:
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (float[]) rowBatch.values[index]);
+        break;
+      case DOUBLE:
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (double[]) rowBatch.values[index]);
+        break;
+      case BOOLEAN:
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (boolean[]) rowBatch.values[index]);
+        break;
+      case TEXT:
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (Binary[]) rowBatch.values[index]);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataType));
     }
   }
 
