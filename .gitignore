@@ -4,7 +4,6 @@
 **/lib/**
 **/data/**
 
-tsfile/src/test/resources/perTestInputData
 # Eclipse IDE files
 **/.classpath
 **/.project
