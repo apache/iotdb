@@ -61,7 +61,7 @@ public abstract class AbstractPoolManager {
     return pool.submit(task);
   }
 
-  public int getActiveCnt() {
+  public int getWorkingTasksNumber() {
     return ((ThreadPoolExecutor) pool).getActiveCount();
   }
 
@@ -70,7 +70,7 @@ public abstract class AbstractPoolManager {
   }
 
   public int getTotalTasks() {
-    return getActiveCnt() + getWaitingTasksNumber();
+    return getWorkingTasksNumber() + getWaitingTasksNumber();
   }
 
   public int getCorePoolSize() {
@@ -89,7 +89,4 @@ public abstract class AbstractPoolManager {
     return ((ThreadPoolExecutor)pool).getActiveCount();
   }
 
-  public int getNumberOfPendingTasks() {
-    return ((ThreadPoolExecutor)pool).getQueue().size();
-  }
 }
