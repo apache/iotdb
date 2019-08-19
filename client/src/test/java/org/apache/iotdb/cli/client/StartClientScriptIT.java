@@ -60,8 +60,7 @@ public class StartClientScriptIT extends AbstractScript {
 
   @Override
   protected void testOnUnix() throws IOException {
-    final String[] output = {"---------------------", "Starting IoTDB Client",
-        "---------------------",
+    final String[] output = {
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
