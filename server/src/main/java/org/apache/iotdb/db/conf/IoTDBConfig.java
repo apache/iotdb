@@ -104,7 +104,7 @@ public class IoTDBConfig {
   private String systemDir = "data/system";
 
   /**
-   *  Schema directory, including storage set of values.
+   * Schema directory, including storage set of values.
    */
   private String schemaDir = "data/system/schema";
 
@@ -160,6 +160,20 @@ public class IoTDBConfig {
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
    */
   private long memtableSizeThreshold = 128 * 1024 * 1024L;
+
+  /**
+   * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
+   */
+  private boolean metaDataCacheEnable = true;
+  /**
+   * Memory allocated for fileMetaData cache in read process
+   */
+  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 19;
+
+  /**
+   * Memory allocated for chunkMetaData cache in read process
+   */
+  private long allocateMemoryForChumkMetaDataCache = allocateMemoryForRead * 6 / 19;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -641,6 +655,30 @@ public class IoTDBConfig {
     this.memtableSizeThreshold = memtableSizeThreshold;
   }
 
+  public boolean isMetaDataCacheEnable() {
+    return metaDataCacheEnable;
+  }
+
+  public void setMetaDataCacheEnable(boolean metaDataCacheEnable) {
+    this.metaDataCacheEnable = metaDataCacheEnable;
+  }
+
+  public long getAllocateMemoryForFileMetaDataCache() {
+    return allocateMemoryForFileMetaDataCache;
+  }
+
+  public void setAllocateMemoryForFileMetaDataCache(long allocateMemoryForFileMetaDataCache) {
+    this.allocateMemoryForFileMetaDataCache = allocateMemoryForFileMetaDataCache;
+  }
+
+  public long getAllocateMemoryForChumkMetaDataCache() {
+    return allocateMemoryForChumkMetaDataCache;
+  }
+
+  public void setAllocateMemoryForChumkMetaDataCache(long allocateMemoryForChumkMetaDataCache) {
+    this.allocateMemoryForChumkMetaDataCache = allocateMemoryForChumkMetaDataCache;
+  }
+
   public boolean isEnableWatermark() {
     return enableWatermark;
   }
@@ -702,5 +740,4 @@ public class IoTDBConfig {
   public String getWatermarkMethodValue() {
     return this.watermarkMethod;
   }
-
 }

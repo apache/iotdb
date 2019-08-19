@@ -66,12 +66,12 @@ suppose the IP is <C_IP>.
 4. If you just want to have a try by using iotdb-cli, you can:
 ```
 $ docker exec -it /bin/bash  <C_ID>
-$ (now you have enter the container): /cli/bin/start-client.sh -h localhost -p 6667 -u root -pw root
+$ (now you have enter the container): /cli/sbin/start-client.sh -h localhost -p 6667 -u root -pw root
 ```
 
 Or,  run a new docker container as the client:
 ```
-$ docker run -it iotdb:base /cli/bin/start-client.sh -h <C_IP> -p 6667 -u root -pw root
+$ docker run -it iotdb:base /cli/sbin/start-client.sh -h <C_IP> -p 6667 -u root -pw root
 ```
 Or,  if you have a iotdb-cli locally (e.g., you have compiled the source code by `mvn package`), and suppose your work_dir is cli/bin, then you can just run:
 ```
