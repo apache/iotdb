@@ -85,8 +85,4 @@ public abstract class AbstractPoolManager {
 
   public abstract String getName();
 
-  public int getNumberOfWorkingTasks() {
-    return ((ThreadPoolExecutor)pool).getActiveCount();
-  }
-
 }
