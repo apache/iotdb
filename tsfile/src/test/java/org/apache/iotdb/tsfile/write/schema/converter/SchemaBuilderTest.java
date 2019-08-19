@@ -50,7 +50,7 @@ public class SchemaBuilderTest {
         .addSeries("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null);
     FileSchema fileSchema = builder.build();
 
-    Collection<MeasurementSchema> measurements = fileSchema.getAllMeasurementSchema().values();
+    Collection<MeasurementSchema> measurements = fileSchema.getMeasurementSchemaMap().values();
     String[] measureDesStrings = {"[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]",
         "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]"};
     int i = 0;

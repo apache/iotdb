@@ -20,9 +20,7 @@ package org.apache.iotdb.cli.client;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,13 +48,24 @@ public abstract class AbstractScript {
     }
   }
 
-  protected String getCurrentPath(String... command) throws IOException {
-    ProcessBuilder builder = new ProcessBuilder(command);
-    builder.redirectErrorStream(true);
-    Process p = builder.start();
-    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-    String path = r.readLine();
-    return path;
+  protected String getCliPath() {
+    // This is usually always set by the JVM
+    File userDir = new File(System.getProperty("user.dir"));
+    if(!userDir.exists()) {
+      throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
+    }
+    File targetDir = new File(userDir, "target");
+    File[] files = targetDir.listFiles(new FileFilter() {
+      @Override
+      public boolean accept(File pathname) {
+        return pathname.isDirectory() && pathname.getName().startsWith("iotdb-client-");
+      }
+    });
+    if(files.length != 1) {
+      throw new RuntimeException(
+              "Exactly one directory starting with 'iotdb-client-' should have been found, but was " + files.length);
+    }
+    return files[0].getAbsolutePath();
   }
 
   protected abstract void testOnWindows() throws IOException;

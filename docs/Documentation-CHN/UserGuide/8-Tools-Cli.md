@@ -22,8 +22,9 @@
 <!-- TOC -->
 ## 概览
 - Cli / Shell工具
-    - Cli  / Shell运行方式
+    - Cli / Shell运行方式
     - Cli / Shell运行参数
+    - Cli / Shell的-e参数
 
 <!-- /TOC -->
 
@@ -37,12 +38,12 @@ IOTDB为用户提供CLI/Shell工具用于启动客户端和服务端程序。下
 Linux系统与MacOS系统启动命令如下：
 
 ```
-  Shell > ./bin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > ./sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 Windows系统启动命令如下：
 
 ```
-  Shell > \bin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > \sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 回车后即可成功启动客户端。启动后出现如图提示即为启动成功。
 ```
@@ -70,16 +71,64 @@ IoTDB>
 |-pw <`password`>|string类型，不需要引号|否|IoTDB连接服务器所使用的密码。如果没有输入密码IoTDB会在Cli端提示输入密码。|-pw root|
 |-u <`username`>|string类型，不需要引号|是|IoTDB连接服务器锁使用的用户名。|-u root|
 |-maxPRC <`maxPrintRowCount`>|int类型|否|设置IoTDB返回客户端命令行中所显示的最大行数。|-maxPRC 10|
+|-e <`execute`> |string类型|否|在不进入客户端输入模式的情况下，批量操作IoTDB|-e "show storage group"|
+
 
 下面展示一条客户端命令，功能是连接IP为10.129.187.21的主机，端口为6667 ，用户名为root，密码为root，以数字的形式打印时间戳，IoTDB命令行显示的最大行数为10。
 
 Linux系统与MacOS系统启动命令如下：
 
 ```
-  Shell >./bin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell >./sbin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 Windows系统启动命令如下：
 
 ```
-  Shell > \bin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > \sbin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
+## Cli / Shell的-e参数
+当您想要通过脚本的方式通过Cli / Shell对IoTDB进行批量操作时，可以使用-e参数。通过使用该参数，您可以在不进入客户端输入模式的情况下操作IoTDB。
+
+为了避免SQL语句和其他参数混淆，现在只支持-e参数作为最后的参数使用。
+
+针对CLI/Shell工具的-e参数用法如下：
+
+```
+  Shell > ./sbin/start-client.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
+```
+
+为了更好的解释-e参数的使用，可以参考下面的例子。
+
+假设用户希望对一个新启动的IoTDB进行如下操作：
+
+1.创建名为root.demo的存储组
+
+2.创建名为root.demo.s1的时间序列
+
+3.向创建的时间序列中插入三个数据点
+
+4.查询验证数据是否插入成功
+
+那么通过使用CLI/Shell工具的-e参数，可以采用如下的脚本：
+
+```
+# !/bin/bash
+
+host=127.0.0.1
+port=6667
+user=root
+pass=root
+
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "set storage group to root.demo"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "select s1 from root.demo"
+```
+
+打印出来的结果显示在下图，通过这种方式进行的操作与客户端的输入模式以及通过JDBC进行操作结果是一致的。
+
+![img](https://issues.apache.org/jira/secure/attachment/12976042/12976042_image-2019-07-27-15-47-12-045.png)
+
+需要特别注意的是，在脚本中使用-e参数时要对特殊字符进行转义。
