@@ -251,12 +251,12 @@ public class IoTDBConfig {
   /**
    * Switch of watermark function
    */
-  private boolean enableWatermark = true;
+  private boolean enableWatermark = false;
 
   /**
    * Secret key for watermark
    */
-  private String watermarkSecretKey = "MLH8O7T*Y8HO*&";
+  private String watermarkSecretKey = "QWERTYUIOP*&=";
 
   /**
    * Bit string of watermark
@@ -703,7 +703,15 @@ public class IoTDBConfig {
     this.watermarkBitString = watermarkBitString;
   }
 
+  public void setWatermarkMethod(String watermarkMethod) {
+    this.watermarkMethod = watermarkMethod;
+  }
+
   public String getWatermarkMethod() {
+    return this.watermarkMethod;
+  }
+
+  public String getWatermarkMethodName() {
     return watermarkMethod.split("\\(")[0];
   }
 
@@ -731,13 +739,5 @@ public class IoTDBConfig {
       return m.group(1);
     }
     return null;
-  }
-
-  public void setWatermarkMethod(String watermarkMethod) {
-    this.watermarkMethod = watermarkMethod;
-  }
-
-  public String getWatermarkMethodValue() {
-    return this.watermarkMethod;
   }
 }

@@ -22,9 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.tools.GroupedLSBWatermarkEncoder;
-import org.apache.iotdb.db.tools.WatermarkEncoder;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
@@ -53,20 +51,9 @@ public class QueryDataSetUtils {
   }
 
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
-      int fetchSize, IoTDBConfig conf) throws IOException {
+      int fetchSize, WatermarkEncoder watermarkEncoder) throws IOException {
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     tsQueryDataSet.setRecords(new ArrayList<>());
-    WatermarkEncoder watermarkEncoder = null;
-    if (conf != null && conf.isEnableWatermark()) {
-      switch (conf.getWatermarkMethod()) {
-        case IoTDBConfig.WATERMARK_GROUPED_LSB:
-          watermarkEncoder = new GroupedLSBWatermarkEncoder(conf);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(String.format(
-              "Watermark method is not supported yet: %s", conf.getWatermarkMethod()));
-      }
-    }
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();

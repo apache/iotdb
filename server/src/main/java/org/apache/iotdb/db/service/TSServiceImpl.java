@@ -65,6 +65,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
@@ -97,6 +99,7 @@ import org.apache.iotdb.service.rpc.thrift.TS_Status;
 import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -755,8 +758,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         throw new TException(e);
       }
       TSQueryDataSet result;
-      if (authorizer.isUserUseWaterMark(username.get())) {
-        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, config);
+      if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(username.get())) {
+        WatermarkEncoder encoder;
+        if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
+          encoder = new GroupedLSBWatermarkEncoder(config);
+        } else {
+          throw new UnSupportedDataTypeException(String.format(
+              "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
+        }
+        result = QueryDataSetUtils
+            .convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
       } else {
         result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
       }
