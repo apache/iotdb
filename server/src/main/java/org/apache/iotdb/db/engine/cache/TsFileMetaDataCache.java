@@ -36,8 +36,8 @@ public class TsFileMetaDataCache {
   private static final Logger logger = LoggerFactory.getLogger(TsFileMetaDataCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final long MEMORY_THRESHOLD_IN_B = (long) (0.25 * config
-      .getAllocateMemoryForRead());
+  private static boolean cacheEnable = config.isMetaDataCacheEnable();
+  private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForFileMetaDataCache();
   /**
    * key: Tsfile path. value: TsFileMetaData
    */
@@ -59,6 +59,9 @@ public class TsFileMetaDataCache {
   private long versionAndCreatebySize = 10;
 
   private TsFileMetaDataCache() {
+    if (!cacheEnable) {
+      return;
+    }
     cache = new LRULinkedHashMap<TsFileResource, TsFileMetaData>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
       protected long calEntrySize(TsFileResource key, TsFileMetaData value) {
@@ -88,6 +91,9 @@ public class TsFileMetaDataCache {
    * @param tsFileResource -given TsFile
    */
   public TsFileMetaData get(TsFileResource tsFileResource) throws IOException {
+    if (!cacheEnable) {
+      return TsFileMetadataUtils.getTsFileMetaData(tsFileResource);
+    }
 
     String path = tsFileResource.getFile().getPath();
     Object internPath = path.intern();
@@ -125,13 +131,17 @@ public class TsFileMetaDataCache {
 
   public void remove(TsFileResource resource) {
     synchronized (cache) {
-      cache.remove(resource);
+      if (cache != null) {
+        cache.remove(resource);
+      }
     }
   }
 
   public void clear() {
     synchronized (cache) {
-      cache.clear();
+      if (cache != null) {
+        cache.clear();
+      }
     }
   }
 

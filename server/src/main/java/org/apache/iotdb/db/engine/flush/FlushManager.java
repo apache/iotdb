@@ -19,16 +19,18 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FlushManager implements IService {
+public class FlushManager implements FlushManagerMBean, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(FlushManager.class);
 
@@ -40,17 +42,46 @@ public class FlushManager implements IService {
   public void start() throws StartupException {
     FlushSubTaskPoolManager.getInstance().start();
     FlushTaskPoolManager.getInstance().start();
+    try {
+      JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
+    } catch (Exception e) {
+      String errorMessage = String
+          .format("Failed to start %s because of %s", this.getID().getName(),
+              e.getMessage());
+      throw new StartupException(errorMessage, e);
+    }
   }
 
   @Override
   public void stop() {
     FlushSubTaskPoolManager.getInstance().stop();
     FlushTaskPoolManager.getInstance().stop();
+    JMXService.deregisterMBean(ServiceType.FLUSH_SERVICE.getJmxName());
   }
 
   @Override
   public ServiceType getID() {
     return ServiceType.FLUSH_SERVICE;
+  }
+
+  @Override
+  public int getNumberOfWorkingTasks() {
+    return flushPool.getWorkingTasksNumber();
+  }
+
+  @Override
+  public int getNumberOfPendingTasks() {
+    return flushPool.getWaitingTasksNumber();
+  }
+
+  @Override
+  public int getNumberOfWorkingSubTasks() {
+    return FlushSubTaskPoolManager.getInstance().getWorkingTasksNumber();
+  }
+
+  @Override
+  public int getNumberOfPendingSubTasks() {
+    return FlushSubTaskPoolManager.getInstance().getWaitingTasksNumber();
   }
 
   class FlushThread implements Runnable {
