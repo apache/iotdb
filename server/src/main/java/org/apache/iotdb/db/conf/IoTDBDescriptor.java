@@ -250,7 +250,7 @@ public class IoTDBDescriptor {
           conf.getWatermarkBitString()));
       conf.setWatermarkMethod(properties.getProperty(
           "watermark_method",
-          conf.getWatermarkMethodValue()));
+          conf.getWatermarkMethod()));
 
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);

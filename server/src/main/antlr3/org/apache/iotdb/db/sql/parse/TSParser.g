@@ -81,7 +81,6 @@ TOK_FLOAT_COMB;
 
 TOK_GRANT_WATERMARK_EMBEDDING;
 TOK_REVOKE_WATERMARK_EMBEDDING;
-TOK_WATERMARK_DETECT;
 
 /*
   BELOW IS THE METADATA TOKEN
@@ -212,8 +211,7 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap.put("CharSetLiteral", "\\'");
         xlateMap.put("KW_LIST", "LIST");
 
-        xlateMap.put("KW_WATERMARK_ENCODE", "WATERMARK_EMBEDDING");
-        xlateMap.put("KW_WATERMARK_DETECT", "WATERMARK_DETECT");
+        xlateMap.put("KW_WATERMARK_EMBEDDING", "WATERMARK_EMBEDDING");
     }
 
     public static Collection<String> getKeywords() {

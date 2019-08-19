@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.tools;
+package org.apache.iotdb.db.tools.watermark;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -28,13 +28,6 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.thrift.EncodingUtils;
 
-/**
- * Created by wangyihan on 2019/5/29 10:50 PM.
- * E-mail address is yihanwang22@163.com.
- * Copyright © 2017 wangyihan. All Rights Reserved.
- *
- * @author wangyihan
- */
 public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
 
   private String secretKey;
@@ -54,22 +47,6 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     this(conf.getWatermarkSecretKey(), conf.getWatermarkBitString());
     this.markRate = conf.getWatermarkParamMarkRate();
     this.maxBitPosition = conf.getWatermarkParamMaxRightBit();
-  }
-
-  public void setMarkRate(int markRate) {
-    this.markRate = markRate;
-  }
-
-  public void setGroupNumber(int groupNumber) {
-    this.groupNumber = groupNumber;
-  }
-
-  public void setMaxBitPosition(int maxBitPosition) {
-    this.maxBitPosition = maxBitPosition;
-  }
-
-  public void setMinBitPosition(int minBitPosition) {
-    this.minBitPosition = minBitPosition;
   }
 
   public static int hashMod(String val, Integer base) {
@@ -139,6 +116,9 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     }
     List<Field> fields = record.getFields();
     for (Field field : fields) {
+      if (field.getDataType() == null) {
+        continue;
+      }
       TSDataType dataType = field.getDataType();
       switch (dataType) {
         case INT32:

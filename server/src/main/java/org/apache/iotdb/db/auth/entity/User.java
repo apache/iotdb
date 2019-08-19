@@ -34,7 +34,7 @@ public class User {
   private List<PathPrivilege> privilegeList;
   private List<String> roleList;
 
-  private boolean useWaterMark = true;
+  private boolean useWaterMark = false; // default NO watermark
 
   /**
    * The latest time when the user is referenced. Reserved to provide session control or LRU

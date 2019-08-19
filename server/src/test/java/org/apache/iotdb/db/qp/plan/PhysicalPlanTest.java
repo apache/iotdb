@@ -464,14 +464,4 @@ public class PhysicalPlanTest {
     Assert.assertEquals(2, dataAuthPlan.getUsers().size());
     Assert.assertEquals(OperatorType.REVOKE_WATERMARK_EMBEDDING, dataAuthPlan.getOperatorType());
   }
-
-  @Test
-  public void testWatermarkDetect()
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    String sqlStr = "REVOKE WATERMARK_EMBEDDING from a,b";
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-    DataAuthPlan dataAuthPlan = (DataAuthPlan) plan;
-    Assert.assertEquals(2, dataAuthPlan.getUsers().size());
-    Assert.assertEquals(OperatorType.REVOKE_WATERMARK_EMBEDDING, dataAuthPlan.getOperatorType());
-  }
 }
