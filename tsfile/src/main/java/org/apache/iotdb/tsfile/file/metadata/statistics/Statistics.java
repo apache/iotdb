@@ -204,6 +204,34 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
+  public void updateStats(boolean[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(int[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(long[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(float[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(double[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(BigDecimal[] values) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void updateStats(Binary[] values) {
+    throw new UnsupportedOperationException();
+  }
+
   public void reset() {
   }
 

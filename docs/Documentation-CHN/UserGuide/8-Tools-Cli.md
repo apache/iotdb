@@ -37,12 +37,12 @@ IOTDB为用户提供CLI/Shell工具用于启动客户端和服务端程序。下
 Linux系统与MacOS系统启动命令如下：
 
 ```
-  Shell > ./bin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > ./sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 Windows系统启动命令如下：
 
 ```
-  Shell > \bin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > \sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 回车后即可成功启动客户端。启动后出现如图提示即为启动成功。
 ```
@@ -76,10 +76,10 @@ IoTDB>
 Linux系统与MacOS系统启动命令如下：
 
 ```
-  Shell >./bin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell >./sbin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 Windows系统启动命令如下：
 
 ```
-  Shell > \bin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > \sbin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```

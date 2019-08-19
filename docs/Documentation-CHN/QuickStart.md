@@ -66,12 +66,12 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 Linux系统与MacOS系统启动命令如下：
 
 ```
-> $IOTDB_HOME/bin/start-server.sh
+> $IOTDB_HOME/sbin/start-server.sh
 ```
 
 Windows系统启动命令如下：
 ```
-> $IOTDB_HOME\bin\start-server.bat
+> $IOTDB_HOME\sbin\start-server.bat
 ```
 
 当服务器输出log中包含ERROR输出时，服务器启动不成功。
@@ -88,12 +88,12 @@ IoTDB为用户提供多种与服务器交互的方式，您可以选择使用Cli
 
 Linux系统与MacOS系统启动命令如下：
 ```
-> $IOTDB_HOME/bin/start-client.sh -h 127.0.0.1 -p 6667 -u root
+> $IOTDB_HOME/sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root
 ```
 
 Windows系统启动命令如下：
 ```
-> $IOTDB_HOME\bin\start-client.bat -h 127.0.0.1 -p 6667 -u root
+> $IOTDB_HOME\sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root
 ```
 
 回车后输入root用户的密码，即可成功启动客户端。启动后出现如图提示即为启动成功。
@@ -294,14 +294,14 @@ quit normally
 
 ### 停止IoTDB
 #### 使用stop-server脚本强制停止
-用户可以使用$IOTDB_HOME/bin文件夹下的stop-server脚本停止IoTDB（注意，此停止方式为强制停止，若希望安全停止IoTDB，请使用Jconsole工具的停止方法）。
+用户可以使用$IOTDB_HOME/sbin文件夹下的stop-server脚本停止IoTDB（注意，此停止方式为强制停止，若希望安全停止IoTDB，请使用Jconsole工具的停止方法）。
 
 Linux系统与MacOS系统停止命令如下：
 ```
-> $IOTDB_HOME/bin/stop-server.sh
+> $IOTDB_HOME/sbin/stop-server.sh
 ```
 
 Windows系统停止命令如下：
 ```
-> $IOTDB_HOME\bin\stop-server.bat
+> $IOTDB_HOME\sbin\stop-server.bat
 ```
