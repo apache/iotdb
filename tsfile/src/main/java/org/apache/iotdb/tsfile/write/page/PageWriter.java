@@ -122,6 +122,76 @@ public class PageWriter {
   }
 
   /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, boolean[] values) {
+    for (int i = 0; i < timestamps.length; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, int[] values) {
+    for (int i = 0; i < timestamps.length; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, long[] values) {
+    for (int i = 0; i < timestamps.length; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, float[] values) {
+    for (int i = 0; i < timestamps.length; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, double[] values) {
+    for (int i = 0; i < timestamps.length; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, BigDecimal[] values) {
+    for (int i = 0; i < timestamps.length; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
+   * write time series into encoder
+   */
+  public void write(long[] timestamps, Binary[] values) {
+    for (int i = 0; i < timestamps.length; i++) {
+      timeEncoder.encode(timestamps[i], timeOut);
+      valueEncoder.encode(values[i], valueOut);
+    }
+  }
+
+  /**
    * flush all data remained in encoders.
    */
   private void prepareEndWriteOnePage() throws IOException {

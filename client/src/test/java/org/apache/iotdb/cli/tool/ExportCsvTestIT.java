@@ -52,9 +52,9 @@ public class ExportCsvTestIT extends AbstractScript{
         "````````````````````````````````````````````````",
         "Encounter an error when exporting data, error is: Connection Error, "
             + "please check whether the network is available or the server has started."};
-    String dir = getCurrentPath("cmd.exe", "/c", "echo %cd%");
+    String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "cli" + File.separator + "tools" + File.separator + "export-csv.bat",
+        dir + File.separator + "tools" + File.separator + "export-csv.bat",
         "-h", "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root", "-td", "./");
     testOutput(builder, output);
   }
@@ -66,9 +66,9 @@ public class ExportCsvTestIT extends AbstractScript{
         "------------------------------------------",
         "Encounter an error when exporting data, error is: Connection Error, "
             + "please check whether the network is available or the server has started."};
-    String dir = getCurrentPath("pwd");
+    String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
-        dir + File.separator + "cli" + File.separator + "tools" + File.separator + "export-csv.sh",
+        dir + File.separator + "tools" + File.separator + "export-csv.sh",
         "-h", "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root", "-td", "./");
     testOutput(builder, output);
   }

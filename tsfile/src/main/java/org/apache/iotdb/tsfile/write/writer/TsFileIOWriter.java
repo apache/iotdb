@@ -229,7 +229,7 @@ public class TsFileIOWriter {
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
     // get all measurementSchema of this TsFile
-    Map<String, MeasurementSchema> schemaDescriptors = schema.getAllMeasurementSchema();
+    Map<String, MeasurementSchema> schemaDescriptors = schema.getMeasurementSchemaMap();
     LOG.debug("get time series list:{}", schemaDescriptors);
 
     Map<String, TsDeviceMetadataIndex> tsDeviceMetadataIndexMap = flushTsDeviceMetaDataAndGetIndex(
