@@ -20,10 +20,7 @@ package org.apache.iotdb.db.script;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -51,19 +48,19 @@ public class EnvScriptIT {
   }
 
   private void testStartClientOnWindows(String suffix, String os) throws IOException {
-    String dir = getCurrentPath("cmd.exe", "/c", "echo %cd%");
+    String dir = getServerPath();
     final String output = "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
     String cmd =
-        dir + File.separator + "iotdb" + File.separator + "conf" + File.separator + "iotdb-env"
+        dir + File.separator + "conf" + File.separator + "iotdb-env"
             + suffix;
     ProcessBuilder startBuilder = new ProcessBuilder("cmd.exe", "/c", cmd);
     testOutput(dir, suffix, startBuilder, output, os);
   }
 
   private void testStartClientOnUnix(String suffix, String os) throws IOException {
-    String dir = getCurrentPath("pwd");
+    String dir = getServerPath();
     final String output = "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
-    String cmd = dir + File.separator + "iotdb" + File.separator + "conf" + File.separator + "iotdb-env"
+    String cmd = dir + File.separator + "conf" + File.separator + "iotdb-env"
             + suffix;
     ProcessBuilder builder = new ProcessBuilder("bash", cmd);
     testOutput(cmd, suffix, builder, output, os);
@@ -101,4 +98,25 @@ public class EnvScriptIT {
     String path = r.readLine();
     return path;
   }
+
+  protected String getServerPath() {
+    // This is usually always set by the JVM
+    File userDir = new File(System.getProperty("user.dir"));
+    if(!userDir.exists()) {
+      throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
+    }
+    File targetDir = new File(userDir, "target");
+    File[] files = targetDir.listFiles(new FileFilter() {
+      @Override
+      public boolean accept(File pathname) {
+        return pathname.isDirectory() && pathname.getName().startsWith("iotdb-server-");
+      }
+    });
+    if(files.length != 1) {
+      throw new RuntimeException(
+              "Exactly one directory starting with 'iotdb-server-' should have been found, but was " + files.length);
+    }
+    return files[0].getAbsolutePath();
+  }
+
 }

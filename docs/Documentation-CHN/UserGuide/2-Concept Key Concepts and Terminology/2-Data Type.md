@@ -32,7 +32,7 @@ IoTDB支持:
 
 一共六种数据类型。
 
-其中**FLOAT**与**DOUBLE**类型的序列，如果编码方式采用[RLE](/#/Documents/0.8.0/chap2/sec3)或[TS_2DIFF](/#/Documents/0.8.0/chap2/sec3)可以指定MAX_POINT_NUMBER，该项为浮点数的小数点后位数，具体指定方式请参见本文[第5.1节](/#/Documents/0.8.0/chap5/sec1)，若不指定则系统会根据配置文件tsfile-format.properties文件中的[float_precision项](/#/Documents/0.8.0/chap4/sec2)配置。
+其中**FLOAT**与**DOUBLE**类型的序列，如果编码方式采用[RLE](/#/Documents/0.8.0/chap2/sec3)或[TS_2DIFF](/#/Documents/0.8.0/chap2/sec3)可以指定MAX_POINT_NUMBER，该项为浮点数的小数点后位数，具体指定方式请参见本文[第5.1节](/#/Documents/0.8.0/chap5/sec1)，若不指定则系统会根据配置文件`tsfile-format.properties`文件中的[float_precision项](/#/Documents/0.8.0/chap4/sec2)配置。
 
 当系统中用户输入的数据类型与该时间序列的数据类型不对应时，系统会提醒类型错误，如下所示，二阶差分不支持布尔类型的编码：
 
