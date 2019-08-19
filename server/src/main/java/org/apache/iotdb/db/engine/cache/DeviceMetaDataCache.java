@@ -47,8 +47,8 @@ public class DeviceMetaDataCache {
 
   private static StorageEngine storageEngine = StorageEngine.getInstance();
 
-  private static final long MEMORY_THRESHOLD_IN_B = (long) (0.3 * config
-      .getAllocateMemoryForRead());
+  private static boolean cacheEnable = config.isMetaDataCacheEnable();
+  private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChumkMetaDataCache();
   /**
    * key: file path dot deviceId dot sensorId.
    * <p>
@@ -65,6 +65,9 @@ public class DeviceMetaDataCache {
   private long chunkMetaDataSize = 0;
 
   private DeviceMetaDataCache(long memoryThreshold) {
+    if (!cacheEnable) {
+      return;
+    }
     lruCache = new LRULinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
       @Override
       protected long calEntrySize(String key, List<ChunkMetaData> value) {
@@ -85,8 +88,15 @@ public class DeviceMetaDataCache {
    */
   public List<ChunkMetaData> get(TsFileResource resource, Path seriesPath)
       throws IOException {
-    String filePath = resource.getFile().getPath();
-    StringBuilder builder = new StringBuilder(filePath).append(".").append(seriesPath.getDevice());
+    if (!cacheEnable) {
+      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
+      TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
+          .getTsDeviceMetaData(resource, seriesPath, fileMetaData);
+      return TsFileMetadataUtils.getChunkMetaDataList(seriesPath.getMeasurement(), deviceMetaData);
+    }
+
+    StringBuilder builder = new StringBuilder(resource.getFile().getPath()).append(".").append(seriesPath
+        .getDevice());
     String pathDeviceStr = builder.toString();
     String key = builder.append(".").append(seriesPath.getMeasurement()).toString();
     Object devicePathObject = pathDeviceStr.intern();
@@ -119,7 +129,7 @@ public class DeviceMetaDataCache {
       TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
           .getTsDeviceMetaData(resource, seriesPath, fileMetaData);
       // If measurement isn't included in the tsfile, empty list is returned.
-      if(deviceMetaData == null){
+      if (deviceMetaData == null) {
         return new ArrayList<>();
       }
       Map<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
@@ -171,7 +181,9 @@ public class DeviceMetaDataCache {
    */
   public void clear() {
     synchronized (lruCache) {
-      lruCache.clear();
+      if (lruCache != null) {
+        lruCache.clear();
+      }
     }
   }
 
