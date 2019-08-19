@@ -39,6 +39,11 @@ public class IoTDBConfig {
   private String rpcAddress = "0.0.0.0";
 
   /**
+   * whether to use thrift compression.
+   */
+  private boolean rpcThriftCompressionEnable = false;
+
+  /**
    * Port which the JDBC server listens to.
    */
   private int rpcPort = 6667;
@@ -631,6 +636,14 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public boolean isRpcThriftCompressionEnable() {
+    return rpcThriftCompressionEnable;
+  }
+
+  public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
+    this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
   }
 
   public boolean isMetaDataCacheEnable() {
