@@ -124,8 +124,8 @@ public class PageWriter {
   /**
    * write time series into encoder
    */
-  public void write(long[] timestamps, boolean[] values) {
-    for (int i = 0; i < timestamps.length; i++) {
+  public void write(long[] timestamps, boolean[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
@@ -134,8 +134,8 @@ public class PageWriter {
   /**
    * write time series into encoder
    */
-  public void write(long[] timestamps, int[] values) {
-    for (int i = 0; i < timestamps.length; i++) {
+  public void write(long[] timestamps, int[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
@@ -144,8 +144,8 @@ public class PageWriter {
   /**
    * write time series into encoder
    */
-  public void write(long[] timestamps, long[] values) {
-    for (int i = 0; i < timestamps.length; i++) {
+  public void write(long[] timestamps, long[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
@@ -154,8 +154,8 @@ public class PageWriter {
   /**
    * write time series into encoder
    */
-  public void write(long[] timestamps, float[] values) {
-    for (int i = 0; i < timestamps.length; i++) {
+  public void write(long[] timestamps, float[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
@@ -164,8 +164,8 @@ public class PageWriter {
   /**
    * write time series into encoder
    */
-  public void write(long[] timestamps, double[] values) {
-    for (int i = 0; i < timestamps.length; i++) {
+  public void write(long[] timestamps, double[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
@@ -174,8 +174,8 @@ public class PageWriter {
   /**
    * write time series into encoder
    */
-  public void write(long[] timestamps, BigDecimal[] values) {
-    for (int i = 0; i < timestamps.length; i++) {
+  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
@@ -184,8 +184,8 @@ public class PageWriter {
   /**
    * write time series into encoder
    */
-  public void write(long[] timestamps, Binary[] values) {
-    for (int i = 0; i < timestamps.length; i++) {
+  public void write(long[] timestamps, Binary[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
       valueEncoder.encode(values[i], valueOut);
     }
