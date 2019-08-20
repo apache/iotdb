@@ -20,19 +20,17 @@ package org.apache.iotdb.jdbc;
 
 import java.math.BigDecimal;
 import java.sql.Date;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.SQLWarning;
-import java.sql.Statement;
-import java.sql.Time;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.sql.*;
+import java.util.*;
 
 public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
 
   public static final String GET_STRING_COLUMN = "COLUMN";
   public static final String GET_STRING_STORAGE_GROUP = "STORAGE_GROUP";
+  public static final String GET_STRING_TIMESERIES_NUM = "TIMESERIES_NUM";
+  public static final String GET_STRING_NODES_NUM = "NODE_NUM";
+  public static final String GET_STRING_NODE_PATH = "NODE_PATH";
+  public static final String GET_STRING_NODE_TIMESERIES_NUM = "NODE_TIMESERIES_NUM";
   public static final String GET_STRING_TIMESERIES_NAME = "Timeseries";
   public static final String GET_STRING_TIMESERIES_STORAGE_GROUP = "Storage Group";
   public static final String GET_STRING_TIMESERIES_DATATYPE = "DataType";
@@ -42,6 +40,13 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   private String currentColumn;
   private String currentStorageGroup;
   private List<String> currentTimeseries;
+  private List<String> timeseriesNumList;
+  private List<String> nodesNumList;
+  private Map<String, String> nodeTimeseriesNumMap;
+  private String timeseriesNum;
+  private String nodesNum;
+  private String currentNode;
+  private String currentNodeTimeseriesNum;
   // for display
   private int colCount; // the number of columns for show
   private String[] showLabels; // headers for show
@@ -51,26 +56,52 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   /**
    * Constructor used for the result of DatabaseMetadata.getColumns()
    */
-  public IoTDBMetadataResultSet(List<String> columns, Set<String> storageGroupSet,
-      List<List<String>> showTimeseriesList) throws SQLException {
-    if (columns != null) {
-      type = MetadataType.COLUMN;
-      colCount = 1;
-      showLabels = new String[]{"Column"};
-      columnItr = columns.iterator();
-    } else if (storageGroupSet != null) {
-      type = MetadataType.STORAGE_GROUP;
-      colCount = 1;
-      showLabels = new String[]{"Storage Group"};
-      columnItr = storageGroupSet.iterator();
-    } else if (showTimeseriesList != null) {
-      type = MetadataType.TIMESERIES;
-      colCount = 4;
-      showLabels = new String[]{GET_STRING_TIMESERIES_NAME, GET_STRING_TIMESERIES_STORAGE_GROUP,
+  public IoTDBMetadataResultSet(Object object, MetadataType type) throws SQLException {
+    this.type = type;
+    switch (type) {
+      case COLUMN:
+        List<String> columns = (List<String>) object;
+        colCount = 1;
+        showLabels = new String[]{"column"};
+        columnItr = columns.iterator();
+        break;
+      case STORAGE_GROUP:
+        Set<String> storageGroupSet = (Set<String>) object;
+        colCount = 1;
+        showLabels = new String[]{"Storage Group"};
+        columnItr = storageGroupSet.iterator();
+        break;
+      case TIMESERIES:
+        List<List<String>> showTimeseriesList = (List<List<String>>) object;
+        colCount = 4;
+        showLabels = new String[]{GET_STRING_TIMESERIES_NAME, GET_STRING_TIMESERIES_STORAGE_GROUP,
           GET_STRING_TIMESERIES_DATATYPE, GET_STRING_TIMESERIES_ENCODING};
-      columnItr = showTimeseriesList.iterator();
-    } else {
-      throw new SQLException("TsfileMetadataResultSet constructor is wrongly used.");
+        columnItr = showTimeseriesList.iterator();
+        break;
+      case COUNT_TIMESERIES:
+        String tsNum = (String) object.toString();
+        timeseriesNumList = new ArrayList<>();
+        timeseriesNumList.add(tsNum);
+        colCount = 1;
+        showLabels = new String[]{"count"};
+        columnItr = timeseriesNumList.iterator();
+        break;
+      case COUNT_NODES:
+        String ndNum = (String) object.toString();
+        nodesNumList = new ArrayList<>();
+        nodesNumList.add(ndNum);
+        colCount = 1;
+        showLabels = new String[]{"count"};
+        columnItr = nodesNumList.iterator();
+        break;
+      case COUNT_NODE_TIMESERIES:
+        nodeTimeseriesNumMap = (Map<String, String>) object;
+        colCount = 2;
+        showLabels = new String[]{"column", "count"};
+        columnItr = nodeTimeseriesNumMap.entrySet().iterator();
+        break;
+      default:
+        throw new SQLException("TsfileMetadataResultSet constructor is wrongly used.");
     }
   }
 
@@ -198,12 +229,29 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   public boolean next() throws SQLException {
     boolean hasNext = columnItr.hasNext();
     if (hasNext) {
-      if (type == MetadataType.STORAGE_GROUP) {
-        currentStorageGroup = (String) columnItr.next();
-      } else if (type == MetadataType.COLUMN) {
-        currentColumn = (String) columnItr.next();
-      } else {
-        currentTimeseries = (List<String>) columnItr.next();
+      switch (type) {
+        case STORAGE_GROUP:
+          currentStorageGroup = (String) columnItr.next();
+          break;
+        case TIMESERIES:
+          currentTimeseries = (List<String>) columnItr.next();
+          break;
+        case COLUMN:
+          currentColumn = (String) columnItr.next();
+          break;
+        case COUNT_TIMESERIES:
+          timeseriesNum = (String) columnItr.next();
+          break;
+        case COUNT_NODES:
+          nodesNum = (String) columnItr.next();
+          break;
+        case COUNT_NODE_TIMESERIES:
+          Map.Entry pair = (Map.Entry) columnItr.next();
+          currentNode = (String) pair.getKey();
+          currentNodeTimeseriesNum = (String) pair.getValue();
+          break;
+        default:
+          break;
       }
     }
     return hasNext;
@@ -252,6 +300,17 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
           return getString(GET_STRING_COLUMN);
         }
         break;
+      case COUNT_TIMESERIES:
+        if (columnIndex == 1) {
+          return getString(GET_STRING_TIMESERIES_NUM);
+        }
+        break;
+      case COUNT_NODES:
+        if (columnIndex == 1) {
+          return getString(GET_STRING_NODES_NUM);
+        }
+      case COUNT_NODE_TIMESERIES:
+        return columnIndex == 1 ? getString(GET_STRING_NODE_PATH) : getString(GET_STRING_NODE_TIMESERIES_NUM);
       default:
         break;
     }
@@ -274,6 +333,14 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
         return currentTimeseries.get(3);
       case GET_STRING_COLUMN:
         return currentColumn;
+      case GET_STRING_TIMESERIES_NUM:
+        return timeseriesNum;
+      case GET_STRING_NODES_NUM:
+        return nodesNum;
+      case GET_STRING_NODE_PATH:
+        return currentNode;
+      case GET_STRING_NODE_TIMESERIES_NUM:
+        return currentNodeTimeseriesNum;
       default:
         break;
     }
@@ -311,6 +378,6 @@ public class IoTDBMetadataResultSet extends IoTDBQueryResultSet {
   }
 
   public enum MetadataType {
-    STORAGE_GROUP, TIMESERIES, COLUMN
+    STORAGE_GROUP, TIMESERIES, COLUMN, COUNT_TIMESERIES, COUNT_NODES, COUNT_NODE_TIMESERIES
   }
 }
