@@ -94,8 +94,7 @@ public class TestHelper {
   }
 
   public static ChunkGroupMetaData createEmptySeriesChunkGroupMetaData() {
-    ChunkGroupMetaData metaData = new ChunkGroupMetaData("d1", new ArrayList<>(), 0);
-    return metaData;
+    return new ChunkGroupMetaData("d1", new ArrayList<>(), 0);
   }
 
   public static ChunkGroupMetaData createSimpleChunkGroupMetaData() {
@@ -118,10 +117,9 @@ public class TestHelper {
   }
 
   public static MeasurementSchema createSimpleMeasurementSchema() {
-    MeasurementSchema timeSeries = new MeasurementSchema(TimeSeriesMetadataTest.measurementUID,
+    return new MeasurementSchema(TimeSeriesMetadataTest.measurementUID,
         TSDataType.INT64,
         TSEncoding.RLE);
-    return timeSeries;
   }
 
   public static TsDigest createSimpleTsDigest() {
@@ -144,9 +142,8 @@ public class TestHelper {
   public static PageHeader createSimplePageHeader() {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
-    PageHeader header = new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,
+    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,
         PageHeaderTest.COMPRESSED_SIZE, PageHeaderTest.NUM_OF_VALUES,
         statistics, PageHeaderTest.MAX_TIMESTAMO, PageHeaderTest.MIN_TIMESTAMO);
-    return header;
   }
 }
