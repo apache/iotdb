@@ -91,24 +91,25 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   private void writeByDataType(
           RowBatch rowBatch, String measurementId, TSDataType dataType, int index) throws IOException {
+    int batchSize = rowBatch.batchSize;
     switch (dataType) {
       case INT32:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (int[]) rowBatch.values[index]);
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (int[]) rowBatch.values[index], batchSize);
         break;
       case INT64:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (long[]) rowBatch.values[index]);
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (long[]) rowBatch.values[index], batchSize);
         break;
       case FLOAT:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (float[]) rowBatch.values[index]);
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (float[]) rowBatch.values[index], batchSize);
         break;
       case DOUBLE:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (double[]) rowBatch.values[index]);
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (double[]) rowBatch.values[index], batchSize);
         break;
       case BOOLEAN:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (boolean[]) rowBatch.values[index]);
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (boolean[]) rowBatch.values[index], batchSize);
         break;
       case TEXT:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (Binary[]) rowBatch.values[index]);
+        chunkWriters.get(measurementId).write(rowBatch.timestamps, (Binary[]) rowBatch.values[index], batchSize);
         break;
       default:
         throw new UnSupportedDataTypeException(

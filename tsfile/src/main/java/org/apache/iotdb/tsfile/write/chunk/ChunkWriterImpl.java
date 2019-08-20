@@ -200,85 +200,85 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long[] timestamps, int[] values) {
+  public void write(long[] timestamps, int[] values, int batchSize) {
     this.time = timestamps[timestamps.length - 1];
     valueCountInOnePage += timestamps.length;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values);
+    dataPageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
-  public void write(long[] timestamps, long[] values) {
+  public void write(long[] timestamps, long[] values, int batchSize) {
     this.time = timestamps[timestamps.length - 1];
     valueCountInOnePage += timestamps.length;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values);
+    dataPageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
-  public void write(long[] timestamps, boolean[] values) {
+  public void write(long[] timestamps, boolean[] values, int batchSize) {
     this.time = timestamps[timestamps.length - 1];
     valueCountInOnePage += timestamps.length;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values);
+    dataPageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
-  public void write(long[] timestamps, float[] values) {
+  public void write(long[] timestamps, float[] values, int batchSize) {
     this.time = timestamps[timestamps.length - 1];
     valueCountInOnePage += timestamps.length;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values);
+    dataPageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
-  public void write(long[] timestamps, double[] values) {
+  public void write(long[] timestamps, double[] values, int batchSize) {
     this.time = timestamps[timestamps.length - 1];
     valueCountInOnePage += timestamps.length;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values);
+    dataPageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
-  public void write(long[] timestamps, BigDecimal[] values) {
+  public void write(long[] timestamps, BigDecimal[] values, int batchSize) {
     this.time = timestamps[timestamps.length - 1];
     valueCountInOnePage += timestamps.length;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values);
+    dataPageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
-  public void write(long[] timestamps, Binary[] values) {
+  public void write(long[] timestamps, Binary[] values, int batchSize) {
     this.time = timestamps[timestamps.length - 1];
     valueCountInOnePage += timestamps.length;
     if (minTimestamp == Long.MIN_VALUE) {
       minTimestamp = timestamps[0];
     }
-    dataPageWriter.write(timestamps, values);
+    dataPageWriter.write(timestamps, values, batchSize);
     pageStatistics.updateStats(values);
     checkPageSizeAndMayOpenANewPage();
   }

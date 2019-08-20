@@ -59,7 +59,7 @@ public class TsFileWriteWithRowBatch {
       RowBatch rowBatch = fileSchema.createRowBatch("device_1");
 
       long[] timestamps = rowBatch.timestamps;
-      Object[] sensors = rowBatch.sensors;
+      Object[] values = rowBatch.values;
 
       long timestamp = 1;
       long value = 1000000L;
@@ -68,11 +68,11 @@ public class TsFileWriteWithRowBatch {
         int row = rowBatch.batchSize++;
         timestamps[row] = timestamp++;
         for (int i = 0; i < sensorNum; i++) {
-          long[] sensor = (long[]) sensors[i];
+          long[] sensor = (long[]) values[i];
           sensor[row] = value;
         }
         // write RowBatch to TsFile
-        if (rowBatch.batchSize == rowBatch.getBatchMaxSize()) {
+        if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
           tsFileWriter.write(rowBatch);
           rowBatch.reset();
         }
