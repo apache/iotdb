@@ -221,6 +221,7 @@ public class TsFileResource {
     return processor;
   }
 
+  @Deprecated
   public void updateTime(String deviceId, long time) {
     startTimeMap.putIfAbsent(deviceId, time);
     Long endTime = endTimeMap.get(deviceId);
