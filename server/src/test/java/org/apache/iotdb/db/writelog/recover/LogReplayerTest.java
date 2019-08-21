@@ -27,13 +27,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -73,7 +73,8 @@ public class LogReplayerTest {
 
     try {
       for (int i = 0; i < 5; i++) {
-        schema.registerMeasurement(new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
+        schema.registerMeasurement(
+            new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
       }
 
       LogReplayer replayer = new LogReplayer(logNodePrefix, tsFile.getPath(), modFile,
@@ -81,10 +82,12 @@ public class LogReplayerTest {
 
       WriteLogNode node =
           MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
-      for (int i = 0; i < 5; i++) {
+      node.write(new InsertPlan("device0", 100, "sensor0", String.valueOf(0)));
+      node.write(new InsertPlan("device0", 2, "sensor1", String.valueOf(0)));
+      for (int i = 1; i < 5; i++) {
         node.write(new InsertPlan("device" + i, i, "sensor" + i, String.valueOf(i)));
       }
-      DeletePlan deletePlan = new DeletePlan(3, new Path("device0", "sensor0"));
+      DeletePlan deletePlan = new DeletePlan(200, new Path("device0", "sensor0"));
       node.write(deletePlan);
       node.close();
 
@@ -107,11 +110,13 @@ public class LogReplayerTest {
 
       Modification[] mods = modFile.getModifications().toArray(new Modification[0]);
       assertEquals(1, mods.length);
-      assertEquals(new Deletion(new Path("device0", "sensor0"), 5, 3), mods[0]);
+      assertEquals(new Deletion(new Path("device0", "sensor0"), 5, 200), mods[0]);
 
-      for (int i = 0; i < 5; i++) {
-        assertEquals(i, (long)tsFileResource.getStartTimeMap().get("device" + i));
-        assertEquals(i, (long)tsFileResource.getEndTimeMap().get("device" + i));
+      assertEquals(2, (long) tsFileResource.getStartTimeMap().get("device0"));
+      assertEquals(100, (long) tsFileResource.getEndTimeMap().get("device0"));
+      for (int i = 1; i < 5; i++) {
+        assertEquals(i, (long) tsFileResource.getStartTimeMap().get("device" + i));
+        assertEquals(i, (long) tsFileResource.getEndTimeMap().get("device" + i));
       }
     } finally {
       modFile.close();
