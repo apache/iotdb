@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.sync.sender.transfer;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import org.apache.iotdb.db.exception.SyncConnectionException;
+import org.apache.thrift.TException;
 
 /**
  * SyncSender defines the methods of a sender in sync module.
@@ -45,22 +47,20 @@ public interface IDataTransferManager {
   /**
    * Make file snapshots before sending files.
    */
-  Set<String> makeFileSnapshot(Set<String> validFiles) throws IOException;
+  Set<String> makeFileSnapshot(Set<String> validFiles);
 
   /**
    * Send schema file to receiver.
    */
-  void syncSchema() throws SyncConnectionException;
+  void syncSchema() throws SyncConnectionException, TException;
+
+  void syncDeletedFilesName(String sgName, Set<File> deletedFilesName)
+      throws SyncConnectionException;
 
   /**
    * For all valid files, send it to receiver side and load these data in receiver.
    */
-  void syncAllData() throws SyncConnectionException;
-
-  /**
-   * Close the socket after sending files.
-   */
-  boolean afterSynchronization() throws SyncConnectionException;
+  void syncDataFilesInOneGroup(String sgName, Set<File> deletedFilesName) throws SyncConnectionException;
 
   /**
    * Execute a sync task.

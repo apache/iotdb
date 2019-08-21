@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +37,8 @@ public class SyncSenderDescriptor {
     loadProps();
   }
 
-  public static final SyncSenderDescriptor getInstance() {
-    return PostBackDescriptorHolder.INSTANCE;
+  public static SyncSenderDescriptor getInstance() {
+    return SyncSenderDescriptorHolder.INSTANCE;
   }
 
   public SyncSenderConfig getConfig() {
@@ -54,7 +53,6 @@ public class SyncSenderDescriptor {
    * load an properties file and set sync config variables
    */
   private void loadProps() {
-    conf.init();
     InputStream inputStream;
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
@@ -90,42 +88,20 @@ public class SyncSenderDescriptor {
       conf.setSyncPeriodInSecond(Integer.parseInt(properties
           .getProperty("sync_period_in_second",
               Integer.toString(conf.getSyncPeriodInSecond()))));
-      conf.setSchemaPath(properties.getProperty("iotdb_schema_directory", conf.getSchemaPath()));
-      conf.setDataDirectory(
-          properties.getProperty("iotdb_bufferWrite_directory", conf.getDataDirectory()));
-      String dataDirectory = conf.getDataDirectory();
-      if (dataDirectory.length() > 0
-          && dataDirectory.charAt(dataDirectory.length() - 1) != File.separatorChar) {
-        dataDirectory += File.separatorChar;
-      }
-      conf.setUuidPath(
-          dataDirectory + Constans.SYNC_CLIENT + File.separatorChar + Constans.UUID_FILE_NAME);
-      conf.setLastFileInfo(
-          dataDirectory + Constans.SYNC_CLIENT + File.separatorChar
-              + Constans.LAST_LOCAL_FILE_NAME);
-      String[] sequenceFileDirectory = conf.getSeqFileDirectory();
-      String[] snapshots = new String[conf.getSeqFileDirectory().length];
-      for (int i = 0; i < conf.getSeqFileDirectory().length; i++) {
-        sequenceFileDirectory[i] = FilePathUtils.regularizePath(sequenceFileDirectory[i]);
-        snapshots[i] = sequenceFileDirectory[i] + Constans.SYNC_CLIENT + File.separatorChar
-            + Constans.DATA_SNAPSHOT_NAME + File.separatorChar;
-      }
-      conf.setSeqFileDirectory(sequenceFileDirectory);
-      conf.setSnapshotPaths(snapshots);
     } catch (IOException e) {
-      logger.warn("Cannot load config file because {}, use default configuration", e);
+      logger.warn("Cannot load config file, use default configuration.", e);
     } catch (Exception e) {
-      logger.warn("Error format in config file because {}, use default configuration", e);
+      logger.warn("Error format in config file, use default configuration.", e);
     } finally {
       try {
         inputStream.close();
       } catch (IOException e) {
-        logger.error("Fail to close sync config file input stream because ", e);
+        logger.error("Fail to close sync config file input stream.", e);
       }
     }
   }
 
-  private static class PostBackDescriptorHolder {
+  private static class SyncSenderDescriptorHolder {
 
     private static final SyncSenderDescriptor INSTANCE = new SyncSenderDescriptor();
   }

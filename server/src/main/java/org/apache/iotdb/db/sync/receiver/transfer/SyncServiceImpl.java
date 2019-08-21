@@ -45,10 +45,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
@@ -57,6 +57,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.service.sync.thrift.ResultStatus;
 import org.apache.iotdb.service.sync.thrift.SyncDataStatus;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -73,6 +74,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,22 +88,13 @@ public class SyncServiceImpl implements SyncService.Iface {
    **/
   private static final MManager metadataManger = MManager.getInstance();
 
-  private static final String SYNC_SERVER = Constans.SYNC_SERVER;
+  private static final String SYNC_SERVER = Constans.SYNC_RECEIVER;
 
-  private ThreadLocal<String> uuid = new ThreadLocal<>();
   /**
    * String means storage group,List means the set of new files(path) in local IoTDB and String
    * means path of new Files
    **/
   private ThreadLocal<Map<String, List<String>>> fileNodeMap = new ThreadLocal<>();
-  /**
-   * Map String1 means timeseries String2 means path of new Files, long means startTime
-   **/
-  private ThreadLocal<Map<String, Map<String, Long>>> fileNodeStartTime = new ThreadLocal<>();
-  /**
-   * Map String1 means timeseries String2 means path of new Files, long means endTime
-   **/
-  private ThreadLocal<Map<String, Map<String, Long>>> fileNodeEndTime = new ThreadLocal<>();
 
   /**
    * Total num of files that needs to be loaded
@@ -131,28 +124,41 @@ public class SyncServiceImpl implements SyncService.Iface {
   /**
    * Sync folder path of server
    **/
-  private String syncFolderPath;
+  private ThreadLocal<String> syncFolderPath = new ThreadLocal<>();
 
   /**
    * Sync data path of server
    */
-  private String syncDataPath;
+  private ThreadLocal<String> syncDataPath = new ThreadLocal<>();
+
+  private ThreadLocal<String> currentSG = new ThreadLocal<>();
+
+
+  /**
+   * Verify IP address of sender
+   */
+  @Override
+  public ResultStatus checkIdentity(String ipAddress) {
+    Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
+    initPath();
+    return SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress) ? ResultStatus.SUCCESS
+        : ResultStatus.FAILURE;
+  }
 
   /**
    * Init threadLocal variable and delete old useless files.
    */
   @Override
-  public boolean init(String storageGroup) {
+  public ResultStatus init(String storageGroup) {
     logger.info("Sync process starts to receive data of storage group {}", storageGroup);
+    currentSG.set(storageGroup);
     fileNum.set(0);
     fileNodeMap.set(new HashMap<>());
-    fileNodeStartTime.set(new HashMap<>());
-    fileNodeEndTime.set(new HashMap<>());
     try {
       FileUtils.deleteDirectory(new File(syncDataPath));
     } catch (IOException e) {
       logger.error("cannot delete directory {} ", syncFolderPath);
-      return false;
+      return ResultStatus.FAILURE;
     }
     for (String bufferWritePath : bufferWritePaths) {
       bufferWritePath = FilePathUtils.regularizePath(bufferWritePath);
@@ -163,22 +169,11 @@ public class SyncServiceImpl implements SyncService.Iface {
           FileUtils.deleteDirectory(backupDirectory);
         } catch (IOException e) {
           logger.error("cannot delete directory {} ", syncFolderPath);
-          return false;
+          return ResultStatus.FAILURE;
         }
       }
     }
-    return true;
-  }
-
-  /**
-   * Verify IP address of sender
-   */
-  @Override
-  public boolean checkIdentity(String uuid, String ipAddress) {
-    Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
-    this.uuid.set(uuid);
-    initPath();
-    return SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress);
+    return ResultStatus.SUCCESS;
   }
 
   /**
@@ -240,6 +235,16 @@ public class SyncServiceImpl implements SyncService.Iface {
       }
     }
     return md5OfReceiver;
+  }
+
+  @Override
+  public String checkDataMD5(String md5) throws TException {
+    return null;
+  }
+
+  @Override
+  public void endSync() throws TException {
+
   }
 
   /**

@@ -18,18 +18,27 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
+import java.io.File;
+import java.io.IOException;
+
 public interface ISyncSenderLogger {
 
-  void startSyncDeletedFilesName();
+  void startSync() throws IOException;
 
-  void finishSyncDeletedFileName(String fileName);
+  void endSync() throws IOException;
 
-  void endSyncDeletedFilsName();
+  void startSyncDeletedFilesName() throws IOException;
 
-  void startSyncTsFiles();
+  void finishSyncDeletedFileName(File file) throws IOException;
 
-  void finishSyncTsfile(String fileName);
+  void endSyncDeletedFilsName() throws IOException;
 
-  void endSyncTsFiles();
+  void startSyncTsFiles() throws IOException;
+
+  void finishSyncTsfile(File file) throws IOException;
+
+  void endSyncTsFiles() throws IOException;
+
+  void close() throws IOException;
 
 }

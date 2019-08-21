@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 public class SyncFileManagerTest {
 
-  private static final String POST_BACK_DIRECTORY_TEST = Constans.SYNC_CLIENT + File.separator;
+  private static final String POST_BACK_DIRECTORY_TEST = Constans.SYNC_SENDER + File.separator;
   private static final String LAST_FILE_INFO_TEST =
       POST_BACK_DIRECTORY_TEST + Constans.LAST_LOCAL_FILE_NAME;
   private static final String SENDER_FILE_PATH_TEST = POST_BACK_DIRECTORY_TEST + "data";

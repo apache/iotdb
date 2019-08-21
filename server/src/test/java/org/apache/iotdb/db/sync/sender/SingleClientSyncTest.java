@@ -147,7 +147,7 @@ public class SingleClientSyncTest {
       "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
       "insert into root.test.d1.g0(timestamp,s0) values(400,1050)", "merge", "flush",};
   private boolean testFlag = Constant.testFlag;
-  private static final String SYNC_CLIENT = Constans.SYNC_CLIENT;
+  private static final String SYNC_CLIENT = Constans.SYNC_SENDER;
   private static final Logger logger = LoggerFactory.getLogger(SingleClientSyncTest.class);
 
   public static void main(String[] args) throws Exception {
@@ -159,7 +159,7 @@ public class SingleClientSyncTest {
   }
 
   public void setConfig() {
-    config.setUuidPath(
+    config.setSenderPath(
         config.getDataDirectory() + SYNC_CLIENT + File.separator + Constans.UUID_FILE_NAME);
     config.setLastFileInfo(
         config.getDataDirectory() + SYNC_CLIENT + File.separator + Constans.LAST_LOCAL_FILE_NAME);
