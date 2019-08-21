@@ -24,10 +24,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -123,7 +123,10 @@ public class LogReplayer {
           !acceptDuplication) {
         return;
       }
-      tempStartTimeMap.putIfAbsent(insertPlan.getDeviceId(), insertPlan.getTime());
+      Long startTime = tempStartTimeMap.get(insertPlan.getDeviceId());
+      if (startTime == null || startTime > insertPlan.getTime()) {
+        tempStartTimeMap.put(insertPlan.getDeviceId(), insertPlan.getTime());
+      }
       Long endTime = tempEndTimeMap.get(insertPlan.getDeviceId());
       if (endTime == null || endTime < insertPlan.getTime()) {
         tempEndTimeMap.put(insertPlan.getDeviceId(), insertPlan.getTime());
