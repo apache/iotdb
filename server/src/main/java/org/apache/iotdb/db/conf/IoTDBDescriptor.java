@@ -120,6 +120,9 @@ public class IoTDBDescriptor {
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
+      conf.setRpcThriftCompressionEnable(Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
+              Boolean.toString(conf.isRpcThriftCompressionEnable()))));
+
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
@@ -129,6 +132,10 @@ public class IoTDBDescriptor {
       conf.setEnableParameterAdapter(
           Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
               Boolean.toString(conf.isEnableParameterAdapter()))));
+
+      conf.setMetaDataCacheEnable(
+          Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
+              Boolean.toString(conf.isMetaDataCacheEnable()))));
 
       initMemoryAllocate(properties);
 
@@ -263,6 +270,33 @@ public class IoTDBDescriptor {
       conf.setAllocateMemoryForRead(
           maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
     }
+
+    if (!conf.isMetaDataCacheEnable()) {
+      return;
+    }
+
+    String queryMemoryAllocateProportion = properties
+        .getProperty("filemeta_chunkmeta_free_memory_proportion");
+    if (queryMemoryAllocateProportion != null) {
+      String[] proportions = queryMemoryAllocateProportion.split(":");
+      int proportionSum = 0;
+      for (String proportion : proportions) {
+        proportionSum += Integer.parseInt(proportion.trim());
+      }
+      long maxMemoryAvailable = conf.getAllocateMemoryForRead();
+      try {
+        conf.setAllocateMemoryForFileMetaDataCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+        conf.setAllocateMemoryForChumkMetaDataCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "
+                + queryMemoryAllocateProportion);
+      }
+
+    }
+
   }
 
   private static class IoTDBDescriptorHolder {

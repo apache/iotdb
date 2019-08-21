@@ -46,8 +46,8 @@ public class DeviceMetaDataCache {
 
   private static StorageEngine storageEngine = StorageEngine.getInstance();
 
-  private static final long MEMORY_THRESHOLD_IN_B = (long) (0.3 * config
-      .getAllocateMemoryForRead());
+  private static boolean cacheEnable = config.isMetaDataCacheEnable();
+  private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChumkMetaDataCache();
   /**
    * key: file path dot deviceId dot sensorId.
    * <p>
@@ -64,6 +64,9 @@ public class DeviceMetaDataCache {
   private long chunkMetaDataSize = 0;
 
   private DeviceMetaDataCache(long memoryThreshold) {
+    if (!cacheEnable) {
+      return;
+    }
     lruCache = new LRULinkedHashMap<String, List<ChunkMetaData>>(memoryThreshold, true) {
       @Override
       protected long calEntrySize(String key, List<ChunkMetaData> value) {
@@ -84,6 +87,13 @@ public class DeviceMetaDataCache {
    */
   public List<ChunkMetaData> get(String filePath, Path seriesPath)
       throws IOException {
+    if (!cacheEnable) {
+      TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
+      TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
+          .getTsDeviceMetaData(filePath, seriesPath, fileMetaData);
+      return TsFileMetadataUtils.getChunkMetaDataList(seriesPath.getMeasurement(), deviceMetaData);
+    }
+
     StringBuilder builder = new StringBuilder(filePath).append(".").append(seriesPath.getDevice());
     String pathDeviceStr = builder.toString();
     String key = builder.append(".").append(seriesPath.getMeasurement()).toString();
@@ -117,7 +127,7 @@ public class DeviceMetaDataCache {
       TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
           .getTsDeviceMetaData(filePath, seriesPath, fileMetaData);
       // If measurement isn't included in the tsfile, empty list is returned.
-      if(deviceMetaData == null){
+      if (deviceMetaData == null) {
         return new ArrayList<>();
       }
       Map<Path, List<ChunkMetaData>> chunkMetaData = TsFileMetadataUtils
@@ -138,7 +148,7 @@ public class DeviceMetaDataCache {
   }
 
   /**
-   * calculate the most frequently query sensors set.
+   * calculate the most frequently query measurements set.
    *
    * @param seriesPath the series to be queried in a query statements.
    */
@@ -169,7 +179,9 @@ public class DeviceMetaDataCache {
    */
   public void clear() {
     synchronized (lruCache) {
-      lruCache.clear();
+      if (lruCache != null) {
+        lruCache.clear();
+      }
     }
   }
 

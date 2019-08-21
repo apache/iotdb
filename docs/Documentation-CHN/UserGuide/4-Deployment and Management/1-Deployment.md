@@ -65,9 +65,9 @@ Shell > tar -zxf iotdb-<version>.tar.gz # For Linux or MacOS
 解压后文件夹内容见图：
 
 ```
-iotdb/     <-- root path
+server/     <-- root path
 |
-+- bin/       <-- script files
++- sbin/       <-- script files
 |
 +- conf/      <-- configuration files
 |
@@ -78,24 +78,12 @@ iotdb/     <-- root path
 
 ### 使用源码编译
 
-您还可以使用从Git仓库克隆源码进行编译的方式安装IoTDB，具体操作步骤如下：
+您可以获取已发布的源码https://iotdb.apache.org/#/Download，或者从git仓库获取https://github.com/apache/incubator-iotdb/tree/master
+
+源码克隆后，进入到源码文件夹目录下，使用以下命令进行编译：
 
 ```
-Shell > git clone https://github.com/apache/incubator-iotdb.git
-```
-
-或者：
-
-```
-Shell > git clone git@github.com:apache/incubator-iotdb.git
-```
-
->注意：当前为未发布版本，需要获取权限后才可克隆源码，如需使用源码编译，请联系IoTDB。
-
-步骤三：源码克隆后，进入到源码文件夹目录下，使用以下命令进行编译：
-
-```
-> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
+> mvn clean package -pl server -am -Dmaven.test.skip=true
 ```
 
 成功后，可以在终端看到如下信息:
@@ -104,11 +92,11 @@ Shell > git clone git@github.com:apache/incubator-iotdb.git
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Summary:
 [INFO]
-[INFO] IoTDB Root ......................................... SUCCESS [  7.020 s]
-[INFO] TsFile ............................................. SUCCESS [ 10.486 s]
-[INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
-[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
-[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] Apache IoTDB (incubating) Project Parent POM ....... SUCCESS [  6.405 s]
+[INFO] TsFile ............................................. SUCCESS [ 10.435 s]
+[INFO] Service-rpc ........................................ SUCCESS [  4.170 s]
+[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.252 s]
+[INFO] IoTDB Server ....................................... SUCCESS [  8.072 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
@@ -121,7 +109,7 @@ Shell > git clone git@github.com:apache/incubator-iotdb.git
 ```
 $IOTDB_HOME/
 |
-+- bin/       <-- script files
++- sbin/       <-- script files
 |
 +- conf/      <-- configuration files
 |
