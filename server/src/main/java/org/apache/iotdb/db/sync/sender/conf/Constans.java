@@ -30,9 +30,9 @@ public class Constans {
   public static final String LOCK_FILE_NAME = "sync_lock";
   public static final String SCHEMA_POS_FILE_NAME = "sync_schema_pos";
   public static final String LAST_LOCAL_FILE_NAME = "last_local_files.txt";
+  public static final String CURRENT_LOCAL_FILE_NAME = "current_local_files.txt";
   public static final String DATA_SNAPSHOT_NAME = "snapshot";
   public static final String SYNC_LOG_NAME = "sync.log";
-  public static final String CURRENT_SYNC_LOG_NAME = "current_sync.log";
 
   public static final String MESSAGE_DIGIT_NAME = "MD5";
   public static final String SYNC_DIR_NAME_SEPARATOR = "_";

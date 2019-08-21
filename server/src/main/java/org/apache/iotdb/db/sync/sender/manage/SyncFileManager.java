@@ -125,15 +125,6 @@ public class SyncFileManager implements ISyncFileManager {
     }
   }
 
-  @Override
-  public void updateLastLocalFiles(File lastLocalFile, Set<String> localFiles) {
-
-  }
-
-  public Map<String, Set<File>> getCurrentSealedLocalFilesMap() {
-    return currentSealedLocalFilesMap;
-  }
-
   public Map<String, Set<File>> getLastLocalFilesMap() {
     return lastLocalFilesMap;
   }

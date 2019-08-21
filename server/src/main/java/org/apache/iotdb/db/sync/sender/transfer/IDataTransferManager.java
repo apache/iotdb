@@ -45,22 +45,18 @@ public interface IDataTransferManager {
   boolean confirmIdentity(String uuidPath) throws SyncConnectionException, IOException;
 
   /**
-   * Make file snapshots before sending files.
-   */
-  Set<String> makeFileSnapshot(Set<String> validFiles);
-
-  /**
    * Send schema file to receiver.
    */
   void syncSchema() throws SyncConnectionException, TException;
 
   void syncDeletedFilesName(String sgName, Set<File> deletedFilesName)
-      throws SyncConnectionException;
+      throws SyncConnectionException, IOException;
 
   /**
    * For all valid files, send it to receiver side and load these data in receiver.
    */
-  void syncDataFilesInOneGroup(String sgName, Set<File> deletedFilesName) throws SyncConnectionException;
+  void syncDataFilesInOneGroup(String sgName, Set<File> deletedFilesName)
+      throws SyncConnectionException, IOException;
 
   /**
    * Execute a sync task.

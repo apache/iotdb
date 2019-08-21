@@ -20,8 +20,6 @@ package org.apache.iotdb.db.sync.sender.manage;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
 
 public interface ISyncFileManager {
 
@@ -30,6 +28,4 @@ public interface ISyncFileManager {
   void getLastLocalFiles(File lastLocalFile) throws IOException;
 
   void getValidFiles(String dataDir) throws IOException;
-
-  void updateLastLocalFiles(File lastLocalFile, Set<String> localFiles);
 }

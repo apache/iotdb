@@ -1,16 +1,4 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements.  See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with the License.  You may obtain
- * a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language
- * governing permissions and limitations under the License.
- */
+
 package org.apache.iotdb.db.sync.sender.transfer;
 
 import java.io.BufferedReader;
@@ -18,8 +6,6 @@ import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -33,12 +19,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
@@ -50,10 +34,10 @@ import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.sender.conf.SyncSenderDescriptor;
 import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
+import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.service.sync.thrift.ResultStatus;
-import org.apache.iotdb.service.sync.thrift.SyncDataStatus;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
@@ -91,7 +75,7 @@ public class DataTransferManager implements IDataTransferManager {
 
   private Map<String, Set<File>> sucessSyncedFilesMap;
 
-  private Map<String, Set<File>> successDeleyedFilesMap;
+  private Map<String, Set<File>> successDeletedFilesMap;
 
   private Map<String, Set<File>> lastLocalFilesMap;
 
@@ -101,11 +85,6 @@ public class DataTransferManager implements IDataTransferManager {
   private volatile boolean syncStatus = false;
 
   private SyncSenderLogger syncLog;
-
-  /**
-   * Key means storage group, Set means corresponding tsfiles
-   **/
-  private Map<String, Set<String>> validFileSnapshot = new HashMap<>();
 
   private SyncFileManager syncFileManager = SyncFileManager.getInstance();
 
@@ -129,6 +108,53 @@ public class DataTransferManager implements IDataTransferManager {
     fileSenderImpl.startMonitor();
     fileSenderImpl.startTimedTask();
   }
+
+
+  /**
+   * The method is to verify whether the client lock file is locked or not, ensuring that only one
+   * client is running.
+   */
+  private void verifySingleton() throws IOException {
+    File lockFile = new File(config.getLockFilePath());
+    if (!lockFile.getParentFile().exists()) {
+      lockFile.getParentFile().mkdirs();
+    }
+    if (!lockFile.exists()) {
+      lockFile.createNewFile();
+    }
+    if (!lockInstance(config.getLockFilePath())) {
+      logger.error("Sync client is already running.");
+      System.exit(1);
+    }
+  }
+
+  /**
+   * Try to lock lockfile. if failed, it means that sync client has benn started.
+   *
+   * @param lockFile path of lock file
+   */
+  private boolean lockInstance(final String lockFile) {
+    try {
+      final File file = new File(lockFile);
+      final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
+      final FileLock fileLock = randomAccessFile.getChannel().tryLock();
+      if (fileLock != null) {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+          try {
+            fileLock.release();
+            randomAccessFile.close();
+          } catch (Exception e) {
+            logger.error("Unable to remove lock file: {}", lockFile, e);
+          }
+        }));
+        return true;
+      }
+    } catch (Exception e) {
+      logger.error("Unable to create and/or lock file: {}", lockFile, e);
+    }
+    return false;
+  }
+
 
   @Override
   public void init() {
@@ -221,6 +247,8 @@ public class DataTransferManager implements IDataTransferManager {
 
       // 1. Sync data
       for (Entry<String, Set<File>> entry : deletedFilesMap.entrySet()) {
+        checkRecovery();
+        syncLog = new SyncSenderLogger(getSyncLogFile());
         // TODO deal with the situation
         try {
           if (serviceClient.init(entry.getKey()) == ResultStatus.FAILURE) {
@@ -232,12 +260,10 @@ public class DataTransferManager implements IDataTransferManager {
         logger.info("Sync process starts to transfer data of storage group {}", entry.getKey());
         syncDeletedFilesName(entry.getKey(), entry.getValue());
         syncDataFilesInOneGroup(entry.getKey(), entry.getValue());
+        clearSyncLog();
       }
 
-      // 2. Clear sync log
-      clearSyncLog();
-
-    } catch (SyncConnectionException | TException e) {
+    } catch (SyncConnectionException e) {
       logger.error("cannot finish sync process", e);
     } finally {
       if (syncLog != null) {
@@ -248,23 +274,22 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   private void checkRecovery() {
-
-  }
-
-  public void clearSyncLog() {
-
+    new SyncSenderLogAnalyzer(config.getSenderPath()).recover();
   }
 
   @Override
-  public void syncDeletedFilesName(String sgName, Set<File> deletedFilesName) {
+  public void syncDeletedFilesName(String sgName, Set<File> deletedFilesName) throws IOException {
     if (deletedFilesName.isEmpty()) {
       logger.info("There has no deleted files to be synced in storage group {}", sgName);
       return;
     }
+    syncLog.startSyncDeletedFilesName();
     logger.info("Start to sync names of deleted files in storage group {}", sgName);
-    for(File file:deletedFilesName){
+    for (File file : deletedFilesName) {
       try {
         serviceClient.syncDeletedFileName(file.getName());
+        successDeletedFilesMap.get(sgName).add(file);
+        syncLog.finishSyncDeletedFileName(file);
       } catch (TException e) {
         logger.error("Can not sync deleted file name {}, skip it.", file);
       }
@@ -274,27 +299,29 @@ public class DataTransferManager implements IDataTransferManager {
 
   @Override
   public void syncDataFilesInOneGroup(String sgName, Set<File> toBeSyncFiles)
-      throws SyncConnectionException {
-    Set<String> validSnapshot = validFileSnapshot.get(sgName);
-    if (validSnapshot.isEmpty()) {
+      throws SyncConnectionException, IOException {
+    if (toBeSyncFiles.isEmpty()) {
       logger.info("There has no new tsfiles to be synced in storage group {}", sgName);
       return;
     }
+    syncLog.startSyncTsFiles();
     logger.info("Sync process starts to transfer data of storage group {}", sgName);
     int cnt = 0;
-    for (String tsfilePath : toBeSyncFiles) {
+    for (File tsfile : toBeSyncFiles) {
       cnt++;
       File snapshotFile = null;
       try {
-        snapshotFile = makeFileSnapshot(tsfilePath);
+        snapshotFile = makeFileSnapshot(tsfile);
         syncSingleFile(snapshotFile);
+        sucessSyncedFilesMap.get(sgName).add(tsfile);
+        syncLog.finishSyncTsfile(tsfile);
         logger.info("Task of synchronization has completed {}/{}.", cnt, toBeSyncFiles.size());
       } catch (IOException e) {
         logger.info(
             "Tsfile {} can not make snapshot, so skip the tsfile and continue to sync other tsfiles",
-            tsfilePath, e);
+            tsfile, e);
       } finally {
-        if(snapshotFile != null) {
+        if (snapshotFile != null) {
           snapshotFile.deleteOnExit();
         }
       }
@@ -302,27 +329,25 @@ public class DataTransferManager implements IDataTransferManager {
     logger.info("Sync process has finished storage group {}.", sgName);
   }
 
-  private File makeFileSnapshot(String filePath) throws IOException {
-    String snapshotFilePath = SyncUtils.getSnapshotFilePath(filePath);
-    File newFile = new File(snapshotFilePath);
-    if (!newFile.getParentFile().exists()) {
-      newFile.getParentFile().mkdirs();
+  private File makeFileSnapshot(File file) throws IOException {
+    File snapshotFile = SyncUtils.getSnapshotFile(file);
+    if (!snapshotFile.getParentFile().exists()) {
+      snapshotFile.getParentFile().mkdirs();
     }
-    Path link = FileSystems.getDefault().getPath(snapshotFilePath);
-    Path target = FileSystems.getDefault().getPath(filePath);
+    Path link = FileSystems.getDefault().getPath(snapshotFile.getAbsolutePath());
+    Path target = FileSystems.getDefault().getPath(snapshotFile.getAbsolutePath());
     Files.createLink(link, target);
-    return newFile;
+    return snapshotFile;
   }
-
 
   /**
    * Transfer data of a storage group to receiver.
-   *
    */
   private void syncSingleFile(File snapshotFile) throws SyncConnectionException {
     try {
       int retryCount = 0;
       MessageDigest md = MessageDigest.getInstance(Constans.MESSAGE_DIGIT_NAME);
+      serviceClient.initSyncData(snapshotFile.getName());
       outer:
       while (true) {
         retryCount++;
@@ -341,9 +366,7 @@ public class DataTransferManager implements IDataTransferManager {
             md.update(buffer, 0, dataLength);
             ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
             bos.reset();
-            if (!Boolean.parseBoolean(serviceClient
-                .syncData(null, snapshotFile.getName(), buffToSend,
-                    SyncDataStatus.PROCESSING_STATUS))) {
+            if (serviceClient.syncData(buffToSend) == ResultStatus.FAILURE) {
               logger.info("Receiver failed to receive data from {}, retry.",
                   snapshotFile.getAbsoluteFile());
               continue outer;
@@ -353,14 +376,13 @@ public class DataTransferManager implements IDataTransferManager {
 
         // the file is sent successfully
         String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
-        String md5OfReceiver = serviceClient.syncData(md5OfSender, snapshotFile.getName(),
-            null, SyncDataStatus.FINISH_STATUS);
+        String md5OfReceiver = serviceClient.checkDataMD5(md5OfSender);
         if (md5OfSender.equals(md5OfReceiver)) {
           logger.info("Receiver has received {} successfully.", snapshotFile.getAbsoluteFile());
           break;
         }
       }
-    } catch (IOException e) {
+    } catch (IOException | TException | NoSuchAlgorithmException e) {
       throw new SyncConnectionException("Cannot sync data with receiver.", e);
     }
   }
@@ -389,67 +411,14 @@ public class DataTransferManager implements IDataTransferManager {
    * UUID marks the identity of sender for receiver.
    */
   @Override
-  public boolean confirmIdentity(String uuidPath) throws SyncConnectionException, IOException {
-    File file = new File(uuidPath);
-    /** Mark the identity of sender **/
-    String uuid;
-    if (!file.getParentFile().exists()) {
-      file.getParentFile().mkdirs();
-    }
-    if (!file.exists()) {
-      try (FileOutputStream out = new FileOutputStream(file)) {
-        file.createNewFile();
-        uuid = generateUUID();
-        out.write(uuid.getBytes());
-      } catch (IOException e) {
-        logger.error("Cannot insert UUID to file {}", file.getPath());
-        throw new IOException(e);
-      }
-    } else {
-      try (BufferedReader bf = new BufferedReader((new FileReader(uuidPath)))) {
-        uuid = bf.readLine();
-      } catch (IOException e) {
-        logger.error("Cannot read UUID from file{}", file.getPath());
-        throw new IOException(e);
-      }
-    }
-    boolean legalConnection;
+  public boolean confirmIdentity(String uuidPath) throws SyncConnectionException {
     try {
-      legalConnection = serviceClient.checkIdentity(uuid,
-          InetAddress.getLocalHost().getHostAddress());
+      return serviceClient.checkIdentity(InetAddress.getLocalHost().getHostAddress())
+          == ResultStatus.SUCCESS;
     } catch (Exception e) {
       logger.error("Cannot confirm identity with receiver");
       throw new SyncConnectionException(e);
     }
-    return legalConnection;
-  }
-
-  private String generateUUID() {
-    return Constans.SYNC_SENDER + UUID.randomUUID().toString().replaceAll("-", "");
-  }
-
-  /**
-   * Create snapshots for valid files.
-   */
-  @Override
-  public Set<String> makeFileSnapshot(Set<String> validFiles) {
-    Set<String> validFilesSnapshot = new HashSet<>();
-    for (String filePath : validFiles) {
-      try {
-        String snapshotFilePath = SyncUtils.getSnapshotFilePath(filePath);
-        File newFile = new File(snapshotFilePath);
-        if (!newFile.getParentFile().exists()) {
-          newFile.getParentFile().mkdirs();
-        }
-        Path link = FileSystems.getDefault().getPath(snapshotFilePath);
-        Path target = FileSystems.getDefault().getPath(filePath);
-        Files.createLink(link, target);
-        validFilesSnapshot.add(snapshotFilePath);
-      } catch (IOException e) {
-        logger.error("Can not make snapshot for file {}", filePath);
-      }
-    }
-    return validFilesSnapshot;
   }
 
   /**
@@ -521,14 +490,6 @@ public class DataTransferManager implements IDataTransferManager {
     }
   }
 
-  private File getSchemaPosFile() {
-    return new File(config.getSenderPath(), Constans.SCHEMA_POS_FILE_NAME)
-  }
-
-  private File getSchemaLogFile() {
-    return new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
-        MetadataConstant.METADATA_LOG);
-  }
 
   private boolean checkMD5ForSchema(String md5OfSender) throws TException {
     String md5OfReceiver = serviceClient.checkDataMD5(md5OfSender);
@@ -536,7 +497,8 @@ public class DataTransferManager implements IDataTransferManager {
       logger.info("Receiver has received schema successfully, retry.");
       return true;
     } else {
-      logger.error("MD5 check of schema file {} failed, retry", getSchemaLogFile().getAbsoluteFile());
+      logger
+          .error("MD5 check of schema file {} failed, retry", getSchemaLogFile().getAbsoluteFile());
       return false;
     }
   }
@@ -566,49 +528,37 @@ public class DataTransferManager implements IDataTransferManager {
     }
   }
 
-  /**
-   * The method is to verify whether the client lock file is locked or not, ensuring that only one
-   * client is running.
-   */
-  private void verifySingleton() throws IOException {
-    File lockFile = new File(config.getLockFilePath());
-    if (!lockFile.getParentFile().exists()) {
-      lockFile.getParentFile().mkdirs();
+  private void clearSyncLog() {
+    for (Entry<String, Set<File>> entry : lastLocalFilesMap.entrySet()) {
+      entry.getValue()
+          .removeAll(successDeletedFilesMap.getOrDefault(entry.getKey(), new HashSet<>()));
+      entry.getValue()
+          .removeAll(sucessSyncedFilesMap.getOrDefault(entry.getKey(), new HashSet<>()));
     }
-    if (!lockFile.exists()) {
-      lockFile.createNewFile();
+    File currentLocalFile = getCurrentLogFile();
+    File lastLocalFile = new File(config.getLastFileInfo());
+    try (BufferedWriter bw = new BufferedWriter(new FileWriter(currentLocalFile))) {
+      for (Set<File> currentLocalFiles : lastLocalFilesMap.values()) {
+        for (File file : currentLocalFiles) {
+          bw.write(file.getAbsolutePath());
+          bw.newLine();
+        }
+        bw.flush();
+      }
+    } catch (IOException e) {
+      logger.error("Can not clear sync log {}", lastLocalFile.getAbsoluteFile(), e);
     }
-    if (!lockInstance(config.getLockFilePath())) {
-      logger.error("Sync client is already running.");
-      System.exit(1);
-    }
+    currentLocalFile.renameTo(lastLocalFile);
   }
 
-  /**
-   * Try to lock lockfile. if failed, it means that sync client has benn started.
-   *
-   * @param lockFile path of lock file
-   */
-  private boolean lockInstance(final String lockFile) {
-    try {
-      final File file = new File(lockFile);
-      final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
-      final FileLock fileLock = randomAccessFile.getChannel().tryLock();
-      if (fileLock != null) {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-          try {
-            fileLock.release();
-            randomAccessFile.close();
-          } catch (Exception e) {
-            logger.error("Unable to remove lock file: {}", lockFile, e);
-          }
-        }));
-        return true;
-      }
-    } catch (Exception e) {
-      logger.error("Unable to create and/or lock file: {}", lockFile, e);
-    }
-    return false;
+
+  private File getSchemaPosFile() {
+    return new File(config.getSenderPath(), Constans.SCHEMA_POS_FILE_NAME);
+  }
+
+  private File getSchemaLogFile() {
+    return new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
+        MetadataConstant.METADATA_LOG);
   }
 
   private static class InstanceHolder {
@@ -621,7 +571,7 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   private File getCurrentLogFile() {
-    return new File(config.getSenderPath(), Constans.CURRENT_SYNC_LOG_NAME);
+    return new File(config.getSenderPath(), Constans.CURRENT_LOCAL_FILE_NAME);
   }
 
   public void setConfig(SyncSenderConfig config) {

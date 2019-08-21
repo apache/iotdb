@@ -22,12 +22,12 @@ import java.util.Set;
 
 public interface ISyncSenderLogAnalyzer {
 
-  void loadLastLocalFiles(Set<String> set);
+  void loadLastLocalFiles(Set<String> lastLocalFiles);
 
-  void loadLogger(Set<String> set);
+  void loadLogger(Set<String> deletedFiles, Set<String> newFiles);
 
   void recover();
 
-  void clearLogger();
+  void clearLogger(Set<String> currentLocalFiles);
 
 }

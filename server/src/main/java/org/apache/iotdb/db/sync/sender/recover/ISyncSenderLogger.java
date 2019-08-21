@@ -23,21 +23,13 @@ import java.io.IOException;
 
 public interface ISyncSenderLogger {
 
-  void startSync() throws IOException;
-
-  void endSync() throws IOException;
-
   void startSyncDeletedFilesName() throws IOException;
 
   void finishSyncDeletedFileName(File file) throws IOException;
 
-  void endSyncDeletedFilsName() throws IOException;
-
   void startSyncTsFiles() throws IOException;
 
   void finishSyncTsfile(File file) throws IOException;
-
-  void endSyncTsFiles() throws IOException;
 
   void close() throws IOException;
 

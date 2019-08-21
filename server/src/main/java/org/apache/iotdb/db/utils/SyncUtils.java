@@ -37,14 +37,13 @@ public class SyncUtils {
    * multiple directories, it's necessary to make a snapshot in the same disk. It's used by sync
    * sender.
    */
-  public static String getSnapshotFilePath(String filePath) {
-    String relativeFilePath =
-        new File(filePath).getParent() + File.separator + new File(filePath).getName();
+  public static File getSnapshotFile(File file) {
+    String relativeFilePath = file.getParent() + File.separator + file.getName();
     String snapshotDir = SyncSenderDescriptor.getInstance().getConfig().getSnapshotPath();
     if (!new File(snapshotDir).exists()) {
       new File(snapshotDir).mkdirs();
     }
-    return new File(snapshotDir, relativeFilePath).getAbsolutePath();
+    return new File(snapshotDir, relativeFilePath);
   }
 
   /**
