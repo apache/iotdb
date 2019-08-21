@@ -71,13 +71,13 @@ public class TsFileRead {
 
     // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
     IExpression valueFilter = new SingleSeriesExpression(new Path("device_1.sensor_2"),
-            ValueFilter.ltEq(20));
+            ValueFilter.ltEq(20L));
     queryAndPrint(paths, readTsFile, valueFilter);
 
     // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should select 4 7 8
     timeFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(4L)),
             new GlobalTimeExpression(TimeFilter.ltEq(10L)));
-    valueFilter = new SingleSeriesExpression(new Path("device_1.sensor_3"), ValueFilter.gtEq(20));
+    valueFilter = new SingleSeriesExpression(new Path("device_1.sensor_3"), ValueFilter.gtEq(20L));
     IExpression finalFilter = BinaryExpression.and(timeFilter, valueFilter);
     queryAndPrint(paths, readTsFile, finalFilter);
 
