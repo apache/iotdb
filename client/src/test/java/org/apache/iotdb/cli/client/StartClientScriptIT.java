@@ -50,9 +50,9 @@ public class StartClientScriptIT extends AbstractScript {
     final String[] output = {"````````````````````````", "Starting IoTDB Client",
         "````````````````````````",
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
-    String dir = getCurrentPath("cmd.exe", "/c", "echo %cd%");
+    String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "cli" + File.separator + "sbin" + File.separator + "start-client.bat",
+        dir + File.separator + "sbin" + File.separator + "start-client.bat",
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     testOutput(builder, output);
@@ -60,12 +60,11 @@ public class StartClientScriptIT extends AbstractScript {
 
   @Override
   protected void testOnUnix() throws IOException {
-    final String[] output = {"---------------------", "Starting IoTDB Client",
-        "---------------------",
+    final String[] output = {
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
-    String dir = getCurrentPath("pwd");
+    String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
-        dir + File.separator + "cli" + File.separator + "sbin" + File.separator + "start-client.sh",
+        dir + File.separator + "sbin" + File.separator + "start-client.sh",
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     testOutput(builder, output);

@@ -57,17 +57,7 @@ Here in the Quick Start, we give a brief introduction of using source code to in
 
 ### Installation from source code
 
-Use git to get IoTDB source code:
-
-```
-Shell > git clone https://github.com/apache/incubator-iotdb.git
-```
-
-Or:
-
-```
-Shell > git clone git@github.com:apache/incubator-iotdb.git
-```
+You can get the released source code from https://iotdb.apache.org/#/Download, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
 
 Now suppose your directory is like this:
 
@@ -78,28 +68,29 @@ Now suppose your directory is like this:
 > ls -l
 incubator-iotdb/     <-- root path
 |
-+- iotdb/
++- server/
 |
 +- jdbc/
 |
-+- iotdb-cli/
++- client/
 |
 ...
 |
 +- pom.xml
 ```
 
-Let $IOTDB_HOME = /workspace/incubator-iotdb/iotdb/iotdb/
-Let $IOTDB_CLI_HOME = /workspace/incubator-iotdb/iotdb-cli/cli/
+Let `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server-{project.version}`
+
+Let `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/target/iotdb-client-{project.version}`
 
 Note:
 * if `IOTDB_HOME` is not explicitly assigned, 
-then by default `IOTDB_HOME` is the direct parent directory of `bin/start-server.sh` on Unix/OS X 
-(or that of `bin\start-server.bat` on Windows).
+then by default `IOTDB_HOME` is the direct parent directory of `sbin/start-server.sh` on Unix/OS X 
+(or that of `sbin\start-server.bat` on Windows).
 
 * if `IOTDB_CLI_HOME` is not explicitly assigned, 
-then by default `IOTDB_CLI_HOME` is the direct parent directory of `bin/start-client.sh` on 
-Unix/OS X (or that of `bin\start-client.bat` on Windows).
+then by default `IOTDB_CLI_HOME` is the direct parent directory of `sbin/start-client.sh` on 
+Unix/OS X (or that of `sbin\start-client.bat` on Windows).
 
 If you are not the first time that building IoTDB, remember deleting the following files:
 
@@ -115,10 +106,10 @@ Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 /workspace/incubator-iotdb
 
 # Unix/OS X
-> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
+> mvn clean package -pl server -am -Dmaven.test.skip=true
 
 # Windows
-> mvn clean package -pl iotdb -am '-Dmaven.test.skip=true'
+> mvn clean package -pl server -am '-Dmaven.test.skip=true'
 ```
 
 Note: If you are a Windows user, you should use quoting `'-Dmaven.test.skip=true'` in the following commands.
@@ -129,11 +120,11 @@ If successful, you will see the the following text in the terminal:
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Summary:
 [INFO]
-[INFO] IoTDB Root ......................................... SUCCESS [  7.020 s]
-[INFO] TsFile ............................................. SUCCESS [ 10.486 s]
-[INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
-[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
-[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] Apache IoTDB (incubating) Project Parent POM ....... SUCCESS [  6.405 s]
+[INFO] TsFile ............................................. SUCCESS [ 10.435 s]
+[INFO] Service-rpc ........................................ SUCCESS [  4.170 s]
+[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.252 s]
+[INFO] IoTDB Server ....................................... SUCCESS [  8.072 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
@@ -146,14 +137,12 @@ After building, the IoTDB project will be at the subfolder named iotdb. The fold
 ```
 $IOTDB_HOME/
 |
-+- bin/       <-- script files
++- sbin/       <-- script files
 |
 +- conf/      <-- configuration files
 |
 +- lib/       <-- project dependencies
 ```
-
-<!-- > NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself. -->
 
 ## Configure
 
@@ -161,11 +150,11 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 
 In total, we provide users three kinds of configurations module: 
 
-* environment config module (iotdb-env.`sh`(Linux or OSX), iotdb-env.`bat`(Windows))
-* system config module (tsfile-format.properties, iotdb-engine.properties)
-* log config module (logback.xml)
+* environment config module (`iotdb-env.sh`(Linux or OSX), `iotdb-env.bat`(Windows))
+* system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
+* log config module (`logback.xml`)
 
-The configuration files of the three configuration items are located in the IoTDB installation directory: $IOTDB_HOME/conf folder. For more, you are advised to check Chapter 4 of the User Guide to give you the details.
+The configuration files of the three configuration items are located in the IoTDB installation directory: `$IOTDB_HOME/conf` folder. For more, you are advised to check Chapter 4 of the User Guide to give you the details.
 
 ## Start
 
@@ -175,10 +164,10 @@ After that we start the server. Running the startup script:
 
 ```
 # Unix/OS X
-> $IOTDB_HOME/bin/start-server.sh
+> $IOTDB_HOME/sbin/start-server.sh
 
 # Windows
-> $IOTDB_HOME\bin\start-server.bat
+> $IOTDB_HOME\sbin\start-server.bat
 ```
 
 ### Start Client
@@ -190,13 +179,13 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 > pwd
 /workspace/incubator-iotdb
 
-> mvn clean package -pl iotdb-cli -am -Dmaven.test.skip=true
+> mvn clean package -pl client -am -Dmaven.test.skip=true
 
 # Unix/OS X
-> $IOTDB_CLI_HOME/bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
+> $IOTDB_CLI_HOME/sbin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
 
 # Windows
-> $IOTDB_CLI_HOME\bin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
+> $IOTDB_CLI_HOME\sbin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
 ```
 
 > NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.

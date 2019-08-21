@@ -57,7 +57,7 @@ mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```
 
-Copy `application.properties` from `conf/` directory to `target` directory.(Or just make sure that `application.properties` and `iotdb-grafana-{version}-SNAPSHOT.war` are in the same directory.)
+Copy `application.properties` from `conf/` directory to `target` directory.(Or just make sure that `application.properties` and `iotdb-grafana-{version}.war` are in the same directory.)
 
 Edit `application.properties`
 ```
@@ -73,13 +73,13 @@ server.port = 8888
 
 ```shell
 cd grafana/target/
-java -jar iotdb-grafana-{version}-SNAPSHOT.war
+java -jar iotdb-grafana-{version}.war
 ```
 
 If you see the following output, iotdb-grafana connector is successfully activated.
 
 ```shell
-$ java -jar iotdb-grafana-{version}-SNAPSHOT.war
+$ java -jar iotdb-grafana-{version}.war
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \

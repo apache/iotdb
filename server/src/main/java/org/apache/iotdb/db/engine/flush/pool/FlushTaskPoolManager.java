@@ -54,6 +54,7 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
       pool = IoTDBThreadPoolFactory
           .newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
     }
+
     LOGGER.info("Flush task manager started.");
   }
 

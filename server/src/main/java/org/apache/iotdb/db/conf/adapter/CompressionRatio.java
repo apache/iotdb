@@ -21,7 +21,6 @@ package org.apache.iotdb.db.conf.adapter;
 import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -87,15 +86,32 @@ public class CompressionRatio {
     File newFile = new File(directory,
         String.format(Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
     persist(oldFile, newFile);
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Compression ratio is {}", getRatio());
+    }
     if (CONFIG.isEnableParameterAdapter()) {
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info(
+            "After updating compression ratio, trying to adjust parameters, the original parameters: "
+                + "MemTableSize threshold is {}B, TsfileSize threshold is {}B, MemTableNumber is {}",
+            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold(),
+            CONFIG.getMaxMemtableNumber());
+      }
       IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters();
+      if(LOGGER.isInfoEnabled()) {
+        LOGGER.info(
+            "After updating compression ratio, trying to adjust parameters, the modified parameters: "
+                + "MemTableSize threshold is {}B, TsfileSize threshold is {}B, MemTableNumber is {}",
+            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold(),
+            CONFIG.getMaxMemtableNumber());
+      }
     }
   }
 
   /**
    * Get the average compression ratio for all closed files
    */
-  synchronized double getRatio() {
+  public synchronized double getRatio() {
     return calcTimes == 0 ? DEFAULT_COMPRESSION_RATIO : compressionRatioSum / calcTimes;
   }
 

@@ -78,6 +78,18 @@ public class LongStatistics extends Statistics<Long> {
     }
   }
 
+  @Override
+  public void updateStats(long[] values) {
+    for (long value : values) {
+      if (isEmpty) {
+        initializeStats(value, value, value, value, value);
+        isEmpty = false;
+      } else {
+        updateStats(value, value, value, value, value);
+      }
+    }
+  }
+
   private void updateStats(long minValue, long maxValue, long firstValue, double sumValue,
       long lastValue) {
     if (minValue < min) {

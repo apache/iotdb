@@ -113,6 +113,19 @@ public class BinaryStatistics extends Statistics<Binary> {
     }
   }
 
+  @Override
+  public void updateStats(Binary[] values) {
+    for (Binary value : values) {
+      if (isEmpty) {
+        initializeStats(value, value, value, 0, value);
+        isEmpty = false;
+      } else {
+        updateStats(value, value, value, 0, value);
+        isEmpty = false;
+      }
+    }
+  }
+
   private void updateStats(Binary minValue, Binary maxValue, Binary firstValue, double sum,
       Binary lastValue) {
     if (minValue.compareTo(min) < 0) {
