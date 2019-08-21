@@ -103,8 +103,8 @@ public class LogReplayer {
     } finally {
       logReader.close();
     }
-    tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateTime(k, v));
-    tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateTime(k, v));
+    tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
+    tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
   }
 
   private void replayDelete(DeletePlan deletePlan) throws IOException {

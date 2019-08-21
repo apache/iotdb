@@ -45,10 +45,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last
- * crash and removes the redone logs.
+ * TsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last crash
+ * and removes the redone logs.
  */
 public class TsFileRecoverPerformer {
+
   private static final Logger logger = LoggerFactory.getLogger(TsFileRecoverPerformer.class);
 
   private String insertFilePath;
@@ -103,17 +104,21 @@ public class TsFileRecoverPerformer {
           tsFileResource.deSerialize();
         } else {
           // .resource file does not exist, read file metadata and recover tsfile resource
-          try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getFile().getAbsolutePath())) {
+          try (TsFileSequenceReader reader = new TsFileSequenceReader(
+              tsFileResource.getFile().getAbsolutePath())) {
             TsFileMetaData metaData = reader.readFileMetadata();
             List<TsDeviceMetadataIndex> deviceMetadataIndexList = new ArrayList<>(
                 metaData.getDeviceMap().values());
             for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
               TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-              List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
+              List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata
+                  .getChunkGroupMetaDataList();
               for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
                 for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-                  tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
-                  tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+                  tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
+                      chunkMetaData.getStartTime());
+                  tsFileResource
+                      .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
                 }
               }
             }
@@ -132,8 +137,10 @@ public class TsFileRecoverPerformer {
       for (ChunkGroupMetaData chunkGroupMetaData : restorableTsFileIOWriter
           .getChunkGroupMetaDatas()) {
         for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-          tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getStartTime());
-          tsFileResource.updateTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+          tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
+              chunkMetaData.getStartTime());
+          tsFileResource
+              .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
         }
       }
     }
