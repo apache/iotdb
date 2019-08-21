@@ -28,13 +28,7 @@ if [ -z "${IOTDB_HOME}" ]; then
 fi
 
 IOTDB_CONF=${IOTDB_HOME}/conf
-# IOTDB_LOGS=${IOTDB_HOME}/logs
 
-#if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
-#    . "$IOTDB_CONF/iotdb-env.sh"
-#else
-#    echo "can't find $IOTDB_CONF/iotdb-env.sh"
-#fi
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do

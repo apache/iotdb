@@ -86,14 +86,6 @@ REM ----------------------------------------------------------------------------
 
 rem echo CLASSPATH: %CLASSPATH%
 set IOTDB_DATA=%IOTDB_HOME%\data
-set IOTDB_WAL=%IOTDB_DATA%\wal
-
-IF EXIST "%IOTDB_WAL%" (
-    "%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %IOTDB_WAL%
-    ) ELSE (
-    echo "can't find %IOTDB_WAL%"
-    )
-
 
 goto finally
 
