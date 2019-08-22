@@ -78,6 +78,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void write(Long[] times, TSDataValueList value, List<Integer> indexes) {
     switch (dataType) {
       case BOOLEAN:
+        //TODO if indexes.size() == times.length, could we write a chunk at a time
         for (Integer index: indexes) {
           putBoolean(times[index], value.bool_vals.get(index));
         }

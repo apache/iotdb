@@ -189,26 +189,12 @@ public class TsFileProcessor {
       }
     }
 
-    // update start time of this memtable
-    long startTime = Long.MAX_VALUE;
-    for (int index: indexes) {
-      if (batchInsertPlan.getTimes()[index] < startTime) {
-        startTime = batchInsertPlan.getTimes()[index];
-      }
-    }
-
-    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), startTime);
+    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMinTime());
 
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
-      long endTime = Long.MIN_VALUE;
-      for (int index: indexes) {
-        if (batchInsertPlan.getTimes()[index] > endTime) {
-          endTime = batchInsertPlan.getTimes()[index];
-        }
-      }
-      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), endTime);
+      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
     }
 
     // insert insertPlan to the work memtable
