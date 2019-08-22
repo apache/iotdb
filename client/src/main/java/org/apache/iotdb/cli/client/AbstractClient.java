@@ -48,7 +48,7 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.thrift.TException;
 
-abstract class AbstractClient {
+public abstract class AbstractClient {
 
   static final String HOST_ARGS = "h";
   static final String HOST_NAME = "host";
@@ -360,7 +360,7 @@ abstract class AbstractClient {
     return options;
   }
 
-  private static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
+  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
       long timestamp, ZoneId zoneid, String timestampPrecision) {
     if (timestampPrecision.equals("ms")) {
       long integerofDate = timestamp / 1000;
