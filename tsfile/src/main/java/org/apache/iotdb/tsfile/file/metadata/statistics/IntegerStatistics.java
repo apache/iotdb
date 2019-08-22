@@ -54,6 +54,19 @@ public class IntegerStatistics extends Statistics<Integer> {
     }
   }
 
+  @Override
+  public void updateStats(int[] values) {
+    for (int value : values) {
+      if (isEmpty) {
+        initializeStats(value, value, value, value, value);
+        isEmpty = false;
+      } else {
+        updateStats(value, value, value, value, value);
+        isEmpty = false;
+      }
+    }
+  }
+
   private void updateStats(int minValue, int maxValue,
       int firstValue, double sumValue, int lastValue) {
     // TODO: unused parameter

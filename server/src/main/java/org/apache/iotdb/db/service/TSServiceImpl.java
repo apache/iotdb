@@ -502,7 +502,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         String msg = String.format(
             "There are %d flush tasks, %d flush tasks are in execution and %d flush tasks are waiting for execution.",
             FlushTaskPoolManager.getInstance().getTotalTasks(),
-            FlushTaskPoolManager.getInstance().getActiveCnt(),
+            FlushTaskPoolManager.getInstance().getWorkingTasksNumber(),
             FlushTaskPoolManager.getInstance().getWaitingTasksNumber());
         return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS, msg);
       }
