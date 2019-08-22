@@ -30,7 +30,7 @@ import org.apache.iotdb.db.sync.sender.conf.Constans;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer{
+public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderLogAnalyzer.class);
   private File currentLocalFile;
@@ -109,6 +109,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer{
     } catch (IOException e) {
       LOGGER.error("Can not clear sync log {}", syncLogFile.getAbsoluteFile(), e);
     }
+    lastLocalFile.deleteOnExit();
     currentLocalFile.renameTo(lastLocalFile);
   }
 }

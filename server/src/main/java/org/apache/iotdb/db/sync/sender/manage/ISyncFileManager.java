@@ -21,11 +21,35 @@ package org.apache.iotdb.db.sync.sender.manage;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * This interface is used to manage deleted files and new closed files that need to be synchronized in each
+ * sync task.
+ */
 public interface ISyncFileManager {
 
+  /**
+   * Find out all closed and unmodified files, which means there has a .resource file and doesn't
+   * have a .mod file. For these files, they will eventually generate a new tsfile file as the merge
+   * operation is executed and executed in subsequent synchronization tasks.
+   *
+   * @param dataDir data directory
+   */
   void getCurrentLocalFiles(String dataDir);
 
+  /**
+   * Load last local files from file<lastLocalFile> which does not contain those tsfiles which are
+   * not synced successfully in previous sync tasks.
+   *
+   * @param lastLocalFile last local file, which may not exist in first sync task.
+   */
   void getLastLocalFiles(File lastLocalFile) throws IOException;
 
+  /**
+   * Based on current local files and last local files, we can distinguish two kinds of files
+   * between them, one is deleted files, the other is new files. These two kinds of files are valid
+   * files that need to be synchronized to the receiving end.
+   *
+   * @param dataDir data directory
+   */
   void getValidFiles(String dataDir) throws IOException;
 }

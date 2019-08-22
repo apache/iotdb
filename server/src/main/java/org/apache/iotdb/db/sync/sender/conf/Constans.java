@@ -27,15 +27,22 @@ public class Constans {
   public static final String SYNC_SENDER = "sync-sender";
   public static final String SYNC_RECEIVER = "sync-receiver";
 
-  public static final String LOCK_FILE_NAME = "sync_lock";
-  public static final String SCHEMA_POS_FILE_NAME = "sync_schema_pos";
-  public static final String LAST_LOCAL_FILE_NAME = "last_local_files.txt";
-  public static final String CURRENT_LOCAL_FILE_NAME = "current_local_files.txt";
-  public static final String DATA_SNAPSHOT_NAME = "snapshot";
-  public static final String SYNC_LOG_NAME = "sync.log";
-
   public static final String MESSAGE_DIGIT_NAME = "MD5";
   public static final String SYNC_DIR_NAME_SEPARATOR = "_";
+
+  // sender section
+
+  public static final String LOCK_FILE_NAME = "sync_lock";
+
+  public static final String SCHEMA_POS_FILE_NAME = "sync_schema_pos";
+
+  public static final String LAST_LOCAL_FILE_NAME = "last_local_files.txt";
+
+  public static final String CURRENT_LOCAL_FILE_NAME = "current_local_files.txt";
+
+  public static final String DATA_SNAPSHOT_NAME = "snapshot";
+
+  public static final String SYNC_LOG_NAME = "sync.log";
 
   /**
    * Split data file , block size at each transmission
@@ -43,7 +50,7 @@ public class Constans {
   public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
 
   /**
-   * Max try when syncing the same file to receiver fails.
+   * Maximum try when syncing the same file to receiver fails.
    */
   public static final int MAX_SYNC_FILE_TRY = 5;
 

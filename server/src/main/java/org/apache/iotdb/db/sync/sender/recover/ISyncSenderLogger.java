@@ -21,14 +21,40 @@ package org.apache.iotdb.db.sync.sender.recover;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * This interface is used to log progress in the process of synchronization tasks. If the
+ * synchronization tasks are completed normally and there are no exceptions, the log records will be
+ * deleted; otherwise, the status can be restored according to the log at the start of each task. It
+ * ensures the correctness of synchronization module when system crash or network abnormality
+ * occur.
+ */
 public interface ISyncSenderLogger {
 
+  /**
+   * Start sync deleted files name
+   * @throws IOException
+   */
   void startSyncDeletedFilesName() throws IOException;
 
+  /**
+   * After a deleted file name is synced to the receiver end, record it in sync log.
+   * @param file the deleted tsfile
+   * @throws IOException
+   */
   void finishSyncDeletedFileName(File file) throws IOException;
 
+  /**
+   * Start sync new tsfiles
+   * @throws IOException
+   */
   void startSyncTsFiles() throws IOException;
 
+  /**
+   *
+   * After a new tsfile is synced to the receiver end, record it in sync log.
+   * @param file new tsfile
+   * @throws IOException
+   */
   void finishSyncTsfile(File file) throws IOException;
 
   void close() throws IOException;

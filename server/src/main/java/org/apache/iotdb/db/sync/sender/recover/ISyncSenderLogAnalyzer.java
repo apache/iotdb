@@ -20,13 +20,18 @@ package org.apache.iotdb.db.sync.sender.recover;
 
 import java.util.Set;
 
+/**
+ * This interface is used to restore and clean up the status of the historical synchronization task
+ * with abnormal termination. Through the analysis of the synchronization task log, the completed
+ * progress is merged to prepare for the next synchronization task.
+ */
 public interface ISyncSenderLogAnalyzer {
+
+  void recover();
 
   void loadLastLocalFiles(Set<String> lastLocalFiles);
 
   void loadLogger(Set<String> deletedFiles, Set<String> newFiles);
-
-  void recover();
 
   void clearLogger(Set<String> currentLocalFiles);
 

@@ -1,4 +1,21 @@
-
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.sync.sender.transfer;
 
 import java.io.BufferedReader;
@@ -19,15 +36,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.sync.sender.conf.Constans;
@@ -60,30 +80,38 @@ public class DataTransferManager implements IDataTransferManager {
 
   private static final int BATCH_LINE = 1000;
 
+  /**
+   * When transferring schema information, it is a better choice to transfer only new schema
+   * information, avoiding duplicate data transmission. The schema log is self-increasing, so the
+   * location is recorded once after each synchronization task for the next synchronization task to
+   * use.
+   */
   private int schemaFileLinePos;
 
   private TTransport transport;
 
   private SyncService.Client serviceClient;
 
-  /**
-   * Files that need to be synchronized
-   */
+  private Set<String> allSG;
+
   private Map<String, Set<File>> toBeSyncedFilesMap;
 
   private Map<String, Set<File>> deletedFilesMap;
 
-  private Map<String, Set<File>> sucessSyncedFilesMap;
-
-  private Map<String, Set<File>> successDeletedFilesMap;
-
   private Map<String, Set<File>> lastLocalFilesMap;
+
+  private Map<String, Set<File>> successSyncedFilesMap = new HashMap<>();
+
+  private Map<String, Set<File>> successDeletedFilesMap = new HashMap<>();
 
   /**
    * If true, sync is in execution.
    **/
   private volatile boolean syncStatus = false;
 
+  /**
+   * Record sync progress in log.
+   */
   private SyncSenderLogger syncLog;
 
   private SyncFileManager syncFileManager = SyncFileManager.getInstance();
@@ -99,7 +127,7 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   /**
-   * Create a sender and sync files to the receiver.
+   * Create a sender and sync files to the receiver periodically.
    */
   public static void main(String[] args) throws IOException {
     Thread.currentThread().setName(ThreadName.SYNC_CLIENT.getName());
@@ -109,10 +137,9 @@ public class DataTransferManager implements IDataTransferManager {
     fileSenderImpl.startTimedTask();
   }
 
-
   /**
-   * The method is to verify whether the client lock file is locked or not, ensuring that only one
-   * client is running.
+   * Verify whether the client lock file is locked or not, ensuring that only one client is
+   * running.
    */
   private void verifySingleton() throws IOException {
     File lockFile = new File(config.getLockFilePath());
@@ -165,7 +192,7 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   /**
-   * Start Monitor Thread, monitor sync status
+   * Start monitor thread, which monitor sync status.
    */
   private void startMonitor() {
     executorService.scheduleWithFixedDelay(() -> {
@@ -195,11 +222,12 @@ public class DataTransferManager implements IDataTransferManager {
     executorService = null;
   }
 
+  @Override
   public void syncAll() throws SyncConnectionException, IOException, TException {
 
     // 1. Connect to sync receiver and confirm identity
     establishConnection(config.getServerIp(), config.getServerPort());
-    if (!confirmIdentity(config.getSenderPath())) {
+    if (!confirmIdentity()) {
       logger.error("Sorry, you do not have the permission to connect to sync receiver.");
       System.exit(1);
     }
@@ -212,16 +240,18 @@ public class DataTransferManager implements IDataTransferManager {
     for (String dataDir : dataDirs) {
       logger.info("Start to sync data in data dir {}", dataDir);
       config.update(dataDir);
-      SyncFileManager.getInstance().getValidFiles(dataDir);
-      lastLocalFilesMap = SyncFileManager.getInstance().getLastLocalFilesMap();
-      deletedFilesMap = SyncFileManager.getInstance().getDeletedFilesMap();
-      toBeSyncedFilesMap = SyncFileManager.getInstance().getToBeSyncedFilesMap();
+      syncFileManager.getValidFiles(dataDir);
+      allSG = syncFileManager.getAllSG();
+      lastLocalFilesMap = syncFileManager.getLastLocalFilesMap();
+      deletedFilesMap = syncFileManager.getDeletedFilesMap();
+      toBeSyncedFilesMap = syncFileManager.getToBeSyncedFilesMap();
       checkRecovery();
       if (SyncUtils.isEmpty(deletedFilesMap) && SyncUtils.isEmpty(toBeSyncedFilesMap)) {
         logger.info("There has no data to sync in data dir {}", dataDir);
         continue;
       }
       sync();
+      endSync();
       logger.info("Finish to sync data in data dir {}", dataDir);
     }
 
@@ -236,31 +266,161 @@ public class DataTransferManager implements IDataTransferManager {
     }
   }
 
+  private void checkRecovery() {
+    new SyncSenderLogAnalyzer(config.getSenderPath()).recover();
+  }
+
+  @Override
+  public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
+    transport = new TSocket(serverIp, serverPort);
+    TProtocol protocol = new TBinaryProtocol(transport);
+    serviceClient = new SyncService.Client(protocol);
+    try {
+      transport.open();
+    } catch (TTransportException e) {
+      logger.error("Cannot connect to the receiver.");
+      throw new SyncConnectionException(e);
+    }
+  }
+
+  @Override
+  public boolean confirmIdentity() throws SyncConnectionException {
+    try {
+      return serviceClient.checkIdentity(InetAddress.getLocalHost().getHostAddress())
+          == ResultStatus.SUCCESS;
+    } catch (Exception e) {
+      logger.error("Cannot confirm identity with the receiver.");
+      throw new SyncConnectionException(e);
+    }
+  }
+
+  @Override
+  public void syncSchema() throws SyncConnectionException, TException {
+    int retryCount = 0;
+    serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
+    while (true) {
+      if (retryCount > Constans.MAX_SYNC_FILE_TRY) {
+        throw new SyncConnectionException(String
+            .format("Can not sync schema after %s retries.", Constans.MAX_SYNC_FILE_TRY));
+      }
+      try {
+        if (tryToSyncSchema()) {
+          writeSyncSchemaPos(getSchemaPosFile());
+          break;
+        }
+      } finally {
+        retryCount++;
+      }
+    }
+  }
+
+  private boolean tryToSyncSchema() {
+    int schemaPos = readSyncSchemaPos(getSchemaPosFile());
+
+    // start to sync file data and get md5 of this file.
+    try (BufferedReader br = new BufferedReader(new FileReader(getSchemaLogFile()));
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(Constans.DATA_CHUNK_SIZE)) {
+      schemaFileLinePos = 0;
+      while (schemaFileLinePos++ <= schemaPos) {
+        br.readLine();
+      }
+      MessageDigest md = MessageDigest.getInstance(Constans.MESSAGE_DIGIT_NAME);
+      String line;
+      int cntLine = 0;
+      while ((line = br.readLine()) != null) {
+        schemaFileLinePos++;
+        byte[] singleLineData = BytesUtils.stringToBytes(line);
+        bos.write(singleLineData);
+        md.update(singleLineData);
+        if (cntLine++ == BATCH_LINE) {
+          ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
+          bos.reset();
+          if (serviceClient.syncData(buffToSend) == ResultStatus.FAILURE) {
+            logger.error("Receiver failed to receive metadata, retry.");
+            return false;
+          }
+          cntLine = 0;
+        }
+      }
+      if (bos.size() != 0) {
+        ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
+        bos.reset();
+        if (serviceClient.syncData(buffToSend) == ResultStatus.FAILURE) {
+          logger.error("Receiver failed to receive metadata, retry.");
+          return false;
+        }
+      }
+
+      // check md5
+      return checkMD5ForSchema((new BigInteger(1, md.digest())).toString(16));
+    } catch (NoSuchAlgorithmException | IOException | TException e) {
+      logger.error("Can not finish transfer schema to receiver", e);
+      return false;
+    }
+  }
+
   /**
-   * Execute a sync task.
+   * Check MD5 of schema to make sure that the receiver receives the schema correctly
    */
+  private boolean checkMD5ForSchema(String md5OfSender) throws TException {
+    String md5OfReceiver = serviceClient.checkDataMD5(md5OfSender);
+    if (md5OfSender.equals(md5OfReceiver)) {
+      logger.info("Receiver has received schema successfully, retry.");
+      return true;
+    } else {
+      logger
+          .error("MD5 check of schema file {} failed, retry", getSchemaLogFile().getAbsoluteFile());
+      return false;
+    }
+  }
+
+  private int readSyncSchemaPos(File syncSchemaLogFile) {
+    try {
+      if (syncSchemaLogFile.exists()) {
+        try (BufferedReader br = new BufferedReader(new FileReader(syncSchemaLogFile))) {
+          return Integer.parseInt(br.readLine());
+        }
+      }
+    } catch (IOException e) {
+      logger.error("Can not find file {}", syncSchemaLogFile.getAbsoluteFile(), e);
+    }
+    return 0;
+  }
+
+  private void writeSyncSchemaPos(File syncSchemaLogFile) {
+    try {
+      if (!syncSchemaLogFile.exists()) {
+        syncSchemaLogFile.createNewFile();
+      }
+      try (BufferedWriter br = new BufferedWriter(new FileWriter(syncSchemaLogFile))) {
+        br.write(Integer.toString(schemaFileLinePos));
+      }
+    } catch (IOException e) {
+      logger.error("Can not find file {}", syncSchemaLogFile.getAbsoluteFile(), e);
+    }
+  }
+
   @Override
   public void sync() throws IOException {
     try {
       syncStatus = true;
       syncLog = new SyncSenderLogger(getSchemaLogFile());
+      successSyncedFilesMap = new HashMap<>();
+      successDeletedFilesMap = new HashMap<>();
 
-      // 1. Sync data
-      for (Entry<String, Set<File>> entry : deletedFilesMap.entrySet()) {
-        checkRecovery();
+      for (String sgName : allSG) {
         syncLog = new SyncSenderLogger(getSyncLogFile());
-        // TODO deal with the situation
         try {
-          if (serviceClient.init(entry.getKey()) == ResultStatus.FAILURE) {
+          if (serviceClient.init(sgName) == ResultStatus.FAILURE) {
             throw new SyncConnectionException("unable init receiver");
           }
         } catch (TException | SyncConnectionException e) {
           throw new SyncConnectionException("Unable to connect to receiver", e);
         }
-        logger.info("Sync process starts to transfer data of storage group {}", entry.getKey());
-        syncDeletedFilesName(entry.getKey(), entry.getValue());
-        syncDataFilesInOneGroup(entry.getKey(), entry.getValue());
-        clearSyncLog();
+        logger.info("Sync process starts to transfer data of storage group {}", sgName);
+        syncDeletedFilesNameInOneGroup(sgName,
+            deletedFilesMap.getOrDefault(sgName, new HashSet<>()));
+        syncDataFilesInOneGroup(sgName, toBeSyncedFilesMap.getOrDefault(sgName, new HashSet<>()));
       }
 
     } catch (SyncConnectionException e) {
@@ -273,12 +433,9 @@ public class DataTransferManager implements IDataTransferManager {
     }
   }
 
-  private void checkRecovery() {
-    new SyncSenderLogAnalyzer(config.getSenderPath()).recover();
-  }
-
   @Override
-  public void syncDeletedFilesName(String sgName, Set<File> deletedFilesName) throws IOException {
+  public void syncDeletedFilesNameInOneGroup(String sgName, Set<File> deletedFilesName)
+      throws IOException {
     if (deletedFilesName.isEmpty()) {
       logger.info("There has no deleted files to be synced in storage group {}", sgName);
       return;
@@ -313,7 +470,8 @@ public class DataTransferManager implements IDataTransferManager {
       try {
         snapshotFile = makeFileSnapshot(tsfile);
         syncSingleFile(snapshotFile);
-        sucessSyncedFilesMap.get(sgName).add(tsfile);
+        syncSingleFile(new File(snapshotFile, TsFileResource.RESOURCE_SUFFIX));
+        successSyncedFilesMap.get(sgName).add(tsfile);
         syncLog.finishSyncTsfile(tsfile);
         logger.info("Task of synchronization has completed {}/{}.", cnt, toBeSyncFiles.size());
       } catch (IOException e) {
@@ -329,6 +487,11 @@ public class DataTransferManager implements IDataTransferManager {
     logger.info("Sync process has finished storage group {}.", sgName);
   }
 
+  /**
+   * Make snapshot<hard link> for new tsfile and its .restore file.
+   *
+   * @param file new tsfile to be synced
+   */
   private File makeFileSnapshot(File file) throws IOException {
     File snapshotFile = SyncUtils.getSnapshotFile(file);
     if (!snapshotFile.getParentFile().exists()) {
@@ -337,11 +500,16 @@ public class DataTransferManager implements IDataTransferManager {
     Path link = FileSystems.getDefault().getPath(snapshotFile.getAbsolutePath());
     Path target = FileSystems.getDefault().getPath(snapshotFile.getAbsolutePath());
     Files.createLink(link, target);
+    link = FileSystems.getDefault()
+        .getPath(snapshotFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    target = FileSystems.getDefault()
+        .getPath(snapshotFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    Files.createLink(link, target);
     return snapshotFile;
   }
 
   /**
-   * Transfer data of a storage group to receiver.
+   * Transfer data of a tsfile to the receiver.
    */
   private void syncSingleFile(File snapshotFile) throws SyncConnectionException {
     try {
@@ -387,156 +555,18 @@ public class DataTransferManager implements IDataTransferManager {
     }
   }
 
-
-  /**
-   * Establish a connection between the sender and the receiver.
-   *
-   * @param serverIp the ip address of the receiver
-   * @param serverPort must be same with port receiver set.
-   */
-  @Override
-  public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
-    transport = new TSocket(serverIp, serverPort);
-    TProtocol protocol = new TBinaryProtocol(transport);
-    serviceClient = new SyncService.Client(protocol);
-    try {
-      transport.open();
-    } catch (TTransportException e) {
-      logger.error("Cannot connect to server");
-      throw new SyncConnectionException(e);
-    }
-  }
-
-  /**
-   * UUID marks the identity of sender for receiver.
-   */
-  @Override
-  public boolean confirmIdentity(String uuidPath) throws SyncConnectionException {
-    try {
-      return serviceClient.checkIdentity(InetAddress.getLocalHost().getHostAddress())
-          == ResultStatus.SUCCESS;
-    } catch (Exception e) {
-      logger.error("Cannot confirm identity with receiver");
-      throw new SyncConnectionException(e);
-    }
-  }
-
-  /**
-   * Sync schema with receiver.
-   */
-  @Override
-  public void syncSchema() throws SyncConnectionException, TException {
-    int retryCount = 0;
-    serviceClient.initSyncData(MetadataConstant.METADATA_LOG);
-    while (true) {
-      if (retryCount > Constans.MAX_SYNC_FILE_TRY) {
-        throw new SyncConnectionException(String
-            .format("Can not sync schema after %s tries.", Constans.MAX_SYNC_FILE_TRY));
-      }
-      try {
-        if (tryToSyncSchema()) {
-          writeSyncSchemaPos(getSchemaPosFile());
-          break;
-        }
-      } finally {
-        retryCount++;
-      }
-    }
-  }
-
-  private boolean tryToSyncSchema() {
-    int schemaPos = readSyncSchemaPos(getSchemaPosFile());
-
-    // start to sync file data and get md5 of this file.
-    try (BufferedReader br = new BufferedReader(new FileReader(getSchemaLogFile()));
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(Constans.DATA_CHUNK_SIZE)) {
-      schemaFileLinePos = 0;
-      while (schemaFileLinePos++ <= schemaPos) {
-        br.readLine();
-      }
-      MessageDigest md = MessageDigest.getInstance(Constans.MESSAGE_DIGIT_NAME);
-      String line;
-      int cntLine = 0;
-      while ((line = br.readLine()) != null) {
-        schemaFileLinePos++;
-        byte[] singleLineData = BytesUtils.stringToBytes(line);
-        bos.write(singleLineData);
-        md.update(singleLineData);
-        if (cntLine++ == BATCH_LINE) {
-          ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
-          bos.reset();
-          // PROCESSING_STATUS represents there is still schema buffer to send.
-          if (serviceClient.syncData(buffToSend) == ResultStatus.FAILURE) {
-            logger.error("Receiver failed to receive metadata, retry.");
-            return false;
-          }
-          cntLine = 0;
-        }
-      }
-      if (bos.size() != 0) {
-        ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
-        bos.reset();
-        if (serviceClient.syncData(buffToSend) == ResultStatus.FAILURE) {
-          logger.error("Receiver failed to receive metadata, retry.");
-          return false;
-        }
-      }
-
-      // check md5
-      return checkMD5ForSchema((new BigInteger(1, md.digest())).toString(16));
-    } catch (NoSuchAlgorithmException | IOException | TException e) {
-      logger.error("Can not finish transfer schema to receiver", e);
-      return false;
-    }
-  }
-
-
-  private boolean checkMD5ForSchema(String md5OfSender) throws TException {
-    String md5OfReceiver = serviceClient.checkDataMD5(md5OfSender);
-    if (md5OfSender.equals(md5OfReceiver)) {
-      logger.info("Receiver has received schema successfully, retry.");
-      return true;
-    } else {
-      logger
-          .error("MD5 check of schema file {} failed, retry", getSchemaLogFile().getAbsoluteFile());
-      return false;
-    }
-  }
-
-  private int readSyncSchemaPos(File syncSchemaLogFile) {
-    try {
-      if (syncSchemaLogFile.exists()) {
-        try (BufferedReader br = new BufferedReader(new FileReader(syncSchemaLogFile))) {
-          return Integer.parseInt(br.readLine());
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Can not find file {}", syncSchemaLogFile.getAbsoluteFile(), e);
-    }
-    return 0;
-  }
-
-  private void writeSyncSchemaPos(File syncSchemaLogFile) {
-    try {
-      if (syncSchemaLogFile.exists()) {
-        try (BufferedWriter br = new BufferedWriter(new FileWriter(syncSchemaLogFile))) {
-          br.write(Integer.toString(schemaFileLinePos));
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Can not find file {}", syncSchemaLogFile.getAbsoluteFile(), e);
-    }
-  }
-
-  private void clearSyncLog() {
+  private void endSync() {
+    // 1. Organize current local files based on sync result
     for (Entry<String, Set<File>> entry : lastLocalFilesMap.entrySet()) {
       entry.getValue()
           .removeAll(successDeletedFilesMap.getOrDefault(entry.getKey(), new HashSet<>()));
       entry.getValue()
-          .removeAll(sucessSyncedFilesMap.getOrDefault(entry.getKey(), new HashSet<>()));
+          .removeAll(successSyncedFilesMap.getOrDefault(entry.getKey(), new HashSet<>()));
     }
     File currentLocalFile = getCurrentLogFile();
     File lastLocalFile = new File(config.getLastFileInfo());
+
+    // 2. Write file list to currentLocalFile
     try (BufferedWriter bw = new BufferedWriter(new FileWriter(currentLocalFile))) {
       for (Set<File> currentLocalFiles : lastLocalFilesMap.values()) {
         for (File file : currentLocalFiles) {
@@ -548,7 +578,20 @@ public class DataTransferManager implements IDataTransferManager {
     } catch (IOException e) {
       logger.error("Can not clear sync log {}", lastLocalFile.getAbsoluteFile(), e);
     }
+
+    // 3. Rename currentLocalFile to lastLocalFile
+    lastLocalFile.deleteOnExit();
     currentLocalFile.renameTo(lastLocalFile);
+
+    // 4. delete snapshot directory
+    try {
+      FileUtils.deleteDirectory(new File(config.getSnapshotPath()));
+    } catch (IOException e) {
+      logger.error("Can not clear snapshot directory {}", config.getSnapshotPath(), e);
+    }
+
+    // 5. delete sync log file
+    getSyncLogFile().deleteOnExit();
   }
 
 

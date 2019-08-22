@@ -25,43 +25,59 @@ import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.thrift.TException;
 
 /**
- * SyncSender defines the methods of a sender in sync module.
+ * This interface is used to realize the data transmission part of synchronization task, and is also
+ * the most important part of synchronization task. By screening out all transmission files to be
+ * synchronized in <class>SyncFileManager</class>, these files are synchronized to the receiving end
+ * to complete the synchronization task.
  */
 public interface IDataTransferManager {
 
-  /**
-   * Init
-   */
   void init();
 
   /**
-   * Connect to server.
+   * Establish a connection to receiver end.
    */
   void establishConnection(String serverIp, int serverPort) throws SyncConnectionException;
 
   /**
-   * Transfer UUID to receiver.
+   * Confirm identity, the receiver will check whether the sender has synchronization privileges.
    */
-  boolean confirmIdentity(String uuidPath) throws SyncConnectionException, IOException;
+  boolean confirmIdentity() throws SyncConnectionException, IOException;
 
   /**
-   * Send schema file to receiver.
+   * Sync schema file to receiver before all data to be synced.
    */
   void syncSchema() throws SyncConnectionException, TException;
 
-  void syncDeletedFilesName(String sgName, Set<File> deletedFilesName)
-      throws SyncConnectionException, IOException;
-
   /**
-   * For all valid files, send it to receiver side and load these data in receiver.
+   * For deleted files in a storage group, sync them to receiver side and load these data in
+   * receiver.
+   *
+   * @param sgName storage group name
+   * @param deletedFilesName list of deleted file names
    */
-  void syncDataFilesInOneGroup(String sgName, Set<File> deletedFilesName)
+  void syncDeletedFilesNameInOneGroup(String sgName, Set<File> deletedFilesName)
       throws SyncConnectionException, IOException;
 
   /**
-   * Execute a sync task.
+   * Execute a sync task for all data directory.
+   */
+  void syncAll() throws SyncConnectionException, IOException, TException;
+
+  /**
+   * Execute a sync task for a data directory.
    */
   void sync() throws SyncConnectionException, IOException;
+
+  /**
+   * For new valid files in a storage group, sync them to receiver side and load these data in
+   * receiver.
+   *
+   * @param sgName storage group name
+   * @param toBeSyncFiles list of new tsfile names
+   */
+  void syncDataFilesInOneGroup(String sgName, Set<File> toBeSyncFiles)
+      throws SyncConnectionException, IOException;
 
   /**
    * Stop sync process
