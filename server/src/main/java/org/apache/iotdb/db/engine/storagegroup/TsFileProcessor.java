@@ -44,12 +44,14 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFile
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -134,10 +136,9 @@ public class TsFileProcessor {
   public boolean insert(InsertPlan insertPlan) {
 
     if (workMemTable == null) {
-      // TODO change the impl of getAvailableMemTable to non-blocking
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
 
-      // no empty memtable, return failure
+      // no empty memtable, return failure, currently ,this will not happen
       if (workMemTable == null) {
         return false;
       }
@@ -162,6 +163,56 @@ public class TsFileProcessor {
     // insert insertPlan to the work memtable
     workMemTable.insert(insertPlan);
 
+    return true;
+  }
+
+  public boolean insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes,
+      List<Integer> results) {
+    if (workMemTable == null) {
+      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
+
+      // no empty memtable, return, currently ,this will not happen
+      if (workMemTable == null) {
+        for (int index: indexes) {
+          results.set(index, TS_StatusCode.ERROR_STATUS.getValue());
+        }
+        return false;
+      }
+    }
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+      try {
+        getLogNode().write(batchInsertPlan);
+      } catch (IOException e) {
+        logger.error("write WAL failed", e);
+        return false;
+      }
+    }
+
+    // update start time of this memtable
+    long startTime = Long.MAX_VALUE;
+    for (int index: indexes) {
+      if (batchInsertPlan.getTimes()[index] < startTime) {
+        startTime = batchInsertPlan.getTimes()[index];
+      }
+    }
+
+    tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), startTime);
+
+    //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+    //for unsequence tsfile, we have to update the endTime for each insertion.
+    if (!sequence) {
+      long endTime = Long.MIN_VALUE;
+      for (int index: indexes) {
+        if (batchInsertPlan.getTimes()[index] > endTime) {
+          endTime = batchInsertPlan.getTimes()[index];
+        }
+      }
+      tsFileResource.updateEndTime(batchInsertPlan.getDeviceId(), endTime);
+    }
+
+    // insert insertPlan to the work memtable
+    workMemTable.insertBatch(batchInsertPlan, indexes);
     return true;
   }
 

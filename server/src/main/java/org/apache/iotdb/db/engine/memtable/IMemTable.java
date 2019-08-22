@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.service.rpc.thrift.TSDataValueList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -38,8 +41,7 @@ public interface IMemTable {
   void write(String deviceId, String measurement, TSDataType dataType,
       long insertTime, String insertValue);
 
-  void write(String deviceId, String measurement, TSDataType dataType,
-      long insertTime, Object value);
+  void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes);
 
   /**
    * @return the number of points
@@ -52,6 +54,8 @@ public interface IMemTable {
   long memSize();
 
   void insert(InsertPlan insertPlan);
+
+  void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes);
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       Map<String, String> props);

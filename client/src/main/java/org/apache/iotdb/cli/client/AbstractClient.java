@@ -48,55 +48,55 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.thrift.TException;
 
-public abstract class AbstractClient {
+abstract class AbstractClient {
 
-  protected static final String HOST_ARGS = "h";
-  protected static final String HOST_NAME = "host";
+  static final String HOST_ARGS = "h";
+  static final String HOST_NAME = "host";
 
-  protected static final String HELP_ARGS = "help";
+  static final String HELP_ARGS = "help";
 
-  protected static final String PORT_ARGS = "p";
-  protected static final String PORT_NAME = "port";
+  static final String PORT_ARGS = "p";
+  static final String PORT_NAME = "port";
 
-  protected static final String PASSWORD_ARGS = "pw";
-  protected static final String PASSWORD_NAME = "password";
+  static final String PASSWORD_ARGS = "pw";
+  private static final String PASSWORD_NAME = "password";
 
-  protected static final String USERNAME_ARGS = "u";
-  protected static final String USERNAME_NAME = "username";
+  static final String USERNAME_ARGS = "u";
+  static final String USERNAME_NAME = "username";
 
-  protected static final String EXECUTE_ARGS = "e";
-  protected static final String EXECUTE_NAME = "execute";
+  private static final String EXECUTE_ARGS = "e";
+  private static final String EXECUTE_NAME = "execute";
 
-  protected static final String ISO8601_ARGS = "disableISO8601";
-  protected static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
-  protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
-  protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
-  protected static final String SET_MAX_DISPLAY_NUM = "set max_display_num";
-  protected static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
-  protected static final String SHOW_TIMESTAMP_DISPLAY = "show time_display_type";
-  protected static final String SET_TIME_ZONE = "set time_zone";
-  protected static final String SHOW_TIMEZONE = "show time_zone";
-  protected static final String SET_FETCH_SIZE = "set fetch_size";
-  protected static final String SHOW_FETCH_SIZE = "show fetch_size";
-  protected static final String HELP = "help";
-  protected static final String IOTDB_CLI_PREFIX = "IoTDB";
-  protected static final String SCRIPT_HINT = "./start-client.sh(start-client.bat if Windows)";
-  protected static final String QUIT_COMMAND = "quit";
-  protected static final String EXIT_COMMAND = "exit";
-  protected static final String SHOW_METADATA_COMMAND = "show timeseries";
-  protected static final int MAX_HELP_CONSOLE_WIDTH = 88;
-  protected static final String TIMESTAMP_STR = "Time";
-  protected static final int ISO_DATETIME_LEN = 35;
-  protected static final String IMPORT_CMD = "import";
+  static final String ISO8601_ARGS = "disableISO8601";
+  static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
+  static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
+  private static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
+  static final String SET_MAX_DISPLAY_NUM = "set max_display_num";
+  static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
+  static final String SHOW_TIMESTAMP_DISPLAY = "show time_display_type";
+  static final String SET_TIME_ZONE = "set time_zone";
+  static final String SHOW_TIMEZONE = "show time_zone";
+  static final String SET_FETCH_SIZE = "set fetch_size";
+  static final String SHOW_FETCH_SIZE = "show fetch_size";
+  private static final String HELP = "help";
+  static final String IOTDB_CLI_PREFIX = "IoTDB";
+  static final String SCRIPT_HINT = "./start-client.sh(start-client.bat if Windows)";
+  static final String QUIT_COMMAND = "quit";
+  static final String EXIT_COMMAND = "exit";
+  static final String SHOW_METADATA_COMMAND = "show timeseries";
+  static final int MAX_HELP_CONSOLE_WIDTH = 88;
+  static final String TIMESTAMP_STR = "Time";
+  static final int ISO_DATETIME_LEN = 35;
+  private static final String IMPORT_CMD = "import";
   private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
   private static final String DEFAULT_TIME_FORMAT = "default";
-  protected static String timeFormat = DEFAULT_TIME_FORMAT;
-  protected static int maxPrintRowCount = 1000;
-  protected static int fetchSize = 10000;
-  protected static int maxTimeLength = ISO_DATETIME_LEN;
-  protected static int maxValueLength = 15;
-  protected static boolean isQuit = false;
-  protected static String TIMESTAMP_PRECISION = "ms";
+  private static String timeFormat = DEFAULT_TIME_FORMAT;
+  static int maxPrintRowCount = 1000;
+  private static int fetchSize = 10000;
+  static int maxTimeLength = ISO_DATETIME_LEN;
+  static int maxValueLength = 15;
+  private static boolean isQuit = false;
+  static String TIMESTAMP_PRECISION = "ms";
 
   /**
    * control the width of columns for 'show timeseries path' and 'show storage group'.
@@ -138,22 +138,22 @@ public abstract class AbstractClient {
    * </table>
    * </p>
    */
-  protected static int[] maxValueLengthForShow = new int[]{75, 45, 8, 8};
-  protected static String formatTime = "%" + maxTimeLength + "s|";
-  protected static String formatValue = "%" + maxValueLength + "s|";
+  private static int[] maxValueLengthForShow = new int[]{75, 45, 8, 8};
+  static String formatTime = "%" + maxTimeLength + "s|";
+  private static String formatValue = "%" + maxValueLength + "s|";
   private static final int DIVIDING_LINE_LENGTH = 40;
-  protected static String host = "127.0.0.1";
-  protected static String port = "6667";
-  protected static String username;
-  protected static String password;
-  protected static String execute;
-  protected static boolean hasExecuteSQL = false;
+  static String host = "127.0.0.1";
+  static String port = "6667";
+  static String username;
+  static String password;
+  static String execute;
+  static boolean hasExecuteSQL = false;
 
-  protected static boolean printToConsole = true;
+  private static boolean printToConsole = true;
 
-  protected static Set<String> keywordSet = new HashSet<>();
+  static Set<String> keywordSet = new HashSet<>();
 
-  protected static ServerProperties properties = null;
+  static ServerProperties properties = null;
 
   private static boolean printHeader = false;
   private static int displayCnt = 0;
@@ -165,7 +165,7 @@ public abstract class AbstractClient {
    */
   private static boolean showException = false;
 
-  protected static void init() {
+  static void init() {
     keywordSet.add("-" + HOST_ARGS);
     keywordSet.add("-" + HELP_ARGS);
     keywordSet.add("-" + PORT_ARGS);
@@ -184,7 +184,7 @@ public abstract class AbstractClient {
    * @param zoneId time-zone ID
    * @throws SQLException SQLException
    */
-  public static void output(ResultSet res, boolean printToConsole, ZoneId zoneId)
+  private static void output(ResultSet res, boolean printToConsole, ZoneId zoneId)
       throws SQLException {
     int cnt = 0;
     boolean printTimestamp = true;
@@ -229,11 +229,11 @@ public abstract class AbstractClient {
     printCount(isShow, res, cnt);
   }
 
-  protected static String getTimestampPrecision() {
+  private static String getTimestampPrecision() {
     return TIMESTAMP_PRECISION;
   }
 
-  protected static void printCount(boolean isShow, ResultSet res, int cnt) throws SQLException {
+  private static void printCount(boolean isShow, ResultSet res, int cnt) throws SQLException {
     if (isShow) {
       int type = res.getType();
       if (type == IoTDBMetadataResultSet.MetadataType.STORAGE_GROUP.ordinal()) { // storage group
@@ -247,7 +247,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void printRow(boolean printTimestamp, int colCount,
+  private static void printRow(boolean printTimestamp, int colCount,
       ResultSetMetaData resultSetMetaData, boolean isShow, ResultSet res, ZoneId zoneId)
       throws SQLException {
     // Output Labels
@@ -263,7 +263,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void printHeader(boolean printTimestamp, int colCount,
+  private static void printHeader(boolean printTimestamp, int colCount,
       ResultSetMetaData resultSetMetaData, boolean isShow) throws SQLException {
     if (!printHeader) {
       printBlockLine(printTimestamp, colCount, resultSetMetaData, isShow);
@@ -273,7 +273,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void printShow(int colCount, ResultSet res) throws SQLException {
+  private static void printShow(int colCount, ResultSet res) throws SQLException {
     print("|");
     for (int i = 1; i <= colCount; i++) {
       formatValue = "%" + maxValueLengthForShow[i - 1] + "s|";
@@ -282,7 +282,7 @@ public abstract class AbstractClient {
     println();
   }
 
-  protected static void printRowData(boolean printTimestamp, ResultSet res, ZoneId zoneId,
+  private static void printRowData(boolean printTimestamp, ResultSet res, ZoneId zoneId,
       ResultSetMetaData resultSetMetaData, int colCount)
       throws SQLException {
     if (displayCnt < maxPrintRowCount) { // NOTE displayCnt only works on queried data results
@@ -298,7 +298,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void printColumnData(ResultSetMetaData resultSetMetaData, ResultSet res, int i,
+  private static void printColumnData(ResultSetMetaData resultSetMetaData, ResultSet res, int i,
       ZoneId zoneId) throws SQLException {
     boolean flag = false;
     for (String timeStr : AGGREGRATE_TIME_LIST) {
@@ -319,7 +319,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static Options createOptions() {
+  static Options createOptions() {
     Options options = new Options();
     Option help = new Option(HELP_ARGS, false, "Display help information(optional)");
     help.setRequired(false);
@@ -360,7 +360,7 @@ public abstract class AbstractClient {
     return options;
   }
 
-  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
+  private static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
       long timestamp, ZoneId zoneid, String timestampPrecision) {
     if (timestampPrecision.equals("ms")) {
       long integerofDate = timestamp / 1000;
@@ -420,7 +420,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static String checkRequiredArg(String arg, String name, CommandLine commandLine,
+  static String checkRequiredArg(String arg, String name, CommandLine commandLine,
       boolean isRequired,
       String defaultValue) throws ArgsErrorException {
     String str = commandLine.getOptionValue(arg);
@@ -442,7 +442,7 @@ public abstract class AbstractClient {
     return str;
   }
 
-  protected static void setTimeFormat(String newTimeFormat) {
+  static void setTimeFormat(String newTimeFormat) {
     switch (newTimeFormat.trim().toLowerCase()) {
       case "long":
       case "number":
@@ -475,7 +475,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void setMaxDisplayNumber(String maxDisplayNum) {
+  static void setMaxDisplayNumber(String maxDisplayNum) {
     long tmp = Long.parseLong(maxDisplayNum.trim());
     if (tmp > Integer.MAX_VALUE || tmp < 0) {
       maxPrintRowCount = Integer.MAX_VALUE;
@@ -484,7 +484,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void printBlockLine(boolean printTimestamp, int colCount,
+  private static void printBlockLine(boolean printTimestamp, int colCount,
       ResultSetMetaData resultSetMetaData,
       boolean isShowTs) throws SQLException {
     StringBuilder blockLine = new StringBuilder();
@@ -512,7 +512,7 @@ public abstract class AbstractClient {
     println(blockLine);
   }
 
-  protected static void printName(boolean printTimestamp, int colCount,
+  private static void printName(boolean printTimestamp, int colCount,
       ResultSetMetaData resultSetMetaData,
       boolean isShowTs) throws SQLException {
     print("|");
@@ -533,7 +533,7 @@ public abstract class AbstractClient {
     println();
   }
 
-  protected static String[] removePasswordArgs(String[] args) {
+  static String[] removePasswordArgs(String[] args) {
     int index = -1;
     for (int i = 0; i < args.length; i++) {
       if (args[i].equals("-" + PASSWORD_ARGS)) {
@@ -548,7 +548,7 @@ public abstract class AbstractClient {
     return args;
   }
 
-  protected static String[] processExecuteArgs(String[] args) {
+  static String[] processExecuteArgs(String[] args) {
     int index = -1;
     for (int i = 0; i < args.length; i++) {
       if (args[i].equals("-" + EXECUTE_ARGS)) {
@@ -574,7 +574,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void displayLogo(String version) {
+  static void displayLogo(String version) {
     println(" _____       _________  ______   ______    \n"
         + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
         + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
@@ -584,13 +584,13 @@ public abstract class AbstractClient {
         + "                                           \n");
   }
 
-  protected static void echoStarting(){
+  static void echoStarting(){
     println("---------------------");
     println("Starting IoTDB Client");
     println("---------------------");
   }
 
-  protected static OperationResult handleInputCmd(String cmd, IoTDBConnection connection) {
+  static OperationResult handleInputCmd(String cmd, IoTDBConnection connection) {
     String specialCmd = cmd.toLowerCase().trim();
 
     if (QUIT_COMMAND.equals(specialCmd) || EXIT_COMMAND.equals(specialCmd)) {
@@ -647,7 +647,7 @@ public abstract class AbstractClient {
     return OperationResult.NO_OPER;
   }
 
-  protected static void showHelp() {
+  private static void showHelp() {
     println("    <your-sql>\t\t\t execute your sql statment");
     println(String.format("    %s\t\t show how many timeseries are in iotdb",
         SHOW_METADATA_COMMAND));
@@ -665,7 +665,7 @@ public abstract class AbstractClient {
             SET_MAX_DISPLAY_NUM));
   }
 
-  protected static void showMetaData(IoTDBConnection connection) {
+  private static void showMetaData(IoTDBConnection connection) {
     try {
       println(((IoTDBDatabaseMetadata) connection.getMetaData()).getMetadataInJson());
     } catch (SQLException e) {
@@ -674,7 +674,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void setTimestampDisplay(String specialCmd, String cmd) {
+  private static void setTimestampDisplay(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(String.format("Time display format error, please input like %s=ISO8601",
@@ -691,7 +691,7 @@ public abstract class AbstractClient {
     println("Time display type has set to " + cmd.split("=")[1].trim());
   }
 
-  protected static void setTimeZone(String specialCmd, String cmd, IoTDBConnection connection) {
+  private static void setTimeZone(String specialCmd, String cmd, IoTDBConnection connection) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(
@@ -708,7 +708,7 @@ public abstract class AbstractClient {
     println("Time zone has set to " + values[1].trim());
   }
 
-  protected static void setFetchSize(String specialCmd, String cmd) {
+  private static void setFetchSize(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(String
@@ -725,7 +725,7 @@ public abstract class AbstractClient {
     println("Fetch size has set to " + values[1].trim());
   }
 
-  protected static void setMaxDisplaNum(String specialCmd, String cmd) {
+  private static void setMaxDisplaNum(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(String.format("Max display number format error, please input like %s = 10000",
@@ -742,7 +742,7 @@ public abstract class AbstractClient {
     println("Max display number has set to " + values[1].trim());
   }
 
-  protected static void showTimeZone(IoTDBConnection connection) {
+  private static void showTimeZone(IoTDBConnection connection) {
     try {
       println("Current time zone: " + connection.getTimeZone());
     } catch (Exception e) {
@@ -751,7 +751,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void importCmd(String specialCmd, String cmd, IoTDBConnection connection) {
+  private static void importCmd(String specialCmd, String cmd, IoTDBConnection connection) {
     String[] values = specialCmd.split(" ");
     if (values.length != 2) {
       println("Please input like: import /User/myfile. "
@@ -772,7 +772,7 @@ public abstract class AbstractClient {
     }
   }
 
-  protected static void executeQuery(IoTDBConnection connection, String cmd) {
+  private static void executeQuery(IoTDBConnection connection, String cmd) {
     Statement statement = null;
     long startTime = System.currentTimeMillis();
     try {
@@ -808,27 +808,27 @@ public abstract class AbstractClient {
     STOP_OPER, CONTINUE_OPER, NO_OPER
   }
 
-  protected static void printf(String format, Object... args) {
+  private static void printf(String format, Object... args) {
     SCREEN_PRINTER.printf(format, args);
   }
 
-  protected static void print(String msg) {
+  static void print(String msg) {
     SCREEN_PRINTER.print(msg);
   }
 
-  protected static void println() {
+  private static void println() {
     SCREEN_PRINTER.println();
   }
 
-  protected static void println(String msg) {
+  static void println(String msg) {
     SCREEN_PRINTER.println(msg);
   }
 
-  protected static void println(Object obj) {
+  private static void println(Object obj) {
     SCREEN_PRINTER.println(obj);
   }
 
-  protected static void handleException(Exception e) {
+  static void handleException(Exception e) {
     if (showException) {
       e.printStackTrace(SCREEN_PRINTER);
     }

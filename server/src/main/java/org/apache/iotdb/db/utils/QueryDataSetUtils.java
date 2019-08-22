@@ -18,10 +18,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -95,10 +97,34 @@ public class QueryDataSetUtils {
                 "data type %s is not supported when convert data at server",
                 f.getDataType().toString()));
         }
-        value.setType(f.getDataType().toString());
+        value.setType(getIoTDBDataTypeByTSDataType(f.getDataType()));
       }
       tsRowRecord.getValues().add(value);
     }
     return tsRowRecord;
+  }
+
+  public static IoTDBDataType getIoTDBDataTypeByTSDataType(TSDataType type) {
+    switch (type) {
+      case BOOLEAN: return IoTDBDataType.BOOLEAN;
+      case FLOAT: return IoTDBDataType.FLOAT;
+      case DOUBLE: return IoTDBDataType.DOUBLE;
+      case INT32: return IoTDBDataType.INT32;
+      case INT64: return IoTDBDataType.INT64;
+      case TEXT: return IoTDBDataType.TEXT;
+      default: throw new RuntimeException("data type not supported: " + type);
+    }
+  }
+
+  public static TSDataType getTSDataTypeByIoTDBDataType(IoTDBDataType type) {
+    switch (type) {
+      case BOOLEAN: return TSDataType.BOOLEAN;
+      case FLOAT: return TSDataType.FLOAT;
+      case DOUBLE: return TSDataType.DOUBLE;
+      case INT32: return TSDataType.INT32;
+      case INT64: return TSDataType.INT64;
+      case TEXT: return TSDataType.TEXT;
+      default: throw new RuntimeException("data type not supported: " + type);
+    }
   }
 }

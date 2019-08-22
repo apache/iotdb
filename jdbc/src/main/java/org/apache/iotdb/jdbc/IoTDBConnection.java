@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
 
 
 public class IoTDBConnection implements Connection {
-  Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
+  private Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
   private final List<TSProtocolVersion> supportedProtocols = new LinkedList<>();
   public TSIService.Iface client = null;
   public TS_SessionHandle sessionHandle = null;
@@ -87,7 +87,7 @@ public class IoTDBConnection implements Connection {
     }
     params = Utils.parseUrl(url, info);
 
-    supportedProtocols.add(TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
+    supportedProtocols.add(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
 
     openTransport();
     if(Config.rpcThriftCompressionEnable) {
@@ -416,18 +416,13 @@ public class IoTDBConnection implements Connection {
 
   private void openTransport() throws TTransportException {
     transport = new TSocket(params.getHost(), params.getPort(), Config.connectionTimeoutInMs);
-    try {
-      transport.getSocket().setKeepAlive(true);
-    } catch (SocketException e) {
-      logger.error("Cannot set socket keep alive because: ", e);
-    }
     if (!transport.isOpen()) {
       transport.open();
     }
   }
 
   private void openSession() throws SQLException {
-    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
+    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
 
     openReq.setUsername(params.getUsername());
     openReq.setPassword(params.getPassword());
@@ -444,7 +439,7 @@ public class IoTDBConnection implements Connection {
         throw e;
       }
       if (!supportedProtocols.contains(openResp.getServerProtocolVersion())) {
-        throw new TException("Unsupported TsFile protocol");
+        throw new TException("Unsupported IoTDB protocol");
       }
       setProtocol(openResp.getServerProtocolVersion());
       sessionHandle = openResp.getSessionHandle();
@@ -520,11 +515,11 @@ public class IoTDBConnection implements Connection {
     this.protocol = protocol;
   }
 
-  private static class SynchronizedHandler implements InvocationHandler {
+  public static class SynchronizedHandler implements InvocationHandler {
 
     private final TSIService.Iface client;
 
-    SynchronizedHandler(TSIService.Iface client) {
+    public SynchronizedHandler(TSIService.Iface client) {
       this.client = client;
     }
 

@@ -18,7 +18,7 @@
     under the License.
 
 -->
-# Chapter 7: TsFile
+# Chapter 8: TsFile
 ## TsFile Hierarchy
   Here is a brief introduction of the structure of a TsFile file.
   

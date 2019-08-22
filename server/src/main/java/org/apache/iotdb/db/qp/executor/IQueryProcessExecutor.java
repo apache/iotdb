@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.MetadataErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -113,6 +114,12 @@ public interface IQueryProcessExecutor {
    * @return - Operate Type.
    */
   boolean insert(InsertPlan insertPlan) throws ProcessorException;
+
+  /**
+   * execute batch insert plan
+   * @return result of each row
+   */
+  List<Integer> insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException;
 
   boolean judgePathExists(Path fullPath);
 
