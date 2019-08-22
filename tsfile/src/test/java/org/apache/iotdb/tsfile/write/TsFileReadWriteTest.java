@@ -155,7 +155,7 @@ public class TsFileReadWriteTest {
     FileSchema fileSchema = new FileSchema();
     fileSchema.registerMeasurement(
             new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.TS_2DIFF));
-    int rowNum = 1024 * 1024;
+    int rowNum = 1024 * 1024 * 13 + 1023;
     int sensorNum = 1;
     TsFileWriter tsFileWriter = new TsFileWriter(f, fileSchema);
     RowBatch rowBatch = fileSchema.createRowBatch("device_1");

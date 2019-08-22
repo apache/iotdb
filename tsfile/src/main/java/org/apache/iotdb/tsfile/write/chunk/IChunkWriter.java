@@ -69,37 +69,37 @@ public interface IChunkWriter {
   /**
    * write time series
    */
-  void write(long[] timestamps, int[] values);
+  void write(long[] timestamps, int[] values, int batchSize);
 
   /**
    * write time series
    */
-  void write(long[] timestamps, long[] values);
+  void write(long[] timestamps, long[] values, int batchSize);
 
   /**
    * write time series
    */
-  void write(long[] timestamps, boolean[] values);
+  void write(long[] timestamps, boolean[] values, int batchSize);
 
   /**
    * write time series
    */
-  void write(long[] timestamps, float[] values);
+  void write(long[] timestamps, float[] values, int batchSize);
 
   /**
    * write time series
    */
-  void write(long[] timestamps, double[] values);
+  void write(long[] timestamps, double[] values, int batchSize);
 
   /**
    * write time series
    */
-  void write(long[] timestamps, BigDecimal[] values);
+  void write(long[] timestamps, BigDecimal[] values, int batchSize);
 
   /**
    * write time series
    */
-  void write(long[] timestamps, Binary[] values);
+  void write(long[] timestamps, Binary[] values, int batchSize);
 
   /**
    * flush data to TsFileIOWriter.
