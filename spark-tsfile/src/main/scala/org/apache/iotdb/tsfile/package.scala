@@ -22,19 +22,19 @@ package org.apache.iotdb
 import org.apache.spark.sql.{DataFrame, DataFrameReader, DataFrameWriter, SparkSession}
 
 package object tsfile {
+
   /**
     * add a method 'tsfile' to DataFrameReader to read tsfile
     */
   implicit class TsFileDataFrameReader(reader: DataFrameReader) {
     def tsfile(path: String,
-               isNewForm: Boolean = false,
-               spark: SparkSession = null): DataFrame = {
-      val df = reader.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").load
+               isNewForm: Boolean = false): DataFrame = {
       if (isNewForm) {
-        return Transformer.toNewForm(spark, df)
+        reader.option(DefaultSource.path, path).option(DefaultSource.isNewForm, "new_form").format("org.apache.iotdb.tsfile").load
       }
-
-      df
+      else {
+        reader.option(DefaultSource.path, path).format("org.apache.iotdb.tsfile").load
+      }
     }
   }
 
