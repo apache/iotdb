@@ -159,7 +159,7 @@ public class SingleClientSyncTest {
   }
 
   public void setConfig() {
-    config.setSenderPath(
+    config.setSenderFolderPath(
         config.getDataDirectory() + SYNC_CLIENT + File.separator + Constans.UUID_FILE_NAME);
     config.setLastFileInfo(
         config.getDataDirectory() + SYNC_CLIENT + File.separator + Constans.LAST_LOCAL_FILE_NAME);

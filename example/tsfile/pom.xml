@@ -19,32 +19,31 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <parent>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-examples</artifactId>
+        <version>0.9.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
     <groupId>org.apache.iotdb</groupId>
-    <artifactId>iotdb-examples</artifactId>
+    <artifactId>tsfile-example</artifactId>
     <version>0.9.0-SNAPSHOT</version>
-    <relativePath>../pom.xml</relativePath>
-  </parent>
-  <groupId>org.apache.iotdb</groupId>
-  <artifactId>tsfile-example</artifactId>
-  <version>0.9.0-SNAPSHOT</version>
-  <name>tsfile-example</name>
-  <!-- FIXME change it to the project's website -->
-  <url>http://www.example.com</url>
-  <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.11</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.iotdb</groupId>
-      <artifactId>tsfile</artifactId>
-      <version>0.9.0-SNAPSHOT</version>
-    </dependency>
-  </dependencies>
+    <name>tsfile-example</name>
+    <!-- FIXME change it to the project's website -->
+    <url>http://www.example.com</url>
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>tsfile</artifactId>
+            <version>0.9.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
 </project>

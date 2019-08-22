@@ -42,7 +42,7 @@ public interface IDataTransferManager {
   /**
    * Confirm identity, the receiver will check whether the sender has synchronization privileges.
    */
-  boolean confirmIdentity() throws SyncConnectionException, IOException;
+  void confirmIdentity() throws SyncConnectionException, IOException;
 
   /**
    * Sync schema file to receiver before all data to be synced.

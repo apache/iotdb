@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.receiver.recover;
 
 public interface ISyncReceiverLogAnalyzer {
+
   void recover();
 
   void scanLogger(String path);

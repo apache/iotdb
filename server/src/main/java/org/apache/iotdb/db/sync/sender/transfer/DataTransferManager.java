@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.sync.sender.transfer;
@@ -36,10 +32,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -99,10 +93,6 @@ public class DataTransferManager implements IDataTransferManager {
   private Map<String, Set<File>> deletedFilesMap;
 
   private Map<String, Set<File>> lastLocalFilesMap;
-
-  private Map<String, Set<File>> successSyncedFilesMap = new HashMap<>();
-
-  private Map<String, Set<File>> successDeletedFilesMap = new HashMap<>();
 
   /**
    * If true, sync is in execution.
@@ -227,10 +217,8 @@ public class DataTransferManager implements IDataTransferManager {
 
     // 1. Connect to sync receiver and confirm identity
     establishConnection(config.getServerIp(), config.getServerPort());
-    if (!confirmIdentity()) {
-      logger.error("Sorry, you do not have the permission to connect to sync receiver.");
-      System.exit(1);
-    }
+    confirmIdentity();
+    serviceClient.startSync();
 
     // 2. Sync Schema
     syncSchema();
@@ -239,6 +227,7 @@ public class DataTransferManager implements IDataTransferManager {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     for (String dataDir : dataDirs) {
       logger.info("Start to sync data in data dir {}", dataDir);
+
       config.update(dataDir);
       syncFileManager.getValidFiles(dataDir);
       allSG = syncFileManager.getAllSG();
@@ -267,7 +256,7 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   private void checkRecovery() {
-    new SyncSenderLogAnalyzer(config.getSenderPath()).recover();
+    new SyncSenderLogAnalyzer(config.getSenderFolderPath()).recover();
   }
 
   @Override
@@ -284,10 +273,13 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   @Override
-  public boolean confirmIdentity() throws SyncConnectionException {
+  public void confirmIdentity() throws SyncConnectionException {
     try {
-      return serviceClient.checkIdentity(InetAddress.getLocalHost().getHostAddress())
-          == ResultStatus.SUCCESS;
+      ResultStatus status = serviceClient.check(InetAddress.getLocalHost().getHostAddress());
+      if (!status.success) {
+        throw new SyncConnectionException(
+            "The receiver rejected the synchronization task because " + status.errorMsg);
+      }
     } catch (Exception e) {
       logger.error("Cannot confirm identity with the receiver.");
       throw new SyncConnectionException(e);
@@ -335,8 +327,9 @@ public class DataTransferManager implements IDataTransferManager {
         if (cntLine++ == BATCH_LINE) {
           ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
           bos.reset();
-          if (serviceClient.syncData(buffToSend) == ResultStatus.FAILURE) {
-            logger.error("Receiver failed to receive metadata, retry.");
+          ResultStatus status = serviceClient.syncData(buffToSend);
+          if (!status.success) {
+            logger.error("Receiver failed to receive metadata because {}, retry.", status.errorMsg);
             return false;
           }
           cntLine = 0;
@@ -345,8 +338,9 @@ public class DataTransferManager implements IDataTransferManager {
       if (bos.size() != 0) {
         ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
         bos.reset();
-        if (serviceClient.syncData(buffToSend) == ResultStatus.FAILURE) {
-          logger.error("Receiver failed to receive metadata, retry.");
+        ResultStatus status = serviceClient.syncData(buffToSend);
+        if (!status.success) {
+          logger.error("Receiver failed to receive metadata because {}, retry.", status.errorMsg);
           return false;
         }
       }
@@ -363,8 +357,8 @@ public class DataTransferManager implements IDataTransferManager {
    * Check MD5 of schema to make sure that the receiver receives the schema correctly
    */
   private boolean checkMD5ForSchema(String md5OfSender) throws TException {
-    String md5OfReceiver = serviceClient.checkDataMD5(md5OfSender);
-    if (md5OfSender.equals(md5OfReceiver)) {
+    ResultStatus status = serviceClient.checkDataMD5(md5OfSender);
+    if (status.success && md5OfSender.equals(status.msg)) {
       logger.info("Receiver has received schema successfully, retry.");
       return true;
     } else {
@@ -405,14 +399,14 @@ public class DataTransferManager implements IDataTransferManager {
     try {
       syncStatus = true;
       syncLog = new SyncSenderLogger(getSchemaLogFile());
-      successSyncedFilesMap = new HashMap<>();
-      successDeletedFilesMap = new HashMap<>();
 
       for (String sgName : allSG) {
+        lastLocalFilesMap.putIfAbsent(sgName, new HashSet<>());
         syncLog = new SyncSenderLogger(getSyncLogFile());
         try {
-          if (serviceClient.init(sgName) == ResultStatus.FAILURE) {
-            throw new SyncConnectionException("unable init receiver");
+          ResultStatus status = serviceClient.init(sgName);
+          if (!status.success) {
+            throw new SyncConnectionException("Unable init receiver because " + status.errorMsg);
           }
         } catch (TException | SyncConnectionException e) {
           throw new SyncConnectionException("Unable to connect to receiver", e);
@@ -444,9 +438,10 @@ public class DataTransferManager implements IDataTransferManager {
     logger.info("Start to sync names of deleted files in storage group {}", sgName);
     for (File file : deletedFilesName) {
       try {
-        serviceClient.syncDeletedFileName(file.getName());
-        successDeletedFilesMap.get(sgName).add(file);
-        syncLog.finishSyncDeletedFileName(file);
+        if (serviceClient.syncDeletedFileName(file.getName()).success) {
+          lastLocalFilesMap.get(sgName).add(file);
+          syncLog.finishSyncDeletedFileName(file);
+        }
       } catch (TException e) {
         logger.error("Can not sync deleted file name {}, skip it.", file);
       }
@@ -469,9 +464,10 @@ public class DataTransferManager implements IDataTransferManager {
       File snapshotFile = null;
       try {
         snapshotFile = makeFileSnapshot(tsfile);
-        syncSingleFile(snapshotFile);
+        // firstly sync .restore file, then sync tsfile
         syncSingleFile(new File(snapshotFile, TsFileResource.RESOURCE_SUFFIX));
-        successSyncedFilesMap.get(sgName).add(tsfile);
+        syncSingleFile(snapshotFile);
+        lastLocalFilesMap.get(sgName).add(tsfile);
         syncLog.finishSyncTsfile(tsfile);
         logger.info("Task of synchronization has completed {}/{}.", cnt, toBeSyncFiles.size());
       } catch (IOException e) {
@@ -534,9 +530,10 @@ public class DataTransferManager implements IDataTransferManager {
             md.update(buffer, 0, dataLength);
             ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
             bos.reset();
-            if (serviceClient.syncData(buffToSend) == ResultStatus.FAILURE) {
-              logger.info("Receiver failed to receive data from {}, retry.",
-                  snapshotFile.getAbsoluteFile());
+            ResultStatus status = serviceClient.syncData(buffToSend);
+            if (!status.success) {
+              logger.info("Receiver failed to receive data from {} because {}, retry.",
+                  status.errorMsg, snapshotFile.getAbsoluteFile());
               continue outer;
             }
           }
@@ -544,10 +541,12 @@ public class DataTransferManager implements IDataTransferManager {
 
         // the file is sent successfully
         String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
-        String md5OfReceiver = serviceClient.checkDataMD5(md5OfSender);
-        if (md5OfSender.equals(md5OfReceiver)) {
+        ResultStatus status = serviceClient.checkDataMD5(md5OfSender);
+        if (status.success && md5OfSender.equals(status.msg)) {
           logger.info("Receiver has received {} successfully.", snapshotFile.getAbsoluteFile());
           break;
+        } else {
+          logger.error("MD5 check of tsfile {} failed, retry", snapshotFile.getAbsoluteFile());
         }
       }
     } catch (IOException | TException | NoSuchAlgorithmException e) {
@@ -556,17 +555,10 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   private void endSync() {
-    // 1. Organize current local files based on sync result
-    for (Entry<String, Set<File>> entry : lastLocalFilesMap.entrySet()) {
-      entry.getValue()
-          .removeAll(successDeletedFilesMap.getOrDefault(entry.getKey(), new HashSet<>()));
-      entry.getValue()
-          .removeAll(successSyncedFilesMap.getOrDefault(entry.getKey(), new HashSet<>()));
-    }
     File currentLocalFile = getCurrentLogFile();
     File lastLocalFile = new File(config.getLastFileInfo());
 
-    // 2. Write file list to currentLocalFile
+    // 1. Write file list to currentLocalFile
     try (BufferedWriter bw = new BufferedWriter(new FileWriter(currentLocalFile))) {
       for (Set<File> currentLocalFiles : lastLocalFilesMap.values()) {
         for (File file : currentLocalFiles) {
@@ -579,24 +571,24 @@ public class DataTransferManager implements IDataTransferManager {
       logger.error("Can not clear sync log {}", lastLocalFile.getAbsoluteFile(), e);
     }
 
-    // 3. Rename currentLocalFile to lastLocalFile
+    // 2. Rename currentLocalFile to lastLocalFile
     lastLocalFile.deleteOnExit();
     currentLocalFile.renameTo(lastLocalFile);
 
-    // 4. delete snapshot directory
+    // 3. delete snapshot directory
     try {
       FileUtils.deleteDirectory(new File(config.getSnapshotPath()));
     } catch (IOException e) {
       logger.error("Can not clear snapshot directory {}", config.getSnapshotPath(), e);
     }
 
-    // 5. delete sync log file
+    // 4. delete sync log file
     getSyncLogFile().deleteOnExit();
   }
 
 
   private File getSchemaPosFile() {
-    return new File(config.getSenderPath(), Constans.SCHEMA_POS_FILE_NAME);
+    return new File(config.getSenderFolderPath(), Constans.SCHEMA_POS_FILE_NAME);
   }
 
   private File getSchemaLogFile() {
@@ -610,11 +602,11 @@ public class DataTransferManager implements IDataTransferManager {
   }
 
   private File getSyncLogFile() {
-    return new File(config.getSenderPath(), Constans.SYNC_LOG_NAME);
+    return new File(config.getSenderFolderPath(), Constans.SYNC_LOG_NAME);
   }
 
   private File getCurrentLogFile() {
-    return new File(config.getSenderPath(), Constans.CURRENT_LOCAL_FILE_NAME);
+    return new File(config.getSenderFolderPath(), Constans.CURRENT_LOCAL_FILE_NAME);
   }
 
   public void setConfig(SyncSenderConfig config) {

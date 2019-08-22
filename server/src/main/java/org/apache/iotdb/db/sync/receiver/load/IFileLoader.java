@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
+import java.io.File;
+
 public interface IFileLoader {
 
-  void loadTsFiles();
+  void addDeletedFileName(String sgName, File deletedFile);
+
+  void addTsfile(String sgName, File tsfile);
 
 }

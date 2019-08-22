@@ -28,7 +28,7 @@ public class SyncSenderConfig {
 
   private int syncPeriodInSecond = 10;
 
-  private String senderPath;
+  private String senderFolderPath;
 
   private String lockFilePath;
 
@@ -40,11 +40,11 @@ public class SyncSenderConfig {
    * Update paths based on data directory
    */
   public void update(String dataDirectory) {
-    senderPath = dataDirectory + File.separatorChar + Constans.SYNC_SENDER + File.separatorChar +
+    senderFolderPath = dataDirectory + File.separatorChar + Constans.SYNC_SENDER + File.separatorChar +
         getSyncReceiverName();
-    lockFilePath = senderPath + File.separatorChar + Constans.LOCK_FILE_NAME;
-    lastFileInfo = senderPath + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
-    snapshotPath = senderPath + File.separatorChar + Constans.DATA_SNAPSHOT_NAME;
+    lockFilePath = senderFolderPath + File.separatorChar + Constans.LOCK_FILE_NAME;
+    lastFileInfo = senderFolderPath + File.separatorChar + Constans.LAST_LOCAL_FILE_NAME;
+    snapshotPath = senderFolderPath + File.separatorChar + Constans.DATA_SNAPSHOT_NAME;
     if(!new File(snapshotPath).exists()){
       new File(snapshotPath).mkdirs();
     }
@@ -74,12 +74,12 @@ public class SyncSenderConfig {
     this.syncPeriodInSecond = syncPeriodInSecond;
   }
 
-  public String getSenderPath() {
-    return senderPath;
+  public String getSenderFolderPath() {
+    return senderFolderPath;
   }
 
-  public void setSenderPath(String senderPath) {
-    this.senderPath = senderPath;
+  public void setSenderFolderPath(String senderFolderPath) {
+    this.senderFolderPath = senderFolderPath;
   }
 
   public String getLockFilePath() {

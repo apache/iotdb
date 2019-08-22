@@ -28,7 +28,13 @@ public class Constans {
   public static final String SYNC_RECEIVER = "sync-receiver";
 
   public static final String MESSAGE_DIGIT_NAME = "MD5";
+
   public static final String SYNC_DIR_NAME_SEPARATOR = "_";
+
+  /**
+   * Split data file , block size at each transmission
+   **/
+  public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
 
   // sender section
 
@@ -45,11 +51,6 @@ public class Constans {
   public static final String SYNC_LOG_NAME = "sync.log";
 
   /**
-   * Split data file , block size at each transmission
-   **/
-  public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
-
-  /**
    * Maximum try when syncing the same file to receiver fails.
    */
   public static final int MAX_SYNC_FILE_TRY = 5;
@@ -63,5 +64,12 @@ public class Constans {
   public static final long SYNC_PROCESS_PERIOD = CONFIG.getSyncPeriodInSecond();
 
   public static final long SYNC_MONITOR_PERIOD = CONFIG.getSyncPeriodInSecond();
+
+  // receiver section
+
+  public static final String RECEIVER_DATA_FOLDER_NAME = "data";
+
+  public static final String SYNC_END = "sync.end";
+
 
 }

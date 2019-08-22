@@ -22,18 +22,19 @@ typedef i32 int
 typedef i16 short
 typedef i64 long
 
-enum ResultStatus {
-  SUCCESS,
-  FAILURE,
-  BUSY
+struct ResultStatus{
+  bool success,
+  string errorMsg,
+  string msg
 }
 
 service SyncService{
-	ResultStatus checkIdentity(1:string address)
+	ResultStatus check(1:string address)
+	ResultStatus startSync();
 	ResultStatus init(1:string storageGroupName)
 	ResultStatus syncDeletedFileName(1:string fileName)
 	ResultStatus initSyncData(1:string filename)
 	ResultStatus syncData(1:binary buff)
-	string checkDataMD5(1:string md5)
-	void endSync()
+	ResultStatus checkDataMD5(1:string md5)
+	ResultStatus endSync()
 }

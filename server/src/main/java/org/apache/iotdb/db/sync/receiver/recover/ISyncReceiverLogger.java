@@ -18,6 +18,36 @@
  */
 package org.apache.iotdb.db.sync.receiver.recover;
 
-public interface ISyncReceiverLogger {
+import java.io.File;
+import java.io.IOException;
 
+public interface ISyncReceiverLogger {
+  /**
+   * Start sync deleted files name
+   * @throws IOException
+   */
+  void startSyncDeletedFilesName() throws IOException;
+
+  /**
+   * After a deleted file name is synced to the receiver end, record it in sync log.
+   * @param file the deleted tsfile
+   * @throws IOException
+   */
+  void finishSyncDeletedFileName(File file) throws IOException;
+
+  /**
+   * Start sync new tsfiles
+   * @throws IOException
+   */
+  void startSyncTsFiles() throws IOException;
+
+  /**
+   *
+   * After a new tsfile is synced to the receiver end, record it in sync log.
+   * @param file new tsfile
+   * @throws IOException
+   */
+  void finishSyncTsfile(File file) throws IOException;
+
+  void close() throws IOException;
 }
