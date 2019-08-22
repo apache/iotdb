@@ -215,7 +215,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   }
 
   test("testTransform1") {
-    val df = spark.read.tsfile(tsfile1, false, spark)
+    val df = spark.read.tsfile(tsfile1)
     df.createOrReplaceTempView("tsfile_table")
     val newDf = spark.sql("select * from tsfile_table " +
       "where (`device_1.sensor_1`>0 or `device_1.sensor_2` < 22) and time < 4")
@@ -223,7 +223,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   }
 
   test("testTransform2") {
-    val df = spark.read.tsfile(tsfile1, true, spark)
+    val df = spark.read.tsfile(tsfile1, true)
     df.createOrReplaceTempView("tsfile_table")
     val newDf = spark.sql("select * from tsfile_table " +
       "where `device_name` = 'device_1' and (`sensor_1`>0 or `sensor_2` < 22) and time < 4")
@@ -231,7 +231,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   }
 
   test("testTransform3") {
-    val df = spark.read.tsfile(tsfile1, true, spark)
+    val df = spark.read.tsfile(tsfile1, true)
     df.createOrReplaceTempView("tsfile_table")
     val newDf = spark.sql("select * from tsfile_table " +
       "where (`sensor_1`>0 or `sensor_2` < 22) and time < 4")
