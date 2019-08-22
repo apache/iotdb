@@ -412,7 +412,7 @@ Eg: IoTDB > UPDATE USER tempuser SET PASSWORD newpwd;
 
 * COUNT
 
-The COUNT function returns the value number of timeseries(one or more) non-null values selected by the SELECT statement. The result is a signed 64-bit integer. If there are no matching columns, COUNT () returns 0.
+The COUNT function returns the value number of timeseries(one or more) non-null values selected by the SELECT statement. The result is a signed 64-bit integer. If there are no matching rows, COUNT () returns 0.
 
 ```
 SELECT COUNT(Path) (COMMA COUNT(Path))* FROM <FromClause> [WHERE <WhereClause>]?

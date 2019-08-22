@@ -273,7 +273,7 @@ When the fill method is not specified, each data type bears its own default fill
 
 ### Row and Column Control over Query Results
 
-IoTDB provides [LIMIT/SLIMIT](/#/Documents/0.8.0/chap5/sec1) clause and [OFFSET/SOFFSET](/#/Documents/0.8.0/chap5/sec1) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of columns and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+IoTDB provides [LIMIT/SLIMIT](/#/Documents/0.8.0/chap5/sec1) clause and [OFFSET/SOFFSET](/#/Documents/0.8.0/chap5/sec1) clause in order to make users have more control over query results. The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
 
 This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](/#/Documents/0.8.0/chap6/sec1) standard interface to execute queries.
 
@@ -289,7 +289,7 @@ select status, temperature from root.ln.wf01.wt01 limit 10
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires the first 10 columns of the query result be returned.
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires the first 10 rows of the query result be returned.
 
 The result is shown below:
 
@@ -305,7 +305,7 @@ select status, temperature from root.ln.wf01.wt01 limit 5 offset 3
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires columns 3 to 7 of the query result be returned (with the first row numbered as row 0).
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires rows 3 to 7 of the query result be returned (with the first row numbered as row 0).
 
 The result is shown below:
 
@@ -320,7 +320,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires columns 3 to 4 of  the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be returned (with the first row numbered as row 0).
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires rows 3 to 4 of  the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be returned (with the first row numbered as row 0).
 
 The result is shown below:
 
@@ -335,7 +335,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by (1d
 ```
 which means:
 
-The SQL statement clause requires columns 3 to 7 of the query result be returned (with the first row numbered as row 0).
+The SQL statement clause requires rows 3 to 7 of the query result be returned (with the first row numbered as row 0).
 
 The result is shown below:
 
@@ -423,7 +423,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 #### Row and Column Control over Query Results
 
-In addition to row or column control over query results, IoTDB allows users to control both columns and columns of query results. Here is a complete example with both LIMIT clauses and SLIMIT clauses.
+In addition to row or column control over query results, IoTDB allows users to control both rows and columns of query results. Here is a complete example with both LIMIT clauses and SLIMIT clauses.
 
 The SQL statement is:
 
@@ -432,7 +432,7 @@ select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is columns 0 to 1 under this device (with the first column numbered as column 0). The SQL statement clause requires columns 100 to 109 of the query result be returned (with the first row numbered as row 0).
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is columns 0 to 1 under this device (with the first column numbered as column 0). The SQL statement clause requires rows 100 to 109 of the query result be returned (with the first row numbered as row 0).
 
 The result is shown below:
 
@@ -440,7 +440,7 @@ The result is shown below:
 
 ####  Error Handling
 
-When the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB will return all the results as expected. For example, the query result of the original SQL statement consists of six columns, and we select the first 100 columns through the LIMIT clause:
+When the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB will return all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
 
 ```
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
