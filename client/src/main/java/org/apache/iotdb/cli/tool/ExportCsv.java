@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cli.tool;
 
 import java.io.BufferedReader;
@@ -40,6 +41,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.iotdb.cli.client.AbstractClient;
 import org.apache.iotdb.cli.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
@@ -70,7 +72,9 @@ public class ExportCsv extends AbstractCsvTool {
   private static String targetDirectory;
 
   private static final int EXPORT_PER_LINE_COUNT = 10000;
-  
+
+  private static String TIMESTAMP_PRECISION = "ms";
+
   /**
    * main function of export csv tool.
    */
@@ -128,7 +132,7 @@ public class ExportCsv extends AbstractCsvTool {
       }
     } catch (ClassNotFoundException e) {
       System.out.println("Failed to export data because cannot find IoTDB JDBC Driver, "
-              + "please check whether you have imported driver or not: " + e.getMessage());
+          + "please check whether you have imported driver or not: " + e.getMessage());
     } catch (TException e) {
       System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
     } catch (SQLException e) {
@@ -149,7 +153,7 @@ public class ExportCsv extends AbstractCsvTool {
       throws ArgsErrorException {
     targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine);
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
-    if(targetFile == null){
+    if (targetFile == null) {
       targetFile = DUMP_FILE_NAME_DEFAULT;
     }
     timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
@@ -222,14 +226,15 @@ public class ExportCsv extends AbstractCsvTool {
   }
 
   private static void dumpFromSqlFile(String filePath) throws IOException {
-    try (BufferedReader reader = new BufferedReader(new FileReader(filePath))){
+    try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
       String sql;
       int index = 0;
       while ((sql = reader.readLine()) != null) {
         try {
           dumpResult(sql, index);
         } catch (SQLException e) {
-          System.out.println("Cannot dump data for statement " + sql + ", because : " + e.getMessage());
+          System.out
+              .println("Cannot dump data for statement " + sql + ", because : " + e.getMessage());
         }
         index++;
       }
@@ -246,18 +251,18 @@ public class ExportCsv extends AbstractCsvTool {
   private static void dumpResult(String sql, int index)
       throws SQLException {
 
-    final String path = index > 0 ? targetDirectory + targetFile + ".csv" : targetDirectory + targetFile + index + ".csv";
+    final String path = targetDirectory + targetFile + index + ".csv";
     File tf = new File(path);
     try {
       if (!tf.exists() && !tf.createNewFile()) {
-          System.out.println("Could not create target file for sql statement: " + sql);
-          return;
+        System.out.println("Could not create target file for sql statement: " + sql);
+        return;
       }
     } catch (IOException e) {
-      System.out.println("Cannot create dump file "+ path + "because: " + e.getMessage());
+      System.out.println("Cannot create dump file " + path + "because: " + e.getMessage());
       return;
     }
-    System.out.println("Start to export data from sql statement: "+ sql);
+    System.out.println("Start to export data from sql statement: " + sql);
     try (Statement statement = connection.createStatement();
         ResultSet rs = statement.executeQuery(sql);
         BufferedWriter bw = new BufferedWriter(new FileWriter(tf))) {
@@ -269,8 +274,10 @@ public class ExportCsv extends AbstractCsvTool {
       writeMetadata(bw, count, metadata);
 
       int line = writeResultSet(rs, bw, count);
-      System.out.println(String.format("Statement [%s] has dumped to file %s successfully! It costs "
-          + "%dms to export %d lines.", sql, path, System.currentTimeMillis() - startTime, line));
+      System.out
+          .println(String.format("Statement [%s] has dumped to file %s successfully! It costs "
+                  + "%dms to export %d lines.", sql, path, System.currentTimeMillis() - startTime,
+              line));
     } catch (IOException e) {
       System.out.println("Cannot dump result because: " + e.getMessage());
     }
@@ -300,9 +307,10 @@ public class ExportCsv extends AbstractCsvTool {
         writeValue(rs, count, bw);
       }
       line++;
-      if(line % EXPORT_PER_LINE_COUNT == 0){
+      if (line % EXPORT_PER_LINE_COUNT == 0) {
         long tmp = System.currentTimeMillis();
-        System.out.println(String.format("%d lines have been exported, it takes %dms", line, (tmp-timestamp)));
+        System.out.println(
+            String.format("%d lines have been exported, it takes %dms", line, (tmp - timestamp)));
         timestamp = tmp;
       }
     }
@@ -313,9 +321,11 @@ public class ExportCsv extends AbstractCsvTool {
     ZonedDateTime dateTime;
     switch (timeFormat) {
       case "default":
-        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(rs.getLong(1)),
-            zoneId);
-        bw.write(dateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) + ",");
+        long timestamp = rs.getLong(1);
+        String str = AbstractClient
+            .parseLongToDateWithPrecision(DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId,
+                TIMESTAMP_PRECISION);
+        bw.write(str + ",");
         break;
       case "timestamp":
       case "long":

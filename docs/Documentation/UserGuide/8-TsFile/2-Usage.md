@@ -189,7 +189,7 @@ See reference: [Installation](./1-Installation.md)
 
 You could write a TsFile by constructing **TSRecord** if you have the **non-aligned** (e.g. not all sensors contain values) time series data.
 
-A more thorough example can be found at `/tsfile/example/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTSRecord.java`
+A more thorough example can be found at `/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTSRecord.java`
 
 ```java
 package org.apache.iotdb.tsfile;
@@ -250,7 +250,7 @@ public class TsFileWriteWithTSRecord {
 
 You could write a TsFile by constructing **RowBatch** if you have the **aligned** time series data.
 
-A more thorough example can be found at `/tsfile/example/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithRowBatch.java`
+A more thorough example can be found at `/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithRowBatch.java`
 
 ```java
 package org.apache.iotdb.tsfile;
