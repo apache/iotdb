@@ -92,9 +92,7 @@ public class StorageGroupProcessorTest {
     Long[] times = new Long[100];
     TSDataValueList[] dataValueLists = new TSDataValueList[2];
     dataValueLists[0] = new TSDataValueList();
-    dataValueLists[0].setType(IoTDBDataType.INT32);
     dataValueLists[1] = new TSDataValueList();
-    dataValueLists[1].setType(IoTDBDataType.INT64);
     for (long i = 1; i <= 100; i++) {
       times[(int) i-1] = i;
       dataValueLists[0].addToInt_vals((int) i);
@@ -113,9 +111,7 @@ public class StorageGroupProcessorTest {
     times = new Long[100];
     dataValueLists = new TSDataValueList[2];
     dataValueLists[0] = new TSDataValueList();
-    dataValueLists[0].setType(IoTDBDataType.INT32);
     dataValueLists[1] = new TSDataValueList();
-    dataValueLists[1].setType(IoTDBDataType.INT64);
     for (long i = 50; i <= 149; i++) {
       times[(int) i-50] = i;
       dataValueLists[0].addToInt_vals((int) i);

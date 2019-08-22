@@ -6,6 +6,16 @@ import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
 import org.apache.iotdb.session.IoTDBRowBatch;
 import org.apache.iotdb.session.Session;
 
+/**
+ * you need to set storage group and create timeseries first from Client or JDBC
+ *
+ * for this example:
+ *
+ * SET STORAGE GROUP TO root.sg1
+ * CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=FLOAT, ENCODING=RLE
+ * CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE
+ * CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=FLOAT, ENCODING=RLE
+ */
 public class SessionExample {
 
   public static void main(String[] args) {

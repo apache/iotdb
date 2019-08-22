@@ -45,13 +45,13 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-client</artifactId>
-      <version>0.8.0-SNAPSHOT</version>
+      <version>0.9.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
 
 
-## Examples
+## Examples without Standard JDBC
 
 This chapter provides an example of how to open an IoTDB session, execute a batch insertion.
 
