@@ -77,7 +77,7 @@ Enter ```quit``` or `exit` can exit Client. The client will shows `quit normally
 |-p <`port`>|int|Yes|The port number of the IoTDB server. IoTDB runs on port 6667 by default|-p 6667|
 |-pw <`password`>|string, no quotation marks|No|The password used for IoTDB to connect to the server. If no password is entered, IoTDB will ask for password in Cli command|-pw root|
 |-u <`username`>|string, no quotation marks|Yes|User name used for IoTDB to connect the server|-u root|
-|-maxPRC <`maxPrintRowCount`>|int|No|Set the maximum number of rows that IoTDB returns|-maxPRC 10|
+|-maxPRC <`maxPrintRowCount`>|int|No|Set the maximum number of columns that IoTDB returns|-maxPRC 10|
 |-e <`execute`> |string|No|manipulate IoTDB in batches without entering client input mode|-e "show storage group"|
 
 Following is a client command which connects the host with IP

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
@@ -191,6 +192,11 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
       timeStampUnion.add(insertPlan.getTime());
     }
     return true;
+  }
+
+  @Override
+  public List<Integer> insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException {
+    return null;
   }
 
   @Override

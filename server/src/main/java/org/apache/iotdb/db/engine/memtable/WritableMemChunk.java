@@ -28,6 +28,7 @@ import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.service.rpc.thrift.TSDataValueList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -74,25 +75,37 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(long insertTime, Object value) {
+  public void write(Long[] times, TSDataValueList value, List<Integer> indexes) {
     switch (dataType) {
       case BOOLEAN:
-        putBoolean(insertTime, (Boolean)value);
+        for (Integer index: indexes) {
+          putBoolean(times[index], value.bool_vals.get(index));
+        }
         break;
       case INT32:
-        putInt(insertTime, (Integer)value);
+        for (Integer index: indexes) {
+          putInt(times[index], value.int_vals.get(index));
+        }
         break;
       case INT64:
-        putLong(insertTime, (Long)value);
+        for (Integer index: indexes) {
+          putLong(times[index], value.long_vals.get(index));
+        }
         break;
       case FLOAT:
-        putFloat(insertTime, (Float)value);
+        for (Integer index: indexes) {
+          putFloat(times[index], value.float_vals.get(index).floatValue());
+        }
         break;
       case DOUBLE:
-        putDouble(insertTime, (Double)value);
+        for (Integer index: indexes) {
+          putDouble(times[index], value.double_vals.get(index));
+        }
         break;
       case TEXT:
-        putBinary(insertTime, (Binary)value);
+        for (Integer index: indexes) {
+          putBinary(times[index], new Binary(value.binary_vals.get(index).array()));
+        }
         break;
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);

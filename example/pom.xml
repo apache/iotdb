@@ -36,6 +36,8 @@
     <modules>
         <module>kafka</module>
         <module>rocketmq</module>
+      <module>jdbc</module>
+        <module>client</module>
     </modules>
     <build>
         <pluginManagement>

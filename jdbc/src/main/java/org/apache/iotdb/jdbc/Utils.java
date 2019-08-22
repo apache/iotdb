@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
@@ -42,7 +43,7 @@ public class Utils {
   /**
    * Private constructor of Utils Class.
    */
-  private  Utils(){
+  public Utils(){
     throw new IllegalAccessError("Utility class");
   }
 
@@ -50,7 +51,7 @@ public class Utils {
    * Parse JDBC connection URL The only supported format of the URL is:
    * jdbc:iotdb://localhost:6667/.
    */
-  public static IoTDBConnectionParams parseUrl(String url, Properties info)
+  static IoTDBConnectionParams parseUrl(String url, Properties info)
       throws IoTDBURLException {
     IoTDBConnectionParams params = new IoTDBConnectionParams(url);
     if (url.trim().equalsIgnoreCase(Config.IOTDB_URL_PREFIX)) {
@@ -96,7 +97,7 @@ public class Utils {
    * @param tsQueryDataSet -query data set
    * @return -list of row record
    */
-  public static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet) {
+  static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet) {
     List<RowRecord> records = new ArrayList<>();
     for (TSRowRecord ts : tsQueryDataSet.getRecords()) {
       RowRecord r = new RowRecord(ts.getTimestamp());
@@ -108,7 +109,7 @@ public class Utils {
           field.setNull();
           r.getFields().add(field);
         } else {
-          TSDataType dataType = TSDataType.valueOf(value.getType());
+          TSDataType dataType = getTSDataTypeByRPCType(value.getType());
           Field field = new Field(dataType);
           addFieldAccordingToDataType(field, dataType, value);
           r.getFields().add(field);
@@ -117,6 +118,30 @@ public class Utils {
       records.add(r);
     }
     return records;
+  }
+
+  private static TSDataType getTSDataTypeByRPCType(IoTDBDataType type) {
+    switch (type) {
+      case BOOLEAN: return TSDataType.BOOLEAN;
+      case FLOAT: return TSDataType.FLOAT;
+      case DOUBLE: return TSDataType.DOUBLE;
+      case INT32: return TSDataType.INT32;
+      case INT64: return TSDataType.INT64;
+      case TEXT: return TSDataType.TEXT;
+      default: throw new RuntimeException("data type not supported: " + type);
+    }
+  }
+
+  public static IoTDBDataType getIoTDBDataTypeByTSDataType(TSDataType type) {
+    switch (type) {
+      case BOOLEAN: return IoTDBDataType.BOOLEAN;
+      case FLOAT: return IoTDBDataType.FLOAT;
+      case DOUBLE: return IoTDBDataType.DOUBLE;
+      case INT32: return IoTDBDataType.INT32;
+      case INT64: return IoTDBDataType.INT64;
+      case TEXT: return IoTDBDataType.TEXT;
+      default: throw new RuntimeException("data type not supported: " + type);
+    }
   }
 
   /**

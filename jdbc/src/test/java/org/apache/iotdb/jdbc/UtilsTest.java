@@ -114,23 +114,18 @@ public class UtilsTest {
         } else {
           if (i == 0) {
             value.setBool_val((boolean) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else if (i == 1) {
             value.setInt_val((int) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else if (i == 2) {
             value.setLong_val((long) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else if (i == 3) {
             value.setFloat_val((float) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else if (i == 4) {
             value.setDouble_val((double) item[3 * i + 3]);
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           } else {
             value.setBinary_val(ByteBuffer.wrap(((String) item[3 * i + 3]).getBytes()));
-            value.setType(((TSDataType) item[3 * i + 2]).toString());
           }
+          value.setType(Utils.getIoTDBDataTypeByTSDataType((TSDataType) item[3 * i + 2]));
         }
         values.add(value);
       }

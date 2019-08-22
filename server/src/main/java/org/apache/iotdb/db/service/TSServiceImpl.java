@@ -61,12 +61,14 @@ import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -164,7 +166,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus.setErrorMessage("login failed. Username or password is wrong.");
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
-        TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
+        TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
     resp.setSessionHandle(
         new TS_SessionHandle(new TSHandleIdentifier(ByteBuffer.wrap(req.getUsername().getBytes()),
             ByteBuffer.wrap(req.getPassword().getBytes()))));
@@ -973,7 +975,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSExecuteStatementResp executeInsertion(TSInsertionReq req) {
+  public TSExecuteStatementResp insert(TSInsertionReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
@@ -1001,6 +1003,61 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       logger.info("meet error while executing an insertion into {}", req.getDeviceId(), e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+    }
+  }
+
+  @Override
+  public TSExecuteBatchStatementResp insertBatch(TSBatchInsertionReq req) {
+    long t1 = System.currentTimeMillis();
+    List<Integer> results;
+    try {
+      if (!checkLogin()) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN, null);
+      }
+
+      BatchInsertPlan batchInsertPlan = new BatchInsertPlan();
+      batchInsertPlan.setDeviceId(req.deviceId);
+      batchInsertPlan.setMeasurements(req.measurements);
+      batchInsertPlan.setTimes(req.timestamps);
+      batchInsertPlan.setColumns(req.columns);
+      batchInsertPlan.setDataTypes(req.types);
+      batchInsertPlan.setRowCount(req.timestamps.size());
+
+      boolean isAllSuccessful = true;
+
+      List<Path> paths = batchInsertPlan.getPaths();
+      try {
+        if (!checkAuthorization(paths, batchInsertPlan)) {
+          return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+              "No permissions for this operation " + batchInsertPlan.getOperatorType(), null);
+        }
+      } catch (AuthException e) {
+        logger.error("meet error while checking authorization.", e);
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+            "Uninitialized authorizer " + e.getMessage(), null);
+      }
+
+      results = processor.getExecutor().insertBatch(batchInsertPlan);
+
+      for (Integer result : results) {
+        long t2 = System.currentTimeMillis();
+        isAllSuccessful = isAllSuccessful && (result == TS_StatusCode.SUCCESS_STATUS.getValue() ? true : false);
+        Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+      }
+
+      if (isAllSuccessful) {
+        return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
+            "Execute batch statements successfully", results);
+      } else {
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+            "Meet error in batch", results);
+      }
+    } catch (Exception e) {
+      logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
+    } finally {
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH, t1);
     }
   }
 

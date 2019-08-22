@@ -80,10 +80,6 @@ public class IoTDB implements IoTDBMBean {
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
 
-    boolean enableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(enableWAL);
-
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored
     // Warn: registMonitor() method should be called after systemDataRecovery()

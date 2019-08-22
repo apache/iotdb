@@ -26,9 +26,12 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.service.rpc.thrift.TSDataValueList;
+import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class AbstractMemTable implements IMemTable {
@@ -89,6 +92,18 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) {
+    for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
+      for (int j = 0; j < batchInsertPlan.getTimes().length; j++) {
+        write(batchInsertPlan, indexes);
+      }
+    }
+    long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
+    memSize += recordSizeInByte;
+  }
+
+
+  @Override
   public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
       String insertValue) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
@@ -96,12 +111,14 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
-      Object value) {
-    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
-    memSeries.write(insertTime, value);
-    // update memory size of current memtable
+  public void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes) {
+    for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
+      IWritableMemChunk memSeries = createIfNotExistAndGet(batchInsertPlan.getDeviceId(),
+          batchInsertPlan.getMeasurements()[i], batchInsertPlan.getDataTypes()[i]);
+      memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i], indexes);
+    }
   }
+
 
   @Override
   public long size() {
