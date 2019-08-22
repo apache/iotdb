@@ -30,7 +30,7 @@ import org.junit.Test;
 
 public class HDFSInputTest {
 
-  private String folder = "../spark/src/test/resources/HDFSInputTest";
+  private String folder = "target/test-output/HDFSInputTest";
   private String path = folder + "/test.tsfile";
   private HDFSInput in;
 

@@ -29,6 +29,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -62,6 +63,9 @@ public abstract class AbstractClient {
 
   protected static final String USERNAME_ARGS = "u";
   protected static final String USERNAME_NAME = "username";
+
+  protected static final String EXECUTE_ARGS = "e";
+  protected static final String EXECUTE_NAME = "execute";
 
   protected static final String ISO8601_ARGS = "disableISO8601";
   protected static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
@@ -142,6 +146,8 @@ public abstract class AbstractClient {
   protected static String port = "6667";
   protected static String username;
   protected static String password;
+  protected static String execute;
+  protected static boolean hasExecuteSQL = false;
 
   protected static boolean printToConsole = true;
 
@@ -165,6 +171,7 @@ public abstract class AbstractClient {
     keywordSet.add("-" + PORT_ARGS);
     keywordSet.add("-" + PASSWORD_ARGS);
     keywordSet.add("-" + USERNAME_ARGS);
+    keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + MAX_PRINT_ROW_COUNT_ARGS);
   }
@@ -340,6 +347,11 @@ public abstract class AbstractClient {
         .desc("password (optional)")
         .build();
     options.addOption(password);
+
+    Option execute = Option.builder(EXECUTE_ARGS).argName(EXECUTE_NAME).hasArg()
+        .desc("execute statement (optional)")
+        .build();
+    options.addOption(execute);
 
     Option maxPrintCount = Option.builder(MAX_PRINT_ROW_COUNT_ARGS)
         .argName(MAX_PRINT_ROW_COUNT_NAME).hasArg()
@@ -536,6 +548,32 @@ public abstract class AbstractClient {
     return args;
   }
 
+  protected static String[] processExecuteArgs(String[] args) {
+    int index = -1;
+    for (int i = 0; i < args.length; i++) {
+      if (args[i].equals("-" + EXECUTE_ARGS)) {
+        index = i;
+        break;
+      }
+    }
+    if (index >= 0 && ((index + 1 >= args.length) || (index + 1 < args.length && keywordSet
+        .contains(args[index + 1])))) {
+      return ArrayUtils.remove(args, index);
+    } else if (index == -1) {
+      return args;
+    } else {
+      StringBuilder executeCommand = new StringBuilder();
+      for (int j = index + 1; j < args.length; j++) {
+        executeCommand.append(args[j]).append(" ");
+      }
+      executeCommand.deleteCharAt(executeCommand.length() - 1);
+      execute = executeCommand.toString();
+      hasExecuteSQL = true;
+      args = Arrays.copyOfRange(args, 0, index);
+      return args;
+    }
+  }
+
   protected static void displayLogo(String version) {
     println(" _____       _________  ______   ______    \n"
         + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
@@ -544,6 +582,12 @@ public abstract class AbstractClient {
         + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
         + "|_____|'.__.' |_____|  |______.'|_______/  version " + version + "\n"
         + "                                           \n");
+  }
+
+  protected static void echoStarting(){
+    println("---------------------");
+    println("Starting IoTDB Client");
+    println("---------------------");
   }
 
   protected static OperationResult handleInputCmd(String cmd, IoTDBConnection connection) {
@@ -764,7 +808,7 @@ public abstract class AbstractClient {
     STOP_OPER, CONTINUE_OPER, NO_OPER
   }
 
-  protected static void printf(String format, Object ... args) {
+  protected static void printf(String format, Object... args) {
     SCREEN_PRINTER.printf(format, args);
   }
 

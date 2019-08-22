@@ -30,6 +30,8 @@ import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
@@ -49,7 +51,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
   private Thread jdbcServiceThread;
-  private Factory protocolFactory;
+  private TProtocolFactory protocolFactory;
   private Processor<TSIService.Iface> processor;
   private TThreadPoolServer.Args poolArgs;
   private TSServiceImpl impl;
@@ -188,7 +190,12 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
     public JDBCServiceThread(CountDownLatch threadStartLatch, CountDownLatch threadStopLatch)
         throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-      protocolFactory = new TBinaryProtocol.Factory();
+      if(IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+        protocolFactory = new TCompactProtocol.Factory();
+      }
+      else {
+        protocolFactory = new TBinaryProtocol.Factory();
+      }
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       impl = (TSServiceImpl) Class.forName(config.getRpcImplClassName()).newInstance();
       processor = new TSIService.Processor<>(impl);

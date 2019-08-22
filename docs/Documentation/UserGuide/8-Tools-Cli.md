@@ -24,6 +24,7 @@
 - Cli/shell tool
     - Running Cli/Shell
     - Cli/Shell Parameters
+    - Cli/shell tool with -e parameter
 
 <!-- /TOC -->
 # Cli/shell tool
@@ -43,12 +44,12 @@ the port number of the server running, set the specific IP and PORT at -h and -p
 The Linux and MacOS system startup commands are as follows:
 
 ```
-  Shell > ./bin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > ./sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 The Windows system startup commands are as follows:
 
 ```
-  Shell > \bin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > \sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 After using these commands, the client can be started successfully. The successful status will be as follows: 
 
@@ -77,6 +78,7 @@ Enter ```quit``` or `exit` can exit Client. The client will shows `quit normally
 |-pw <`password`>|string, no quotation marks|No|The password used for IoTDB to connect to the server. If no password is entered, IoTDB will ask for password in Cli command|-pw root|
 |-u <`username`>|string, no quotation marks|Yes|User name used for IoTDB to connect the server|-u root|
 |-maxPRC <`maxPrintRowCount`>|int|No|Set the maximum number of rows that IoTDB returns|-maxPRC 10|
+|-e <`execute`> |string|No|manipulate IoTDB in batches without entering client input mode|-e "show storage group"|
 
 Following is a client command which connects the host with IP
 10.129.187.21, port 6667, username "root", password "root", and prints the timestamp in digital form. The maximum number of lines displayed on the IoTDB command line is 10.
@@ -84,10 +86,47 @@ Following is a client command which connects the host with IP
 The Linux and MacOS system startup commands are as follows:
 
 ```
-  Shell >./bin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > ./sbin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 The Windows system startup commands are as follows:
 
 ```
-  Shell > \bin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > \sbin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
+## Cli/shell tool with -e parameter
+
+-e parameter is designed for the Cli/shell tool in the situation where you would like to manipulate IoTDB in batches through scripts. By using the -e parameter, you can operate IoTDB without entering the client's input mode. 
+
+In order to avoid confusion between statements and other parameters, the current situation only supports the -e parameter as the last parameter.
+
+The usage of -e parameter for Cli/shell is as follows:
+
+```
+  Shell > ./sbin/start-client.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
+```
+
+In order to better explain the use of -e parameter, take following as an example.
+
+Suppose you want to create a storage group root.demo to a newly launched IoTDB, create a timeseries root.demo.s1 and insert three data points into it. With -e parameter, you could write a shell like this:
+
+```
+# !/bin/bash
+
+host=127.0.0.1
+port=6667
+user=root
+pass=root
+
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "set storage group to root.demo"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
+./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "select s1 from root.demo"
+```
+
+The print results are shown in the figure, which are consistent with the client and jdbc operations.
+
+![img](https://issues.apache.org/jira/secure/attachment/12976042/12976042_image-2019-07-27-15-47-12-045.png)
+
+It should be noted that the use of the -e parameter in shell scripts requires attention to the escaping of special characters. 
