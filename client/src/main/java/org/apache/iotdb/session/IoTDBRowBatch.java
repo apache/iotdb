@@ -57,7 +57,6 @@ public class IoTDBRowBatch {
     columns = new ArrayList<>();
     for (int i = 0; i < measurements.size(); i++) {
       TSDataValueList dataValueList = new TSDataValueList();
-      dataValueList.setType(dataTypes.get(i));
       switch (dataTypes.get(i)) {
         case BOOLEAN:
           dataValueList.setBool_vals(new ArrayList<>());

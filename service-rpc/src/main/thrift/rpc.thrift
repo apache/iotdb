@@ -202,13 +202,12 @@ struct TSDataValue{
 
 
 struct TSDataValueList{
-  1: required IoTDBDataType type
-  2: optional list<bool> bool_vals
-  3: optional list<i32> int_vals
-  4: optional list<i64> long_vals
-  5: optional list<double> float_vals
-  6: optional list<double> double_vals
-  7: optional list<binary> binary_vals
+  1: optional list<bool> bool_vals
+  2: optional list<i32> int_vals
+  3: optional list<i64> long_vals
+  4: optional list<double> float_vals
+  5: optional list<double> double_vals
+  6: optional list<binary> binary_vals
 }
 
 struct TSRowRecord{
