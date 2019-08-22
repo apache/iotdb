@@ -25,6 +25,7 @@ package object tsfile {
 
   /**
     * add a method 'tsfile' to DataFrameReader to read tsfile
+    * @param reader dataframeReader
     */
   implicit class TsFileDataFrameReader(reader: DataFrameReader) {
     def tsfile(path: String,
