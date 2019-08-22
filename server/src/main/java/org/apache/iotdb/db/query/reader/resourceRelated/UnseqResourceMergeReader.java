@@ -28,7 +28,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.db.tools.QueryTrace;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -41,6 +40,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
+import org.apache.iotdb.tsfile.utils.QueryTrace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +76,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
       if (isTsFileNotSatisfied(tsFileResource, filter)) {
         if (qlogger.isInfoEnabled()) {
           String isClosedStr = tsFileResource.isClosed() ? "closed" : "unclosed";
-          qlogger.info("phase 2: skip {} unsequence file {} whose start and end time of device {} "
+          qlogger.info("phase 2: skip {} unsequence file {}, whose start and end time of device {} "
                   + "don't satisfy the filter {}", isClosedStr,
               tsFileResource.getFile().getAbsolutePath(), seriesPath.getDevice(), filter);
         }
@@ -84,7 +84,7 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
       }
       if (qlogger.isInfoEnabled()) {
         String isClosedStr = tsFileResource.isClosed() ? "closed" : "unclosed";
-        qlogger.info("phase 2: pick {} unsequence file {} whose start and end time of device {} "
+        qlogger.info("phase 2: pick {} unsequence file {}, whose start and end time of device {} "
                 + "satisfy the filter {}", isClosedStr, tsFileResource.getFile().getAbsolutePath(),
             seriesPath.getDevice(), filter);
       }
@@ -121,16 +121,16 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
           if (!filter.satisfy(digest)) {
             if (qlogger.isInfoEnabled()) {
               qlogger.info("phase 4: isNullFilterOrFilterSatisfy = 0 for file {} seriesPath {} "
-                      + "chunkMetaData No.{}", tsFileResource.getFile().getAbsolutePath(),
-                  seriesPath, chunkMetaDataNum);
+                      + "chunkMetaData No.{} filter {}", tsFileResource.getFile().getAbsolutePath(),
+                  seriesPath, chunkMetaDataNum, filter);
             }
             continue;
           }
         }
         if (qlogger.isInfoEnabled()) {
           qlogger.info("phase 4: isNullFilterOrFilterSatisfy = 1 for file {} seriesPath {} "
-                  + "chunkMetaData No.{}", tsFileResource.getFile().getAbsolutePath(), seriesPath,
-              chunkMetaDataNum);
+                  + "chunkMetaData No.{} filter {}", tsFileResource.getFile().getAbsolutePath(),
+              seriesPath, chunkMetaDataNum, filter);
         }
 
         Chunk chunk = chunkLoader.getChunk(chunkMetaData);

@@ -35,7 +35,7 @@ public abstract class FileSeriesReader {
   protected ChunkLoader chunkLoader;
   protected List<ChunkMetaData> chunkMetaDataList;
   protected ChunkReader chunkReader;
-  private int chunkToRead;
+  protected int chunkToRead;
 
   private BatchData data;
 

@@ -33,9 +33,13 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.QueryTrace;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class ChunkReader {
 
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
   ChunkHeader chunkHeader;
   private ByteBuffer chunkDataBuffer;
 
@@ -94,8 +98,17 @@ public abstract class ChunkReader {
       // if the current page satisfies
       if (pageSatisfied(pageHeader)) {
         hasCachedPageHeader = true;
+        if (qlogger.isInfoEnabled()) {
+          qlogger.info("phase 5: (no IO though) deserializing a pageHeader from chunkDataBuffer");
+          qlogger.info(
+              "phase 5: pick the current page, whose header satisfies");
+        }
         return true;
       } else {
+        if(qlogger.isInfoEnabled()) {
+          qlogger.info("phase 5: (no IO though) deserializing a pageHeader from chunkDataBuffer");
+          qlogger.info("phase 5: skip the current page, whose header doesn't satisfy");
+        }
         skipBytesInStreamByLength(pageHeader.getCompressedSize());
       }
     }

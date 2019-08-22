@@ -35,7 +35,7 @@
     </appender>
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtil" level="debug" />-->
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtilTest" level="debug" />-->
-    <logger name="org.apache.iotdb.db.tools.QueryTrace" level="warn" />
+    <logger name="org.apache.iotdb.tsfile.utils.QueryTrace" level="warn" />
     <root level="INFO">
         <appender-ref ref="stdout"/>
     </root>

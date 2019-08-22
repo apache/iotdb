@@ -53,7 +53,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.tools.QueryTrace;
+import org.apache.iotdb.tsfile.utils.QueryTrace;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -522,13 +522,13 @@ public class StorageGroupProcessor {
       // TODO: try filtering files if the query contains time filter
       if (!tsFileResource.containsDevice(deviceId)) {
         if (qlogger.isInfoEnabled()) {
-          qlogger.info("phase 1: skip file {} which does not contain device {}",
+          qlogger.info("phase 1: skip file {}, which does not contain device {}",
               tsFileResource.getFile().getAbsolutePath(), deviceId);
         }
         continue;
       }
       if(qlogger.isInfoEnabled()) {
-        qlogger.info("phase 1: pick file {} which contains device {}",
+        qlogger.info("phase 1: pick file {}, which contains device {}",
             tsFileResource.getFile().getAbsolutePath(), deviceId);
       }
       closeQueryLock.readLock().lock();

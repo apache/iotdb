@@ -30,7 +30,6 @@ import org.apache.iotdb.db.query.reader.IAggregateReader;
 import org.apache.iotdb.db.query.reader.fileRelated.FileSeriesReaderAdapter;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileIterateReader;
 import org.apache.iotdb.db.query.reader.universal.IterateReader;
-import org.apache.iotdb.db.tools.QueryTrace;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -41,6 +40,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
+import org.apache.iotdb.tsfile.utils.QueryTrace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,14 +120,15 @@ public class SeqResourceIterateReader extends IterateReader {
     if (tsFileResource.isClosed()) {
       if (isTsFileNotSatisfied(tsFileResource, filter)) {
         if (qlogger.isInfoEnabled()) {
-          qlogger.info("phase 2: skip closed sequence file {} whose start and end time of device {}"
-                  + " + don't satisfy the filter {}", tsFileResource.getFile().getAbsolutePath(),
-              seriesPath.getDevice(), filter);
+          qlogger
+              .info("phase 2: skip closed sequence file {}, whose start and end time of device {}"
+                      + " + don't satisfy the filter {}", tsFileResource.getFile().getAbsolutePath(),
+                  seriesPath.getDevice(), filter);
         }
         return false;
       }
-      if(qlogger.isInfoEnabled()) {
-        qlogger.info("phase 2: pick closed sequence file {} whose start and end time of device {} "
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info("phase 2: pick closed sequence file {}, whose start and end time of device {} "
                 + "satisfy the filter {}", tsFileResource.getFile().getAbsolutePath(),
             seriesPath.getDevice(), filter);
       }
@@ -141,7 +142,8 @@ public class SeqResourceIterateReader extends IterateReader {
       if (tsFileResource.getEndTimeMap().size() != 0) {
         if (isTsFileNotSatisfied(tsFileResource, filter)) {
           if (qlogger.isInfoEnabled()) {
-            qlogger.info("phase 2: skip unclosed sequence file {} whose start and end time of device {}"
+            qlogger.info(
+                "phase 2: skip unclosed sequence file {}, whose start and end time of device {}"
                     + " + don't satisfy the filter {}", tsFileResource.getFile().getAbsolutePath(),
                 seriesPath.getDevice(), filter);
           }
@@ -149,9 +151,10 @@ public class SeqResourceIterateReader extends IterateReader {
         }
       }
       if (qlogger.isInfoEnabled()) {
-        qlogger.info("phase 2: pick unclosed sequence file {} whose start and end time of device {} "
-                + "(may) satisfy the filter {}", tsFileResource.getFile().getAbsolutePath(),
-            seriesPath.getDevice(), filter);
+        qlogger
+            .info("phase 2: pick unclosed sequence file {}, whose start and end time of device {} "
+                    + "(may) satisfy the filter {}", tsFileResource.getFile().getAbsolutePath(),
+                seriesPath.getDevice(), filter);
       }
 
       currentSeriesReader = new UnSealedTsFileIterateReader(tsFileResource, filter, enableReverse);

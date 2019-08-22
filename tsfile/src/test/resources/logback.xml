@@ -110,6 +110,7 @@
         </filter>
     </appender>
     <!--<logger name="org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl level="debug" />-->
+    <logger name="org.apache.iotdb.tsfile.utils.QueryTrace" level="warn" />
     <root level="INFO">
         <appender-ref ref="stdout"/>
     </root>

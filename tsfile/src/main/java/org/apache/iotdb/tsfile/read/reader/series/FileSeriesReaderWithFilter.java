@@ -27,6 +27,9 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
+import org.apache.iotdb.tsfile.utils.QueryTrace;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Series reader is used to query one series of one TsFile,
@@ -34,6 +37,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
  */
 public class FileSeriesReaderWithFilter extends FileSeriesReader {
 
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
   private Filter filter;
 
   public FileSeriesReaderWithFilter(ChunkLoader chunkLoader,
@@ -55,7 +59,14 @@ public class FileSeriesReaderWithFilter extends FileSeriesReader {
         chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MIN_VALUE),
         chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
         chunkMetaData.getTsDataType());
-    return filter.satisfy(digest);
+    boolean isSatisfy = filter.satisfy(digest);
+    if(qlogger.isInfoEnabled()) {
+      int isNullFilterOrFilterSatisfy = isSatisfy ? 1 : 0;
+      qlogger.info("phase 4: isNullFilterOrFilterSatisfy = {} for file unknown seriesPath "
+              + "deviceUnknown.{} chunkMetaData No.{} filter {}", isNullFilterOrFilterSatisfy,
+          chunkMetaData.getMeasurementUid(), chunkToRead, filter);
+    }
+    return isSatisfy;
   }
 
 }
