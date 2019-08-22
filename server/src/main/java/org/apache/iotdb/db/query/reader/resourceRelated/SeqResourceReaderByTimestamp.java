@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.fileRelated.FileSeriesReaderByTimestampAdapter;
 import org.apache.iotdb.db.query.reader.fileRelated.UnSealedTsFileReaderByTimestamp;
+import org.apache.iotdb.db.tools.QueryTrace;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -35,6 +36,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * To read a chronologically ordered list of sequence TsFiles by timestamp, this class implements
@@ -50,6 +53,7 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 
 public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
 
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
   protected Path seriesPath;
   private List<TsFileResource> seqResources;
   private QueryContext context;
@@ -136,8 +140,19 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
     TsFileResource tsFileResource = seqResources.get(idx);
     if (tsFileResource.isClosed()) {
       if (isTsFileNotSatisfied(tsFileResource, timestamp)) {
+        if (qlogger.isInfoEnabled()) {
+          qlogger.info("phase 2: skip closed sequence file {} whose start and end time of device {}"
+                  + " don't satisfy the timestamp {}", tsFileResource.getFile().getAbsolutePath(),
+              seriesPath.getDevice(), timestamp);
+        }
         return false;
       }
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info("phase 2: pick closed sequence file {} whose start and end time of device {} "
+                + "satisfy the timestamp {}", tsFileResource.getFile().getAbsolutePath(),
+            seriesPath.getDevice(), timestamp);
+      }
+
       seriesReader = initSealedTsFileReaderByTimestamp(tsFileResource, context);
       return true;
     } else {
@@ -146,9 +161,20 @@ public class SeqResourceReaderByTimestamp implements IReaderByTimestamp {
       // If endTimeMap size is not 0, call isTsFileNotSatisfied to check.
       if (tsFileResource.getEndTimeMap().size() != 0) {
         if (isTsFileNotSatisfied(tsFileResource, timestamp)) {
+          if (qlogger.isInfoEnabled()) {
+            qlogger.info("phase 2: skip unclosed sequence file {} whose start and end time of device {}"
+                    + " don't satisfy the timestamp {}", tsFileResource.getFile().getAbsolutePath(),
+                seriesPath.getDevice(), timestamp);
+          }
           return false;
         }
       }
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info("phase 2: pick unclosed sequence file {} whose start and end time of device {} "
+                + "(may) satisfy the timestamp {}", tsFileResource.getFile().getAbsolutePath(),
+            seriesPath.getDevice(), timestamp);
+      }
+
       seriesReader = new UnSealedTsFileReaderByTimestamp(tsFileResource);
       return true;
     }

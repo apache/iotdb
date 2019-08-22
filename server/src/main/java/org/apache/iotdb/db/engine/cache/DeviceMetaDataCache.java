@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.tools.QueryTrace;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 public class DeviceMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(DeviceMetaDataCache.class);
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static StorageEngine storageEngine = StorageEngine.getInstance();
@@ -88,9 +90,17 @@ public class DeviceMetaDataCache {
   public List<ChunkMetaData> get(String filePath, Path seriesPath)
       throws IOException {
     if (!cacheEnable) {
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info(
+            "phase 3: isDeviceMetaDataCacheMissOrDisabled = 1 for closed file {} seriesPath {}",
+            filePath, seriesPath);
+      }
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
       TsDeviceMetadata deviceMetaData = TsFileMetadataUtils
           .getTsDeviceMetaData(filePath, seriesPath, fileMetaData);
+      if (deviceMetaData == null) {
+        return new ArrayList<>();
+      }
       return TsFileMetadataUtils.getChunkMetaDataList(seriesPath.getMeasurement(), deviceMetaData);
     }
 
@@ -109,6 +119,11 @@ public class DeviceMetaDataCache {
                   + "the number of hints for cache is {}",
               cacheRequestNum.get(), cacheHitNum.get());
         }
+        if (qlogger.isInfoEnabled()) {
+          qlogger.info(
+              "phase 3: isDeviceMetaDataCacheMissOrDisabled = 0 for closed file {} seriesPath {}",
+              filePath, seriesPath);
+        }
         return new ArrayList<>(lruCache.get(key));
       }
     }
@@ -116,12 +131,28 @@ public class DeviceMetaDataCache {
       synchronized (lruCache) {
         if (lruCache.containsKey(key)) {
           cacheHitNum.incrementAndGet();
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "Cache hit: the number of requests for cache is {}, "
+                    + "the number of hints for cache is {}",
+                cacheRequestNum.get(), cacheHitNum.get());
+          }
+          if (qlogger.isInfoEnabled()) {
+            qlogger.info(
+                "phase 3: isDeviceMetaDataCacheMissOrDisabled = 0 for closed file {} seriesPath {}",
+                filePath, seriesPath);
+          }
           return new ArrayList<>(lruCache.get(key));
         }
       }
       if (logger.isDebugEnabled()) {
         logger.debug("Cache didn't hit: the number of requests for cache is {}",
             cacheRequestNum.get());
+      }
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info(
+            "phase 3: isDeviceMetaDataCacheMissOrDisabled = 1 for closed file {} seriesPath {}",
+            filePath, seriesPath);
       }
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
       TsDeviceMetadata deviceMetaData = TsFileMetadataUtils

@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.tools.QueryTrace;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
@@ -32,12 +33,16 @@ import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is used to read metadata(<code>TsFileMetaData</code> and
  * <code>TsRowGroupBlockMetaData</code>).
  */
 public class TsFileMetadataUtils {
+
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
 
   private TsFileMetadataUtils() {
 
@@ -65,8 +70,16 @@ public class TsFileMetadataUtils {
   public static TsDeviceMetadata getTsDeviceMetaData(String filePath, Path seriesPath,
       TsFileMetaData fileMetaData) throws IOException {
     if (!fileMetaData.getMeasurementSchema().containsKey(seriesPath.getMeasurement())) {
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info("phase 3: isTsFileMetaDataContainsMeasurement = 0 for file {} seriesPath {}",
+            filePath, seriesPath);
+      }
       return null;
     } else {
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info("phase 3: isTsFileMetaDataContainsMeasurement = 1 for file {} seriesPath {}",
+            filePath, seriesPath);
+      }
       // get the index information of TsDeviceMetadata
       TsDeviceMetadataIndex index = fileMetaData.getDeviceMetadataIndex(seriesPath.getDevice());
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);

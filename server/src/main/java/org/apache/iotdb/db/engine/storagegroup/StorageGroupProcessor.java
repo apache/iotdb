@@ -53,6 +53,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.tools.QueryTrace;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -89,6 +90,7 @@ import org.slf4j.LoggerFactory;
 public class StorageGroupProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
    * (i.e., fileSchema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
@@ -519,27 +521,33 @@ public class StorageGroupProcessor {
     for (TsFileResource tsFileResource : tsFileResources) {
       // TODO: try filtering files if the query contains time filter
       if (!tsFileResource.containsDevice(deviceId)) {
+        if (qlogger.isInfoEnabled()) {
+          qlogger.info("phase 1: skip file {} which does not contain device {}",
+              tsFileResource.getFile().getAbsolutePath(), deviceId);
+        }
         continue;
       }
-      if (!tsFileResource.getStartTimeMap().isEmpty()) {
-        closeQueryLock.readLock().lock();
-        try {
-          if (tsFileResource.isClosed()) {
-            tsfileResourcesForQuery.add(tsFileResource);
-          } else {
-            // left: in-memory data, right: meta of disk data
-            Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair;
-            pair = tsFileResource
-                .getUnsealedFileProcessor()
-                .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
-            tsfileResourcesForQuery
-                .add(new TsFileResource(tsFileResource.getFile(),
-                    tsFileResource.getStartTimeMap(),
-                    tsFileResource.getEndTimeMap(), pair.left, pair.right));
-          }
-        } finally {
-          closeQueryLock.readLock().unlock();
+      if(qlogger.isInfoEnabled()) {
+        qlogger.info("phase 1: pick file {} which contains device {}",
+            tsFileResource.getFile().getAbsolutePath(), deviceId);
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          tsfileResourcesForQuery.add(tsFileResource);
+        } else {
+          // left: in-memory data, right: meta of disk data
+          Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair;
+          pair = tsFileResource
+              .getUnsealedFileProcessor()
+              .query(deviceId, measurementId, dataType, mSchema.getProps(), context);
+          tsfileResourcesForQuery
+              .add(new TsFileResource(tsFileResource.getFile(),
+                  tsFileResource.getStartTimeMap(),
+                  tsFileResource.getEndTimeMap(), pair.left, pair.right));
         }
+      } finally {
+        closeQueryLock.readLock().unlock();
       }
     }
     return tsfileResourcesForQuery;

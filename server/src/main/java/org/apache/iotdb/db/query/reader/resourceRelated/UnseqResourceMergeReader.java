@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunkRelated.DiskChunkReader;
 import org.apache.iotdb.db.query.reader.chunkRelated.MemChunkReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.tools.QueryTrace;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -40,6 +41,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * To read a list of unsequence TsFiles, this class extends {@link PriorityMergeReader} to
@@ -53,6 +56,8 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
  */
 public class UnseqResourceMergeReader extends PriorityMergeReader {
 
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
+
   private Path seriesPath;
 
   public UnseqResourceMergeReader(Path seriesPath, List<TsFileResource> unseqResources,
@@ -64,10 +69,27 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
 
       // prepare metaDataList
       List<ChunkMetaData> metaDataList;
-      if (tsFileResource.isClosed()) {
-        if (isTsFileNotSatisfied(tsFileResource, filter)) {
-          continue;
+
+      // for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
+      // and the startTimeMap of tsFileResource here has been guaranteed to be non empty
+      // by StorageGroupProcessor.getFileReSourceListForQuery
+      if (isTsFileNotSatisfied(tsFileResource, filter)) {
+        if (qlogger.isInfoEnabled()) {
+          String isClosedStr = tsFileResource.isClosed() ? "closed" : "unclosed";
+          qlogger.info("phase 2: skip {} unsequence file {} whose start and end time of device {} "
+                  + "don't satisfy the filter {}", isClosedStr,
+              tsFileResource.getFile().getAbsolutePath(), seriesPath.getDevice(), filter);
         }
+        continue;
+      }
+      if (qlogger.isInfoEnabled()) {
+        String isClosedStr = tsFileResource.isClosed() ? "closed" : "unclosed";
+        qlogger.info("phase 2: pick {} unsequence file {} whose start and end time of device {} "
+                + "satisfy the filter {}", isClosedStr, tsFileResource.getFile().getAbsolutePath(),
+            seriesPath.getDevice(), filter);
+      }
+
+      if (tsFileResource.isClosed()) {
         metaDataList = DeviceMetaDataCache.getInstance()
             .get(tsFileResource.getFile().getPath(), seriesPath);
         List<Modification> pathModifications = context
@@ -76,11 +98,6 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
           QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
         }
       } else {
-        if (tsFileResource.getEndTimeMap().size() != 0) {
-          if (isTsFileNotSatisfied(tsFileResource, filter)) {
-            continue;
-          }
-        }
         metaDataList = tsFileResource.getChunkMetaDatas();
       }
 
@@ -92,8 +109,9 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
         chunkLoader = new ChunkLoaderImpl(tsFileReader);
       }
 
+      int chunkMetaDataNum = 0;
       for (ChunkMetaData chunkMetaData : metaDataList) {
-
+        chunkMetaDataNum++;
         if (filter != null) {
           DigestForFilter digest = new DigestForFilter(chunkMetaData.getStartTime(),
               chunkMetaData.getEndTime(),
@@ -101,8 +119,18 @@ public class UnseqResourceMergeReader extends PriorityMergeReader {
               chunkMetaData.getDigest().getStatistics().get(StatisticConstant.MAX_VALUE),
               chunkMetaData.getTsDataType());
           if (!filter.satisfy(digest)) {
+            if (qlogger.isInfoEnabled()) {
+              qlogger.info("phase 4: isNullFilterOrFilterSatisfy = 0 for file {} seriesPath {} "
+                      + "chunkMetaData No.{}", tsFileResource.getFile().getAbsolutePath(),
+                  seriesPath, chunkMetaDataNum);
+            }
             continue;
           }
+        }
+        if (qlogger.isInfoEnabled()) {
+          qlogger.info("phase 4: isNullFilterOrFilterSatisfy = 1 for file {} seriesPath {} "
+                  + "chunkMetaData No.{}", tsFileResource.getFile().getAbsolutePath(), seriesPath,
+              chunkMetaDataNum);
         }
 
         Chunk chunk = chunkLoader.getChunk(chunkMetaData);

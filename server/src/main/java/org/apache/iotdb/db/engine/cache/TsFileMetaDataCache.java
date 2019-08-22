@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.tools.QueryTrace;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 public class TsFileMetaDataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileMetaDataCache.class);
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static boolean cacheEnable = config.isMetaDataCacheEnable();
@@ -90,6 +92,9 @@ public class TsFileMetaDataCache {
    */
   public TsFileMetaData get(String path) throws IOException {
     if (!cacheEnable) {
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info("phase 3: isTsFileMetaDataCacheMissOrDisabled = 1 for closed file {}", path);
+      }
       return TsFileMetadataUtils.getTsFileMetaData(path);
     }
 
@@ -104,6 +109,9 @@ public class TsFileMetaDataCache {
                   + "the number of hints for cache is {}",
               cacheRequestNum.get(), cacheHitNum.get());
         }
+        if (qlogger.isInfoEnabled()) {
+          qlogger.info("phase 3: isTsFileMetaDataCacheMissOrDisabled = 0 for closed file {}", path);
+        }
         return cache.get(path);
       }
     }
@@ -111,12 +119,24 @@ public class TsFileMetaDataCache {
       synchronized (cache) {
         if (cache.containsKey(path)) {
           cacheHitNum.incrementAndGet();
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "Cache hit: the number of requests for cache is {}, "
+                    + "the number of hints for cache is {}",
+                cacheRequestNum.get(), cacheHitNum.get());
+          }
+          if (qlogger.isInfoEnabled()) {
+            qlogger.info("phase 3: isTsFileMetaDataCacheMissOrDisabled = 0 for closed file {}", path);
+          }
           return cache.get(path);
         }
       }
       if (logger.isDebugEnabled()) {
         logger.debug("Cache didn't hit: the number of requests for cache is {}",
             cacheRequestNum.get());
+      }
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info("phase 3: isTsFileMetaDataCacheMissOrDisabled = 1 for closed file {}", path);
       }
       TsFileMetaData fileMetaData = TsFileMetadataUtils.getTsFileMetaData(path);
       synchronized (cache) {

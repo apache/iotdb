@@ -28,6 +28,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.tools.QueryTrace;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
 public class FileReaderManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(FileReaderManager.class);
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
 
   /**
    * max number of file streams being cached, must be lower than 65535.
@@ -131,6 +133,10 @@ public class FileReaderManager implements IService {
     Map<String, TsFileSequenceReader> readerMap = !isClosed ? unclosedFileReaderMap
         : closedFileReaderMap;
     if (!readerMap.containsKey(filePath)) {
+      if (qlogger.isInfoEnabled()) {
+        String isClosedStr = isClosed ? "closed" : "unclosed";
+        qlogger.info("phase 3 or 4: isReaderMapMiss = 1 for {} file {}", isClosedStr, filePath);
+      }
 
       if (readerMap.size() >= MAX_CACHED_FILE_SIZE) {
         logger.warn("Query has opened {} files !", readerMap.size());
@@ -141,6 +147,11 @@ public class FileReaderManager implements IService {
 
       readerMap.put(filePath, tsFileReader);
       return tsFileReader;
+    }
+
+    if (qlogger.isInfoEnabled()) {
+      String isClosedStr = isClosed ? "closed" : "unclosed";
+      qlogger.info("phase 3 or 4: isReaderMapMiss = 0 for {} file {}", isClosedStr, filePath);
     }
 
     return readerMap.get(filePath);
