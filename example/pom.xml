@@ -36,8 +36,8 @@
     <modules>
         <module>kafka</module>
         <module>rocketmq</module>
-      <module>jdbc</module>
         <module>client</module>
+        <module>tsfile</module>
     </modules>
     <build>
         <pluginManagement>
