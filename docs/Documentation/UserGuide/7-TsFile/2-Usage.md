@@ -189,7 +189,7 @@ See reference: [Installation](./1-Installation.md)
 
 You could write a TsFile by constructing **TSRecord** if you have the **non-aligned** (e.g. not all sensors contain values) time series data.
 
-A more thorough example can be found at `/tsfile/example/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTSRecord.java`
+A more thorough example can be found at `/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTSRecord.java`
 
 ```java
 package org.apache.iotdb.tsfile;
@@ -208,7 +208,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  * It uses the interface:
  * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
  */
-public class TsFileWrite {
+public class TsFileWriteWithTSRecord {
 
   public static void main(String args[]) {
     try {
@@ -250,7 +250,7 @@ public class TsFileWrite {
 
 You could write a TsFile by constructing **RowBatch** if you have the **aligned** time series data.
 
-A more thorough example can be found at `/tsfile/example/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithRowBatch.java`
+A more thorough example can be found at `/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithRowBatch.java`
 
 ```java
 package org.apache.iotdb.tsfile;
@@ -295,7 +295,7 @@ public class TsFileWriteWithRowBatch {
       RowBatch rowBatch = fileSchema.createRowBatch("device_1");
 
       long[] timestamps = rowBatch.timestamps;
-      Object[] sensors = rowBatch.sensors;
+      Object[] values = rowBatch.values;
 
       long timestamp = 1;
       long value = 1000000L;
@@ -304,11 +304,11 @@ public class TsFileWriteWithRowBatch {
         int row = rowBatch.batchSize++;
         timestamps[row] = timestamp++;
         for (int i = 0; i < sensorNum; i++) {
-          long[] sensor = (long[]) sensors[i];
+          long[] sensor = (long[]) values[i];
           sensor[row] = value;
         }
         // write RowBatch to TsFile
-        if (rowBatch.batchSize == rowBatch.getBatchMaxSize()) {
+        if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
           tsFileWriter.write(rowBatch);
           rowBatch.reset();
         }

@@ -28,14 +28,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p> DeltaBinaryEncoder is a encoder for compressing data in type of integer and long.We adapt a
+ * <p> DeltaBinaryEncoder is a encoder for compressing data in type of integer and long. We adapt a
  * hypothesis that contiguous data points have similar values. Thus the difference value of two
- * adjacent points is smaller than those two point values. One integer in java takes 32-bits. If an
+ * adjacent points is smaller than those two point values. One integer in java takes 32-bits. If a
  * positive number is less than 2^m, the bits of this integer which index from m to 31 are all 0.
  * Given an array which length is n, if all values in input data array are all positive and less
  * than 2^m, we need actually m*n, but not 32*n bits to store the array. </p> <p> DeltaBinaryEncoder
  * calculates difference between two adjacent points and record the minimum of those difference
- * values firstly. Then it save two_diff value that difference minus minimum of them, to make sure
+ * values firstly. Then it saves two_diff value that difference minus minimum of them, to make sure
  * all two_diff values are positive. Then it statistics the longest bit length {@code m} it takes
  * for each two_diff value, which means the bit length that maximum two_diff value takes. Only the
  * low m bits are saved into result byte array for all two_diff values. </p>
