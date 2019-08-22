@@ -25,7 +25,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class StatementDemo {
+public class StatementTest {
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -38,26 +38,19 @@ public class StatementDemo {
       statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=FLOAT, ENCODING=RLE");
 
-      long start = System.currentTimeMillis();
-      for (int i = 0; i < 10000; i++) {
-        for (int j = 0 ; j < 1000; j++) {
-          statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ (i * 1000 + j) + "," + 1.0 + "," + 1.0 + "," + 1.0 + ")");
+      long total = 0;
+      for (int i = 0; i < 1000; i++) {
+        for (int j = 0 ; j < 100; j++) {
+          statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ (i * 100 + j) + "," + 1.0 + "," + 1.0 + "," + 1.0 + ")");
         }
+        long start = System.nanoTime();
         statement.executeBatch();
+        total += System.nanoTime() - start;
         statement.clearBatch();
       }
 
-      System.out.println("cost: " + (System.currentTimeMillis() - start));
+      System.out.println("cost: " + total);
 
-//      ResultSet resultSet = statement.executeQuery("select * from root");
-//      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-//      while (resultSet.next()) {
-//        StringBuilder builder = new StringBuilder();
-//        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-//          builder.append(resultSet.getString(i)).append(",");
-//        }
-//        System.out.println(builder);
-//      }
       statement.close();
 
     } finally {

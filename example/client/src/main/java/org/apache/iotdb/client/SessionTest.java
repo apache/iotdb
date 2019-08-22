@@ -42,28 +42,21 @@ public class SessionTest {
       values.add(1.0f);
       values.add(1.0f);
 
-      long start = System.currentTimeMillis();
-      for (long i = 0; i < 10000; i++) {
+      long total = 0;
+      for (long i = 0; i < 1000; i++) {
         IoTDBRowBatch rowBatch = new IoTDBRowBatch("root.sg1.d1", measurements, dataTypes);
-        for (long j = 0; j < 1000; j++) {
-          rowBatch.addRow(i * 1000 + j, values);
+        for (long j = 0; j < 100; j++) {
+          rowBatch.addRow(i * 100 + j, values);
         }
+        long start = System.nanoTime();
         session.insertBatch(rowBatch);
+        total += System.nanoTime() - start;
       }
 
-      System.out.println("cost: " + (System.currentTimeMillis() - start));
+      System.out.println("cost: " + total);
 
       session.close();
 
-//      ResultSet resultSet = statement.executeQuery("select * from root");
-//      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-//      while (resultSet.next()) {
-//        StringBuilder builder = new StringBuilder();
-//        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-//          builder.append(resultSet.getString(i)).append(",");
-//        }
-//        System.out.println(builder);
-//      }
       statement.close();
 
     } finally {

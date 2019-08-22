@@ -93,11 +93,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) {
-    for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
-      for (int j = 0; j < batchInsertPlan.getTimes().length; j++) {
-        write(batchInsertPlan, indexes);
-      }
-    }
+    write(batchInsertPlan, indexes);
     long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
     memSize += recordSizeInByte;
   }
