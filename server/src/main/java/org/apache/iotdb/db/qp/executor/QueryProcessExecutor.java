@@ -57,7 +57,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AuthDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
-import org.apache.iotdb.service.rpc.thrift.TSDataValueList;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -213,7 +212,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       for (int i = 0; i < measurementList.length; i++) {
         if (!node.hasChild(measurementList[i])) {
           throw new ProcessorException(
-              String.format("Current deviceId[%s] does not contains measurement:%s",
+              String.format("Current deviceId[%s] does not contain measurement:%s",
                   deviceId, measurementList[i]));
         }
         MNode measurementNode = node.getChild(measurementList[i]);
@@ -235,7 +234,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public List<Integer> insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException {
     try {
       String[] measurementList = batchInsertPlan.getMeasurements();
       String deviceId = batchInsertPlan.getDeviceId();
@@ -244,7 +243,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       for (String s : measurementList) {
         if (!node.hasChild(s)) {
           throw new ProcessorException(
-              String.format("Current deviceId[%s] does not contains measurement:%s",
+              String.format("Current deviceId[%s] does not contain measurement:%s",
                   deviceId, s));
         }
         MNode measurementNode = node.getChild(s);

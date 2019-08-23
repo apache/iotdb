@@ -51,7 +51,7 @@ In root directory:
 ```
 
 
-## Examples without Standard JDBC
+## Examples with RPC Client
 
 This chapter provides an example of how to open an IoTDB session, execute a batch insertion.
 

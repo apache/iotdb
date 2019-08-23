@@ -195,7 +195,7 @@ public class MemIntQpExecutor extends AbstractQueryProcessExecutor {
   }
 
   @Override
-  public List<Integer> insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException {
     return null;
   }
 

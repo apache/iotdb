@@ -27,12 +27,9 @@
         <version>0.9.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>org.apache.iotdb</groupId>
     <artifactId>tsfile-example</artifactId>
     <version>0.9.0-SNAPSHOT</version>
     <name>tsfile-example</name>
-    <!-- FIXME change it to the project's website -->
-    <url>http://www.example.com</url>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

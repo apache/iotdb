@@ -19,14 +19,10 @@
 package org.apache.iotdb.session;
 
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.jdbc.Utils;
-import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
@@ -38,6 +34,8 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -48,14 +46,14 @@ import org.slf4j.LoggerFactory;
 
 public class Session {
 
-  private Logger logger = LoggerFactory.getLogger(Session.class);
+  private static final Logger logger = LoggerFactory.getLogger(Session.class);
   private String host;
   private int port;
   private String username;
   private String password;
-  private final List<TSProtocolVersion> supportedProtocols = new LinkedList<>();
+  private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
   public TSIService.Iface client = null;
-  public TS_SessionHandle sessionHandle = null;
+  private TS_SessionHandle sessionHandle = null;
   private TSocket transport;
   private boolean isClosed = true;
   private ZoneId zoneId;
@@ -73,7 +71,6 @@ public class Session {
     this.port = port;
     this.username = username;
     this.password = password;
-    supportedProtocols.add(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
   }
 
   public void open() {
@@ -111,9 +108,13 @@ public class Session {
         transport.close();
         throw e;
       }
-      if (!supportedProtocols.contains(openResp.getServerProtocolVersion())) {
-        throw new TException("Unsupported IoTDB protocol");
+
+      if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
+        throw new TException(String
+            .format("Protocol not supported, Client version is {}, but Server version is {}",
+                protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
       }
+
       sessionHandle = openResp.getSessionHandle();
 
       if (zoneId != null) {
@@ -123,8 +124,8 @@ public class Session {
       }
 
     } catch (TException | IoTDBSQLException e) {
-      throw new IoTDBSessionException(String.format("Can not open session to %s:%s with username: %s, password: %s.",
-          host, port, username, password), e);
+      throw new IoTDBSessionException(String.format("Can not open session to %s:%s with user: %s.",
+          host, port, username), e);
     }
     isClosed = false;
 
@@ -149,13 +150,17 @@ public class Session {
     }
   }
 
-  public TSExecuteBatchStatementResp insertBatch(IoTDBRowBatch rowBatch) {
+  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
-    request.deviceId = rowBatch.getDeviceId();
-    request.measurements = rowBatch.getMeasurements();
-    request.timestamps = rowBatch.getTimestamps();
-    request.columns = rowBatch.getColumns();
-    request.types = rowBatch.getDataTypes();
+    request.deviceId = rowBatch.deviceId;
+    for (MeasurementSchema measurementSchema: rowBatch.measurements) {
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(Utils.getIoTDBDataTypeByTSDataType(measurementSchema.getType()));
+    }
+    request.setTimestamps(Utils.getTimeBuffer(rowBatch));
+    request.setValues(Utils.getValueBuffer(rowBatch));
+    request.setSize(rowBatch.batchSize);
+
     try {
       return client.insertBatch(request);
     } catch (TException e) {

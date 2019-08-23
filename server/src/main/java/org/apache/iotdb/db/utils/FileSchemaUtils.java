@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils;
 import java.util.List;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 
@@ -30,25 +30,25 @@ public class FileSchemaUtils {
   private FileSchemaUtils(){}
 
   /**
-   * Construct the FileSchema of the FileNode named processorName.
+   * Construct the Schema of the FileNode named processorName.
    * @param processorName the name of a FileNode.
    * @return the schema of the FileNode named processorName.
    * @throws WriteProcessException when the fileSchema cannot be created.
    */
-  public static FileSchema constructFileSchema(String processorName) {
+  public static Schema constructFileSchema(String processorName) {
     List<MeasurementSchema> columnSchemaList;
     columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(processorName);
     return getFileSchemaFromColumnSchema(columnSchemaList);
   }
 
   /**
-   * getFileSchemaFromColumnSchema construct a FileSchema using the schema of the columns and the
+   * getFileSchemaFromColumnSchema construct a Schema using the schema of the columns and the
    * device type.
    * @param schemaList the schema of the columns in this file.
-   * @return a FileSchema contains the provided schemas.
+   * @return a Schema contains the provided schemas.
    */
-  public static FileSchema getFileSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
-    FileSchema schema = new FileSchema();
+  public static Schema getFileSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
+    Schema schema = new Schema();
     for (MeasurementSchema measurementSchema : schemaList) {
       schema.registerMeasurement(measurementSchema);
     }

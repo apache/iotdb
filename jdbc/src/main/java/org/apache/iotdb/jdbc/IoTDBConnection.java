@@ -22,7 +22,6 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.net.SocketException;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -65,8 +64,8 @@ import org.slf4j.LoggerFactory;
 
 
 public class IoTDBConnection implements Connection {
-  private Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
-  private final List<TSProtocolVersion> supportedProtocols = new LinkedList<>();
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
+  private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
   public TSIService.Iface client = null;
   public TS_SessionHandle sessionHandle = null;
   private IoTDBConnectionParams params;
@@ -86,8 +85,6 @@ public class IoTDBConnection implements Connection {
       throw new IoTDBURLException("Input url cannot be null");
     }
     params = Utils.parseUrl(url, info);
-
-    supportedProtocols.add(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
 
     openTransport();
     if(Config.rpcThriftCompressionEnable) {
@@ -438,8 +435,10 @@ public class IoTDBConnection implements Connection {
         transport.close();
         throw e;
       }
-      if (!supportedProtocols.contains(openResp.getServerProtocolVersion())) {
-        throw new TException("Unsupported IoTDB protocol");
+      if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
+        throw new TException(String
+            .format("Protocol not supported, Client version is {}, but Server version is {}",
+                protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
       }
       setProtocol(openResp.getServerProtocolVersion());
       sessionHandle = openResp.getSessionHandle();

@@ -55,7 +55,7 @@ import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +66,7 @@ public class TsFileProcessor {
 
   private RestorableTsFileIOWriter writer;
 
-  private FileSchema fileSchema;
+  private Schema schema;
 
   private final String storageGroupName;
 
@@ -111,13 +111,13 @@ public class TsFileProcessor {
 
   private long totalMemTableSize;
 
-  TsFileProcessor(String storageGroupName, File tsfile, FileSchema fileSchema,
+  TsFileProcessor(String storageGroupName, File tsfile, Schema schema,
       VersionController versionController,
       CloseTsFileCallBack closeTsFileCallback,
       Supplier updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
-    this.fileSchema = fileSchema;
+    this.schema = schema;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
@@ -137,11 +137,6 @@ public class TsFileProcessor {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
-
-      // no empty memtable, return failure, currently ,this will not happen
-      if (workMemTable == null) {
-        return false;
-      }
     }
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -167,17 +162,9 @@ public class TsFileProcessor {
   }
 
   public boolean insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes,
-      List<Integer> results) {
+      Integer[] results) {
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
-
-      // no empty memtable, return, currently ,this will not happen
-      if (workMemTable == null) {
-        for (int index: indexes) {
-          results.set(index, TS_StatusCode.ERROR_STATUS.getValue());
-        }
-        return false;
-      }
     }
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -185,6 +172,9 @@ public class TsFileProcessor {
         getLogNode().write(batchInsertPlan);
       } catch (IOException e) {
         logger.error("write WAL failed", e);
+        for (int index: indexes) {
+          results[index] = TS_StatusCode.ERROR_STATUS.getValue();
+        }
         return false;
       }
     }
@@ -409,7 +399,7 @@ public class TsFileProcessor {
 
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
-      MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, fileSchema, writer,
+      MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, schema, writer,
           storageGroupName);
       try {
         writer.mark();
@@ -476,7 +466,7 @@ public class TsFileProcessor {
     long closeStartTime = System.currentTimeMillis();
 
     tsFileResource.serialize();
-    writer.endFile(fileSchema);
+    writer.endFile(schema);
 
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore

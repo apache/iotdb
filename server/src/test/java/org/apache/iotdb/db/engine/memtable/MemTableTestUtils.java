@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class MemTableTestUtils {
@@ -30,10 +30,10 @@ public class MemTableTestUtils {
   public static String measurementId0 = "s0";
 
   public static TSDataType dataType0 = TSDataType.INT32;
-  private static FileSchema fileSchema = new FileSchema();
+  private static Schema schema = new Schema();
 
   static {
-    fileSchema
+    schema
         .registerMeasurement(new MeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
   }
 
@@ -47,8 +47,8 @@ public class MemTableTestUtils {
     }
   }
 
-  public static FileSchema getFileSchema() {
-    return fileSchema;
+  public static Schema getSchema() {
+    return schema;
   }
 
 }

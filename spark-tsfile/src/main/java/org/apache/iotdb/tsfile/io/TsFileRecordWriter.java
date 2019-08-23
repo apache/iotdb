@@ -26,18 +26,18 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 public class TsFileRecordWriter extends RecordWriter<NullWritable, TSRecord> {
 
   private TsFileWriter tsFileWriter = null;
 
-  public TsFileRecordWriter(TaskAttemptContext job, Path file, FileSchema fileSchema)
+  public TsFileRecordWriter(TaskAttemptContext job, Path file, Schema schema)
       throws IOException {
     HDFSOutput hdfsOutput = new HDFSOutput(file.toString(),
         job.getConfiguration(), false); //NOTE overwrite false here
 
-    tsFileWriter = new TsFileWriter(hdfsOutput, fileSchema);
+    tsFileWriter = new TsFileWriter(hdfsOutput, schema);
   }
 
   @Override
