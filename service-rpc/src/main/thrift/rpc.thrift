@@ -18,28 +18,17 @@
  */
 namespace java org.apache.iotdb.service.rpc.thrift
 
-
-// The return status code contained in each response.
-enum TS_StatusCode {
-  SUCCESS_STATUS,
-  SUCCESS_WITH_INFO_STATUS,
-  STILL_EXECUTING_STATUS,
-  ERROR_STATUS,
-  INVALID_HANDLE_STATUS
+// The return status code and message in each response.
+struct TS_StatusType {
+  1: required i32 statusCode,
+  2: required string statusMessage
 }
 
 // The return status of a remote request
 struct TS_Status {
-  1: required TS_StatusCode statusCode
-
-  // If status is SUCCESS_WITH_INFO, info_msgs may be populated with
-  // additional diagnostic information.
+  1: required TS_StatusType statusMessage
   2: optional list<string> infoMessages
-
-  // If status is ERROR, then the following fields may be set
   3: optional string sqlState  // as defined in the ISO/IEF CLI specification
-  4: optional i32 errorCode    // internal error code
-  5: optional string errorMessage
 }
 
 struct TSHandleIdentifier {
