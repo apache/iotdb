@@ -1,0 +1,7 @@
+pattern=([^\\[]*)(\\[.*])(\\s\\w+\\s)([^:]*:\\d+)(\\s-\\s)(.*)
+date_index=1
+thread_name_index=2
+level_index=3
+code_location_index=4
+content_index=6
+date_pattern=yyyy-MM-dd hh:mm:ss,SSS

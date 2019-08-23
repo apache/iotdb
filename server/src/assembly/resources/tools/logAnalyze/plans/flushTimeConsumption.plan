@@ -1,0 +1,16 @@
+name=flushTimeConsumption
+content_pattern=Storage group (.*) memtable (.*) flushing a memtable has finished! Time consumption: (\\d+)ms
+
+# if you add more, use comma to separate
+measurement_positions=3
+legends=Time
+tag_positions=1
+
+# min_level=info
+# thread_name_white_list=pool-1-IoTDB-JDBC-CLient-thread-5
+# class_name_white_list=org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor
+# line_num_white_list=392
+
+date_pattern=yyyy-MM-dd hh:mm:ss
+start_date=2019-08-21 09:00:00
+end_date=2019-08-22 09:00:00
