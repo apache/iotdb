@@ -21,7 +21,6 @@ package org.apache.iotdb.client;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -38,7 +37,7 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
  * CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE
  * CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=FLOAT, ENCODING=RLE
  */
-public class SessionExample {
+public class ClientExample {
 
   public static void main(String[] args) throws ClassNotFoundException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -54,7 +53,7 @@ public class SessionExample {
 
     }
 
-    Session session = new Session("127.0.0.1", 6667, "root", "root");
+    Client session = new Client("127.0.0.1", 6667, "root", "root");
     session.open();
 
     Schema schema = new Schema();

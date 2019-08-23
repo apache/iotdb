@@ -74,7 +74,7 @@ Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
 ```
 SHOW TIMESERIES
 Eg: IoTDB > SHOW TIMESERIES
-Note: This statement can only be used in IoTDB Client. If you need to show all timeseries in JDBC, please use `DataBaseMetadata` interface.
+Note: This statement can only be used in IoTDB Cli. If you need to show all timeseries in JDBC, please use `DataBaseMetadata` interface.
 ```
 
 * Show Specific Timeseries Statement
@@ -86,7 +86,7 @@ Eg: IoTDB > SHOW TIMESERIES root.ln
 Eg: IoTDB > SHOW TIMESERIES root.ln.*.*.status
 Eg: IoTDB > SHOW TIMESERIES root.ln.wf01.wt01.status
 Note: The path can be prefix path, star path or timeseries path
-Note: This statement can be used in IoTDB Client and JDBC.
+Note: This statement can be used in IoTDB Cli and JDBC.
 ```
 
 * Show Storage Group Statement
@@ -94,7 +94,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 SHOW STORAGE GROUP
 Eg: IoTDB > SHOW STORAGE GROUP
-Note: This statement can be used in IoTDB Client and JDBC.
+Note: This statement can be used in IoTDB Cli and JDBC.
 ```
 
 ### Data Management Statement

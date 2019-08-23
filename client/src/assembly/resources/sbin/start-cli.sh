@@ -24,7 +24,7 @@ if [ -z "${IOTDB_CLI_HOME}" ]; then
 fi
 
 
-MAIN_CLASS=org.apache.iotdb.cli.client.Client
+MAIN_CLASS=org.apache.iotdb.cli.Cli
 
 
 CLASSPATH=""

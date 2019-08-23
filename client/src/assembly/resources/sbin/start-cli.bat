@@ -19,7 +19,7 @@
 
 @echo off
 echo ````````````````````````
-echo Starting IoTDB Client
+echo Starting IoTDB Cli
 echo ````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
@@ -28,7 +28,7 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_CLI_HOME set IOTDB_CLI_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cli.client.Client
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cli.Cli
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

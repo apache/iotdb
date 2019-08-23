@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.tool;
+package org.apache.iotdb.tool;
 
 import java.io.IOException;
 import java.time.ZoneId;
 import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
-import org.apache.iotdb.cli.exception.ArgsErrorException;
+import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.thrift.TException;

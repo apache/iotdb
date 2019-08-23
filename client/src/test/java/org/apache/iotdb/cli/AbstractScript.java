@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.client;
+package org.apache.iotdb.cli;
 
 import static org.junit.Assert.assertEquals;
 

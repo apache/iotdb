@@ -19,26 +19,26 @@
 
 -->
 
-# Chaper7: JDBC API
+# 第7章: JDBC API
 
-# Usage
+# 使用方式
 
-## Dependencies
+## 依赖
 
 * JDK >= 1.8
 * Maven >= 3.0
 
-## How to package only client module
+## 只打包 Client 模块
 
 In root directory:
 > mvn clean package -pl client -am -Dmaven.test.skip=true
 
-## How to install in local maven repository
+## 安装到本地 maven 库
 
 In root directory:
 > mvn clean install -pl client -am -Dmaven.test.skip=true
 
-## Using IoTDB Client with Maven
+## 在 maven 中使用 Client 接口
 
 ```
 <dependencies>
@@ -51,14 +51,11 @@ In root directory:
 ```
 
 
-## Examples with Client
+## Client 示例
 
-This chapter provides an example of how to open an IoTDB session, execute a batch insertion.
-
-Requires that you include the packages containing the Client classes needed for database programming.
 
 ```Java
-import org.apache.iotdb.client.Client;
+import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;

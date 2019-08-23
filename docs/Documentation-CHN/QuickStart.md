@@ -88,12 +88,12 @@ IoTDB为用户提供多种与服务器交互的方式，您可以选择使用Cli
 
 Linux系统与MacOS系统启动命令如下：
 ```
-> $IOTDB_HOME/sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root
+> $IOTDB_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root
 ```
 
 Windows系统启动命令如下：
 ```
-> $IOTDB_HOME\sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root
+> $IOTDB_HOME\sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root
 ```
 
 回车后输入root用户的密码，即可成功启动客户端。启动后出现如图提示即为启动成功。
@@ -286,7 +286,7 @@ IoTDB> SELECT * FROM root.ln.wf01.wt01
 +-----------------------+--------------------------+-----------------------------+
 ```
 
-输入quit或exit可退出Client结束本次会话，Client输出quit normally表示退出成功，操作语句与返回结果如下：
+输入quit或exit可退出Cli结束本次会话，Cli输出quit normally表示退出成功，操作语句与返回结果如下：
 ```
 IoTDB> quit
 quit normally

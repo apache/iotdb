@@ -130,7 +130,7 @@ If you use the previous unofficial version 0.7.0. It is incompatible with 0.8.0.
 * IOTDB-44    Error message in server log when select timeseries
 * IOTDB-49    Authorizer module outputs too many debug log info
 * IOTDB-50    DataSetWithoutTimeGenerator's initHeap behaves wrongly
-* IOTDB-52    Client doesn't support aggregate
+* IOTDB-52    Cli doesn't support aggregate
 * IOTDB-54    Predicates doesn't take effect
 * IOTDB-67    ValueDecoder reading new page bug
 * IOTDB-70    Disconnect from server when logging in fails
@@ -147,7 +147,7 @@ If you use the previous unofficial version 0.7.0. It is incompatible with 0.8.0.
 * IOTDB-103   Does not give a hint when encountering unsupported data types
 * IOTDB-104   MManager is incorrectly recovered when system reboots
 * IOTDB-108   Mistakes in documents
-* IOTDB-110   Clients inserts data normally even if there is no space left on the disk
+* IOTDB-110   Clis inserts data normally even if there is no space left on the disk
 * IOTDB-118   When the disk space is full, the storage group is created successfully
 * IOTDB-121   A bug of query on value columns
 * IOTDB-128   Probably a bug in iotdb official website

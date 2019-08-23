@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.client;
+package org.apache.iotdb.cli;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,7 +25,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class StartClientScriptIT extends AbstractScript {
+public class StartCliScriptIT extends AbstractScript {
 
   @Before
   public void setUp() throws Exception {
@@ -47,12 +47,12 @@ public class StartClientScriptIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
-    final String[] output = {"````````````````````````", "Starting IoTDB Client",
+    final String[] output = {"````````````````````````", "Starting IoTDB Cli",
         "````````````````````````",
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "sbin" + File.separator + "start-client.bat",
+        dir + File.separator + "sbin" + File.separator + "start-cli.bat",
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     testOutput(builder, output);
@@ -64,7 +64,7 @@ public class StartClientScriptIT extends AbstractScript {
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
-        dir + File.separator + "sbin" + File.separator + "start-client.sh",
+        dir + File.separator + "sbin" + File.separator + "start-cli.sh",
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     testOutput(builder, output);

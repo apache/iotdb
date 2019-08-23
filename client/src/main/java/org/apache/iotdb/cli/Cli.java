@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.client;
+package org.apache.iotdb.cli;
 
 import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Arrays;
 import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -29,12 +28,12 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.cli.exception.ArgsErrorException;
+import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
 
-public class Client extends AbstractClient {
+public class Cli extends AbstractCli {
 
   private static CommandLine commandLine;
 
@@ -56,7 +55,7 @@ public class Client extends AbstractClient {
 
     if (args == null || args.length == 0) {
       println(
-          "Require more params input, eg. ./start-client.sh(start-client.bat if Windows) "
+          "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
               + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       println("For more information, please check the following hint.");
       hf.printHelp(SCRIPT_HINT, options, true);
@@ -89,7 +88,7 @@ public class Client extends AbstractClient {
       }
     } catch (ParseException e) {
       println(
-          "Require more params input, eg. ./start-client.sh(start-client.bat if Windows) "
+          "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
               + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       println("For more information, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
