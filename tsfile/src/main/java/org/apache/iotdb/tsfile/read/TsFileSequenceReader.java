@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -566,19 +565,21 @@ public class TsFileSequenceReader implements AutoCloseable {
               this.skipPageData(pageHeader);
             }
             currentChunk = new ChunkMetaData(measurementID, dataType, fileOffsetOfChunk,
-                startTimeOfChunk, endTimeOfChunk);
+              startTimeOfChunk, endTimeOfChunk);
             currentChunk.setNumOfPoints(numOfPoints);
-            Map<StatisticType, ByteBuffer> statisticsMap = new HashMap<>();
-            statisticsMap
-                .put(StatisticType.max_value, ByteBuffer.wrap(chunkStatistics.getMaxBytes()));
-            statisticsMap
-                .put(StatisticType.min_value, ByteBuffer.wrap(chunkStatistics.getMinBytes()));
-            statisticsMap
-                .put(StatisticType.first, ByteBuffer.wrap(chunkStatistics.getFirstBytes()));
-            statisticsMap.put(StatisticType.sum, ByteBuffer.wrap(chunkStatistics.getSumBytes()));
-            statisticsMap.put(StatisticType.last, ByteBuffer.wrap(chunkStatistics.getLastBytes()));
+            ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
+            statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getMaxBytes());
+            statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getMinBytes());
+            statisticsArray[StatisticType.first.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getFirstBytes());
+            statisticsArray[StatisticType.sum.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getSumBytes());
+            statisticsArray[StatisticType.last.ordinal()] = ByteBuffer
+                .wrap(chunkStatistics.getLastBytes());
             TsDigest tsDigest = new TsDigest();
-            tsDigest.setStatistics(statisticsMap);
+            tsDigest.setStatistics(statisticsArray);
             currentChunk.setDigest(tsDigest);
             chunks.add(currentChunk);
             numOfPoints = 0;

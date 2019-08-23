@@ -23,10 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Arrays;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -34,11 +31,15 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public class TsDigest {
 
-  private Map<StatisticType, ByteBuffer> statistics;
+  private ByteBuffer[] statistics;
 
-  private int serializedSize = Integer.BYTES;
+  /**
+   * size of valid values in statistics. Note that some values in statistics can be null and thus
+   * invalid.
+   */
+  private int validSizeOfArray = 0;
 
-  private int sizeOfList;
+  private int serializedSize = Integer.BYTES; // initialize for number of statistics
 
   public TsDigest() {
     // allowed to clair an empty TsDigest whose fields will be assigned later.
@@ -66,18 +67,18 @@ public class TsDigest {
     TsDigest digest = new TsDigest();
 
     int size = ReadWriteIOUtils.readInt(inputStream);
+    digest.validSizeOfArray = size;
+    digest.serializedSize = Integer.BYTES;
     if (size > 0) {
-      Map<StatisticType, ByteBuffer> statistics = new HashMap<>();
-      StatisticType key;
+      digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
       for (int i = 0; i < size; i++) {
         short n = ReadWriteIOUtils.readShort(inputStream);
-        key = StatisticType.deserialize(n);
         value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(inputStream);
-        statistics.put(key, value);
+        digest.statistics[n] = value;
+        digest.serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
       }
-      digest.statistics = statistics;
-    }
+    } // else left digest.statistics as null
 
     return digest;
   }
@@ -92,70 +93,56 @@ public class TsDigest {
     TsDigest digest = new TsDigest();
 
     int size = ReadWriteIOUtils.readInt(buffer);
+    digest.validSizeOfArray = size;
+    digest.serializedSize = Integer.BYTES;
     if (size > 0) {
-      Map<StatisticType, ByteBuffer> statistics = new HashMap<>();
-      StatisticType key;
+      digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
       for (int i = 0; i < size; i++) {
         short n = ReadWriteIOUtils.readShort(buffer);
-        key = StatisticType.deserialize(n);
         value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
-        statistics.put(key, value);
+        digest.statistics[n] = value;
+        digest.serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
       }
-      digest.statistics = statistics;
-    }
+    } // else left digest.statistics as null
 
     return digest;
   }
 
-  private void reCalculateSerializedSize() {
+  private void reCalculate() {
+    validSizeOfArray = 0;
     serializedSize = Integer.BYTES;
     if (statistics != null) {
-      for (Map.Entry<StatisticType, ByteBuffer> entry : statistics.entrySet()) {
-        serializedSize +=
-            StatisticType.getSerializedSize() + Integer.BYTES + entry.getValue().remaining();
+      for (ByteBuffer value : statistics) {
+        if (value != null) {
+          // StatisticType serialized value, byteBuffer.capacity and byteBuffer.array
+          serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
+          validSizeOfArray++;
+        }
       }
-      sizeOfList = statistics.size();
-    } else {
-      sizeOfList = 0;
     }
   }
 
   /**
    * get statistics of the current object.
-   *
-   * @return -unmodifiableMap of the current object's statistics
    */
-  public Map<StatisticType, ByteBuffer> getStatistics() {
-    if (statistics == null) {
-      return null;
-    }
-    return Collections.unmodifiableMap(this.statistics);
+  public ByteBuffer[] getStatistics() {
+    return statistics; //TODO unmodifiable
   }
 
-  public void setStatistics(Map<StatisticType, ByteBuffer> statistics) {
+  public void setStatistics(ByteBuffer[] statistics) throws IOException {
+    if (statistics != null && statistics.length != StatisticType.getTotalTypeNum()) {
+      throw new IOException(String.format(
+          "The length of array of statistics doesn't equal StatisticType.getTotalTypeNum() %d",
+          StatisticType.getTotalTypeNum()));
+    }
     this.statistics = statistics;
-    reCalculateSerializedSize();
-  }
-
-  /**
-   * add statistics using given param.
-   *
-   * @param key -key of the entry
-   * @param value -value of the entry
-   */
-  public void addStatistics(StatisticType key, ByteBuffer value) {
-    if (statistics == null) {
-      statistics = new HashMap<>();
-    }
-    statistics.put(key, value);
-    serializedSize += StatisticType.getSerializedSize() + Integer.BYTES + value.remaining();
-    sizeOfList++;
+    reCalculate(); // DO NOT REMOVE THIS
   }
 
   @Override
   public String toString() {
-    return statistics != null ? statistics.toString() : "";
+    return statistics != null ? Arrays.toString(statistics) : "";
   }
 
   /**
@@ -165,19 +152,16 @@ public class TsDigest {
    * @return -byte length
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
-    if ((statistics != null && sizeOfList != statistics.size()) || (statistics == null
-        && sizeOfList != 0)) {
-      reCalculateSerializedSize();
-    }
     int byteLen = 0;
-    if (statistics == null || statistics.size() == 0) {
+    if (validSizeOfArray == 0) {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     } else {
-      byteLen += ReadWriteIOUtils.write(statistics.size(), outputStream);
-      for (Map.Entry<StatisticType, ByteBuffer> entry : statistics.entrySet()) {
-        short n = entry.getKey().serialize();
-        byteLen += ReadWriteIOUtils.write(n, outputStream);
-        byteLen += ReadWriteIOUtils.write(entry.getValue(), outputStream);
+      byteLen += ReadWriteIOUtils.write(validSizeOfArray, outputStream);
+      for (int i = 0; i < statistics.length; i++) {
+        if (statistics[i] != null) {
+          byteLen += ReadWriteIOUtils.write((short) i, outputStream);
+          byteLen += ReadWriteIOUtils.write(statistics[i], outputStream);
+        }
       }
     }
     return byteLen;
@@ -190,20 +174,16 @@ public class TsDigest {
    * @return -byte length
    */
   public int serializeTo(ByteBuffer buffer) {
-    if ((statistics != null && sizeOfList != statistics.size()) || (statistics == null
-        && sizeOfList != 0)) {
-      reCalculateSerializedSize();
-    }
     int byteLen = 0;
-
-    if (statistics == null || statistics.size() == 0) {
+    if (validSizeOfArray == 0) {
       byteLen += ReadWriteIOUtils.write(0, buffer);
     } else {
-      byteLen += ReadWriteIOUtils.write(statistics.size(), buffer);
-      for (Map.Entry<StatisticType, ByteBuffer> entry : statistics.entrySet()) {
-        short n = entry.getKey().serialize();
-        byteLen += ReadWriteIOUtils.write(n, buffer);
-        byteLen += ReadWriteIOUtils.write(entry.getValue(), buffer);
+      byteLen += ReadWriteIOUtils.write(validSizeOfArray, buffer);
+      for (int i = 0; i < statistics.length; i++) {
+        if (statistics[i] != null) {
+          byteLen += ReadWriteIOUtils.write((short) i, buffer);
+          byteLen += ReadWriteIOUtils.write(statistics[i], buffer);
+        }
       }
     }
     return byteLen;
@@ -215,9 +195,6 @@ public class TsDigest {
    * @return -serializedSize
    */
   public int getSerializedSize() {
-    if (statistics == null || (sizeOfList != statistics.size())) {
-      reCalculateSerializedSize();
-    }
     return serializedSize;
   }
 
@@ -230,15 +207,22 @@ public class TsDigest {
       return false;
     }
     TsDigest digest = (TsDigest) o;
-    if (serializedSize != digest.serializedSize || sizeOfList != digest.sizeOfList
-        || statistics.size() != digest.statistics.size()) {
+    if (serializedSize != digest.serializedSize || validSizeOfArray != digest.validSizeOfArray
+        || ((statistics == null) ^ (digest.statistics == null))) {
       return false;
     }
-    for (Entry<StatisticType, ByteBuffer> entry : statistics.entrySet()) {
-      StatisticType key = entry.getKey();
-      ByteBuffer value = entry.getValue();
-      if (!digest.statistics.containsKey(key) || !value.equals(digest.statistics.get(key))) {
-        return false;
+
+    if (statistics != null) {
+      for (int i = 0; i < statistics.length; i++) {
+        if ((statistics[i] == null) ^ (digest.statistics[i] == null)) {
+          // one is null and the other is not null
+          return false;
+        }
+        if (statistics[i] != null) {
+          if (!statistics[i].equals(digest.statistics[i])) {
+            return false;
+          }
+        }
       }
     }
     return true;
@@ -247,24 +231,12 @@ public class TsDigest {
   public enum StatisticType {
     max_value, min_value, first, sum, last;
 
+    public static int getTotalTypeNum() {
+      return StatisticType.values().length;
+    }
+
     public static StatisticType deserialize(short i) {
-      if (i >= 5 || i < 0) {
-        throw new IllegalArgumentException("Invalid input: " + i);
-      }
-      switch (i) {
-        case 0:
-          return max_value;
-        case 1:
-          return min_value;
-        case 2:
-          return first;
-        case 3:
-          return sum;
-        case 4:
-          return last;
-        default:
-          return last;
-      }
+      return StatisticType.values()[i];
     }
 
     public static int getSerializedSize() {
@@ -272,20 +244,7 @@ public class TsDigest {
     }
 
     public short serialize() {
-      switch (this) {
-        case max_value:
-          return 0;
-        case min_value:
-          return 1;
-        case first:
-          return 2;
-        case sum:
-          return 3;
-        case last:
-          return 4;
-        default:
-          return -1;
-      }
+      return (short) this.ordinal();
     }
   }
 }

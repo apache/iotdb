@@ -188,17 +188,17 @@ public class TsFileIOWriter {
     header.serializeTo(out.wrapAsStream());
     LOG.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
 
-    Map<StatisticType, ByteBuffer> statisticsMap = new HashMap<>();
     // TODO add your statistics
-    statisticsMap.put(StatisticType.max_value, ByteBuffer.wrap(statistics.getMaxBytes()));
-    statisticsMap.put(StatisticType.min_value, ByteBuffer.wrap(statistics.getMinBytes()));
-    statisticsMap.put(StatisticType.first, ByteBuffer.wrap(statistics.getFirstBytes()));
-    statisticsMap.put(StatisticType.sum, ByteBuffer.wrap(statistics.getSumBytes()));
-    statisticsMap.put(StatisticType.last, ByteBuffer.wrap(statistics.getLastBytes()));
+    ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
+    statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer.wrap(statistics.getMaxBytes());
+    statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer.wrap(statistics.getMinBytes());
+    statisticsArray[StatisticType.first.ordinal()] = ByteBuffer.wrap(statistics.getFirstBytes());
+    statisticsArray[StatisticType.sum.ordinal()] = ByteBuffer.wrap(statistics.getSumBytes());
+    statisticsArray[StatisticType.last.ordinal()] = ByteBuffer.wrap(statistics.getLastBytes());
 
     TsDigest tsDigest = new TsDigest();
 
-    tsDigest.setStatistics(statisticsMap);
+    tsDigest.setStatistics(statisticsArray);
 
     currentChunkMetaData.setDigest(tsDigest);
 

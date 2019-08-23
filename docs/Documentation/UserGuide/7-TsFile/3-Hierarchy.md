@@ -57,7 +57,17 @@
  * **Compressing Type Hardcode**
     * 0: UNCOMPRESSED
     * 1: SNAPPY
-    
+    * 2: GZIP
+    * 3: LZO
+    * 4: SDT
+    * 5: PAA
+    * 6: PLA
+ * **TsDigest Statistics Type Hardcode**
+    * 0: max_value
+    * 1: min_value
+    * 2: first
+    * 3: sum
+    * 4: last
     
 ## TsFile Overview
 Here is a graph about the TsFile structure.
@@ -179,14 +189,42 @@ Then there is an array of `ChunkMetadata` for each `ChunkGroupMetadata`
         </table>
 </center>
 
-###### TsDigest
+###### TsDigest (updated on 2019/8/23)
 
-There are five statistics: `min, last, sum, first, max`
+There are five statistics now: `max_value, min_value, first, sum, last`
 
-The storage format is a name-value pair. The name is a string (remember the length is before the literal).
+The storage format of statistics in v0.8.0 is a name-value pair (`Map<String, ByteBuffer> statistics`). The name is a string (remember the length is before the literal). 
 
 But for the value, there is also a size integer before the data even if it is not string. For example, if the `min` is 3, then it will be
 stored as 3 "min" 4 3 in the TsFile.
+
+In v0.9.0, the storage format is changed to an array (`ByteBuffer[] statistics`) for space and time efficiency. Each position of the array has a fixed association with a type of statistic in the order defined by StatisticType.
+```
+enum StatisticType {
+    max_value, min_value, first, sum, last
+}
+```
+So when deserializing a TsDigest from data [5, 0,2,10, 1,1,1, 2,1,1, 3,2,20, 4,1,5], the interpretation process is as follows:  
+```
+3: the number of statistics to read  
+0: the serialized value of StatisticType, which is deserialized to be `max_value`  
+4: the self description length of the following value  
+10: value  
+1: the serialized value of StatisticType, which is deserialized to be `min_value`  
+1: the self description length of the following value  
+1: value
+2: the serialized value of StatisticType, which is deserialized to be `first`    
+1: the self description length of the following value  
+1: value
+3: the serialized value of StatisticType, which is deserialized to be `sum`  
+2: the self description length of the following value  
+20: value  
+4: the serialized value of StatisticType, which is deserialized to be `last`  
+1: the self description length of the following value  
+5: value  
+```
+Then the ByteBuffer[] statistics is [ByteBuffer for `max_value` 10, ByteBuffer for `min_value` 1, ByteBuffer for `first` 1, ByteBuffer for `sum` 20, ByteBuffer for `last` 5].
+
 
 #### File Metadata
 

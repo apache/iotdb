@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -118,6 +119,16 @@ public class TestHelper {
     return metaData;
   }
 
+  public static ChunkMetaData createNotCompleteSimpleTimeSeriesChunkMetaData() throws IOException {
+    ChunkMetaData metaData = new ChunkMetaData(ChunkMetaDataTest.MEASUREMENT_UID,
+        ChunkMetaDataTest.DATA_TYPE,
+        ChunkMetaDataTest.FILE_OFFSET, ChunkMetaDataTest.START_TIME, ChunkMetaDataTest.END_TIME
+    );
+    metaData.setNumOfPoints(ChunkMetaDataTest.NUM_OF_POINTS);
+    metaData.setDigest(createNotCompleteSimpleTsDigest());
+    return metaData;
+  }
+
   public static MeasurementSchema createSimpleMeasurementSchema() {
     MeasurementSchema timeSeries = new MeasurementSchema(TimeSeriesMetadataTest.measurementUID,
         TSDataType.INT64,
@@ -125,16 +136,33 @@ public class TestHelper {
     return timeSeries;
   }
 
-  public static TsDigest createSimpleTsDigest() {
+  public static TsDigest createSimpleTsDigest() throws IOException {
     TsDigest digest = new TsDigest();
-    digest.addStatistics(StatisticType.max_value,
-        ByteBuffer.wrap(BytesUtils.stringToBytes(MAX_VALUE)));
-    digest.addStatistics(StatisticType.min_value,
-        ByteBuffer.wrap(BytesUtils.stringToBytes(MIN_VALUE)));
-    digest.addStatistics(StatisticType.sum, ByteBuffer.wrap(BytesUtils.stringToBytes(SUM_VALUE)));
-    digest
-        .addStatistics(StatisticType.first, ByteBuffer.wrap(BytesUtils.stringToBytes(FIRST_VALUE)));
-    digest.addStatistics(StatisticType.last, ByteBuffer.wrap(BytesUtils.stringToBytes(LAST_VALUE)));
+    ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
+    statisticsArray[StatisticType.max_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(MAX_VALUE));
+    statisticsArray[StatisticType.min_value.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(MIN_VALUE));
+    statisticsArray[StatisticType.first.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(FIRST_VALUE));
+    statisticsArray[StatisticType.last.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(LAST_VALUE));
+    statisticsArray[StatisticType.sum.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(SUM_VALUE));
+    digest.setStatistics(statisticsArray);
+    return digest;
+  }
+
+  public static TsDigest createNotCompleteSimpleTsDigest() throws IOException {
+    TsDigest digest = new TsDigest();
+    ByteBuffer[] statisticsArray = new ByteBuffer[StatisticType.getTotalTypeNum()];
+    statisticsArray[StatisticType.first.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(FIRST_VALUE));
+    statisticsArray[StatisticType.last.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(LAST_VALUE));
+    statisticsArray[StatisticType.sum.ordinal()] = ByteBuffer
+        .wrap(BytesUtils.stringToBytes(SUM_VALUE));
+    digest.setStatistics(statisticsArray);
     return digest;
   }
 
