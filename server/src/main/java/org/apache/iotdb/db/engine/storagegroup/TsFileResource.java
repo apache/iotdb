@@ -220,12 +220,4 @@ public class TsFileResource {
   public TsFileProcessor getUnsealedFileProcessor() {
     return processor;
   }
-
-  public void updateTime(String deviceId, long time) {
-    startTimeMap.putIfAbsent(deviceId, time);
-    Long endTime = endTimeMap.get(deviceId);
-    if (endTime == null || endTime < time) {
-      endTimeMap.put(deviceId, time);
-    }
-  }
 }

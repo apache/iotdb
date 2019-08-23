@@ -31,7 +31,7 @@ The example is to show how to write and read a TsFile File.
     <dependency>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>tsfile</artifactId>
-     	  <version>0.8.0-SNAPSHOT</version>
+     	  <version>0.9.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -81,4 +81,4 @@ The example is to show how to write and read a TsFile File.
   This class is to show the structure of a TsFile.
 
 ### Notice 
-  For detail, please refer to https://github.com/thulab/tsfile/wiki/Get-Started.
+  For detail, please refer to https://github.com/apache/incubator-iotdb/blob/master/tsfile/README.md.
