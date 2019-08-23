@@ -83,16 +83,23 @@ public class Schema {
   /**
    * Create a row batch to write aligned data
    * @param deviceId the name of the device specified to be written in
-   * @return
    */
   public RowBatch createRowBatch(String deviceId) {
     return new RowBatch(deviceId, measurementSchemaList);
   }
 
   /**
+   * Create a row batch to write aligned data
+   * @param deviceId the name of the device specified to be written in
+   * @param maxBatchSize max size of rows in batch
+   */
+  public RowBatch createRowBatch(String deviceId, int maxBatchSize) {
+    return new RowBatch(deviceId, measurementSchemaList, maxBatchSize);
+  }
+
+  /**
    * Get the data type fo a measurement specified by measurementId.
    * @param measurementId the name of the measurement being queried.
-   * @return
    */
   public TSDataType getMeasurementDataType(String measurementId) {
     MeasurementSchema measurement = this.measurementSchemaMap.get(measurementId);

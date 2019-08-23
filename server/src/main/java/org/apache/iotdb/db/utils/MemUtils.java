@@ -85,7 +85,7 @@ public class MemUtils {
         case TEXT:
           memSize += batchInsertPlan.getRowCount() * 8L;
           for (int j = 0; j < batchInsertPlan.getRowCount(); j++) {
-            memSize += batchInsertPlan.getColumns()[i].getBinary_vals().get(j).capacity();
+            memSize += ((Binary[]) batchInsertPlan.getColumns()[i])[j].getLength() * 2;
           }
           break;
         default:

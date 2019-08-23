@@ -26,7 +26,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
-import org.apache.iotdb.service.rpc.thrift.TSDataValueList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -89,18 +88,18 @@ public class StorageGroupProcessorTest {
 
     BatchInsertPlan batchInsertPlan1 = new BatchInsertPlan("root.vehicle.d0", measurements, dataTypes);
 
-    Long[] times = new Long[100];
-    TSDataValueList[] dataValueLists = new TSDataValueList[2];
-    dataValueLists[0] = new TSDataValueList();
-    dataValueLists[1] = new TSDataValueList();
-    for (long i = 1; i <= 100; i++) {
-      times[(int) i-1] = i;
-      dataValueLists[0].addToInt_vals((int) i);
-      dataValueLists[1].addToLong_vals(i);
-    }
+    long[] times = new long[100];
+    Object[] columns = new Object[2];
+    columns[0] = new int[100];
+    columns[1] = new long[100];
 
+    for (int r = 0; r < 100; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
+    }
     batchInsertPlan1.setTimes(times);
-    batchInsertPlan1.setColumns(dataValueLists);
+    batchInsertPlan1.setColumns(columns);
     batchInsertPlan1.setRowCount(times.length);
 
     processor.insertBatch(batchInsertPlan1);
@@ -108,19 +107,15 @@ public class StorageGroupProcessorTest {
 
     BatchInsertPlan batchInsertPlan2 = new BatchInsertPlan("root.vehicle.d0", measurements, dataTypes);
 
-    times = new Long[100];
-    dataValueLists = new TSDataValueList[2];
-    dataValueLists[0] = new TSDataValueList();
-    dataValueLists[1] = new TSDataValueList();
-    for (long i = 50; i <= 149; i++) {
-      times[(int) i-50] = i;
-      dataValueLists[0].addToInt_vals((int) i);
-      dataValueLists[1].addToLong_vals(i);
+    for (int r = 50; r < 149; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
     }
+    batchInsertPlan1.setTimes(times);
+    batchInsertPlan1.setColumns(columns);
+    batchInsertPlan1.setRowCount(times.length);
 
-    batchInsertPlan2.setTimes(times);
-    batchInsertPlan2.setColumns(dataValueLists);
-    batchInsertPlan2.setRowCount(times.length);
 
     processor.insertBatch(batchInsertPlan2);
     processor.putAllWorkingTsFileProcessorIntoClosingList();
