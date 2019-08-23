@@ -63,7 +63,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,7 +93,7 @@ public class StorageGroupProcessor {
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
-   * (i.e., fileSchema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
+   * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
    * closing(Un)SequenceTsFileProcessor, latestTimeForEachDevice, and
    * latestFlushedTimeForEachDevice)
    */
@@ -109,7 +109,7 @@ public class StorageGroupProcessor {
   /**
    * the schema of time series that belong this storage group
    */
-  private FileSchema fileSchema;
+  private Schema schema;
   // includes sealed and unsealed sequence TsFiles
   private List<TsFileResource> sequenceFileList = new ArrayList<>();
   private TsFileProcessor workSequenceTsFileProcessor = null;
@@ -164,7 +164,7 @@ public class StorageGroupProcessor {
     this.storageGroupName = storageGroupName;
 
     // construct the file schema
-    this.fileSchema = constructFileSchema(storageGroupName);
+    this.schema = constructFileSchema(storageGroupName);
 
     try {
       File storageGroupSysDir = new File(systemInfoDir, storageGroupName);
@@ -172,7 +172,7 @@ public class StorageGroupProcessor {
         logger.info("Storage Group system Directory {} doesn't exist, create it",
             storageGroupSysDir.getPath());
       } else if (!storageGroupSysDir.exists()) {
-        logger.error("craete Storage Group system Directory {} failed",
+        logger.error("create Storage Group system Directory {} failed",
             storageGroupSysDir.getPath());
       }
 
@@ -220,7 +220,7 @@ public class StorageGroupProcessor {
       TsFileResource tsFileResource = new TsFileResource(tsFile);
       sequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-"
-          , fileSchema, versionController, tsFileResource, false);
+          , schema, versionController, tsFileResource, false);
       recoverPerformer.recover();
     }
   }
@@ -231,7 +231,7 @@ public class StorageGroupProcessor {
       TsFileResource tsFileResource = new TsFileResource(tsFile);
       unSequenceFileList.add(tsFileResource);
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(storageGroupName + "-",
-          fileSchema,
+          schema,
           versionController, tsFileResource, true);
       recoverPerformer.recover();
     }
@@ -249,11 +249,11 @@ public class StorageGroupProcessor {
     }
   }
 
-  private FileSchema constructFileSchema(String storageGroupName) {
+  private Schema constructFileSchema(String storageGroupName) {
     List<MeasurementSchema> columnSchemaList;
     columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(storageGroupName);
 
-    FileSchema schema = new FileSchema();
+    Schema schema = new Schema();
     for (MeasurementSchema measurementSchema : columnSchemaList) {
       schema.registerMeasurement(measurementSchema);
     }
@@ -262,13 +262,13 @@ public class StorageGroupProcessor {
 
 
   /**
-   * add a measurement into the fileSchema.
+   * add a measurement into the schema.
    */
   public void addMeasurement(String measurementId, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) {
     writeLock();
     try {
-      fileSchema.registerMeasurement(new MeasurementSchema(measurementId, dataType, encoding,
+      schema.registerMeasurement(new MeasurementSchema(measurementId, dataType, encoding,
           compressor, props));
     } finally {
       writeUnlock();
@@ -290,19 +290,19 @@ public class StorageGroupProcessor {
     }
   }
 
-  public List<Integer> insertBatch(BatchInsertPlan batchInsertPlan) {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) {
     writeLock();
     try {
       // init map
       latestTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
       latestFlushedTimeForEachDevice.putIfAbsent(batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
 
-      List<Integer> results = new ArrayList<>();
+      Integer[] results = new Integer[batchInsertPlan.getRowCount()];
       List<Integer> sequenceIndexes = new ArrayList<>();
       List<Integer> unsequenceIndexes = new ArrayList<>();
 
       for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-        results.add(TS_StatusCode.SUCCESS_STATUS.getValue());
+        results[i] = TS_StatusCode.SUCCESS_STATUS.getValue();
         if (batchInsertPlan.getTimes()[i] > latestFlushedTimeForEachDevice
             .get(batchInsertPlan.getDeviceId())) {
           sequenceIndexes.add(i);
@@ -325,12 +325,12 @@ public class StorageGroupProcessor {
   }
 
   private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
-      List<Integer> indexes, boolean sequence, List<Integer> results) {
+      List<Integer> indexes, boolean sequence, Integer[] results) {
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(sequence);
     if (tsFileProcessor == null) {
       for (int index : indexes) {
-        results.set(index, TS_StatusCode.ERROR_STATUS.getValue());
+        results[index] = TS_StatusCode.ERROR_STATUS.getValue();
       }
       return;
     }
@@ -436,11 +436,11 @@ public class StorageGroupProcessor {
 
     if (sequence) {
       return new TsFileProcessor(storageGroupName, new File(filePath),
-          fileSchema, versionController, this::closeUnsealedTsFileProcessor,
+          schema, versionController, this::closeUnsealedTsFileProcessor,
           this::updateLatestFlushTimeCallback, sequence);
     } else {
       return new TsFileProcessor(storageGroupName, new File(filePath),
-          fileSchema, versionController, this::closeUnsealedTsFileProcessor,
+          schema, versionController, this::closeUnsealedTsFileProcessor,
           () -> true, sequence);
     }
   }
@@ -590,7 +590,7 @@ public class StorageGroupProcessor {
   private List<TsFileResource> getFileReSourceListForQuery(List<TsFileResource> tsFileResources,
       String deviceId, String measurementId, QueryContext context) {
 
-    MeasurementSchema mSchema = fileSchema.getMeasurementSchema(measurementId);
+    MeasurementSchema mSchema = schema.getMeasurementSchema(measurementId);
     TSDataType dataType = mSchema.getType();
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();

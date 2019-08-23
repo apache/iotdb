@@ -259,7 +259,7 @@ import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 /**
@@ -275,7 +275,7 @@ public class TsFileWriteWithRowBatch {
         f.delete();
       }
 
-      FileSchema fileSchema = new FileSchema();
+      FileSchema schema = new FileSchema();
 
       // the number of rows to include in the row batch
       int rowNum = 1000000;
@@ -284,15 +284,15 @@ public class TsFileWriteWithRowBatch {
 
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        fileSchema.registerMeasurement(
+        schema.registerMeasurement(
                 new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
 
       // add measurements into TSFileWriter
-      TsFileWriter tsFileWriter = new TsFileWriter(f, fileSchema);
+      TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
 
       // construct the row batch
-      RowBatch rowBatch = fileSchema.createRowBatch("device_1");
+      RowBatch rowBatch = schema.createRowBatch("device_1");
 
       long[] timestamps = rowBatch.timestamps;
       Object[] values = rowBatch.values;

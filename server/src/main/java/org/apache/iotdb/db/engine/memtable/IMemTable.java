@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.service.rpc.thrift.TSDataValueList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**

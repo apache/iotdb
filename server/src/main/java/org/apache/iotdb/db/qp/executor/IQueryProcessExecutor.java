@@ -119,7 +119,7 @@ public interface IQueryProcessExecutor {
    * execute batch insert plan
    * @return result of each row
    */
-  List<Integer> insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException;
+  Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException;
 
   boolean judgePathExists(Path fullPath);
 

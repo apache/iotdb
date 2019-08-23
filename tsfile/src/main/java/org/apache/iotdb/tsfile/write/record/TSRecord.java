@@ -26,8 +26,6 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 /**
  * TSRecord is a kind of format that TsFile receives.TSRecord contains timestamp, deviceId and a
  * list of data points.
- *
- * @author kangrong
  */
 public class TSRecord {
 

@@ -28,7 +28,6 @@ import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.db.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.service.rpc.thrift.TSDataValueList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -75,7 +74,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(Long[] times, TSDataValueList value, List<Integer> indexes) {
+  public void write(long[] times, Object valueList, TSDataType dataType, List<Integer> indexes) {
     switch (dataType) {
       case BOOLEAN:
         //TODO if indexes.size() == times.length, could we write a chunk at a time

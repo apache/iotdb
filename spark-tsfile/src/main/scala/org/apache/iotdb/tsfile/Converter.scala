@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{FileSchema, MeasurementSchema, SchemaBuilder}
+import org.apache.iotdb.tsfile.write.schema.{FileSchema, MeasurementSchema, Schema, SchemaBuilder}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
@@ -280,7 +280,7 @@ object Converter {
     * @param structType given sql schema
     * @return TsFile schema
     */
-  def toTsFileSchema(structType: StructType, options: Map[String, String]): FileSchema = {
+  def toTsFileSchema(structType: StructType, options: Map[String, String]): Schema = {
     val schemaBuilder = new SchemaBuilder()
     structType.fields.filter(f => {
       !QueryConstant.RESERVED_TIME.equals(f.name)

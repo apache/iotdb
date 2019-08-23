@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,27 +25,37 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
-import org.apache.iotdb.service.rpc.thrift.TSDataValueList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
-import org.apache.thrift.transport.TTransport;
 
 public class BatchInsertPlan extends PhysicalPlan {
 
   private String deviceId;
   private String[] measurements;
   private TSDataType[] dataTypes;
-  private Long[] times;
-  private TSDataValueList[] columns;
+  private List<IoTDBDataType> dataTypeList;
+
+  private long[] times;
+  private ByteBuffer timeBuffer;
+
+  private Object[] columns;
+  private ByteBuffer valueBuffer;
+
   private int rowCount = 0;
+
+  // cached values
   private Long maxTime = null;
   private Long minTime = null;
+  private List<Path> paths;
 
   public BatchInsertPlan() {
     super(false, OperatorType.BATCHINSERT);
+  }
+
+  public BatchInsertPlan(String deviceId, List<String> measurements) {
+    super(false, OperatorType.BATCHINSERT);
+    this.deviceId = deviceId;
+    setMeasurements(measurements);
   }
 
   public BatchInsertPlan(String deviceId, String[] measurements, List<IoTDBDataType> dataTypes) {
@@ -67,11 +75,14 @@ public class BatchInsertPlan extends PhysicalPlan {
 
   @Override
   public List<Path> getPaths() {
+    if (paths != null) {
+      return paths;
+    }
     List<Path> ret = new ArrayList<>();
-
     for (String m : measurements) {
       ret.add(new Path(deviceId, m));
     }
+    paths = ret;
     return ret;
   }
 
@@ -92,23 +103,21 @@ public class BatchInsertPlan extends PhysicalPlan {
     }
 
     buffer.putInt(times.length);
-    for (Long time: times) {
-      buffer.putLong(time);
-    }
 
-    for (int i = 0; i < measurements.length; i++) {
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      TTransport transport = new TIOStreamTransport(out);
-      TBinaryProtocol tp = new TBinaryProtocol(transport);
-      try {
-        columns[i].write(tp);
-      } catch (TException e) {
-        throw new RuntimeException("meet error when serializing BatchInsertPlan", e);
-      }
-      byte[] bytes = out.toByteArray();
-      buffer.putInt(bytes.length);
-      buffer.put(bytes);
-    }
+    buffer.put(timeBuffer.array());
+    timeBuffer = null;
+    buffer.put(valueBuffer.array());
+    valueBuffer = null;
+  }
+
+  public void setTimeBuffer(ByteBuffer timeBuffer) {
+    this.timeBuffer = timeBuffer;
+    this.timeBuffer.position(0);
+  }
+
+  public void setValueBuffer(ByteBuffer valueBuffer) {
+    this.valueBuffer = valueBuffer;
+    this.timeBuffer.position(0);
   }
 
   @Override
@@ -127,27 +136,15 @@ public class BatchInsertPlan extends PhysicalPlan {
     }
 
     int rows = buffer.getInt();
-    this.times = new Long[rows];
-    for (int i = 0; i < rows; i++) {
-      this.times[i] = buffer.getLong();
-    }
+    this.times = new long[rows];
+    QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
 
-    this.columns = new TSDataValueList[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      int size = buffer.getInt();
-      byte[] bytes = new byte[size];
-      buffer.get(bytes);
-      ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-      TTransport transport = new TIOStreamTransport(bis);
-      TBinaryProtocol tp = new TBinaryProtocol(transport);
-      TSDataValueList tsDataValueList = new TSDataValueList();
-      try {
-        tsDataValueList.read(tp);
-      } catch (TException e) {
-        throw new RuntimeException("meet error when deserializing BatchInsertPlan", e);
-      }
-      columns[i] = tsDataValueList;
-    }
+    QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypeList, measurementSize, rows);
+  }
+
+  public void setDataTypeList(List<IoTDBDataType> dataTypeList) {
+    this.dataTypeList = dataTypeList;
+    setDataTypes(dataTypeList);
   }
 
   public String getDeviceId() {
@@ -189,13 +186,8 @@ public class BatchInsertPlan extends PhysicalPlan {
     }
   }
 
-  public TSDataValueList[] getColumns() {
+  public Object[] getColumns() {
     return columns;
-  }
-
-  public void setColumns(List<TSDataValueList> columns) {
-    this.columns = new TSDataValueList[columns.size()];
-    columns.toArray(this.columns);
   }
 
   public long getMinTime() {
@@ -224,16 +216,11 @@ public class BatchInsertPlan extends PhysicalPlan {
     return maxTime;
   }
 
-  public Long[] getTimes() {
+  public long[] getTimes() {
     return times;
   }
 
-  public void setTimes(List<Long> times) {
-    this.times = new Long[times.size()];
-    times.toArray(this.times);
-  }
-
-  public void setTimes(Long[] times) {
+  public void setTimes(long[] times) {
     this.times = times;
   }
 
@@ -245,7 +232,7 @@ public class BatchInsertPlan extends PhysicalPlan {
     this.rowCount = size;
   }
 
-  public void setColumns(TSDataValueList[] columns) {
+  public void setColumns(Object[] columns) {
     this.columns = columns;
   }
 }

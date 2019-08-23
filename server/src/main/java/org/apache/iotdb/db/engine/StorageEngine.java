@@ -174,7 +174,7 @@ public class StorageEngine implements IService {
    * insert a BatchInsertPlan to a storage group
    * @return result of each row
    */
-  public List<Integer> insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(batchInsertPlan.getDeviceId());

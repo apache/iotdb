@@ -28,6 +28,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -446,7 +447,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH, t1);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
     }
   }
 
@@ -1009,20 +1010,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteBatchStatementResp insertBatch(TSBatchInsertionReq req) {
     long t1 = System.currentTimeMillis();
-    List<Integer> results;
     try {
       if (!checkLogin()) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN, null);
       }
 
-      BatchInsertPlan batchInsertPlan = new BatchInsertPlan();
-      batchInsertPlan.setDeviceId(req.deviceId);
-      batchInsertPlan.setMeasurements(req.measurements);
-      batchInsertPlan.setTimes(req.timestamps);
-      batchInsertPlan.setColumns(req.columns);
-      batchInsertPlan.setDataTypes(req.types);
-      batchInsertPlan.setRowCount(req.timestamps.size());
+      BatchInsertPlan batchInsertPlan = new BatchInsertPlan(req.deviceId, req.measurements);
+      batchInsertPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
+      batchInsertPlan.setColumns(QueryDataSetUtils
+          .readValuesFromBuffer(req.values, req.types, req.measurements.size(), req.size));
+      batchInsertPlan.setRowCount(req.size);
+      batchInsertPlan.setTimeBuffer(req.timestamps);
+      batchInsertPlan.setValueBuffer(req.values);
+      batchInsertPlan.setDataTypeList(req.types);
 
       boolean isAllSuccessful = true;
 
@@ -1038,26 +1039,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             "Uninitialized authorizer " + e.getMessage(), null);
       }
 
-      results = processor.getExecutor().insertBatch(batchInsertPlan);
+      Integer[] results = processor.getExecutor().insertBatch(batchInsertPlan);
 
       for (Integer result : results) {
-        long t2 = System.currentTimeMillis();
-        isAllSuccessful = isAllSuccessful && (result == TS_StatusCode.SUCCESS_STATUS.getValue() ? true : false);
-        Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+        if (result != TS_StatusCode.SUCCESS_STATUS.getValue()) {
+          isAllSuccessful = false;
+          break;
+        }
       }
 
       if (isAllSuccessful) {
-        return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS,
-            "Execute batch statements successfully", results);
+        return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "", Arrays.asList(results));
       } else {
-        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-            "Meet error in batch", results);
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "", Arrays.asList(results));
       }
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH, t1);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
   }
 

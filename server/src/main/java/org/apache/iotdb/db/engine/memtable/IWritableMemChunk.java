@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.List;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.service.rpc.thrift.TSDataValueList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -40,7 +39,7 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
 
   void write(long insertTime, String insertValue);
 
-  void write(Long[] times, TSDataValueList valueList, List<Integer> indexes);
+  void write(long[] times, Object valueList, TSDataType dataType, List<Integer> indexes);
 
   long count();
 

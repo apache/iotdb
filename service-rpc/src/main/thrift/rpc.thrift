@@ -200,16 +200,6 @@ struct TSDataValue{
   8: optional IoTDBDataType type
 }
 
-
-struct TSDataValueList{
-  1: optional list<bool> bool_vals
-  2: optional list<i32> int_vals
-  3: optional list<i64> long_vals
-  4: optional list<double> float_vals
-  5: optional list<double> double_vals
-  6: optional list<binary> binary_vals
-}
-
 struct TSRowRecord{
   1: required i64 timestamp
   // column values
@@ -277,9 +267,10 @@ struct TSInsertionReq {
 struct TSBatchInsertionReq {
     1: required string deviceId
     2: required list<string> measurements
-    3: required list<TSDataValueList> columns
-    4: required list<i64> timestamps
+    3: required binary values
+    4: required binary timestamps
     5: required list<IoTDBDataType> types
+    6: required i32 size
 }
 
 struct ServerProperties {
