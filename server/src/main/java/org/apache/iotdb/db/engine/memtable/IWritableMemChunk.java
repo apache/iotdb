@@ -38,6 +38,18 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
 
   void putBoolean(long t, boolean v);
 
+  void putLongs(long[] t, long[] v);
+
+  void putInts(long[] t, int[] v);
+
+  void putFloats(long[] t, float[] v);
+
+  void putDoubles(long[] t, double[] v);
+
+  void putBinaries(long[] t, Binary[] v);
+
+  void putBooleans(long[] t, boolean[] v);
+
   void write(long insertTime, String insertValue);
 
   void write(Long[] times, TSDataValueList valueList, List<Integer> indexes);
