@@ -77,34 +77,63 @@ public class WritableMemChunk implements IWritableMemChunk {
   public void write(long[] times, Object valueList, TSDataType dataType, List<Integer> indexes) {
     switch (dataType) {
       case BOOLEAN:
-        //TODO if indexes.size() == times.length, could we write a chunk at a time
-        for (Integer index: indexes) {
-          putBoolean(times[index], value.bool_vals.get(index));
+        boolean[] boolValues = (boolean[]) valueList;
+        if (times.length == indexes.size()) {
+          putBooleans(times, boolValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putBoolean(times[index], boolValues[index]);
         }
         break;
       case INT32:
-        for (Integer index: indexes) {
-          putInt(times[index], value.int_vals.get(index));
+        int[] intValues = (int[]) valueList;
+        if (times.length == indexes.size()) {
+          putInts(times, intValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putInt(times[index], intValues[index]);
         }
         break;
       case INT64:
-        for (Integer index: indexes) {
-          putLong(times[index], value.long_vals.get(index));
+        long[] longValues = (long[]) valueList;
+        if (times.length == indexes.size()) {
+          putLongs(times, longValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putLong(times[index], longValues[index]);
         }
         break;
       case FLOAT:
-        for (Integer index: indexes) {
-          putFloat(times[index], value.float_vals.get(index).floatValue());
+        float[] floatValues = (float[]) valueList;
+        if (times.length == indexes.size()) {
+          putFloats(times, floatValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putFloat(times[index], floatValues[index]);
         }
         break;
       case DOUBLE:
-        for (Integer index: indexes) {
-          putDouble(times[index], value.double_vals.get(index));
+        double[] doubleValues = (double[]) valueList;
+        if (times.length == indexes.size()) {
+          putDoubles(times, doubleValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putDouble(times[index], doubleValues[index]);
         }
         break;
       case TEXT:
-        for (Integer index: indexes) {
-          putBinary(times[index], new Binary(value.binary_vals.get(index).array()));
+        Binary[] binaryValues = (Binary[]) valueList;
+        if (times.length == indexes.size()) {
+          putBinaries(times, binaryValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putBinary(times[index], binaryValues[index]);
         }
         break;
       default:

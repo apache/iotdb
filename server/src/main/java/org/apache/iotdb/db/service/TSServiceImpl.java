@@ -1049,8 +1049,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       if (isAllSuccessful) {
+        logger.debug("Insert one RowBatch successfully");
         return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "", Arrays.asList(results));
       } else {
+        logger.debug("Insert one RowBatch failed!");
         return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "", Arrays.asList(results));
       }
     } catch (Exception e) {

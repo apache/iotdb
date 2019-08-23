@@ -179,6 +179,7 @@ public class Utils {
     for (long time: rowBatch.timestamps) {
       timeBuffer.putLong(time);
     }
+    timeBuffer.flip();
     return timeBuffer;
   }
 
@@ -229,6 +230,7 @@ public class Utils {
               String.format("Data type %s is not supported.", dataType));
       }
     }
+    valueBuffer.flip();
     return valueBuffer;
   }
 }

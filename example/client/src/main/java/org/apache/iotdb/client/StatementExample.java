@@ -34,13 +34,13 @@ public class StatementExample {
       connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
       Statement statement = connection.createStatement();
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=FLOAT, ENCODING=RLE");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=FLOAT, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE");
 
       for (int i = 0; i < 10; i++) {
         for (int j = 0 ; j < 10; j++) {
-          statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ (i * 10 + j) + "," + 1.0 + "," + 1.0 + "," + 1.0 + ")");
+          statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ (i * 10 + j) + "," + 1 + "," + 1 + "," + 1 + ")");
         }
         statement.executeBatch();
         statement.clearBatch();

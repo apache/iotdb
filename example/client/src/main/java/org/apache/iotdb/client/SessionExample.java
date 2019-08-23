@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.client;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
-import org.apache.iotdb.session.IoTDBRowBatch;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 /**
  * you need to set storage group and create timeseries first from Client or JDBC
@@ -39,24 +40,35 @@ public class SessionExample {
   public static void main(String[] args) {
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1");
-    measurements.add("s2");
-    measurements.add("s3");
-    List<IoTDBDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(IoTDBDataType.FLOAT);
-    dataTypes.add(IoTDBDataType.FLOAT);
-    dataTypes.add(IoTDBDataType.FLOAT);
 
-    IoTDBRowBatch rowBatch = new IoTDBRowBatch("root.sg1.d1", measurements, dataTypes);
-    for (long i = 1; i <= 100; i++) {
-      List<Object> values = new ArrayList<>();
-      values.add(1.0f);
-      values.add(1.0f);
-      values.add(1.0f);
-      rowBatch.addRow(i, values);
+    Schema schema = new Schema();
+    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+
+    RowBatch rowBatch = schema.createRowBatch("root.sg1.d1", 100);
+
+    long[] timestamps = rowBatch.timestamps;
+    Object[] values = rowBatch.values;
+
+    for (long time = 0; time < 1000; time++) {
+      int row = rowBatch.batchSize++;
+      timestamps[row] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor = (long[]) values[i];
+        sensor[row] = time;
+      }
+      if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
+        session.insertBatch(rowBatch);
+        rowBatch.reset();
+      }
     }
-    session.insertBatch(rowBatch);
+
+    if (rowBatch.batchSize != 0) {
+      session.insertBatch(rowBatch);
+      rowBatch.reset();
+    }
+
     session.close();
   }
 
