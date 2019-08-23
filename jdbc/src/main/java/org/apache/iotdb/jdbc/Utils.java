@@ -176,8 +176,8 @@ public class Utils {
 
   public static ByteBuffer getTimeBuffer(RowBatch rowBatch) {
     ByteBuffer timeBuffer = ByteBuffer.allocate(rowBatch.getTimeBytesSize());
-    for (long time: rowBatch.timestamps) {
-      timeBuffer.putLong(time);
+    for (int i = 0; i < rowBatch.batchSize; i++) {
+      timeBuffer.putLong(rowBatch.timestamps[i]);
     }
     timeBuffer.flip();
     return timeBuffer;
