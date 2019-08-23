@@ -143,7 +143,8 @@ public class ChunkMetaData {
 
   @Override
   public String toString() {
-    return String.format("numPoints %d", numOfPoints);
+    return String.format("measurementUid %s, offsetOfChunkHeader %d, numPoints %d", measurementUid,
+        offsetOfChunkHeader, numOfPoints);
   }
 
   public long getNumOfPoints() {

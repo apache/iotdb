@@ -21,12 +21,16 @@ package org.apache.iotdb.tsfile.common.cache;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.apache.iotdb.tsfile.utils.QueryTrace;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is not thread safe.
  */
 public abstract class LRUCache<K, T> implements Cache<K, T> {
 
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
   private int cacheSize;
   private Map<K, T> cache;
 
@@ -38,8 +42,14 @@ public abstract class LRUCache<K, T> implements Cache<K, T> {
   @Override
   public T get(K key) throws IOException {
     if (cache.containsKey(key)) {
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info("phase 4: isChunkCacheMiss = 0 for key: {}", key);
+      }
       moveObjectToTail(key);
     } else {
+      if (qlogger.isInfoEnabled()) {
+        qlogger.info("phase 4: isChunkCacheMiss = 1 for key: {}", key);
+      }
       removeFirstObjectIfCacheIsFull();
       cache.put(key, loadObjectByKey(key));
     }
