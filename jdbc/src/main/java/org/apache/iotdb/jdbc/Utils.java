@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
@@ -105,7 +104,7 @@ public class Utils {
           field.setNull();
           r.getFields().add(field);
         } else {
-          TSDataType dataType = getTSDataTypeByRPCType(value.getType());
+          TSDataType dataType = TSDataType.valueOf(value.getType());
           Field field = new Field(dataType);
           addFieldAccordingToDataType(field, dataType, value);
           r.getFields().add(field);
@@ -114,30 +113,6 @@ public class Utils {
       records.add(r);
     }
     return records;
-  }
-
-  private static TSDataType getTSDataTypeByRPCType(IoTDBDataType type) {
-    switch (type) {
-      case BOOLEAN: return TSDataType.BOOLEAN;
-      case FLOAT: return TSDataType.FLOAT;
-      case DOUBLE: return TSDataType.DOUBLE;
-      case INT32: return TSDataType.INT32;
-      case INT64: return TSDataType.INT64;
-      case TEXT: return TSDataType.TEXT;
-      default: throw new RuntimeException("data type not supported: " + type);
-    }
-  }
-
-  public static IoTDBDataType getIoTDBDataTypeByTSDataType(TSDataType type) {
-    switch (type) {
-      case BOOLEAN: return IoTDBDataType.BOOLEAN;
-      case FLOAT: return IoTDBDataType.FLOAT;
-      case DOUBLE: return IoTDBDataType.DOUBLE;
-      case INT32: return IoTDBDataType.INT32;
-      case INT64: return IoTDBDataType.INT64;
-      case TEXT: return IoTDBDataType.TEXT;
-      default: throw new RuntimeException("data type not supported: " + type);
-    }
   }
 
   /**

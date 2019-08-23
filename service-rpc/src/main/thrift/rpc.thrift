@@ -28,10 +28,6 @@ enum TS_StatusCode {
   INVALID_HANDLE_STATUS
 }
 
-enum IoTDBDataType {
-  BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
-}
-
 // The return status of a remote request
 struct TS_Status {
   1: required TS_StatusCode statusCode
@@ -197,7 +193,7 @@ struct TSDataValue{
   5: optional double float_val
   6: optional double double_val
   7: optional binary binary_val
-  8: optional IoTDBDataType type
+  8: optional string type
 }
 
 struct TSRowRecord{
@@ -269,7 +265,7 @@ struct TSBatchInsertionReq {
     2: required list<string> measurements
     3: required binary values
     4: required binary timestamps
-    5: required list<IoTDBDataType> types
+    5: required list<i32> types
     6: required i32 size
 }
 

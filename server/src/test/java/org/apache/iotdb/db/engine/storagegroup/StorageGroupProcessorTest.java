@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -82,9 +82,9 @@ public class StorageGroupProcessorTest {
     String[] measurements = new String[2];
     measurements[0] = "s0";
     measurements[1] = "s1";
-    IoTDBDataType[] dataTypes = new IoTDBDataType[2];
-    dataTypes[0] = IoTDBDataType.INT32;
-    dataTypes[1] = IoTDBDataType.INT64;
+    List<Integer> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32.ordinal());
+    dataTypes.add(TSDataType.INT64.ordinal());
 
     BatchInsertPlan batchInsertPlan1 = new BatchInsertPlan("root.vehicle.d0", measurements, dataTypes);
 
@@ -131,7 +131,7 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() throws StorageGroupProcessorException {
+  public void testSeqAndUnSeqSyncClose() {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
