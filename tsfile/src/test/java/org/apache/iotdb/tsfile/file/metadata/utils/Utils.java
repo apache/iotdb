@@ -19,10 +19,10 @@
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -30,10 +30,11 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsDigest.StatisticType;
+import org.apache.iotdb.tsfile.file.metadata.TsDigest;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.junit.Assert;
 
 public class Utils {
 
@@ -71,22 +72,13 @@ public class Utils {
     }
   }
 
-  public static void isMapBufferEqual(Map<StatisticType, ByteBuffer> mapA,
-      Map<StatisticType, ByteBuffer> mapB,
-      String name) {
-    if ((mapA == null) ^ (mapB == null)) {
+  public static void isTwoTsDigestEqual(TsDigest digestA, TsDigest digestB, String name) {
+    if ((digestA == null) ^ (digestB == null)) {
       System.out.println("error");
       fail(String.format("one of %s is null", name));
     }
-    if ((mapA != null) && (mapB != null)) {
-      if (mapA.size() != mapB.size()) {
-        fail(String.format("%s size is different", name));
-      }
-      for (StatisticType key : mapB.keySet()) {
-        ByteBuffer b = mapB.get(key);
-        ByteBuffer a = mapA.get(key);
-        assertTrue(b.equals(a));
-      }
+    if (digestA != null) {
+      Assert.assertEquals(digestA, digestB);
     }
   }
 
@@ -127,11 +119,9 @@ public class Utils {
       assertTrue(metadata1.getNumOfPoints() == metadata2.getNumOfPoints());
       assertTrue(metadata1.getStartTime() == metadata2.getStartTime());
       assertTrue(metadata1.getEndTime() == metadata2.getEndTime());
-      if (Utils.isTwoObjectsNotNULL(metadata1.getDigest(), metadata2.getDigest(), "digest")) {
-        Utils.isMapBufferEqual(metadata1.getDigest().getStatistics(),
-            metadata2.getDigest().getStatistics(),
-            "statistics");
-      }
+      assertNotNull(metadata1.getDigest());
+      assertNotNull(metadata2.getDigest());
+      Utils.isTwoTsDigestEqual(metadata1.getDigest(), metadata2.getDigest(), "TsDigest");
     }
   }
 

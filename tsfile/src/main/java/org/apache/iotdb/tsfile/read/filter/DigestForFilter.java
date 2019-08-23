@@ -100,10 +100,24 @@ public class DigestForFilter {
     return maxTime;
   }
 
+  public boolean isMinValueNull() {
+    return minValue == null;
+  }
+
+  public boolean isMaxValueNull() {
+    return maxValue == null;
+  }
+
+  /**
+   * Note check isMinValueNull before its usage
+   */
   public <T extends Comparable<T>> T getMinValue() {
     return getValue(minValue);
   }
 
+  /**
+   * Note check isMaxValueNull before its usage
+   */
   public <T extends Comparable<T>> T getMaxValue() {
     return getValue(maxValue);
   }
