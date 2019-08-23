@@ -281,7 +281,7 @@ public class IoTDBQueryResultSetTest {
           } else {
             value.setInt_val((int) item[3 * i + 3]);
           }
-          value.setType(Utils.getIoTDBDataTypeByTSDataType((TSDataType) item[3 * i + 2]));
+          value.setType(item[3 * i + 2].toString());
         }
         values.add(value);
       }

@@ -156,7 +156,7 @@ public class Client {
     request.deviceId = rowBatch.deviceId;
     for (MeasurementSchema measurementSchema: rowBatch.measurements) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
-      request.addToTypes(Utils.getIoTDBDataTypeByTSDataType(measurementSchema.getType()));
+      request.addToTypes(measurementSchema.getType().ordinal());
     }
     request.setTimestamps(Utils.getTimeBuffer(rowBatch));
     request.setValues(Utils.getValueBuffer(rowBatch));

@@ -24,7 +24,6 @@ import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -36,7 +35,6 @@ public class BatchInsertPlan extends PhysicalPlan {
   private String deviceId;
   private String[] measurements;
   private TSDataType[] dataTypes;
-  private List<IoTDBDataType> dataTypeList;
 
   private long[] times;
   private ByteBuffer timeBuffer;
@@ -61,14 +59,7 @@ public class BatchInsertPlan extends PhysicalPlan {
     setMeasurements(measurements);
   }
 
-  public BatchInsertPlan(String deviceId, String[] measurements, List<IoTDBDataType> dataTypes) {
-    super(false, OperatorType.BATCHINSERT);
-    this.deviceId = deviceId;
-    this.measurements = measurements;
-    setDataTypes(dataTypes);
-  }
-
-  public BatchInsertPlan(String deviceId, String[] measurements, IoTDBDataType[] dataTypes) {
+  public BatchInsertPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
@@ -197,13 +188,9 @@ public class BatchInsertPlan extends PhysicalPlan {
     this.times = new long[rows];
     QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
 
-    QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypeList, measurementSize, rows);
+    QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
   }
 
-  public void setDataTypeList(List<IoTDBDataType> dataTypeList) {
-    this.dataTypeList = dataTypeList;
-    setDataTypes(dataTypeList);
-  }
 
   public String getDeviceId() {
     return deviceId;
@@ -230,17 +217,10 @@ public class BatchInsertPlan extends PhysicalPlan {
     return dataTypes;
   }
 
-  public void setDataTypes(List<IoTDBDataType> dataTypes) {
+  public void setDataTypes(List<Integer> dataTypes) {
     this.dataTypes = new TSDataType[dataTypes.size()];
     for (int i = 0; i < dataTypes.size(); i++) {
-      this.dataTypes[i] = QueryDataSetUtils.getTSDataTypeByIoTDBDataType(dataTypes.get(i));
-    }
-  }
-
-  public void setDataTypes(IoTDBDataType[] dataTypes) {
-    this.dataTypes = new TSDataType[dataTypes.length];
-    for (int i = 0; i < dataTypes.length; i++) {
-      this.dataTypes[i] = QueryDataSetUtils.getTSDataTypeByIoTDBDataType(dataTypes[i]);
+      this.dataTypes[i] = TSDataType.values()[dataTypes.get(i)];
     }
   }
 

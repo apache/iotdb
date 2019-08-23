@@ -1023,7 +1023,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       batchInsertPlan.setRowCount(req.size);
       batchInsertPlan.setTimeBuffer(req.timestamps);
       batchInsertPlan.setValueBuffer(req.values);
-      batchInsertPlan.setDataTypeList(req.types);
+      batchInsertPlan.setDataTypes(req.types);
 
       boolean isAllSuccessful = true;
 

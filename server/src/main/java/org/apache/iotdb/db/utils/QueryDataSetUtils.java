@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
@@ -99,36 +98,13 @@ public class QueryDataSetUtils {
                 "data type %s is not supported when convert data at server",
                 f.getDataType().toString()));
         }
-        value.setType(getIoTDBDataTypeByTSDataType(f.getDataType()));
+        value.setType(f.getDataType().toString());
       }
       tsRowRecord.getValues().add(value);
     }
     return tsRowRecord;
   }
 
-  public static IoTDBDataType getIoTDBDataTypeByTSDataType(TSDataType type) {
-    switch (type) {
-      case BOOLEAN: return IoTDBDataType.BOOLEAN;
-      case FLOAT: return IoTDBDataType.FLOAT;
-      case DOUBLE: return IoTDBDataType.DOUBLE;
-      case INT32: return IoTDBDataType.INT32;
-      case INT64: return IoTDBDataType.INT64;
-      case TEXT: return IoTDBDataType.TEXT;
-      default: throw new RuntimeException("data type not supported: " + type);
-    }
-  }
-
-  public static TSDataType getTSDataTypeByIoTDBDataType(IoTDBDataType type) {
-    switch (type) {
-      case BOOLEAN: return TSDataType.BOOLEAN;
-      case FLOAT: return TSDataType.FLOAT;
-      case DOUBLE: return TSDataType.DOUBLE;
-      case INT32: return TSDataType.INT32;
-      case INT64: return TSDataType.INT64;
-      case TEXT: return TSDataType.TEXT;
-      default: throw new RuntimeException("data type not supported: " + type);
-    }
-  }
 
   public static long[] readTimesFromBuffer(ByteBuffer buffer, int size) {
     long[] times = new long[size];
@@ -138,16 +114,26 @@ public class QueryDataSetUtils {
     return times;
   }
 
+
+  public static Object[] readValuesFromBuffer(ByteBuffer buffer, List<Integer> types,
+      int columns, int size) {
+    TSDataType[] dataTypes = new TSDataType[types.size()];
+    for (int i = 0; i < dataTypes.length; i++) {
+      dataTypes[i] = TSDataType.values()[types.get(i)];
+    }
+    return readValuesFromBuffer(buffer, dataTypes, columns, size);
+  }
+
   /**
    * @param buffer data values
    * @param columns column number
    * @param size value count in each column
    */
-  public static Object[] readValuesFromBuffer(ByteBuffer buffer, List<IoTDBDataType> types,
+  public static Object[] readValuesFromBuffer(ByteBuffer buffer, TSDataType[] types,
       int columns, int size) {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
-      switch (types.get(i)) {
+      switch (types[i]) {
         case BOOLEAN:
           boolean[] boolValues = new boolean[size];
           for (int index = 0; index < size; index++) {
@@ -196,7 +182,7 @@ public class QueryDataSetUtils {
         default:
           throw new UnSupportedDataTypeException(
               String.format("data type %s is not supported when convert data at client",
-                  types.get(i)));
+                  types[i]));
       }
     }
     return values;

@@ -125,7 +125,7 @@ public class UtilsTest {
           } else {
             value.setBinary_val(ByteBuffer.wrap(((String) item[3 * i + 3]).getBytes()));
           }
-          value.setType(Utils.getIoTDBDataTypeByTSDataType((TSDataType) item[3 * i + 2]));
+          value.setType(item[3 * i + 2].toString());
         }
         values.add(value);
       }
