@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.client;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -37,7 +40,20 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
  */
 public class SessionExample {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws ClassNotFoundException {
+    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+    Connection connection = null;
+    try {
+      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE");
+    } catch (Exception e) {
+
+    }
+
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -51,7 +67,7 @@ public class SessionExample {
     long[] timestamps = rowBatch.timestamps;
     Object[] values = rowBatch.values;
 
-    for (long time = 0; time < 1000; time++) {
+    for (long time = 0; time < 30000; time++) {
       int row = rowBatch.batchSize++;
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {

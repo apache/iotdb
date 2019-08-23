@@ -25,8 +25,11 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.IoTDBDataType;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 public class BatchInsertPlan extends PhysicalPlan {
 
@@ -104,10 +107,65 @@ public class BatchInsertPlan extends PhysicalPlan {
 
     buffer.putInt(times.length);
 
-    buffer.put(timeBuffer.array());
-    timeBuffer = null;
-    buffer.put(valueBuffer.array());
-    valueBuffer = null;
+    if (timeBuffer == null) {
+      for (long time: times) {
+        buffer.putLong(time);
+      }
+    } else {
+      buffer.put(timeBuffer.array());
+      timeBuffer = null;
+    }
+
+    if (valueBuffer == null) {
+      for (int i = 0; i < measurements.length; i++) {
+        TSDataType dataType = dataTypes[i];
+        switch (dataType) {
+          case INT32:
+            int[] intValues = (int[]) columns[i];
+            for (int index = 0; index < rowCount; index++) {
+              buffer.putInt(intValues[index]);
+            }
+            break;
+          case INT64:
+            long[] longValues = (long[]) columns[i];
+            for (int index = 0; index < rowCount; index++) {
+              buffer.putLong(longValues[index]);
+            }
+            break;
+          case FLOAT:
+            float[] floatValues = (float[]) columns[i];
+            for (int index = 0; index < rowCount; index++) {
+              buffer.putFloat(floatValues[index]);
+            }
+            break;
+          case DOUBLE:
+            double[] doubleValues = (double[]) columns[i];
+            for (int index = 0; index < rowCount; index++) {
+              buffer.putDouble(doubleValues[index]);
+            }
+            break;
+          case BOOLEAN:
+            boolean[] boolValues = (boolean[]) columns[i];
+            for (int index = 0; index < rowCount; index++) {
+              buffer.put(BytesUtils.boolToByte(boolValues[index]));
+            }
+            break;
+          case TEXT:
+            Binary[] binaryValues = (Binary[]) columns[i];
+            for (int index = 0; index < rowCount; index++) {
+              buffer.putInt(binaryValues[index].getLength());
+              buffer.put(binaryValues[index].getValues());
+            }
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataType));
+        }
+      }
+    } else {
+      buffer.put(valueBuffer.array());
+      valueBuffer = null;
+    }
   }
 
   public void setTimeBuffer(ByteBuffer timeBuffer) {
