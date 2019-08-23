@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
+package org.apache.iotdb.client;
 
 import java.time.ZoneId;
+import org.apache.iotdb.exception.IoTDBSessionException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -44,9 +45,9 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Session {
+public class Client {
 
-  private static final Logger logger = LoggerFactory.getLogger(Session.class);
+  private static final Logger logger = LoggerFactory.getLogger(Client.class);
   private String host;
   private int port;
   private String username;
@@ -58,15 +59,15 @@ public class Session {
   private boolean isClosed = true;
   private ZoneId zoneId;
 
-  public Session(String host, int port) {
+  public Client(String host, int port) {
     this(host, port, Config.DEFAULT_USER, Config.DEFALUT_PASSWORD);
   }
 
-  public Session(String host, String port, String username, String password) {
+  public Client(String host, String port, String username, String password) {
     this(host, Integer.parseInt(port), username, password);
   }
 
-  public Session(String host, int port, String username, String password) {
+  public Client(String host, int port, String username, String password) {
     this.host = host;
     this.port = port;
     this.username = username;

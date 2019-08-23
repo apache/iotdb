@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.client;
+package org.apache.iotdb.cli;
 
 import java.io.PrintStream;
 import java.sql.ResultSet;
@@ -38,17 +38,16 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.iotdb.cli.exception.ArgsErrorException;
-import org.apache.iotdb.cli.tool.ImportCsv;
+import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.tool.ImportCsv;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
 import org.apache.iotdb.jdbc.IoTDBMetadataResultSet;
 import org.apache.iotdb.jdbc.IoTDBQueryResultSet;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.thrift.TException;
 
-public abstract class AbstractClient {
+public abstract class AbstractCli {
 
   static final String HOST_ARGS = "h";
   static final String HOST_NAME = "host";
@@ -80,7 +79,7 @@ public abstract class AbstractClient {
   static final String SHOW_FETCH_SIZE = "show fetch_size";
   private static final String HELP = "help";
   static final String IOTDB_CLI_PREFIX = "IoTDB";
-  static final String SCRIPT_HINT = "./start-client.sh(start-client.bat if Windows)";
+  static final String SCRIPT_HINT = "./start-cli.sh(start-cli.bat if Windows)";
   static final String QUIT_COMMAND = "quit";
   static final String EXIT_COMMAND = "exit";
   static final String SHOW_METADATA_COMMAND = "show timeseries";
@@ -586,7 +585,7 @@ public abstract class AbstractClient {
 
   static void echoStarting(){
     println("---------------------");
-    println("Starting IoTDB Client");
+    println("Starting IoTDB Cli");
     println("---------------------");
   }
 

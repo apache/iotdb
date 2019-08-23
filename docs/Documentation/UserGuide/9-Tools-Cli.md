@@ -44,12 +44,12 @@ the port number of the server running, set the specific IP and PORT at -h and -p
 The Linux and MacOS system startup commands are as follows:
 
 ```
-  Shell > ./sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > ./sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 The Windows system startup commands are as follows:
 
 ```
-  Shell > \sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > \sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 After using these commands, the client can be started successfully. The successful status will be as follows: 
 
@@ -86,12 +86,12 @@ Following is a client command which connects the host with IP
 The Linux and MacOS system startup commands are as follows:
 
 ```
-  Shell > ./sbin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > ./sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 The Windows system startup commands are as follows:
 
 ```
-  Shell > \sbin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > \sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 ## Cli/shell tool with -e parameter
 
@@ -102,7 +102,7 @@ In order to avoid confusion between statements and other parameters, the current
 The usage of -e parameter for Cli/shell is as follows:
 
 ```
-  Shell > ./sbin/start-client.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
+  Shell > ./sbin/start-cli.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
 In order to better explain the use of -e parameter, take following as an example.
@@ -117,12 +117,12 @@ port=6667
 user=root
 pass=root
 
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "set storage group to root.demo"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "select s1 from root.demo"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "set storage group to root.demo"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "select s1 from root.demo"
 ```
 
 The print results are shown in the figure, which are consistent with the client and jdbc operations.

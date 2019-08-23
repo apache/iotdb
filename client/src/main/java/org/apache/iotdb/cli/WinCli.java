@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.client;
+package org.apache.iotdb.cli;
 
 import java.io.Console;
 import java.sql.DriverManager;
@@ -28,12 +28,12 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.cli.exception.ArgsErrorException;
+import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
 
-public class WinClient extends AbstractClient {
+public class WinCli extends AbstractCli {
 
   private static CommandLine commandLine;
 

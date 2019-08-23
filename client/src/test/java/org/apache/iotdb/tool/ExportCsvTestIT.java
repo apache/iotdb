@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli.tool;
+package org.apache.iotdb.tool;
 
 import java.io.File;
 import java.io.IOException;
-import org.apache.iotdb.cli.client.AbstractScript;
+import org.apache.iotdb.cli.AbstractScript;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

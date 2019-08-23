@@ -28,8 +28,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-client</artifactId>
-    <name>IoTDB Client</name>
-    <description>A Client tool.</description>
+    <name>IoTDB Client and Cli</name>
     <properties>
         <cli.test.skip>false</cli.test.skip>
         <cli.it.skip>${cli.test.skip}</cli.it.skip>

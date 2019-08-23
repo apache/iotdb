@@ -57,6 +57,8 @@ This chapter provides an example of how to open a database connection, execute a
 
 Requires that you include the packages containing the JDBC classes needed for database programming.
 
+**NOTE: For faster insertion, the insertBatch() in Client is recommended.**
+
 ```Java
 import java.sql.*;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
