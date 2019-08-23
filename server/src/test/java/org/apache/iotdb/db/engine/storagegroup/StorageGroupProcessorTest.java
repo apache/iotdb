@@ -108,14 +108,13 @@ public class StorageGroupProcessorTest {
     BatchInsertPlan batchInsertPlan2 = new BatchInsertPlan("root.vehicle.d0", measurements, dataTypes);
 
     for (int r = 50; r < 149; r++) {
-      times[r] = r;
-      ((int[]) columns[0])[r] = 1;
-      ((long[]) columns[1])[r] = 1;
+      times[r-50] = r;
+      ((int[]) columns[0])[r-50] = 1;
+      ((long[]) columns[1])[r-50] = 1;
     }
-    batchInsertPlan1.setTimes(times);
-    batchInsertPlan1.setColumns(columns);
-    batchInsertPlan1.setRowCount(times.length);
-
+    batchInsertPlan2.setTimes(times);
+    batchInsertPlan2.setColumns(columns);
+    batchInsertPlan2.setRowCount(times.length);
 
     processor.insertBatch(batchInsertPlan2);
     processor.putAllWorkingTsFileProcessorIntoClosingList();
