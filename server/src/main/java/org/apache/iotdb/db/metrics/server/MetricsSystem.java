@@ -20,10 +20,8 @@ package org.apache.iotdb.db.metrics.server;
 
 import java.util.ArrayList;
 
-import org.apache.iotdb.db.metrics.sink.ConsoleSink;
 import org.apache.iotdb.db.metrics.sink.MetricsServletSink;
 import org.apache.iotdb.db.metrics.sink.Sink;
-import org.apache.iotdb.db.metrics.source.JvmSource;
 import org.apache.iotdb.db.metrics.source.MetricsSource;
 import org.apache.iotdb.db.metrics.source.Source;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -31,9 +29,9 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import com.codahale.metrics.MetricRegistry;
 
 public class MetricsSystem {
-	
-	private ArrayList<Sink> sinks = new ArrayList<Sink>();
-	private ArrayList<Source> sources = new ArrayList<Source>();
+
+	private ArrayList<Sink> sinks = new ArrayList<>();
+	private ArrayList<Source> sources = new ArrayList<>();
 	public static MetricRegistry metricRegistry = new MetricRegistry();
 	private ServerArgument serverArgument;
 
@@ -72,12 +70,9 @@ public class MetricsSystem {
 
 	public void registerSource() {
 		Source source = new MetricsSource(serverArgument);
-//		Source jvmsource  = new JvmSource();
 		sources.add(source);
 	}
 
 	public void registerSinks() {
-//		ConsoleSink consoleSink = new ConsoleSink(metricRegistry);
-//		sinks.add(consoleSink);
 	}
 }

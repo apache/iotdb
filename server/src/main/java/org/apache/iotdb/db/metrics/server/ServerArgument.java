@@ -241,13 +241,35 @@ public class ServerArgument {
 				if (cmd.indexOf("wmic.exe") >= 0) {
 					continue;
 				}
+				String s1 = substring(line, kmtidx, rocidx - 1).trim();
+				String s2 = substring(line, umtidx, wocidx - 1).trim();
+				List<String> digitS1 = new ArrayList<>();
+				List<String> digitS2 = new ArrayList<>();
+				digitS1.add(s1.replaceAll("\\D", ""));
+				digitS2.add(s2.replaceAll("\\D", ""));
 				if (caption.equals("System Idle Process") || caption.equals("System")) {
-					idletime += Long.valueOf(substring(line, kmtidx, rocidx - 1).trim()).longValue();
-					idletime += Long.valueOf(substring(line, umtidx, wocidx - 1).trim()).longValue();
+					if (s1.length() > 0) {
+						if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
+							idletime += Long.valueOf(digitS1.get(0)).longValue();
+						}
+					}
+					if (s2.length() > 0) {
+						if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
+							idletime += Long.valueOf(digitS2.get(0)).longValue();
+						}
+					}
 					continue;
 				}
-				kneltime += Long.valueOf(substring(line, kmtidx, rocidx - 1).trim()).longValue();
-				usertime += Long.valueOf(substring(line, umtidx, wocidx - 1).trim()).longValue();
+				if (s1.length() > 0) {
+					if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
+						kneltime += Long.valueOf(digitS1.get(0)).longValue();
+					}
+				}
+				if (s2.length() > 0) {
+					if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
+						kneltime += Long.valueOf(digitS2.get(0)).longValue();
+					}
+				}
 			}
 			retn[0] = idletime;
 			retn[1] = kneltime + usertime;
@@ -270,7 +292,6 @@ public class ServerArgument {
 	public long[] readLinuxCpu() {
 		long[] retn = new long[2];
 		BufferedReader buffer = null;
-		// 分别为系统启动后空闲的CPU时间和总的CPU时间
 		long idleCpuTime = 0;
 		long totalCpuTime = 0;
 		try {

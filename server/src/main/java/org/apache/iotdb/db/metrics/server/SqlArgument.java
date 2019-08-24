@@ -26,14 +26,15 @@ public class SqlArgument {
 	TSExecuteStatementResp TSExecuteStatementResp;
 	PhysicalPlan plan;
 	String statement;
-	long starttime;
-	long endtime;
+	long startTime;
+	long endTime;
 
 	public SqlArgument(org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp tSExecuteStatementResp,
-			PhysicalPlan plan, String statement, long starttime, long endtime) {
+			PhysicalPlan plan, String statement, long startTime, long endTime) {
 		this.TSExecuteStatementResp = tSExecuteStatementResp;
-		this.starttime = starttime;
-		this.endtime = endtime;
+		this.statement = statement;
+		this.startTime = startTime;
+		this.endTime = endTime;
 		this.plan = plan;
 	}
 
@@ -45,20 +46,20 @@ public class SqlArgument {
 		TSExecuteStatementResp = tSExecuteStatementResp;
 	}
 
-	public long getStarttime() {
-		return starttime;
+	public long getStartTime() {
+		return startTime;
 	}
 
-	public void setStarttime(long starttime) {
-		this.starttime = starttime;
+	public void setStartTime(long startTime) {
+		this.startTime = startTime;
 	}
 
-	public long getEndtime() {
-		return endtime;
+	public long getEndTime() {
+		return endTime;
 	}
 
-	public void setEndtime(long endtime) {
-		this.endtime = endtime;
+	public void setEndTime(long endTime) {
+		this.endTime = endTime;
 	}
 
 	public PhysicalPlan getPlan() {

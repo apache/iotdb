@@ -137,9 +137,9 @@ public class MetricsPage {
 		app.append(
 			 "<tr>"
 		  +    "<td>"+resp.getOperationType()+"</td>"
-		  +    "<td>"+sdf.format(new Date(queryResult.getStarttime()))+"</td>"
-		  +    "<td>"+sdf.format(new Date(queryResult.getEndtime()))+"</td>"
-		  +    "<td>"+(int)(queryResult.getEndtime()-queryResult.getStarttime())+" ms</td>"
+		  +    "<td>"+sdf.format(new Date(queryResult.getStartTime()))+"</td>"
+		  +    "<td>"+sdf.format(new Date(queryResult.getEndTime()))+"</td>"
+		  +    "<td>"+(int)(queryResult.getEndTime()-queryResult.getStartTime())+" ms</td>"
 		  +    "<td style=\"font-size:13px\">"+queryResult.getStatement()+"</td>"
 		  +    "<td>"+status+"</td>"
 		  +    "<td>"+(errMsg.equals("")?"== Parsed Physical Plan ==":errMsg)

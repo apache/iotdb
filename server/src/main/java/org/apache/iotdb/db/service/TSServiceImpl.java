@@ -116,7 +116,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final String ERROR_NOT_LOGIN = "Not login";
-  public static List<SqlArgument> sqlArgumentsList = new ArrayList<SqlArgument>();
+  public static List<SqlArgument> sqlArgumentsList = new ArrayList<>();
 
   protected QueryProcessor processor;
   // Record the username for every rpc connection. Username.get() is null if
@@ -484,7 +484,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
-	long starttime = System.currentTimeMillis();
+	long startTime = System.currentTimeMillis();
 	TSExecuteStatementResp resp;
 	SqlArgument sqlArgument;
     try {
@@ -530,13 +530,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       if (physicalPlan.isQuery()) {
       	resp = executeQueryStatement(statement, physicalPlan);
-      	long endtime = System.currentTimeMillis();
-      	sqlArgument = new SqlArgument(resp,physicalPlan,statement,starttime,endtime);
-      	sqlArgument.setStatement(statement);
+      	long endTime = System.currentTimeMillis();
+      	sqlArgument = new SqlArgument(resp,physicalPlan,statement,startTime,endTime);
       	sqlArgumentsList.add(sqlArgument);
       	if(sqlArgumentsList.size()>200) {
   			for (int i = 0; i < 50; i++) {
-  				sqlArgumentsList.remove(sqlArgumentsList.size()-1);
+  				sqlArgumentsList.remove(0);
   			}
       	}
         return resp;

@@ -31,7 +31,7 @@ import com.codahale.metrics.MetricRegistry;
 public class MetricsWebUI {
 
 	private static final String STATIC_RESOURCE_BASE = "iotdb/ui/static";
-	private List<ServletContextHandler> handlers = new ArrayList<ServletContextHandler>();
+	private List<ServletContextHandler> handlers = new ArrayList<>();
 	private MetricRegistry metricRegistry;
 
 	public MetricsWebUI(MetricRegistry metricRegistry) {

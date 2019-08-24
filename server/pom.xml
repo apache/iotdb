@@ -33,8 +33,6 @@
         <iotdb.test.skip>false</iotdb.test.skip>
         <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
         <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
-        <jetty.version>9.4.12.v20180830</jetty.version>
-        <metrics.version>3.2.6</metrics.version>
     </properties>
     <dependencies>
         <dependency>
@@ -71,33 +69,26 @@
             <groupId>io.airlift</groupId>
             <artifactId>airline</artifactId>
         </dependency>
-        <!-- jetty http://repo1.maven.org/maven2/org/eclipse/jetty-->
         <dependency>
 	    	<groupId>org.eclipse.jetty</groupId>
 		    <artifactId>jetty-server</artifactId>
-		    <version>${jetty.version}</version>
 		</dependency>
 		<dependency>
 	    	<groupId>org.eclipse.jetty</groupId>
 		    <artifactId>jetty-webapp</artifactId>
-		    <version>${jetty.version}</version>
 		</dependency>
-    	<!-- metrics http://repo1.maven.org/maven2/io/dropwizard/metrics -->
 		<dependency>
       		<groupId>io.dropwizard.metrics</groupId>
       		<artifactId>metrics-core</artifactId>
-      		<version>${metrics.version}</version>
     	</dependency>
     	<dependency>
 	        <groupId>io.dropwizard.metrics</groupId>
 	        <artifactId>metrics-jvm</artifactId>
-	        <version>${metrics.version}</version>
         </dependency>
         <dependency>
 	        <groupId>io.dropwizard.metrics</groupId>
 	        <artifactId>metrics-json</artifactId>
-	        <version>${metrics.version}</version>
-        </dependency>        
+	    </dependency>    
         <!-- for mocked test-->
         <dependency>
             <groupId>org.powermock</groupId>
