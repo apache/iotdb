@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -42,6 +38,8 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
+import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
@@ -94,13 +92,8 @@ public class IoTDBConnection implements Connection {
     // open client session
     openSession();
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
-    client = newSynchronizedClient(client);
+    client = RpcUtils.newSynchronizedClient(client);
     autoCommit = false;
-  }
-
-  public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
-    return (TSIService.Iface) Proxy.newProxyInstance(IoTDBConnection.class.getClassLoader(),
-        new Class[]{TSIService.Iface.class}, new SynchronizedHandler(client));
   }
 
   @Override
@@ -427,11 +420,11 @@ public class IoTDBConnection implements Connection {
 
       // validate connection
       try {
-        Utils.verifySuccess(openResp.getStatus());
-      } catch (IoTDBSQLException e) {
+        RpcUtils.verifySuccess(openResp.getStatus());
+      } catch (IoTDBRPCException e) {
         // failed to connect, disconnect from the server
         transport.close();
-        throw e;
+        throw new SQLException(e);
       }
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         throw new TException(String
@@ -468,7 +461,7 @@ public class IoTDBConnection implements Connection {
             client = new TSIService.Client(new TBinaryProtocol(transport));
           }
           openSession();
-          client = newSynchronizedClient(client);
+          client = RpcUtils.newSynchronizedClient(client);
           flag = true;
           break;
         }
@@ -489,14 +482,22 @@ public class IoTDBConnection implements Connection {
     }
 
     TSGetTimeZoneResp resp = client.getTimeZone();
-    Utils.verifySuccess(resp.getStatus());
+    try {
+      RpcUtils.verifySuccess(resp.getStatus());
+    } catch (IoTDBRPCException e) {
+      throw new IoTDBSQLException(e);
+    }
     return resp.getTimeZone();
   }
 
   public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
     TSSetTimeZoneResp resp = client.setTimeZone(req);
-    Utils.verifySuccess(resp.getStatus());
+    try {
+      RpcUtils.verifySuccess(resp.getStatus());
+    } catch (IoTDBRPCException e) {
+      throw new IoTDBSQLException(e);
+    }
     this.zoneId = ZoneId.of(zoneId);
   }
 
@@ -512,32 +513,4 @@ public class IoTDBConnection implements Connection {
     this.protocol = protocol;
   }
 
-  public static class SynchronizedHandler implements InvocationHandler {
-
-    private final TSIService.Iface client;
-
-    public SynchronizedHandler(TSIService.Iface client) {
-      this.client = client;
-    }
-
-    @Override
-    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-      try {
-        synchronized (client) {
-          return method.invoke(client, args);
-        }
-      } catch (InvocationTargetException e) {
-        // all IFace APIs throw TException
-        if (e.getTargetException() instanceof TException) {
-          throw e.getTargetException();
-        } else {
-          // should not happen
-          throw new TException("Error in calling method " + method.getName(),
-              e.getTargetException());
-        }
-      } catch (Exception e) {
-        throw new TException("Error in calling method " + method.getName(), e);
-      }
-    }
-  }
 }

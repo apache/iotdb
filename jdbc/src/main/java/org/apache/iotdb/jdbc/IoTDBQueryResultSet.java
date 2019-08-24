@@ -46,6 +46,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -214,9 +216,9 @@ public class IoTDBQueryResultSet implements ResultSet {
       if (operationHandle != null) {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle, queryId);
         TSCloseOperationResp closeResp = client.closeOperation(closeReq);
-        Utils.verifySuccess(closeResp.getStatus());
+        RpcUtils.verifySuccess(closeResp.getStatus());
       }
-    } catch (SQLException e) {
+    } catch (IoTDBRPCException e) {
       throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
     } catch (TException e) {
       throw new SQLException(
@@ -708,7 +710,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
-        Utils.verifySuccess(resp.getStatus());
+        RpcUtils.verifySuccess(resp.getStatus());
         if (!resp.hasResultSet) {
           emptyResultSet = true;
         } else {
@@ -716,7 +718,7 @@ public class IoTDBQueryResultSet implements ResultSet {
           List<RowRecord> records = Utils.convertRowRecords(tsQueryDataSet);
           recordItr = records.iterator();
         }
-      } catch (TException e) {
+      } catch (TException | IoTDBRPCException e) {
         throw new SQLException(
             "Cannot fetch result from server, because of network connection: {} ", e);
       }
