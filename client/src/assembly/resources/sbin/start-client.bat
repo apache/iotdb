@@ -19,7 +19,7 @@
 
 @echo off
 echo ````````````````````````
-echo Starting IoTDB Cli
+echo Starting IoTDB Client
 echo ````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
