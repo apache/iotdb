@@ -60,7 +60,7 @@ public class MemUtils {
         case BOOLEAN:
           memSize += 8L + 1L; break;
         case TEXT:
-          memSize += 8L + insertPlan.getValues()[i].length() * 2; break;
+          memSize += 8L + insertPlan.getValues()[i].length(); break;
         default:
           memSize += 8L + 8L;
       }
@@ -85,7 +85,7 @@ public class MemUtils {
         case TEXT:
           memSize += batchInsertPlan.getRowCount() * 8L;
           for (int j = 0; j < batchInsertPlan.getRowCount(); j++) {
-            memSize += ((Binary[]) batchInsertPlan.getColumns()[i])[j].getLength() * 2;
+            memSize += ((Binary[]) batchInsertPlan.getColumns()[i])[j].getLength();
           }
           break;
         default:

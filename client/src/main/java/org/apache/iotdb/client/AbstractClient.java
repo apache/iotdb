@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli;
+package org.apache.iotdb.client;
 
 import java.io.PrintStream;
 import java.sql.ResultSet;
@@ -47,7 +47,7 @@ import org.apache.iotdb.jdbc.IoTDBQueryResultSet;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.thrift.TException;
 
-public abstract class AbstractCli {
+public abstract class AbstractClient {
 
   static final String HOST_ARGS = "h";
   static final String HOST_NAME = "host";
@@ -79,7 +79,7 @@ public abstract class AbstractCli {
   static final String SHOW_FETCH_SIZE = "show fetch_size";
   private static final String HELP = "help";
   static final String IOTDB_CLI_PREFIX = "IoTDB";
-  static final String SCRIPT_HINT = "./start-cli.sh(start-cli.bat if Windows)";
+  static final String SCRIPT_HINT = "./start-client.sh(start-client.bat if Windows)";
   static final String QUIT_COMMAND = "quit";
   static final String EXIT_COMMAND = "exit";
   static final String SHOW_METADATA_COMMAND = "show timeseries";
@@ -176,7 +176,7 @@ public abstract class AbstractCli {
   }
 
   /**
-   * CLI result output.
+   * Client result output.
    *
    * @param res result set
    * @param printToConsole print to console
@@ -585,7 +585,7 @@ public abstract class AbstractCli {
 
   static void echoStarting(){
     println("---------------------");
-    println("Starting IoTDB Cli");
+    println("Starting IoTDB Client");
     println("---------------------");
   }
 

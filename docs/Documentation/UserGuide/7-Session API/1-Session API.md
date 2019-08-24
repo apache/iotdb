@@ -19,26 +19,26 @@
 
 -->
 
-# 第7章: JDBC API
+# Chapter7: Session API
 
-# 使用方式
+# Usage
 
-## 依赖
+## Dependencies
 
 * JDK >= 1.8
 * Maven >= 3.0
 
-## 只打包 Client 模块
+## How to package only client module
 
 In root directory:
 > mvn clean package -pl client -am -Dmaven.test.skip=true
 
-## 安装到本地 maven 库
+## How to install in local maven repository
 
 In root directory:
 > mvn clean install -pl client -am -Dmaven.test.skip=true
 
-## 在 maven 中使用 Client 接口
+## Using IoTDB Session with Maven
 
 ```
 <dependencies>
@@ -51,10 +51,16 @@ In root directory:
 ```
 
 
-## Client 示例
+## Examples with Session
 
+This chapter provides an example of how to open an IoTDB session, execute a batch insertion.
+
+Requires that you include the packages containing the Client classes needed for database programming.
 
 ```Java
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -62,9 +68,20 @@ import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
-  public static void main(String[] args) {
-    Client client = new Client("127.0.0.1", 6667, "root", "root");
-    client.open();
+  public static void main(String[] args) throws ClassNotFoundException {
+    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE");
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
+    }
+
+    Session session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
 
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
@@ -76,7 +93,7 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
     long[] timestamps = rowBatch.timestamps;
     Object[] values = rowBatch.values;
 
-    for (long time = 0; time < 1000; time++) {
+    for (long time = 0; time < 30000; time++) {
       int row = rowBatch.batchSize++;
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {
@@ -88,14 +105,14 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
         rowBatch.reset();
       }
     }
-    
+
     if (rowBatch.batchSize != 0) {
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
 
-    client.close();
+    session.close();
   }
 ```
 
-> The code is in example/client/src/main/java/org/apache/iotdb/client/ClientExample.java
+> The code is in example/session/src/main/java/org/apache/iotdb/session/SessionExample.java

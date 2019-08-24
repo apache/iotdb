@@ -183,9 +183,9 @@ The server can be stopped with ctrl-C or the following script:
 > $IOTDB_HOME\sbin\stop-server.bat
 ```
 
-### Start Cli
+### Start Client
 
-Now let's trying to read and write some data from IoTDB using our Cli. To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
+Now let's trying to read and write some data from IoTDB using our Client. To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
 
 ```
 # You can first build cli project

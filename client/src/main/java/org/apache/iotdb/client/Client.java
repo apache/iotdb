@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,172 +18,170 @@
  */
 package org.apache.iotdb.client;
 
-import java.time.ZoneId;
-import org.apache.iotdb.exception.IoTDBSessionException;
+import java.io.IOException;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import jline.console.ConsoleReader;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.apache.iotdb.jdbc.Utils;
-import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class Client {
+public class Client extends AbstractClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(Client.class);
-  private String host;
-  private int port;
-  private String username;
-  private String password;
-  private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
-  public TSIService.Iface client = null;
-  private TS_SessionHandle sessionHandle = null;
-  private TSocket transport;
-  private boolean isClosed = true;
-  private ZoneId zoneId;
+  private static CommandLine commandLine;
 
-  public Client(String host, int port) {
-    this(host, port, Config.DEFAULT_USER, Config.DEFALUT_PASSWORD);
-  }
+  /**
+   * IoTDB Client main function.
+   *
+   * @param args launch arguments
+   * @throws ClassNotFoundException ClassNotFoundException
+   */
+  public static void main(String[] args) throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    Options options = createOptions();
+    HelpFormatter hf = new HelpFormatter();
+    hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
+    commandLine = null;
 
-  public Client(String host, String port, String username, String password) {
-    this(host, Integer.parseInt(port), username, password);
-  }
+    String[] newArgs;
+    String[] newArgs2;
 
-  public Client(String host, int port, String username, String password) {
-    this.host = host;
-    this.port = port;
-    this.username = username;
-    this.password = password;
-  }
-
-  public void open() {
-    open(false, 0);
-  }
-
-  public void open(boolean enableRPCCompression, int connectionTimeoutInMs) {
-    transport = new TSocket(host, port, connectionTimeoutInMs);
-    if (!transport.isOpen()) {
-      try {
-        transport.open();
-      } catch (TTransportException e) {
-        throw new IoTDBSessionException(e);
-      }
-    }
-
-    if(enableRPCCompression) {
-      client = new TSIService.Client(new TCompactProtocol(transport));
-    }
-    else {
-      client = new TSIService.Client(new TBinaryProtocol(transport));
-    }
-
-    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
-    openReq.setUsername(username);
-    openReq.setPassword(password);
-
-    try {
-      TSOpenSessionResp openResp = client.openSession(openReq);
-
-      // validate connection
-      try {
-        Utils.verifySuccess(openResp.getStatus());
-      } catch (IoTDBSQLException e) {
-        transport.close();
-        throw e;
-      }
-
-      if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
-        throw new TException(String
-            .format("Protocol not supported, Client version is {}, but Server version is {}",
-                protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
-      }
-
-      sessionHandle = openResp.getSessionHandle();
-
-      if (zoneId != null) {
-        setTimeZone(zoneId.toString());
-      } else {
-        zoneId = ZoneId.of(getTimeZone());
-      }
-
-    } catch (TException | IoTDBSQLException e) {
-      throw new IoTDBSessionException(String.format("Can not open session to %s:%s with user: %s.",
-          host, port, username), e);
-    }
-    isClosed = false;
-
-    client = IoTDBConnection.newSynchronizedClient(client);
-
-  }
-
-  public void close() {
-    if (isClosed) {
+    if (args == null || args.length == 0) {
+      println(
+          "Require more params input, eg. ./start-client.sh(start-client.bat if Windows) "
+              + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
+      println("For more information, please check the following hint.");
+      hf.printHelp(SCRIPT_HINT, options, true);
       return;
     }
-    TSCloseSessionReq req = new TSCloseSessionReq(sessionHandle);
+    init();
+    newArgs = removePasswordArgs(args);
+    newArgs2 = processExecuteArgs(newArgs);
+    boolean continues = parseCommandLine(options, newArgs2, hf);
+    if (!continues) {
+      return;
+    }
+
+    serve();
+  }
+
+  private static boolean parseCommandLine(Options options, String[] newArgs, HelpFormatter hf) {
     try {
-      client.closeSession(req);
-    } catch (TException e) {
-      throw new IoTDBSessionException("Error occurs when closing session at server. Maybe server is down.", e);
-    } finally {
-      isClosed = true;
-      if (transport != null) {
-        transport.close();
+      CommandLineParser parser = new DefaultParser();
+      commandLine = parser.parse(options, newArgs);
+      if (commandLine.hasOption(HELP_ARGS)) {
+        hf.printHelp(SCRIPT_HINT, options, true);
+        return false;
+      }
+      if (commandLine.hasOption(ISO8601_ARGS)) {
+        setTimeFormat("long");
+      }
+      if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
+        setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
+      }
+    } catch (ParseException e) {
+      println(
+          "Require more params input, eg. ./start-client.sh(start-client.bat if Windows) "
+              + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
+      println("For more information, please check the following hint.");
+      hf.printHelp(IOTDB_CLI_PREFIX, options, true);
+      handleException(e);
+      return false;
+    } catch (NumberFormatException e) {
+      println(
+          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
+      handleException(e);
+      return false;
+    }
+    return true;
+  }
+
+  private static void serve() {
+    try (ConsoleReader reader = new ConsoleReader()) {
+      reader.setExpandEvents(false);
+
+      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
+      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
+      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
+
+      password = commandLine.getOptionValue(PASSWORD_ARGS);
+      if (password == null) {
+        password = reader.readLine("please input your password:", '\0');
+      }
+      if (hasExecuteSQL) {
+        try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+          properties = connection.getServerProperties();
+          AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+          processCmd(execute, connection);
+          return;
+        } catch (SQLException e) {
+          handleException(e);
+        }
+      }
+
+      receiveCommands(reader);
+    } catch (ArgsErrorException e) {
+      println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
+      handleException(e);
+    } catch (Exception e) {
+      println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
+      handleException(e);
+    }
+  }
+
+  private static void receiveCommands(ConsoleReader reader) throws TException, IOException {
+    try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+      String s;
+      properties = connection.getServerProperties();
+      AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+      TIMESTAMP_PRECISION = properties.getTimestampPrecision();
+
+      echoStarting();
+      displayLogo(properties.getVersion());
+      println(IOTDB_CLI_PREFIX + "> login successfully");
+      while (true) {
+        s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
+        boolean continues = processCmd(s, connection);
+        if (!continues) {
+          break;
+        }
+      }
+    } catch (SQLException e) {
+      println(String
+          .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
+              port));
+      handleException(e);
+    }
+  }
+
+  private static boolean processCmd(String s, IoTDBConnection connection) {
+    if (s == null) {
+      return true;
+    }
+    String[] cmds = s.trim().split(";");
+    for (int i = 0; i < cmds.length; i++) {
+      String cmd = cmds[i];
+      if (cmd != null && !"".equals(cmd.trim())) {
+        OperationResult result = handleInputCmd(cmd, connection);
+        switch (result) {
+          case STOP_OPER:
+            return false;
+          case CONTINUE_OPER:
+            continue;
+          default:
+            break;
+        }
       }
     }
+    return true;
   }
-
-  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) {
-    TSBatchInsertionReq request = new TSBatchInsertionReq();
-    request.deviceId = rowBatch.deviceId;
-    for (MeasurementSchema measurementSchema: rowBatch.measurements) {
-      request.addToMeasurements(measurementSchema.getMeasurementId());
-      request.addToTypes(measurementSchema.getType().ordinal());
-    }
-    request.setTimestamps(Utils.getTimeBuffer(rowBatch));
-    request.setValues(Utils.getValueBuffer(rowBatch));
-    request.setSize(rowBatch.batchSize);
-
-    try {
-      return client.insertBatch(request);
-    } catch (TException e) {
-      throw new IoTDBSessionException(e);
-    }
-  }
-
-  public String getTimeZone() throws TException, IoTDBSQLException {
-    if (zoneId != null) {
-      return zoneId.toString();
-    }
-
-    TSGetTimeZoneResp resp = client.getTimeZone();
-    Utils.verifySuccess(resp.getStatus());
-    return resp.getTimeZone();
-  }
-
-  public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
-    TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
-    TSSetTimeZoneResp resp = client.setTimeZone(req);
-    Utils.verifySuccess(resp.getStatus());
-    this.zoneId = ZoneId.of(zoneId);
-  }
-
 }
