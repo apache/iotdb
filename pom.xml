@@ -388,6 +388,7 @@
         <module>spark-tsfile</module>
         <!-- <module>hadoop</module> -->
         <module>distribution</module>
+      <module>session</module>
     </modules>
     <build>
         <pluginManagement>

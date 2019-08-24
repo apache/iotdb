@@ -37,7 +37,7 @@ struct TS_Status {
   2: optional list<string> infoMessages
 
   // If status is ERROR, then the following fields may be set
-  3: optional string sqlState  // as defined in the ISO/IEF CLI specification
+  3: optional string sqlState  // as defined in the ISO/IEF CLIENT specification
   4: optional i32 errorCode    // internal error code
   5: optional string errorMessage
 }

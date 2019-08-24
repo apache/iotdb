@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cli;
+package org.apache.iotdb.client;
 
-import java.io.IOException;
+import java.io.Console;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import jline.console.ConsoleReader;
+import java.util.Scanner;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -33,17 +33,16 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
 
-public class Cli extends AbstractCli {
+public class WinClient extends AbstractClient {
 
   private static CommandLine commandLine;
 
   /**
-   * IoTDB CLI main function.
+   * main function.
    *
-   * @param args launch arguments
-   * @throws ClassNotFoundException ClassNotFoundException
+   * @param args -console args
    */
-  public static void main(String[] args) throws ClassNotFoundException {
+  public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
@@ -51,20 +50,18 @@ public class Cli extends AbstractCli {
     commandLine = null;
 
     String[] newArgs;
-    String[] newArgs2;
 
     if (args == null || args.length == 0) {
-      println(
-          "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
-              + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
-      println("For more information, please check the following hint.");
-      hf.printHelp(SCRIPT_HINT, options, true);
+      println("Require more params input, please check the following hint.");
+      hf.printHelp(IOTDB_CLI_PREFIX, options, true);
       return;
     }
+
     init();
+
     newArgs = removePasswordArgs(args);
-    newArgs2 = processExecuteArgs(newArgs);
-    boolean continues = parseCommandLine(options, newArgs2, hf);
+
+    boolean continues = parseCommandLine(options, newArgs, hf);
     if (!continues) {
       return;
     }
@@ -72,25 +69,36 @@ public class Cli extends AbstractCli {
     serve();
   }
 
+  private static String readPassword() {
+    Console c = System.console();
+    if (c == null) { // IN ECLIENTPSE IDE
+      print(IOTDB_CLI_PREFIX + "> please input password: ");
+      Scanner scanner = new Scanner(System.in);
+      return scanner.nextLine();
+    } else { // Outside Eclipse IDE
+      return new String(c.readPassword(IOTDB_CLI_PREFIX + "> please input password: "));
+    }
+  }
+
   private static boolean parseCommandLine(Options options, String[] newArgs, HelpFormatter hf) {
     try {
       CommandLineParser parser = new DefaultParser();
       commandLine = parser.parse(options, newArgs);
       if (commandLine.hasOption(HELP_ARGS)) {
-        hf.printHelp(SCRIPT_HINT, options, true);
+        hf.printHelp(IOTDB_CLI_PREFIX, options, true);
         return false;
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
         setTimeFormat("long");
       }
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
-        setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
+        maxPrintRowCount = Integer.valueOf(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
+        if (maxPrintRowCount < 0) {
+          maxPrintRowCount = Integer.MAX_VALUE;
+        }
       }
     } catch (ParseException e) {
-      println(
-          "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
-              + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
-      println("For more information, please check the following hint.");
+      println("Require more params input, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
       handleException(e);
       return false;
@@ -104,30 +112,15 @@ public class Cli extends AbstractCli {
   }
 
   private static void serve() {
-    try (ConsoleReader reader = new ConsoleReader()) {
-      reader.setExpandEvents(false);
-
+    try (Scanner scanner = new Scanner(System.in)) {
       host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
       port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
-
       password = commandLine.getOptionValue(PASSWORD_ARGS);
       if (password == null) {
-        password = reader.readLine("please input your password:", '\0');
+        password = readPassword();
       }
-      if (hasExecuteSQL) {
-        try (IoTDBConnection connection = (IoTDBConnection) DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
-          properties = connection.getServerProperties();
-          AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-          processCmd(execute, connection);
-          return;
-        } catch (SQLException e) {
-          handleException(e);
-        }
-      }
-
-      receiveCommands(reader);
+      receiveCommands(scanner);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
       handleException(e);
@@ -137,20 +130,19 @@ public class Cli extends AbstractCli {
     }
   }
 
-  private static void receiveCommands(ConsoleReader reader) throws TException, IOException {
+  private static void receiveCommands(Scanner scanner) throws TException {
     try (IoTDBConnection connection = (IoTDBConnection) DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
-      String s;
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       TIMESTAMP_PRECISION = properties.getTimestampPrecision();
 
-      echoStarting();
       displayLogo(properties.getVersion());
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {
-        s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
-        boolean continues = processCmd(s, connection);
+        print(IOTDB_CLI_PREFIX + "> ");
+        String s = scanner.nextLine();
+        boolean continues = processCommand(s, connection);
         if (!continues) {
           break;
         }
@@ -163,7 +155,7 @@ public class Cli extends AbstractCli {
     }
   }
 
-  private static boolean processCmd(String s, IoTDBConnection connection) {
+  private static boolean processCommand(String s, IoTDBConnection connection) {
     if (s == null) {
       return true;
     }

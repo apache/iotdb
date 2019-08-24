@@ -29,7 +29,7 @@
 <!-- /TOC -->
 
 # Cli / Shell工具
-IOTDB为用户提供CLI/Shell工具用于启动客户端和服务端程序。下面介绍每个CLI/Shell工具的运行方式和相关参数。
+IOTDB为用户提供Client/Shell工具用于启动客户端和服务端程序。下面介绍每个Client/Shell工具的运行方式和相关参数。
 > \$IOTDB\_HOME表示IoTDB的安装目录所在路径。
 
 ## Cli  / Shell运行方式
@@ -91,7 +91,7 @@ Windows系统启动命令如下：
 
 为了避免SQL语句和其他参数混淆，现在只支持-e参数作为最后的参数使用。
 
-针对CLI/Shell工具的-e参数用法如下：
+针对Client/Shell工具的-e参数用法如下：
 
 ```
   Shell > ./sbin/start-cli.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
@@ -109,7 +109,7 @@ Windows系统启动命令如下：
 
 4.查询验证数据是否插入成功
 
-那么通过使用CLI/Shell工具的-e参数，可以采用如下的脚本：
+那么通过使用Client/Shell工具的-e参数，可以采用如下的脚本：
 
 ```
 # !/bin/bash

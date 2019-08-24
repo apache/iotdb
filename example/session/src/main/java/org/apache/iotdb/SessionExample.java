@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.client;
+package org.apache.iotdb;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -37,23 +38,21 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
  * CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE
  * CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=FLOAT, ENCODING=RLE
  */
-public class ClientExample {
+public class SessionExample {
 
   public static void main(String[] args) throws ClassNotFoundException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    Connection connection = null;
-    try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE");
     } catch (Exception e) {
-
+      System.out.println(e.getMessage());
     }
 
-    Client session = new Client("127.0.0.1", 6667, "root", "root");
+    Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
     Schema schema = new Schema();

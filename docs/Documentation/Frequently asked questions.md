@@ -31,7 +31,7 @@
     - Can I use Hadoop and Spark to read TsFile in IoTDB?
     - How does IoTDB handle duplicate points?
     - How can I tell what type of the specific timeseries?
-    - How can I change IoTDB's CLI time display format?
+    - How can I change IoTDB's Client time display format?
 
 <!-- /TOC -->
 # Frequently Asked Questions
@@ -137,9 +137,9 @@ Otherwise, you can also use wildcard in timeseries path:
 IoTDB> show timeseries root.fit.d1.*
 ```
 
-## How can I change IoTDB's CLI time display format?
+## How can I change IoTDB's Client time display format?
 
-The default IoTDB's CLI time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableIS08601``` in start command:
+The default IoTDB's Client time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableIS08601``` in start command:
 
 ```
 > $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.client;
+package org.apache.iotdb;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -29,10 +29,8 @@ public class JDBCExample {
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    Connection connection = null;
-    try {
-      connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE");
@@ -54,9 +52,6 @@ public class JDBCExample {
         }
         System.out.println(builder);
       }
-      statement.close();
-    } finally {
-      connection.close();
     }
   }
 }

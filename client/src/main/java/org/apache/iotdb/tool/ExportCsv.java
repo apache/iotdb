@@ -41,7 +41,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.cli.AbstractCli;
+import org.apache.iotdb.client.AbstractClient;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
@@ -322,7 +322,7 @@ public class ExportCsv extends AbstractCsvTool {
     switch (timeFormat) {
       case "default":
         long timestamp = rs.getLong(1);
-        String str = AbstractCli
+        String str = AbstractClient
             .parseLongToDateWithPrecision(DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId,
                 TIMESTAMP_PRECISION);
         bw.write(str + ",");

@@ -19,55 +19,60 @@
 
 -->
 
-# Chaper7: JDBC API
+# 第7章: Session API
 
-# Usage
+# 使用方式
 
-## Dependencies
+## 依赖
 
 * JDK >= 1.8
 * Maven >= 3.0
 
-## How to package only client module
+## 安装到本地 maven 库
 
 In root directory:
-> mvn clean package -pl client -am -Dmaven.test.skip=true
+> mvn clean install -pl session -am -Dmaven.test.skip=true
 
-## How to install in local maven repository
-
-In root directory:
-> mvn clean install -pl client -am -Dmaven.test.skip=true
-
-## Using IoTDB Client with Maven
+## 在 maven 中使用 session 接口
 
 ```
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
-      <artifactId>iotdb-client</artifactId>
+      <artifactId>iotdb-session</artifactId>
       <version>0.9.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
 
+## Session 接口使用示例
 
-## Examples with Client
-
-This chapter provides an example of how to open an IoTDB session, execute a batch insertion.
-
-Requires that you include the packages containing the Client classes needed for database programming.
 
 ```Java
-import org.apache.iotdb.client.Client;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
-  public static void main(String[] args) {
-    Client client = new Client("127.0.0.1", 6667, "root", "root");
-    client.open();
+  public static void main(String[] args) throws ClassNotFoundException {
+    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE");
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
+    }
+
+    Session session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
 
     Schema schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
@@ -79,7 +84,7 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
     long[] timestamps = rowBatch.timestamps;
     Object[] values = rowBatch.values;
 
-    for (long time = 0; time < 1000; time++) {
+    for (long time = 0; time < 30000; time++) {
       int row = rowBatch.batchSize++;
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {
@@ -91,14 +96,14 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
         rowBatch.reset();
       }
     }
-    
+
     if (rowBatch.batchSize != 0) {
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
 
-    client.close();
+    session.close();
   }
 ```
 
-> The code is in example/client/src/main/java/org/apache/iotdb/client/ClientExample.java
+> The code is in example/session/src/main/java/org/apache/iotdb/session/SessionExample.java

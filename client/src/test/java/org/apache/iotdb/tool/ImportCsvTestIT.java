@@ -20,7 +20,7 @@ package org.apache.iotdb.tool;
 
 import java.io.File;
 import java.io.IOException;
-import org.apache.iotdb.cli.AbstractScript;
+import org.apache.iotdb.client.AbstractScript;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
