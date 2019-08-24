@@ -196,7 +196,7 @@ public class IntTVList extends TVList {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
         // one and enter the next loop
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-        System.arraycopy(time, idx, values.get(arrayIdx), elementIdx, internalRemaining);
+        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
         idx += internalRemaining;
         size += internalRemaining;
         checkExpansion();
