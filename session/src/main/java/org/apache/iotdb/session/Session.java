@@ -19,11 +19,8 @@
 package org.apache.iotdb.session;
 
 import java.time.ZoneId;
-import org.apache.iotdb.exception.IoTDBSessionException;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.apache.iotdb.jdbc.Utils;
+import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
@@ -35,6 +32,7 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -102,13 +100,8 @@ public class Session {
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
-      // validate connection
-      try {
-        Utils.verifySuccess(openResp.getStatus());
-      } catch (IoTDBSQLException e) {
-        transport.close();
-        throw e;
-      }
+      // validate connectiontry {
+      RpcUtils.verifySuccess(openResp.getStatus());
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         throw new TException(String
@@ -124,13 +117,14 @@ public class Session {
         zoneId = ZoneId.of(getTimeZone());
       }
 
-    } catch (TException | IoTDBSQLException e) {
+    } catch (TException | IoTDBRPCException e) {
+      transport.close();
       throw new IoTDBSessionException(String.format("Can not open session to %s:%s with user: %s.",
           host, port, username), e);
     }
     isClosed = false;
 
-    client = IoTDBConnection.newSynchronizedClient(client);
+    client = RpcUtils.newSynchronizedClient(client);
 
   }
 
@@ -158,8 +152,8 @@ public class Session {
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
-    request.setTimestamps(Utils.getTimeBuffer(rowBatch));
-    request.setValues(Utils.getValueBuffer(rowBatch));
+    request.setTimestamps(SessionUtils.getTimeBuffer(rowBatch));
+    request.setValues(SessionUtils.getValueBuffer(rowBatch));
     request.setSize(rowBatch.batchSize);
 
     try {
@@ -169,20 +163,20 @@ public class Session {
     }
   }
 
-  public String getTimeZone() throws TException, IoTDBSQLException {
+  public String getTimeZone() throws TException, IoTDBRPCException {
     if (zoneId != null) {
       return zoneId.toString();
     }
 
     TSGetTimeZoneResp resp = client.getTimeZone();
-    Utils.verifySuccess(resp.getStatus());
+    RpcUtils.verifySuccess(resp.getStatus());
     return resp.getTimeZone();
   }
 
-  public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
+  public void setTimeZone(String zoneId) throws TException, IoTDBRPCException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
     TSSetTimeZoneResp resp = client.setTimeZone(req);
-    Utils.verifySuccess(resp.getStatus());
+    RpcUtils.verifySuccess(resp.getStatus());
     this.zoneId = ZoneId.of(zoneId);
   }
 
