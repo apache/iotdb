@@ -59,7 +59,9 @@ import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
-  public static void main(String[] args) throws ClassNotFoundException {
+public class SessionExample {
+
+  public static void main(String[] args) throws ClassNotFoundException, IoTDBSessionException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -101,9 +103,9 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
-
     session.close();
   }
+}
 ```
 
 > The code is in example/session/src/main/java/org/apache/iotdb/session/SessionExample.java
