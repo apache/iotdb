@@ -20,13 +20,13 @@ namespace java org.apache.iotdb.service.rpc.thrift
 
 // The return status code and message in each response.
 struct TS_StatusType {
-  1: required i32 statusCode,
-  2: required string statusMessage
+  1: required i32 code
+  2: required string message
 }
 
 // The return status of a remote request
 struct TS_Status {
-  1: required TS_StatusType statusMessage
+  1: required TS_StatusType statusType
   2: optional list<string> infoMessages
   3: optional string sqlState  // as defined in the ISO/IEF CLI specification
 }

@@ -26,11 +26,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import org.apache.iotdb.service.rpc.thrift.TSDataValue;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -69,13 +66,15 @@ public class UtilsTest {
   @Test
   public void testVerifySuccess() {
     try {
-      Utils.verifySuccess(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
+      TS_StatusType successStatus = new TS_StatusType(200, "");
+      Utils.verifySuccess(new TS_Status(successStatus));
     } catch (Exception e) {
       fail();
     }
 
     try {
-      Utils.verifySuccess(new TS_Status(TS_StatusCode.ERROR_STATUS));
+      TS_StatusType errorStatus = new TS_StatusType(400, "");
+      Utils.verifySuccess(new TS_Status(errorStatus));
     } catch (Exception e) {
       return;
     }

@@ -27,7 +27,6 @@ import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
 import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -38,6 +37,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
  * Utils to convert between thrift format and TsFile format.
  */
 public class Utils {
+
+  private static final int SUCCESS_CODE = 200;
 
   /**
    * Private constructor of Utils Class.
@@ -85,8 +86,8 @@ public class Utils {
    * @param status -status
    */
   public static void verifySuccess(TS_Status status) throws IoTDBSQLException {
-    if (status.getStatusCode() != TS_StatusCode.SUCCESS_STATUS) {
-      throw new IoTDBSQLException(status.errorMessage);
+    if (status.getStatusType().getCode() != SUCCESS_CODE) {
+      throw new IoTDBSQLException(status.getStatusType().getMessage());
     }
   }
 
