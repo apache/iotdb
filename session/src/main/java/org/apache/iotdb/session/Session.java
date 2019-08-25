@@ -32,7 +32,6 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -72,11 +71,12 @@ public class Session {
     this.password = password;
   }
 
-  public void open() {
+  public void open() throws IoTDBSessionException {
     open(false, 0);
   }
 
-  public void open(boolean enableRPCCompression, int connectionTimeoutInMs) {
+  public void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+      throws IoTDBSessionException {
     transport = new TSocket(host, port, connectionTimeoutInMs);
     if (!transport.isOpen()) {
       try {
@@ -128,7 +128,7 @@ public class Session {
 
   }
 
-  public void close() {
+  public void close() throws IoTDBSessionException {
     if (isClosed) {
       return;
     }
@@ -145,7 +145,7 @@ public class Session {
     }
   }
 
-  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) {
+  public TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch) throws IoTDBSessionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.deviceId = rowBatch.deviceId;
     for (MeasurementSchema measurementSchema: rowBatch.measurements) {

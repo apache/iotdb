@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.session;
 
-public class IoTDBSessionException extends RuntimeException {
+public class IoTDBSessionException extends Exception {
 
   private static final long serialVersionUID = 2405104784097667293L;
 

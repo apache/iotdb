@@ -424,7 +424,7 @@ public class IoTDBConnection implements Connection {
       } catch (IoTDBRPCException e) {
         // failed to connect, disconnect from the server
         transport.close();
-        throw new SQLException(e);
+        throw new IoTDBSQLException(e);
       }
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         throw new TException(String
