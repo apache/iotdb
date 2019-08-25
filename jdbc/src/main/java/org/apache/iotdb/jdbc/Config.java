@@ -38,11 +38,11 @@ public class Config {
    */
   public static final String DEFAULT_SERIES_NAME = "default";
 
-  public static final String AUTH_USER = "root";
-  public static final String DEFAULT_USER = "root";
+  public static final String AUTH_USER = "user";
+  public static final String DEFAULT_USER = "user";
 
-  public static final String AUTH_PASSWORD = "root";
-  public static final String DEFALUT_PASSWORD = "root";
+  public static final String AUTH_PASSWORD = "password";
+  public static final String DEFALUT_PASSWORD = "password";
 
   public static final int RETRY_NUM = 3;
   public static final long RETRY_INTERVAL = 1000;

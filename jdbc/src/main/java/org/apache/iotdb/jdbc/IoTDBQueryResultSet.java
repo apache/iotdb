@@ -710,7 +710,11 @@ public class IoTDBQueryResultSet implements ResultSet {
 
       try {
         TSFetchResultsResp resp = client.fetchResults(req);
-        RpcUtils.verifySuccess(resp.getStatus());
+        try {
+          RpcUtils.verifySuccess(resp.getStatus());
+        } catch (IoTDBRPCException e) {
+          throw new IoTDBSQLException(e);
+        }
         if (!resp.hasResultSet) {
           emptyResultSet = true;
         } else {
@@ -718,7 +722,7 @@ public class IoTDBQueryResultSet implements ResultSet {
           List<RowRecord> records = Utils.convertRowRecords(tsQueryDataSet);
           recordItr = records.iterator();
         }
-      } catch (TException | IoTDBRPCException e) {
+      } catch (TException e) {
         throw new SQLException(
             "Cannot fetch result from server, because of network connection: {} ", e);
       }
