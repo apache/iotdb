@@ -67,8 +67,6 @@ public class SyncServiceImpl implements SyncService.Iface {
 
   private ThreadLocal<String> syncFolderPath = new ThreadLocal<>();
 
-  private ThreadLocal<String> syncDataPath = new ThreadLocal<>();
-
   private ThreadLocal<String> currentSG = new ThreadLocal<>();
 
   private ThreadLocal<SyncReceiverLogger> syncLog = new ThreadLocal<>();
@@ -101,7 +99,15 @@ public class SyncServiceImpl implements SyncService.Iface {
   }
 
   private boolean checkRecovery() {
-    return true;
+    try {
+      if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
+        currentFileWriter.get().close();
+      }
+      return true;
+    } catch (IOException e) {
+      e.printStackTrace();
+      return false;
+    }
   }
 
   @Override
@@ -109,7 +115,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       initPath();
       currentSG.remove();
-      syncLog.set(new SyncReceiverLogger(new File(syncDataPath.get(), Constans.SYNC_LOG_NAME)));
+      syncLog.set(new SyncReceiverLogger(new File(getSyncDataPath(), Constans.SYNC_LOG_NAME)));
       return getSuccessResult();
     } catch (DiskSpaceInsufficientException | IOException e) {
       logger.error("Can not receiver data from sender", e);
@@ -125,8 +131,6 @@ public class SyncServiceImpl implements SyncService.Iface {
     syncFolderPath
         .set(FilePathUtils.regularizePath(dataDir) + Constans.SYNC_RECEIVER + File.separatorChar
             + senderIp.get());
-    syncDataPath
-        .set(syncFolderPath.get() + File.separatorChar + Constans.RECEIVER_DATA_FOLDER_NAME);
   }
 
   /**
@@ -163,13 +167,16 @@ public class SyncServiceImpl implements SyncService.Iface {
     try {
       File file;
       if (currentSG.get() == null) {
-        file = new File(syncDataPath.get(), filename);
+        file = new File(getSyncDataPath(), filename);
       } else {
-        file = new File(syncDataPath.get(), currentSG.get() + File.separatorChar + filename);
+        file = new File(getSyncDataPath(), currentSG.get() + File.separatorChar + filename);
       }
       currentFile.set(file);
       if (!file.getParentFile().exists()) {
         file.getParentFile().mkdirs();
+      }
+      if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
+        currentFileWriter.get().close();
       }
       currentFileWriter.set(new FileOutputStream(file).getChannel());
       syncLog.get().startSyncTsFiles();
@@ -294,12 +301,16 @@ public class SyncServiceImpl implements SyncService.Iface {
   public ResultStatus endSync() throws TException {
     try {
       syncLog.get().close();
-      new File(syncDataPath.get(), Constans.SYNC_END).createNewFile();
+      new File(getSyncDataPath(), Constans.SYNC_END).createNewFile();
     } catch (IOException e) {
       logger.error("Can not end sync", e);
-      return getErrorResult(String.format("Can not end sync because {}", e.getMessage()));
+      return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));
     }
     return getSuccessResult();
+  }
+
+  private String getSyncDataPath() {
+    return syncFolderPath.get() + File.separatorChar + Constans.RECEIVER_DATA_FOLDER_NAME;
   }
 
   private ResultStatus getSuccessResult() {
