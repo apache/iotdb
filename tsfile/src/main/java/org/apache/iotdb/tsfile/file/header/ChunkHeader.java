@@ -28,10 +28,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.QueryTrace;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ChunkHeader {
 
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
   public static final byte MARKER = MetaMarker.CHUNK_HEADER;
 
   private String measurementID;
@@ -139,11 +143,25 @@ public class ChunkHeader {
       offsetVar++;
     }
     ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+    if (qlogger.isInfoEnabled()) {
+      qlogger
+          .info(
+              "phase 4 TsFileInput TRACE: readChunkHeader: TsFileInput.read(buffer{capacity:{}}, {})",
+              Integer.BYTES, offsetVar);
+    }
     input.read(buffer, offsetVar);
     buffer.flip();
     int size = buffer.getInt();
     offsetVar += Integer.BYTES;
     buffer = ByteBuffer.allocate(getSerializedSize(size));
+    if (qlogger.isInfoEnabled()) {
+      qlogger.info("phase 4 TsFileInput TRACE: readChunkHeader: current position {}",
+          input.position());
+      qlogger.info(
+          "phase 4 TsFileInput TRACE: readChunkHeader: "
+              + "ReadWriteIOUtils.readAsPossible(tsFileInput, {}, buffer{capacity:{}})", offsetVar,
+          getSerializedSize(size));
+    }
     ReadWriteIOUtils.readAsPossible(input, offsetVar, buffer);
     buffer.flip();
     String measurementID = ReadWriteIOUtils.readStringWithoutLength(buffer, size);

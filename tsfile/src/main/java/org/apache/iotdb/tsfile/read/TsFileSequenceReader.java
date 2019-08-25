@@ -50,6 +50,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.DefaultTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.QueryTrace;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -58,6 +59,7 @@ import org.slf4j.LoggerFactory;
 public class TsFileSequenceReader implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
+  private static final Logger qlogger = LoggerFactory.getLogger(QueryTrace.class);
 
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -144,6 +146,13 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public void loadMetadataSize() throws IOException {
     ByteBuffer metadataSize = ByteBuffer.allocate(Integer.BYTES);
+    if (qlogger.isInfoEnabled()) {
+      qlogger.info(
+          "phase 3 TsFileInput TRACE: loadMetadataSize: file {}, current position {}, "
+              + "tsFileInput.read(buffer{capacity:{}}, {})",
+          file, tsFileInput.position(), Integer.BYTES,
+          tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES);
+    }
     tsFileInput.read(metadataSize,
         tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES);
     metadataSize.flip();
@@ -152,6 +161,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     fileMetadataPos =
         tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES - fileMetadataSize;
     // skip the magic header
+    if (qlogger.isInfoEnabled()) {
+      qlogger.info(
+          "phase 3 TsFileInput TRACE: loadMetadataSize: file {}, current position {}, "
+              + "tsFileInput.position({})",
+          file, tsFileInput.position(), TSFileConfig.MAGIC_STRING.length());
+    }
     tsFileInput.position(TSFileConfig.MAGIC_STRING.length());
   }
 
@@ -212,6 +227,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * this function does not modify the position of the file reader.
    */
   public TsFileMetaData readFileMetadata() throws IOException {
+    if (qlogger.isInfoEnabled()) {
+      qlogger.info(
+          "phase 3 TsFileInput TRACE: readFileMetadata: file {}, current position {}, "
+              + "ReadWriteIOUtils.readAsPossible(tsFileInput, buffer{capacity:{}}, {}, {})",
+          file, tsFileInput.position(), fileMetadataSize, fileMetadataPos, fileMetadataSize);
+    }
     return TsFileMetaData.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
   }
 
@@ -235,6 +256,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * this function does not modify the position of the file reader.
    */
   public TsDeviceMetadata readTsDeviceMetaData(TsDeviceMetadataIndex index) throws IOException {
+    if (qlogger.isInfoEnabled()) {
+      qlogger.info(
+          "phase 3 TsFileInput TRACE: readTsDeviceMetaData: file {}, current position {}, "
+              + "ReadWriteIOUtils.readAsPossible(tsFileInput, buffer{capacity:{}}, {}, {})",
+          file, tsFileInput.position(), index.getLen(), index.getOffset(), index.getLen());
+    }
     return TsDeviceMetadata.deserializeFrom(readData(index.getOffset(), index.getLen()));
   }
 
@@ -292,6 +319,11 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param markerRead true if the offset does not contains the marker , otherwise false
    */
   private ChunkHeader readChunkHeader(long position, boolean markerRead) throws IOException {
+    if (qlogger.isInfoEnabled()) {
+      qlogger.info(
+          "phase 4 TsFileInput TRACE: readChunkHeader: file {}, current position {}", file,
+          tsFileInput.position());
+    }
     return ChunkHeader.deserializeFrom(tsFileInput, position, markerRead);
   }
 
@@ -323,6 +355,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the pages of this chunk
    */
   private ByteBuffer readChunk(long position, int dataSize) throws IOException {
+    if (qlogger.isInfoEnabled()) {
+      qlogger.info(
+          "phase 4 TsFileInput TRACE: readChunk: file {}, current position {}, "
+              + "ReadWriteIOUtils.readAsPossible(tsFileInput, buffer{capacity:{}}, {}, {})", file,
+          tsFileInput.position(), dataSize, position, dataSize);
+    }
     return readData(position, dataSize);
   }
 
@@ -336,6 +374,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), false);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
+    if (qlogger.isInfoEnabled()) {
+      qlogger.info(
+          "phase 4 TsFileInput TRACE: readMemChunk finished: file {}, current position {}", file,
+          tsFileInput.position());
+    }
     return new Chunk(header, buffer);
   }
 
