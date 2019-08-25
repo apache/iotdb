@@ -245,8 +245,9 @@ public class IoTDBDescriptor {
       int maxConcurrentClientNum = Integer.parseInt(properties.
           getProperty("max_concurrent_client_num",
               Integer.toString(conf.getMaxConcurrentClientNum()).trim()));
-      if(maxConcurrentClientNum <= 0)
+      if (maxConcurrentClientNum <= 0) {
         maxConcurrentClientNum = 65535;
+      }
       conf.setMaxConcurrentClientNum(maxConcurrentClientNum);
 
     } catch (IOException e) {
