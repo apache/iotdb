@@ -210,7 +210,8 @@ public class JDBCService implements JDBCServiceMBean, IService {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
             config.getRpcPort()));
-        poolArgs = new TThreadPoolServer.Args(serverTransport);
+        poolArgs = new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
+            getInstance().getConfig().getMaxConcurrentClientNum()).minWorkerThreads(1);
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
             ThreadName.JDBC_CLIENT.getName());
         poolArgs.processor(processor);
