@@ -21,6 +21,7 @@ package org.apache.iotdb;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import org.apache.iotdb.session.IoTDBSessionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -40,7 +41,7 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
  */
 public class SessionExample {
 
-  public static void main(String[] args) throws ClassNotFoundException {
+  public static void main(String[] args) throws ClassNotFoundException, IoTDBSessionException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -82,8 +83,6 @@ public class SessionExample {
       session.insertBatch(rowBatch);
       rowBatch.reset();
     }
-
     session.close();
   }
-
 }
