@@ -129,7 +129,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         new TS_SessionHandle(new TSHandleIdentifier(ByteBuffer.wrap(req.getUsername().getBytes()),
             ByteBuffer.wrap(req.getPassword().getBytes()))));
     logger.info("{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME,
-        tsStatus.getStatusMessage().getStatusMessage(), req.getUsername());
+        tsStatus.getStatusType().getMessage(), req.getUsername());
 
     return resp;
   }
@@ -408,10 +408,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       if (isAllSuccessful) {
         return getTSBatchExecuteStatementResp(getStatus(TSStatusType.SUCCESS_STATUS,
-                "Execute batch statements successfully"), result);
+              "Execute batch statements successfully"), result);
       } else {
         return getTSBatchExecuteStatementResp(getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR,
-                batchErrorMessage.toString()), result);
+              batchErrorMessage.toString()), result);
       }
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -431,11 +431,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         throw new QueryInBatchStmtException("Query statement not allowed in batch: " + statement);
       }
       TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan);
-      if (resp.getStatus().getStatusMessage().getStatusCode() == TSStatusType.SUCCESS_STATUS.getStatusCode()) {
+      if (resp.getStatus().getStatusType().getCode() == TSStatusType.SUCCESS_STATUS.getStatusCode()) {
         result.add(Statement.SUCCESS_NO_INFO);
       } else {
         result.add(Statement.EXECUTE_FAILED);
-        batchErrorMessage.append(resp.getStatus().getStatusMessage().getStatusMessage()).append("\n");
+        batchErrorMessage.append(resp.getStatus().getStatusType().getCode()).append("\n");
         return false;
       }
     } catch (Exception e) {

@@ -33,7 +33,7 @@ public enum TSStatusType {
   SET_TIME_ZONE_ERROR(403, "Meet error while setting time zone"),
   INTERNAL_SERVER_ERROR(500, "Internal server error"),
   WRONG_LOGIN_PASSWORD_ERROR(600,  "Username or password is wrong"),
-  NOT_LOGIN_ERROR(601, "Not login"),
+  NOT_LOGIN_ERROR(601, "Has not logged in"),
   NO_PERMISSION_ERROR(602, "No permissions for this operation"),
   UNINITIALIZED_AUTH_ERROR(603, "Uninitialized authorizer");
 
