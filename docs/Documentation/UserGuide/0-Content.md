@@ -50,7 +50,9 @@
 # Chapter 6: JDBC API
 * 1-JDBC API
 * 2-Status Code
-# Chapter 7: TsFile
+# Chapter 7: Session API
+* 1-Session API
+TsFile
 * 1-Installation
 * 2-Usage
 * 3-Hierarchy
