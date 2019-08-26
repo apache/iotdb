@@ -40,7 +40,7 @@ try {
 
 ```
 
-利用状态码，我们就可以不必写诸如`if (e.getErrorMessage().contains("exist"))`的代码，只需要使用`e.getStatusType().getStatusCode() == 301`。(`TIME_SERIES_NOT_EXIST_ERROR`的状态码被定义为301)
+利用状态码，我们就可以不必写诸如`if (e.getErrorMessage().contains("exist"))`的代码，只需要使用`e.getStatusType() == TSStatusType.TIME_SERIES_NOT_EXIST_ERROR`。
 
 这里是状态码和相对应信息的列表：
 

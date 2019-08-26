@@ -40,7 +40,7 @@ try {
 
 ```
 
-With Status Code, instead of writing codes like `if (e.getErrorMessage().contains("exist"))`, we can simply use `e.getStatusType().getStatusCode() == 301`.(`TIME_SERIES_NOT_EXIST_ERROR` equals 301 by defined)
+With Status Code, instead of writing codes like `if (e.getErrorMessage().contains("exist"))`, we can simply use `e.getStatusType() == TSStatusType.TIME_SERIES_NOT_EXIST_ERROR`.
 
 Here is a list of Status Code and related message:
 
