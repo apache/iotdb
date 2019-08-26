@@ -973,7 +973,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       if (!checkLogin()) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN, null);
+        return getTSBatchExecuteStatementResp(getStatus(TSStatusType.NOT_LOGIN_ERROR), null);
       }
 
       BatchInsertPlan batchInsertPlan = new BatchInsertPlan(req.deviceId, req.measurements);
@@ -990,19 +990,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       List<Path> paths = batchInsertPlan.getPaths();
       try {
         if (!checkAuthorization(paths, batchInsertPlan)) {
-          return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-              "No permissions for this operation " + batchInsertPlan.getOperatorType(), null);
+          return getTSBatchExecuteStatementResp(getStatus(TSStatusType.NO_PERMISSION_ERROR,
+              "No permissions for this operation " + batchInsertPlan.getOperatorType()), null);
         }
       } catch (AuthException e) {
         logger.error("meet error while checking authorization.", e);
-        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-            "Uninitialized authorizer " + e.getMessage(), null);
+        return getTSBatchExecuteStatementResp(getStatus(TSStatusType.UNINITIALIZED_AUTH_ERROR,
+            "Uninitialized authorizer " + e.getMessage()), null);
       }
 
       Integer[] results = processor.getExecutor().insertBatch(batchInsertPlan);
 
       for (Integer result : results) {
-        if (result != TS_StatusCode.SUCCESS_STATUS.getValue()) {
+        if (result != TSStatusType.SUCCESS_STATUS.getStatusCode()) {
           isAllSuccessful = false;
           break;
         }
@@ -1010,14 +1010,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       if (isAllSuccessful) {
         logger.debug("Insert one RowBatch successfully");
-        return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "", Arrays.asList(results));
+        return getTSBatchExecuteStatementResp(getStatus(TSStatusType.SUCCESS_STATUS), Arrays.asList(results));
       } else {
         logger.debug("Insert one RowBatch failed!");
-        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "", Arrays.asList(results));
+        return getTSBatchExecuteStatementResp(getStatus(TSStatusType.INTERNAL_SERVER_ERROR), Arrays.asList(results));
       }
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
+      return getTSBatchExecuteStatementResp(getStatus(TSStatusType.EXECUTE_STATEMENT_ERROR, e.getMessage()), null);
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }

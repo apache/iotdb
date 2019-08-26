@@ -21,7 +21,6 @@ package org.apache.iotdb.rpc;
 import java.lang.reflect.Proxy;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 
 public class RpcUtils {
 
@@ -36,8 +35,8 @@ public class RpcUtils {
    * @param status -status
    */
   public static void verifySuccess(TS_Status status) throws IoTDBRPCException {
-    if (status.getStatusCode() != TS_StatusCode.SUCCESS_STATUS) {
-      throw new IoTDBRPCException(status.errorMessage);
+    if (status.getStatusType().getCode() != 200) {
+      throw new IoTDBRPCException(status.getStatusType().getMessage());
     }
   }
 

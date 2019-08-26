@@ -52,10 +52,10 @@
 * 2-Status Code
 # Chapter 7: Session API
 * 1-Session API
-TsFile
+# Chapter 8: TsFile
 * 1-Installation
 * 2-Usage
 * 3-Hierarchy
-# Chapter 8: System Tools
+# Chapter 9: System Tools
 * 1-Sync
 * 2-Memory Estimation Tool

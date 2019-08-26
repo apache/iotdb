@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -27,21 +26,16 @@ import java.util.regex.Pattern;
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
 
 /**
  * Utils to convert between thrift format and TsFile format.
  */
 public class Utils {
-
-  private static final int SUCCESS_CODE = 200;
 
   /**
    * Parse JDBC connection URL The only supported format of the URL is:
