@@ -92,6 +92,30 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
+  public void putLongs(long[] time, long[] value) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putInts(long[] time, int[] value) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putFloats(long[] time, float[] value) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putDoubles(long[] time, double[] value) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putBinaries(long[] time, Binary[] value) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putBooleans(long[] time, boolean[] value) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
   public long getLong(int index) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
@@ -392,5 +416,19 @@ public abstract class TVList {
     for (int i = lo; i < hi; i++) {
       setFromSorted(i, i);
     }
+  }
+
+  void updateMinTimeAndSorted(long[] time) {
+    int length = time.length;
+    long inPutMinTime = Long.MAX_VALUE;
+    boolean inputSorted = true;
+    for (int i = 0; i < length; i++) {
+      inPutMinTime = inPutMinTime <= time[i] ? inPutMinTime : time[i];
+      if (inputSorted && i < length - 1 && time[i] > time[i+1]) {
+        inputSorted = false;
+      }
+    }
+    minTime = inPutMinTime < minTime ? inPutMinTime : minTime;
+    sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
   }
 }

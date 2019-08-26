@@ -24,17 +24,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +44,7 @@ public class FileGenerator {
   public static String inputDataFile;
   public static String outputDataFile = "target/perTestOutputData.tsfile";
   public static String errorOutputDataFile;
-  public static FileSchema schema;
+  public static Schema schema;
   public static int oldMaxNumberOfPointsInPage;
 
   public static void generateFile(int rowCount, int maxNumberOfPointsInPage)
@@ -169,7 +166,7 @@ public class FileGenerator {
   }
 
   private static void generateTestData() {
-    schema = new FileSchema();
+    schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
@@ -180,7 +177,7 @@ public class FileGenerator {
     schema.registerMeasurement(new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
   }
 
-  static public void writeToFile(FileSchema schema)
+  static public void writeToFile(Schema schema)
       throws IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     long lineCount = 0;

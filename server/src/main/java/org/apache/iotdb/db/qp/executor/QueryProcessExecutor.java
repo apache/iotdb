@@ -46,6 +46,7 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
@@ -205,20 +206,18 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
 
   @Override
-  public boolean insert(InsertPlan insertPlan)
-      throws ProcessorException {
-
+  public boolean insert(InsertPlan insertPlan) throws ProcessorException {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      MNode node = mManager.getNodeByDeviceIdFromCache(insertPlan.getDeviceId());
+      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
       String[] values = insertPlan.getValues();
       TSDataType[] dataTypes = new TSDataType[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
         if (!node.hasChild(measurementList[i])) {
           throw new ProcessorException(
-              String.format("Current deviceId[%s] does not contains measurement:%s",
+              String.format("Current deviceId[%s] does not contain measurement:%s",
                   deviceId, measurementList[i]));
         }
         MNode measurementNode = node.getChild(measurementList[i]);
@@ -233,6 +232,32 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
       }
       insertPlan.setDataTypes(dataTypes);
       return storageEngine.insert(insertPlan);
+
+    } catch (PathErrorException | StorageEngineException e) {
+      throw new ProcessorException(e);
+    }
+  }
+
+  @Override
+  public Integer[] insertBatch(BatchInsertPlan batchInsertPlan) throws ProcessorException {
+    try {
+      String[] measurementList = batchInsertPlan.getMeasurements();
+      String deviceId = batchInsertPlan.getDeviceId();
+      MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
+
+      for (String s : measurementList) {
+        if (!node.hasChild(s)) {
+          throw new ProcessorException(
+              String.format("Current deviceId[%s] does not contain measurement:%s",
+                  deviceId, s));
+        }
+        MNode measurementNode = node.getChild(s);
+        if (!measurementNode.isLeaf()) {
+          throw new ProcessorException(
+              String.format("Current Path is not leaf node. %s.%s", deviceId, s));
+        }
+      }
+      return storageEngine.insertBatch(batchInsertPlan);
 
     } catch (PathErrorException | StorageEngineException e) {
       throw new ProcessorException(e);

@@ -44,6 +44,21 @@
         <url>https://github.com/apache/incubator-iotdb</url>
         <tag>rel/0.8</tag>
     </scm>
+
+    <modules>
+        <module>tsfile</module>
+        <module>service-rpc</module>
+        <module>jdbc</module>
+        <module>session</module>
+        <module>client</module>
+        <module>server</module>
+        <module>example</module>
+        <module>grafana</module>
+        <module>spark-tsfile</module>
+        <!-- <module>hadoop</module> -->
+        <module>distribution</module>
+    </modules>
+
     <!-- Properties Management -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -377,18 +392,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-    <modules>
-        <module>tsfile</module>
-        <module>service-rpc</module>
-        <module>jdbc</module>
-        <module>client</module>
-        <module>server</module>
-        <module>example</module>
-        <module>grafana</module>
-        <module>spark-tsfile</module>
-        <!-- <module>hadoop</module> -->
-        <module>distribution</module>
-    </modules>
     <build>
         <pluginManagement>
             <plugins>

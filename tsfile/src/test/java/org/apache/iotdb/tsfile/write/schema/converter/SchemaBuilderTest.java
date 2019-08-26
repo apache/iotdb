@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.SchemaBuilder;
 import org.junit.Test;
@@ -42,15 +42,13 @@ public class SchemaBuilderTest {
 
     SchemaBuilder builder = new SchemaBuilder();
     Map<String, String> props = new HashMap<>();
-    props.put("enum_values", "[\"MAN\",\"WOMAN\"]");
-    props.clear();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     builder.addSeries("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props);
     builder
         .addSeries("s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null);
-    FileSchema fileSchema = builder.build();
+    Schema schema = builder.build();
 
-    Collection<MeasurementSchema> measurements = fileSchema.getMeasurementSchemaMap().values();
+    Collection<MeasurementSchema> measurements = schema.getMeasurementSchemaMap().values();
     String[] measureDesStrings = {"[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]",
         "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]"};
     int i = 0;
