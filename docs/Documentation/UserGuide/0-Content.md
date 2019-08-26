@@ -49,6 +49,7 @@
 * 2-Reference
 # Chapter 6: JDBC API
 * 1-JDBC API
+* 2-Status Code
 # Chapter 7: TsFile
 * 1-Installation
 * 2-Usage
