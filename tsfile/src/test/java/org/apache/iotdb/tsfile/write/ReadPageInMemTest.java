@@ -49,7 +49,7 @@ public class ReadPageInMemTest {
   private int pageCheckSizeThreshold;
   private int defaultMaxStringLength;
 
-  private static Schema getFileSchema() {
+  private static Schema getSchema() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
@@ -70,7 +70,7 @@ public class ReadPageInMemTest {
     conf.pageCheckSizeThreshold = 1;
     defaultMaxStringLength = conf.maxStringLength;
     conf.maxStringLength = 2;
-    schema = getFileSchema();
+    schema = getSchema();
     innerWriter = new TsFileWriter(new File(filePath), schema, conf);
   }
 

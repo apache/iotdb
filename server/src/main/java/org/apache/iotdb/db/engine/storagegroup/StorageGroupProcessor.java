@@ -164,7 +164,7 @@ public class StorageGroupProcessor {
     this.storageGroupName = storageGroupName;
 
     // construct the file schema
-    this.schema = constructFileSchema(storageGroupName);
+    this.schema = constructSchema(storageGroupName);
 
     try {
       File storageGroupSysDir = new File(systemInfoDir, storageGroupName);
@@ -249,7 +249,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private Schema constructFileSchema(String storageGroupName) {
+  private Schema constructSchema(String storageGroupName) {
     List<MeasurementSchema> columnSchemaList;
     columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(storageGroupName);
 

@@ -25,9 +25,9 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 
-public class FileSchemaUtils {
+public class SchemaUtils {
 
-  private FileSchemaUtils(){}
+  private SchemaUtils(){}
 
   /**
    * Construct the Schema of the FileNode named processorName.
@@ -35,19 +35,19 @@ public class FileSchemaUtils {
    * @return the schema of the FileNode named processorName.
    * @throws WriteProcessException when the fileSchema cannot be created.
    */
-  public static Schema constructFileSchema(String processorName) {
+  public static Schema constructSchema(String processorName) {
     List<MeasurementSchema> columnSchemaList;
     columnSchemaList = MManager.getInstance().getSchemaForStorageGroup(processorName);
-    return getFileSchemaFromColumnSchema(columnSchemaList);
+    return getSchemaFromColumnSchema(columnSchemaList);
   }
 
   /**
-   * getFileSchemaFromColumnSchema construct a Schema using the schema of the columns and the
+   * getSchemaFromColumnSchema construct a Schema using the schema of the columns and the
    * device type.
    * @param schemaList the schema of the columns in this file.
    * @return a Schema contains the provided schemas.
    */
-  public static Schema getFileSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
+  public static Schema getSchemaFromColumnSchema(List<MeasurementSchema> schemaList) {
     Schema schema = new Schema();
     for (MeasurementSchema measurementSchema : schemaList) {
       schema.registerMeasurement(measurementSchema);
