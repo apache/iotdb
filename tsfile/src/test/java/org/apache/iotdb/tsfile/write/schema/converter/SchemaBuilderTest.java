@@ -42,8 +42,6 @@ public class SchemaBuilderTest {
 
     SchemaBuilder builder = new SchemaBuilder();
     Map<String, String> props = new HashMap<>();
-    props.put("enum_values", "[\"MAN\",\"WOMAN\"]");
-    props.clear();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     builder.addSeries("s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props);
     builder
