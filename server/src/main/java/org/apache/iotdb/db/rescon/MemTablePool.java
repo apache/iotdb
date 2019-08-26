@@ -42,6 +42,7 @@ public class MemTablePool {
   private MemTablePool() {
   }
 
+  // TODO change the impl of getAvailableMemTable to non-blocking
   public IMemTable getAvailableMemTable(Object applier) {
     synchronized (availableMemTables) {
       if (availableMemTables.isEmpty() && size < CONFIG.getMaxMemtableNumber()) {

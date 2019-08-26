@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.SchemaBuilder;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -154,7 +154,7 @@ public class TsFileGeneratorForTest {
       Assert.assertTrue(errorFile.delete());
     }
 
-    FileSchema schema = generateTestSchema();
+    Schema schema = generateTestSchema();
 
     TSFileDescriptor.getInstance().getConfig().groupSizeInByte = chunkGroupSize;
     TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage = pageSize;
@@ -221,7 +221,7 @@ public class TsFileGeneratorForTest {
     return jsonSchema;
   }
 
-  private static FileSchema generateTestSchema() {
+  private static Schema generateTestSchema() {
     SchemaBuilder schemaBuilder = new SchemaBuilder();
     schemaBuilder.addSeries("s1", TSDataType.INT32, TSEncoding.RLE);
     schemaBuilder.addSeries("s2", TSDataType.INT64, TSEncoding.PLAIN);

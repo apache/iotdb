@@ -104,8 +104,8 @@ then by default `IOTDB_HOME` is the direct parent directory of `sbin/start-serve
 (or that of `sbin\start-server.bat` on Windows).
 
 * if `IOTDB_CLI_HOME` is not explicitly assigned, 
-then by default `IOTDB_CLI_HOME` is the direct parent directory of `sbin/start-client.sh` on 
-Unix/OS X (or that of `sbin\start-client.bat` on Windows).
+then by default `IOTDB_CLI_HOME` is the direct parent directory of `sbin/start-cli.sh` on 
+Unix/OS X (or that of `sbin\start-cli.bat` on Windows).
 
 If you are not the first time that building IoTDB, remember deleting the following files:
 

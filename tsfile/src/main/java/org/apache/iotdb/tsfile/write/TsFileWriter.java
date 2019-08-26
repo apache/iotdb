@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
@@ -53,7 +53,7 @@ public class TsFileWriter implements AutoCloseable{
   /**
    * schema of this TsFile.
    **/
-  protected final FileSchema schema;
+  protected final Schema schema;
   /**
    * IO writer of this TsFile.
    **/
@@ -78,7 +78,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param file the File to be written by this TsFileWriter
    */
   public TsFileWriter(File file) throws IOException {
-    this(new TsFileIOWriter(file), new FileSchema(), TSFileDescriptor.getInstance().getConfig());
+    this(new TsFileIOWriter(file), new Schema(), TSFileDescriptor.getInstance().getConfig());
   }
 
   /**
@@ -87,7 +87,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param fileWriter the io writer of this TsFile
    */
   public TsFileWriter(TsFileIOWriter fileWriter) throws IOException {
-    this(fileWriter, new FileSchema(), TSFileDescriptor.getInstance().getConfig());
+    this(fileWriter, new Schema(), TSFileDescriptor.getInstance().getConfig());
   }
 
   /**
@@ -96,7 +96,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param file the File to be written by this TsFileWriter
    * @param schema the schema of this TsFile
    */
-  public TsFileWriter(File file, FileSchema schema) throws IOException {
+  public TsFileWriter(File file, Schema schema) throws IOException {
     this(new TsFileIOWriter(file), schema, TSFileDescriptor.getInstance().getConfig());
   }
 
@@ -107,7 +107,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param schema the schema of this TsFile
    * @throws IOException
    */
-  public TsFileWriter(TsFileOutput output, FileSchema schema) throws IOException {
+  public TsFileWriter(TsFileOutput output, Schema schema) throws IOException {
     this(new TsFileIOWriter(output), schema, TSFileDescriptor.getInstance().getConfig());
   }
 
@@ -118,7 +118,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param schema the schema of this TsFile
    * @param conf the configuration of this TsFile
    */
-  public TsFileWriter(File file, FileSchema schema, TSFileConfig conf) throws IOException {
+  public TsFileWriter(File file, Schema schema, TSFileConfig conf) throws IOException {
     this(new TsFileIOWriter(file), schema, conf);
   }
 
@@ -129,7 +129,7 @@ public class TsFileWriter implements AutoCloseable{
    * @param schema the schema of this TsFile
    * @param conf the configuration of this TsFile
    */
-  protected TsFileWriter(TsFileIOWriter fileWriter, FileSchema schema, TSFileConfig conf)
+  protected TsFileWriter(TsFileIOWriter fileWriter, Schema schema, TSFileConfig conf)
       throws IOException {
     if (!fileWriter.canWrite()) {
       throw new IOException(

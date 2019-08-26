@@ -19,16 +19,12 @@
 #
 
 
-echo ---------------------
-echo Starting IoTDB Client
-echo ---------------------
-
 if [ -z "${IOTDB_CLI_HOME}" ]; then
   export IOTDB_CLI_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
 
-MAIN_CLASS=org.apache.iotdb.cli.client.Client
+MAIN_CLASS=org.apache.iotdb.client.Client
 
 
 CLASSPATH=""

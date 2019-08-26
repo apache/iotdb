@@ -24,11 +24,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,7 +35,7 @@ import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -55,7 +52,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   public static String inputDataFile;
   public static String outputDataFile = "target/testTsFile.tsfile";
   public static String errorOutputDataFile;
-  public static FileSchema schema;
+  public static Schema schema;
   private static int rowCount;
   private static int chunkGroupSize;
   private static int pageSize;
@@ -176,7 +173,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
 
   private static void generateTestData() {
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema = new FileSchema();
+    schema = new Schema();
     schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
     schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder), CompressionType.UNCOMPRESSED));
     schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder), CompressionType.SNAPPY));
@@ -186,7 +183,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     schema.registerMeasurement(new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
   }
 
-  static public void writeToFile(FileSchema schema)
+  static public void writeToFile(Schema schema)
       throws InterruptedException, IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     long lineCount = 0;

@@ -25,21 +25,21 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 public class TsFileOutputFormat extends FileOutputFormat<NullWritable, TSRecord> {
 
-  private FileSchema fileSchema;
+  private Schema schema;
 
-  public TsFileOutputFormat(FileSchema fileSchema) {
-    this.fileSchema = fileSchema;
+  public TsFileOutputFormat(Schema schema) {
+    this.schema = schema;
   }
 
   @Override
   public RecordWriter<NullWritable, TSRecord> getRecordWriter(TaskAttemptContext job)
       throws IOException {
     Path path = getDefaultWorkFile(job, "");
-    return new TsFileRecordWriter(job, path, fileSchema);
+    return new TsFileRecordWriter(job, path, schema);
   }
 
 }

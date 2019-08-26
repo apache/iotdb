@@ -39,9 +39,19 @@ public class IoTDBConfig {
   private String rpcAddress = "0.0.0.0";
 
   /**
+   * whether to use thrift compression.
+   */
+  private boolean rpcThriftCompressionEnable = false;
+
+  /**
    * Port which the JDBC server listens to.
    */
   private int rpcPort = 6667;
+
+  /**
+   * Max concurrent client number
+   */
+  private int maxConcurrentClientNum = 65535;
 
   /**
    * Memory allocated for the read process
@@ -465,6 +475,14 @@ public class IoTDBConfig {
     this.enableStatMonitor = enableStatMonitor;
   }
 
+  public int getMaxConcurrentClientNum() {
+    return maxConcurrentClientNum;
+  }
+
+  public void setMaxConcurrentClientNum(int maxConcurrentClientNum) {
+    this.maxConcurrentClientNum = maxConcurrentClientNum;
+  }
+
   public int getStatMonitorDetectFreqSec() {
     return statMonitorDetectFreqSec;
   }
@@ -631,6 +649,14 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public boolean isRpcThriftCompressionEnable() {
+    return rpcThriftCompressionEnable;
+  }
+
+  public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
+    this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
   }
 
   public boolean isMetaDataCacheEnable() {

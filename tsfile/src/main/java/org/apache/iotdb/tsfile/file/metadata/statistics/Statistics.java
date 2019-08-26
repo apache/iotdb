@@ -32,7 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class is used for recording statistic information of each measurement in a delta file.While
+ * This class is used for recording statistic information of each measurement in a delta file. While
  * writing processing, the processor records the digest information. Statistics includes maximum,
  * minimum and null value count up to version 0.0.1.<br> Each data type extends this Statistic as
  * super class.<br>

@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -62,7 +62,7 @@ public class WriteTest {
   private String errorOutputDataFile;
   private Random rm = new Random();
   private ArrayList<MeasurementSchema> measurementArray;
-  private FileSchema schema;
+  private Schema schema;
   private int stageSize = 4;
   private int stageState = -1;
   private int prePageSize;
@@ -110,7 +110,7 @@ public class WriteTest {
     measurementArray.add(new MeasurementSchema("s3", TSDataType.DOUBLE, TSEncoding.TS_2DIFF,
             CompressionType.valueOf(TSFileConfig.compressor), props));
     measurementArray.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema = new FileSchema();
+    schema = new Schema();
     LOG.info(schema.toString());
     tsFileWriter = new TsFileWriter(file, schema, conf);
   }

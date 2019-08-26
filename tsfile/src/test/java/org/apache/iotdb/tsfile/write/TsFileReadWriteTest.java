@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.*;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -152,13 +152,13 @@ public class TsFileReadWriteTest {
 
   private void writeDataByRowBatch()
           throws IOException, WriteProcessException {
-    FileSchema fileSchema = new FileSchema();
-    fileSchema.registerMeasurement(
+    Schema schema = new Schema();
+    schema.registerMeasurement(
             new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.TS_2DIFF));
-    int rowNum = 1024 * 1024;
+    int rowNum = 1024 * 1024 * 13 + 1023;
     int sensorNum = 1;
-    TsFileWriter tsFileWriter = new TsFileWriter(f, fileSchema);
-    RowBatch rowBatch = fileSchema.createRowBatch("device_1");
+    TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
+    RowBatch rowBatch = schema.createRowBatch("device_1");
     long[] timestamps = rowBatch.timestamps;
     Object[] sensors = rowBatch.values;
     long timestamp = 1;

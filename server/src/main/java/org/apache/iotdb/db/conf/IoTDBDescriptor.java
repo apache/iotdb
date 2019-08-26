@@ -120,6 +120,9 @@ public class IoTDBDescriptor {
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
 
+      conf.setRpcThriftCompressionEnable(Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
+              Boolean.toString(conf.isRpcThriftCompressionEnable()))));
+
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
@@ -238,6 +241,15 @@ public class IoTDBDescriptor {
       conf.setPerformanceStatMemoryInKB(Integer
           .parseInt(properties.getProperty("performance_stat_memory_in_kb",
               Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
+
+      int maxConcurrentClientNum = Integer.parseInt(properties.
+          getProperty("max_concurrent_client_num",
+              Integer.toString(conf.getMaxConcurrentClientNum()).trim()));
+      if (maxConcurrentClientNum <= 0) {
+        maxConcurrentClientNum = 65535;
+      }
+      conf.setMaxConcurrentClientNum(maxConcurrentClientNum);
+
     } catch (IOException e) {
       logger.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {

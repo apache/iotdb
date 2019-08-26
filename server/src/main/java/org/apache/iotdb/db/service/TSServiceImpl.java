@@ -28,6 +28,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,12 +62,14 @@ import org.apache.iotdb.db.metadata.Metadata;
 import org.apache.iotdb.db.qp.QueryProcessor;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationResp;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -164,7 +167,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus.setErrorMessage("login failed. Username or password is wrong.");
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
-        TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
+        TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
     resp.setSessionHandle(
         new TS_SessionHandle(new TSHandleIdentifier(ByteBuffer.wrap(req.getUsername().getBytes()),
             ByteBuffer.wrap(req.getPassword().getBytes()))));
@@ -444,7 +447,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_BATCH, t1);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
     }
   }
 
@@ -496,7 +499,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         String msg = String.format(
             "There are %d flush tasks, %d flush tasks are in execution and %d flush tasks are waiting for execution.",
             FlushTaskPoolManager.getInstance().getTotalTasks(),
-            FlushTaskPoolManager.getInstance().getActiveCnt(),
+            FlushTaskPoolManager.getInstance().getWorkingTasksNumber(),
             FlushTaskPoolManager.getInstance().getWaitingTasksNumber());
         return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_WITH_INFO_STATUS, msg);
       }
@@ -973,7 +976,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSExecuteStatementResp executeInsertion(TSInsertionReq req) {
+  public TSExecuteStatementResp insert(TSInsertionReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN);
@@ -1001,6 +1004,62 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       logger.info("meet error while executing an insertion into {}", req.getDeviceId(), e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+    }
+  }
+
+  @Override
+  public TSExecuteBatchStatementResp insertBatch(TSBatchInsertionReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!checkLogin()) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, ERROR_NOT_LOGIN, null);
+      }
+
+      BatchInsertPlan batchInsertPlan = new BatchInsertPlan(req.deviceId, req.measurements);
+      batchInsertPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
+      batchInsertPlan.setColumns(QueryDataSetUtils
+          .readValuesFromBuffer(req.values, req.types, req.measurements.size(), req.size));
+      batchInsertPlan.setRowCount(req.size);
+      batchInsertPlan.setTimeBuffer(req.timestamps);
+      batchInsertPlan.setValueBuffer(req.values);
+      batchInsertPlan.setDataTypes(req.types);
+
+      boolean isAllSuccessful = true;
+
+      List<Path> paths = batchInsertPlan.getPaths();
+      try {
+        if (!checkAuthorization(paths, batchInsertPlan)) {
+          return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+              "No permissions for this operation " + batchInsertPlan.getOperatorType(), null);
+        }
+      } catch (AuthException e) {
+        logger.error("meet error while checking authorization.", e);
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+            "Uninitialized authorizer " + e.getMessage(), null);
+      }
+
+      Integer[] results = processor.getExecutor().insertBatch(batchInsertPlan);
+
+      for (Integer result : results) {
+        if (result != TS_StatusCode.SUCCESS_STATUS.getValue()) {
+          isAllSuccessful = false;
+          break;
+        }
+      }
+
+      if (isAllSuccessful) {
+        logger.debug("Insert one RowBatch successfully");
+        return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "", Arrays.asList(results));
+      } else {
+        logger.debug("Insert one RowBatch failed!");
+        return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "", Arrays.asList(results));
+      }
+    } catch (Exception e) {
+      logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
+    } finally {
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
   }
 

@@ -34,7 +34,9 @@ public enum ServiceType {
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE","PERFORMANCE_STATISTIC_SERVICE"),
   MANAGE_DYNAMIC_PARAMETERS_SERVICE("Manage Dynamic Parameters", "Manage Dynamic Parameters"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
-  FLUSH_SERVICE("Flush ServerService", "");
+
+  FLUSH_SERVICE("Flush ServerService",
+      generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager"));
 
   private String name;
   private String jmxName;
@@ -50,5 +52,10 @@ public enum ServiceType {
 
   public String getJmxName() {
     return jmxName;
+  }
+
+  private static String generateJmxName(String packageName,  String jmxName) {
+    return String
+        .format("%s:type=%s", packageName, jmxName);
   }
 }

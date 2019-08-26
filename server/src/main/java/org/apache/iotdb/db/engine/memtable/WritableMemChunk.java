@@ -74,25 +74,67 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(long insertTime, Object value) {
+  public void write(long[] times, Object valueList, TSDataType dataType, List<Integer> indexes) {
     switch (dataType) {
       case BOOLEAN:
-        putBoolean(insertTime, (Boolean)value);
+        boolean[] boolValues = (boolean[]) valueList;
+        if (times.length == indexes.size()) {
+          putBooleans(times, boolValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putBoolean(times[index], boolValues[index]);
+        }
         break;
       case INT32:
-        putInt(insertTime, (Integer)value);
+        int[] intValues = (int[]) valueList;
+        if (times.length == indexes.size()) {
+          putInts(times, intValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putInt(times[index], intValues[index]);
+        }
         break;
       case INT64:
-        putLong(insertTime, (Long)value);
+        long[] longValues = (long[]) valueList;
+        if (times.length == indexes.size()) {
+          putLongs(times, longValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putLong(times[index], longValues[index]);
+        }
         break;
       case FLOAT:
-        putFloat(insertTime, (Float)value);
+        float[] floatValues = (float[]) valueList;
+        if (times.length == indexes.size()) {
+          putFloats(times, floatValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putFloat(times[index], floatValues[index]);
+        }
         break;
       case DOUBLE:
-        putDouble(insertTime, (Double)value);
+        double[] doubleValues = (double[]) valueList;
+        if (times.length == indexes.size()) {
+          putDoubles(times, doubleValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putDouble(times[index], doubleValues[index]);
+        }
         break;
       case TEXT:
-        putBinary(insertTime, (Binary)value);
+        Binary[] binaryValues = (Binary[]) valueList;
+        if (times.length == indexes.size()) {
+          putBinaries(times, binaryValues);
+          break;
+        }
+        for (Integer index : indexes) {
+          putBinary(times[index], binaryValues[index]);
+        }
         break;
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
@@ -129,6 +171,36 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void putBoolean(long t, boolean v) {
     list.putBoolean(t, v);
+  }
+
+  @Override
+  public void putLongs(long[] t, long[] v) {
+    list.putLongs(t, v);
+  }
+
+  @Override
+  public void putInts(long[] t, int[] v) {
+    list.putInts(t, v);
+  }
+
+  @Override
+  public void putFloats(long[] t, float[] v) {
+    list.putFloats(t, v);
+  }
+
+  @Override
+  public void putDoubles(long[] t, double[] v) {
+    list.putDoubles(t, v);
+  }
+
+  @Override
+  public void putBinaries(long[] t, Binary[] v) {
+    list.putBinaries(t, v);
+  }
+
+  @Override
+  public void putBooleans(long[] t, boolean[] v) {
+    list.putBooleans(t, v);
   }
 
   @Override
