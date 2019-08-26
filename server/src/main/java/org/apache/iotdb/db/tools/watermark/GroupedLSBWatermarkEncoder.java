@@ -54,7 +54,6 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     try {
       md = MessageDigest.getInstance("MD5");
     } catch (NoSuchAlgorithmException e) {
-      e.printStackTrace();
       throw new RuntimeException("ERROR: Cannot find MD5 algorithm!");
     }
     md.update(val.getBytes());
@@ -98,15 +97,13 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
   }
 
   private float encodeFloat(float value, long timestamp) {
-    int integerPart = (int) value;
-    float decimalPart = value - integerPart;
-    return encodeInt(integerPart, timestamp) + decimalPart;
+    int intBits = Float.floatToIntBits(value);
+    return Float.intBitsToFloat(encodeInt(intBits, timestamp));
   }
 
   private double encodeDouble(double value, long timestamp) {
-    int integerPart = (int) value;
-    double decimalPart = value - integerPart;
-    return encodeInt(integerPart, timestamp) + decimalPart;
+    long longBits = Double.doubleToLongBits(value);
+    return Double.longBitsToDouble(encodeLong(longBits, timestamp));
   }
 
   public RowRecord encodeRecord(RowRecord record) {

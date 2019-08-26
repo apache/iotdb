@@ -46,12 +46,14 @@ import org.junit.Test;
 public class IoTDBWatermarkTest {
 
   private static IoTDB daemon;
-  private static String filePath = "watermarked_query_result.csv";
-  private static PrintWriter writer;
+  private static String filePath1 = "watermarked_query_result.csv";
+  private static String filePath2 = "notWatermarked_query_result.csv";
+  private static PrintWriter writer1;
+  private static PrintWriter writer2;
   private static String secretKey = "ASDFGHJKL";
   private static String watermarkBitString = "10101000100";
-  private static int mark_rate = 5;
-  private static int max_right_bit = 5;
+  private static int embed_rate = 5;
+  private static int embed_lsb_range = 5;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -60,25 +62,36 @@ public class IoTDBWatermarkTest {
     IoTDBDescriptor.getInstance().getConfig().setWatermarkSecretKey(secretKey);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkBitString(watermarkBitString);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkMethod(String.format("GroupBasedLSBMethod"
-        + "(mark_rate=%d,max_right_bit=%d)", mark_rate, max_right_bit));
+        + "(embed_rate=%d,embed_lsb_range=%d)", embed_rate, embed_lsb_range));
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
-    Thread.sleep(5000);
     insertData();
-    File file = new File(filePath);
-    if (file.exists()) {
-      file.delete();
+
+    File file1 = new File(filePath1);
+    if (file1.exists()) {
+      file1.delete();
     }
-    writer = new PrintWriter(file);
-    writer.println("time,root.vehicle.d0.s0,root.vehicle.d0.s1,root.vehicle.d0.s2");
+    writer1 = new PrintWriter(file1);
+    writer1.println("time,root.vehicle.d0.s0,root.vehicle.d0.s1,root.vehicle.d0.s2");
+
+    File file2 = new File(filePath2);
+    if (file2.exists()) {
+      file2.delete();
+    }
+    writer2 = new PrintWriter(file2);
+    writer2.println("time,root.vehicle.d0.s0,root.vehicle.d0.s1,root.vehicle.d0.s2");
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    File file = new File(filePath);
-    if (file.exists()) {
-      file.delete();
+    File file1 = new File(filePath1);
+    if (file1.exists()) {
+      file1.delete();
+    }
+    File file2 = new File(filePath2);
+    if (file2.exists()) {
+      file2.delete();
     }
     daemon.stop();
     EnvironmentUtils.cleanEnv();
@@ -125,7 +138,7 @@ public class IoTDBWatermarkTest {
   }
 
   @Test
-  public void EncodeAndDecodeTest() throws IOException, ClassNotFoundException, SQLException {
+  public void EncodeAndDecodeTest1() throws IOException, ClassNotFoundException, SQLException {
     // Watermark Embedding
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
@@ -143,9 +156,9 @@ public class IoTDBWatermarkTest {
                 + "," + resultSet.getString(Constant.d0s0)
                 + "," + resultSet.getString(Constant.d0s1)
                 + "," + resultSet.getString(Constant.d0s2);
-        writer.println(ans);
+        writer1.println(ans);
       }
-      writer.close();
+      writer1.close();
       statement.close();
     } catch (Exception e) {
       e.printStackTrace();
@@ -160,8 +173,49 @@ public class IoTDBWatermarkTest {
     double alpha = 0.1;
     int columnIndex = 1;
     boolean isWatermarked = WatermarkDetector
-        .isWatermarked(filePath, secretKey, watermarkBitString, mark_rate, max_right_bit, alpha,
+        .isWatermarked(filePath1, secretKey, watermarkBitString, embed_rate, embed_lsb_range, alpha,
             columnIndex);
     Assert.assertTrue(isWatermarked);
+  }
+
+  @Test
+  public void EncodeAndDecodeTest2() throws IOException, ClassNotFoundException, SQLException {
+    // No Watermark Embedding
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    Connection connection = null;
+    try {
+      connection = DriverManager
+          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+      Statement statement = connection.createStatement();
+      statement.execute("REVOKE WATERMARK_EMBEDDING from root");
+      boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0");
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(Constant.TIMESTAMP_STR)
+                + "," + resultSet.getString(Constant.d0s0)
+                + "," + resultSet.getString(Constant.d0s1)
+                + "," + resultSet.getString(Constant.d0s2);
+        writer2.println(ans);
+      }
+      writer2.close();
+      statement.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      if (connection != null) {
+        connection.close();
+      }
+    }
+
+    // Watermark Detection
+    double alpha = 0.1;
+    int columnIndex = 1;
+    boolean isWatermarked = WatermarkDetector
+        .isWatermarked(filePath2, secretKey, watermarkBitString, embed_rate, embed_lsb_range, alpha,
+            columnIndex);
+    Assert.assertFalse(isWatermarked);
   }
 }

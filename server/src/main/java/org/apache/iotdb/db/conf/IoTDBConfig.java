@@ -263,7 +263,7 @@ public class IoTDBConfig {
    */
   private String watermarkBitString = "11001010010101";
 
-  private String watermarkMethod = "GroupBasedLSBMethod(mark_rate=5,max_right_bit=5)";
+  private String watermarkMethod = "GroupBasedLSBMethod(embed_rate=5,embed_lsb_range=5)";
 
   public IoTDBConfig() {
     // empty constructor
@@ -716,11 +716,11 @@ public class IoTDBConfig {
   }
 
   public int getWatermarkParamMarkRate() {
-    return Integer.parseInt(getWatermarkParamValue("mark_rate", "5"));
+    return Integer.parseInt(getWatermarkParamValue("embed_rate", "5"));
   }
 
   public int getWatermarkParamMaxRightBit() {
-    return Integer.parseInt(getWatermarkParamValue("max_right_bit", "5"));
+    return Integer.parseInt(getWatermarkParamValue("embed_lsb_range", "5"));
   }
 
   public String getWatermarkParamValue(String key, String defaultValue) {
